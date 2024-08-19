@@ -60,8 +60,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = ObjE (List.map (over_exp f) bases, List.map (over_exp_field f) efs) }
   | IfE (exp1, exp2, exp3) ->
      f { exp with it = IfE(over_exp f exp1, over_exp f exp2, over_exp f exp3) }
-  | TryE (exp1, cases) ->
-     f { exp with it = TryE (over_exp f exp1, List.map (over_case f) cases) }
+  | TryE (exp1, cases, exp2_opt) ->
+     f { exp with it = TryE (over_exp f exp1, List.map (over_case f) cases, Option.map (over_exp f) exp2_opt) }
   | SwitchE (exp1, cases) ->
      f { exp with it = SwitchE (over_exp f exp1, List.map (over_case f) cases) }
   | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, exp1) ->

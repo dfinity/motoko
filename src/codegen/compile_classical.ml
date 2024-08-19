@@ -6406,7 +6406,12 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    })
+      });
+
+    E.add_export env (nr {
+        name = Lib.Utf8.decode "idl_limit_check";
+        edesc = nr (FuncExport (nr (E.built_in env "idl_limit_check")))
+      })
 
 end (* RTS_Exports *)
 
@@ -6596,13 +6601,23 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
 
   module Registers = struct
+
+    (* interval for checking instruction counter *)
+    let idl_value_numerator = 1l
+    let idl_value_denominator = 1l
+    let idl_value_bias = 1024l
+
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
       E.add_global32 env "@@data_buf" Mutable 0l;
       E.add_global32 env "@@ref_buf" Mutable 0l;
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l
+      E.add_global32 env "@@typtbl_size" Mutable 0l;
+      E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
+      E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
+      E.add_global32 env "@@value_bias" Mutable idl_value_bias;
+      E.add_global64 env "@@value_quota" Mutable 0L
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6633,6 +6648,88 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+
+    let get_value_quota env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_quota")))
+    let set_value_quota env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_quota")))
+
+    let get_value_numerator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_numerator")))
+    let set_value_numerator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_numerator")))
+
+    let get_value_denominator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_denominator")))
+    let set_value_denominator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_denominator")))
+
+    let get_value_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_bias")))
+    let set_value_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
+
+    let reset_value_limit env get_blob get_rel_buf_opt =
+      get_rel_buf_opt ^^
+      G.if0
+      begin (* Candid deserialization *)
+        (* Set instruction limit *)
+        (* Use 32-bit factors and terms to (mostly) avoid 64-bit overflow *)
+        let (set_product, get_product) = new_local64 env "product" in
+        get_blob ^^
+        Blob.len env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        get_value_numerator env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        get_value_denominator env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
+        set_product ^^
+        get_product ^^
+        get_value_bias env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_value_quota env ^^
+        (* Saturate value_quota on overflow *)
+        get_value_quota env ^^
+        get_product ^^
+        G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+        G.if0 begin
+          compile_const_64 (-1L) ^^
+          set_value_quota env
+        end
+          G.nop
+      end
+      begin (* Extended candid/ Destabilization *)
+        G.nop
+      end
+
+    let define_idl_limit_check env =
+      Func.define_built_in env "idl_limit_check"
+        [("decrement", I32Type); ("count", I64Type)] [] (fun env ->
+        get_rel_buf_opt env ^^
+        G.if0 begin (* Candid deserialization *)
+          get_value_quota env ^^
+          G.i (LocalGet (nr 1l)) ^^ (* Count of values *)
+          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+          E.then_trap_with env "IDL error: exceeded value limit" ^^
+          (* if (decrement) quota -= count *)
+          G.i (LocalGet (nr 0l)) ^^
+          G.if0 begin
+             get_value_quota env ^^
+             G.i (LocalGet (nr 1l)) ^^
+             G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+             set_value_quota env
+           end
+             G.nop
+        end begin (* Extended Candid/Destabilization *)
+          G.nop
+        end)
+
+    let idl_limit_check env =
+      G.i (Call (nr (E.built_in env "idl_limit_check")))
+
   end
 
   open Typ_hash
@@ -7289,6 +7386,11 @@ module MakeSerialization (Strm : Stream) = struct
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
 
+      (* Decrement and check idl quota *)
+      compile_unboxed_const 1l ^^
+      compile_const_64 1L ^^
+      Registers.idl_limit_check env ^^
+
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -7707,7 +7809,7 @@ module MakeSerialization (Strm : Stream) = struct
               end
               begin
                 match normalize t with
-                | Opt _ | Any -> Opt.null_lit env
+                | Prim Null | Opt _ | Any -> Opt.null_lit env
                 | _ -> coercion_failed "IDL error: did not find tuple field in record"
               end
           ) ts ^^
@@ -7736,7 +7838,7 @@ module MakeSerialization (Strm : Stream) = struct
                   end
                 begin
                   match normalize f.typ with
-                  | Opt _ | Any -> Opt.null_lit env
+                  | Prim Null | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
@@ -7798,6 +7900,10 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          (* Don't decrement just check quota *)
+          compile_unboxed_const 0l ^^
+          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          Registers.idl_limit_check env ^^
           Arr.alloc env Tagged.I get_len ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
@@ -8045,6 +8151,16 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Allocate memo table, if necessary *)
       with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      begin
+        (* set up invariant register arguments *)
+        get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+        get_data_buf ^^ Registers.set_data_buf env ^^
+        get_ref_buf ^^ Registers.set_ref_buf env ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+        get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+        get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+        Registers.reset_value_limit env get_blob get_rel_buf_opt
+      end ^^
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
@@ -8055,7 +8171,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
             match normalize t with
-            | Opt _ | Any ->
+            | Prim Null | Opt _ | Any ->
               (Bool.lit true, fun msg -> Opt.null_lit env)
             | _ ->
               (get_can_recover, fun msg ->
@@ -8069,15 +8185,6 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-              begin
-                (* set up invariant register arguments *)
-                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-                get_data_buf ^^ Registers.set_data_buf env ^^
-                get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
-              end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
                 (* idltyp *)
@@ -9220,39 +9327,39 @@ module FuncDec = struct
     ))
 
   let message_start env sort = match sort with
-      | Type.Shared Type.Write ->
-        Lifecycle.trans env Lifecycle.InUpdate
-      | Type.Shared Type.Query ->
-        Lifecycle.trans env Lifecycle.InQuery
-      | Type.Shared Type.Composite ->
-        Lifecycle.trans env Lifecycle.InComposite
+      | Type.(Shared Write) ->
+        Lifecycle.(trans env InUpdate)
+      | Type.(Shared Query) ->
+        Lifecycle.(trans env InQuery)
+      | Type.(Shared Composite) ->
+        Lifecycle.(trans env InComposite)
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
-      | Type.Shared Type.Write ->
+      | Type.(Shared Write) ->
         GC.collect_garbage env ^^
-        Lifecycle.trans env Lifecycle.Idle
-      | Type.Shared Type.Query ->
-        Lifecycle.trans env Lifecycle.PostQuery
-      | Type.Shared Type.Composite ->
+        Lifecycle.(trans env Idle)
+      | Type.(Shared Query) ->
+        Lifecycle.(trans env PostQuery)
+      | Type.(Shared Composite) ->
         (* Stay in composite query state such that callbacks of 
         composite queries can also use the memory reserve. 
         The state is isolated since memory changes of queries 
         are rolled back by the IC runtime system. *)
-        Lifecycle.trans env Lifecycle.InComposite
+        Lifecycle.(trans env InComposite)
       | _ -> assert false
 
   let callback_start env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
+    Lifecycle.(is_in env InComposite) ^^
     G.if0
       (G.nop)
-      (message_start env (Type.Shared Type.Write))
+      (message_start env Type.(Shared Write))
 
   let callback_cleanup env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
+    Lifecycle.(is_in env InComposite) ^^
     G.if0
       (G.nop)
-      (message_cleanup env (Type.Shared Type.Write))
+      (message_cleanup env Type.(Shared Write))
   
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
@@ -9454,7 +9561,7 @@ module FuncDec = struct
     (* result is a function that accepts a list of closure getters, from which
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
-      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+      let set_cb_index, get_cb_index = new_local env "cb_index" in
       Arr.lit env Tagged.T closure_getters ^^
       ContinuationTable.remember env ^^
       set_cb_index ^^
@@ -9482,7 +9589,12 @@ module FuncDec = struct
     Func.define_built_in env name ["env", I32Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
-        G.i Drop);
+        Arr.load_field env 2l ^^ (* get the cleanup closure *)
+        let set_closure, get_closure = new_local env "closure" in
+        set_closure ^^ get_closure ^^
+        Closure.prepare_closure_call env ^^
+        get_closure ^^
+        Closure.call_closure env 0 0);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations
@@ -9531,29 +9643,29 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c =
     ic_call_threaded
       env
       "remote call"
       get_meth_pair
-      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
+      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r; get_c])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
 
-  let ic_call_raw env get_meth_pair get_arg get_k get_r =
+  let ic_call_raw env get_meth_pair get_arg get_k get_r get_c =
     ic_call_threaded
       env
       "raw call"
       get_meth_pair
-      (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
+      (closures_to_raw_reply_reject_callbacks env [get_k; get_r; get_c])
       (fun _ -> get_arg ^^ Blob.as_ptr_len env)
 
-  let ic_self_call env ts get_meth_pair get_future get_k get_r =
+  let ic_self_call env ts get_meth_pair get_future get_k get_r get_c =
     ic_call_threaded
       env
       "self call"
       get_meth_pair
-      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/continuation_table.rs *)
-      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future])
+      (* Storing the tuple away, future_array_index = 3, keep in sync with rts/continuation_table.rs *)
+      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_c; get_future])
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env Type.Nat32 ^^
@@ -11811,6 +11923,26 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
+  | OtherPrim "setCandidLimits", [e1; e2; e3] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^
+    Serialization.Registers.set_value_numerator env ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e2 ^^
+    Serialization.Registers.set_value_denominator env ^^
+    Serialization.Registers.get_value_denominator env ^^
+    E.else_trap_with env "Candid limit denominator cannot be zero" ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e3 ^^
+    Serialization.Registers.set_value_bias env
+
+  | OtherPrim "getCandidLimits", [] ->
+    SR.UnboxedTuple 3,
+    Serialization.Registers.get_value_numerator env ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
+    Serialization.Registers.get_value_denominator env ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
+    Serialization.Registers.get_value_bias env ^^
+    BoxedSmallWord.box env Type.Nat32
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
@@ -11865,7 +11997,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim, [f;e;k;r] ->
+  | ICCallPrim, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -11874,19 +12006,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_arg, get_arg) = new_local env "arg" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
+    compile_exp_vanilla env ae c ^^ set_c ^^
+    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
-  | ICCallRawPrim, [p;m;a;k;r] ->
+  | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
-    let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-    let (set_arg, get_arg) = new_local env "arg" in
-    let (set_k, get_k) = new_local env "k" in
-    let (set_r, get_r) = new_local env "r" in
+    let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
+    let set_arg, get_arg = new_local env "arg" in
+    let set_k, get_k = new_local env "k" in
+    let set_r, get_r = new_local env "r" in
+    let set_c, get_c = new_local env "c" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
@@ -11895,7 +12030,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r add_cycles
+    compile_exp_vanilla env ae c ^^ set_c ^^
+    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r get_c add_cycles
     end
 
   | ICMethodNamePrim, [] ->
@@ -11984,7 +12120,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
   | PrimE (p, es) ->
     compile_prim_invocation (env : E.t) ae p es exp.at
-  | VarE var ->
+  | VarE (_, var) ->
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
@@ -12104,11 +12240,12 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
@@ -12118,6 +12255,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
+    compile_exp_vanilla env ae exp_c ^^ set_c ^^
 
     FuncDec.ic_self_call env ts
       IC.(get_self_reference env ^^
@@ -12125,6 +12263,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_future
       get_k
       get_r
+      get_c
       add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
@@ -12514,7 +12653,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | Type.Local, Type.Returns, [], PrimE (prim, prim_args) when
           inlineable_prim prim &&
           List.length args = List.length prim_args &&
-          List.for_all2 (fun p a -> a.it = VarE p.it) args prim_args ->
+          List.for_all2 (fun p a -> a.it = VarE (Const, p.it)) args prim_args ->
         Const.PrimWrapper prim
       | _, _, _, _ -> Const.Complicated
     in
@@ -12537,7 +12676,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       let ae' = extend ae in
       fill1 env ae';
       fill2 env ae')
-  | VarE v ->
+  | VarE (_, v) ->
     let c =
       match VarEnv.lookup_var pre_ae v with
       | Some (VarEnv.Const c) -> c
@@ -12907,6 +13046,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
+  Serialization.Registers.define_idl_limit_check env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

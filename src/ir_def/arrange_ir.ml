@@ -13,7 +13,7 @@ let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
-  | VarE i              -> "VarE"    $$ [id i]
+  | VarE (m, i)         -> (if m = Var then "VarE!" else "VarE") $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
@@ -28,11 +28,12 @@ let rec exp e = match e.it with
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
-    "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+    "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r; exp exp_c]
   | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
-  | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+  | TryE (e, cs, None) -> "TryE" $$ [exp e] @ List.map case cs
+  | TryE (e, cs, Some (i, _)) -> "TryE" $$ [exp e] @ List.map case cs @ Atom ";" :: [id i]
 
 and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type} = (* TODO: show meta? *)
   "System" $$ [
