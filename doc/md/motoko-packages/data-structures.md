@@ -40,6 +40,8 @@ sidebar_position: 2
 
 - [`stable-rbtree`](https://mops.one/stable-rbtree): Stable RBtree.
 
+- [`stable-trie`](https://mops.one/stable-trie): Stable trie. 
+
 - [`swb`](https://mops.one/swb): Sliding window buffers featuring random access functionalities.
 
 - [`swbstable`](https://mops.one/swbstable): Stable sliding window buffer with random access.

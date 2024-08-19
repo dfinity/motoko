@@ -17,6 +17,11 @@ use crate::libc_declarations::{c_void, memcmp};
 #[enhanced_orthogonal_persistence]
 use crate::types::Value;
 
+extern "C" {
+    // check instruction decoding limit, exported by moc
+    pub fn idl_limit_check(decrement: bool, value_count: u64);
+}
+
 //
 // IDL constants
 //
@@ -355,6 +360,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
     if count == 0 {
         return;
     }
+    idl_limit_check(false, count as u64);
     let ptr_before = (*buf).ptr;
     skip_any(buf, typtbl, t, 0);
     let ptr_after = (*buf).ptr;
@@ -363,6 +369,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
         // makes no progress. No point in calling it over and over again.
         // (This is easier to detect this way than by analyzing the type table,
         // where we’d have to chase single-field-records.)
+        idl_limit_check(true, (count - 1) as u64);
         return;
     }
     for _ in 1..count {
@@ -380,6 +387,8 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
     if depth > 100 {
         idl_trap_with("skip_any: too deeply nested record");
     }
+
+    idl_limit_check(true, 1); // decrement and check quota
 
     if t < 0 {
         // Primitive type
@@ -574,9 +583,9 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
     }
 }
 
-unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
+unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     if is_primitive_type(CompatibilityMode::PureCandid, t) {
-        return t == IDL_PRIM_reserved;
+        return t == IDL_PRIM_null || t == IDL_PRIM_reserved;
     }
 
     // unfold t
@@ -1033,7 +1042,7 @@ pub(crate) unsafe fn sub(
                 for _ in 0..in1 {
                     let t11 = sleb128_decode(&mut tb1);
                     if in2 == 0 {
-                        if !is_opt_reserved(typtbl1, end1, t11) {
+                        if !is_null_opt_reserved(typtbl1, end1, t11) {
                             break 'return_false;
                         }
                     } else {
@@ -1055,7 +1064,7 @@ pub(crate) unsafe fn sub(
                 for _ in 0..out2 {
                     let t21 = sleb128_decode(&mut tb2);
                     if out1 == 0 {
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             break 'return_false;
                         }
                     } else {
@@ -1113,7 +1122,7 @@ pub(crate) unsafe fn sub(
                     let t21 = sleb128_decode(&mut tb2);
                     if n1 == 0 {
                         // check all remaining fields optional
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             break 'return_false;
                         }
                         continue;
@@ -1129,7 +1138,7 @@ pub(crate) unsafe fn sub(
                         }
                     };
                     if tag1 > tag2 {
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             // missing, non_opt field
                             break 'return_false;
                         }
