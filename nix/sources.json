@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/latest-ic-wasm64-test",
+        "branch": "luc/adjust-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a",
-        "sha256": "1ykawbpaqnf1y508vh81m30p813ykmnbffxc3p0hw0p0k1ynq6zz",
+        "rev": "6170a2e87a8cd4968afb55bc90122b2e512119b1",
+        "sha256": "0hk0zp242ysm318x8dxf7lsmb6jvic2zq2mzl99l0nlj1a0ycbai",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/6170a2e87a8cd4968afb55bc90122b2e512119b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
