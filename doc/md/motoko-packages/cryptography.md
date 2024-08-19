@@ -10,6 +10,8 @@ sidebar_position: 1
 
 - [`ic-certification`](https://mops.one/ic-certification): Canister signatures and certifications.
 
+- [`ed25519`](https://mops.one/ed25519): Ed25519 signatures.
+
 - [`evm-proof-verifier`](https://mops.one/evm-proof-verifier): EVM proof verification.
 
 - [`evm-txs`](https://mops.one/evm-txs): EVM transaction creating, encoding, and decoding for Motoko implementations.

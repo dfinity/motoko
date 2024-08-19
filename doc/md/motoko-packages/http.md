@@ -10,6 +10,8 @@ sidebar_position: 5
 
 - [`assets`](https://mops.one/assets): A library for adding asset canister functionality for your canister.
 
+- [`assets-api`](https://mops.one/assets-api): API package for asset canisters.
+
 - [`certified-assets`](https://mops.one/certified-assets): Certify assets served via HTTP, ensuring the security of query calls on ICP.
 
 - [`certified-cache`](https://mops.one/certified-cache): A single interface that stores key-value pairs and certifies their hashes for to be used as certified variables or assets.
@@ -22,9 +24,13 @@ sidebar_position: 5
 
 - [`http-types`](https://mops.one/http-types): Canister HTTP interface types used in `http_request` and `http_request_update`.
 
+- [`ic-assets`](https://mops.one/ic-assets): Asset canister with v2 certification.
+
 - [`ic-certification`](https://mops.one/ic-certification): Canister signatures and certification.
 
 - [`ic-websocket-cdk`](https://mops.one/ic-websocket-cdk): Websockets on ICP.
+
+- [`idempotency-keys`](https://mops.one/idempotency-keys): Package for generating UUIDs.
 
 - [`motoko-certified-assets`](https://mops.one/motoko-certified-assets): ICP certified assets.
 
