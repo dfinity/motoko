@@ -311,7 +311,7 @@ let check_ids env kind member ids = Lib.List.iter_pairs
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
-  | Const -> fun t -> t
+  | Const -> Fun.id
   | Var -> fun t -> T.Mut t
 
 
@@ -961,9 +961,12 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) | TryE (e1, cs) ->
+  | SwitchE (e1, cs) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
+  | TryE (e1, cs, _) ->
+    is_explicit_exp e1 &&
+    (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
@@ -1132,9 +1135,10 @@ and infer_exp' f env exp : T.typ =
   assert (t <> T.Pre);
   let t' = f t in
   if not env.pre then begin
-    assert (T.normalize t' <> T.Pre);
-    let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = if env.viper_mode then t' else T.normalize t'; note_eff = e}
+    let t'' = T.normalize t' in
+    assert (t'' <> T.Pre);
+    let note_eff = A.infer_effect_exp exp in
+    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
 
@@ -1154,7 +1158,7 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> t
+    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
     )
@@ -1531,12 +1535,14 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then
       coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, exp2_opt) ->
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
       check_ErrorCap env "try" exp.at;
-      coverage_cases "try handler" env cases T.catch exp.at
+      if cases <> [] then
+        coverage_cases "try handler" env cases T.catch exp.at;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
@@ -1706,7 +1712,7 @@ and check_exp env t exp =
   assert (t <> T.Pre);
   let t' = check_exp' env (T.normalize t) exp in
   let e = A.infer_effect_exp exp in
-  exp.note <- {note_typ = t'; note_eff = e}
+  exp.note <- {exp.note with note_typ = t'; note_eff = e}
 
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
@@ -1833,11 +1839,14 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases), _ ->
+  | TryE (exp1, cases, exp2_opt), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
-    coverage_cases "try handler" env cases T.catch exp.at;
+    if cases <> []
+    then coverage_cases "try handler" env cases T.catch exp.at;
+    if not env.pre then
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -2630,7 +2639,7 @@ and infer_dec env dec : T.typ =
     T.unit
   in
   let eff = A.infer_effect_dec dec in
-  dec.note <- {note_typ = t; note_eff = eff};
+  dec.note <- {empty_typ_note with note_typ = t; note_eff = eff};
   t
 
 
@@ -2994,7 +3003,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
-          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          cub.note <- {empty_typ_note with note_typ = typ};
           let imp_typ = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin
