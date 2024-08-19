@@ -1,5 +1,21 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
+    as a linear function, `max_values`, of binary payload size.
+
+    ```
+      max_values(blob) = (blob.size() * numerator)/denominator + bias
+    ```
+
+    The current default settings are `{numerator = 1; denominator = 1; bias = 1024 }`, allowing a maximum
+    of 1024 values plus one additional value per byte in the payload.
+
+    While hopefully not required, the constant factors can be read/modified using system functions:
+    *  Prim.setCandidLimits: `<system>{numerator : Nat32;  denominator : Nat32; bias : Nat32 } -> ()`
+    *  Prim.getCandidLimits: `<system>() -> {numerator : Nat32; denominator : Nat32; bias : Nat32 }`
+
 ## 0.12.1 (2024-08-08)
 
 * motoko (`moc`)
