@@ -8,10 +8,15 @@ module T = Mo_types.Type
    but I prefer to keep it mostly separate for now *)
 
 let max_eff e1 e2 =
-  match e1,e2 with
+  match e1, e2 with
   | T.Triv, T.Triv -> T.Triv
   | _ , T.Await -> T.Await
   | T.Await, _ -> T.Await
+
+let max_effs' seed = List.fold_left max_eff seed
+let max_effs es = max_effs' T.Triv es
+let map_max_effs' seed f l = max_effs' seed (List.map f l)
+let map_max_effs f l = map_max_effs' T.Triv f l
 
 let typ phrase = phrase.note.Note.typ
 let eff phrase = phrase.note.Note.eff
@@ -21,7 +26,7 @@ let is_triv phrase = eff phrase = T.Triv
 let effect_exp (exp: exp) : T.eff = eff exp
 
 let is_async_call p exps =
-  match (p, exps) with
+  match p, exps with
   | CallPrim _, [exp1; _] ->
     T.is_shared_func (typ exp1) ||
     T.is_local_async_func (typ exp1)
@@ -29,7 +34,7 @@ let is_async_call p exps =
     true
   | _ -> false
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
 
 let rec infer_effect_prim p exps =
   match p, exps with
@@ -40,7 +45,7 @@ let rec infer_effect_prim p exps =
     if is_async_call p exps then
       T.Await
     else
-      List.fold_left max_eff T.Triv (List.map eff exps)
+      map_max_effs eff exps
 
 and infer_effect_exp (exp: exp) : T.eff =
   match exp.it with
@@ -54,8 +59,7 @@ and infer_effect_exp (exp: exp) : T.eff =
   | PrimE (p, exps) ->
     infer_effect_prim p exps
   | BlockE (ds, exp) ->
-    let es = List.map effect_dec ds in
-    List.fold_left max_eff (effect_exp exp) es
+    map_max_effs' (effect_exp exp) effect_dec ds
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
@@ -77,10 +81,11 @@ and infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | FuncE _ ->
     T.Triv
-  | SelfCallE (_, _, exp1, exp2) ->
+  | SelfCallE (_, _, exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
-    max_eff e1 e2
+    let e3 = effect_exp exp3 in
+    max_eff e1 (max_eff e2 e3)
   | ActorE _ ->
     T.Triv
   | NewObjE _ ->
@@ -101,6 +106,4 @@ and effect_dec dec = match dec.it with
 
 let infer_effect_dec = effect_dec
 
-let infer_effect_decs ds =
-  let es = List.map effect_dec ds in
-  List.fold_left max_eff T.Triv es
+let infer_effect_decs = map_max_effs effect_dec
