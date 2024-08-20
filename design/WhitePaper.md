@@ -621,14 +621,8 @@ Note: the obvious "solution", namely storing closure environments inside the ori
 
 #### Upgrades and Memory
 
-The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a different memory layout internally (e.g., a new garbage collector).
-
-The drawback is that this serialisation/deserialisation step is expensive. Worse, it may even run out of cycles.
-
-There are multiple ways in which the representation of stable variables could be improved to avoid this overhead (or rather, trade it off against a different overhead). However, most of them would be extremely costly with the IC's stable memory API. This API was merely a stop-gap measure while we wait for the IC to support the upcoming Wasm proposal for accessing multiple memories. Once this becomes available, it would unlock a number of new and better implementation options.
-
-Yet, representing all persistent data in terms of serialised Motoko values might never be enough for all use cases. Imagine, for example, emulating a file system or a high-performance data base as persistent storage. For these use cases, Motoko will provide a low-level interface that enables direct access to raw stable memory, leaving it up to respective libraries to build suitable high-level abstraction on top.
-
+The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. 
+For this purpose, Motoko implements powerful and safe persistence, see [Enhanced Orthogonal Persistence](OrthogonalPersistence.md).
 
 #### Upgrades and Methods
 
@@ -668,6 +662,8 @@ The most serious restriction of the Motoko module system right now is that the c
 The ability to link compiled modules together would also be a first step towards supporting the import of modules written in other languages than Motoko, such as Rust.
 
 Unfortunately, though, this is a more difficult problem than linking modules compiled in the same language, since the data types, memory management, and calling conventions used by different languages are rarely compatible. Supporting cross-language calls requires a suitable ABI agreed upon by different Wasm compilers, which in turn requires some kind of standard. There is work on a proposal ([interface types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md)) for Wasm that could be the basis of such a mechanism, but it's not ready yet.
+
+Wasm component model offers a solution for secure intra-canister language interop on the IC.
 
 
 #### On-chain Linking

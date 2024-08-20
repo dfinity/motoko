@@ -2,12 +2,12 @@
 
 This Motoko build includes two substantially different persistence modes in one build:
 
-* Classical Persistence (default): 
+* [Classical Persistence](OldStableMemory.md) (default): 
     This is the traditional Motoko compiler design based on 32-bit memory and Candid-based stabilization for upgrades.
     This mode is known to have severe scalability problems on upgrades, because the stabilization may exceed upgrade instruction limit for stable data amounts, besides other problems such as exponential duplication or stack overflows depending on the data structures.
     The mode is temporarily retained to allow beta testing of the new enhanced orthogonal persistence until the new persistence is officialized.
-* Enhanced Orthogonal Persistence (new, for beta testing):
-    This implements scalable persistence with 64-bit main memory that is retained across upgrades without stabilization to stable memory, see `OrthogonalPersistence.md`.
+* [Enhanced Orthogonal Persistence](OrthogonalPersistence.md) (new, for beta testing):
+    This implements scalable persistence with 64-bit main memory that is retained across upgrades without stabilization to stable memory.
     The mode needs to be enabled by the compiler flag `--enhanced-orthogonal-persistence` and is intended to become the future default mode, deprecating classical persistence.
 
 The reason for having one build instead of two separate branches and release artefact is for having a unified branch, and ensure that new features are implemented and tested for both persistence modes, passing the same CI.
@@ -48,17 +48,3 @@ The linker integrates both persistence modes and 32-bit and 64-bit in one packag
 
 ## Tests
 Most tests run on both modes. Specific tests apply to selected modes, as defined by the `ENHANCED-ORTHOGONAL-PERSISTENCE` or `CLASSICAL-PERSISTENCE` tags.
-
-## Merging Changes from `master`
-
-The following procedure is only temporarily needed until the enhanced orthogonal persistence PR stack has been merged to `master`:
-
-1. Merge `master` upwards of the four-level PR stack of the enhanced orthogonal persistence:
-
-    - https://github.com/dfinity/motoko/pull/4488 (PR top, final merge step)
-    - https://github.com/dfinity/motoko/pull/4475
-    - https://github.com/dfinity/motoko/pull/4225
-    - https://github.com/dfinity/motoko/pull/4193 (PR bottom, start merging here)
-
-2. Merge `master` into the helper branch `luc/merge-classical-compile-backend` and then extract `compile-classical.ml`.
-3. Paste the `compile-classical.ml` of the merged helper PR and paste it in the topmost PR of the enhanced orthogonal persistence stack.
