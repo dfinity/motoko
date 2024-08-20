@@ -14,7 +14,7 @@ use self::{scan_stack::ScanStack, stable_memory_access::StableMemoryAccess};
 
 use super::{
     clear_stable_memory,
-    graph_copy::{limit::InstructionLimit, GraphCopy},
+    graph_copy::{limit::ExecutionLimit, GraphCopy},
     layout::{deserialize, StableValue},
     moc_stabilization_instruction_limit,
 };
@@ -25,7 +25,7 @@ pub struct Deserialization {
     stable_start: u64,
     stable_size: u64,
     stable_root: Option<Value>,
-    limit: InstructionLimit,
+    limit: ExecutionLimit,
     clear_position: u64,
 }
 
@@ -62,7 +62,7 @@ impl Deserialization {
     pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
-        let limit = InstructionLimit::new(unsafe { moc_stabilization_instruction_limit() });
+        let limit = ExecutionLimit::new(unsafe { moc_stabilization_instruction_limit() });
         let mut deserialization = Deserialization {
             from_space,
             scan_stack,
@@ -113,6 +113,13 @@ impl Deserialization {
 
     fn stable_end(&self) -> u64 {
         self.stable_start.checked_add(self.stable_size).unwrap()
+    }
+
+    fn processed_memory(&self) -> u64 {
+        let deserialized_memory = unsafe { deserialized_size() as u64 };
+        debug_assert!(self.clear_position >= self.stable_start);
+        let cleared_memory = self.clear_position - self.stable_start;
+        deserialized_memory + cleared_memory
     }
 }
 
@@ -195,16 +202,12 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn time_over(&mut self) -> bool {
-        let deserialized_memory = unsafe { deserialized_size() as u64 };
-        debug_assert!(self.clear_position >= self.stable_start);
-        let cleared_memory = self.clear_position - self.stable_start;
-        let processed_memory = deserialized_memory + cleared_memory;
-        self.limit.is_exceeded(processed_memory)
+        self.limit.is_exceeded(self.processed_memory())
     }
 
     fn reset_time(&mut self) {
-        let limit = unsafe { moc_stabilization_instruction_limit() };
-        self.limit.reset(limit);
+        let instruction_limit = unsafe { moc_stabilization_instruction_limit() };
+        self.limit.reset(instruction_limit, self.processed_memory());
     }
 }
 
