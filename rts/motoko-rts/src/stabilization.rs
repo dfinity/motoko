@@ -35,6 +35,7 @@ use self::layout::StableValue;
 
 extern "C" {
     pub fn moc_stabilization_instruction_limit() -> u64;
+    pub fn moc_stable_memory_access_limit() -> u64;
     fn ic0_performance_counter(number: u32) -> u64;
 }
 

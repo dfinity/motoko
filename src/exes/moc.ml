@@ -191,6 +191,11 @@ let argspec = [
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
 
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = limit; 
@@ -198,10 +203,12 @@ let argspec = [
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
-  (* persistence *)
-  "--enhanced-orthogonal-persistence",
-  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  "--stable-memory-access-limit",
+  Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
+    upgrade = limit; 
+    update_call = limit;
+  })),
+  "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   (* optimizations *)
   "-fno-shared-code",

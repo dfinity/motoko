@@ -9720,7 +9720,7 @@ module FuncDec = struct
     | _ -> ()
     end
 
-  let export_instruction_limit env =
+  let export_stabilization_limits env =
     let moc_stabilization_instruction_limit_fi = 
       E.add_fun env "moc_stabilization_instruction_limit" (
         Func.of_body env [] [I64Type] (fun env ->
@@ -9736,7 +9736,20 @@ module FuncDec = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stabilization_instruction_limit";
       edesc = nr (FuncExport (nr moc_stabilization_instruction_limit_fi))
-    })  
+    });
+    let moc_stable_memory_access_limit_fi = 
+      E.add_fun env "moc_stable_memory_access_limit" (
+        Func.of_body env [] [I64Type] (fun env ->
+          Lifecycle.during_explicit_upgrade env ^^
+          E.if1 I64Type
+            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.update_call)))
+            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.upgrade)))
+        )
+      ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_memory_access_limit";
+      edesc = nr (FuncExport (nr moc_stable_memory_access_limit_fi))
+    }) 
 
 end (* FuncDec *)
 
@@ -13129,7 +13142,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
-  FuncDec.export_instruction_limit env;
+  FuncDec.export_stabilization_limits env;
   
   (* See Note [Candid subtype checks] *)
   Serialization.create_global_type_descriptor env set_serialization_globals;

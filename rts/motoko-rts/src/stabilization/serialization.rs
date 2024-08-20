@@ -9,14 +9,14 @@ use crate::{
 use self::stable_memory_stream::{ScanStream, StableMemoryStream};
 
 use super::{
-    graph_copy::{limit::ExecutionLimit, GraphCopy},
+    graph_copy::{limit::ExecutionMonitor, GraphCopy},
     layout::{scan_serialized, StableToSpace, StableValue},
-    moc_stabilization_instruction_limit, DUMMY_VALUE,
+    DUMMY_VALUE,
 };
 
 pub struct Serialization {
     to_space: StableMemoryStream,
-    limit: ExecutionLimit,
+    limit: ExecutionMonitor,
     array_slice: Option<ArraySlice>,
 }
 
@@ -65,7 +65,7 @@ impl Serialization {
     /// The start is followed by a series of copy increments before the serialization is completed.
     pub fn start<M: Memory>(mem: &mut M, root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
-        let limit = ExecutionLimit::new(unsafe { moc_stabilization_instruction_limit() });
+        let limit = ExecutionMonitor::new();
         let mut serialization = Serialization {
             limit,
             to_space,
@@ -191,8 +191,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     }
 
     fn reset_time(&mut self) {
-        let instruction_limit = unsafe { moc_stabilization_instruction_limit() };
-        self.limit.reset(instruction_limit, self.processed_memory());
+        self.limit.reset(self.processed_memory());
     }
 }
 
