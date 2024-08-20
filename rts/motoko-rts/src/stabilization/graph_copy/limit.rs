@@ -1,14 +1,34 @@
 use crate::{
-    constants::{GB, KB},
-    stabilization::ic0_performance_counter,
+    constants::KB,
+    stabilization::{
+        ic0_performance_counter, moc_stabilization_instruction_limit,
+        moc_stable_memory_access_limit,
+    },
 };
 
-/// Maximum amount of memory that is processed per increment.
-/// The IC configures a maximum of 2 GB of stable memory that can
-/// be accessed per message. We keep a conservative reserve of 1 GB.
-const MEMORY_PROCESSING_LIMIT_PER_INCREMENT: u64 = GB as u64;
+/// Graph copy limits depending on the IC message type.
+/// Explicit stabilization and destabilization increments run as update messages
+/// with lower limits, while the graph copy during the actual upgrade can use
+/// higher limits.
+#[derive(Clone, Copy)]
+pub struct ExecutionLimits {
+    /// Limit of the instructions executed during a graph copy increment.
+    instruction_limit: u64,
+    /// Limit of read or written stable memory during a graph copy increment.
+    stable_memory_access_limit: u64,
+}
 
-/// Execution limit for the graph copy increment.
+impl ExecutionLimits {
+    /// Determine the limits for the current IC message.
+    pub fn determine() -> ExecutionLimits {
+        ExecutionLimits {
+            instruction_limit: unsafe { moc_stabilization_instruction_limit() },
+            stable_memory_access_limit: unsafe { moc_stable_memory_access_limit() },
+        }
+    }
+}
+
+/// Execution monitor for the graph copy increment.
 /// Monitoring the message instruction counter and
 /// the amount of processed memory.
 /// The latter is relevant to avoid exceeding the limit
@@ -29,11 +49,11 @@ const MEMORY_PROCESSING_LIMIT_PER_INCREMENT: u64 = GB as u64;
 /// Once the limit has been exceeded, the heuristics
 /// continuously returns exceeded until the monitoring
 /// is reset.
-pub struct ExecutionLimit {
+pub struct ExecutionMonitor {
+    /// Limits depending on IC message type (upgrade or update).
+    limits: ExecutionLimits,
     /// Instruction counter at the beginning of the measurement.
     initial_instruction_counter: u64,
-    /// Limit of processed instructions since measurment start.
-    instruction_limit: u64,
     /// Amount of processed memory before the measurement.
     initial_processed_memory: u64,
     // Only used for sporadic synchronization heuristics:
@@ -47,7 +67,7 @@ pub struct ExecutionLimit {
     exceeded: bool,
 }
 
-impl ExecutionLimit {
+impl ExecutionMonitor {
     /// Threshold on the number of `is_exceeded` calls since the
     /// last instruction counter synchronization.
     const CALL_THRESHOLD: usize = 1_000;
@@ -55,10 +75,10 @@ impl ExecutionLimit {
     /// instruction counter synchronization.
     const MEMORY_THRESHOLD: u64 = 256 * KB as u64;
 
-    pub fn new(instruction_limit: u64) -> ExecutionLimit {
-        ExecutionLimit {
+    pub fn new() -> ExecutionMonitor {
+        ExecutionMonitor {
+            limits: ExecutionLimits::determine(),
             initial_instruction_counter: Self::instruction_counter(),
-            instruction_limit,
             initial_processed_memory: 0,
             call_counter: 0,
             last_processed: 0,
@@ -69,7 +89,7 @@ impl ExecutionLimit {
     pub fn is_exceeded(&mut self, processed_memory: u64) -> bool {
         debug_assert!(self.initial_processed_memory <= processed_memory);
         // Check the memory limit.
-        if processed_memory - self.initial_processed_memory > MEMORY_PROCESSING_LIMIT_PER_INCREMENT
+        if processed_memory - self.initial_processed_memory > self.limits.stable_memory_access_limit
         {
             return true;
         }
@@ -86,13 +106,13 @@ impl ExecutionLimit {
             let current = Self::instruction_counter();
             debug_assert!(self.initial_instruction_counter <= current);
             let elapsed = current - self.initial_instruction_counter;
-            self.exceeded = elapsed > self.instruction_limit;
+            self.exceeded = elapsed > self.limits.instruction_limit;
         }
         self.exceeded
     }
 
-    pub fn reset(&mut self, instruction_limit: u64, processed_memory: u64) {
-        *self = Self::new(instruction_limit);
+    pub fn reset(&mut self, processed_memory: u64) {
+        *self = Self::new();
         self.initial_processed_memory = processed_memory;
     }
 

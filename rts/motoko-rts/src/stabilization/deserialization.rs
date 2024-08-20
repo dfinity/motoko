@@ -14,9 +14,8 @@ use self::{scan_stack::ScanStack, stable_memory_access::StableMemoryAccess};
 
 use super::{
     clear_stable_memory,
-    graph_copy::{limit::ExecutionLimit, GraphCopy},
+    graph_copy::{limit::ExecutionMonitor, GraphCopy},
     layout::{deserialize, StableValue},
-    moc_stabilization_instruction_limit,
 };
 
 pub struct Deserialization {
@@ -25,7 +24,7 @@ pub struct Deserialization {
     stable_start: u64,
     stable_size: u64,
     stable_root: Option<Value>,
-    limit: ExecutionLimit,
+    limit: ExecutionMonitor,
     clear_position: u64,
 }
 
@@ -62,7 +61,7 @@ impl Deserialization {
     pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
-        let limit = ExecutionLimit::new(unsafe { moc_stabilization_instruction_limit() });
+        let limit = ExecutionMonitor::new();
         let mut deserialization = Deserialization {
             from_space,
             scan_stack,
@@ -206,8 +205,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn reset_time(&mut self) {
-        let instruction_limit = unsafe { moc_stabilization_instruction_limit() };
-        self.limit.reset(instruction_limit, self.processed_memory());
+        self.limit.reset(self.processed_memory());
     }
 }
 
