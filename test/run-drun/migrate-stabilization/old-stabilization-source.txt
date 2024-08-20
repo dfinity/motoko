@@ -1,2 +1,2 @@
-old-destabilization.wasm is compiled from `new-destabilzation.mo` with old `moc` compiler using `--sanity-checks`
-based on the "Transient Wasm64 PR" https://github.com/dfinity/motoko/pull/4136.
+old-destabilization.wasm is compiled from `new-destabilzation.mo` with classical `moc` compiler using `--sanity-checks`.
+Using 32-bit main memory and classical Candid stabilization.
