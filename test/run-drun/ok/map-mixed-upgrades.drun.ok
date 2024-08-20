@@ -14,7 +14,7 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: {node = 1; state = ?(1, "1", null); upgrades = 2}
 debug.print: {node = 2; state = ?(2, "2", null); upgrades = 2}
 ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reject: Invalid upgrade option: The `wasm_memory_persistence: opt Keep` upgrade option requires that the new canister version supports enhanced orthogonal persistence.
+ingress Completed: Reject: Invalid upgrade option: The `wasm_memory_persistence: opt Keep` upgrade option requires that the new canister module supports enhanced orthogonal persistence.
 debug.print: {node = 3; state = null; upgrades = 0}
 debug.print: 3: insert (3, "3")
 debug.print: 3: lookup 3

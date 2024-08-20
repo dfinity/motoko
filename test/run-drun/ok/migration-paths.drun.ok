@@ -10,7 +10,7 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: version: 3
 debug.print: Upgraded (replace main memory)
 ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reject: Invalid upgrade option: The `wasm_memory_persistence: opt Keep` upgrade option requires that the new canister version supports enhanced orthogonal persistence.
+ingress Completed: Reject: Invalid upgrade option: The `wasm_memory_persistence: opt Keep` upgrade option requires that the new canister module supports enhanced orthogonal persistence.
 ingress Completed: Reply: 0x4449444c0000
 debug.print: version: 4
 debug.print: Upgraded (keep main memory)
