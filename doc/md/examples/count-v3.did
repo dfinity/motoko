@@ -1,4 +1,5 @@
 service : {
-  inc: () -> (nat);
-  read: () -> (nat) query;
-}
+  increment : () -> ();
+  decrement : () -> ();
+  read : () -> (int) query;
+};

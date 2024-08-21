@@ -35,6 +35,10 @@ You can only use the `stable` or `flexible` modifier on `let` and `var` declarat
 
 When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
+## Enhanced orthogonal persistence
+
+## Classical persistence
+
 ## Preupgrade and postupgrade system methods
 
 Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
