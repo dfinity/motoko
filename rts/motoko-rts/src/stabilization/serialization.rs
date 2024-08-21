@@ -117,7 +117,7 @@ impl Serialization {
     }
 
     fn processed_memory(&self) -> u64 {
-        self.serialized_data_length()
+        self.to_space.written_length() + self.to_space.scanned_length()
     }
 }
 
