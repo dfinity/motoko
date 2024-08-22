@@ -151,70 +151,70 @@ let ocaml_exe = name: bin: rts:
   };
 in
 
+let
+  # Build Rust package cargo-vendor-tools
+  cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
+    name = "cargo-vendor-tools";
+    src = subpath "./rts/${name}/";
+    cargoSha256 = "sha256-E6GTFvmZMjGsVlec7aH3QaizqIET6Dz8Csh0N1jeX+M=";
+  };
+
+  # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
+  vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
+
+  # SHA256 of Rust std deps
+  rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
+
+  # Vendor directory for Rust std deps
+  rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
+    name = "rustc-std-deps";
+
+    nativeBuildInputs = with nixpkgs; [
+      curl
+    ];
+
+    buildCommand = ''
+      mkdir $out
+      cd $out
+      ${vendorRustStdDeps} ${nixpkgs.rustc-nightly} .
+    '';
+
+    outputHash = rustStdDepsHash;
+    outputHashAlgo = "sha256";
+    outputHashMode = "recursive";
+  };
+
+  # Vendor tarball of the RTS
+  rtsDeps = nixpkgs.rustPlatform.fetchCargoTarball {
+    name = "motoko-rts-deps";
+    src = subpath ./rts;
+    sourceRoot = "rts/motoko-rts-tests";
+    sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
+    copyLockfile = true;
+  };
+
+  # Unpacked RTS deps
+  rtsDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
+    name = rtsDeps.name + "-unpacked";
+    buildCommand = ''
+      tar xf ${rtsDeps}
+      mv *.tar.gz $out
+    '';
+  };
+
+  # All dependencies needed to build the RTS, including Rust std deps, to
+  # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
+  allDeps = nixpkgs.symlinkJoin {
+    name = "merged-rust-deps";
+    paths = [
+      rtsDepsUnpacked
+      rustStdDeps
+    ];
+  };
+in
+
 rec {
   rts =
-    let
-      # Build Rust package cargo-vendor-tools
-      cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
-        name = "cargo-vendor-tools";
-        src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-E6GTFvmZMjGsVlec7aH3QaizqIET6Dz8Csh0N1jeX+M=";
-      };
-
-      # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
-      vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
-
-      # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
-
-      # Vendor directory for Rust std deps
-      rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
-        name = "rustc-std-deps";
-
-        nativeBuildInputs = with nixpkgs; [
-          curl
-        ];
-
-        buildCommand = ''
-          mkdir $out
-          cd $out
-          ${vendorRustStdDeps} ${nixpkgs.rustc-nightly} .
-        '';
-
-        outputHash = rustStdDepsHash;
-        outputHashAlgo = "sha256";
-        outputHashMode = "recursive";
-      };
-
-      # Vendor tarball of the RTS
-      rtsDeps = nixpkgs.rustPlatform.fetchCargoTarball {
-        name = "motoko-rts-deps";
-        src = subpath ./rts;
-        sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
-        copyLockfile = true;
-      };
-
-      # Unpacked RTS deps
-      rtsDepsUnpacked = nixpkgs.stdenvNoCC.mkDerivation {
-        name = rtsDeps.name + "-unpacked";
-        buildCommand = ''
-          tar xf ${rtsDeps}
-          mv *.tar.gz $out
-        '';
-      };
-
-      # All dependencies needed to build the RTS, including Rust std deps, to
-      # allow `cargo -Zbuild-std`. (rust-lang/wg-cargo-std-aware#23)
-      allDeps = nixpkgs.symlinkJoin {
-        name = "merged-rust-deps";
-        paths = [
-          rtsDepsUnpacked
-          rustStdDeps
-        ];
-      };
-    in
-
     stdenv.mkDerivation {
       name = "moc-rts";
 
@@ -888,6 +888,19 @@ EOF
 
       preBuild = ''
         export CARGO_HOME=$PWD/cargo-home
+
+      # This replicates logic from nixpkgs’ pkgs/build-support/rust/default.nix
+      mkdir -p $CARGO_HOME
+      echo "Using vendored sources from ${rtsDeps}"
+      unpackFile ${allDeps}
+      cat > $CARGO_HOME/config <<__END__
+        [source."crates-io"]
+        "replace-with" = "vendored-sources"
+
+        [source."vendored-sources"]
+        "directory" = "$(stripHash ${allDeps})"
+      __END__
+
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
