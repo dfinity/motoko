@@ -57,7 +57,7 @@ jobs:
         nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
-      run: nix-build-uncached -A wasm-ld-bug-repro -o build-output
+      run: nix-build -A wasm-ld-bug-repro -o build-output
 
     - name: Upload build outputs
       uses: actions/upload-artifact@master
