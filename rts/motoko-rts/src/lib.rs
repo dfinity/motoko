@@ -143,3 +143,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         rts_trap_with("RTS panicked");
     }
 }
+
+#[no_mangle]
+unsafe fn bug_repro() {
+    println!(100, "{}", 0.0);
+}

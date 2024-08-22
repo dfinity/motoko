@@ -23,63 +23,11 @@ let ic-ref-run =
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-let llvm_sources = nixpkgs.fetchFromGitHub {
-      owner = "llvm";
-      repo = "llvm-project";
-      rev = "llvmorg-18.1.8";
-      sha256 = "sha256-iiZKMRo/WxJaBXct9GdAcAT3cz9d9pnAcO1mmR6oPNE=";
-    }; in
-let patched-wasm-ld = stdenv.mkDerivation {
-    name = "wasm-ld";
-    src = llvm_sources;
-    nativeBuildInputs = with nixpkgs; [ cmake ninja ];
-    buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
-
-    patchPhase = ''
-      patch lld/wasm/Relocations.cpp  << EOF
-@@ -104,9 +104,15 @@ void scanRelocations(InputChunk *chunk) {
-     case R_WASM_TABLE_INDEX_SLEB64:
-     case R_WASM_TABLE_INDEX_REL_SLEB:
-     case R_WASM_TABLE_INDEX_REL_SLEB64:
--      if (requiresGOTAccess(sym))
--        break;
-+      if (!sym->isDefined()) {
-+        error(toString(file) + ": relocation " + relocTypeToString(reloc.Type) +
-+              " cannot be used against an undefined symbol \`" + toString(*sym) +
-+              "\`");
-+      }
-       out.elemSec->addEntry(cast<FunctionSymbol>(sym));
-+      if (requiresGOTAccess(sym)) {
-+        addGOTEntry(sym);
-+      }
-       break;
-     case R_WASM_GLOBAL_INDEX_LEB:
-     case R_WASM_GLOBAL_INDEX_I32:
-EOF
-    cd lld
-    '';
-
-    outputs = [ "out" ];
-  }; in
-# Selectively build llvm binary tools.
-# Exclude wasm-ld, as this is patched separately.
-let llvm_bintools = stdenv.mkDerivation {
-    name = "llvm_bintools";
-    src = llvm_sources;
-    nativeBuildInputs = with nixpkgs; [ cmake ninja python3 ];
-    buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
-
-    preConfigure = ''
-      cd llvm
-    '';
-
-    outputs = [ "out" ];
-  }; in
 let
   rtsBuildInputs = with nixpkgs; [
     llvmPackages_18.clang
-    llvm_bintools
-    patched-wasm-ld
+    llvmPackages_18.lld
+    llvmPackages_18.bintools
     rustc-nightly
     cargo-nightly
     wasmtime
@@ -382,7 +330,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ patched-wasm-ld llvmPackages_18.clang ];
+      with nixpkgs; [ llvmPackages_18.bintools llvmPackages_18.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
@@ -928,4 +876,45 @@ EOF
     preferLocalBuild = true;
     allowSubstitutes = true;
   };
+
+  wasm-ld-bug-repro = stdenv.mkDerivation {
+      name = "wasm-ld-bug-repro";
+      
+      src = subpath ./rts;
+
+      nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo nixpkgs.cacert ];
+
+      buildInputs = [ rtsBuildInputs nixpkgs.wabt nixpkgs.llvmPackages_18.bintools ];
+
+      preBuild = ''
+        export CARGO_HOME=$PWD/cargo-home
+        ${llvmEnv}
+        export TOMMATHSRC=${nixpkgs.sources.libtommath}
+        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
+        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
+      '';
+
+      installPhase = ''
+        mkdir -p $out
+        cp _build/wasm64/alloc.* $out
+        llvm-as _build/wasm64/alloc.ll -o $out/alloc.bc
+        cp _build/wasm64/compiler_builtins.* $out
+        llvm-as _build/wasm64/compiler_builtins.ll -o $out/compiler_builtins.bc
+        cp _build/wasm64/core.* $out
+        llvm-as _build/wasm64/core.ll -o $out/core.bc
+        cp _build/wasm64/libmotoko_rts.* $out
+        llvm-as _build/wasm64/libmotoko_rts.ll -o $out/libmotoko_rts.bc
+        cp _build/libtommath_wasm64.a $out
+        cp mo-rts-eop.wasm $out
+        wasm-objdump -h -d -x -s mo-rts-eop.wasm > $out/mo-rts-eop.wasm-objdump
+      '';
+
+      preFixup = ''
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          $out/*
+      '';
+
+      allowedRequisites = [];
+    };
 }
