@@ -146,5 +146,5 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[no_mangle]
 unsafe fn bug_repro() {
-    println!(100, "{}", 0.0);
+    println!(100, "{}", 1.0);
 }
