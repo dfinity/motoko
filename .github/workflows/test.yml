@@ -60,6 +60,7 @@ jobs:
       run: nix-build -A wasm-ld-bug-repro -o build-output
 
     - name: Upload build outputs
+      if: startsWith(matrix.os, 'ubuntu-')
       uses: actions/upload-artifact@master
       with:
         name: build-output
