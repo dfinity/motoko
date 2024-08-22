@@ -138,7 +138,7 @@ A `finally` clause can be used within a `try/catch` error handling expression th
 
 Inside the `try` block, include code that may throw an error. In the `finally` block, include code that should be executed whether an error was thrown or not. Code within the `finally` block should not trap and should terminate promptly. If a `finally` block were to trap, it may prevent a future upgrade to the canister.
 
-Learn more about [`try/finally`](/docs/current/motoko/main/reference/language-manual#try).
+Learn more about [`try/finally`](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual#try).
 
 ### How not to handle errors
 
