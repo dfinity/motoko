@@ -62,8 +62,8 @@ jobs:
     - name: Upload build outputs
       uses: actions/upload-artifact@master
       with:
-        name: build-outputs
-        path: build-output/dumps
+        name: build-output
+        path: build-output
 
   reports:
     if: github.ref == 'refs/heads/master'
