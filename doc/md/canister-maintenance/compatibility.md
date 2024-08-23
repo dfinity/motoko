@@ -11,7 +11,8 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-Motoko checks these properties statically before attempting the upgrade.
+`dfx` checks these properties statically before attempting the upgrade. 
+Moreover, with [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
 
