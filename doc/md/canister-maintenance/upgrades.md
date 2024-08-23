@@ -33,7 +33,11 @@ You can only use the `stable` or `flexible` modifier on `let` and `var` declarat
 
 When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
-## Persistence implementations
+:::danger
+Do not forget to declare variables `stable` if they should survive canister upgrades as the default is `flexible` if no modifier is declared.
+:::
+
+## Persistence modes
 
 Motoko currently features two implementations for orthogonal persistence:
 
@@ -118,7 +122,7 @@ You can emit the stable signature of the main actor or actor class to a `.most` 
 
 :::
 
-A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1> one of the following conditions hold:
+A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1>` one of the following conditions hold:
 
 - `<stab-sig2>` does not contain a stable field `<id>`.
 - `<stab-sig>` has a matchng stable field `<id> : U` with `T <: U`.
@@ -153,7 +157,7 @@ A Motoko canister upgrade is safe provided:
 
 With [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), the upgrade will always succeed if these two conditions are met and no traps are triggered in user-programmed pre- or post-upgrade logic.
 
-:::note
+:::danger
 With [classical persistence](classical-persistence), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades well. Enhanced orthogonal persistence will abandon this issue.
 :::
 
@@ -170,7 +174,7 @@ After you have deployed a Motoko actor with the appropriate `stable` variables, 
 `dfx deploy` checks that the interface is compatible, and if not, show this message and ask if you want to continue:
 
 ```
-let msg = format!("Candid interface compatibility check failed for canister '{}'.\nYou are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.\n\n", canister_info.get_name()) + &err;
+You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
 
 In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or unwanted data loss. Moreover, `dfx` also warns about dropping of stable variables.
@@ -217,11 +221,11 @@ This is only advanced functionality that is not recommended for standard cases, 
 Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow to trigger additional logic on upgrade. 
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
 
-:::note
-If `preupgrade` raises a trap or reaches the instruction or another computing limit, the upgrade cannot no longer succeed and the canister is stuck with the existing version.
+:::danger
+If `preupgrade` raises a trap or hits the instruction limit or another IC computing limit, the upgrade cannot no longer succeed and the canister is stuck with the existing version.
 :::
 
-:::note
+:::tip
 `postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable let expressions or expression statements.
 :::
 

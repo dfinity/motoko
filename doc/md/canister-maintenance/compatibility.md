@@ -21,7 +21,7 @@ The following is a simple example of how to declare a stateful counter:
 ``` motoko no-repl file=../examples/count-v0.mo
 ```
 
-**Warning**: In this example, when the counter is upgraded, its state is lost.
+Importantly, in this example, when the counter is upgraded, its state is lost.
 This is because actor variables are by default `flexible`, meaning they get reinitialized on an upgrade.
 
 To fix this, you can declare a stable variable that is retained across upgrades:
@@ -121,7 +121,9 @@ Error from Canister ...: Canister called `ic0.trap` with message: RTS error: Mem
 
 In addition to Motoko's check, `dfx` raises a warning message for these incompatible changes, including the breaking Candid change.
 
-**Warning**: Versions of Motoko using [classical persistence](OrthogonalPersistence.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
+:::danger
+Versions of Motoko using [classical persistence](OrthogonalPersistence.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
+:::
 
 ## Explicit migration
 
@@ -174,7 +176,9 @@ cannot be consumed at new type
 
 With [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
-**Warning**: With [classical persistence](OrthogonalPersistence.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss, if the `dfx` warning is ignored.
+:::danger
+With [classical persistence](OrthogonalPersistence.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss, if the `dfx` warning is ignored.
+:::
 
 ## Adding record fields
 
@@ -264,7 +268,8 @@ actor {
 ```
 
 `dfx` will issue a warning that `map` will be dropped. 
-**Warning**: Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
+
+Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
 
 ```
 Stable interface compatibility check issued a WARNING for canister ...

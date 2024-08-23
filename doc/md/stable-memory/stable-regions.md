@@ -8,19 +8,13 @@ sidebar_position: 1
 
 The `Region` library provides low-level access to ICP stable memory feature.
 
-<!--
-TODO: extend example to illustrate stableVarQuery
--->
+Stable regions were historically introduced with [classical persistence](classical-persistence.md) to allow larger scaled data to be retained across upgrades. For this purpose, programmers could explicitly store persistent data in stable memory, with regions helping to isolate different instances using stable memory.
 
-Motoko stable variables require serialization and deserialization on [upgrade](../canister-maintenance/upgrades.md). During an upgrade, the current values of stable variables are first saved to the ICP stable memory, then restored from stable memory after the new code is installed. This mechanism, however, does not scale to canisters that maintain large amounts of data in stable variables. There may not be enough cycle budget to store then restore all stable variables within an upgrade, resulting in failed upgrades.
-
-Due to the current 32-bit address space of Motoko, stable variables cannot store more than 4GiB of data.
-
-Additionally, some stable variables use a representation that is not itself `stable`, requiring a non-trivial pre-upgrade routine to pre-process the data into a `stable` form.  These pre-upgrade steps are critical, and if they trap for any reason, the Motoko canister may be stuck in an evolutionary dead-end, unable to upgrade.
+This is superseded by [enhanced orthogonal persistence](enhanced-orthogonal-persistence.md). Nevertheless, regions are still offered for backwards-compatibility and for specific use cases where developers prefer to manage data explicitly in a persistent linear memory.
 
 ## The `Region` library
 
-To avoid these upgrade hazards, actors can elect to use the [ExperimentalStableMemory](stablememory.md) or [`Region`](../base/Region.md) libraries in package `base`. The `Region` library allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+The [`Region`](../base/Region.md) library in package `base` allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
 Several pages may be allocated at once, with each page containing 64KiB. Allocation may fail due to resource limits imposed by ICP. Pages are zero-initialized.
 
@@ -80,6 +74,16 @@ module {
 
 }
 ```
+
+:::danger
+A stable region exposes low-level linear memory and it is the programmer's task to properly manipulate and interpret this data.
+This can be very error-prone when managing data in a stable region.
+However, the safety of Motoko's native values heap objects is always guaranteed, independent of the stable region content.
+::: 
+
+:::note
+The cost of accessing stable regions is significantly higher than using Motoko's native memory, i.e. regular Motoko values and objects.
+:::
 
 ## Example
 
