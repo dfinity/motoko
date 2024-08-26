@@ -56,7 +56,7 @@ An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](../base/Int.md) a
 
 ## Evolving the Candid interface
 
-In this extension of our interface, old clients remain satisfied, while new ones get extra features such as the `decrement` function and the `read` query in this example.
+In this extension of the interface, old clients remain satisfied, while new ones get extra features such as the `decrement` function and the `read` query in this example.
 
 ``` motoko no-repl file=../examples/count-v3.mo
 ```
@@ -108,7 +108,7 @@ Let's take a look at another example where the counter's type is again changed, 
 ``` motoko no-repl file=../examples/count-v4.mo
 ```
 
-This version is neither compatible to Candid interface nor to the stable type declarations.
+This version is neither compatible to the Candid interface nor to the stable type declarations.
 - Since `Float </: Int`, the new type of `state` is not compatible to the old type.
 - The return type change of `read` is also not valid.
 
@@ -134,14 +134,14 @@ For this purpose, a user-instructed migration can be done in three steps:
 1. Introduce new variables of the desired types, while keeping the old declarations.
 2. Write logic to copy the state from the old variables to the new variables on upgrade.
 
-    While the previous attempt of changing state from [`Int`](../base/Int.md) to [`Nat`](../base/Float.md) was invalid, we now can realize the desired change as follows:
+    While the previous attempt of changing state from [`Int`](../base/Int.md) to [`Nat`](../base/Float.md) was invalid, you now can realize the desired change as follows:
 
     ``` motoko no-repl file=../examples/count-v5.mo
     ```
 
     To also keep the Candid interface, the `readFloat` has been added, while the old `read` is retired by keeping its declaration and raising a trap internally.
 
-3. Drop the old declarations, once all data has been migrated:
+3. Drop the old declarations once all data has been migrated:
 
     ``` motoko no-repl file=../examples/count-v6.mo
     ```
@@ -178,7 +178,7 @@ cannot be consumed at new type
 With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
 :::danger
-With [classical orthogonal persistence](orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss, if the `dfx` warning is ignored.
+With [classical orthogonal persistence](orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
 :::
 
 ## Adding record fields
@@ -226,15 +226,15 @@ Do you want to proceed? yes/No
 It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md). 
 Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
-Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the  `description` field of every existing `card` in `map`. Moreover, allowing to add optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
+Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
 ### Solution
 
-To resolve this issue, again, an [explicit](#explicit-migration) is needed:
+To resolve this issue, an [explicit](#explicit-migration) is needed:
 
-1. We keep the old variable `map` with the same structural type. However, we are allowed to change type alias name (`Card` to `OldCard`).
-2. We introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
-3. We upgrade to this new version.
+1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
+2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
+3. Then, upgrade to this new version.
 
 ``` motoko no-repl
 import Array "mo:base/Array";

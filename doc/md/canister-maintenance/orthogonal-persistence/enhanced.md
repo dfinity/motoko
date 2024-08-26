@@ -4,9 +4,9 @@ sidebar_position: 2
 
 # Enhanced orthogonal persistence
 
-This implements the vision of efficient and scalable orthogonal persistence in Motoko that combines:
-* **Stable heap**: Persisting the program main memory across canister upgrades.
-* **64-bit heap**: Extending the main memory to 64-bit for large-scaled persistence.
+Enhanced orthogonal persistence implements the vision of efficient and scalable orthogonal persistence in Motoko that combines:
+* **Stable heap**: Persisting the program's main memory across canister upgrades.
+* **64-bit heap**: Extending the main memory to 64-bit for large-scale persistence.
 
 As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
@@ -44,7 +44,7 @@ The enhanced orthogonal persistence is based on the following main properties:
 * Extension of the IC to retain main memory on upgrades.
 * Supporting 64-bit main memory on the IC.
 * A long-term memory layout that is invariant to new compiled program versions.
-* A fast memory compatibility check performed on each canister upgrade.
+* A fast memory compatibility check that is performed on each canister upgrade.
 * Incremental garbage collection using a partitioned heap.
 
 ### Compatibility check
@@ -56,10 +56,10 @@ Compatible changes for immutable types are largely analogous to the allowed Moto
 * Removing object fields.
 * Adding variant fields.
 * Changing `Nat` to `Int`.
-* Supporting hared function parameter contravariance and return type covariance.
+* Supporting shared function parameter contravariance and return type covariance.
 * Any other change according to Motoko's subtyping rule.
 
-The runtime system checks checks migration compatibility on upgrade, and if not fulfilled, rolls back the upgrade. This compatibility check serves as an additional safety measure on top of the `dfx` warning that can be bypassed by users.
+The runtime system checks migration compatibility on upgrade, and if not fulfilled, rolls back the upgrade. This compatibility check serves as an additional safety measure on top of the `dfx` warning that can be bypassed by users.
 
 Any more complex change can be performed with programmatic instruction, see [explicit migration](../upgrades.md#explicit-migration).
 
@@ -67,9 +67,9 @@ Any more complex change can be performed with programmatic instruction, see [exp
 When migrating from the old serialization-based stabilization to the new persistent heap, the old data is deserialized one last time from stable memory and then placed in the new persistent heap layout. Once operating on the persistent heap, the system should prevent downgrade attempts to the old serialization-based persistence. 
 
 #### Graph-copy-based stabilization
-Assuming that the persistent memory layout needs to be changed in the future, the runtime system supports serialization and deserialization to and from stable memory in a defined data format using graph-copy-based stabilization. Arbitrarily large data can be serialized and deserialized beyond the instruction and working set limit of upgrades: Large data serialization and deserialization is split in multiple messages, running before and/or after the IC upgrade to migrate large heaps. Of course, other messages will be blocked during this process and only the canister owner or the canister controllers are permitted to initiate this process. 
+Assuming that the persistent memory layout needs to be changed in the future, the runtime system supports serialization and deserialization to and from stable memory in a defined data format using graph-copy-based stabilization. Arbitrarily large data can be serialized and deserialized beyond the instruction and working set limit of upgrades. Large data serialization and deserialization is split in multiple messages, running before and/or after the IC upgrade to migrate large heaps. Other messages will be blocked during this process and only the canister owner or the canister controllers are permitted to initiate this process. 
 
-This will only be needed in rare situation when Motoko's implementation changes its internal memory layout. Users will then be instructed to explicitly initiate this migration.
+This will only be needed in rare situations when Motoko's implementation changes its internal memory layout. Users will then be instructed to explicitly initiate this migration.
 
 #### Usage
 Graph-copy-based stabilization can be performed in three steps:
@@ -94,7 +94,7 @@ dfx canister call CANISTER_ID __motoko_destabilize_after_upgrade "()"
 
 Remarks:
 * When receiving the `dfx` error "The request timed out." during explicit stabilization, upgrade, or destabilization, one can simply repeat the call until it completes.
-* Steps 3 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
+* Step 3 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
 
 ### Old stable memory
 The old stable memory remains equally accessible as secondary (legacy) memory with the new support. Therefore, stable regions can be combined with orthogonal persistence.

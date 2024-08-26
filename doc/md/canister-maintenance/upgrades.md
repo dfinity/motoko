@@ -6,15 +6,15 @@ sidebar_position: 3
 
 ## Overview
 
-One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick of the state left behind by a previous program version. As a result, Motoko data persistence is not simple, but also prevents data corruption and loss and is efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
+One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
-This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicilty use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data accesses, eventually resulting in way more efficient programs.
+This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicilty use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
 
 ## Declaring stable variables
 
 In an actor, you can configure which part of the program is considered to be persistent, i.e. survives upgrades, and which part are ephemeral, i.e. are reset on upgrades.
 
-More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is  assumed to be `flexible` by default.
+More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is assumed to be `flexible` by default.
 
 The semantics of the modifiers is as follows:
 * `stable` means that all values directly or indirectly reachable from that stable actor variable are considered persistent and automatically retained across upgrades. This is the primary choice for most of the program's state.
@@ -92,7 +92,7 @@ actor {
 };
 ```
 
-3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow to copy non-stable types to stable types during upgrades.
+3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
 The downside of this approach is that it is error-prone and does not scale for large data. 
 Conceptually, it also does not align well with the idea of orthogonal persistence.
 
@@ -165,17 +165,17 @@ You can check valid Candid subtyping between two services described in `.did` fi
 
 After you have deployed a Motoko actor with the appropriate `stable` variables, you can use the `dfx deploy` command to upgrade an already deployed version. For information about upgrading a deployed canister, see [upgrade a canister smart contract](/docs/current/developer-docs/smart-contracts/maintain/upgrade).
 
-`dfx deploy` checks that the interface is compatible, and if not, show this message and ask if you want to continue:
+`dfx deploy` checks that the interface is compatible, and if not, shows this message and asks if you want to continue:
 
 ```
 You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
 
-In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about dropping of stable variables.
+In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about dropping stable variables.
 
 ## Data migration
 
-Often, the data representation changes with a new program version. For orthogonal persistence, it is important the language is able to allow flexible data migration to the new version.
+Often, data representation changes with a new program version. For orthogonal persistence, it is important the language is able to allow flexible data migration to the new version.
 
 Motoko supports two kinds of data migrations: Implicit migration and explicit migration.
 
@@ -199,7 +199,7 @@ Any more complex migration is possible by user-defined functionality.
 For this purpose, a three step approach is taken:
 1. Introduce new variables of the desired types, while keeping the old declarations.
 2. Write logic to copy the state from the old variables to the new variables on upgrade.
-3. Drop the old declarations, once all data has been migrated.
+3. Drop the old declarations once all data has been migrated.
 
 For more information, see the [example of explicit migration](compatibility.md#explicit-migration).
 
@@ -209,20 +209,20 @@ The following aspects are retained for historical reasons and backwards compatib
 
 ### Preupgrade and postupgrade system methods
 
-This is only advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
+This is an advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
 
-Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow to trigger additional logic on upgrade. 
+Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
 
 :::danger
-If `preupgrade` raises a trap or hits the instruction limit or another IC computing limit, the upgrade cannot no longer succeed and the canister is stuck with the existing version.
+If `preupgrade` raises a trap, hits the instruction limit, or hits another IC computing limit, the upgrade can no longer succeed and the canister is stuck with the existing version.
 :::
 
 :::tip
-`postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable let expressions or expression statements.
+`postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
 :::
 
-### Stable Memory and stable regions
+### Stable memory and stable regions
 
 Stable memory was introduced on the IC to allow upgrades in languages that do not implement orthogonal persistence of the main memory. This is the case with Motoko's classical persistence as well as other languages besides Motoko.
 
