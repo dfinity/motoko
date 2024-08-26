@@ -22,10 +22,12 @@ Concretely, the syntax of `<dec-field>` is extended as follows:
 ```
 
 Additional restrictions apply:
-* Either a `stable` or `flexible` modifier _must_ appear on `let` and `var` declarations that are actor fields.
+* A `stable` or `flexible` modifier _can_ appear on `let` and `var` declarations that are actor fields.
 * A `stable` or `flexible` modifier _must not_ appear anywhere else.
 
-Both restrictions may be relaxed in the future.
+Currently, `flexible` is assumed as implicit keyword on actor fields if no keyword is declared.
+However, we should revise this design, as it may lead to accidental loss of data on upgrade if programmers accidentally forgot to specify `stable`.
+In other languages of orthogonal persistence, pointers are by default persistent, analogous to `stable` in Motoko.
 
 (Note: One possible future use case might be to mark private methods as stable, which would be a requisite that they can be handed out as capabilities, because such methods must also remain backwards compatible.)
 
@@ -122,7 +124,7 @@ Question: Should the stable signature become a superset of Candid signatures, i.
 
 Like the Candid IDL, the Motoko compiler can produce stable signatures for the actors it compiles.
 
-We will also need a tool (the compiler, or a separate one?) that can compare stable signature and verify that an extension is valid according to the Motoko subtyping rules.
+By using `moc --stable-compatible`, one can compare stable signature and verify that an extension is valid according to the Motoko subtyping rules.
 
 To make that test reliable, the stable signature of an actor should be contained in the Wasm module of a deployed Motoko actor.
 That way, it is ensured that accurate signature information is always available for each installed actor.
@@ -132,17 +134,14 @@ In either case, it is probably sufficient to use a textual representation.
 
 Like for the IDL, the System would need to provide a way to extract this information from an on-chain canister.
 
+For even higher safety, [enhanced orthogonal persistence](OrthogonalPersistence.md) integrates the compatibility check in the runtime system, 
+such that it is atomically guarded and cannot be bypassed e.g. by skipping a `dfx` stable compatibility warning.
 
 ## Upgrade Hooks
 
 The System API provides a number of hooks that a canister can implement.
 In particular, this includes the pre & post upgrade hooks.
-
-Motoko does not currently provide a way to define these hooks.
-While the post upgrade hook can be exploited by using expression declarations (see above), there is no immediate way to define the pre upgrade hook.
-
-Note: This feature could potentially be deferred until later.
-
+Motoko allows to define custom pre-/post upgrade hooks, see below.
 
 ### Syntax
 
@@ -180,4 +179,6 @@ Note: The post-upgrade method differs from expression declarations in the body o
 
 ## Implementation
 
-See `OrthogonalPersistence.md`.
+Different [persistence modes](OrthogonalPersistence.md):
+* [Enhanced orthogonal persistence](OrthogonalPersistence.md).
+* [Classical orthogonal persistence](OldStableMemory.md).
