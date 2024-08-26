@@ -183,7 +183,7 @@ Motoko supports two kinds of data migrations: Implicit migration and explicit mi
 
 This is automatically supported when the new program version is stable-compatible with the old version. The runtime system of Motoko then automatically handles the migration on upgrade.
 
-More precisely, the following changes are implicitly migratable:
+More precisely, the following changes can be implicitly migrated:
 * Adding or removing actor fields.
 * Changing mutability of the actor field.
 * Removing record fields.
