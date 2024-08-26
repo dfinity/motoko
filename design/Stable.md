@@ -179,6 +179,6 @@ Note: The post-upgrade method differs from expression declarations in the body o
 
 ## Implementation
 
-Different * [persistence modes](OrthogonalPersistence.md):
+Different [persistence modes](OrthogonalPersistence.md):
 * [Enhanced orthogonal persistence](OrthogonalPersistence.md).
-* [Classical persistence](OldStableMemory.md).
+* [Classical orthogonal persistence](OldStableMemory.md).

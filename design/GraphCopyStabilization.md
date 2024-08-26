@@ -70,8 +70,8 @@ dfx canister call CANISTER_ID __motoko_destabilize_after_upgrade "()"
 * The GC is restarted.
 
 ### Remarks
-* When receiving the `dfx` error "The request timed out." during explicit stabilization or destabilization, one can simply repeat the call until it completes.
-* Steps 2 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
+* When receiving the `dfx` error "The request timed out." during explicit stabilization, upgrade, or destabilization, one can simply repeat the call until it completes.
+* Steps 3 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
 * Stabilization and destabilization steps are limited to the increment limits:
 
     Operation | Message Type | IC Instruction Limit | **Increment Limit**

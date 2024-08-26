@@ -1,12 +1,12 @@
 ---
-sidebar_position: 7
+sidebar_position: 3
 ---
 
-# Classical persistence
+# Classical orthogonal persistence
 
-Classical persistence is the old implementation of Motoko's orthogonal persistence. It is currently still the default option, as enhanced orthogonal persistence is in beta-testing stage.
+Classical orthogonal persistence is the old implementation of Motoko's orthogonal persistence. It is currently still the default option, as enhanced orthogonal persistence is in beta-testing stage.
 
-On an upgrade, the classical persistence mechanism serializes all stable data to the stable memory and then again deserializes it back to the main memory. This has several downsides:
+On an upgrade, the classical orthogonal persistence mechanism serializes all stable data to the stable memory and then again deserializes it back to the main memory. This has several downsides:
 
 * At maximum, 2 GB of heap data can be persisted across upgrades. This is because of an implementation restriction, first copying the stable data back in main memory and then deserializing it from there. Note that in practice, the supported amount of stable data can be way lower. 
 * Shared immutable heap objects can duplicated, leading to potential state explosion on upgrades.
@@ -20,4 +20,4 @@ It is therefore absolutely necessary to thoroughly test how much data an upgrade
 Moreover, it is good to have a backup possibility to rescue data even if upgrades fail, e.g. by controller-privileged data query calls.
 :::
 
-These issues will be solved by [enhanced orthogonal persistence](enhanced-orthogonal-persistence.md).
+These issues will be solved by [enhanced orthogonal persistence](enhanced.md).

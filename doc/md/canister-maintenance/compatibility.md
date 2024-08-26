@@ -12,7 +12,7 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Breaking clients due to a Candid interface change.
 
 `dfx` checks these properties statically before attempting the upgrade. 
-Moreover, with [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), Motoko rejects incompatible changes of stable declarations.
+Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
 
@@ -112,7 +112,7 @@ This version is neither compatible to Candid interface nor to the stable type de
 - Since `Float </: Int`, the new type of `state` is not compatible to the old type.
 - The return type change of `read` is also not valid.
 
-Motoko rejects upgrades with incompatible state changes with [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence).
+Motoko rejects upgrades with incompatible state changes with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md).
 This is to guarantee that the stable state is always kept safe.
 
 ```
@@ -122,30 +122,31 @@ Error from Canister ...: Canister called `ic0.trap` with message: RTS error: Mem
 In addition to Motoko's check, `dfx` raises a warning message for these incompatible changes, including the breaking Candid change.
 
 :::danger
-Versions of Motoko using [classical persistence](OrthogonalPersistence.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
+Versions of Motoko using [classical orthogonal persistence](orthogonal-persistence/classical.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
 :::
 
 ## Explicit migration
 
 There is always a migration path to change structure of stable state, even if a direct type change is not compatible.
 
-1. Introduce a new variable with the new desired type.
-2. Write logic to copy the old state to the new variable on upgrade.
-3. Upgrade the canister to this new version.
+For this purpose, a user-instructed migration can be done in three steps:
 
-While the previous attempt of changing state from [`Int`](../base/Int.md) to [`Nat`](../base/Float.md) was invalid, we now can realize the desired change as follows:
+1. Introduce new variables of the desired types, while keeping the old declarations.
+2. Write logic to copy the state from the old variables to the new variables on upgrade.
 
-``` motoko no-repl file=../examples/count-v5.mo
-```
+    While the previous attempt of changing state from [`Int`](../base/Int.md) to [`Nat`](../base/Float.md) was invalid, we now can realize the desired change as follows:
 
-To also keep the Candid interface, the `readFloat` has been added, while the old `read` is retired by keeping its declaration and raising a trap internally.
+    ``` motoko no-repl file=../examples/count-v5.mo
+    ```
 
-4. In a final step, we can drop the old `state`. A `dfx` warning will be issued before the old variable is removed.
+    To also keep the Candid interface, the `readFloat` has been added, while the old `read` is retired by keeping its declaration and raising a trap internally.
 
-``` motoko no-repl file=../examples/count-v6.mo
-```
+3. Drop the old declarations, once all data has been migrated:
 
-Alternatively, the type of `state` can be changed to `Any`, implying that this variable is no longer used.
+    ``` motoko no-repl file=../examples/count-v6.mo
+    ```
+
+Alternatively, the type of `state` can be changed to `Any`, also implying that this variable is no longer used.
 
 ## Upgrade tooling
 
@@ -174,10 +175,10 @@ cannot be consumed at new type
   var Float
 ```
 
-With [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
+With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
 :::danger
-With [classical persistence](OrthogonalPersistence.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss, if the `dfx` warning is ignored.
+With [classical orthogonal persistence](orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss, if the `dfx` warning is ignored.
 :::
 
 ## Adding record fields
@@ -222,8 +223,8 @@ cannot be consumed at new type
 
 Do you want to proceed? yes/No
 ```
-It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical persistence](OrthogonalPersistence.md). 
-Upgrading with [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence) will trap and roll back, keeping the old state.
+It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md). 
+Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
 Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the  `description` field of every existing `card` in `map`. Moreover, allowing to add optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 

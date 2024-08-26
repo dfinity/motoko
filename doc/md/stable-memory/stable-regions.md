@@ -8,9 +8,9 @@ sidebar_position: 1
 
 The `Region` library provides low-level access to ICP stable memory feature.
 
-Stable regions were historically introduced with [classical persistence](classical-persistence.md) to allow larger scaled data to be retained across upgrades. For this purpose, programmers could explicitly store persistent data in stable memory, with regions helping to isolate different instances using stable memory.
+Stable regions were historically introduced with [classical orthogonal persistence](../canister-maintenance/orthogonal-persistence/classical.md) to allow larger scaled data to be retained across upgrades. For this purpose, programmers could explicitly store persistent data in stable memory, with regions helping to isolate different instances using stable memory.
 
-This is superseded by [enhanced orthogonal persistence](enhanced-orthogonal-persistence.md). Nevertheless, regions are still offered for backwards-compatibility and for specific use cases where developers prefer to manage data explicitly in a persistent linear memory.
+This is superseded by [enhanced orthogonal persistence](../canister-maintenance/orthogonal-persistence/enhanced.md). Nevertheless, regions are still offered for backwards-compatibility and for specific use cases where developers prefer to manage data explicitly in a persistent linear memory.
 
 ## The `Region` library
 

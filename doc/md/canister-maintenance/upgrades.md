@@ -39,11 +39,7 @@ Do not forget to declare variables `stable` if they should survive canister upgr
 
 ## Persistence modes
 
-Motoko currently features two implementations for orthogonal persistence:
-
-** [Enhanced orthogonal persistence](enhanced-orthogonal-persistence.md), currently in beta stage, provides extremely fast upgrades, scaling independently of the heap size: The Wasm main memory is simply retained on upgrade and a upgrades safety check is performed based on the types and not on the heap objects. By using 64-bit address space, it is designed to scale far beyond 4 GB, like stable memory.
-
-** [Classical persistence](classical-persistence) is the old implementation of orthogonal persistence that will be superseded by enhanced orthogonal persistence. On upgrade, the runtime system first serializes the persistent data to stable memory and eventually deserializes it back agaub to main memory. This is both inefficient and unscalable. It has problems on shared immutable data (serialization data explosion), deep structures (call stack overflow) and is limited to 2GB (due to copying the stable memory back to main memory before deserializing).
+Motoko currently features two implementations for orthogonal persistence, see [persistence modes](orthogonal-persistence/modes.md).
 
 ## Stable types
 
@@ -147,7 +143,7 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-With [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), Motoko rejects incompatible changes of stable declarations during upgrade attempt.
+With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations during upgrade attempt.
 Moreover, `dfx` checks the two conditions before attempting then upgrade and warns users correspondingly.
 
 A Motoko canister upgrade is safe provided:
@@ -155,10 +151,8 @@ A Motoko canister upgrade is safe provided:
 -  The canister’s Candid interface evolves to a Candid subtype.
 -  The canister’s Motoko stable signature evolves to a stable-compatible one.
 
-With [enhanced orthogonal persistence](upgrades.md#enhanced-orthogonal-persistence), the upgrade will always succeed if these two conditions are met and no traps are triggered in user-programmed pre- or post-upgrade logic.
-
 :::danger
-With [classical persistence](classical-persistence), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades well. Enhanced orthogonal persistence will abandon this issue.
+With [classical orthogonal persistence](orthogonal-persistence/classical.md), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades well. Enhanced orthogonal persistence will abandon this issue.
 :::
 
 :::tip
@@ -177,7 +171,7 @@ After you have deployed a Motoko actor with the appropriate `stable` variables, 
 You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
 
-In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or unwanted data loss. Moreover, `dfx` also warns about dropping of stable variables.
+In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about dropping of stable variables.
 
 ## Data migration
 
@@ -191,22 +185,21 @@ This is automatically supported when the new program version is stable-compatibl
 
 More precisely, the following changes are implicitly migratable:
 * Adding or removing actor fields.
-* Changing mutability of the actor field
+* Changing mutability of the actor field.
 * Removing record fields.
 * Adding variant fields.
 * Changing `Nat` to `Int`.
 * Shared function parameter contravariance and return type covariance.
-* Any combination of those.
+* Any change that is allowed by the Motoko's subtyping rule.
 
 ### Explicit migration
 
-Any more complex migration requires explicit programming. Motoko allows to migrate stable data arbitrarily by custom logic.
+Any more complex migration is possible by user-defined functionality.
 
 For this purpose, a three step approach is taken:
-1. Define a new actor by keeping the old declarations and introducing new variables of the desired types.
-2. Write logic to copy the old state from the old variables to the new variables on upgrade.
-3. Upgrade the canister to this new version
-4. Drop the old declarations and upgrade again.
+1. Introduce new variables of the desired types, while keeping the old declarations.
+2. Write logic to copy the state from the old variables to the new variables on upgrade.
+3. Drop the old declarations, once all data has been migrated.
 
 For more information, see the [example of explicit migration](compatibility.md#explicit-migration).
 
