@@ -11,7 +11,9 @@
 //! retained across upgrades and therefore be stored part of the
 //! persistent metadata, cf. `persistence::PersistentMetadata`.
 
-use motoko_rts_macros::ic_mem_fn;
+#[cfg(feature = "ic")]
+use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 
 use crate::{memory::Memory, stable_option::StableOption, types::*, visitor::visit_pointer_fields};
 
@@ -41,10 +43,26 @@ pub mod sort;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
-    use crate::persistence::initialize_memory;
+unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
+    initialize(mem);
+}
 
+#[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+unsafe fn initialize<M: Memory>(_mem: &mut M) {
+    use crate::persistence::initialize_memory;
     initialize_memory::<M>();
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+unsafe fn initialize<M: Memory>(_mem: &mut M) {
+    use crate::memory::ic;
+
+    let state = STATE.get_mut();
+    let heap_base = ic::get_aligned_heap_base();
+    *state = IncrementalGC::<M>::initial_gc_state(heap_base);
+    partitioned_heap::allocate_initial_memory(Bytes(heap_base));
 }
 
 #[ic_mem_fn(ic_only)]
@@ -72,19 +90,18 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
-    use crate::memory::ic;
+    use crate::memory::ic::partitioned_memory;
 
     let state = get_incremental_gc_state();
-    state.statistics.last_allocations = ic::get_total_allocations();
+    state.statistics.last_allocations = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
-    use crate::memory::ic;
-    use crate::persistence::HEAP_START;
+    use crate::memory::ic::{self, partitioned_memory};
 
-    let heap_size = ic::get_heap_size();
-    let static_size = Bytes(HEAP_START);
+    let heap_size = partitioned_memory::get_heap_size();
+    let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     let state = get_incremental_gc_state();
@@ -94,7 +111,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 // Persistent GC statistics used for scheduling and diagnostics.
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
-    last_allocations: Bytes<usize>,
+    last_allocations: Bytes<u64>,
     // Maximum heap size the end of a GC run.
     max_live: Bytes<usize>,
 }
@@ -141,6 +158,21 @@ pub struct State {
     iterator_state: StableOption<PartitionedHeapIterator>,
     statistics: Statistics,
 }
+
+/// GC state retained over multiple GC increments.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
+    phase: Phase::Pause,
+    partitioned_heap: self::partitioned_heap::UNINITIALIZED_HEAP,
+    allocation_count: 0,
+    mark_state: StableOption::None,
+    iterator_state: StableOption::None,
+    statistics: Statistics {
+        last_allocations: Bytes(0),
+        max_live: Bytes(0),
+    },
+});
 
 /// Temporary state during message execution, not part of the persistent metadata.
 static mut RUNNING_GC_INCREMENT: bool = false;
@@ -303,7 +335,10 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
         if overwritten_value.points_to_or_beyond(base_address) {
             let mut time = BoundedTime::new(0);
             let mut increment = MarkIncrement::instance(mem, state, &mut time);
+
+            #[enhanced_orthogonal_persistence]
             debug_assert_ne!(overwritten_value, NULL_POINTER);
+
             increment.mark_object(overwritten_value);
         }
     }
@@ -370,6 +405,7 @@ unsafe fn update_new_allocation(state: &State, new_object: Value) {
             &mut (),
             object,
             object.tag(),
+            state.partitioned_heap.base_address(),
             |_, field| {
                 *field = (*field).forward_if_possible();
             },
@@ -391,8 +427,15 @@ pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
 }
 
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
 pub unsafe fn get_incremental_gc_state() -> &'static mut State {
     crate::persistence::get_incremental_gc_state()
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+pub unsafe fn get_incremental_gc_state() -> &'static mut State {
+    STATE.get_mut()
 }
 
 #[cfg(feature = "ic")]
@@ -420,6 +463,16 @@ pub unsafe fn is_gc_stopped() -> bool {
     get_incremental_gc_state().phase == Phase::Stop
 }
 
+/// Safety guard before Candid-stabilization with classical persistence.
+/// For graph copying, a different GC stop function is used, see
+/// `stabilization::ic::stop_gc_before_stabilization()`.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn stop_gc_on_upgrade() {
+    stop_gc();
+}
+
 /// For RTS unit testing only.
 #[cfg(not(feature = "ic"))]
 static mut TEST_GC_STATE: Option<State> = None;
@@ -442,14 +495,19 @@ pub unsafe fn set_incremental_gc_state(state: Option<State>) {
 
 #[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {
-    use partitioned_heap::PARTITION_SIZE;
+    use crate::constants::MB;
+    use crate::memory::GENERAL_MEMORY_RESERVE;
 
     if RUNNING_GC_INCREMENT {
         0
     } else {
-        // Ensure there are 4 free partitions for evacuation.
-        const EVACUATION_RESERVE: usize = 4 * PARTITION_SIZE;
-        // Reserve space for the mark bitmap and the evacuation space.
-        get_partitioned_heap().maximum_mark_bitmap_size() + EVACUATION_RESERVE
+        // Ensure there are free partitions for evacuation.
+        // 16 free partitions in 32-bit. 8 free partitions in 64-bit.
+        const EVACUATION_RESERVE: usize = 512 * MB;
+        // Reserve space for the mark bitmap, the evacuation space, and
+        // extra space for query and (stabilization) upgrade calls.
+        get_partitioned_heap().maximum_mark_bitmap_size()
+            + EVACUATION_RESERVE
+            + GENERAL_MEMORY_RESERVE
     }
 }

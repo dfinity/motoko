@@ -1,0 +1,13 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: preupgrade!
+debug.print: {heap_MB = 64}
+debug.print: {heap_MB = 128}
+debug.print: {heap_MB = 192}
+debug.print: {heap_MB = 256}
+debug.print: {heap_MB = 320}
+debug.print: {heap_MB = 384}
+debug.print: {heap_MB = 448}
+debug.print: postupgrade!
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: assertion failed at destabilization-crash.mo:41.6-41.18.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly

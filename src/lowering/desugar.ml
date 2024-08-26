@@ -474,7 +474,12 @@ and export_runtime_information self_id =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let gc_strategy = 
     let open Mo_config in
-    let strategy = "incremental" in
+    let strategy = match !Flags.gc_strategy with
+    | Flags.Default -> "default"
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental" in
     if !Flags.force_gc then (Printf.sprintf "%s force" strategy) else strategy
   in
   let prim_call function_name = primE (I.OtherPrim function_name) [] in
@@ -1031,7 +1036,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
     T.(Func (Local, Returns, [scope_bind],
-      [install_arg_typ; blob; blob],
+      [install_arg_typ; bool; blob; blob],
       [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
   let wasm_blob = fresh_var "wasm_blob" T.blob in
@@ -1051,6 +1056,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
+              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence)); 
               varE wasm_blob;
               primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))

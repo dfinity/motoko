@@ -1,3 +1,5 @@
+use motoko_rts_macros::enhanced_orthogonal_persistence;
+
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
@@ -50,9 +52,12 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self, |gc, field| {
+        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
             let value = *field;
+
+            #[enhanced_orthogonal_persistence]
             debug_assert_ne!(value, NULL_POINTER);
+
             if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }
@@ -108,6 +113,7 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 object,
                 object.tag(),
+                self.heap.base_address(),
                 |gc, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                     gc.time.tick();

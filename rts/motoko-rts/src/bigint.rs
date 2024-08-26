@@ -33,18 +33,40 @@ This scheme makes the following assumptions:
 
 use crate::barriers::allocation_barrier;
 use crate::buf::{read_byte, Buf};
-use crate::libc_declarations::c_void;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
-use motoko_rts_macros::ic_mem_fn;
+use crate::libc_declarations::c_void;
+
+#[classical_persistence]
+use crate::types::Stream;
+
+use motoko_rts_macros::{classical_persistence, ic_mem_fn};
+
+#[cfg(feature = "ic")]
+use motoko_rts_macros::enhanced_orthogonal_persistence;
 
 // Provided by generated code
+#[cfg(feature = "ic")]
 extern "C" {
-    #[cfg(feature = "ic")]
-    fn int_from_int64(value: isize) -> Value;
+    #[enhanced_orthogonal_persistence]
+    fn int_from_i64(value: isize) -> Value;
+    #[classical_persistence]
+    fn int_from_i32(value: isize) -> Value;
+}
+
+#[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+unsafe fn int_from_isize(value: isize) -> Value {
+    int_from_i64(value)
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+unsafe fn int_from_isize(value: isize) -> Value {
+    int_from_i32(value)
 }
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut u8 {
@@ -184,13 +206,31 @@ pub(crate) unsafe fn persist_bigint(i: mp_int) -> Value {
     Value::from_ptr(r as usize)
 }
 
+#[no_mangle]
+#[classical_persistence]
+pub unsafe extern "C" fn bigint_of_word32(w: u32) -> Value {
+    let mut i = tmp_bigint();
+    mp_set_u32(&mut i, w);
+    persist_bigint(i)
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+#[classical_persistence]
+unsafe extern "C" fn bigint_of_int32(j: i32) -> Value {
+    let mut i = tmp_bigint();
+    mp_set_i32(&mut i, j);
+    persist_bigint(i)
+}
+
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }
 
-unsafe fn bigint_to_word32_trap(p: Value) -> u32 {
+#[no_mangle]
+unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
@@ -266,26 +306,38 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
-    // handle fast path: some numbers (when rounded towards zero by `j as i64`).
-    // may be represented as `Int` without resorting to heap allocation, i.e.
-    // in the range `-4611686018427387904 == -2 ** 62 <= j as i64 < 2 ** 62 == 4611686018427387904`
-    // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
-    // The closest binary64 float representations in IEEE 754 for the boundaries are:
-    // Lower boundary approximation >= -2 ** 62:
-    //   `f64::from_bits(0xC3CF_FFFF_FFFF_FFFF`) == -4611686018427387400 > -4611686018427387904
-    // Upper boundary approximation < 2 ** 62:
-    //   `f64::from_bits(0x43CF_FFFF_FFFF_FFFF) == 4611686018427387400 < 4611686018427387904.
-    // IEEE754 double precision encoding:
-    // ┌───────────────┬────────────────────────┬─────────────────────────┐
-    // │ sign (bit 63) │ exponent (bits 52..62) |  mantissa (bits 0..51)  |
-    // └───────────────┴────────────────────────┴─────────────────────────┘
-    // The exponent has a bias of 1023:
-    // * Example: Exponent 61 is encoded 0x43C == 1023 + 61.
-    // The mantissa has an implicit extra most significant bit 1.
-    // * Example: Mantissa `F_FFFF_FFFF_FFFF` actually represents `1F_FFFF_FFFF_FFFF`
-    if j >= -4611686018427387400.0f64 && j <= 4611686018427387400.0f64 {
+    // Fast path: Determine when the integer numbers can be represented as a compact (unboxed) `Int`.
+    let is_compact = match usize::BITS {
+        u64::BITS => {
+            // The integer can be represented in compact 64-bit scalar if it is in the range
+            // `-4611686018427387904 == -2 ** 62 <= j as i64 < 2 ** 62 == 4611686018427387904`, by
+            // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
+            // The closest binary64 float representations in IEEE 754 for the boundaries are:
+            // Lower boundary approximation >= -2 ** 62:
+            //   `f64::from_bits(0xC3CF_FFFF_FFFF_FFFF`) == -4611686018427387400 > -4611686018427387904
+            // Upper boundary approximation < 2 ** 62:
+            //   `f64::from_bits(0x43CF_FFFF_FFFF_FFFF) == 4611686018427387400 < 4611686018427387904.
+            // IEEE754 double precision encoding:
+            // ┌───────────────┬────────────────────────┬─────────────────────────┐
+            // │ sign (bit 63) │ exponent (bits 52..62) |  mantissa (bits 0..51)  |
+            // └───────────────┴────────────────────────┴─────────────────────────┘
+            // The exponent has a bias of 1023:
+            // * Example: Exponent 61 is encoded 0x43C == 1023 + 61.
+            // The mantissa has an implicit extra most significant bit 1.
+            // * Example: Mantissa `F_FFFF_FFFF_FFFF` actually represents `1F_FFFF_FFFF_FFFF`.
+            j >= -4611686018427387400.0f64 && j <= 4611686018427387400.0f64
+        }
+        u32::BITS => {
+            // The integer can be represented in compact 32-bit scalar if it is in the range
+            // `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`, by
+            // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
+            j < 1073741824.0 && j > -1073741825.0
+        }
+        _ => unreachable!(),
+    };
+    if is_compact {
         // defer to generated code to create compact or boxed Int value
-        return int_from_int64(j as isize);
+        return int_from_isize(j as isize);
     }
     let mut i = tmp_bigint();
     check(mp_set_double(&mut i, j));
@@ -479,6 +531,15 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
+#[classical_persistence]
+pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
+    debug_assert!(!stream.is_forwarded());
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+    stream.write_leb128(&mut tmp, false)
+}
+
+#[no_mangle]
 unsafe extern "C" fn bigint_2complement_bits(n: Value) -> usize {
     let mp_int = n.as_bigint().mp_int_ptr();
     if mp_isneg(mp_int) {
@@ -515,6 +576,26 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
+#[classical_persistence]
+pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
+    debug_assert!(!stream.is_forwarded());
+    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
+    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
+
+    if mp_isneg(&tmp) {
+        // Turn negative numbers into the two's complement of the right size
+        let mut big: mp_int = core::mem::zeroed();
+        check(mp_init(&mut big));
+        let bytes = bigint_sleb128_size(n);
+        check(mp_2expt(&mut big, 7 * bytes as i32));
+        check(mp_add(&mut tmp, &big, &mut tmp));
+        stream.write_leb128(&mut tmp, false)
+    } else {
+        stream.write_leb128(&mut tmp, true)
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     let mut i = tmp_bigint();
     let mut tmp = tmp_bigint();
@@ -537,10 +618,19 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 
 #[cfg(feature = "ic")]
 const BITS_PER_CHUNK: usize = 7;
+
 #[cfg(feature = "ic")]
 const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
 
-/// Decode at most 10 bytes of LEB128 data to a compact bignum `Value`.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+const _: () = assert!(MAX_CHUNKS_PER_WORD == 5);
+
+#[enhanced_orthogonal_persistence]
+#[cfg(feature = "ic")]
+const _: () = assert!(MAX_CHUNKS_PER_WORD == 10);
+
+/// Decode bytes of LEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `leb`
 /// as indicated by `bits`.
 ///
@@ -562,7 +652,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
             if continuations == MAX_CHUNKS_PER_WORD - 1 {
                 break;
             }
-            return int_from_int64(acc as isize);
+            return int_from_isize(acc as isize);
         }
         bits -= 8;
         mask <<= 7;
@@ -572,7 +662,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     let tentative = (acc as isize) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
         // roundtrip is valid
-        return int_from_int64(tentative);
+        return int_from_isize(tentative);
     }
 
     bigint_of_word64(acc)
@@ -608,7 +698,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// Decode at most 10 bytes of SLEB128 data to a compact bignum `Value`.
+/// Decode bytes of SLEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `sleb`
 /// as indicated by `bits`.
 ///
@@ -631,13 +721,34 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
                 break;
             }
             let sext = usize::BITS as usize - (BITS_PER_CHUNK * (continuations + 1)); // this many top bits will get a copy of the sign
-            return int_from_int64((acc as isize) << sext >> sext);
+            return int_from_isize((acc as isize) << sext >> sext);
         }
         bits -= 8;
         mask <<= 7;
         sleb >>= 1;
     }
 
+    sleb128_decode_word64_result(acc)
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
+    // Check if it fits into 32-bit or needs boxing to BigInt.
+    const UNUSED_BITS: u32 = u64::BITS - (BITS_PER_CHUNK * MAX_CHUNKS_PER_WORD) as u32;
+    const _: () = assert!(UNUSED_BITS == 29);
+    let signed = (accumulator as i64) << UNUSED_BITS >> UNUSED_BITS;
+    let tentative = (signed as isize) << 1 >> 1; // top two bits must match
+    if tentative as i64 == signed {
+        // roundtrip is valid
+        return int_from_isize(tentative);
+    }
+    bigint_of_int64(signed)
+}
+
+#[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
     // No unused bits in 64-bit representation. The sign bit is already set at bit 63.
-    int_from_int64(acc as isize)
+    int_from_isize(accumulator as isize)
 }

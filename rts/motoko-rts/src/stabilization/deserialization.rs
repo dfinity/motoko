@@ -93,6 +93,7 @@ impl Deserialization {
             context,
             target_object.as_obj(),
             target_object.tag(),
+            0,
             |context, field_address| {
                 *field_address = translate(context, *field_address);
             },
@@ -211,7 +212,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
 
 #[cfg(feature = "ic")]
 unsafe fn deserialized_size() -> usize {
-    crate::memory::ic::get_heap_size().as_usize()
+    crate::memory::ic::partitioned_memory::get_heap_size().as_usize()
 }
 
 // Injection point for RTS unit testing.

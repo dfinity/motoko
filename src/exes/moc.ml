@@ -147,6 +147,22 @@ let argspec = [
     Flags.use_stable_regions := true),
       " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
 
+  "--generational-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
+  " use generational GC (only available with classical persistence)";
+
+  "--incremental-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
+  " use incremental GC (default with enhanced orthogonal persistence)";
+
+  "--compacting-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
+  " use compacting GC (only available with classical persistence)";
+
+  "--copying-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
+  " use copying GC (default and only available with classical persistence)";
+
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
@@ -163,9 +179,22 @@ let argspec = [
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
 
+  "--experimental-rtti",
+  Arg.Unit (fun () -> Flags.rtti := true),
+  " enable experimental support for precise runtime type information (default with enhanced orthogonal persistence)";
+
+  "--rts-stack-pages",
+  Arg.Int (fun pages -> Flags.rts_stack_pages := Some pages),
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ", only available with classical persistence)";
+
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {

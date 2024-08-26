@@ -1,15 +1,12 @@
 # Graph-Copy-Based Stabilization
 
-This is part of the enhanced orthogonal persistence support, see `OrthogonalPersistence.md`.
-It allows future potentially radical changes of the persistent memory layout, such as introducing a new GC, rearranging persistent metadata, or specializing arrays for small element types etc. 
+This is part of the enhanced orthogonal persistence support, see [Orthogonal Persistence](OrthogonalPersistence.md).
 
 ## Purpose
-
-This allows potentially radical changes of the persistent main memory layout, e.g. introducing a new GC or rearranging persistent metadata. 
+This allows future potentially radical changes of the persistent memory layout, such as introducing a new GC, rearranging persistent metadata, or specializing arrays for small element types etc. 
 This also relies on precise value tagging to allow more advanced changes that require value metadata, e.g. specializing arrays for small value element types or even downgrading to 32-bit heap layouts (provided that the amount of live data fits into a 32-bit memory).
 
 ## Design
-
 Graph copy of sub-graph of stable objects from main memory to stable memory and vice versa on upgrades.
 
 ## Properties
@@ -22,9 +19,7 @@ Graph copy of sub-graph of stable objects from main memory to stable memory and 
 ## Memory Compatibility Check
 Apply a memory compatibility check analogous to the enhanced orthogonal persistence, since the upgrade compatibility of the graph copy is not identical to the Candid subtype relation.
 
-
 ## Incremental Upgrade
-
 Supporting arbitrarily large upgrades beyond the instruction limit:
 * Splitting the stabilization/destabilization in multiple asynchronous messages.
 * Limiting the stabilization work units to fit the update or upgrade messages.
@@ -35,7 +30,6 @@ Supporting arbitrarily large upgrades beyond the instruction limit:
 **Note**: Graph copying needs to be explicitly initiated as the usual upgrade engages enhanced orthogonal persistence, simply retaining main memory with compatibility check.
 
 ### Usage
-
 When upgrading to a Motoko version that is not compatible with the current enhanced orthogonal persistence:
 
 1. Initiate the explicit stabilization before the upgrade:
@@ -76,14 +70,22 @@ dfx canister call CANISTER_ID __motoko_destabilize_after_upgrade "()"
 * The GC is restarted.
 
 ### Remarks
-
-* Steps 2 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
+* When receiving the `dfx` error "The request timed out." during explicit stabilization, upgrade, or destabilization, one can simply repeat the call until it completes.
+* Steps 3 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
 * Stabilization and destabilization steps are limited to the increment limits:
 
     Operation | Message Type | IC Instruction Limit | **Increment Limit**
     ----------|--------------|----------------------|--------------------
     **Explicit (de)stabilization step** | Update | 20e9 | **16e9**
     **Actual upgrade** | Upgrade | 200e9 | **160e9**
+
+* The graph copy steps also limit the amount of processed stable data (read or write), in order not to exceed the 
+IC's stable memory access limits.
+
+    Operation | Message Type | IC Stable Access Limit | **Increment Limit**
+    ----------|--------------|----------------------|--------------------
+    **Explicit (de)stabilization step** | Update | 2 GB | **1 GB**
+    **Actual upgrade** | Upgrade | 8 GB | **6 GB**
 
 ## Graph-Copy Algorithm
 Applying Cheney’s algorithm [1, 2] for both serialization and deserialization:
@@ -117,6 +119,7 @@ The format is also versioned to allow future refinements of the graph copy algor
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
 * The partitioned heap prevents linear scanning of the heap, especially in the presence of large objects that can be placed at a higher partition than subsequently allocated normal-sized objects. For this reason, a scan stack is allocated in the main memory, remembering the deserialized objects that still need to be scanned. With this, the deserialization does not need to make any assumptions of the heap structure (e.g. monotonically increasing allocations, free space markers, empty heap on deserialization start etc.).
 * If actor fields are promoted to the `Any` type in a new program version, their content is released in that variable to allow memory reclamation.
+* Both stabilization and destabilization read and write data linearly, which is beneficial for guarding a work set limit (number of accessed pages) per IC message. Destabilization is also linear because it deserializes objects in the same order back as they have been serialized.
 
 ## Open Aspects
 * Unused fields in stable records that are no longer declared in a new program versions should be removed. This could be done during garbage collection, when objects are moved/evacuated. This scenario equally applies to enhanced orthogonal persistence.

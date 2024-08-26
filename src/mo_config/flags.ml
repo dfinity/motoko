@@ -4,6 +4,8 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
+type gc_strategy = Default | MarkCompact | Copying | Generational | Incremental
+
 type instruction_limits = {
   upgrade: int;
   update_call: int;
@@ -43,13 +45,17 @@ let omit_metadata_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
 let sanity = ref false
+let gc_strategy = ref Default
 let force_gc = ref false
 let global_timer = ref true
 let experimental_field_aliasing = ref false
 let ocaml_js = ref false
-let rtti = ref true
+let rts_stack_pages_default = 32 (* 2MB *)
+let rts_stack_pages : int option ref = ref None
+let rtti = ref false
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
+let enhanced_orthogonal_persistence = ref false
 let share_code = ref false
 let stabilization_instruction_limit_default = {
   upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)
