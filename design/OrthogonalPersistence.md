@@ -7,6 +7,11 @@ This implements the vision of **enhanced orthogonal persistence** in Motoko that
 
 As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
+## Activation
+Enhanced orthogonal persistence is offered for **beta testing** via the compiler flag `--enhanced-orthogonal-persistence`.
+Classical persistence with 32-bit main memory and Candid stabilization currently remains the default mode.
+See `design/PersistenceModes.md` for more information.
+
 ## Advantages
 Compared to the existing orthogonal persistence in Motoko, this design offers:
 * **Performance**: New program versions directly resume from the existing main memory and have access to the memory-compatible data.
@@ -24,10 +29,12 @@ The enhanced orthogonal persistence is based on the following main properties:
 * A fast memory compatibility check performed on each canister upgrade.
 * Incremental garbage collection using a partitioned heap.
 
-### Integration with Classical Persistence
-Enhanced orthogonal persistence is offered for **beta testing** via the compiler flag `--enhanced-orthogonal-persistence`.
-Classical persistence with 32-bit main memory and Candid stabilization currently remains the default mode.
-See `design/PersistenceModes.md` for more information.
+## IC Main Memory Retention
+
+The IC introduces a new upgrade option `wasm_memory_persistence` to control the retention of the canister's Wasm main memory.
+* `wasm_memory_persistence = opt keep` retains the Wasm main memory and is required for Motoko's enhanced orthogonal persistence. The IC prevents using this options for canisters with classical persistence.
+* `wasm_memory_persistence = null` uses the classical persistence, replacing the main memory. However, a safety check is implemented to prevent that main memory is not accidentally dropped for enhanced orthogonal persistence.
+* The other option `replace` is not recommended as it drops main memory, even for enhanced orthogonal persistence.
 
 ### Memory Layout
 In a co-design between the compiler and the runtime system, the main memory is arranged in the following structure, invariant of the compiled program version:

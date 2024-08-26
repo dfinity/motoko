@@ -31,7 +31,7 @@ Moreover, it is advised to have a backup possibility for rescuing data even when
 [Classical orthogonal persistence](classical.md) with 32-bit main memory and Candid stabilization currently remains the default mode.
 See [orthogonal persistence modes](modes.md) for a comparison.
 
-## Advantages
+## Design
 Compared to the existing orthogonal persistence in Motoko, this design offers:
 * **Performance**: New program versions directly resume from the existing main memory and have access to the memory-compatible data.
 * **Scalability**: The upgrade mechanism scales with larger heaps and in contrast to serialization, does not hit IC instruction limits.
@@ -40,7 +40,6 @@ Compared to the explicit use of stable memory, this design improves:
 * **Simplicity**: Developers do not need to deal with explicit stable memory.
 * **Performance**: No copying to and from the separate stable memory is necessary.
 
-## Design
 The enhanced orthogonal persistence is based on the following main properties:
 * Extension of the IC to retain main memory on upgrades.
 * Supporting 64-bit main memory on the IC.
@@ -48,7 +47,7 @@ The enhanced orthogonal persistence is based on the following main properties:
 * A fast memory compatibility check performed on each canister upgrade.
 * Incremental garbage collection using a partitioned heap.
 
-### Compatibility Check
+### Compatibility check
 Upgrades are only permitted if the new program version is compatible with the old version, such that the runtime system guarantees a compatible memory structure.
 
 Compatible changes for immutable types are largely analogous to the allowed Motoko subtype relation modulo some flexibility for actor fields, i.e.
@@ -64,10 +63,10 @@ The runtime system checks checks migration compatibility on upgrade, and if not 
 
 Any more complex change can be performed with programmatic instruction, see [explicit migration](../upgrades.md#explicit-migration).
 
-### Migration Path
+### Migration path
 When migrating from the old serialization-based stabilization to the new persistent heap, the old data is deserialized one last time from stable memory and then placed in the new persistent heap layout. Once operating on the persistent heap, the system should prevent downgrade attempts to the old serialization-based persistence. 
 
-#### Graph-Copy-Based Stabilization
+#### Graph-copy-based stabilization
 Assuming that the persistent memory layout needs to be changed in the future, the runtime system supports serialization and deserialization to and from stable memory in a defined data format using graph-copy-based stabilization. Arbitrarily large data can be serialized and deserialized beyond the instruction and working set limit of upgrades: Large data serialization and deserialization is split in multiple messages, running before and/or after the IC upgrade to migrate large heaps. Of course, other messages will be blocked during this process and only the canister owner or the canister controllers are permitted to initiate this process. 
 
 This will only be needed in rare situation when Motoko's implementation changes its internal memory layout. Users will then be instructed to explicitly initiate this migration.
@@ -97,5 +96,12 @@ Remarks:
 * When receiving the `dfx` error "The request timed out." during explicit stabilization, upgrade, or destabilization, one can simply repeat the call until it completes.
 * Steps 3 (explicit destabilization) may not be needed if the corresponding operation fits into the upgrade message.
 
-### Old Stable Memory
+### Old stable memory
 The old stable memory remains equally accessible as secondary (legacy) memory with the new support. Therefore, stable regions can be combined with orthogonal persistence.
+
+## IC main memory retention
+
+The IC introduces a new upgrade option `wasm_memory_persistence` to control the retention of the canister's Wasm main memory.
+* `wasm_memory_persistence = opt keep` retains the Wasm main memory and is required for Motoko's enhanced orthogonal persistence. The IC prevents using this options for canisters with classical persistence.
+* `wasm_memory_persistence = null` uses the classical persistence, replacing the main memory. However, a safety check is implemented to prevent that main memory is not accidentally dropped for enhanced orthogonal persistence.
+* The other option `replace` is not recommended as it drops Wasm main memory, even for enhanced orthogonal persistence, leading to potential data loss.
