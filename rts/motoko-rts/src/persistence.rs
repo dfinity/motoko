@@ -9,23 +9,24 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
-    gc::incremental::State,
+    gc::incremental::{partitioned_heap::allocate_initial_memory, State},
     memory::Memory,
     persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
-        VERSION_STABLE_HEAP_NO_REGIONS, VERSION_STABLE_HEAP_REGIONS,
+        VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
+        VERSION_STABLE_HEAP_REGIONS,
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
-    types::{Value, TAG_BLOB_B},
+    types::{Bytes, Value, TAG_BLOB_B},
 };
 
 use self::compatibility::TypeDescriptor;
 
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
-    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
+    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
 const VERSION: usize = 1;
 /// The `Value` representation in the default-initialized Wasm memory.
@@ -90,34 +91,36 @@ impl PersistentMetadata {
         }
     }
 
-    unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
+    unsafe fn initialize<M: Memory>(self: *mut Self) {
         use crate::gc::incremental::IncrementalGC;
-        debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
         (*self).stable_type = TypeDescriptor::default();
-        (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
+        (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
     }
 }
 
-/// Initialize fresh persistent memory after the canister installation or
-/// reuse the persistent memory on a canister upgrade.
-pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START as u64);
+/// Initialize fresh persistent memory after the canister installation or reuse
+/// the persistent memory on a canister upgrade if enhanced orthogonal persistence
+/// is active. For graph-copy-based destabilization, the memory is reinitialized.
+pub unsafe fn initialize_memory<M: Memory>() {
+    allocate_initial_memory(Bytes(HEAP_START));
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
     } else {
-        metadata.initialize(mem);
+        metadata.initialize::<M>();
     }
 }
 
 unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     match read_persistence_version() {
         VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
-        LEGACY_VERSION_NO_STABLE_MEMORY
+        VERSION_GRAPH_COPY_NO_REGIONS
+        | VERSION_GRAPH_COPY_REGIONS
+        | LEGACY_VERSION_NO_STABLE_MEMORY
         | LEGACY_VERSION_SOME_STABLE_MEMORY
         | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
@@ -162,16 +165,16 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
 /// Determine whether an object contains a specific field.
 /// Used for upgrading to an actor with additional stable fields.
 #[no_mangle]
-pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
+pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool {
     use crate::constants::WORD_SIZE;
 
     let object = actor.as_object();
     let hash_blob = (*object).hash_blob.as_blob();
-    assert_eq!(hash_blob.len().as_u32() % WORD_SIZE, 0);
-    let number_of_fields = hash_blob.len().as_u32() / WORD_SIZE;
-    let mut current_address = hash_blob.payload_const() as u32;
+    assert_eq!(hash_blob.len().as_usize() % WORD_SIZE, 0);
+    let number_of_fields = hash_blob.len().as_usize() / WORD_SIZE;
+    let mut current_address = hash_blob.payload_const() as usize;
     for _ in 0..number_of_fields {
-        let hash_address = current_address as *mut u32;
+        let hash_address = current_address as *mut usize;
         let hash_value = *hash_address;
         // The hash sequence is sorted: Stop when the hash matches or cannot exist.
         if hash_value >= field_hash {
@@ -182,7 +185,7 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
     false
 }
 
-/// Register the stable actor type on canister installation and upgrade.
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.
@@ -223,4 +226,15 @@ pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
 pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions = instructions;
+}
+
+/// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.
+/// This buffer has a fix length of 512 bytes, and resides at the end of the metadata reserve.
+#[no_mangle]
+pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
+    use crate::types::size_of;
+
+    const BUFFER_SIZE: usize = 512;
+    assert!(size_of::<PersistentMetadata>().to_bytes().as_usize() + BUFFER_SIZE < METADATA_RESERVE);
+    METADATA_ADDRESS + METADATA_RESERVE - BUFFER_SIZE
 }

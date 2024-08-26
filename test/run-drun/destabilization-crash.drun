@@ -1,0 +1,4 @@
+# CLASSICAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID destabilization-crash/destabilization-crash.mo ""
+upgrade $ID destabilization-crash/destabilization-crash.mo ""

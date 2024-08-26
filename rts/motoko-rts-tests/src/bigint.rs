@@ -1,4 +1,5 @@
 use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
+use std::ffi::c_void;
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
@@ -10,17 +11,21 @@ use motoko_rts::types::{Bytes, Value};
 // This global is used to pass a reference to heap to the mp functions
 static mut HEAP: *mut TestMemory = std::ptr::null_mut();
 
+pub unsafe fn set_bigint_heap(heap: *mut TestMemory) {
+    HEAP = heap;
+}
+
 #[no_mangle]
-unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
+unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut c_void {
     bigint::mp_calloc(&mut *HEAP, n_elems, elem_size)
 }
 
 #[no_mangle]
 unsafe extern "C" fn mp_realloc(
-    ptr: *mut libc::c_void,
-    old_size: Bytes<u32>,
-    new_size: Bytes<u32>,
-) -> *mut libc::c_void {
+    ptr: *mut c_void,
+    old_size: Bytes<usize>,
+    new_size: Bytes<usize>,
+) -> *mut c_void {
     bigint::mp_realloc(&mut *HEAP, ptr, old_size, new_size)
 }
 
@@ -28,13 +33,13 @@ pub unsafe fn test() {
     println!("Testing BigInt ...");
 
     let mut heap = initialize_test_memory();
-    HEAP = &mut heap;
+    set_bigint_heap(&mut heap);
 
     assert!(bigint_eq(
-        bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
+        bigint_pow(bigint_of_word64(70), bigint_of_word64(32)),
         bigint_mul(
-            bigint_pow(bigint_of_word32(70), bigint_of_word32(31)),
-            bigint_of_word32(70)
+            bigint_pow(bigint_of_word64(70), bigint_of_word64(31)),
+            bigint_of_word64(70)
         )
     ));
 
@@ -42,10 +47,10 @@ pub unsafe fn test() {
     // (s)leb128 encoding
     //
 
-    let one = bigint_of_word32(1);
-    let two = bigint_of_word32(2);
+    let one = bigint_of_word64(1);
+    let two = bigint_of_word64(2);
     for i in 0..100 {
-        let two_pow_i = bigint_pow(two, bigint_of_word32(i));
+        let two_pow_i = bigint_pow(two, bigint_of_word64(i));
         let minus_one = bigint_sub(two_pow_i, one);
         let plus_one = bigint_add(two_pow_i, one);
 
@@ -61,7 +66,7 @@ pub unsafe fn test() {
         test_bigint_sleb128(bigint_neg(plus_one));
     }
 
-    HEAP = std::ptr::null_mut();
+    set_bigint_heap(std::ptr::null_mut());
     reset_test_memory();
     drop(heap);
 }

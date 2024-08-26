@@ -1,0 +1,28 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: array initialized
+debug.print: version: 1
+debug.print: Installed
+ingress Completed: Reply: 0x4449444c0000
+debug.print: version: 2
+debug.print: Upgraded (default)
+ingress Completed: Reply: 0x4449444c0000
+debug.print: version: 3
+debug.print: Upgraded (replace main memory)
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reject: Invalid upgrade option: The `wasm_memory_persistence: opt Keep` upgrade option requires that the new canister module supports enhanced orthogonal persistence.
+ingress Completed: Reply: 0x4449444c0000
+debug.print: version: 4
+debug.print: Upgraded (keep main memory)
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Graph copy
+ingress Completed: Reply: 0x4449444c0000
+debug.print: version: 5
+debug.print: Upgraded (replace main memory)
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Graph copy
+ingress Completed: Reply: 0x4449444c0000
+debug.print: version: 6
+debug.print: Upgraded (keep main memory)
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0504: Missing upgrade option: Enhanced orthogonal persistence requires the `wasm_memory_persistence` upgrade option.

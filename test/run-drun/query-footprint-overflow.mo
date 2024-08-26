@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 import { Array_tabulate; stableVarQuery } = "mo:⛔"
 
 actor footprint = {

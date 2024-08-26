@@ -1,5 +1,0 @@
-# SKIP ic-ref-run
-install $ID memory-reserve-update/memory-reserve-update.mo ""
-ingress $ID prepare1 "DIDL\x00\x00"
-ingress $ID prepare2 "DIDL\x00\x00"
-ingress $ID allocateInUpdate "DIDL\x00\x00"

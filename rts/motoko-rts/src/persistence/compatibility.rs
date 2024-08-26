@@ -26,7 +26,7 @@ const DEFAULT_VALUE: Value = Value::from_scalar(0);
 pub struct TypeDescriptor {
     // Blob with candid-encoded type definitions.
     candid_data: Value,
-    // Blob with a list of `u32` offsets referring to the `candid_data`.
+    // Blob with a list of `usize` offsets referring to the `candid_data`.
     type_offsets: Value,
 }
 
@@ -38,10 +38,12 @@ impl TypeDescriptor {
         }
     }
 
-    pub unsafe fn new(candid_data: Value, type_offsets: Value) -> Self {
-        Self {
-            candid_data: candid_data.forward_if_possible(),
-            type_offsets: type_offsets.forward_if_possible(),
+    pub fn new(candid_data: Value, type_offsets: Value) -> Self {
+        unsafe {
+            Self {
+                candid_data: candid_data.forward_if_possible(),
+                type_offsets: type_offsets.forward_if_possible(),
+            }
         }
     }
 
@@ -51,6 +53,14 @@ impl TypeDescriptor {
 
     pub fn assert_initialized(&self) {
         assert!(self.candid_data != DEFAULT_VALUE && self.type_offsets != DEFAULT_VALUE);
+    }
+
+    pub fn candid_data(&self) -> Value {
+        self.candid_data
+    }
+
+    pub fn type_offsets(&self) -> Value {
+        self.type_offsets
     }
 
     // GC root if part of the persistent stable type
@@ -72,7 +82,7 @@ impl TypeDescriptor {
 
     pub unsafe fn type_count(&self) -> usize {
         let blob_size = self.type_offsets.as_blob().len();
-        assert_eq!(blob_size.as_u32() % WORD_SIZE, 0);
+        assert_eq!(blob_size.as_usize() % WORD_SIZE, 0);
         blob_size.to_words().as_usize()
     }
 
@@ -80,15 +90,15 @@ impl TypeDescriptor {
     // be used during a single IC message when no GC increment is running in between.
     pub unsafe fn build_type_table<M: Memory>(&mut self, mem: &mut M) -> *mut *mut u8 {
         let type_count = self.type_count();
-        let temporary_blob = alloc_blob(mem, TAG_BLOB_B, Words(type_count as u32).to_bytes());
-        let offset_table = self.type_offsets.as_blob().payload_const() as *const u32;
+        let temporary_blob = alloc_blob(mem, TAG_BLOB_B, Words(type_count).to_bytes());
+        let offset_table = self.type_offsets.as_blob().payload_const() as *const usize;
         let type_table = temporary_blob.as_blob_mut().payload_addr() as *mut *mut u8;
         let candid_data = self.candid_data.as_blob_mut().payload_addr();
         for index in 0..type_count {
             let offset = *offset_table.add(index);
-            debug_assert!((offset as usize) < self.candid_length());
+            debug_assert!(offset < self.candid_length());
             let entry = type_table.add(index);
-            *entry = candid_data.add(offset as usize);
+            *entry = candid_data.add(offset);
         }
         type_table
     }
@@ -110,16 +120,16 @@ unsafe fn create_type_check_cache<M: Memory>(
     old_type: &TypeDescriptor,
     new_type: &TypeDescriptor,
 ) -> BitRel {
-    let old_type_count = old_type.type_count() as u32;
-    let new_type_count = new_type.type_count() as u32;
+    let old_type_count = old_type.type_count();
+    let new_type_count = new_type.type_count();
     let words = Words(BitRel::words(old_type_count, new_type_count));
     let byte_length = words.to_bytes();
     let blob_value = alloc_blob(mem, TAG_BLOB_B, byte_length);
-    let ptr = blob_value.as_blob_mut().payload_addr() as *mut u32;
+    let ptr = blob_value.as_blob_mut().payload_addr() as *mut usize;
     let end = blob_value
         .as_blob()
         .payload_const()
-        .add(byte_length.as_usize()) as *mut u32;
+        .add(byte_length.as_usize()) as *mut usize;
     let cache = BitRel {
         ptr,
         end,

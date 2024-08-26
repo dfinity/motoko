@@ -1,3 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID upgrade-remove-add-fields/version0.mo ""
 ingress $ID increase "DIDL\x00\x01\x7d\x0F"

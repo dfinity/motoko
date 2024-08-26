@@ -1,11 +1,15 @@
 actor Counter_v3 {
+  stable var state : Int = 0;
 
-  stable var state : Nat = 0;
-
-  public func inc() : async Nat {
+  public func increment() : async () {
     state += 1;
-    return state;
   };
 
-  public query func read() : async Nat { return state; }
-}
+  public func decrement() : async () {
+    state -= 1;
+  };
+
+  public query func read() : async Int {
+    return state;
+  };
+};

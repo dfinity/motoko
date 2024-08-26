@@ -124,10 +124,10 @@ module StableMemory {
 (I think the compiler will still optimize these nested calls to known
 function calls, but it would be worth checking).
 
-# Maintaining existing Stable Variables.
+# Maintaining existing Stable Variables (Legacy Persistence).
 
-Stable memory is currently hidden behind the abstraction of stable
-variables, which we will still need to maintain. The current
+In classical persistence, stable memory is hidden behind the abstraction of stable
+variables, which we will still need to maintain. This old
 implementation of stable variables stores all variables as a
 Candidish record of _stable_ fields, starting at stable memory address 0 with
 initial word encoding size (in bytes?) followed by contents.
@@ -169,6 +169,9 @@ and other metadata (so that initial reads after growing beyond page `size`  alwa
 
 This scheme avoids relocating most of StableMem and is constant time when
 there are no stable variables.
+
+[Enhanced orthogonal persistence](OrthogonalPersistence.md) introduces a new peristence implementation.
+The old mechanism is only supported for backwards compatibility.
 
 # Details:
 

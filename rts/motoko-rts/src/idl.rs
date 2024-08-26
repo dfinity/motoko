@@ -1,16 +1,21 @@
 #![allow(non_upper_case_globals)]
+
 use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
-use crate::leb128::{leb128_decode, sleb128_decode};
+
 use crate::memory::{alloc_blob, Memory};
-use crate::persistence::compatibility::TypeDescriptor;
-use crate::types::{Value, Words, TAG_BLOB_B};
+use crate::types::{Words, TAG_BLOB_B};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
+
+use crate::libc_declarations::{c_void, memcmp};
+
+#[enhanced_orthogonal_persistence]
+use crate::types::Value;
 
 extern "C" {
     // check instruction decoding limit, exported by moc
@@ -57,8 +62,22 @@ const IDL_CON_alias: i32 = 1;
 const IDL_PRIM_lowest: i32 = -17;
 
 // Only used for memory compatiblity checks for orthogonal persistence.
+#[enhanced_orthogonal_persistence]
 const IDL_EXT_blob: i32 = -129;
+#[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
+
+unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
+    let value = crate::leb128::leb128_decode(buf);
+    assert!(value <= u32::MAX as usize);
+    value as u32
+}
+
+unsafe fn sleb128_decode(buf: *mut Buf) -> i32 {
+    let value = crate::leb128::sleb128_decode(buf);
+    assert!(value >= i32::MIN as isize && value <= i32::MAX as isize);
+    value as i32
+}
 
 pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode(buf), (*buf).ptr)
@@ -70,7 +89,8 @@ enum CompatibilityMode {
     PureCandid,
     /// Candidish stabilization (old stabilization format).
     CandidishStabilization,
-    /// Memory compatibility of orthogonal persistence.
+    /// Memory compatibility of orthogonal persistence (with or without graph copying).
+    #[cfg(feature = "enhanced_orthogonal_persistence")]
     MemoryCompatibility,
 }
 
@@ -84,18 +104,15 @@ unsafe fn is_primitive_type(mode: CompatibilityMode, ty: i32) -> bool {
     match mode {
         CompatibilityMode::PureCandid => false,
         CompatibilityMode::CandidishStabilization => ty == IDL_EXT_region,
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
         CompatibilityMode::MemoryCompatibility => ty == IDL_EXT_region || ty == IDL_EXT_blob,
     }
 }
 
 // TBR; based on Text.text_compare
-unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
+unsafe fn utf8_cmp(len1: usize, p1: *mut u8, len2: usize, p2: *mut u8) -> i32 {
     let len = min(len1, len2);
-    let cmp = libc::memcmp(
-        p1 as *mut libc::c_void,
-        p2 as *mut libc::c_void,
-        len as usize,
-    );
+    let cmp = memcmp(p1 as *mut c_void, p2 as *mut c_void, len);
     if cmp != 0 {
         return cmp;
     } else if len1 > len {
@@ -129,7 +146,7 @@ unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
 
 // NB. This function assumes the allocation does not need to survive GC
 // Therefore, no post allocation barrier is applied.
-unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
+unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
     alloc_blob(mem, TAG_BLOB_B, size.to_bytes())
         .as_blob_mut()
         .payload_addr()
@@ -158,7 +175,7 @@ unsafe fn parse_idl_header<M: Memory>(
     extended: bool,
     buf: *mut Buf,
     typtbl_out: *mut *mut *mut u8,
-    typtbl_size_out: *mut u32,
+    typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
 ) {
     let mode = if extended {
@@ -187,10 +204,10 @@ unsafe fn parse_idl_header<M: Memory>(
     }
 
     // Let the caller know about the table size
-    *typtbl_size_out = n_types;
+    *typtbl_size_out = n_types as usize;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {
@@ -247,14 +264,14 @@ unsafe fn parse_idl_header<M: Memory>(
             for _ in 0..leb128_decode(buf) {
                 // Name
                 let (len, p) = leb128_decode_ptr(buf);
-                buf.advance(len);
+                buf.advance(len as usize);
                 // Method names must be valid unicode
-                utf8_validate(p as *const _, len);
+                utf8_validate(p as *const _, len as usize);
                 // Method names must be in order
                 if last_p != core::ptr::null_mut() {
-                    let cmp = libc::memcmp(
-                        last_p as *mut libc::c_void,
-                        p as *mut libc::c_void,
+                    let cmp = memcmp(
+                        last_p as *mut c_void,
+                        p as *mut c_void,
                         min(last_len, len) as usize,
                     );
                     if cmp > 0 || (cmp == 0 && last_len >= len) {
@@ -271,7 +288,7 @@ unsafe fn parse_idl_header<M: Memory>(
         } else {
             // Future type
             let n = leb128_decode(buf);
-            buf.advance(n);
+            buf.advance(n as usize);
         }
     }
 
@@ -291,7 +308,7 @@ unsafe fn parse_idl_header<M: Memory>(
             for _ in 0..leb128_decode(&mut tmp_buf) {
                 // Name
                 let len = leb128_decode(&mut tmp_buf);
-                Buf::advance(&mut tmp_buf, len);
+                Buf::advance(&mut tmp_buf, len as usize);
                 // Type
                 let t = sleb128_decode(&mut tmp_buf);
                 if !(t >= 0 && (t as u32) < n_types) {
@@ -330,13 +347,13 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
 
 unsafe fn skip_blob(buf: *mut Buf) {
     let len = leb128_decode(buf);
-    buf.advance(len);
+    buf.advance(len as usize);
 }
 
 unsafe fn skip_text(buf: *mut Buf) {
     let (len, p) = leb128_decode_ptr(buf);
-    buf.advance(len); // advance first; does the bounds check
-    utf8_validate(p as *const _, len);
+    buf.advance(len as usize); // advance first; does the bounds check
+    utf8_validate(p as *const _, len as usize);
 }
 
 unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) {
@@ -492,7 +509,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 // Future type
                 let n_data = leb128_decode(buf);
                 let n_ref = leb128_decode(buf);
-                buf.advance(n_data);
+                buf.advance(n_data as usize);
                 if n_ref > 0 {
                     idl_trap_with("skip_any: skipping references");
                 }
@@ -535,7 +552,7 @@ unsafe extern "C" fn find_field(
     typtbl: *mut *mut u8,
     tag: u32,
     n: *mut u8,
-) -> u32 {
+) -> bool {
     while *n > 0 {
         let last_p = (*tb).ptr;
         let this_tag = leb128_decode(tb);
@@ -545,15 +562,15 @@ unsafe extern "C" fn find_field(
             *n -= 1;
         } else if tag == this_tag {
             *n -= 1;
-            return 1;
+            return true;
         } else {
             // Rewind reading tag
             (*tb).ptr = last_p;
-            return 0;
+            return false;
         }
     }
 
-    0
+    false
 }
 
 #[no_mangle]
@@ -584,6 +601,7 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
     return t == IDL_CON_opt;
 }
 
+#[enhanced_orthogonal_persistence]
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum TypeVariance {
     Covariance,
@@ -591,6 +609,7 @@ pub(crate) enum TypeVariance {
     Invariance,
 }
 
+#[enhanced_orthogonal_persistence]
 impl TypeVariance {
     fn invert(self) -> TypeVariance {
         match self {
@@ -601,7 +620,13 @@ impl TypeVariance {
     }
 }
 
-unsafe fn recurring_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32, t2: u32) -> bool {
+#[enhanced_orthogonal_persistence]
+unsafe fn recurring_memory_check(
+    cache: &BitRel,
+    variance: TypeVariance,
+    t1: usize,
+    t2: usize,
+) -> bool {
     match variance {
         TypeVariance::Covariance => cache.visited(true, t1, t2),
         TypeVariance::Contravariance => cache.visited(false, t1, t2),
@@ -609,7 +634,8 @@ unsafe fn recurring_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32
     }
 }
 
-unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32, t2: u32) {
+#[enhanced_orthogonal_persistence]
+unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usize, t2: usize) {
     match variance {
         TypeVariance::Covariance => cache.visit(true, t1, t2),
         TypeVariance::Contravariance => cache.visit(false, t1, t2),
@@ -620,7 +646,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32,
     }
 }
 
-/// Memory compatibility check for orthogonal persistence.
+/// Memory compatibility check for orthogonal persistence (with or without graph copying).
 /// Checks whether the new type (`typetbl2`) is compatible to the old type (`typetbl1`).
 /// The implementation is similar to the Candid sub-type test `sub()` below, however,
 /// with some relevant differences w.r.t. the permitted type relations:
@@ -630,6 +656,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32,
 /// * Records cannot introduce additional optional fields.
 /// * Same arity for tuple types.
 /// * Records and tuples are distinct.
+#[enhanced_orthogonal_persistence]
 pub(crate) unsafe fn memory_compatible(
     rel: &BitRel,
     variance: TypeVariance,
@@ -645,8 +672,8 @@ pub(crate) unsafe fn memory_compatible(
     // i.e. new actor fields can be inserted in new program versions.
     // The `main_actor` flag only occurs non-recursively at the top level of the memory compatibility check.
     if !main_actor && t1 >= 0 && t2 >= 0 {
-        let t1 = t1 as u32;
-        let t2 = t2 as u32;
+        let t1 = t1 as usize;
+        let t2 = t2 as usize;
         if recurring_memory_check(rel, variance, t1, t2) {
             return true;
         };
@@ -894,7 +921,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 };
                 let (len2, p2) = leb128_decode_ptr(&mut tb2);
-                Buf::advance(&mut tb2, len2);
+                Buf::advance(&mut tb2, len2 as usize);
                 let t21 = sleb128_decode(&mut tb2);
                 let mut len1: u32;
                 let mut p1: *mut u8;
@@ -902,10 +929,10 @@ pub(crate) unsafe fn memory_compatible(
                 let mut cmp: i32;
                 loop {
                     (len1, p1) = leb128_decode_ptr(&mut tb1);
-                    Buf::advance(&mut tb1, len1);
+                    Buf::advance(&mut tb1, len1 as usize);
                     t11 = sleb128_decode(&mut tb1);
                     n1 -= 1;
-                    cmp = utf8_cmp(len1, p1, len2, p2);
+                    cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
                     if variance != TypeVariance::Invariance && cmp < 0 && n1 > 0 {
                         continue;
                     };
@@ -938,8 +965,8 @@ pub(crate) unsafe fn sub(
     t2: i32,
 ) -> bool {
     if t1 >= 0 && t2 >= 0 {
-        let t1 = t1 as u32;
-        let t2 = t2 as u32;
+        let t1 = t1 as usize;
+        let t2 = t2 as usize;
         if rel.visited(p, t1, t2) {
             // visited? (bit 0)
             // return assumed or determined result
@@ -1161,7 +1188,7 @@ pub(crate) unsafe fn sub(
                         break 'return_false;
                     };
                     let (len2, p2) = leb128_decode_ptr(&mut tb2);
-                    Buf::advance(&mut tb2, len2);
+                    Buf::advance(&mut tb2, len2 as usize);
                     let t21 = sleb128_decode(&mut tb2);
                     let mut len1: u32;
                     let mut p1: *mut u8;
@@ -1169,10 +1196,10 @@ pub(crate) unsafe fn sub(
                     let mut cmp: i32;
                     loop {
                         (len1, p1) = leb128_decode_ptr(&mut tb1);
-                        Buf::advance(&mut tb1, len1);
+                        Buf::advance(&mut tb1, len1 as usize);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        cmp = utf8_cmp(len1, p1, len2, p2);
+                        cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
                         if cmp < 0 && n1 > 0 {
                             continue;
                         };
@@ -1195,19 +1222,23 @@ pub(crate) unsafe fn sub(
     }
     // remember negative result ...
     if t1 >= 0 && t2 >= 0 {
-        rel.disprove(p, t1 as u32, t2 as u32);
+        rel.disprove(p, t1 as usize, t2 as usize);
     }
     // .. only then return false
     return false;
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
+unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize) -> usize {
     return BitRel::words(typtbl_size1, typtbl_size2);
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typtbl_size2: u32) {
+unsafe extern "C" fn idl_sub_buf_init(
+    rel_buf: *mut usize,
+    typtbl_size1: usize,
+    typtbl_size2: usize,
+) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
@@ -1217,6 +1248,7 @@ unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typt
     rel.init();
 }
 
+#[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 unsafe fn idl_alloc_typtbl<M: Memory>(
     mem: &mut M,
@@ -1224,27 +1256,29 @@ unsafe fn idl_alloc_typtbl<M: Memory>(
     type_offsets: Value,
     typtbl_out: *mut *mut *mut u8,
     typtbl_end_out: *mut *mut u8,
-    typtbl_size_out: *mut u32,
+    typtbl_size_out: *mut usize,
 ) {
+    use crate::persistence::compatibility::TypeDescriptor;
+
     let mut type_descriptor = TypeDescriptor::new(candid_data, type_offsets);
     *typtbl_out = type_descriptor.build_type_table(mem);
     *typtbl_end_out = type_descriptor.type_table_end();
-    *typtbl_size_out = type_descriptor.type_count() as u32;
+    *typtbl_size_out = type_descriptor.type_count();
 }
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub(
-    rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
+    rel_buf: *mut usize, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,
     typtbl_end1: *mut u8,
     typtbl_end2: *mut u8,
-    typtbl_size1: u32,
-    typtbl_size2: u32,
+    typtbl_size1: usize,
+    typtbl_size2: usize,
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut u32));
+    debug_assert!(rel_buf != (0 as *mut usize));
     debug_assert!(typtbl1 != (0 as *mut *mut u8));
     debug_assert!(typtbl2 != (0 as *mut *mut u8));
     debug_assert!(typtbl_end1 != (0 as *mut u8));
@@ -1256,9 +1290,7 @@ unsafe extern "C" fn idl_sub(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-
     debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
-
     return sub(
         &rel,
         true,

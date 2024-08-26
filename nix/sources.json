@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/143/head",
+        "branch": "luc/latest-ic-wasm64-test",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "31f02c1b08aef1c6ee4c1b6bb9d25c21c5a4ff41",
-        "sha256": "04k278900kv082axrgv6vga0n8sw6c3lcc9298ih9gjyx8hanfb1",
+        "rev": "7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a",
+        "sha256": "1ykawbpaqnf1y508vh81m30p813ykmnbffxc3p0hw0p0k1ynq6zz",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/31f02c1b08aef1c6ee4c1b6bb9d25c21c5a4ff41.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -72,13 +72,13 @@
     "motoko-base": {
         "branch": "next-moc",
         "description": "The Motoko base library",
-        "homepage": null,
+        "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "4abc98e92909d7b178629912057473302cf0d8be",
-        "sha256": "09yhfk17rb9xk2cvi6353hfb43df05pg0x1gw5qrf8n0g0dvd3jx",
+        "rev": "dfabfc3201950263a0057f5d1a78d2ede5c87478",
+        "sha256": "1wd9rcmhg82h08l3gz3gmn2xpgalvf679w7yz2g35yzbg2b5g2fd",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/4abc98e92909d7b178629912057473302cf0d8be.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/dfabfc3201950263a0057f5d1a78d2ede5c87478.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -131,6 +131,18 @@
         "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
         "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs-unstable": {
+        "branch": "master",
+        "description": "Nix Packages collection & NixOS",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "9d2864289e65d0dc841123ae86bc7b3f77b6d12d",
+        "sha256": "0f3bcphzrjm1hs81mhpfx1hqxfnbvhhv5hv82wi1h3f735i279ja",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/9d2864289e65d0dc841123ae86bc7b3f77b6d12d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
