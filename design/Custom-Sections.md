@@ -34,3 +34,7 @@ let hash : string -> int32 = fun s ->
       (Lib.String.explode s)
   )
 ```
+
+Motoko generates an additional `"enhanced-orthogonal-persistence"` private custom section to
+mark Motoko Wasm binaries that rely on IC's support to retain the main Wasm memory on an upgrade, 
+cf. [Orthogonal Persistence](OrthogonalPersistence.md).

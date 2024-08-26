@@ -6,6 +6,7 @@ use crate::{
     },
     mem_utils::memcpy_words,
     memory::Memory,
+    stable_option::StableOption,
     types::*,
 };
 
@@ -17,16 +18,16 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn start_phase(state: &mut State) {
+    pub unsafe fn start_phase(mem: &mut M, state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
-        heap.plan_evacuations();
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
+        heap.plan_evacuations(mem);
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::evacuation_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
     }
 
     pub unsafe fn evacuation_completed(state: &State) -> bool {
@@ -75,7 +76,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        debug_assert!(is_object_tag(original.tag()));
         debug_assert!(!original.is_forwarded());
         let size = block_size(original as usize);
         let new_address = self.mem.alloc_words(size);

@@ -1,4 +1,4 @@
-//MOC-FLAG --experimental-rtti --sanity-checks
+//MOC-FLAG --sanity-checks
 
 import { debugPrint } "mo:prim";
 

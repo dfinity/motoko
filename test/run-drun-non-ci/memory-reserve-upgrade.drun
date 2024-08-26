@@ -1,6 +1,0 @@
-# INCREMENTAL-GC-ONLY
-# SKIP ic-ref-run
-install $ID memory-reserve-upgrade/memory-reserve-upgrade.mo ""
-ingress $ID prepare1 "DIDL\x00\x00"
-ingress $ID prepare2 "DIDL\x00\x00"
-upgrade $ID memory-reserve-upgrade/memory-reserve-upgrade.mo ""

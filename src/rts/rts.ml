@@ -1,8 +1,8 @@
 (*
-This source file loads the RTS (`mo-rts.wasm` etc.) via the environment
+This source file loads the RTS Wasm files via the environment
 variables. This is for local development (e.g. inside `nix-shell`). The nix
 build of `moc` will statically replace this file with one that just embeds
-`mo-rts.wasm` etc. as a static string, to produce a fully self-contained `moc`
+RTS Wasm files as static strings, to produce a fully self-contained `moc`
 binary for distribution.
 *)
 
@@ -24,3 +24,6 @@ let wasm_non_incremental_debug : string Lazy.t = lazy (load_file "MOC_NON_INCREM
 
 let wasm_incremental_release : string Lazy.t = lazy (load_file "MOC_INCREMENTAL_RELEASE_RTS")
 let wasm_incremental_debug : string Lazy.t = lazy (load_file "MOC_INCREMENTAL_DEBUG_RTS")
+
+let wasm_eop_release : string Lazy.t = lazy (load_file "MOC_EOP_RELEASE_RTS")
+let wasm_eop_debug : string Lazy.t = lazy (load_file "MOC_EOP_DEBUG_RTS")

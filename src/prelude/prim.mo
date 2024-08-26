@@ -84,6 +84,9 @@ func rts_mutator_instructions() : Nat {
 func rts_collector_instructions() : Nat {
   (prim "rts_collector_instructions" : () -> Nat)();
 };
+func rts_upgrade_instructions() : Nat {
+  (prim "rts_upgrade_instructions" : () -> Nat)();
+};
 
 func rts_stable_memory_size() : Nat {
   (prim "rts_stable_memory_size" : () -> Nat) ()
@@ -307,15 +310,16 @@ func time() : Nat64 = (prim "time" : () -> Nat64)();
 
 // Principal
 
-func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
+func blobOfPrincipal(id : Principal) : Blob = (prim "blobOfPrincipal" : Principal -> Blob) id;
 func principalOfBlob(act : Blob) : Principal {
+  // TODO: better: check size in prim "principalOfBob" instead
   if (act.size() > 29) {
     trap("blob too long for principal");
   };
-  (prim "cast" : Blob -> Principal) act;
+  (prim "principalOfBlob" : Blob -> Principal) act;
 };
 
-func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
+func principalOfActor(act : actor {}) : Principal = (prim "principalOfActor" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 

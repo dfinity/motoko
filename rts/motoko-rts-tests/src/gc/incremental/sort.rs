@@ -34,7 +34,11 @@ pub fn test() {
 }
 
 fn sort_test(array: &mut [usize]) {
-    sort(array, &|left, right| left.cmp(&right));
+    unsafe {
+        sort(array.as_mut_ptr(), array.len(), &|left, right| {
+            left.cmp(&right)
+        });
+    }
     check_sorted(array);
 }
 

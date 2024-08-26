@@ -229,8 +229,4 @@ let gc_flags option =
   match Js.to_string option with
   | "force" -> Flags.force_gc := true
   | "scheduling" -> Flags.force_gc := false
-  | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
-  | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
-  | "generational" -> Flags.gc_strategy := Mo_config.Flags.Generational
-  | "incremental" -> Flags.gc_strategy := Mo_config.Flags.Incremental
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")

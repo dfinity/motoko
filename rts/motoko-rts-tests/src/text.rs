@@ -1,6 +1,6 @@
 //! Text and text iterator tests
 
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::text::{
@@ -8,11 +8,9 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, Value, Words, TAG_BLOB};
+use motoko_rts::types::{Bytes, Value, TAG_BLOB_T};
 
 use std::convert::TryFrom;
-
-use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 static STR: &str = "abcdefgh";
 
@@ -48,16 +46,16 @@ impl<'a, M: Memory> Iterator for TextIter<'a, M> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    let mut mem = initialize_test_memory();
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
         let char = char::try_from(i).unwrap();
         let mut str = String::new();
         str.push(char);
-        let mut out: u32 = 0;
+        let mut out: usize = 0;
         let char_decoded = decode_code_point(str.as_ptr(), &mut out as *mut _);
-        assert_eq!(out, str.len() as u32);
+        assert_eq!(out, str.len());
         assert_eq!(char::try_from(char_decoded).unwrap(), char);
 
         let text = text_singleton(&mut mem, char as u32);
@@ -68,7 +66,7 @@ pub unsafe fn test() {
     for i in 0..8 {
         let str = &STR[0..i + 1];
         let text = text_of_str(&mut mem, str);
-        assert_eq!(text.tag(), TAG_BLOB);
+        assert_eq!(text.tag(), TAG_BLOB_T);
         let iter = TextIter::from_text(&mut mem, text);
         assert_eq!(iter.collect::<String>(), str);
     }
@@ -76,23 +74,34 @@ pub unsafe fn test() {
     println!("  Testing concatenation");
     concat1(&mut mem);
 
+    let mut long_text = String::from("");
+    for i in 0..=255u32 {
+        long_text.push(char::try_from(i).unwrap());
+    }
+    concat_test(&mut mem, vec![String::from("")]);
+    concat_test(&mut mem, vec![String::from(""), String::from("")]);
+    concat_test(&mut mem, vec![String::from("a"), String::from("")]);
+    concat_test(&mut mem, vec![String::from(""), String::from("b")]);
+    concat_test(&mut mem, vec![String::from("a"), String::from("b")]);
+    concat_test(
+        &mut mem,
+        vec![String::from(""), String::from(""), String::from("")],
+    );
+    concat_test(
+        &mut mem,
+        vec![
+            String::from("test-"),
+            String::from("abc"),
+            String::from("-0123"),
+            String::from("_!?"),
+            String::from("äöü"),
+            long_text,
+        ],
+    );
+
     drop(mem);
 
-    let mut proptest_runner = TestRunner::new(Config {
-        cases: 1_000,
-        failure_persistence: None,
-        ..Default::default()
-    });
-
-    proptest_runner
-        .run(
-            &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
-            |strs| {
-                let mut mem = TestMemory::new(Words(1024 * 1024));
-                concat_prop(&mut mem, strs)
-            },
-        )
-        .unwrap();
+    reset_test_memory();
 }
 
 unsafe fn concat1<M: Memory>(mem: &mut M) {
@@ -108,19 +117,19 @@ unsafe fn concat1<M: Memory>(mem: &mut M) {
     let expected = strs.concat();
 
     // Check number of characters
-    assert_eq!(text_len(obj), expected.chars().count() as u32);
+    assert_eq!(text_len(obj), expected.chars().count());
 
     // Check text size in bytes
-    assert_eq!(text_size(obj), Bytes(expected.len() as u32));
+    assert_eq!(text_size(obj), Bytes(expected.len()));
 
     // Generate blob
     let text_blob = blob_of_text(mem, obj);
 
     // Check number of characters in blob
-    assert_eq!(text_len(text_blob), expected.chars().count() as u32);
+    assert_eq!(text_len(text_blob), expected.chars().count());
 
     // Check blob size in bytes
-    assert_eq!(text_size(text_blob), Bytes(expected.len() as u32));
+    assert_eq!(text_size(text_blob), Bytes(expected.len()));
 
     // Check blob iteration
     let blob = blob_of_text(mem, obj);
@@ -133,7 +142,7 @@ unsafe fn concat1<M: Memory>(mem: &mut M) {
     assert_eq!(TextIter::from_text(mem, obj).collect::<String>(), expected);
 }
 
-fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
+fn concat_test<M: Memory>(mem: &mut M, strs: Vec<String>) {
     unsafe {
         let mut obj = text_of_str(mem, "");
         for str in &strs {
@@ -144,44 +153,28 @@ fn concat_prop<M: Memory>(mem: &mut M, strs: Vec<String>) -> TestCaseResult {
         let expected = strs.concat();
 
         // Check number of characters
-        if text_len(obj) != expected.chars().count() as u32 {
-            return Err(TestCaseError::Fail("text_len".into()));
-        }
+        assert_eq!(text_len(obj), expected.chars().count());
 
         // Check text size in bytes
-        if text_size(obj) != Bytes(expected.len() as u32) {
-            return Err(TestCaseError::Fail("text_size".into()));
-        }
+        assert_eq!(text_size(obj), Bytes(expected.len()));
 
         // Generate blob
         let text_blob = blob_of_text(mem, obj);
 
         // Check number of characters in blob
-        if text_len(text_blob) != expected.chars().count() as u32 {
-            return Err(TestCaseError::Fail("blob text_len".into()));
-        }
+        assert_eq!(text_len(text_blob), expected.chars().count());
 
         // Check blob size in bytes
-        if text_size(text_blob) != Bytes(expected.len() as u32) {
-            return Err(TestCaseError::Fail("blob text_size".into()));
-        }
+        assert_eq!(text_size(text_blob), Bytes(expected.len()));
 
         // Check blob iteration
         let blob = blob_of_text(mem, obj);
-        if TextIter::from_text(mem, blob).collect::<String>() != expected {
-            return Err(TestCaseError::Fail("blob_of_text iteration".into()));
-        }
+        assert_eq!(TextIter::from_text(mem, blob).collect::<String>(), expected);
 
         // Check blob-concat comparison
-        if text_compare(text_blob, obj) != 0 {
-            return Err(TestCaseError::Fail("text_compare of blob and text".into()));
-        }
+        assert_eq!(text_compare(text_blob, obj), 0);
 
         // Check concat iteration
-        if TextIter::from_text(mem, obj).collect::<String>() != expected {
-            return Err(TestCaseError::Fail("iteration".into()));
-        }
-
-        Ok(())
+        assert_eq!(TextIter::from_text(mem, obj).collect::<String>(), expected);
     }
 }
