@@ -1,3 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID upgrade-generics/version0.mo ""
 ingress $ID print "DIDL\x00\x00"

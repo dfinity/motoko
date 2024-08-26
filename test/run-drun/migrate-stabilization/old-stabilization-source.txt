@@ -1,2 +1,0 @@
-old-destabilization.wasm is compiled from `new-destabilzation.mo` with classical `moc` compiler using `--sanity-checks`.
-Using 32-bit main memory and classical Candid stabilization.

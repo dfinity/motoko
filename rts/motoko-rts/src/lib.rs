@@ -6,8 +6,8 @@
     core_intrinsics,
     panic_info_message,
     proc_macro_hygiene,
-    // We do not need simd but this flag enables `core::arch:wasm64`.
-    // See https://github.com/rust-lang/rust/issues/90599
+    // // We do not need simd but this flag enables `core::arch:wasm64`.
+    // // See https://github.com/rust-lang/rust/issues/90599
     simd_wasm64
 )]
 
@@ -40,16 +40,20 @@ pub mod gc;
 mod idl;
 pub mod leb128;
 mod libc_declarations;
-mod mem_utils;
+pub mod mem_utils;
 pub mod memory;
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
 pub mod persistence;
 pub mod principal_id;
 #[cfg(feature = "ic")]
 pub mod region;
-#[cfg(feature = "ic")]
-mod stable_mem;
+#[enhanced_orthogonal_persistence]
+pub mod stabilization;
+pub mod stable_mem;
 mod static_checks;
+#[classical_persistence]
+pub mod stream;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;
@@ -64,6 +68,13 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
+#[non_incremental_gc]
+#[ic_mem_fn(ic_only)]
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
+    mem.alloc_words(n)
+}
+
+#[incremental_gc]
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
     crate::gc::incremental::get_partitioned_heap().allocate(mem, n)

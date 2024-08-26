@@ -1,4 +1,5 @@
 use motoko_rts::bitrel::BitRel;
+use motoko_rts_macros::uses_enhanced_orthogonal_persistence;
 
 pub unsafe fn test() {
     println!("Testing bitrel ...");
@@ -9,7 +10,14 @@ pub unsafe fn test() {
 
     let mut cache: [usize; N] = [0xFFFFFFF; N];
 
-    assert_eq!(usize::BITS, 64);
+    assert_eq!(
+        usize::BITS,
+        if uses_enhanced_orthogonal_persistence!() {
+            64
+        } else {
+            32
+        }
+    );
     for size1 in 0..K {
         for size2 in 0..K {
             let w = BitRel::words(size1, size2);

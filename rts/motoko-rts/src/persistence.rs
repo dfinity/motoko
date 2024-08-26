@@ -14,7 +14,8 @@ use crate::{
     persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
-        VERSION_STABLE_HEAP_NO_REGIONS, VERSION_STABLE_HEAP_REGIONS,
+        VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
+        VERSION_STABLE_HEAP_REGIONS,
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
@@ -92,7 +93,6 @@ impl PersistentMetadata {
 
     unsafe fn initialize<M: Memory>(self: *mut Self) {
         use crate::gc::incremental::IncrementalGC;
-        debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
@@ -102,8 +102,9 @@ impl PersistentMetadata {
     }
 }
 
-/// Initialize fresh persistent memory after the canister installation or
-/// reuse the persistent memory on a canister upgrade.
+/// Initialize fresh persistent memory after the canister installation or reuse
+/// the persistent memory on a canister upgrade if enhanced orthogonal persistence
+/// is active. For graph-copy-based destabilization, the memory is reinitialized.
 pub unsafe fn initialize_memory<M: Memory>() {
     allocate_initial_memory(Bytes(HEAP_START));
     let metadata = PersistentMetadata::get();
@@ -117,7 +118,9 @@ pub unsafe fn initialize_memory<M: Memory>() {
 unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     match read_persistence_version() {
         VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
-        LEGACY_VERSION_NO_STABLE_MEMORY
+        VERSION_GRAPH_COPY_NO_REGIONS
+        | VERSION_GRAPH_COPY_REGIONS
+        | LEGACY_VERSION_NO_STABLE_MEMORY
         | LEGACY_VERSION_SOME_STABLE_MEMORY
         | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
@@ -182,7 +185,7 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Register the stable actor type on canister installation and upgrade.
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.

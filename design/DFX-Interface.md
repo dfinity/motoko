@@ -118,6 +118,10 @@ used only in very specific cases.
 The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
 metadata name is specified in the `--public-metadata` flag.
 
+Moreover, the compiler generates a special marker custom section `"enhanced-orthogonal-persistence"` if the new orthogonal 
+persistence support is enabled, see [Orthogonal Persistence](OrthogonalPersistence.md). This section is always private and
+always emited independent of the compiler flags `--public-metadata` or `--public-metadata`.
+
 Checking stable type compatibility
 ----------------------------------
 
@@ -130,6 +134,10 @@ a type safe way without unintentional data loss.
 
 If the check succeeds, nothing will be printed. 
 If the check fails, the error message will be printed in stderr and the command returns with exit code 1.
+The check can also emit warning messages, e.g. if stable variables are dropped.
+
+With [enhanced orthogonal persistence](OrthogonalPersistence.md), the stable compatibility is also integrated in the runtime
+system, to atomically guarantee memory compatibility during an upgrade.
 
 Invoking the IDE
 ----------------

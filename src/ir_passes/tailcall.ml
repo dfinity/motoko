@@ -128,7 +128,8 @@ and exp' env e  : exp' = match e.it with
     let exp4' = exp env exp4 in
     SelfCallE (ts, exp1', exp2', exp3', exp4')
   | ActorE (ds, fs, u, t) ->
-    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    (* TODO: tco other upgrade fields? *)
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade; stable_record = exp env u.stable_record } in
     ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
@@ -258,7 +259,12 @@ and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
   | ActorU (as_opt, ds, fs, u, t)  ->
-    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    (* TODO: tco other fields of u? *)
+    let u = { u with
+              preupgrade = exp env u.preupgrade;
+              postupgrade = exp env u.postupgrade;
+              stable_record = exp env u.stable_record;
+            } in
     ActorU (as_opt, snd (decs env ds), fs, u, t)
 
 and prog (cu, flavor) =

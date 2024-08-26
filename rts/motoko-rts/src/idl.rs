@@ -1,16 +1,21 @@
 #![allow(non_upper_case_globals)]
+
 use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
-use crate::libc_declarations::{c_void, memcmp};
+
 use crate::memory::{alloc_blob, Memory};
-use crate::persistence::compatibility::TypeDescriptor;
-use crate::types::{Value, Words, TAG_BLOB_B};
+use crate::types::{Words, TAG_BLOB_B};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
+
+use crate::libc_declarations::{c_void, memcmp};
+
+#[enhanced_orthogonal_persistence]
+use crate::types::Value;
 
 extern "C" {
     // check instruction decoding limit, exported by moc
@@ -57,7 +62,9 @@ const IDL_CON_alias: i32 = 1;
 const IDL_PRIM_lowest: i32 = -17;
 
 // Only used for memory compatiblity checks for orthogonal persistence.
+#[enhanced_orthogonal_persistence]
 const IDL_EXT_blob: i32 = -129;
+#[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
@@ -82,7 +89,8 @@ enum CompatibilityMode {
     PureCandid,
     /// Candidish stabilization (old stabilization format).
     CandidishStabilization,
-    /// Memory compatibility of orthogonal persistence.
+    /// Memory compatibility of orthogonal persistence (with or without graph copying).
+    #[cfg(feature = "enhanced_orthogonal_persistence")]
     MemoryCompatibility,
 }
 
@@ -96,6 +104,7 @@ unsafe fn is_primitive_type(mode: CompatibilityMode, ty: i32) -> bool {
     match mode {
         CompatibilityMode::PureCandid => false,
         CompatibilityMode::CandidishStabilization => ty == IDL_EXT_region,
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
         CompatibilityMode::MemoryCompatibility => ty == IDL_EXT_region || ty == IDL_EXT_blob,
     }
 }
@@ -592,6 +601,7 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
     return t == IDL_CON_opt;
 }
 
+#[enhanced_orthogonal_persistence]
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub(crate) enum TypeVariance {
     Covariance,
@@ -599,6 +609,7 @@ pub(crate) enum TypeVariance {
     Invariance,
 }
 
+#[enhanced_orthogonal_persistence]
 impl TypeVariance {
     fn invert(self) -> TypeVariance {
         match self {
@@ -609,6 +620,7 @@ impl TypeVariance {
     }
 }
 
+#[enhanced_orthogonal_persistence]
 unsafe fn recurring_memory_check(
     cache: &BitRel,
     variance: TypeVariance,
@@ -622,6 +634,7 @@ unsafe fn recurring_memory_check(
     }
 }
 
+#[enhanced_orthogonal_persistence]
 unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usize, t2: usize) {
     match variance {
         TypeVariance::Covariance => cache.visit(true, t1, t2),
@@ -633,7 +646,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usiz
     }
 }
 
-/// Memory compatibility check for orthogonal persistence.
+/// Memory compatibility check for orthogonal persistence (with or without graph copying).
 /// Checks whether the new type (`typetbl2`) is compatible to the old type (`typetbl1`).
 /// The implementation is similar to the Candid sub-type test `sub()` below, however,
 /// with some relevant differences w.r.t. the permitted type relations:
@@ -643,6 +656,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usiz
 /// * Records cannot introduce additional optional fields.
 /// * Same arity for tuple types.
 /// * Records and tuples are distinct.
+#[enhanced_orthogonal_persistence]
 pub(crate) unsafe fn memory_compatible(
     rel: &BitRel,
     variance: TypeVariance,
@@ -1234,6 +1248,7 @@ unsafe extern "C" fn idl_sub_buf_init(
     rel.init();
 }
 
+#[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 unsafe fn idl_alloc_typtbl<M: Memory>(
     mem: &mut M,
@@ -1243,6 +1258,8 @@ unsafe fn idl_alloc_typtbl<M: Memory>(
     typtbl_end_out: *mut *mut u8,
     typtbl_size_out: *mut usize,
 ) {
+    use crate::persistence::compatibility::TypeDescriptor;
+
     let mut type_descriptor = TypeDescriptor::new(candid_data, type_offsets);
     *typtbl_out = type_descriptor.build_type_table(mem);
     *typtbl_end_out = type_descriptor.type_table_end();
@@ -1273,9 +1290,7 @@ unsafe extern "C" fn idl_sub(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-
     debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
-
     return sub(
         &rel,
         true,

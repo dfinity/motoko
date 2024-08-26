@@ -1,14 +1,17 @@
-import Int "mo:base/Int";
+import Float "mo:base/Float";
 
 actor Counter_v4 {
+  stable var state : Float = 0.0;
 
-  stable var state : Int = 0;
-  stable var newState : Nat = Int.abs(state);
-
-  public func inc() : async Nat {
-    newState += 1;
-    return newState;
+  public func increment() : async () {
+    state += 0.5;
   };
 
-  public query func read() : async Nat { return newState; }
-}
+  public func decrement() : async () {
+    state -= 0.5;
+  };
+
+  public query func read() : async Float {
+    return state;
+  };
+};

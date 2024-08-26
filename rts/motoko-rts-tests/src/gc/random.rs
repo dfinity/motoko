@@ -7,7 +7,7 @@ fn rand_bool(rng: &mut Rand32) -> bool {
     rng.rand_range(0..2) == 1
 }
 
-pub(super) fn generate(seed: u64, max_objects: usize) -> TestHeap {
+pub fn generate(seed: u64, max_objects: usize) -> TestHeap {
     let mut rng = Rand32::new(seed);
 
     let n_objects = rng.rand_range(0..max_objects as u32 + 1);

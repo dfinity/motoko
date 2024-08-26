@@ -306,6 +306,22 @@ do
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
+    if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to classical orthogonal persistence)"
+        continue
+      fi
+    fi
+    if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to enhanced persistence)"
+        continue
+      fi
+    fi
     if [ $VIPER = 'yes' ]
     then
       TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
@@ -484,7 +500,28 @@ do
       then
         continue
       fi
-
+      if grep -q "# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
+      fi
+      if grep -q "# CLASSICAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
+      fi
+      if grep -q "# DEFAULT-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]]
+        then
+          continue
+        fi
+      fi
+      
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then

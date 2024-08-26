@@ -70,15 +70,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "pull/589/head",
+        "branch": "next-moc",
         "description": "The Motoko base library",
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "1aa2b8638245d7541e646f5edd326b2384ee92b4",
-        "sha256": "128v62p0wizncmp7d3zb3gxnagd11gnr29msqjb90k7f4klxpaiv",
+        "rev": "dfabfc3201950263a0057f5d1a78d2ede5c87478",
+        "sha256": "1wd9rcmhg82h08l3gz3gmn2xpgalvf679w7yz2g35yzbg2b5g2fd",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/1aa2b8638245d7541e646f5edd326b2384ee92b4.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/dfabfc3201950263a0057f5d1a78d2ede5c87478.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
