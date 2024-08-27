@@ -5841,31 +5841,40 @@ module StableMem = struct
     read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
     write env false "word32" I32Type 4l store_unskewed_ptr
+  let write_word64 env =
+    write env false "word64" I64Type 8l (G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None}))
 
+  let read_and_clear env name typ bytes zero load store =
+    Func.share_code1 Func.Always env (Printf.sprintf "__stablemem_read_and_clear_%s" name)
+      ("offset", I64Type) [typ]
+      (fun env get_offset ->
+        let words = Int32.div (Int32.add bytes 3l) 4l in
+        Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+          let (set_word, get_word, _) = new_local_ env typ "word" in
+          (* read *)
+          get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_offset ^^
+          compile_const_64 (Int64.of_int32 bytes) ^^
+          stable64_read env ^^
+          get_temp_ptr ^^ load ^^
+          set_word ^^
+          (* write 0 *)
+          get_temp_ptr ^^ zero ^^ store ^^
+          get_offset ^^
+          get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          compile_const_64 (Int64.of_int32 bytes) ^^
+          stable64_write env ^^
+          (* return word *)
+          get_word
+      ))
 
-  (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
-      Func.share_code1 Func.Always env "__stablemem_read_and_clear_word32"
-        ("offset", I64Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            let (set_word, get_word) = new_local env "word" in
-            (* read word *)
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            get_offset ^^
-            compile_const_64 4L ^^
-            stable64_read env ^^
-            get_temp_ptr ^^ load_unskewed_ptr ^^
-            set_word ^^
-            (* write 0 *)
-            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            compile_const_64 4L ^^
-            stable64_write env ^^
-            (* return word *)
-            get_word
-        ))
+      read_and_clear env "word32" I32Type 4l (compile_unboxed_const 0l) 
+      load_unskewed_ptr store_unskewed_ptr
+  let read_and_clear_word64 env =
+    read_and_clear env "word64" I64Type 8l (compile_const_64 0L)
+      (G.i (Load {ty = I64Type; align = 2; offset = 0L; sz = None}))
+      (G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None}))
 
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
@@ -6217,6 +6226,16 @@ module StableMemoryInterface = struct
 
 end
 
+module UpgradeStatistics = struct
+  let register_globals env =
+    E.add_global64 env "__upgrade_instructions" Mutable 0L
+
+  let get_upgrade_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__upgrade_instructions")))
+  let set_upgrade_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__upgrade_instructions")))
+end
+
 module RTS_Exports = struct
   (* Must be called late, after main codegen, to ensure correct generation of
      of functioning or unused-but-trapping stable memory exports (as required)
@@ -6258,6 +6277,32 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
+    });
+
+    let ic0_performance_counter_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "ic0_performance_counter" (
+            Func.of_body env ["number", I32Type] [I64Type]
+              (fun env ->
+                E.trap_with env "ic0_performance_counter is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "performance_counter" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_performance_counter";
+      edesc = nr (FuncExport (nr ic0_performance_counter_fi))
+    });
+
+    let set_upgrade_instructions_fi =
+      E.add_fun env "__set_upgrade_instructions" (
+      Func.of_body env ["instructions", I64Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        UpgradeStatistics.set_upgrade_instructions env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "set_upgrade_instructions";
+      edesc = nr (FuncExport (nr set_upgrade_instructions_fi))
     });
 
     (* Keep a memory reserve when in update or init state.
@@ -8562,10 +8607,10 @@ module Stabilization = struct
 
         (* Case-true: Stable variables only --
            no use of either regions or experimental API. *)
-        (* ensure [0,..,3,...len+4) *)
+        (* ensure [0,..,3,...len+4, .. len+4+8 ) *)
         compile_const_64 0L ^^
         extend64 get_len ^^
-        compile_add64_const 4L ^^  (* reserve one word for size *)
+        compile_add64_const 12L ^^  (* reserve 4 bytes for size, and 8 bytes for upgrade instructions *)
         StableMem.ensure env ^^
 
         (* write len to initial word of stable memory*)
@@ -8580,7 +8625,12 @@ module Stabilization = struct
             extend64 get_dst ^^
             extend64 get_len ^^
             StableMem.stable64_write env
-          end
+          end ^^
+
+          (* store stabilization instructions at len + 4 *)
+          extend64 get_len ^^ compile_add64_const 4L ^^
+          GC.instruction_counter env ^^
+          StableMem.write_word64 env
       end
       begin
         (* Case-false: Either regions or experimental API. *)
@@ -8592,11 +8642,11 @@ module Stabilization = struct
         set_N ^^
 
         (* grow mem to page including address
-           N + 4 + len + 4 + 4 + 4 = N + len + 16
+           N + 4 + len + 4 + 4 + 4 + 8 = N + len + 24
         *)
         get_N ^^
         extend64 get_len ^^
-        compile_add64_const 16L ^^
+        compile_add64_const 24L ^^
         StableMem.ensure env ^^
 
         get_N ^^
@@ -8620,6 +8670,12 @@ module Stabilization = struct
         compile_sub64_const 1L ^^
         compile_shl64_const (Int64.of_int page_size_bits) ^^
         set_M ^^
+
+        (* store stabilization instructions at M + (pagesize - 20) *)
+        get_M ^^
+        compile_add64_const (Int64.sub page_size64 20L) ^^
+        GC.instruction_counter env ^^
+        StableMem.write_word64 env ^^
 
         (* store mem_size at M + (pagesize - 12) *)
         get_M ^^
@@ -8660,6 +8716,8 @@ module Stabilization = struct
   let destabilize env ty save_version =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
+      let (set_instructions, get_instructions) = new_local64 env "instructions" in
+      compile_const_64 0L ^^ set_instructions ^^
       let (set_pages, get_pages) = new_local64 env "pages" in
       StableMem.stable64_size env ^^
       set_pages ^^
@@ -8747,15 +8805,35 @@ module Stabilization = struct
               (* set offset *)
               get_N ^^
               compile_add64_const 4L ^^
-              set_offset
+              set_offset ^^
+
+              (* Backwards compatibility: Check if upgrade instructions have space in the last page *)
+              get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+              get_M ^^ compile_add64_const (Int64.sub page_size64 20L) ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+              G.if0
+              begin
+                  (* load stabilization instructions *)
+                  get_M ^^
+                  compile_add64_const (Int64.sub page_size64 20L) ^^
+                  StableMem.read_and_clear_word64 env ^^
+                  set_instructions
+              end
+              G.nop
             end
             begin
               (* Sub-Case: Version 0.
                  Stable vars with NO Regions/Experimental API. *)
               (* assert mem_size == 0 *)
+              let (set_M, get_M) = new_local64 env "M" in
+
               StableMem.get_mem_size env ^^
               G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
               E.else_trap_with env "unexpected, non-zero stable memory size" ^^
+
+              StableMem.stable64_size env ^^
+              compile_shl64_const (Int64.of_int page_size_bits) ^^
+              set_M ^^
 
               (* set len *)
               get_marker ^^
@@ -8766,7 +8844,20 @@ module Stabilization = struct
               set_offset ^^
 
               compile_unboxed_const (Int32.of_int 0) ^^
-              save_version
+              save_version ^^
+
+              (* Backwards compatibility: Check if upgrade instructions have space in the last page *)
+              get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+              get_M ^^ compile_sub64_const 8L ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+              G.if0
+              begin
+                  (* load stabilization instructions *)
+                  get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+                  StableMem.read_and_clear_word64 env ^^
+                  set_instructions
+              end
+              G.nop
             end ^^ (* if_ *)
 
           let (set_blob, get_blob) = new_local env "blob" in
@@ -8796,7 +8887,12 @@ module Stabilization = struct
 
           (* return val *)
           get_val
-        end
+        end ^^
+        (* record total upgrade instructions *)
+        get_instructions ^^
+        GC.instruction_counter env ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        UpgradeStatistics.set_upgrade_instructions env
     | _ -> assert false
 end
 
@@ -11493,6 +11589,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_upgrade_instructions", [] ->
+    SR.Vanilla,
+    UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
     StableMem.stable64_size env ^^ BigNum.from_word64 env
@@ -13047,6 +13147,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
   Serialization.Registers.define_idl_limit_check env;
+  UpgradeStatistics.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
