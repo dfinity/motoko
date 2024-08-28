@@ -8717,6 +8717,17 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_instructions, get_instructions) = new_local64 env "instructions" in
+      let handle_missing_instructions = 
+        get_instructions ^^
+        compile_eq64_const 0L ^^
+        (G.if0
+        begin
+          (* Default to -1 if if no upgrade instructions were recorded, i.e. 
+             because the record space was lacking or was zero padding. *)
+          compile_const_64 (-1L) ^^
+          set_instructions
+        end
+        G.nop) in
       compile_const_64 0L ^^ set_instructions ^^
       let (set_pages, get_pages) = new_local64 env "pages" in
       StableMem.stable64_size env ^^
@@ -8807,19 +8818,20 @@ module Stabilization = struct
               compile_add64_const 4L ^^
               set_offset ^^
 
-              (* Backwards compatibility: Check if upgrade instructions have space in the last page *)
+              (* Backwards compatibility: Check if upgrade instructions have space in the last page. *)
               get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
               get_M ^^ compile_add64_const (Int64.sub page_size64 20L) ^^
               G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-              G.if0
+              (G.if0
               begin
-                  (* load stabilization instructions *)
+                  (* Load stabilization instructions if defined, otherwise zero padding. *)
                   get_M ^^
                   compile_add64_const (Int64.sub page_size64 20L) ^^
                   StableMem.read_and_clear_word64 env ^^
                   set_instructions
               end
-              G.nop
+              G.nop) ^^
+              handle_missing_instructions
             end
             begin
               (* Sub-Case: Version 0.
@@ -8846,18 +8858,19 @@ module Stabilization = struct
               compile_unboxed_const (Int32.of_int 0) ^^
               save_version ^^
 
-              (* Backwards compatibility: Check if upgrade instructions have space in the last page *)
+              (* Backwards compatibility: Check if stabilization instructions have space in the last page. *)
               get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
               get_M ^^ compile_sub64_const 8L ^^
               G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-              G.if0
+              (G.if0
               begin
-                  (* load stabilization instructions *)
+                  (* Load stabilization instructions if defined, otherwise zero padding *)
                   get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
                   StableMem.read_and_clear_word64 env ^^
                   set_instructions
               end
-              G.nop
+              G.nop) ^^
+              handle_missing_instructions
             end ^^ (* if_ *)
 
           let (set_blob, get_blob) = new_local env "blob" in
@@ -8888,11 +8901,19 @@ module Stabilization = struct
           (* return val *)
           get_val
         end ^^
-        (* record total upgrade instructions *)
+        (* Record the total upgrade instructions if defined. 
+           If stabilization costs were missing due to upgrades from old Motoko programs,
+           the costs are defaulted to 0xFFFF_FFFF_FFFF_FFFF. *)
         get_instructions ^^
-        GC.instruction_counter env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        UpgradeStatistics.set_upgrade_instructions env
+        compile_eq64_const (-1L) ^^
+        (G.if1 I64Type
+          get_instructions
+          begin
+            get_instructions ^^
+            GC.instruction_counter env ^^
+            G.i (Binary (Wasm.Values.I64 I64Op.Add))
+          end) ^^
+          UpgradeStatistics.set_upgrade_instructions env
     | _ -> assert false
 end
 

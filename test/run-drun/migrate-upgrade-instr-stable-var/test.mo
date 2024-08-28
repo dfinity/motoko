@@ -10,6 +10,6 @@ actor {
     Prim.debugPrint(debug_show(state));
 
     public func test() : async () {
-        Prim.debugPrint("Ignore Diff: Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
+        Prim.debugPrint("Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
     };
 };

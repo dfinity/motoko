@@ -10,6 +10,8 @@ actor {
     lastInstructions := Prim.rts_upgrade_instructions();
     assert(lastInstructions > 0);
   };
+  // Assert that the upgrade instructions are defined, i.e. no backwards compatibility to old Motoko programs.
+  assert(Prim.rts_upgrade_instructions() != 18_446_744_073_709_551_615);
   Prim.debugPrint("Ignore Diff: Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
 
   public func increase() : async () {

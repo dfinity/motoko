@@ -8,6 +8,6 @@ actor {
     Prim.debugPrint("Stable memory size: " # debug_show(StableMemory.size()));
 
     public func test() : async () {
-        Prim.debugPrint("Ignore Diff: Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
+        Prim.debugPrint("Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
     };
 };
