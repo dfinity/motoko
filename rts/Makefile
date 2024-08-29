@@ -3,6 +3,7 @@ SHELL:=bash -O globstar
 CLANG ?= clang-18
 WASM_CLANG ?= clang-18
 WASM_LD ?= wasm-ld-18
+WASM_OPT = wasm-opt
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -151,7 +152,7 @@ RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj \
 	-mllvm -enable-emscripten-sjlj -mllvm -disable-lsr \
 	-Wno-override-module
 RTS_LL_64_DEBUG=$(RTS_LL_64)
-RTS_LL_64_RELEASE=$(RTS_LL_64) -O2
+RTS_LL_64_RELEASE=$(RTS_LL_64) -Oz
 
 #
 # Let make automatically search these directories (tommath and musl) for .c files
@@ -266,7 +267,7 @@ $(TOMMATH_BINDINGS_RS_64): | _build/wasm64
 RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_RS_32) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
 RTS_BUILD_32=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD_32=$(RTS_BUILD_32)
-RTS_RELEASE_BUILD_32=$(RTS_BUILD_32) --release
+RTS_RELEASE_BUILD_32=$(RTS_BUILD_32) --release -Zbuild-std-features="panic_immediate_abort,optimize_for_size"
 RTS_DEBUG_TARGET_32=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
 RTS_RELEASE_TARGET_32=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
 
@@ -298,7 +299,7 @@ RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_RS_64) $(RTS_RUST_FILES) $(RTS_CARGO_FILE
 COMPILER_FLAGS_64=--emit=llvm-ir
 RTS_BUILD_64=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS_64}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc --features enhanced_orthogonal_persistence
 RTS_DEBUG_BUILD_64=$(RTS_BUILD_64)
-RTS_RELEASE_BUILD_64=$(RTS_BUILD_64) --release
+RTS_RELEASE_BUILD_64=$(RTS_BUILD_64) --release -Zbuild-std-features="panic_immediate_abort,optimize_for_size"
 
 RTS_DEBUG_TARGET_64_FOLDER=motoko-rts/target/wasm64-unknown-unknown/debug
 RTS_RELEASE_TARGET_64_FOLDER=motoko-rts/target/wasm64-unknown-unknown/release
@@ -444,11 +445,13 @@ LINKER_OPTIONS_64=\
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive --experimental-pic
 
+WASM_OPT_OPTIONS=-Oz
 
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_32) \
 		$+
+	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-non-incremental-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
@@ -459,6 +462,7 @@ mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_32) \
 		$+
+	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
@@ -469,6 +473,7 @@ mo-rts-eop.wasm: $(RTS_RUST_WASM_64_A) $(CORE_WASM_64_A) $(ALLOC_WASM_64_A) $(CO
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+
+	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(CORE_DEBUG_WASM_64_A) $(ALLOC_DEBUG_WASM_64_A) $(COMPILER_BUILTINS_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
