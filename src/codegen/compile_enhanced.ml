@@ -2335,7 +2335,8 @@ module Closure = struct
     Tagged.load_field env funptr_field ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr ty)) ^^
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
 
   let constant env get_fi =
@@ -13213,7 +13214,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let emodule =
     let open Wasm_exts.CustomModule in
     { module_;
-      dylink = None;
+      dylink0 = [];
       name = { empty_name_section with function_names =
                  List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
                locals_names =

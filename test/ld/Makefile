@@ -9,8 +9,8 @@ accept:
 clean:
 	rm -rf _out
 
-WASM_CLANG?=clang-13
-WASM_LD?=wasm-ld-13
+WASM_CLANG?=clang-18
+WASM_LD?=wasm-ld-18
 MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out
@@ -20,7 +20,7 @@ _out/%.lib.o: %.c | _out
 
 _out/%.lib.wasm: _out/%.lib.o | _out
 	$(WASM_LD) -mwasm64 --import-memory --shared --no-entry --gc-sections \
-		--export=__wasm_call_ctors \
+		--export=__wasm_call_ctors --experimental-pic \
 		$< -o $@
 
 _out/%.base.wasm: %.wat | _out

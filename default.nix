@@ -20,26 +20,71 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
-let
-  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
-in
-
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+let llvm_sources = nixpkgs.fetchFromGitHub {
+      owner = "llvm";
+      repo = "llvm-project";
+      rev = "llvmorg-18.1.8";
+      sha256 = "sha256-iiZKMRo/WxJaBXct9GdAcAT3cz9d9pnAcO1mmR6oPNE=";
+    }; in
+let patched-wasm-ld = stdenv.mkDerivation {
+    name = "wasm-ld";
+    src = llvm_sources;
+    nativeBuildInputs = with nixpkgs; [ cmake ninja ];
+    buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
+
+    patchPhase = ''
+      patch lld/wasm/Relocations.cpp  << EOF
+@@ -104,9 +104,15 @@ void scanRelocations(InputChunk *chunk) {
+     case R_WASM_TABLE_INDEX_SLEB64:
+     case R_WASM_TABLE_INDEX_REL_SLEB:
+     case R_WASM_TABLE_INDEX_REL_SLEB64:
+-      if (requiresGOTAccess(sym))
+-        break;
++      if (!sym->isDefined()) {
++        error(toString(file) + ": relocation " + relocTypeToString(reloc.Type) +
++              " cannot be used against an undefined symbol \`" + toString(*sym) +
++              "\`");
++      }
+       out.elemSec->addEntry(cast<FunctionSymbol>(sym));
++      if (requiresGOTAccess(sym)) {
++        addGOTEntry(sym);
++      }
+       break;
+     case R_WASM_GLOBAL_INDEX_LEB:
+     case R_WASM_GLOBAL_INDEX_I32:
+EOF
+    cd lld
+    '';
+
+    outputs = [ "out" ];
+  }; in
+# Selectively build llvm binary tools.
+# Exclude wasm-ld, as this is patched separately.
+let llvm_bintools = stdenv.mkDerivation {
+    name = "llvm_bintools";
+    src = llvm_sources;
+    nativeBuildInputs = with nixpkgs; [ cmake ninja python3 ];
+    buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
+
+    preConfigure = ''
+      cd llvm
+    '';
+
+    outputs = [ "out" ];
+  }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-13 (unwrapped)
-    llvmPackages_13.clang
-    # pulls in wasm-ld
-    llvmPackages_13.lld
-    llvmPackages_13.bintools
+    llvmPackages_18.clang
+    llvm_bintools
+    patched-wasm-ld
     rustc-nightly
     cargo-nightly
     wasmtime
     rust-bindgen
     python3
-    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -47,17 +92,17 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-13"
+    export WASM_CLANG="clang-18"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_13.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_18.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_13}/bin/clang"
+    # there we use plain clang-18. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_18}/bin/clang"
   '';
 in
 
@@ -172,7 +217,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-A3WPIx+weu4wIYV7cweGkRxYGAPt7srxBAtMEyPOkhI=";
+      rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -337,7 +382,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ llvmPackages_13.bintools llvmPackages_13.clang ];
+      with nixpkgs; [ patched-wasm-ld llvmPackages_18.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);

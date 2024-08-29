@@ -54,41 +54,57 @@ importing module would work:
 Note that the definition of `f1` is in the *imported* module and this assertion
 is in the *importing* module.
 
-Similarly exposing a data pointer generates a GOT.mem import. All GOT.mem
-imports to a symbol should resolve to the same constant to support equality as
-above, and additionally pointer arithmetic.
+Exposing a data pointer generates a GOT.mem import. This is to support 
+accesses to the data and pointer equality and pointer arithmetics.
+All GOT.mem imports should resolve to the absolute pointer of their exported data. 
+The corresponding export of the GOT.mem denotes the pointer offset relative
+to the memory base of the module.
 
-(Pointer arithmetic on function pointers are undefined behavior is C and is not
+(Pointer arithmetic on function pointers are undefined behavior in C and is not
 supported by clang's wasm backend)
 
 Normally this stuff is for dynamic linking, but we want to link the RTS
-statically, so we resolve these imports during linking. Currently we only
-support GOT.func imports, but implementing GOT.mem imports would be similar.
-Secondly, we only support GOT.func imports in the module that defines the
-function that we take the address of. This currently works as moc-generated code
-doesn't import function addresses from the RTS.
+statically, so we resolve these imports during linking. We only support 
+GOT.func and GOT.mem imports in the module that defines the function that we 
+take the address of. This currently works as moc-generated code doesn't import 
+function addresses or data pointers from the RTS.
 
-We resolve GOT.func imports in two steps:
+We resolve GOT imports in two steps:
 
-- After loading the RTS module we generate a list of (global index, function
-  index) pairs of GOT.func imports. In the example above, global index is N and
-  function index is the index of f0 in the defining module (the RTS).
+- After loading the RTS module we collect GOT imports and determine their
+  implementation in the defining module (the RTS):
 
-  This is implemented in `collect_got_func_imports`.
+  For each `GOT.func` import, we determine the corresponding function index, 
+  e.g. `f0` in the example above.
+  For each `GOT.mem` import, we detemine the corresponding global storing the 
+  data offset relative to the memory base of the library.
 
-- After merging the sections we add the functions to the table and replace
-  `GOT.func` imports with globals to the functions' table indices.
+  This is implemented in `collect_got_imports`.
 
+- After merging the sections, we replace the GOT imports with globals in the 
+  module section.
+
+  For each `GOT.func`, we create an element in the table with the function index
+  determined in the first step. The `GOT.func` import is replaced by a global
+  that refers to the new table element.
+
+  For each `GOT.mem`, we replace the GOT accesses in the AST by code that computes 
+  the absolute address of the data. This is the library's memory base plus the 
+  relative data offset stored in the global as determined in the first step.  
+  The `GOT.mem` import is replaced by a dummy global that only serves to maintain 
+  the numbering of the globals.
+  
   Note that we don't reuse table entries when a function is already in the
   table, to avoid breakage when [ref-types] proposal is implemented, which will
   allow mutating table entries.
-
   [ref-types]: https://github.com/WebAssembly/reference-types
 
-  This is implemented in `replace_got_func_imports`.
+  The GOT globals are moved to the beginning of the module's global. For simplicity,
+  we restrict the GOT globals to only occur at the end of the imported globals.
 
-See also the test `test/ld/fun-ptr` for a concrete exaple of GOT.func generation
-and resolving.
+  This is implemented in `replace_got_imports`.
+
+See also the tests `test/ld/fun-ptr` for concrete examples of GOT resolutions. 
 *)
 
 (* Linking *)
@@ -405,12 +421,23 @@ let rename_globals rn : module_' -> module_' = fun m ->
   let data_segment = phrase (data_segment') in
   let data_segments = List.map data_segment in
 
+  (* The exports are used to resolve `GOT.mem`. 
+     Therefore, also update the exported global indices. *)
+  let export_desc' = function
+  | GlobalExport v -> GlobalExport (var v)
+  | other -> other
+  in
+  let export_desc = phrase (export_desc') in
+  let export' (e: export') = { e with edesc = export_desc e.edesc } in
+  let export = phrase export' in
+  let exports = List.map export in
 
   { m with
     funcs = funcs m.funcs;
     globals = globals m.globals;
     elems = table_segments m.elems;
     datas = data_segments m.datas;
+    exports = exports m.exports;
   }
 
 let set_global global value = fun m ->
@@ -516,7 +543,7 @@ let rename_types rn m =
     | ValBlockType vto -> ValBlockType vto in
 
   let rec instr' = function
-    | CallIndirect tv -> CallIndirect (ty_var tv)
+    | CallIndirect (table_index, tv) -> CallIndirect (table_index, (ty_var tv))
     | Block (bty, is) -> Block (block_type bty, instrs is)
     | Loop (bty, is) -> Loop (block_type bty, instrs is)
     | If (bty, is1, is2) -> If (block_type bty, instrs is1, instrs is2)
@@ -715,26 +742,22 @@ let find_fun_export (name : name) (exports : export list) : var option =
       None
   ) exports
 
-let remove_got_func_imports (imports : import list) : import list =
-  let got_func_str = Lib.Utf8.decode "GOT.func" in
-  List.filter (fun import -> import.it.module_name <> got_func_str) imports
+let find_global_export (name : name) (exports : export list) : var option =
+  List.find_map (fun (export : export) ->
+    if export.it.name = name then
+      match export.it.edesc.it with
+      | GlobalExport var -> Some var
+      | _ -> raise (LinkError (Format.sprintf "Export %s is not global" (Lib.Utf8.encode name)))
+    else
+      None
+  ) exports
 
-(* Merge global list of a module with a sorted (on global index) list of (global
-   index, global) pairs, overriding globals at those indices, and appending
-   left-overs at the end. *)
-let add_globals (globals0 : global list) (insert0 : (int32 * global') list) : global list =
-  let rec go (current_idx : int32) globals insert =
-    match insert with
-    | [] -> globals
-    | (insert_idx, global) :: rest ->
-      if current_idx = insert_idx then
-        (global @@ no_region) :: go (Int32.add current_idx 1l) globals rest
-      else
-        match globals with
-        | [] -> List.map (fun (_, global) -> global @@ no_region) insert
-        | global :: globals -> global :: go (Int32.add current_idx 1l) globals rest
-  in
-  go 0l globals0 insert0
+let remove_got_imports (imports : import list) : import list =
+  let got_func_str = Lib.Utf8.decode "GOT.func" in
+  let got_mem_str = Lib.Utf8.decode "GOT.mem" in
+  let is_got name = name = got_func_str || name = got_mem_str in
+  List.filter (fun import -> not (is_got import.it.module_name)) imports
+
 
 let mk_i32_const (i : int32) =
   Const (Wasm_exts.Values.I32 i @@ no_region) @@ no_region
@@ -743,75 +766,206 @@ let mk_i32_global (i : int32) =
   { gtype = Wasm_exts.Types.GlobalType (Wasm_exts.Types.I32Type, Wasm_exts.Types.Immutable);
     value = [mk_i32_const i] @@ no_region }
 
-(* Generate (global index, function index) pairs for GOT.func imports of a
-   module. Uses import and export lists of the module so those should be valid. *)
-let collect_got_func_imports (m : module_') : (int32 * int32) list =
+let mk_i64_const (i : int64) =
+  Const (Wasm_exts.Values.I64 i @@ no_region) @@ no_region
+
+let mk_i64_global (i : int64) =
+  { gtype = Wasm_exts.Types.GlobalType (Wasm_exts.Types.I64Type, Wasm_exts.Types.Immutable);
+    value = [mk_i64_const i] @@ no_region }
+
+type got_func = {
+  function_index: int32;
+}
+
+type got_mem = {
+  exported_global_index: int32;
+}
+
+type got_kind =
+| GotFunc of got_func
+| GotMem of got_mem
+
+type got_import = {
+  global_index: int32;
+  global_type: Wasm_exts.Types.global_type;
+  kind: got_kind;
+}
+
+let get_global_type import = match import.it.idesc.it with
+  | GlobalImport global_type -> global_type
+  | _ -> raise (LinkError "GOT.mem import is not global")
+
+let resolve_got_func global_index import m =
+  let name = import.it.item_name in
+  let function_index =
+    match find_fun_export name m.exports with
+    | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Lib.Utf8.encode name)))
+    | Some export_idx -> export_idx.it
+  in
+  let global_type = get_global_type import in
+  {
+    global_index;
+    global_type;
+    kind = GotFunc { function_index }
+  }
+
+let resolve_got_mem global_index import m =
+  let name = import.it.item_name in
+  let exported_global_index =
+    match find_global_export name m.exports with
+    | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.mem import %s" (Lib.Utf8.encode name)))
+    | Some export_idx -> export_idx.it
+  in
+  let global_type = get_global_type import in
+  {
+    global_index;
+    global_type;
+    kind = GotMem { exported_global_index }
+  }
+
+let collect_got_imports (m : module_') : got_import list =
   let got_func_name = Lib.Utf8.decode "GOT.func" in
+  let got_mem_name = Lib.Utf8.decode "GOT.mem" in
 
-  let get_got_func_import (global_idx, imports) import : (int32 * (int32 * int32) list) =
+  let get_got_import (allow_normal_globals, global_index, imports) import : (bool * int32 * got_import list) =
+    let next_index = Int32.add global_index (Int32.of_int 1) in
     if import.it.module_name = got_func_name then
-      (* Found a GOT.func import, find the exported function for it *)
-      let name = import.it.item_name in
-      let fun_idx =
-        match find_fun_export name m.exports with
-        | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Lib.Utf8.encode name)))
-        | Some export_idx -> export_idx.it
-      in
-      let global_idx =
-        if is_global_import import.it.idesc.it then
-          global_idx
-        else
-          raise (LinkError "GOT.func import is not global")
-      in
-      ( Int32.add global_idx (Int32.of_int 1), (global_idx, fun_idx) :: imports )
+      let got_func = resolve_got_func global_index import m in
+      (false, next_index, got_func :: imports)
+    else if import.it.module_name = got_mem_name then
+      let got_mem = resolve_got_mem global_index import m in
+      (false, next_index, got_mem :: imports)
     else
-      let global_idx =
-        if is_global_import import.it.idesc.it then
-          Int32.add global_idx (Int32.of_int 1)
-        else
-          global_idx
+      (* Implementation restriction: No normal imported globals after GOT globals.
+      If this would be required in the future, the GOT globals cannot simply be
+      moved to the beginning of the module's global section because the global
+      indices would then change and the global accesses in the AST would need
+      to be patched. *)
+      let continue_index =
+        if is_global_import import.it.idesc.it then 
+          (assert allow_normal_globals;    
+          next_index)
+        else global_index
       in
-      ( global_idx, imports )
+      (allow_normal_globals, continue_index, imports)
+  in
+  let (_, _, got_imports) =
+    List.fold_left get_got_import (true, 0l, []) m.imports
+  in
+  got_imports
+
+(* For each GOT.mem access, we compute the absolute address of the data pointer.
+   This is done by adding the library memory base (`lib_heap_start`) to the offset
+   that is stored in the exported global that corresponds to the GOT.mem import. *)
+let patch_got_mem_accesses got_mem_imports memory_base = fun m ->
+  let phrase_one_to_many f x = List.map (fun y -> { x with it = y }) (f x.it) in
+
+  let find_got_mem global_index =
+    List.find_opt (fun (index, _, _) -> index = global_index) got_mem_imports
   in
 
-  (* (global index, function index) list *)
-  let (_, got_func_imports) =
-    List.fold_left get_got_func_import (0l, []) m.imports
-  in
-
-  got_func_imports
-
-(* Add functions imported from GOT.func to the table, replace GOT.func imports
-   with globals to the table indices.
-
-   `tbe_size` is the size of the table in the merged module before adding
-   GOT.func functions. *)
-let replace_got_func_imports (tbl_size : int32) (imports : (int32 * int32) list) (m : module_') : module_' =
-  (* null check to avoid adding empty elem section *)
-  if imports = [] then
-    m
+  (* Computes the absolute address of the GOT.mem data pointer *)
+  let data_pointer exported_global_index = if uses_memory64 m then
+    [ Const (Wasm_exts.Values.I64 (Int64.of_int32 memory_base) @@ no_region);
+      GlobalGet (exported_global_index @@ no_region);
+      Binary (Wasm_exts.Values.I64 I64Op.Add) ]
   else
-    let imports =
-      List.sort (fun (gbl_idx_1, _) (gbl_idx_2, _) -> compare gbl_idx_1 gbl_idx_2) imports
-    in
+    [ Const (Wasm_exts.Values.I32 memory_base @@ no_region);
+      GlobalGet (exported_global_index @@ no_region);
+      Binary (Wasm_exts.Values.I32 I32Op.Add) ]
+  in
+  let rec instr' = function
+    | GlobalGet v -> 
+      (match find_got_mem v.it with
+      | Some (_, _, exported_global_index) -> data_pointer exported_global_index
+      | None -> [GlobalGet v])
+    | GlobalSet v ->
+      (match find_got_mem v.it with
+      | Some _ -> assert false
+      | None -> [GlobalSet v])
+    | Block (ty, is) -> [Block (ty, instrs is)]
+    | Loop (ty, is) -> [Loop (ty, instrs is)]
+    | If (ty, is1, is2) -> [If (ty, instrs is1, instrs is2)]
+    | i -> [i]
+  and instr (i: instr) : instr list = phrase_one_to_many instr' i
+  and instrs (is : instr list) : instr list = List.flatten (List.map instr is) in
 
-    let elems : var list =
-      List.map (fun (_, fun_idx) -> fun_idx @@ no_region) imports
-    in
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = List.map func in
 
-    let elem_section =
-      { index = 0l @@ no_region; offset = [ mk_i32_const tbl_size ] @@ no_region; init = elems }
-    in
+  { m with
+    funcs = funcs m.funcs;
+  }
 
-    let globals =
-      List.mapi (fun idx (global_idx, _) -> (global_idx, mk_i32_global (Int32.add tbl_size (Int32.of_int idx)))) imports
-    in
-
-    { m with
-      elems = List.append m.elems [elem_section @@ no_region];
-      imports = remove_got_func_imports m.imports;
-      globals = add_globals m.globals globals
-    }
+(* `table_size` is the size of the table in the merged module before adding GOT.func functions *)
+(* `lib_memory_base` is the Wasm const targetting the library memory base (start of data segments) *)
+let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports: got_import list) (m : module_') : module_' =
+  (* Add functions imported from GOT.func to the table, change GOT.func globals to refer
+     to the table index of their corresponding function. *)
+  let got_func_imports = List.filter_map (function
+      | { global_index; global_type; kind = GotFunc { function_index } } ->
+        Some (global_index, global_type, function_index)
+      | _ -> None
+    ) imports
+  in
+  let elements = List.map
+    (fun (_, _, function_index) -> function_index @@ no_region)
+    got_func_imports
+  in
+  let offset_global global_type offset = Wasm_exts.Types.(match global_type with
+    | GlobalType (I32Type, _) -> mk_i32_global (Int32.add table_size (Int32.of_int offset))
+    | GlobalType (I64Type, _) -> mk_i64_global (Int64.add (Int64.of_int32 table_size) (Int64.of_int offset))
+    | _ -> raise (LinkError "GOT.func global type is not supported"))
+  in
+  let function_globals = List.mapi (fun offset (global_index, global_type, _) ->
+      (global_index, offset_global global_type offset))
+    got_func_imports
+  in
+  let element_section =
+    (* Do not add an empty element section if no GOT.func exist in the module *)
+    if got_func_imports = [] then None
+    else
+      Some {
+        index = 0l @@ no_region;
+        offset = [ mk_i32_const table_size ] @@ no_region;
+        init = elements
+      }
+  in
+  (* Patch AST such that GOT.mem global accesses compute the corresponding data pointers.
+     Allocate dummy globals in place of the original GOT.mem to maintain the global numbering. *)
+  let memory_imports = List.filter_map (function
+      | { global_index; global_type; kind = GotMem { exported_global_index } } ->
+        Some (global_index, global_type, exported_global_index)
+      | _ -> None
+    ) imports
+  in
+  let dummy_global = Wasm_exts.Types.(function
+    | GlobalType (I32Type, _) -> mk_i32_global 0l
+    | GlobalType (I64Type, _) -> mk_i64_global 0L
+    | _ -> raise (LinkError "GOT.mem global type is not supported"))
+  in
+  let dummy_globals = List.map
+    (fun (global_index, global_type, _) -> (global_index, dummy_global global_type))
+    memory_imports
+  in
+  let patched_module = patch_got_mem_accesses memory_imports lib_memory_base m in
+  let new_elements = match element_section with
+    | None -> m.elems
+    | Some section -> List.append m.elems [section @@ no_region]
+  in
+  let new_globals = function_globals @ dummy_globals
+    |> List.sort (fun (left, _) (right, _) -> compare left right)
+    |> List.map (fun (_, global) -> global @@ no_region)
+  in
+  (* Move GOT globals from import section to the beginning of module's global section.
+     The movement is based on the following assumption that is checked in `collect_got_imports`:
+     No normal globals succeed the GOT globals in the import section. *)
+  { patched_module with
+    elems = new_elements;
+    imports = remove_got_imports m.imports; (* Remove GOT globals at the end of imports section *)
+    globals = new_globals @ m.globals (* globals preceed existing globals to keep ordering *)
+  }
 
 (* The first argument specifies the global of the first module indicating the
 start of free memory *)
@@ -824,14 +978,19 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | None -> raise (LinkError "First module does not export __heap_base")
     | Some gi -> gi in
 
-  let dylink = match em2.dylink with
-    | Some dylink -> dylink
-    | None -> raise (LinkError "Second module does not have a dylink section") in
+  let dylink0_mem_info =
+    let rec mem_info = function
+    | [] -> raise (LinkError "Second module does not have a dylink.0 mem-info section")
+    | MemInfo mem_info :: _ -> mem_info
+    | _ :: remainder -> mem_info remainder 
+    in
+    mem_info em2.dylink0 
+  in
 
   (* Beginning of unused space *)
   let old_heap_start = read_global heap_global em1.module_ in
-  let lib_heap_start = align_i32 dylink.memory_alignment old_heap_start in
-  let new_heap_start = align_i32 8l (Int32.add lib_heap_start dylink.memory_size) in
+  let lib_heap_start = align_i32 dylink0_mem_info.memory_alignment old_heap_start in
+  let new_heap_start = align_i32 8l (Int32.add lib_heap_start dylink0_mem_info.memory_size) in
 
   if uses_memory64 em1.module_ then
   begin
@@ -847,17 +1006,17 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   end else ();
 
   let old_table_size = read_table_size em1.module_ in
-  let lib_table_start = align_i32 dylink.table_alignment old_table_size in
+  let lib_table_start = align_i32 dylink0_mem_info.table_alignment old_table_size in
 
   let uses_memory64 = uses_memory64 em1.module_ in
-
+  
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start uses_memory64
     |> fill_table_base_import lib_table_start uses_memory64 in
-    
-  let got_func_imports = collect_got_func_imports dm2 in
 
+  let got_imports = collect_got_imports dm2 in
+  
   (* Link functions *)
   let fun_required1 = find_imports is_fun_import libname em1.module_ in
   let fun_required2 = find_imports is_fun_import "env" dm2 in
@@ -956,15 +1115,17 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     List.map (fun (ty, _) -> ty @@ no_region)
   in
 
-  (* Inject call to "__wasm_call_ctors" *)
-  let add_call_ctors =
-    match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
+  let add_initial_call function_name =
+    match NameMap.find_opt (Lib.Utf8.decode function_name) fun_exports2 with
     | None -> fun em -> em
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm_exts.Types.FuncType ([], [])))
   in
 
   let new_table_size =
-    Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
+    let got_func_imports = List.filter (function 
+    | { kind = GotFunc _; _ } -> true
+    | _ -> false) got_imports in
+    Int32.add (Int32.add lib_table_start dylink0_mem_info.table_size) (Int32.of_int (List.length got_func_imports))
   in
 
   (* Rust generates active data segments for the runtime system code that are not supported with orthogonal persistence.
@@ -1017,7 +1178,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
       let inject_in_func code = phrase (inject_in_func' code) in
       let patch_functions functions = 
         List.mapi (fun index func -> 
-          if index = local_start_function then 
+          if index = local_start_function then
             inject_in_func load_passive_segments func
           else func
         ) functions
@@ -1046,25 +1207,39 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs funs2
     |> rename_globals globals2
     |> remove_export is_fun_export "__wasm_call_ctors"
+    |> remove_export is_fun_export "__wasm_apply_data_relocs"
     )
     ( em2.name
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
     type_indices
-  |> add_call_ctors
+  |> add_initial_call "__wasm_call_ctors" (* second call *)
+  |> add_initial_call "__wasm_apply_data_relocs" (* very first call before `__wasm_call_ctors` *)
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   |> (if uses_memory64 then map_module (load_rts_data_segments dm2_data_segment_offset dm2.datas) else (fun m -> m))
   in
 
-  (* Rename global and function indices in GOT.func stuff *)
-  let got_func_imports =
-    List.map (fun (global_idx, func_idx) -> (globals2 global_idx, funs2 func_idx)) got_func_imports
+  (* Rename global and function indices in GOT stuff *)
+  let got_imports =
+    List.map (function
+      | { global_index; global_type; kind = GotFunc { function_index }} ->
+        { global_index = globals2 global_index;
+          global_type;
+          kind = GotFunc { function_index = funs2 function_index }
+        }
+      | { global_index; global_type; kind = GotMem { exported_global_index }} ->
+        { global_index = globals2 global_index;
+          global_type;
+          kind = GotMem {
+            exported_global_index = globals2 exported_global_index;
+          }
+        }
+    ) got_imports
   in
 
-  (* Replace GOT.func imports with globals to function table indices *)
-  let final =
-    replace_got_func_imports (Int32.add lib_table_start dylink.table_size) got_func_imports merged.module_
-  in
+  (* Replace GOT imports with globals referring to implementing functions or data pointers *)
+  let table_size = Int32.add lib_table_start dylink0_mem_info.table_size in
+  let final = replace_got_imports lib_heap_start table_size got_imports merged.module_ in
 
   { merged with module_ = final }

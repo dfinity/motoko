@@ -27,6 +27,8 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
+use core::ptr::addr_of_mut;
+
 use crate::barriers::{allocation_barrier, write_with_barrier};
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
@@ -82,7 +84,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
     }
     allocation_barrier(new_table);
 
-    let location = &mut TABLE as *mut Value;
+    let location = addr_of_mut!(TABLE) as *mut Value;
     write_with_barrier(mem, location, new_table);
 }
 
@@ -175,7 +177,7 @@ pub unsafe extern "C" fn continuation_count() -> usize {
 
 #[cfg(feature = "ic")]
 pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
-    &mut TABLE
+    addr_of_mut!(TABLE)
 }
 
 #[cfg(feature = "ic")]

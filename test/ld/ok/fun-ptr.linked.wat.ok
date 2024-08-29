@@ -11,9 +11,18 @@
     i32.const 3
     i32.const 5
     call_indirect (type 1))
-  (func $__wasm_call_ctors (type 3)
-    call $__wasm_apply_data_relocs)
-  (func $__wasm_apply_data_relocs (type 3))
+  (func $__wasm_call_ctors (type 3))
+  (func $__wasm_apply_data_relocs (type 3)
+    i64.const 0
+    i64.const 65536
+    i64.add
+    global.get 0
+    i64.store align=4
+    i64.const 8
+    i64.const 65536
+    i64.add
+    global.get 1
+    i64.store align=4)
   (func $f0 (type 1) (param i32 i32) (result i32)
     local.get 1
     local.get 0
@@ -29,13 +38,20 @@
     i64.add
     i64.load)
   (func $link_start (type 3)
+    call $__wasm_call_ctors)
+  (func $link_start.1 (type 3)
     i64.const 65536
     i32.const 0
     i32.const 16
     memory.init 0
-    call $__wasm_call_ctors)
-  (table (;0;) 1 1 funcref)
+    call $__wasm_apply_data_relocs
+    call $link_start)
+  (table (;0;) 5 5 funcref)
   (memory (;0;) i64 2)
-  (global (;0;) i64 (i64.const 65792))
-  (start $link_start)
-  (data (;0;) "\01\00\00\00\00\00\00\00\02\00\00\00\00\00\00\00"))
+  (global (;0;) i64 (i64.const 4))
+  (global (;1;) i64 (i64.const 3))
+  (global (;2;) i64 (i64.const 65792))
+  (start $link_start.1)
+  (elem (;0;) (i32.const 1) func $f0 $f1)
+  (elem (;1;) (i32.const 3) func $f1 $f0)
+  (data (;0;) "\00\00\00\00\00\00\00\00\01\00\00\00\00\00\00\00"))

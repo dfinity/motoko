@@ -1,9 +1,6 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 actor {};
 
-// The prelude should not require any code (besides maybe a call to collect) at runtime
-// DON'TCHECK: (func $init (type 4))
-
 // CHECK:  (func $@motoko_async_destabilization (type 0)
 // CHECK:         call $trans_state10 
 // CHECK:         call $post_exp

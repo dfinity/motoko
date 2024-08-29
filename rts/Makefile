@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-13
-WASM_CLANG ?= clang-13
-WASM_LD ?= wasm-ld-13
+CLANG ?= clang-18
+WASM_CLANG ?= clang-18
+WASM_LD ?= wasm-ld-18
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -23,10 +23,9 @@ TOMMATHFILES = \
 
 MUSLFILES_32 = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
+  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp memmove \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan \
-  stubs
+  __rem_pio2 __rem_pio2_large __sin __cos __tan
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
@@ -76,9 +75,12 @@ MUSL_FLAGS_32 = \
   -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
+  -isystem $(MUSLSRC)/include \
   -isystem $(MUSL_WASI_SYSROOT)/include \
   -I $(MUSLSRC)/../headers/private \
   -I $(MUSLSRC)/src/include \
+  -I $(MUSLSRC)/include \
+  -I musl \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
   -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
@@ -136,9 +138,20 @@ _build/wasm32:
 # Common configuration
 # 
 
-RTS_EMSCRIPTEN_64=emcc -c --target=wasm64-unknown-emscripten -fpic
-RTS_EMSCRIPTEN_64_DEBUG=$(RTS_EMSCRIPTEN_64)
-RTS_EMSCRIPTEN_64_RELEASE=$(RTS_EMSCRIPTEN_64) -O2
+# Arguments obtained by Emscripten 3.1.64:
+# `emcc -c --target=wasm64-unknown-emscripten -fpic --verbose`
+# while skipping unneeded arguments.
+RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj \
+	-mrelocation-model pic -pic-level 1 -mframe-pointer=none \
+	-ffp-contract=on -fno-rounding-math -mconstructor-aliases \
+	-target-feature +mutable-globals -fvisibility=hidden \
+	-Werror=implicit-function-declaration \
+	-iwithsysroot/include/fakesdl -iwithsysroot/include/compat \
+	-mllvm -combiner-global-alias-analysis=false \
+	-mllvm -enable-emscripten-sjlj -mllvm -disable-lsr \
+	-Wno-override-module
+RTS_LL_64_DEBUG=$(RTS_LL_64)
+RTS_LL_64_RELEASE=$(RTS_LL_64) -O2
 
 #
 # Let make automatically search these directories (tommath and musl) for .c files
@@ -345,28 +358,28 @@ COMPILER_BUILTINS_WASM_64_A=$(BUILD_64_FOLDER)/compiler_builtins.o
 COMPILER_BUILTINS_DEBUG_WASM_64_A=$(BUILD_64_FOLDER)/compiler_builtins_debug.o
 
 $(RTS_RUST_WASM_64_A): $(RTS_RUST_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(RTS_RUST_DEBUG_WASM_64_A): $(RTS_RUST_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(CORE_WASM_64_A): $(CORE_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(CORE_DEBUG_WASM_64_A): $(CORE_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(ALLOC_WASM_64_A): $(ALLOC_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(ALLOC_DEBUG_WASM_64_A): $(ALLOC_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(COMPILER_BUILTINS_WASM_64_A): $(COMPILER_BUILTINS_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(COMPILER_BUILTINS_DEBUG_WASM_64_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 #
 # The test suite
@@ -404,6 +417,7 @@ test64: $(TEST_DEPENDENCIES_64)
 
 EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
+  __wasm_apply_data_relocs \
   memcpy \
   memcmp \
   tan \
@@ -422,13 +436,13 @@ WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(MUSL_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
-  --whole-archive
+  --whole-archive --experimental-pic
 
 WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A)
 LINKER_OPTIONS_64=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
-  --whole-archive
+  --whole-archive --experimental-pic
 
 
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
