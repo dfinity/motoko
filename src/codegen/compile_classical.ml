@@ -6279,32 +6279,6 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
-    let ic0_performance_counter_fi =
-      if E.mode env = Flags.WASIMode then
-        E.add_fun env "ic0_performance_counter" (
-            Func.of_body env ["number", I32Type] [I64Type]
-              (fun env ->
-                E.trap_with env "ic0_performance_counter is not supposed to be called in WASI"
-              )
-          )
-      else E.reuse_import env "ic0" "performance_counter" in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "ic0_performance_counter";
-      edesc = nr (FuncExport (nr ic0_performance_counter_fi))
-    });
-
-    let set_upgrade_instructions_fi =
-      E.add_fun env "__set_upgrade_instructions" (
-      Func.of_body env ["instructions", I64Type] [] (fun env ->
-        G.i (LocalGet (nr 0l)) ^^
-        UpgradeStatistics.set_upgrade_instructions env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "set_upgrade_instructions";
-      edesc = nr (FuncExport (nr set_upgrade_instructions_fi))
-    });
-
     (* Keep a memory reserve when in update or init state.
        This reserve can be used by queries, composite queries, and upgrades. *)
     let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
