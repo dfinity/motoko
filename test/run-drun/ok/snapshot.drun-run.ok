@@ -1,0 +1,14 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: First snapshot taken
+debug.print: Test actor version: 1
+debug.print: Upgrade failed as expected
+debug.print: First snapshot restored
+debug.print: Test actor version: 1
+debug.print: Upgrade succeeded
+debug.print: Test actor version: 2
+debug.print: Snapshot list: [{id = "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\01\01\01"; taken_at_timestamp = 1_725_006_060_771_418_000; total_size = 69_371_217}]
+debug.print: Test actor version: 3
+debug.print: Test actor version: 2
+debug.print: Snapshot deleted
+ingress Completed: Reply: 0x4449444c0000
