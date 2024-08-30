@@ -26,10 +26,10 @@
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "7b130fb48003a74ab76fbdee44132aa7b3a967e6",
-        "sha256": "1h97j39wcx28nw7zhbhlim13dksgcrrlxvm6if5rc8vnp2y1wkgy",
+        "rev": "6c718b80e04ad1930a08e6c53440c15021ca9c3d",
+        "sha256": "0iglm7m69d836wipzi25xza25l84dmjq9b4s1y6rwa8xnmiipnbh",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/7b130fb48003a74ab76fbdee44132aa7b3a967e6.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/6c718b80e04ad1930a08e6c53440c15021ca9c3d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
