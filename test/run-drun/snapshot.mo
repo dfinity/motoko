@@ -69,7 +69,6 @@ actor MainActor {
         let list = await manager.list_canister_snapshots({
             canister_id = testCanisterId;
         });
-        Prim.debugPrint("Snapshot list: " # debug_show (list));
         assert (list[0] == snapshot1);
         let snapshot2 = await manager.take_canister_snapshot({
             canister_id = testCanisterId;
