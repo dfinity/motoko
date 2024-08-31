@@ -67,13 +67,18 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
-    match (xs1, xs2) with
+    match xs1, xs2 with
     | x1::xs1, x2::xs2 ->
       (match p rel eq inst any x1 x2 with
-      | Some inst -> bi_match_list p rel eq inst any xs1 xs2
-      | None -> None)
+       | Some inst -> bi_match_list p rel eq inst any xs1 xs2
+       | None -> None)
     | [], [] -> Some inst
-    | _, _ -> None
+    | _ -> None
+
+  and bi_match_list_tolerant pred wrap p rel eq inst any = function
+    | [x1], xs2 when List.length xs2 <> 1 && pred x1 -> p rel eq inst any x1 (wrap xs2)
+    | xs1, [x2] when List.length xs1 <> 1 && pred x2 -> p rel eq inst any (wrap xs1) x2
+    | xs1, xs2 -> bi_match_list p rel eq inst any xs1 xs2
   in
 
   let update binop c t ce =
@@ -128,18 +133,20 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       | _ -> None
       )
     | Con (con1, ts1), t2 ->
-      (match Cons.kind con1, t2 with
-      | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | Abs (tbs, t), _ when rel != eq ->
-        bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | _ -> None
+      (match Cons.kind con1(*, t2*) with
+       | Def (tbs, t)(*, _*) -> (* TBR this may fail to terminate *)
+         bi_match_typ rel eq inst any (open_ ts1 t) t2
+       | Abs (tbs, t)(*, _*) when rel != eq ->
+         bi_match_typ rel eq inst any (open_ ts1 t) t2
+       | _ -> None
       )
     | t1, Con (con2, ts2) ->
       (match Cons.kind con2 with
-      | Def (tbs, t) -> (* TBR this may fail to terminate *)
-        bi_match_typ rel eq inst any t1 (open_ ts2 t)
-      | _ -> None
+       | Def (tbs, t) -> (* TBR this may fail to terminate *)
+         bi_match_typ rel eq inst any t1 (open_ ts2 t)
+       | Abs (tbs, t) when rel != eq ->
+         bi_match_typ rel eq inst any t1 (open_ ts2 t) (* Like above? ????? *)
+       | _ -> None
       )
     | Prim p1, Prim p2 when p1 = p2 ->
       Some inst
@@ -161,19 +168,19 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       bi_match_list bi_match_typ rel eq inst any ts1 ts2
     | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
       if s1 = s2 && c1 = c2 then
-      (match bi_match_binds rel eq inst any tbs1 tbs2 with
-       | Some (inst, ts) ->
-         let any' = List.fold_right
-           (fun t -> ConSet.add (fst (as_con t))) ts any
-         in
-         (match
-           bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
-          with
-         | Some inst ->
-           bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t12) (List.map (open_ ts) t22)
-         | None -> None)
-       | None -> None
-      )
+        match bi_match_binds rel eq inst any tbs1 tbs2 with
+        | Some (inst, ts) ->
+           let any' = List.fold_right
+                        (fun t -> ConSet.add (fst (as_con t))) ts any in
+           let wrap xs = Tup xs in
+           let flex = function | Con (con, _) -> flexible con | _ -> false in
+           (match
+              bi_match_list_tolerant flex wrap bi_match_typ rel eq inst any' (List.map (open_ ts) t21, List.map (open_ ts) t11)
+            with
+            | Some inst ->
+               bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+            | None -> None)
+        | None -> None
       else None
     | Async (s1, t11, t12), Async (s2, t21, t22) ->
       if s1 = s2 then
@@ -225,16 +232,16 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         (match bi_match_typ rel eq inst any tf1.typ tf2.typ with
          | Some inst -> bi_match_tags rel eq inst any tfs1' tfs2'
          | None -> None)
-      | +1  when rel != eq->
+      | +1 when rel != eq ->
         bi_match_tags rel eq inst any tfs1 tfs2'
       | _ -> None
       )
-    | _, _ -> None
+    | _ -> None
 
   and bi_match_binds rel eq inst any tbs1 tbs2 =
     let ts = open_binds tbs2 in
     match bi_match_list (bi_match_bind ts) rel eq inst any tbs2 tbs1 with
-    | Some inst -> Some (inst,ts)
+    | Some inst -> Some (inst, ts)
     | None -> None
 
   and bi_match_bind ts rel eq inst any tb1 tb2 =
