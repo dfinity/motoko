@@ -23,15 +23,7 @@ TOMMATHFILES = \
    s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr \
    mp_decr mp_add_d mp_sub_d
 
-MUSLFILES_32 = \
-  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp memmove \
-  __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan
-
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
-MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
-MUSL_WASI_SYSROOT ?= $(MUSLSRC)/../../sysroot
 
 #
 # Various libtommath flags, in particular telling it to use our own memory
@@ -58,48 +50,6 @@ TOMMATH_FLAGS_64 = $(TOMMATH_FLAGS_COMMON) \
 # Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
 #       as only IEEE 754 features are used.
 
-#
-# Various musl flags, in particular telling it to not have long doubles
-# and exclude <errno.h>, which pulls in too many dependencies
-#
-# Note: we use a bit of magic to get rid of invocations to __fwritex (and similar)
-#       - the headers contain a declaration, we rename it to (__fwritex ## __COUNTER__)
-#       - similarly the invocation becomes __fwritex_2(...) which we inline immediately
-#       Be aware that upon bumps of the musl sources the number of occurrences may jump a bit
-#       and will need tweaks/additions below.
-#       Similarly we define include guards (to suppress certain headers), but those should be
-#       pretty stable.
-#       TODO: run `wasm2wat --enable-memory64 mo-rts-eop.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
-#
-#       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
-
-MUSL_FLAGS_32 = \
-  -isystem $(MUSLSRC)/arch/wasm32 \
-  -isystem $(MUSLSRC)/src/include \
-  -isystem $(MUSLSRC)/src/internal \
-  -isystem $(MUSLSRC)/include \
-  -isystem $(MUSL_WASI_SYSROOT)/include \
-  -I $(MUSLSRC)/../headers/private \
-  -I $(MUSLSRC)/src/include \
-  -I $(MUSLSRC)/include \
-  -I musl \
-  -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
-  -Derrno='(*({ static int bla = 0; &bla; }))' \
-  -DNL_ARGMAX=9 \
-  -D'TOKENPASTE0(x, y)=x \#\# y' \
-  -D'TOKENPASTE(x, y)=TOKENPASTE0(x, y)' \
-  -D'__fwritex=TOKENPASTE(__fwritex_,__COUNTER__)' \
-  -D'__fwritex_2(s, l, f)=(f->write((f), (s), (l)))' \
-  -D'__towrite=TOKENPASTE(__towrite_,__COUNTER__)' \
-  -D'__towrite_3(f)=(0)' \
-  -D__wasilibc_printscan_no_long_double \
-  -D__wasilibc_printscan_full_support_option='""' \
-  -D__wasi__ \
-  -D__NEED_va_list \
-  -D__NEED_off_t \
-  -D__NEED_locale_t \
-  -Dsqrt=__builtin_sqrt \
-  -Dfabs=__builtin_fabs
 #
 # clang flags
 #
@@ -137,10 +87,10 @@ _build/wasm32:
 	mkdir -p $@
 
 #
-# Let make automatically search these directories (tommath and musl) for .c files
+# Let make automatically search the tommath directory for .c files
 #
 
-vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
+vpath %.c $(TOMMATHSRC)
 
 #
 # Building the libtommath files
@@ -163,20 +113,6 @@ $(TOMMATH_WASM_32_A): $(TOMMATH_WASM_32_O)
 	llvm-ranlib $@
 
 $(TOMMATH_WASM_64_A): $(TOMMATH_WASM_64_O)
-	llvm-ar rcs $@ $^
-	llvm-ranlib $@
-
-#
-# Building the musl files
-#
-
-MUSL_WASM_32_O=$(MUSLFILES_32:%=_build/wasm32/musl_%.o)
-MUSL_WASM_32_A=_build/libmusl_wasm32.a
-
-_build/wasm32/musl_%.o: %.c | _build/wasm32
-	$(WASM_CLANG) $(CLANG_FLAGS_32) $(MUSL_FLAGS_32) $< --output $@
-
-$(MUSL_WASM_32_A): $(MUSL_WASM_32_O)
 	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
@@ -328,8 +264,6 @@ test64: $(TEST_DEPENDENCIES_64)
 # Putting it all together
 #
 
-# These symbols from musl are used by the code generator directly
-
 EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
   __wasm_apply_data_relocs \
@@ -347,7 +281,7 @@ EXPORTED_SYMBOLS=\
   fmod \
   log
 
-WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(MUSL_WASM_32_A)
+WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \

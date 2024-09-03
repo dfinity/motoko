@@ -107,14 +107,6 @@ let
   '';
 in
 
-# When building for linux (but not in nix-shell) we build statically
-let is_static = !nixpkgs.stdenv.isDarwin; in
-
-let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
-
-# This branches on the pkgs, which is either
-# normal nixpkgs (nix-shell, darwin)
-# nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
     pkgs.dune_3
@@ -143,19 +135,16 @@ let commonBuildInputs = pkgs:
 
 let ocaml_exe = name: bin: rts:
   let
-    profile =
-      if is_static
-      then "release-static"
-      else "release";
+    profile = "release";
   in
-    staticpkgs.stdenv.mkDerivation {
+    nixpkgs.stdenv.mkDerivation {
       inherit name;
 
       allowedRequisites = [];
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
 
       MOTOKO_RELEASE = releaseVersion;
 
@@ -187,21 +176,12 @@ let ocaml_exe = name: bin: rts:
         # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
         # Let's remove that, too
         remove-references-to \
-          -t ${staticpkgs.ocamlPackages.menhir} \
+          -t ${nixpkgs.ocamlPackages.menhir} \
           $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
       '';
     };
-
-  musl-wasi-sysroot = stdenv.mkDerivation {
-    name = "musl-wasi-sysroot";
-    src = nixpkgs.sources.musl-wasi;
-    phases = [ "unpackPhase" "installPhase" ];
-    installPhase = ''
-      make SYSROOT="$out" include_dirs
-    '';
-  };
 in
 
 rec {
@@ -295,8 +275,6 @@ rec {
         
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
-        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
       '';
 
       doCheck = true;
@@ -906,8 +884,6 @@ EOF
     '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
-    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
-    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
