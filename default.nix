@@ -54,6 +54,14 @@ let
   '';
 in
 
+# When building for linux (but not in nix-shell) we build statically
+let is_static = !nixpkgs.stdenv.isDarwin; in
+
+let staticpkgs = if is_static then nixpkgs.pkgsMusl else nixpkgs; in
+
+# This branches on the pkgs, which is either
+# normal nixpkgs (nix-shell, darwin)
+# nixpkgs.pkgsMusl for static building (release builds)
 let commonBuildInputs = pkgs:
   [
     pkgs.dune_3
@@ -82,16 +90,19 @@ let commonBuildInputs = pkgs:
 
 let ocaml_exe = name: bin: rts:
   let
-    profile = "release";
+    profile =
+      if is_static
+      then "release-static"
+      else "release";
   in
-    nixpkgs.stdenv.mkDerivation {
+    staticpkgs.stdenv.mkDerivation {
       inherit name;
 
       allowedRequisites = [];
 
       src = subpath ./src;
 
-      buildInputs = commonBuildInputs nixpkgs;
+      buildInputs = commonBuildInputs staticpkgs;
 
       MOTOKO_RELEASE = releaseVersion;
 
@@ -123,7 +134,7 @@ let ocaml_exe = name: bin: rts:
         # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
         # Let's remove that, too
         remove-references-to \
-          -t ${nixpkgs.ocamlPackages.menhir} \
+          -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
