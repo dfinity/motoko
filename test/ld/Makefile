@@ -14,7 +14,7 @@ WASM_LD?=wasm-ld-18
 MO_LD?=../../src/mo-ld
 
 _out/%.lib.o: %.c | _out
-	$(WASM_CLANG) --compile -fpic --target=wasm64-emscripten --optimize=3 \
+	$(WASM_CLANG) --compile -fpic --target=wasm64 --optimize=3 \
 		-fno-builtin -ffreestanding \
 		$< --output $@
 
