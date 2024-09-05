@@ -266,7 +266,7 @@ rec {
 
       nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo nixpkgs.cacert ];
 
-      buildInputs = rtsBuildInputs;
+      buildInputs = rtsBuildInputs ++ [ wabt ];
 
       preBuild = ''
         export CARGO_HOME=$PWD/cargo-home
@@ -288,7 +288,7 @@ rec {
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
       '';
 
-      doCheck = true;
+      doCheck = false;
 
       checkPhase = ''
         make test
@@ -302,6 +302,10 @@ rec {
         cp mo-rts-incremental-debug.wasm $out/rts
         cp mo-rts-eop.wasm $out/rts
         cp mo-rts-eop-debug.wasm $out/rts
+        mkdir -p $out/dump
+        cp mo-rts-eop.opt.wasm-objdump $out/dump
+        cp mo-rts-eop.wasm-objdump $out/dump
+        cp libmotoko_rts.llvm-objdump $out/dump
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug

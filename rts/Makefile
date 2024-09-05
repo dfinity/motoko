@@ -321,7 +321,10 @@ mo-rts-eop.wasm: $(RTS_RUST_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+
+	wasm-objdump -h -d -x $@ > mo-rts-eop.wasm-objdump
 	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
+	wasm-objdump -h -d -x $@ > mo-rts-eop.opt.wasm-objdump
+	llvm-objdump -dr $(RTS_RUST_WASM_64_A) > libmotoko_rts.llvm-objdump
 
 mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \

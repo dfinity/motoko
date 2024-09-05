@@ -77,6 +77,7 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) ->
 #[incremental_gc]
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
+    bug_repro();
     crate::gc::incremental::get_partitioned_heap().allocate(mem, n)
 }
 
@@ -143,4 +144,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
         rts_trap_with("RTS panicked");
     }
+}
+
+#[no_mangle]
+unsafe fn bug_repro() {
+    println!(100, "{}", 0.0);
 }
