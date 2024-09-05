@@ -306,6 +306,8 @@ rec {
         cp mo-rts-eop.opt.wasm-objdump $out/dump
         cp mo-rts-eop.wasm-objdump $out/dump
         cp libmotoko_rts.llvm-objdump $out/dump
+        cp mo-rts-eop-debug.wasm-objdump $out/dump
+        cp libmotoko_rts-debug.llvm-objdump $out/dump
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug

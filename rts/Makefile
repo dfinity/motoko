@@ -330,6 +330,8 @@ mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+
+	wasm-objdump -h -d -x $@ > mo-rts-eop-debug.wasm-objdump
+	llvm-objdump -dr $(RTS_RUST_DEBUG_WASM_64_A) > libmotoko_rts-debug.llvm-objdump
 
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
