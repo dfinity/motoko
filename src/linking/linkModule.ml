@@ -846,7 +846,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     )
   end else ();
 
-  let max x y = if x >= y then x else y in
+  let max x y = if x >= y then x else y in (* use `Int.max` when bumping to 4.13 *)
 
   (* Rust requires a table offset of at least 1 as elem[0] is considered invalid. 
      There are debug checks panicking if the element index is zero.
