@@ -1,39 +1,37 @@
 # [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/Building.md)
 
 
-A safe, simple, actor-based programming language for authoring [Internet Computer](https://internetcomputer.org/) (IC) canister smart contracts.
+A safe, simple, actor-based programming language for building [Internet Computer](https://internetcomputer.org/) (ICP) canister smart contracts.
 
 ![Motoko Logo](https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e)
 
 ## User Documentation & Samples
 
-* [Building, installing, and developing on Motoko](Building.md).
-* [Overview](doc/md/getting-started/motoko-introduction.md).
-* [Small samples](samples).
-* [Language manual](doc/md/reference/language-manual.md).
-* [Concrete syntax](doc/md/examples/grammar.txt).
-* [Documentation sources](doc/md/).
-* [Base library documentation](doc/md/base/index.md).
-* [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md).
+* [Overview](doc/md/getting-started/motoko-introduction.md)
+* [Building, installing, and developing on Motoko](Building.md)
+* [Small samples](samples)
+* [Language manual](doc/md/reference/language-manual.md)
+* [Concrete syntax](doc/md/examples/grammar.txt)
+* [Documentation sources](doc/md/)
+* [Base library documentation](doc/md/base/index.md)
+* [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md)
 
 ## Introduction
 
 ### Motivation and Goals
 
-* High-level language for programming IC applications
+* Simple design and familiar syntax for average programmers
 
-* Simple ("K.I.S.S.") design and familiar syntax for average programmers
+* Convenient support for the [actor model](https://en.wikipedia.org/wiki/Actor_model)
 
-* Good and convenient support for actor model
-
-* Good fit for underlying Wasm and IC execution model
+* Good fit for underlying Wasm and ICP execution model
 
 * Anticipate future extensions to Wasm where possible
 
 
 ### Key Design Points
 
-* Simple class-based OO language, objects as closures
+* Simple class-based OO language with objects as closures
 
 * Classes can be actors
 
@@ -67,4 +65,4 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 
 ## Contribution
 
-See our [CONTRIBUTING](.github/CONTRIBUTING.md) and [CODE OF CONDUCT](.github/CODE_OF_CONDUCT.md) to get started.
+See our [contribution guidelines](.github/CONTRIBUTING.md) and [code of conduct](.github/CODE_OF_CONDUCT.md) to get started.
