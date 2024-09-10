@@ -1,24 +1,13 @@
-issue-3318.mo:6.24-6.25: type error [M0096], expression of type
-  ((Nat, Nat)) -> (Int, Int)
-cannot produce expected type
-  ((Nat, Nat)) -> ((Int, Int))
-issue-3318.mo:15.41-15.42: type error [M0096], expression of type
-  (Nat, Nat) -> (Nat, Nat)
-cannot produce expected type
-  (Nat, Nat) -> ((Nat, Nat))
-issue-3318.mo:18.41-18.42: type error [M0096], expression of type
-  (Nat, Nat) -> (Nat, Nat)
-cannot produce expected type
-  ((Nat, Nat)) -> (Nat, Nat)
-issue-3318.mo:21.43-21.44: type error [M0096], expression of type
-  (Nat, Nat) -> (Nat, Nat)
-cannot produce expected type
-  ((Nat, Nat)) -> ((Nat, Nat))
-issue-3318.mo:24.39-24.40: type error [M0096], expression of type
-  (Nat, Nat) -> ((Nat, Nat))
-cannot produce expected type
-  (Nat, Nat) -> (Nat, Nat)
-issue-3318.mo:33.43-33.44: type error [M0096], expression of type
-  (Nat, Nat) -> ((Nat, Nat))
-cannot produce expected type
-  ((Nat, Nat)) -> ((Nat, Nat))
+issue-3318.mo:2.13-2.14: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+issue-3318.mo:11.6-11.8: warning [M0194], unused identifier t0 (delete or rename to wildcard `_` or `_t0`)
+issue-3318.mo:14.6-14.8: warning [M0194], unused identifier t1 (delete or rename to wildcard `_` or `_t1`)
+issue-3318.mo:17.6-17.8: warning [M0194], unused identifier t2 (delete or rename to wildcard `_` or `_t2`)
+issue-3318.mo:20.6-20.8: warning [M0194], unused identifier t3 (delete or rename to wildcard `_` or `_t3`)
+issue-3318.mo:23.6-23.8: warning [M0194], unused identifier t4 (delete or rename to wildcard `_` or `_t4`)
+issue-3318.mo:26.6-26.8: warning [M0194], unused identifier t5 (delete or rename to wildcard `_` or `_t5`)
+issue-3318.mo:29.6-29.8: warning [M0194], unused identifier t6 (delete or rename to wildcard `_` or `_t6`)
+issue-3318.mo:32.6-32.8: warning [M0194], unused identifier t7 (delete or rename to wildcard `_` or `_t7`)
+issue-3318.mo:35.6-35.8: warning [M0194], unused identifier t8 (delete or rename to wildcard `_` or `_t8`)
+issue-3318.mo:40.6-40.8: warning [M0194], unused identifier u0 (delete or rename to wildcard `_` or `_u0`)
+issue-3318.mo:42.6-42.8: warning [M0194], unused identifier u1 (delete or rename to wildcard `_` or `_u1`)
+issue-3318.mo:44.6-44.8: warning [M0194], unused identifier u2 (delete or rename to wildcard `_` or `_u2`)

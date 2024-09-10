@@ -637,6 +637,11 @@ and check_typ' env typ : T.typ =
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
     let ts2 = List.map (check_typ env') typs2 in
+     if (typ.at.left.file = "Xstdin")
+     then local_error env typ.at "M0000"
+            "typ1 type%a\ntyp1 type%a"
+            display_typ_expand (T.seq ts1)
+            display_typ_expand (T.seq ts2);
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -823,8 +828,15 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
     match tbs', ts', ats' with
     | tb::tbs', t::ts', at'::ats' ->
       if not env.pre then
-        let u = T.open_ ts tb.T.bound in
-        if not (T.sub t u) then
+        let open T in
+        let u = open_ ts tb.T.bound in
+        let t', u' = if is_func t && is_func u
+          then
+            let s, c, tbs, ts1, ts2 = as_func t in Func (s, c, tbs, [seq ts1], [seq ts2]),
+            let s, c, tbs, ts1, ts2 = as_func u in Func (s, c, tbs, [seq ts1], [seq ts2])
+          else t, u in
+
+          if not (sub t' u') then
           local_error env at' "M0046"
             "type argument%a\ndoes not match parameter bound%a"
             display_typ_expand t
@@ -1893,12 +1905,24 @@ and check_exp' env0 t exp : T.typ =
     t
   | _ ->
     let t' = infer_exp env0 exp in
-    if not (T.sub t' t) then
+    let u, u' =
+      let open T in
+      if is_func t && is_func t' then
+        let transfer_arity from toh = match from, List.map normalize toh with
+          | [_], _ -> [seq toh]
+          | _, [Tup ts] -> ts
+          | _, _ -> toh in
+        let s, c, tbs, ts1, ts2 = as_func t in
+        let dom, cod = transfer_arity ts1, transfer_arity ts2 in
+        Func (s, c, tbs, ts1, ts2),
+        let s, c, tbs, ts1, ts2 = as_func t' in Func (s, c, tbs, dom ts1, cod ts2)
+      else t, t' in
+    if not (T.sub u' u) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    t'
+    u'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
