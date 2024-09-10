@@ -119,6 +119,7 @@ and prim = function
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
+  | DataInspection    -> Atom "DataInspection"
 
 and mut = function
   | Const -> Atom "Const"

@@ -527,6 +527,31 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and export_data_inspection self_id =
+  let open T in
+  let {lab;typ;_} = motoko_data_inspection_fld in
+  let v = "$"^lab in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let ret_typ = T.Prim T.Blob in
+  let caller = fresh_var "caller" caller in
+  ([ letD (var v typ) (
+        (* Write because of potentially stateful incremental data inspection. *)
+        funcE v (Shared Write) Promises [bind1] [] [ret_typ] (
+            (asyncE T.Fut bind2
+              (blockE [
+                  letD caller (primE I.ICCallerPrim []);
+                  expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
+                                        [varE caller; selfRefE principal])
+                                  (primE (I.OtherPrim "is_controller") [varE caller])))
+                ]
+              (primE I.DataInspection []))
+              (Con (scope_con1, []))))
+  )],
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
+
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
@@ -583,7 +608,10 @@ and build_actor at ts self_id es obj_typ =
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
-  I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
+  let data_inspection_d, data_inspection_f = export_data_inspection self_id in
+  let exported_declarations = footprint_d @ runtime_info_d @ data_inspection_d @ ds' in
+  let exported_fields = footprint_f @ runtime_info_f @ data_inspection_f @ fs in
+  I.(ActorE (exported_declarations, exported_fields,
      { meta;
        preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =

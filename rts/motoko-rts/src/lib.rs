@@ -33,6 +33,8 @@ pub mod buf;
 mod char;
 pub mod constants;
 pub mod continuation_table;
+#[enhanced_orthogonal_persistence]
+pub mod data_inspection;
 #[cfg(feature = "ic")]
 mod float;
 pub mod gc;
