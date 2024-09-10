@@ -30,7 +30,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ### Key Design Points
 
-* Simple class-based OO language with objects as closures
+* Class-based [object-oriented](https://en.wikipedia.org/wiki/Object-oriented_programming) language with objects as closures
 
 * Classes can be actors
 
