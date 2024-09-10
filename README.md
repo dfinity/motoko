@@ -7,9 +7,9 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## User Documentation & Samples
 
-* [Overview](doc/md/getting-started/motoko-introduction.md)
-* [Building, installing, and developing on Motoko](Building.md)
-* [Small samples](samples)
+* [Introduction](https://internetcomputer.org/docs/current/motoko/main/getting-started/motoko-introduction)
+* [Basic concepts and terms](https://internetcomputer.org/docs/current/motoko/main/getting-started/basic-concepts)
+* [Sample code](samples)
 * [Language manual](doc/md/reference/language-manual.md)
 * [Concrete syntax](doc/md/examples/grammar.txt)
 * [Documentation sources](doc/md/)
@@ -20,14 +20,13 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ### Motivation and Goals
 
-* Simple design and familiar syntax for average programmers
+* High-level programming language for ICP smart contracts
+
+* Simple design and familiar syntax
 
 * Convenient support for the [actor model](https://en.wikipedia.org/wiki/Actor_model)
 
 * Good fit for underlying Wasm and ICP execution model
-
-* Anticipate future extensions to Wasm where possible
-
 
 ### Key Design Points
 
