@@ -24,7 +24,7 @@
 //! to distinguish them from scalars. Currently, the `object_id` are heap pointers but
 //! this would change with incremental inspection.
 //!
-//! `usize` is 64-bit.
+//! `usize` is 64-bit little endian.
 //!
 //! Implementation:
 //! * Currently, a separate mark bitmap is used for heap traversal during inspection. This
@@ -112,6 +112,7 @@ pub unsafe fn inspect_data<M: Memory>(mem: &mut M) -> Value {
 
 unsafe fn write_header<M: Memory>(stream: &mut Stream, mem: &mut M, roots: &Roots) {
     stream.write(mem, &DATA_INSPECTION_VERSION);
+    stream.write(mem, &roots.len());
     for root in *roots {
         // Resolve incremental GC forwarding pointer in root set.
         let forwarded_root = (*root).forward_if_possible();

@@ -52,19 +52,15 @@ impl Stream {
         let mut start = source_address;
         let end = source_address + length;
         while start < end {
-            self.ensure_capacity(mem);
-            let capacity = STREAM_CHUNK_SIZE - self.length % STREAM_CHUNK_SIZE;
-            let chunk_size = min(end - start, capacity);
-            (*self.last).write(start, chunk_size);
+            let chunk_offset = self.length % STREAM_CHUNK_SIZE;
+            if chunk_offset == 0 {
+                self.append_chunk(mem);
+            }
+            let chunk_size = min(end - start, STREAM_CHUNK_SIZE - chunk_offset);
+            (*self.last).write(chunk_offset, start, chunk_size);
             self.length += chunk_size;
             start += chunk_size;
             debug_assert!(start <= end);
-        }
-    }
-
-    unsafe fn ensure_capacity<M: Memory>(&mut self, mem: &mut M) {
-        if self.length % STREAM_CHUNK_SIZE == 0 {
-            self.append_chunk(mem);
         }
     }
 
@@ -92,6 +88,7 @@ impl Stream {
             target += chunk_size;
             remainder -= chunk_size;
             current = (*current).next;
+            debug_assert!(chunk_size == STREAM_CHUNK_SIZE || current == StreamChunk::null());
         }
         debug_assert_eq!(remainder, 0);
         combined
@@ -122,10 +119,11 @@ impl StreamChunk {
         chunk
     }
 
-    unsafe fn write(&mut self, source_address: usize, length: usize) {
+    unsafe fn write(&mut self, target_offset: usize, source_address: usize, length: usize) {
         debug_assert!(length <= STREAM_CHUNK_SIZE);
-        let target = &mut self.data as *mut u8;
-        memcpy_bytes(target as usize, source_address, Bytes(length));
+        let chunk_start = &mut self.data as *mut u8;
+        let target = chunk_start as usize + target_offset;
+        memcpy_bytes(target, source_address, Bytes(length));
     }
 
     unsafe fn read(&self, target_address: usize, length: usize) {
