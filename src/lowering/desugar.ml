@@ -542,10 +542,13 @@ and export_data_inspection self_id =
         funcE v (Shared Write) Promises [bind1] [] [ret_typ] (
             (asyncE T.Fut bind2
               (blockE [
-                  letD caller (primE I.ICCallerPrim []);
-                  expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
-                                        [varE caller; selfRefE principal])
-                                  (primE (I.OtherPrim "is_controller") [varE caller])))
+                letD caller (primE I.ICCallerPrim []);
+                expD (ifE (orE 
+                    (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                    (primE (I.OtherPrim "is_controller") [varE caller]))
+                  (unitE()) 
+                  (primE (Ir.OtherPrim "trap")
+                    [textE "Unauthorized call of __motoko_inspect_data"]))
                 ]
               (primE I.DataInspection []))
               (Con (scope_con1, []))))
