@@ -101,14 +101,13 @@ pub unsafe fn inspect_data<M: Memory>(mem: &mut M) -> Value {
 
     let mut traversal = HeapTraversal::new(
         mem,
+        &mut stream,
         get_aligned_heap_base(),
         minimum_memory_capacity().as_usize(),
     );
     traversal.run(roots);
 
-    let blob = stream.finalize(mem);
-    println!(100, "BLOB SIZE {}", blob.as_blob_mut().len().as_usize());
-    blob
+    stream.finalize(mem)
 }
 
 unsafe fn write_header<M: Memory>(stream: &mut Stream, mem: &mut M, roots: &Roots) {
@@ -122,18 +121,23 @@ unsafe fn write_header<M: Memory>(stream: &mut Stream, mem: &mut M, roots: &Root
 
 struct HeapTraversal<'a, M: Memory + 'a> {
     mem: &'a mut M,
-    stream: Stream,
+    stream: &'a mut Stream,
     mark_stack: MarkStack,
     mark_bitmap: MarkBitmap,
 }
 
 impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
-    unsafe fn new(mem: &'a mut M, heap_base: usize, heap_end: usize) -> Self {
+    unsafe fn new(
+        mem: &'a mut M,
+        stream: &'a mut Stream,
+        heap_base: usize,
+        heap_end: usize,
+    ) -> Self {
         let mark_stack = MarkStack::new(mem);
         let mark_bitmap = MarkBitmap::new(mem, heap_base, heap_end);
         Self {
             mem,
-            stream: Stream::new(),
+            stream,
             mark_stack,
             mark_bitmap,
         }

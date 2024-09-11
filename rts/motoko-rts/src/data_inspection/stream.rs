@@ -4,9 +4,9 @@
 //! linked list of fixed-size chunks that are finally concatenated to a single
 //! combined blob.
 //!
-//! NOTES: 
+//! NOTES:
 //! * The stream is only used temporarily during a message as it contains
-//!   low-level pointers that are not considered by the GC. 
+//!   low-level pointers that are not considered by the GC.
 //! * The internal nodes and chunk blocks can be reclaimed by the next GC run.
 
 use core::{cmp::min, mem::size_of};
@@ -52,17 +52,20 @@ impl Stream {
         let mut start = source_address;
         let end = source_address + length;
         while start < end {
-            let mut capacity = self.length % STREAM_CHUNK_SIZE;
-            if capacity == 0 {
-                self.append_chunk(mem);
-                capacity = STREAM_CHUNK_SIZE;
-            }
+            self.ensure_capacity(mem);
+            let capacity = STREAM_CHUNK_SIZE - self.length % STREAM_CHUNK_SIZE;
             let chunk_size = min(end - start, capacity);
             (*self.last).write(start, chunk_size);
+            self.length += chunk_size;
             start += chunk_size;
             debug_assert!(start <= end);
         }
-        self.length += length;
+    }
+
+    unsafe fn ensure_capacity<M: Memory>(&mut self, mem: &mut M) {
+        if self.length % STREAM_CHUNK_SIZE == 0 {
+            self.append_chunk(mem);
+        }
     }
 
     unsafe fn append_chunk<M: Memory>(&mut self, mem: &mut M) {
@@ -87,7 +90,6 @@ impl Stream {
             let chunk_size = min(remainder, STREAM_CHUNK_SIZE);
             (*current).read(target, chunk_size);
             target += chunk_size;
-            debug_assert!(remainder >= chunk_size);
             remainder -= chunk_size;
             current = (*current).next;
         }
