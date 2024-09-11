@@ -1,10 +1,10 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 
 actor {
-    stable let line = [ { var x = 1; var y = 2; }, { var x = 3; var y = 4; }, { var x = 5; var y = 6; }];
-    stable let coloredLine = { line; var color = "blue"; };
-    
-    public func change(): async () {
+    stable let line = [{ var x = 1; var y = 2 }, { var x = 3; var y = 4 }, { var x = 5; var y = 6 }];
+    stable let coloredLine = { line; var color = "blue" };
+
+    public func change() : async () {
         for (point in line.vals()) {
             point.x += 1;
             point.y += 1;
@@ -13,9 +13,9 @@ actor {
             coloredLine.color := "red";
         } else {
             coloredLine.color := "blue";
-        }
-    }
-}
+        };
+    };
+};
 
 //SKIP run
 //SKIP run-low
