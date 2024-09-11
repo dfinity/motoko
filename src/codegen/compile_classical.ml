@@ -8696,7 +8696,7 @@ module Stabilization = struct
         compile_eq64_const 0L ^^
         (G.if0
         begin
-          (* Default to -1 if if no upgrade instructions were recorded, i.e. 
+          (* Default to -1 if no upgrade instructions were recorded, i.e. 
              because the record space was lacking or was zero padding. *)
           compile_const_64 (-1L) ^^
           set_instructions
