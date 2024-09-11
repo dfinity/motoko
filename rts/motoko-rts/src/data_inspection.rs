@@ -89,8 +89,7 @@ use crate::{
         Memory,
     },
     types::{
-        base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, slice_tag, Array, Tag,
-        Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT,
+        base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, skew, slice_tag, Array, Tag, Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT
     },
     visitor::visit_pointer_fields,
 };
@@ -214,13 +213,13 @@ impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
     unsafe fn dump(&mut self, value: Value) {
         // Resolve the forwarding pointer of incremental GC.
         let object = value.as_obj();
+        let object_address = object as usize;
+        let object_id = skew(object_address);
+        self.stream.write(self.mem, &object_id);
         // Ignore array slice information of incremental GC.
         let tag = Self::base_object_tag(object.tag());
         self.stream.write(self.mem, &tag);
         // Skip GC's forwarding pointer in the stream output.
-        // Directly stream the object payload, using pointers as object ids.
-        let object_address = object as usize;
-        let length = block_size(object_address).to_bytes().as_usize();
         // Objects need the size prepended to enable stream reading.
         // This is because the object size is derived from the hash blob
         // that may occur after the object, unless one reorders the
@@ -229,6 +228,8 @@ impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
             let object_size = value.as_object().size();
             self.stream.write(self.mem, &object_size);
         }
+        // Directly stream the object payload, using pointers as object ids.
+        let length = block_size(object_address).to_bytes().as_usize();
         self.stream.raw_write(self.mem, object_address, length);
     }
 
