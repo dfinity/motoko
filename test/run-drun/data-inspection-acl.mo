@@ -1,3 +1,5 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+
 import Prim "mo:⛔";
 import Lib "data-inspection-acl/C";
 
