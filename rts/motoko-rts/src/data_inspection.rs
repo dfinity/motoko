@@ -16,9 +16,14 @@
 //! Format = Version RootSet Heap.
 //! Version = `1: usize`.
 //! RootSet = `length: usize` {`object_id: usize`}.
-//! Heap = `object_id: usize` `object_tag: usize` ObjectPayload.
-//! ObjectPayload = object payload, replacing pointers by object ids, rounded to `usize`.
+//! Heap = `object_id: usize` `object_tag: usize` `object_payload:
 //! ```
+//!
+//! The object payload is organized as follows:
+//! * The regular RTS object payload, with pointers replaced by object ids.
+//! * The payload is always a multiple of the word size.
+//! * For `Object`, the object size is prepended because the hash blob cannot directly be
+//!   located in the stream.
 //!
 //! `object_id` are potentially synthetic identifiers of an objects. The ids are skewed,
 //! to distinguish them from scalars. Currently, the `object_id` are heap pointers but
@@ -85,7 +90,7 @@ use crate::{
     },
     types::{
         base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, slice_tag, Array, Tag,
-        Value, TAG_ARRAY_SLICE_MIN,
+        Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -216,6 +221,14 @@ impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
         // Directly stream the object payload, using pointers as object ids.
         let object_address = object as usize;
         let length = block_size(object_address).to_bytes().as_usize();
+        // Objects need the size prepended to enable stream reading.
+        // This is because the object size is derived from the hash blob
+        // that may occur after the object, unless one reorders the
+        // heap traversal.
+        if tag == TAG_OBJECT {
+            let object_size = value.as_object().size();
+            self.stream.write(self.mem, &object_size);
+        }
         self.stream.raw_write(self.mem, object_address, length);
     }
 
