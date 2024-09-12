@@ -77,6 +77,8 @@ mod mark_bitmap;
 mod mark_stack;
 mod stream;
 
+use core::mem::size_of;
+
 use mark_bitmap::MarkBitmap;
 use mark_stack::{MarkStack, StackEntry};
 use motoko_rts_macros::ic_mem_fn;
@@ -89,7 +91,8 @@ use crate::{
         Memory,
     },
     types::{
-        base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, skew, slice_tag, Array, Tag, Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT
+        base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, skew, slice_tag, Array,
+        Obj, Tag, Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -229,8 +232,12 @@ impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
             self.stream.write(self.mem, &object_size);
         }
         // Directly stream the object payload, using pointers as object ids.
-        let length = block_size(object_address).to_bytes().as_usize();
-        self.stream.raw_write(self.mem, object_address, length);
+        const HEADER_LENGTH: usize = size_of::<Obj>();
+        let payload_start = object_address + HEADER_LENGTH;
+        debug_assert!(block_size(object_address).to_bytes().as_usize() >= HEADER_LENGTH);
+        let payload_length = block_size(object_address).to_bytes().as_usize() - HEADER_LENGTH;
+        self.stream
+            .raw_write(self.mem, payload_start, payload_length);
     }
 
     fn base_object_tag(tag: Tag) -> Tag {
