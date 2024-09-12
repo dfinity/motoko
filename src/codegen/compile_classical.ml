@@ -5649,6 +5649,18 @@ module Cycles = struct
       )
     )
 
+  let burn env =
+    Func.share_code1 Func.Always env "cycle_burn" ("cycles", I64Type) [I64Type] (fun env get_x ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_x ^^
+        to_two_word64 env ^^
+        get_dst ^^
+        IC.cycles_burn env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
 end (* Cycles *)
 
 (* Low-level, almost raw access to IC stable memory.
@@ -12067,6 +12079,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.available env
   | SystemCyclesRefundedPrim, [] ->
     SR.Vanilla, Cycles.refunded env
+  | SystemCyclesBurnPrim, [e1] ->
+    SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
