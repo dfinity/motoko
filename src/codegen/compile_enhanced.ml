@@ -4731,6 +4731,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_available128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
+      E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
@@ -4751,8 +4752,7 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
       if !Flags.global_timer then
-        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
-      ()
+        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
   let system_imports env =
     match E.mode env with
@@ -5221,48 +5221,49 @@ module IC = struct
 
   let cycle_balance env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "canister_cycle_balance128"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
   let cycles_add env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "call_cycles_add128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
   let cycles_accept env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_accept128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
   let cycles_available env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_available128"
     | _ ->
       E.trap_with env "cannot get cycles available when running locally"
 
   let cycles_refunded env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_refunded128"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
 
+  let cycles_burn env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "msg_cycles_burn128"
+    | _ ->
+      E.trap_with env "cannot burn cycles when running locally"
+
   let set_certified_data env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       Blob.as_ptr_len env ^^
       system_call env "certified_data_set"
     | _ ->
@@ -5270,8 +5271,7 @@ module IC = struct
 
   let get_certificate env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "data_certificate_present" ^^
       Bool.from_rts_int32 ^^
       E.if1 I64Type
