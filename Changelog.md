@@ -2,6 +2,9 @@
 
 * motoko (`moc`)
 
+  * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
+    programmatically (#4690).
+
   * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new moc flag `--enhanced-orthogonal-persistence` (#4193).
 
     This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
