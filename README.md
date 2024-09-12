@@ -44,7 +44,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 * Inspirations from Java, C#, JavaScript, Swift, Pony, ML, Haskell
 
-## Related repositories
+## Related Repositories
 
 * [Base library](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
@@ -54,7 +54,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [VS Code extension](https://github.com/dfinity/vscode-motoko) &middot; ([install](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko))
 * [Browser and Node.js bindings](https://github.com/dfinity/node-motoko) &middot; ([npm package](https://www.npmjs.com/package/motoko))
 
-## Community resources
+## Community Resources
 
 * [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
 * [Blocks - an online low-code editor for Motoko](https://github.com/Blocks-Editor/blocks)
@@ -62,6 +62,6 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
 * [Motoko library starter template](https://github.com/ByronBecker/motoko-library-template)
 
-## Contribution
+## Contributing
 
 See our [contribution guidelines](.github/CONTRIBUTING.md) and [code of conduct](.github/CODE_OF_CONDUCT.md) to get started.
