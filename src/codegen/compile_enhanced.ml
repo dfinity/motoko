@@ -4731,7 +4731,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_available128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
-      E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
+      E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
@@ -5257,7 +5257,7 @@ module IC = struct
   let cycles_burn env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      system_call env "msg_cycles_burn128"
+      system_call env "cycles_burn128"
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 

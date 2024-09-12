@@ -5526,7 +5526,7 @@ module IC = struct
   let cycles_burn env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      system_call env "msg_cycles_burn128"
+      system_call env "cycles_burn128"
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 
@@ -5650,7 +5650,7 @@ module Cycles = struct
     )
 
   let burn env =
-    Func.share_code1 Func.Always env "cycle_burn" ("cycles", I64Type) [I64Type] (fun env get_x ->
+    Func.share_code1 Func.Always env "cycle_burn" ("cycles", I32Type) [I32Type] (fun env get_x ->
       Stack.with_words env "dst" 4l (fun get_dst ->
         get_x ^^
         to_two_word64 env ^^
