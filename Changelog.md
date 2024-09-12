@@ -5,7 +5,7 @@
   * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
     programmatically (#4690).
 
-  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new moc flag `--enhanced-orthogonal-persistence` (#4193).
+  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new `moc` flag `--enhanced-orthogonal-persistence` (#4193).
 
     This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
     * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
