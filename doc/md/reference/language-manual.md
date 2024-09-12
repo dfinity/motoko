@@ -2550,10 +2550,22 @@ Because the [`Error`](../base/Error.md) type is opaque, the pattern match cannot
 
 :::
 
-The `try` expression can be provided with a `finally` cleanup clause to facilitate structured rollback of temporary state changes (e.g. to release a lock). 
+The `try` expression can be provided with a `finally` cleanup clause to facilitate structured rollback of temporary state changes (e.g. to release a lock).
 The preceding `catch` clause may be omitted in the presence of a `finally` clause.
 
 This form is `try <block-or-exp1> (catch <pat> <block-or-exp2>)? finally <block-or-exp3>`, and evaluation proceeds as above with the crucial addition that every control-flow path leaving `<block-or-exp1>` or `<block-or-exp2>` will execute the unit-valued `<block-or-exp3>` before the entire `try` expression produces its result. The cleanup expression will additionally also be executed when the processing after an intervening `await` (directly, or indirectly as `await*`) traps.
+
+:::danger
+
+The code within a `finally` block should terminate promptly and not trap.
+A trapping finally block will fail to free its callback table slot which
+can prevent a future upgrade.
+In this situation, the canister should be explicitly stopped before re-attempting the upgrade.
+In addition, care should be taken to release any resources that may have remained acquired due to the trap.
+The canister may be re-started after the upgrade.
+
+:::
+
 
 See [Error type](#error-type).
 
@@ -2694,3 +2706,6 @@ In general, this means that an expression of a more specific type may appear whe
 ## References
 
 -   **IEEE Standard for Floating-Point Arithmetic**, in IEEE Std 754-2019 (Revision of IEEE 754-2008), vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
+
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

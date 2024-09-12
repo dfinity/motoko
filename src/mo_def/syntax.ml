@@ -22,6 +22,7 @@ type resolved_import =
 (* Identifiers *)
 
 type id = string Source.phrase
+(* type id_ref, see below *)
 type typ_id = (string, Type.con option) Source.annotated_phrase
 
 
@@ -32,6 +33,7 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
+and id_ref = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -149,7 +151,7 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
-  | VarE of id                                 (* variable *)
+  | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)
   | ActorUrlE of exp                           (* actor reference *)
   | UnE of op_typ * unop * exp                 (* unary operator *)
@@ -260,15 +262,15 @@ type lib = comp_unit
 (* Helpers *)
 
 let (@@) = Source.(@@)
-let (@?) it at = Source.({it; at; note = empty_typ_note})
-let (@!) it at = Source.({it; at; note = Type.Pre})
-let (@=) it at = Source.({it; at; note = None})
-
+let (@~) it at = Source.annotate Const it at
+let (@?) it at = Source.annotate empty_typ_note it at
+let (@!) it at = Source.annotate Type.Pre it at
+let (@=) it at = Source.annotate None it at
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
-  | BoolLit true  ->  "true"
+  | BoolLit true  -> "true"
   | IntLit n
   | NatLit n      -> Numerics.Int.to_pretty_string n
   | Int8Lit n     -> Numerics.Int_8.to_pretty_string n

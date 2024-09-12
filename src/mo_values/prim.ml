@@ -225,7 +225,8 @@ let prim trap =
      | "rts_callback_table_count"
      | "rts_callback_table_size"
      | "rts_mutator_instructions"
-     | "rts_collector_instructions") ->
+     | "rts_collector_instructions"
+     | "rts_upgrade_instructions") ->
         fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
   | "idlHash" -> fun _ v k ->
@@ -292,6 +293,12 @@ let prim trap =
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
+
+
+  | "blobOfPrincipal" -> fun _ v k -> k v
+  | "principalOfBlob" -> fun _ v k -> k v
+  | "principalOfActor" -> fun _ v k -> k v
+
   | "blobToArray" -> fun _ v k ->
     k (Array (Array.of_seq (Seq.map (fun c ->
       Nat8 (Nat8.of_int (Char.code c))
@@ -381,5 +388,12 @@ let prim trap =
 
   | "canister_version" ->
       fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
+
+  (* fake *)
+  | "setCandidLimits" ->
+      fun _ v k -> k unit
+  | "getCandidLimits" ->
+      fun _ v k -> k (Tup [
+        Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
 
   | s -> trap.trap ("Value.prim: " ^ s)

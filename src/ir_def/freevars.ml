@@ -103,7 +103,7 @@ let fields fs = unions (fun f ->
 ) fs
 
 let rec exp e : f = match e.it with
-  | VarE i              -> id i
+  | VarE (_, i)         -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
@@ -123,12 +123,13 @@ let rec exp e : f = match e.it with
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect} =
+and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; _} =
   under_lambda (exp preupgrade) ++
   under_lambda (exp postupgrade) ++
   under_lambda (exp heartbeat) ++
   under_lambda (exp timer) ++
-  under_lambda (exp inspect)
+  under_lambda (exp inspect) ++
+  under_lambda (exp stable_record)
 
 and exps es : f = unions exp es
 

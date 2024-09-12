@@ -13,7 +13,7 @@ The **region manager** is the state and logic to support this generalization.
 
 The current stable memory module in `base` has been "experimental" for a long time, and requires a more composable API to graduate from this status.
 
-Stable regions address the problem that today's `ExperimentalStableMemory` module only provides a single, monolithic memory that makes it unsuitable for directly building composable software parts.
+Stable regions address the problem that the deprecated `ExperimentalStableMemory` module only provided a single, monolithic memory that makes it unsuitable for directly building composable software parts.
 
 Stable regions permit a new API that supports composable use cases.
 
@@ -331,3 +331,7 @@ Since we do not move the remaining blocks of region 0, the first block of memory
 
 This design ensures that an existing canister using very large amounts of experimental stable memory can be migrated with only constant-cost movement
 of the first block (128 pages) of memory.
+
+## Orthogonal Persistence
+
+Stable regions can be used together with orthogonal persistence, see [Classical Persistence](OldStableMemory.md) and [Enhanced Orthogonal Persistence](OrthogonalPersistence.md).

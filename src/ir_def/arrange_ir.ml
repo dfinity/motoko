@@ -13,7 +13,7 @@ let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
-  | VarE i              -> "VarE"    $$ [id i]
+  | VarE (m, i)         -> (if m = Var then "VarE!" else "VarE") $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
@@ -35,13 +35,15 @@ let rec exp e = match e.it with
   | TryE (e, cs, None) -> "TryE" $$ [exp e] @ List.map case cs
   | TryE (e, cs, Some (i, _)) -> "TryE" $$ [exp e] @ List.map case cs @ Atom ";" :: [id i]
 
-and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect} = (* TODO: show meta? *)
+and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type} = (* TODO: show meta? *)
   "System" $$ [
       "Pre" $$ [exp preupgrade];
       "Post" $$ [exp postupgrade];
       "Heartbeat" $$ [exp heartbeat];
       "Timer" $$ [exp timer];
       "Inspect" $$ [exp inspect];
+      "StableRecord" $$ [exp stable_record];
+      "StableType" $$ [typ stable_type]
     ]
 
 and lexp le = match le.it with

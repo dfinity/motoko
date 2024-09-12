@@ -1,5 +1,86 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new moc flag `--enhanced-orthogonal-persistence` (#4193).
+
+    This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+    * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
+    * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
+    * The runtime system checks that data changes of new program versions are compatible with the old state.
+    
+    Implications:
+    * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
+    * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
+    * The change to 64-bit increases the memory demand on the heap, in worst case by a factor of two.
+    * For step-wise release handling, the IC initially only offers a limited capacity of the 64-bit space (e.g. 4GB or 6GB), that will be gradually increased in future to the capacity of stable memory.
+    * There is moderate performance regression of around 10% for normal execution due to combined related features (precise tagging, change to incremental GC, and handling of compile-time-known data).
+    * The garbage collector is fixed to incremental GC and cannot be chosen.
+    * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
+    * The debug print format of `NaN` changes (originally `nan`).
+    
+    To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ...
+    ```
+
+    For more information, see:
+    * The Motoko design documentation `design/OrthogonalPersistence.md`
+    * The Motoko user documentation `doc/md/canister-maintenance//upgrades.md`.
+
+  * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
+    as a linear function, `max_values`, of binary payload size.
+
+    ```
+      max_values(blob) = (blob.size() * numerator)/denominator + bias
+    ```
+
+    The current default settings are `{numerator = 1; denominator = 1; bias = 1024 }`, allowing a maximum
+    of 1024 values plus one additional value per byte in the payload.
+
+    While hopefully not required, the constant factors can be read/modified using system functions:
+    *  Prim.setCandidLimits: `<system>{numerator : Nat32;  denominator : Nat32; bias : Nat32 } -> ()`
+    *  Prim.getCandidLimits: `<system>() -> {numerator : Nat32; denominator : Nat32; bias : Nat32 }`
+
+## 0.12.1 (2024-08-08)
+
+* motoko (`moc`)
+
+  * Added a new command-line flag `--print-source-on-error` to print source code context on error (#4650).
+
+  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics (#4635).
+
+    Exposing a privileged system-level query function `__motoko_runtime_information()` 
+    that reports the current runtime statistics of the canister, such as the heap size, 
+    the total number of allocated objects, the total amount of reclaimed memory and more.
+    This is useful because several statistics of the reported information cannot be 
+    inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
+    This query is only authorized to the canister controllers and self-calls of the canister.
+
+    ``` Motoko
+    __motoko_runtime_information : () -> {
+        compilerVersion : Text;
+        rtsVersion : Text;
+        garbageCollector : Text;
+        sanityChecks : Nat;
+        memorySize : Nat;
+        heapSize : Nat;
+        totalAllocation : Nat;
+        reclaimed : Nat;
+        maxLiveSize : Nat;
+        stableMemorySize : Nat;
+        logicalStableMemorySize : Nat;
+        maxStackSize : Nat;
+        callbackTableCount : Nat;
+        callbackTableSize : Nat;
+    }
+    ```
+
 ## 0.12.0 (2024-07-26)
 
 * motoko (`moc`)

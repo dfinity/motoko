@@ -10,15 +10,15 @@ use super::{Heap, Limits, Roots};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{classical::pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
-    let length = Bytes(heap.limits.free as u32);
+    let length = Bytes(heap.limits.free);
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
+    let blob = alloc_blob(heap.mem, TAG_BLOB_B, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
@@ -89,12 +89,12 @@ unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
 unsafe fn verify_field(current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field && !recorded(current_field as u32) {
+    if *previous_field != *current_field && !recorded(current_field as usize) {
         panic!("Missing write barrier at {:#x}", current_field as usize);
     }
 }
 
-unsafe fn recorded(value: u32) -> bool {
+unsafe fn recorded(value: usize) -> bool {
     match &REMEMBERED_SET {
         None => panic!("No remembered set"),
         Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),

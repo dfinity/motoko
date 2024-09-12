@@ -6,7 +6,7 @@ This directory contains the parts of the Motoko runtime implemented in Rust.
 tl;dr
 -----
 
-If you just want to get `mo-rts.wasm` in this directory, run
+If you just want to get RTS wasm files in this directory, run
 
     nix-shell --run 'make -C rts'
 
@@ -15,7 +15,7 @@ from the top-level directory of the Motoko repository.
 Compilation
 -----------
 
-Running `make` should produce `mo-rts.wasm`.
+Running `make` should produce RTS Wasm files (different versions).
 
 If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
 should point to suitable binaries (we track a specific unreleased version of

@@ -6,21 +6,19 @@ sidebar_position: 3
 
 ## Overview
 
-One key feature of ICP is its ability to persist canister state using WebAssembly memory and globals rather than a traditional database. This means that the entire state of a canister is restored before and saved after each message, without explicit user instruction. This automatic and user-transparent preservation of state between messages is called **orthogonal persistence**.
+One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
-Though convenient, orthogonal persistence poses a challenge when it comes to upgrading the code of a canister. Without an explicit representation of the canister’s state, how does one transfer any application data from the retired canister to its replacement? For example, if you want to deploy a new version of a user registration canister to fix an issue or add functionality, you need to ensure that existing registrations survive the upgrade process.
-
-Accommodating upgrades without data loss requires some new facility to **migrate** a canister’s crucial data to the upgraded canister. ICP's persistence model allows a canister to save and restore long-lived data to dedicated **stable memory** that, unlike ordinary canister memory, is not cleared but retained across an upgrade. This facility allows a canister to transfer data in bulk to its replacement canister, provided that data is placed in stable memory, either throughout its lifetime, or just before an upgrade.
-
-Motoko provides high-level support for preserving state that leverages stable memory. This feature, called **stable storage**, is designed to accommodate changes to both the application data and the Motoko compiler used to produce the application code.
-
-Utilizing stable storage depends on the developer anticipating and indicating the data to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
+This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicilty use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
 
 ## Declaring stable variables
 
-In an actor, you can configure a variable to use stable storage through the `stable` keyword modifier in the variable’s declaration.
+In an actor, you can configure which part of the program is considered to be persistent, i.e. survives upgrades, and which part are ephemeral, i.e. are reset on upgrades.
 
-More precisely, every `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is declared as `flexible` by default.
+More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is assumed to be `flexible` by default.
+
+The semantics of the modifiers is as follows:
+* `stable` means that all values directly or indirectly reachable from that stable actor variable are considered persistent and automatically retained across upgrades. This is the primary choice for most of the program's state.
+* `flexible` means that the variable is re-initialized on upgrade, such that the values referenced by this flexible variable can be discarded, unless the values are transitively reachable by other variables that are stable. `flexible` is only used for temporal state or references to high-order types, such as local function references, see [stable types](#stable-types).
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
@@ -35,41 +33,23 @@ You can only use the `stable` or `flexible` modifier on `let` and `var` declarat
 
 When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
-## Preupgrade and postupgrade system methods
+:::danger
+Do not forget to declare variables `stable` if they should survive canister upgrades as the default is `flexible` if no modifier is declared.
+:::
 
-Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
+## Persistence modes
 
-As a simple example, consider the following `Registry` actor:
+Motoko currently features two implementations for orthogonal persistence, see [persistence modes](orthogonal-persistence/modes.md).
 
-``` motoko file=../examples/Registry.mo
-```
-
-This actor assigns sequential identifiers to [`Text`](../base/Text.md) values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on orthogonal persistence to maintain the state of the hashmap between calls.
-
-This example would like to make the `Register` upgradable without the upgrade losing any existing registrations, but its state, `map`, has a proper object type that contains member functions, so the `map` variable cannot be declared `stable`.
-
-For scenarios like this that can’t be solved using stable variables alone, Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow you to migrate state between unrestricted flexible variables to more restricted stable variables. These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
-
-The `preupgrade` method lets you make a final update to stable variables before the runtime commits their values to stable memory and performs an upgrade. The `postupgrade` method is run after an upgrade has initialized the replacement actor, including its stable variables, but before executing any shared function call or message on that actor.
-
-The following example introduces a new stable variable, `entries`, to save and restore the entries of the unstable hash table:
-
-``` motoko file=../examples/StableRegistry.mo
-```
-
-Note that the type of `entries`, being an array of [`Text`](../base/Text.md) and [`Nat`](../base/Nat.md) pairs, is indeed a stable type.
-
-In this example, the `preupgrade` system method writes the current `map` entries to `entries` before `entries` is saved to stable memory. The `postupgrade` system method resets `entries` to the empty array after `map` has been populated from `entries`.
-
-## Typing
+## Stable types
 
 Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, every `stable` variable must have a stable type. A type is stable if the type obtained by ignoring any `var` modifiers within it is shared.
 
-The only difference between stable types and shared types is the former’s support for mutation. Like shared types, stable types are restricted to first-order data, excluding local functions and structures built from local functions, such as objects. This exclusion of functions is required because the meaning of a function value, consisting of both data and code, cannot easily be preserved across an upgrade. The meaning of plain data, mutable or not, can be.
+The only difference between stable types and shared types is the former’s support for mutation. Like shared types, stable types are restricted to first-order data, excluding local functions and structures built from local functions (such as class instances). This exclusion of functions is required because the meaning of a function value, consisting of both data and code, cannot easily be preserved across an upgrade. The meaning of plain data, mutable or not, can be.
 
 :::note
 
-In general, object types are not stable because they can contain local functions. However, a plain record of stable data is a special case of object types that are stable. Moreover, references to actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve the state record of a set of actors or shared function callbacks subscribing to a service.
+In general, classes are not stable because they can contain local functions. However, a plain record of stable data is a special case of object types that are stable. Moreover, references to actors and shared functions are also stable, allowing you to preserve their values across upgrades. For example, you can preserve the state record of a set of actors or shared function callbacks subscribing to a service.
 
 :::
 
@@ -83,38 +63,38 @@ For variables that do not have a stable type, there are two options for making t
   - [StableHashMap](https://github.com/canscale/StableHashMap)
   - [StableRBTree](https://github.com/canscale/StableRBTree)
 
-2. You can convert the variable to another type that is stable, such as the following example that converts a `Buffer` to an `Array`:
+:::note
+Unlike stable data structures in the Rust CDK, these modules do not use stable memory but rely on orthogonal persistence. The adjective "stable" only denotes a stable type in Motoko.
+:::
+
+2. Extract the state in a stable type, and wrap it in the non-stable type. 
+
+For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
 ```motoko
-let theProjectsBuffer : Buffer.Buffer = Buffer.Buffer(theProjectsNew.size());
+actor {
+  type TemperatureSeries = [Float];
 
-for (x in theProjectsNew.vals()) {
+  class Weather(temperatures : TemperatureSeries) {
+    public func averageTemperature() : Float {
+      var sum = 0.0;
+      var count = 0.0;
+      for (value in temperatures.vals()) {
+        sum += value;
+        count += 1;
+      };
+      return sum / count;
+    };
+  };
 
-theProjectsBuffer.add(x);
-
+  stable var temperatures : TemperatureSeries = [30.0, 31.5, 29.2];
+  flexible var weather = Weather(temperatures);
 };
-
-theProjectsBuffer.add(newProject);
-
-return theProjectsBuffer.toArray();
 ```
 
-Here is another example that takes a `HashMap` type and creates a stable `Array`:
-
-```motoko
-private var canisters: HashMap.HashMap<Principal, CanisterId> = HashMap.HashMap<Principal, CanisterId>(10, isPrincipalEqual, Principal.hash);
-
-private stable var upgradeCanisters : [(Principal, CanisterId)] = [];
-
-system func preupgrade() {
-        upgradeCanisters := Iter.toArray(canisters.entries());
-    };
-
-    system func postupgrade() {
-        canisters := HashMap.fromIter<Principal, CanisterId>(upgradeCanisters.vals(), 10, isPrincipalEqual, Principal.hash);
-        upgradeCanisters := [];
-    };
-```
+3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
+The downside of this approach is that it is error-prone and does not scale for large data. 
+Conceptually, it also does not align well with the idea of orthogonal persistence.
 
 ## Stable type signatures
 
@@ -138,13 +118,14 @@ You can emit the stable signature of the main actor or actor class to a `.most` 
 
 :::
 
-A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if:
+A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1>` one of the following conditions hold:
 
--   Every immutable field `stable <id> : T` in `<stab-sig1>` has a matching field `stable <id> : U` in `<stab-sig2>` with `T <: U`.
+- `<stab-sig2>` does not contain a stable field `<id>`.
+- `<stab-sig>` has a matchng stable field `<id> : U` with `T <: U`.
 
--   Every mutable field `stable var <id> : T` in `<stab-sig1>` has a matching field `stable var <id> : U` in `<stab-sig2>` with `T <: U`.
+Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields. 
 
-Note that `<stab-sig2>` may contain additional fields. Typically, `<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version.
+`<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version.
 
 The subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code.
 
@@ -154,27 +135,25 @@ You can check the stable-compatibility of two `.most` files containing stable si
 
 :::
 
-:::note
-
-The stable-compatible relation is quite conservative. In the future, it may be relaxed to accommodate a change in field mutability and/or abandoning fields from `<stab-sig1>` but with a warning.
-
-:::
 
 ## Upgrade safety
 
-Before upgrading a deployed canister, you should ensure that the upgrade is safe and will not:
+When upgrading a canister, it is important to verify that the upgrade can proceed without:
 
--   Break existing clients due to a Candid interface change.
+-   Introducing an incompatible change in stable declarations.
+-   Breaking clients due to a Candid interface change.
 
--   Discard Motoko stable state due to an incompatible change in stable declarations.
+With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations during upgrade attempt.
+Moreover, `dfx` checks the two conditions before attempting then upgrade and warns users correspondingly.
 
 A Motoko canister upgrade is safe provided:
 
--   The canister’s Candid interface evolves to a Candid subtype.
-
+-  The canister’s Candid interface evolves to a Candid subtype.
 -  The canister’s Motoko stable signature evolves to a stable-compatible one.
 
-Upgrade safety does not guarantee that the upgrade process will succeed, as it can still fail due to resource constraints. However, it should at least ensure that a successful upgrade will not break Candid type compatibility with existing clients or unexpectedly lose data that was marked `stable`.
+:::danger
+With [classical orthogonal persistence](orthogonal-persistence/classical.md), the upgrade can still fail due to resource constraints. This is problematic as the canister can then not be upgraded. It is therefore strongly advised to test the scalability of upgrades well. Enhanced orthogonal persistence will abandon this issue.
+:::
 
 :::tip
 
@@ -182,19 +161,71 @@ You can check valid Candid subtyping between two services described in `.did` fi
 
 :::
 
-
-## Metadata sections
-
-The Motoko compiler embeds the Candid interface and stable signature of a canister as canister metadata, recorded in additional Wasm custom sections of a compiled binary.
-
-This metadata can be selectively exposed by ICP and used by tools such as `dfx` to verify upgrade compatibility.
-
 ## Upgrading a deployed actor or canister
 
-After you have deployed a Motoko actor with the appropriate `stable` variables or `preupgrade` and `postupgrade` system methods, you can use the `dfx canister install` command with the `--mode=upgrade` option to upgrade an already deployed version. For information about upgrading a deployed canister, see [upgrade a canister smart contract](/docs/current/developer-docs/smart-contracts/maintain/upgrade).
+After you have deployed a Motoko actor with the appropriate `stable` variables, you can use the `dfx deploy` command to upgrade an already deployed version. For information about upgrading a deployed canister, see [upgrade a canister smart contract](/docs/current/developer-docs/smart-contracts/maintain/upgrade).
 
-`dfx canister install --mode=upgrade` checks that the interface is compatible, and if not, show this message and ask if you want to continue:
+`dfx deploy` checks that the interface is compatible, and if not, shows this message and asks if you want to continue:
 
 ```
-let msg = format!("Candid interface compatibility check failed for canister '{}'.\nYou are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.\n\n", canister_info.get_name()) + &err;
+You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
+
+In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about dropping stable variables.
+
+## Data migration
+
+Often, data representation changes with a new program version. For orthogonal persistence, it is important the language is able to allow flexible data migration to the new version.
+
+Motoko supports two kinds of data migrations: Implicit migration and explicit migration.
+
+### Implicit migration
+
+This is automatically supported when the new program version is stable-compatible with the old version. The runtime system of Motoko then automatically handles the migration on upgrade.
+
+More precisely, the following changes can be implicitly migrated:
+* Adding or removing actor fields.
+* Changing mutability of the actor field.
+* Removing record fields.
+* Adding variant fields.
+* Changing `Nat` to `Int`.
+* Shared function parameter contravariance and return type covariance.
+* Any change that is allowed by the Motoko's subtyping rule.
+
+### Explicit migration
+
+Any more complex migration is possible by user-defined functionality.
+
+For this purpose, a three step approach is taken:
+1. Introduce new variables of the desired types, while keeping the old declarations.
+2. Write logic to copy the state from the old variables to the new variables on upgrade.
+3. Drop the old declarations once all data has been migrated.
+
+For more information, see the [example of explicit migration](compatibility.md#explicit-migration).
+
+## Legacy features
+
+The following aspects are retained for historical reasons and backwards compatibility:
+
+### Preupgrade and postupgrade system methods
+
+This is an advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
+
+Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
+These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
+
+:::danger
+If `preupgrade` raises a trap, hits the instruction limit, or hits another IC computing limit, the upgrade can no longer succeed and the canister is stuck with the existing version.
+:::
+
+:::tip
+`postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
+:::
+
+### Stable memory and stable regions
+
+Stable memory was introduced on the IC to allow upgrades in languages that do not implement orthogonal persistence of the main memory. This is the case with Motoko's classical persistence as well as other languages besides Motoko.
+
+Stable memory and stable regions can still be used in combination with orthogonal persistence, although there is little practical need for this with enhanced orthogonal persistence and the future large main memory capacity on the IC.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

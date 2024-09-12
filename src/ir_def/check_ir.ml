@@ -387,12 +387,19 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   begin match exp.it with
-  | VarE id ->
-    let { typ; loc_known; const } =
+  | VarE (m, id) ->
+    let { typ; _ } =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
-    T.as_immut typ <: t
+    begin match m with
+    | Const ->
+       assert (not (T.is_mut typ));
+       typ <: t
+    | Var ->
+       assert (T.is_mut typ);
+       T.as_immut typ <: t
+    end
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -624,10 +631,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
-    | ICStableWrite t1, [exp1] ->
+    | ICStableWrite t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableWrite";
-      typ exp1 <: t1;
       T.unit <: t
     | NumConvWrapPrim (p1, p2), [e] ->
       (* we should check if this conversion is supported *)
@@ -809,7 +815,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_r <: T.(Construct.err_contT unit);
     typ exp_c <: Construct.clean_contT;
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_record; stable_type }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -820,11 +826,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' stable_record;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ stable_record <: stable_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -851,7 +859,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   if exp.note.Note.const
   then begin
     match exp.it with
-    | VarE id -> check_var "VarE" id
+    | VarE (Const, id) -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       check (s = T.Local) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
@@ -1150,7 +1158,7 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_type; stable_record }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1168,11 +1176,13 @@ let check_comp_unit env = function
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' stable_record;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ stable_record <: stable_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

@@ -3,6 +3,7 @@ use motoko_rts::leb128::{
     leb128_decode_checked, leb128_encode, sleb128_decode_checked, sleb128_encode,
 };
 
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
@@ -17,23 +18,27 @@ pub unsafe fn test() {
     roundtrip_signed(1).unwrap();
     roundtrip_signed(0).unwrap();
     roundtrip_signed(-1).unwrap();
-    roundtrip_signed(i32::MIN).unwrap(); // -2147483648
-    roundtrip_signed(i32::MAX).unwrap(); // 2147483647
+    roundtrip_signed(isize::MIN).unwrap();
+    roundtrip_signed(isize::MAX).unwrap();
 
     proptest_runner
-        .run(&proptest::num::i32::ANY, roundtrip_signed)
+        .run(&proptest::num::isize::ANY, roundtrip_signed)
         .unwrap();
 
     roundtrip_unsigned(1).unwrap();
     roundtrip_unsigned(0).unwrap();
-    roundtrip_unsigned(u32::MIN).unwrap();
-    roundtrip_unsigned(u32::MAX).unwrap();
+    roundtrip_unsigned(usize::MIN).unwrap();
+    roundtrip_unsigned(usize::MAX).unwrap();
 
     proptest_runner
-        .run(&proptest::num::u32::ANY, roundtrip_unsigned)
+        .run(&proptest::num::usize::ANY, roundtrip_unsigned)
         .unwrap();
 
-    // Check overflows
+    check_overflows();
+}
+
+#[classical_persistence]
+unsafe fn check_overflows() {
     check_signed_decode_overflow(&[
         0b1111_1111,
         0b1111_1111,
@@ -59,7 +64,49 @@ pub unsafe fn test() {
     ]); // u32::MAX + 1
 }
 
-fn roundtrip_signed(val: i32) -> TestCaseResult {
+#[enhanced_orthogonal_persistence]
+unsafe fn check_overflows() {
+    check_signed_decode_overflow(&[
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b0001_0001,
+    ]); // isize::MIN - 1
+
+    check_signed_decode_overflow(&[
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0000_0001,
+    ]); // isize::MAX + 1
+
+    check_unsigned_decode_overflow(&[
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0000_0010,
+    ]); // usize::MAX + 1
+}
+
+fn roundtrip_signed(val: isize) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         sleb128_encode(val, buf.as_mut_ptr());
@@ -86,7 +133,7 @@ fn roundtrip_signed(val: i32) -> TestCaseResult {
     }
 }
 
-fn roundtrip_unsigned(val: u32) -> TestCaseResult {
+fn roundtrip_unsigned(val: usize) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         leb128_encode(val, buf.as_mut_ptr());

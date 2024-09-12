@@ -1,0 +1,14 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {rts_callback_table_count = 0}
+debug.print: trap in finally!
+debug.print: trap in finally!
+debug.print: {rts_callback_table_count = 1}
+debug.print: canister running
+debug.print: Error from Canister rrkah-fqaaa-aaaaa-aaaaq-cai: Canister called `ic0.trap` with message: canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade).
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+debug.print: canister stopped
+debug.print: canister upgraded
+debug.print: {rts_callback_table_count = 0}
+debug.print: done
+ingress Completed: Reply: 0x4449444c0000

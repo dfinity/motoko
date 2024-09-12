@@ -1,0 +1,4 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {controllers = [rwlgt-iiaaa-aaaaa-aaaaa-cai]; recent_changes = [{canister_version = 8; details = #code_deployment({mode = #upgrade}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?27})}, {canister_version = 13; details = #code_deployment({mode = #upgrade}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?32})}, {canister_version = 15; details = #code_deployment({mode = #reinstall}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?36})}, {canister_version = 17; details = #code_deployment({mode = #upgrade}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?40})}]; total_num_changes = 7}
+ingress Completed: Reply: 0x4449444c0000

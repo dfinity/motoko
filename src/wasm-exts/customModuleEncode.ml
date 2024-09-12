@@ -1,10 +1,13 @@
 (*
 This module originated as a copy of interpreter/binary/encode.ml in the
 reference implementation.
+With adjustments from memory64.
 
 The changes are:
  * Support for writing out a source map for the Code parts
  * Support for additional custom sections
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
+ * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -299,7 +302,6 @@ let encode (em : extended_module) =
       if -64L <= i && i < 64L then u8 b
       else (u8 (b lor 0x80); vs64 (Int64.shift_right i 7))
 
-    let vu1 i = vu64 Int64.(logand (of_int i) 1L)
     let vu32 i = vu64 Int64.(logand (of_int32 i) 0xffffffffL)
     let vs7 i = vs64 (Int64.of_int i)
     let vs32 i = vs64 (Int64.of_int32 i)
@@ -307,13 +309,14 @@ let encode (em : extended_module) =
     let f32 x = u32 (Wasm.F32.to_bits x)
     let f64 x = u64 (Wasm.F64.to_bits x)
 
+    let flag b i = if b then 1 lsl i else 0
+
     let len i =
       if Int32.to_int (Int32.of_int i) <> i then
         Code.error Wasm.Source.no_region
           "cannot encode length with more than 32 bit";
       vu32 (Int32.of_int i)
 
-    let bool b = vu1 (if b then 1 else 0)
     let string bs = len (String.length bs); put_string s bs
     let name n = string (Lib.Utf8.encode n)
     let list f xs = List.iter f xs
@@ -333,7 +336,7 @@ let encode (em : extended_module) =
 
     (* Types *)
 
-    open Wasm.Types
+    open Types
 
     let value_type = function
       | I32Type -> vs7 (-0x01)
@@ -348,14 +351,15 @@ let encode (em : extended_module) =
     let func_type = function
       | FuncType (ins, out) -> vs7 (-0x20); stack_type ins; stack_type out
 
-    let limits vu {min; max} =
-      bool (max <> None); vu min; opt vu max
+    let limits vu {min; max} it =
+      let flags = flag (max <> None) 0 + flag (it = I64IndexType) 2 in
+      u8 flags; vu min; opt vu max
 
     let table_type = function
-      | TableType (lim, t) -> elem_type t; limits vu32 lim
+      | TableType (lim, t) -> elem_type t; limits vu32 lim I32IndexType
 
     let memory_type = function
-      | MemoryType lim -> limits vu32 lim
+      | MemoryType (lim, it) -> limits vu64 lim it
 
     let mutability = function
       | Immutable -> u8 0
@@ -368,12 +372,12 @@ let encode (em : extended_module) =
 
     open Wasm.Source
     open Ast
-    open Wasm.Values
+    open Values
 
     let op n = u8 n
     let end_ () = op 0x0b
 
-    let memop {align; offset; _} = vu32 (Int32.of_int align); vu32 offset
+    let memop {align; offset; _} = vu32 (Int32.of_int align); vu64 offset
 
     let var x = vu32 x.it
 
@@ -470,6 +474,14 @@ let encode (em : extended_module) =
 
       | MemorySize -> op 0x3f; u8 0x00
       | MemoryGrow -> op 0x40; u8 0x00
+
+      (* Manual extension for bulk-memory operations *)
+      | MemoryFill -> op 0xfc; vu32 0x0bl; u8 0x00
+      | MemoryCopy -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x00
+      (* End of manual extension *)
+      (* Manual extension for passive data segments *)
+      | MemoryInit x -> op 0xfc; vu32 0x08l; var x; u8 0x00
+      (* End of manual extension *)
 
       | Const {it = I32 c; _} -> op 0x41; vs32 c
       | Const {it = I64 c; _} -> op 0x42; vs64 c
@@ -804,12 +816,29 @@ let encode (em : extended_module) =
     let elem_section elems =
       section 9 (vec table_segment) elems (elems <> [])
 
+    (* Manual extension for passive data segments *)
     (* Data section *)
-    let memory_segment seg =
-      segment string seg
 
-    let data_section data =
-      section 11 (vec memory_segment) data (data <> [])
+    let data seg =
+      let {dinit; dmode} = seg.it in
+      match dmode.it with
+      | Passive ->
+        vu32 0x01l; string dinit
+      | Active {index; offset} when index.it = 0l ->
+        vu32 0x00l; const offset; string dinit
+      | Active {index; offset} ->
+        vu32 0x02l; var index; const offset; string dinit
+      | Declarative ->
+        failwith "illegal declarative data segment"
+
+    let data_section datas =
+      section 11 (vec data) datas (datas <> [])
+
+    (* Data count section *)
+
+    let data_count_section datas m =
+      section 12 len (List.length datas) (datas <> [])
+    (* End of manual extension *)
 
     (* sourceMappingURL section *)
 
@@ -859,6 +888,9 @@ let encode (em : extended_module) =
       icp_custom_section "motoko:compiler" utf8 motoko.compiler;
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
 
+    let enhanced_orthogonal_persistence_section version =
+      icp_custom_section "enhanced-orthogonal-persistence" utf8 version
+
     let candid_sections candid =
       icp_custom_section "candid:service" utf8 candid.service;
       icp_custom_section "candid:args" utf8 candid.args
@@ -883,7 +915,7 @@ let encode (em : extended_module) =
       patch s (p + 1) (lsb (n lsr 8));
       patch s (p + 2) (lsb (n lsr 16));
       patch s (p + 3) (lsb (n lsr 24))
-    let dw_patches = ref (fun i -> i)
+    let dw_patches = ref Fun.id
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -1229,12 +1261,14 @@ let encode (em : extended_module) =
       export_section m.exports;
       start_section m.start;
       elem_section m.elems;
+      data_count_section m.datas m;
       code_section m.funcs;
-      data_section m.data;
+      data_section m.datas;
       (* other optional sections *)
       name_section em.name;
       candid_sections em.candid;
       motoko_sections em.motoko;
+      enhanced_orthogonal_persistence_section em.enhanced_orthogonal_persistence;
       wasm_features_section em.wasm_features;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then

@@ -76,7 +76,9 @@ let wildP =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  { it = VarE ((if T.is_mut typ then Var else Const), id)
+  ; at = no_region
+  ; note = Note.{ def with typ = T.as_immut typ } }
 
 let varLE (id, typ) =
   { it = VarLE id; at = no_region; note = typ }
@@ -88,10 +90,10 @@ let primE prim es =
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
+    | ICStableWrite _ -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
-    | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -115,9 +117,20 @@ let primE prim es =
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
     | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "rts_version" -> T.text
+    | OtherPrim "rts_memory_size" -> T.nat
+    | OtherPrim "rts_heap_size" -> T.nat
+    | OtherPrim "rts_total_allocation" -> T.nat
+    | OtherPrim "rts_reclaimed" -> T.nat
+    | OtherPrim "rts_max_live_size" -> T.nat
+    | OtherPrim "rts_stable_memory_size" -> T.nat
+    | OtherPrim "rts_logical_stable_memory_size" -> T.nat
+    | OtherPrim "rts_max_stack_size" -> T.nat
+    | OtherPrim "rts_callback_table_count" -> T.nat
+    | OtherPrim "rts_callback_table_size" -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
-  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
+  let eff = map_max_effs eff es in
   { it = PrimE (prim, es);
     at = no_region;
     note = Note.{ def with typ; eff }
@@ -184,7 +197,7 @@ let ic_rejectE e =
 
 let ic_callE f e k r c =
   let es = [f; e; k; r; c] in
-  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
+  let eff = map_max_effs eff es in
   { it = PrimE (ICCallPrim, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
@@ -192,7 +205,7 @@ let ic_callE f e k r c =
 
 let ic_call_rawE p m a k r c =
   let es = [p; m; a; k; r; c] in
-  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
+  let eff = map_max_effs eff es in
   { it = PrimE (ICCallRawPrim, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
@@ -243,7 +256,7 @@ let blockE decs exp =
   | [] -> exp
   | _ ->
     let typ = typ exp in
-    let eff =  List.(map dec_eff decs' |> fold_left max_eff (eff exp)) in
+    let eff = map_max_effs' (eff exp) dec_eff decs' in
     { it = BlockE (decs', exp);
       at = no_region;
       note = Note.{ def with typ; eff }
@@ -408,7 +421,7 @@ let switch_variantE exp1 cases typ1 =
     at = no_region;
     note = Note.{ def with
       typ = typ1;
-      eff = List.(map (fun (l,p,e) -> eff e) cases |> fold_left max_eff (eff exp1))
+      eff = map_max_effs' (eff exp1) (fun (_, _, e) -> eff e) cases
     }
   }
 
@@ -432,13 +445,13 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
     note = Note.{
       def with
       typ = typ1;
-      eff = List.(map (fun c -> eff c.it.exp) cs |> fold_left max_eff (eff exp1))
+      eff = map_max_effs' (eff exp1) (fun c -> eff c.it.exp) cs
     }
   }
 
 
 let tupE exps =
-  let eff = List.(map eff exps |> fold_left max_eff T.Triv) in
+  let eff = map_max_effs eff exps in
   { it = PrimE (TupPrim, exps);
     at = no_region;
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
@@ -657,7 +670,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
@@ -753,23 +766,26 @@ let unreachableE () =
   loopE (unitE ())
 
 let objE sort typ_flds flds =
-  let rec go ds fields fld_tys flds =
-    match flds with
+  let rec go ds fields fld_tys = function
     | [] ->
       blockE
         (List.rev ds)
         (newObjE sort fields
            (T.obj sort
-              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v = fresh_var lab (typ exp) in
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
+        | _ ->
+          let v = fresh_var lab (typ exp) in
+          v, letD v exp :: ds in
       let field = {
         it = {name = lab; var = id_of_var v};
         at = no_region;
         note = typ exp
       } in
-      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 

@@ -29,8 +29,11 @@ In the future (with the GC proposal), Wasm will have a 4th form of mutable state
 
 The Heap is *not* an explicit entity that can be im/exported, only individual references to structures on the heap can be passed.
 
-Note: It is highly likely that most languages implemented on Wasm will eventually use Wasm GC.
-Various implementers are currently waiting for it to become available before they start porting their language to Wasm.
+Note: It is highly likely that several managed languages implemented on Wasm will eventually use Wasm GC.
+However, in our case, it would require snapshotting the Wasm managed heap which is currently not possible for `wasmtime`.
+Moreover, the GC implemented on the managed heap does probably not fit the IC with hard instruction limits. 
+A fully incremental GC would be needed, which is currently not implemented in any Wasm engine (often only using reference counting or a GC that has worst-case unbounded pauses).
+Conceptually, enhanced orthogonal persistence could be implemented on Wasm GC.
 
 ### Internet Computer (IC)
 
@@ -48,19 +51,16 @@ All references are *sharable*, i.e., can be passed between actors as message arg
 Other than actors, all reference types must be pure (immutable and without identity) to prevent shared state and allow transparent copying by the implementation.
 Element buffers can encode arbitrary object trees.
 
-Once Wasm GC is available, some of these types (esp. buffers) could be replaced by proper Wasm types.
-
-
-## Language Implementation
+## Language Implementation Rationales
 
 ### Representing Data Structures
 
 There are 3 possible ways of representing structured data in Wasm/IC.
 
-#### Using Wasm Memory
+#### Using Wasm Memory <- Chosen Design
 
-All data structures are laid out and managed in Memory by the compiler and the language runtime.
-References are stored via indirections through a Table.
+All data structures are laid out and managed in Wasm memory by the compiler and the runtime system.
+Function references are stored via indirections through a Wasm table.
 
    Pros:
    1. local data access maximally efficient
@@ -69,7 +69,7 @@ References are stored via indirections through a Table.
    Cons:
    1. message arguments require de/serialisation into IC buffers on both ends (in addition to the de/serialisation steps already performed by IC)
    2. each actor must ship its own instance of a GC (for both memory and table) and de/serialisation code
-   3. all references require an indirection
+   3. all function references require an indirection
    4. more implementation effort
 
 #### Using IC API
@@ -102,88 +102,8 @@ All data structures are represented as Wasm GCed objects.
    1. Wasm GC is 1-2 years out
    2. unclear how to implement transparent persistence (see below)
 
-
 ## Persistence
 
-### Persistence models
-
-There are at least 3 general models for providing persistence.
-
-#### *Explicit* persistence
-
-IC API provides explicit system calls to manage persistent data.
-Wasm state is volatile; each message received runs in a fresh instance of the actor's module.
-
-   Pros:
-   1. easy and efficient to implement
-   2. apps have maximal control over persistent data and its layout
-
-   Cons:
-   1. bifurcation of state space
-   2. programs need to load/store and de/serialise persistent data to/from local state
-
-#### *Transparent* persistence
-
-All Wasm state is implicitly made persistent.
-Conceptually, each message received runs in the same instance of the actor's module.
-
-   Pros:
-   1. "perfect" model of infinitely running program
-   2. programmers need to "think" less
-
-   Cons:
-   1. hard to implement efficiently without knowing neither language nor application
-   2. can easily lead to space leaks or inefficiencies if programmers aren't careful
-
-#### *Hybrid* persistence
-Wasm state entities can be marked as persistent selectively.
-Conceptually, each message received runs in the same instance of the actor's module,
-but Wasm is extended with some notion of volatile state and reinitialisation.
-
-   Pros:
-   1. compromise between other two models
-
-   Cons:
-   1. compromise between other two models
-   2. creates dangling references between bifurcated state parts
-   3. incoherent with Wasm semantics (segments, start function)
-
-### Implementing Transparent persistence
-
-#### *High-level* implementation of persistence
-
-Hypervisor walks data graph (wherever it lives), turns it into merkle tree.
-
-   Pros:
-   1. agnostic to implementation details of the engine
-   2. agnostic to GC (or subsumes GC)
-
-   Cons:
-   1. requires knowledge of and access to data graph
-   2. deep mutations result in deep changes in merkle tree (mutation cost is logarithmic in depth)
-   3. unclear how to detect changes efficiently
-
-#### *Low-level* implementation of persistence
-
-Hypervisor provides memory to Wasm engine, detects dirty pages; could be memory-mapped files.
-
-   Pros:
-   1. agnostic to language and data graph
-   2. fast when mutation patterns have good locality
-   3. can potentially offload much of the implementation to existing hardware/OS/library mechanisms
-
-   Cons:
-   1. bad interaction with language-internal GC (mutates large portions of the memory at once)
-   2. does not extend to tables (contain position-dependent physical pointers)
-   3. no obvious migration path to Wasm GC
-   4. dependent on VM specifics (and internals?)
-
-#### *Selectable* implementation of persistence
-
-Provide both previous options, possibly in a mutually exclusive fashion.
-
-   Pros:
-   1. choice for implementers
-
-   Cons:
-   1. maximal complexity for platform
+Different * [persistence modes](OrthogonalPersistence.md):
+* [Enhanced orthogonal persistence](OrthogonalPersistence.md).
+* [Classical persistence](OldStableMemory.md).

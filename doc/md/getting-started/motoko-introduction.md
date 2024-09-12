@@ -18,6 +18,8 @@ Motoko provides:
 
 -   An **actor-based** programming model optimized for efficient message handling.
 
+-   **Orthogonal persistence** for simple, safe, and efficient data storage without a database or secondary memory.
+
 -   An interpreter and compiler that you can use to test and compile the WebAssembly code for autonomous applications.
 
 # Why Motoko?
@@ -87,10 +89,10 @@ Motoko provides numerous features to help you leverage orthogonal persistence, i
 
 For example, Motoko lets you declare certain variables as `stable`. The values of `stable` variables are automatically preserved across canister upgrades.
 
-Once upgraded, the new interface is compatible with the previous one, meaning existing clients referencing the canister will continue to work, but new clients will be able to exploit its upgraded functionality.
-
-For scenarios that can’t be solved using stable variables alone, Motoko provides user-definable upgrade hooks that run immediately before and after upgrade, and allow you to migrate arbitrary state to stable variables.
+Once upgraded, the new interface is compatible with the previous one, meaning existing clients referencing the canister will continue to work, but new clients will be able to exploit its upgraded functionality. For more complex changes of any kind, Motoko provides a safe way of user-defined [explicit migration](../canister-maintenance/compatibility.md#explicit-migration).
 
 ## Getting started
 
 Get started with Motoko by [setting up your developer environment](dev-env.md) and creating a simple [Hello, world!](quickstart.md) program.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -92,12 +92,12 @@ and assignEs vars exp : dec list =
     List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
-  | (VarE _ | LitE _) as it -> it
+  | (VarE (_, _) | LitE _) as it -> it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | PrimE (CallPrim insts, [e1; e2])  ->
     begin match e1.it, env with
-    | VarE f1, { tail_pos = true;
-                 info = Some { func; typ_binds; temps; label; tail_called } }
+    | VarE (_, f1), { tail_pos = true;
+                      info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
@@ -128,7 +128,8 @@ and exp' env e  : exp' = match e.it with
     let exp4' = exp env exp4 in
     SelfCallE (ts, exp1', exp2', exp3', exp4')
   | ActorE (ds, fs, u, t) ->
-    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    (* TODO: tco other upgrade fields? *)
+    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade; stable_record = exp env u.stable_record } in
     ActorE (snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
@@ -258,7 +259,12 @@ and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
   | ActorU (as_opt, ds, fs, u, t)  ->
-    let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
+    (* TODO: tco other fields of u? *)
+    let u = { u with
+              preupgrade = exp env u.preupgrade;
+              postupgrade = exp env u.postupgrade;
+              stable_record = exp env u.stable_record;
+            } in
     ActorU (as_opt, snd (decs env ds), fs, u, t)
 
 and prog (cu, flavor) =

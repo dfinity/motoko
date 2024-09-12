@@ -48,7 +48,7 @@ let ( -@- ) k exp2 =
     varE v -*- exp2
   | MetaCont (typ0, k) ->
     match exp2.it with
-    | VarE v -> k (var v (typ exp2))
+    | VarE (Const, v) -> k (var v (typ exp2))
     | _ ->
       let u = fresh_var "u" typ0 in
       letE u exp2 (k u)
@@ -181,14 +181,16 @@ and t_exp' context exp =
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.singleton Return Label in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
         heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
         timer = t_ignore_throw LabelEnv.empty timer;
-        inspect = t_exp LabelEnv.empty inspect
+        inspect = t_exp LabelEnv.empty inspect;
+        stable_record = t_exp LabelEnv.empty stable_record;
+        stable_type;
       },
       t)
   | NewObjE (sort, ids, typ) -> exp.it
@@ -245,19 +247,20 @@ and binary context k binE e1 e2 =
     assert false
 
 and nary context k naryE es =
-  let rec nary_aux vs es  =
-    match es with
+  let rec nary_aux vs = function
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
       (* TBR: optimization - no need to name the last trivial argument *)
       k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
-      match eff e1 with
-      | T.Triv ->
+      match eff e1, e1.it with
+      | _, VarE (Const, _) ->
+        nary_aux (e1 :: vs) es
+      | T.Triv, _ ->
         let v1 = fresh_var "v" (typ e1) in
         letE v1 (t_exp context e1)
           (nary_aux (varE v1 :: vs) es)
-      | T.Await ->
+      | T.Await, _ ->
         c_exp context e1
           (meta (typ e1) (fun v1 -> nary_aux (varE v1 :: vs) es))
   in
@@ -644,7 +647,7 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -652,6 +655,8 @@ and t_comp_unit context = function
         heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
+        stable_record = t_exp LabelEnv.empty stable_record;
+        stable_type;
       },
       t)
 
