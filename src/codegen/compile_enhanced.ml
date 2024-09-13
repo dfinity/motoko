@@ -5338,7 +5338,7 @@ module Cycles = struct
 
   let balance env =
     Func.share_code0 Func.Always env "cycle_balance" [I64Type] (fun env ->
-      Stack.with_words env "dst" 4L (fun get_dst ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
         get_dst ^^
         IC.cycle_balance env ^^
         get_dst ^^
@@ -5355,7 +5355,7 @@ module Cycles = struct
 
   let accept env =
     Func.share_code1 Func.Always env "cycle_accept" ("cycles", I64Type) [I64Type] (fun env get_x ->
-      Stack.with_words env "dst" 4L (fun get_dst ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
         get_x ^^
         to_two_word64 env ^^
         get_dst ^^
@@ -5367,7 +5367,7 @@ module Cycles = struct
 
   let available env =
     Func.share_code0 Func.Always env "cycle_available" [I64Type] (fun env ->
-      Stack.with_words env "dst" 4L (fun get_dst ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
         get_dst ^^
         IC.cycles_available env ^^
         get_dst ^^
@@ -5377,7 +5377,7 @@ module Cycles = struct
 
   let refunded env =
     Func.share_code0 Func.Always env "cycle_refunded" [I64Type] (fun env ->
-      Stack.with_words env "dst" 4L (fun get_dst ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
         get_dst ^^
         IC.cycles_refunded env ^^
         get_dst ^^
