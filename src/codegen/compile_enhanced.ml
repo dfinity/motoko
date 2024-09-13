@@ -5387,7 +5387,7 @@ module Cycles = struct
 
   let burn env =
     Func.share_code1 Func.Always env "cycle_burn" ("cycles", I64Type) [I64Type] (fun env get_x ->
-      Stack.with_words env "dst" 4L (fun get_dst ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
         get_x ^^
         to_two_word64 env ^^
         get_dst ^^
