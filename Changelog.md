@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.13.0 (2024-09-13)
+
 * motoko (`moc`)
 
   * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
@@ -31,10 +33,11 @@
       "args" : "--enhanced-orthogonal-persistence"
     ...
     ```
+    BREAKING CHANGE (Minor): changes some aspects of `Float` formatting.
 
     For more information, see:
     * The Motoko design documentation `design/OrthogonalPersistence.md`
-    * The Motoko user documentation `doc/md/canister-maintenance//upgrades.md`.
+    * The Motoko user documentation `doc/md/canister-maintenance/upgrades.md`.
 
   * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
     as a linear function, `max_values`, of binary payload size.
