@@ -25,12 +25,14 @@ let ic-ref-run =
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-let patchedEmscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
+
+let emscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
     patches = (oldAttrs.patches or []) ++ [
       nix/emscripten-fix.patch
     ];
   });
 in
+
 let
   rtsBuildInputs = with nixpkgs; [
     # pulls in clang (wrapped) and clang-13 (unwrapped)
@@ -43,7 +45,7 @@ let
     wasmtime
     rust-bindgen
     python3
-    patchedEmscripten
+    emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
