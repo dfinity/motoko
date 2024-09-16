@@ -95,7 +95,7 @@ let primE prim es =
     | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableSize _ -> T.nat64
-    | DataInspection -> T.blob
+    | DataInspection _ -> T.blob
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | EqArrayOffset -> T.bool

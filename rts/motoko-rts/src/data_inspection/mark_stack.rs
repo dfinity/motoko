@@ -1,9 +1,9 @@
 //! In-heap mark stack for the heap traversal of the data inspection.
 //!
-//! Adapted version of the incremental GC's mark stack, where the object 
+//! Adapted version of the incremental GC's mark stack, where the object
 //! pointers are accompanied by the array slice information (temporary
 //! object tag).
-//! 
+//!
 //! Doubly linked list of stack tables, each containing a series of entries.
 //! A table is represented as a blob with the following internal layout:
 //!
@@ -26,7 +26,7 @@
 //! NOTES:
 //! * The tables are blobs, as their entries are not traced by the GC.
 //! * The stack tables become garbage after a GC run and can be reclaimed.
-//! 
+//!
 //! This may change in the future for incremental heap inspection where
 //! the entries become weak pointers managed by the GC, and where stack
 //! tables need to survive the GC.
@@ -52,10 +52,7 @@ pub struct StackEntry {
 
 impl StackEntry {
     pub fn new(object: Value, tag: Tag) -> StackEntry {
-        StackEntry {
-            object,
-            tag,
-        }
+        StackEntry { object, tag }
     }
 }
 

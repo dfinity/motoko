@@ -11272,8 +11272,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
-  | DataInspection, [] ->
-    SR.unit,
+  | DataInspection t, [e] ->
+    SR.Vanilla,
     E.trap_with env "Data inspection is not supported with classical persistence"
 
   (* Other prims, unary *)

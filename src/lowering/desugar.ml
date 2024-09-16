@@ -527,7 +527,7 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and export_data_inspection self_id =
+and export_data_inspection self_id expr =
   let open T in
   let {lab;typ;_} = motoko_data_inspection_fld in
   let v = "$"^lab in
@@ -550,7 +550,7 @@ and export_data_inspection self_id =
                   (primE (Ir.OtherPrim "trap")
                     [textE "Unauthorized call of __motoko_inspect_data"]))
                 ]
-              (primE I.DataInspection []))
+              (primE (I.DataInspection expr.note.Note.typ) [expr]))
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
@@ -609,9 +609,29 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
+  let resolve_variable d =
+    match d.it with 
+    | I.VarD(i, t, _) -> (i, t)
+    | I.LetD({it = I.VarP i; _} as p, _) -> (i, p.note)
+    | _ -> assert false;
+  in
+  let root_to_inspect = 
+    let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+    let vars = List.map resolve_variable ds in
+    let fields = List.map (fun (i,t) -> T.{lab = i; typ = t; src = T.empty_src}) vars in
+    let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
+    newObjE T.Object 
+      (List.map
+        (fun (i, t) ->
+          { it = I.{name = i; var = i};
+            at = no_region;
+            note = t }
+          )
+      vars)
+    ty in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
-  let data_inspection_d, data_inspection_f = export_data_inspection self_id in
+  let data_inspection_d, data_inspection_f = export_data_inspection self_id root_to_inspect in
   let exported_declarations = footprint_d @ runtime_info_d @ data_inspection_d @ ds' in
   let exported_fields = footprint_f @ runtime_info_f @ data_inspection_f @ fs in
   I.(ActorE (exported_declarations, exported_fields,

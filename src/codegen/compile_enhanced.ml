@@ -1274,7 +1274,7 @@ module RTS = struct
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
-    E.add_func_import env "rts" "inspect_data" [] [I64Type];
+    E.add_func_import env "rts" "inspect_data" [I64Type] [I64Type];
     ()
 
 end (* RTS *)
@@ -11424,8 +11424,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 Type.Nat64,
     E.trap_with env "Deprecated with enhanced orthogonal persistence"
 
-  | DataInspection, [] ->
+  | DataInspection t, [e] ->
     SR.Vanilla,
+    compile_exp_vanilla env ae e ^^
     E.call_import env "rts" "inspect_data"
 
   (* Other prims, unary *)

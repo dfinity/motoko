@@ -13,9 +13,9 @@
 //!
 //! Binary format (EBNF):
 //! ```
-//! Format = Version RootSet Heap.
+//! Format = Version Root Heap.
 //! Version = `1: usize`.
-//! RootSet = `length: usize` {`object_id: usize`}.
+//! Root = `object_id: usize`.
 //! Heap = `object_id: usize` `object_tag: usize` `object_payload:
 //! ```
 //!
@@ -85,14 +85,13 @@ use motoko_rts_macros::ic_mem_fn;
 use stream::Stream;
 
 use crate::{
-    gc::incremental::roots::{root_set, visit_roots, Roots},
     memory::{
         ic::{enhanced_memory::minimum_memory_capacity, get_aligned_heap_base},
         Memory,
     },
     types::{
         base_array_tag, block_size, is_array_or_slice_tag, is_object_tag, skew, slice_tag, Array,
-        Obj, Tag, Value, TAG_ARRAY_SLICE_MIN, TAG_OBJECT,
+        Obj, Tag, Value, NULL_POINTER, TAG_ARRAY_SLICE_MIN, TAG_OBJECT,
     },
     visitor::visit_pointer_fields,
 };
@@ -100,11 +99,11 @@ use crate::{
 const DATA_INSPECTION_VERSION: usize = 1;
 
 #[ic_mem_fn]
-pub unsafe fn inspect_data<M: Memory>(mem: &mut M) -> Value {
-    let roots = root_set();
-
+pub unsafe fn inspect_data<M: Memory>(mem: &mut M, root: Value) -> Value {
+    assert!(root != NULL_POINTER);
+    assert!(root.is_obj());
     let mut stream = Stream::new();
-    write_header(&mut stream, mem, &roots);
+    write_header(&mut stream, mem, root);
 
     let mut traversal = HeapTraversal::new(
         mem,
@@ -112,19 +111,15 @@ pub unsafe fn inspect_data<M: Memory>(mem: &mut M) -> Value {
         get_aligned_heap_base(),
         minimum_memory_capacity().as_usize(),
     );
-    traversal.run(roots);
+    traversal.run(root);
 
     stream.finalize(mem)
 }
 
-unsafe fn write_header<M: Memory>(stream: &mut Stream, mem: &mut M, roots: &Roots) {
+unsafe fn write_header<M: Memory>(stream: &mut Stream, mem: &mut M, root: Value) {
     stream.write(mem, &DATA_INSPECTION_VERSION);
-    stream.write(mem, &roots.len());
-    for root in *roots {
-        // Resolve incremental GC forwarding pointer in root set.
-        let forwarded_root = (*root).forward_if_possible();
-        stream.write(mem, &forwarded_root);
-    }
+    let forwarded_root = root.forward();
+    stream.write(mem, &forwarded_root);
 }
 
 struct HeapTraversal<'a, M: Memory + 'a> {
@@ -151,15 +146,12 @@ impl<'a, M: Memory + 'a> HeapTraversal<'a, M> {
         }
     }
 
-    unsafe fn run(&mut self, roots: Roots) {
-        self.add_roots(roots);
+    unsafe fn run(&mut self, root: Value) {
+        debug_assert!(root != NULL_POINTER);
+        debug_assert!(root.is_obj());
+        debug_assert!(!self.mark_bitmap.is_marked(root));
+        self.mark_object(root);
         self.traverse();
-    }
-
-    unsafe fn add_roots(&mut self, roots: Roots) {
-        visit_roots(roots, 0, self, |traversal, field| {
-            traversal.mark_object(*field);
-        });
     }
 
     unsafe fn mark_object(&mut self, object: Value) {
