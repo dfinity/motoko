@@ -42,10 +42,7 @@ impl MarkBitmap {
         // No post allocation barrier as the blob is only used temporarily during a message.
         let blob = alloc_blob(mem, TAG_BLOB_B, Bytes(bitmap_size));
         Self::zero_initialize(blob, bitmap_size);
-        MarkBitmap {
-            heap_base,
-            blob: alloc_blob(mem, TAG_BLOB_B, Bytes(bitmap_size)),
-        }
+        MarkBitmap { heap_base, blob }
     }
 
     unsafe fn zero_initialize(blob: Value, size: usize) {
