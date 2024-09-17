@@ -88,6 +88,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     cyclesAdd : <system>Nat -> ();
     cyclesAvailable : () -> Nat;
     cyclesBalance : () -> Nat;
+    cyclesBurn : <system>Nat -> Nat;
     cyclesRefunded : () -> Nat;
     debugPrint : Text -> ();
     debugPrintChar : Char -> ();
@@ -215,6 +216,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     rts_reclaimed : () -> Nat;
     rts_stable_memory_size : () -> Nat;
     rts_total_allocation : () -> Nat;
+    rts_upgrade_instructions : () -> Nat;
     rts_version : () -> Text;
     setCandidLimits :
       <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();

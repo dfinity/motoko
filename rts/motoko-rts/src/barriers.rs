@@ -1,5 +1,6 @@
+use motoko_rts_macros::{incremental_gc, non_incremental_gc};
+
 use crate::{memory::Memory, types::Value};
-use motoko_rts_macros::*;
 
 #[incremental_gc]
 pub unsafe fn init_with_barrier<M: Memory>(_mem: &mut M, location: *mut Value, value: Value) {

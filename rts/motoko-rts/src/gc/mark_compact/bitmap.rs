@@ -1,3 +1,4 @@
+use crate::gc::mark_compact::TAG_BLOB_B;
 use crate::mem_utils::memzero;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Bytes, Obj};
@@ -57,20 +58,27 @@ thus we mark bit 2 in byte 0xAC004 + 0x402A = 0xB002E, which is in the BM.
 
  */
 
+// Only designed for 32-bit.
+const _: () = assert!(core::mem::size_of::<usize>() == core::mem::size_of::<u32>());
+
 /// Current bitmap
 static mut BITMAP_FORBIDDEN_PTR: *mut u8 = core::ptr::null_mut();
 static mut BITMAP_PTR: *mut u8 = core::ptr::null_mut();
-static mut BITMAP_SIZE: u32 = 0;
+static mut BITMAP_SIZE: usize = 0;
 
 unsafe fn get_bitmap_forbidden_size() -> usize {
     BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize
 }
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_prefix_words: u32) {
+pub unsafe fn alloc_bitmap<M: Memory>(
+    mem: &mut M,
+    heap_size: Bytes<usize>,
+    heap_prefix_words: usize,
+) {
     // See Note "How the Wasm-heap maps to the bitmap" above
     debug_assert_eq!(heap_prefix_words % 8, 0);
     // We will have at most this many objects in the heap, each requiring a bit
-    let n_bits = heap_size.to_words().as_u32();
+    let n_bits = heap_size.to_words().as_usize();
     // Each byte will hold 8 bits.
     BITMAP_SIZE = (n_bits + 7) / 8;
     // Also round allocation up to 8-bytes to make iteration efficient. We want to be able to read
@@ -78,11 +86,11 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let blob = alloc_blob(mem, bitmap_bytes).get_ptr() as *mut Blob;
+    let blob = alloc_blob(mem, TAG_BLOB_B, bitmap_bytes).get_ptr() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
     BITMAP_PTR = blob.payload_addr();
-    BITMAP_FORBIDDEN_PTR = BITMAP_PTR.sub(heap_prefix_words as usize / 8)
+    BITMAP_FORBIDDEN_PTR = BITMAP_PTR.sub(heap_prefix_words / 8)
 }
 
 pub unsafe fn free_bitmap() {
@@ -91,21 +99,21 @@ pub unsafe fn free_bitmap() {
     BITMAP_SIZE = 0;
 }
 
-pub unsafe fn get_bit(idx: u32) -> bool {
+pub unsafe fn get_bit(idx: usize) -> bool {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
-    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
-    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
+    debug_assert!(byte_idx >= get_bitmap_forbidden_size());
+    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE > byte_idx);
+    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx);
     (byte >> bit_idx) & 0b1 != 0
 }
 
-pub unsafe fn set_bit(idx: u32) {
+pub unsafe fn set_bit(idx: usize) {
     let (byte_idx, bit_idx) = (idx / 8, idx % 8);
-    debug_assert!(byte_idx as usize >= get_bitmap_forbidden_size());
-    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE as usize > byte_idx as usize);
-    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize);
+    debug_assert!(byte_idx >= get_bitmap_forbidden_size());
+    debug_assert!(get_bitmap_forbidden_size() + BITMAP_SIZE > byte_idx);
+    let byte = *BITMAP_FORBIDDEN_PTR.add(byte_idx);
     let new_byte = byte | (0b1 << bit_idx);
-    *BITMAP_FORBIDDEN_PTR.add(byte_idx as usize) = new_byte;
+    *BITMAP_FORBIDDEN_PTR.add(byte_idx) = new_byte;
 }
 
 pub struct BitmapIter {
@@ -124,7 +132,7 @@ pub unsafe fn iter_bits() -> BitmapIter {
     let blob_len_bytes = (BITMAP_PTR.sub(size_of::<Blob>().to_bytes().as_usize()) as *mut Obj)
         .as_blob()
         .len()
-        .as_u32();
+        .as_usize() as u32;
 
     debug_assert_eq!(blob_len_bytes % 8, 0);
 
@@ -156,11 +164,11 @@ pub unsafe fn iter_bits() -> BitmapIter {
 //
 // (We actually need less bits than that as when the heap is full we can't allocate bitmap and mark
 // stack and can't do GC)
-pub const BITMAP_ITER_END: u32 = u32::MAX;
+pub const BITMAP_ITER_END: usize = usize::MAX;
 
 impl BitmapIter {
     /// Returns the next bit, or `BITMAP_ITER_END` if there are no more bits set.
-    pub fn next(&mut self) -> u32 {
+    pub fn next(&mut self) -> usize {
         debug_assert!(self.current_bit_idx <= self.size);
 
         if self.current_bit_idx == self.size {
@@ -176,7 +184,7 @@ impl BitmapIter {
                 self.current_word >>= 1;
                 let bit_idx = self.current_bit_idx + shift_amt;
                 self.current_bit_idx = bit_idx + 1;
-                return bit_idx;
+                return bit_idx as usize;
             }
 
             // Move on to next word (always 64-bit boundary)

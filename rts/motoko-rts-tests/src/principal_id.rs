@@ -1,13 +1,15 @@
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory};
 
-use motoko_rts::principal_id::{blob_of_principal, principal_of_blob};
-use motoko_rts::text::{text_compare, text_of_ptr_size, text_of_str};
-use motoko_rts::types::{Bytes, Words};
+use motoko_rts::principal_id::{
+    blob_of_principal, blob_of_ptr_size, blob_of_str, principal_of_blob,
+};
+use motoko_rts::text::{blob_compare, text_compare, text_of_ptr_size, text_of_str};
+use motoko_rts::types::Bytes;
 
 pub unsafe fn test() {
     println!("Testing principal id encoding ...");
 
-    let mut heap = TestMemory::new(Words(1024 * 1024));
+    let mut heap = initialize_test_memory();
 
     //
     // Encoding
@@ -36,14 +38,16 @@ pub unsafe fn test() {
 
     let text = text_of_str(&mut heap, "aaaaa-aa");
     let principal = blob_of_principal(&mut heap, text);
-    assert_eq!(text_compare(principal, text_of_str(&mut heap, ""),), 0);
+    assert_eq!(blob_compare(principal, blob_of_str(&mut heap, ""),), 0);
 
     let text = text_of_str(&mut heap, "bfozs-kwa73-7nadi");
     assert_eq!(
-        text_compare(
+        blob_compare(
             blob_of_principal(&mut heap, text),
-            text_of_ptr_size(&mut heap, b"\xC0\xFE\xFE\xD0\x0D".as_ptr(), Bytes(5))
+            blob_of_ptr_size(&mut heap, b"\xC0\xFE\xFE\xD0\x0D".as_ptr(), Bytes(5))
         ),
         0
     );
+
+    reset_test_memory();
 }

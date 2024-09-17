@@ -90,10 +90,10 @@ let primE prim es =
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
+    | ICStableWrite _ -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
-    | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -107,7 +107,8 @@ let primE prim es =
     | RelPrim _ -> T.bool
     | SerializePrim _ -> T.blob
     | SystemCyclesAvailablePrim
-    | SystemCyclesAcceptPrim -> T.nat
+    | SystemCyclesAcceptPrim
+    | SystemCyclesBurnPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non

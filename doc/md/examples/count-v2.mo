@@ -1,11 +1,10 @@
-actor Counter_v2 {
+import Debug "mo:base/Debug";
 
+actor Counter_v2 {
   stable var state : Int = 0;
 
-  public func inc() : async Int {
+  public func increment() : async () {
     state += 1;
-    return state;
+    Debug.print(debug_show (state));
   };
-
-  public query func read() : async Int { return state; }
-}
+};

@@ -1,8 +1,8 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
+//MOC-FLAG -measure-rts-stack
 import { errorMessage; debugPrint; setCandidLimits } = "mo:⛔";
 
 actor {
-    let expectedMinimumSize = 35_000;
+    let expectedMinimumSize = 31_000;
     setCandidLimits<system>{ numerator = 0;
                              denominator = 1;
                              bias = 1_000_000 };

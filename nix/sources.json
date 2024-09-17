@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "34b4eb0b581bbf04902e20bf1370e3a293d1956f",
-        "sha256": "1gr49p938hzm8fq4r3n7j2lzfj0hmah5sb411sma24plnmwy7ljx",
+        "rev": "5234523fca11d4cbc75f6bdca21c704918361387",
+        "sha256": "00gax2x6rybc6b0nh1nk81gb5x29il3ijk1pizlb7jwv9y215x4b",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/34b4eb0b581bbf04902e20bf1370e3a293d1956f.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/5234523fca11d4cbc75f6bdca21c704918361387.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/153/head",
+        "branch": "luc/adjust-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "64f807484924c38cdfda49970e0bb21321564fe2",
-        "sha256": "18sk96zqg79p08z0wsn5bsxsw3aps26si7n76av7inlc4sfvvm4a",
+        "rev": "6c718b80e04ad1930a08e6c53440c15021ca9c3d",
+        "sha256": "0iglm7m69d836wipzi25xza25l84dmjq9b4s1y6rwa8xnmiipnbh",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/64f807484924c38cdfda49970e0bb21321564fe2.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/6c718b80e04ad1930a08e6c53440c15021ca9c3d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -72,7 +72,7 @@
     "motoko-base": {
         "branch": "next-moc",
         "description": "The Motoko base library",
-        "homepage": null,
+        "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
         "rev": "4abc98e92909d7b178629912057473302cf0d8be",
@@ -108,16 +108,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-23.11",
+        "branch": "release-24.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6a5b92486ae7826c07fbfad302f569ceb187b0eb",
-        "sha256": "058kf03v7yh1c4ns96af6jq3ymadv71s7ajv9s05ipl9bnkjfrhm",
+        "rev": "68f19df4809ea68e782cddc5f3e9827cb5db65cb",
+        "sha256": "1caizbyi4sc5b47il8kbr2a8aripyb6wqw56dpgdhcmfhng17wb0",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/6a5b92486ae7826c07fbfad302f569ceb187b0eb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/68f19df4809ea68e782cddc5f3e9827cb5db65cb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

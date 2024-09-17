@@ -1,6 +1,43 @@
 # Motoko compiler changelog
 
+## 0.13.0 (2024-09-17)
+
 * motoko (`moc`)
+
+  * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
+    programmatically (#4690).
+
+  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new `moc` flag `--enhanced-orthogonal-persistence` (#4193).
+
+    This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+    * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
+    * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
+    * The runtime system checks that data changes of new program versions are compatible with the old state.
+    
+    Implications:
+    * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
+    * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
+    * The change to 64-bit increases the memory demand on the heap, in worst case by a factor of two.
+    * For step-wise release handling, the IC initially only offers a limited capacity of the 64-bit space (e.g. 4GB or 6GB), that will be gradually increased in future to the capacity of stable memory.
+    * There is moderate performance regression of around 10% for normal execution due to combined related features (precise tagging, change to incremental GC, and handling of compile-time-known data).
+    * The garbage collector is fixed to incremental GC and cannot be chosen.
+    * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
+    * The debug print format of `NaN` changes (originally `nan`).
+    
+    To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ...
+    ```
+    BREAKING CHANGE (Minor): changes some aspects of `Float` formatting.
+
+    For more information, see:
+    * The Motoko design documentation `design/OrthogonalPersistence.md`
+    * The Motoko user documentation `doc/md/canister-maintenance/upgrades.md`.
 
   * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
     as a linear function, `max_values`, of binary payload size.
