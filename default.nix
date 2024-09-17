@@ -6,6 +6,8 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
+assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "x86_64-darwin" ];
+
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
@@ -20,13 +22,17 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
-let
-  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
-in
-
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+
+let emscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or []) ++ [
+      nix/emscripten-fix.patch
+    ];
+  });
+in
+
 let
   rtsBuildInputs = with nixpkgs; [
     # pulls in clang (wrapped) and clang-13 (unwrapped)
@@ -39,7 +45,7 @@ let
     wasmtime
     rust-bindgen
     python3
-    nixos-unstable.emscripten
+    emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];

@@ -108,16 +108,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-23.11",
+        "branch": "release-24.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6a5b92486ae7826c07fbfad302f569ceb187b0eb",
-        "sha256": "058kf03v7yh1c4ns96af6jq3ymadv71s7ajv9s05ipl9bnkjfrhm",
+        "rev": "68f19df4809ea68e782cddc5f3e9827cb5db65cb",
+        "sha256": "1caizbyi4sc5b47il8kbr2a8aripyb6wqw56dpgdhcmfhng17wb0",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/6a5b92486ae7826c07fbfad302f569ceb187b0eb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/68f19df4809ea68e782cddc5f3e9827cb5db65cb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
@@ -131,18 +131,6 @@
         "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
         "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "nixpkgs-unstable": {
-        "branch": "master",
-        "description": "Nix Packages collection & NixOS",
-        "homepage": "",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "9d2864289e65d0dc841123ae86bc7b3f77b6d12d",
-        "sha256": "0f3bcphzrjm1hs81mhpfx1hqxfnbvhhv5hv82wi1h3f735i279ja",
-        "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/9d2864289e65d0dc841123ae86bc7b3f77b6d12d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
