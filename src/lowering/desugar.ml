@@ -611,13 +611,13 @@ and build_actor at ts self_id es obj_typ =
             ty)) in
   let resolve_variable d =
     match d.it with 
-    | I.VarD(i, t, _) -> (i, t)
-    | I.LetD({it = I.VarP i; _} as p, _) -> (i, p.note)
-    | _ -> assert false;
+    | I.VarD(i, t, _) -> Some(i, t)
+    | I.LetD({it = I.VarP i; _} as p, _) -> Some(i, p.note)
+    | _ -> None
   in
   let root_to_inspect = 
     let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-    let vars = List.map resolve_variable ds in
+    let vars = List.filter_map resolve_variable ds in
     let fields = List.map (fun (i,t) -> T.{lab = i; typ = t; src = T.empty_src}) vars in
     let ty = T.Obj (T.Object, List.sort T.compare_field fields) in
     newObjE T.Object 
