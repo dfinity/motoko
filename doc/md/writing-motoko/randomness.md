@@ -24,7 +24,6 @@ The Random module features a class called `Finite` and a `*From` method. These c
 To demonstrate randomness, consider the following example that shuffles a deck of cards then returns the cards in their shuffled order. The code is annotated with additional information:
 
 ```motoko
-
 // Import the necessary modules, including the Random module:
 import Random = "mo:base/Random";
 import Char = "mo:base/Char";
