@@ -3,8 +3,8 @@
 //! This requires precise object tagging and is thus only supported in combination
 //! with enhanced orthogonal persistence.
 //!
-//! Data inspection returns the set of live objects (stable and flexible) together
-//! with the root set, by preserving the graph structure. A custom binary encoding
+//! Data inspection returns the set of live objects (stable and flexible) reachable
+//! from the main actor, by preserving the graph structure. A custom binary encoding
 //! is used that essentially maps the binary map of the objects, by skipping the
 //! forwarding pointer of the incremental GC.
 //!
