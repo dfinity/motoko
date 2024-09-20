@@ -613,7 +613,7 @@ and build_actor at ts self_id es obj_typ =
     match d.it with 
     | I.VarD(i, t, _) -> Some(i, T.Mut t)
     | I.LetD({it = I.VarP i; _} as p, _) -> Some(i, p.note)
-    | _ -> None
+    | _ -> None (* TODO: Should we inspect other let more complex variable bindings? *)
   in
   let root_to_inspect = 
     let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
