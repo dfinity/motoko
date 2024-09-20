@@ -611,7 +611,7 @@ and build_actor at ts self_id es obj_typ =
             ty)) in
   let resolve_variable d =
     match d.it with 
-    | I.VarD(i, t, _) -> Some(i, t)
+    | I.VarD(i, t, _) -> Some(i, T.Mut t)
     | I.LetD({it = I.VarP i; _} as p, _) -> Some(i, p.note)
     | _ -> None
   in
