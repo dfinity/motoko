@@ -31,13 +31,13 @@ The following table summarizes the different ways of pattern matching.
 
 Consider the following function call:
 
-``` motoko include=fullname
+``` motoko no-repl
 let name : Text = fullName({ first = "Jane"; mid = "M"; last = "Doe" });
 ```
 
 This code constructs a record with three fields and passes it to the function `fullName`. The result of the call is named and brought into scope by binding it to the identifier `name`. The last, binding step is called pattern matching, and `name : Text` is one of the simplest forms of a pattern. For instance, in the following implementation of the callee:
 
-``` motoko name=fullname
+``` motoko
 func fullName({ first : Text; mid : Text; last : Text }) : Text {
   first # " " # mid # " " # last
 };

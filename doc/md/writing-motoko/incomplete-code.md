@@ -13,13 +13,13 @@ To accommodate these situations, Motoko provides the `xxx`, `nyi` and `unreachab
 
 Assuming that one has imported the prelude as follows:
 
-``` motoko name=prelude
+``` motoko no-repl
 import P "mo:base/Prelude";
 ```
 
 You can fill any missing expression with the following:
 
-``` motoko include=prelude
+``` motoko no-repl
 P.xxx()
 ```
 
@@ -30,7 +30,7 @@ The expression `xxx()` has type `None`, which is a subtype of every other type. 
 
 By convention, longer-term holes can be considered "not yet implemented" (`nyi`) features, and marked as such with a similar function from the Prelude module:
 
-``` motoko include=prelude
+``` motoko no-repl
 P.nyi()
 ```
 Like `xxx()`, `nyi()` has type `None`, thus any other type, and will trap on execution.
@@ -41,7 +41,7 @@ Sometimes you will be required to provide code that they know will never be exec
 
 To document unreachable code, you can use the  `unreachable` function from the prelude:
 
-``` motoko include=prelude
+``` motoko no-repl
 P.unreachable()
 ```
 
