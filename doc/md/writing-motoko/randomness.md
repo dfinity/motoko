@@ -104,7 +104,7 @@ View this example on the [Motoko Playground](https://play.motoko.org/?tag=267523
 :::tip
 
 The above solution directly uses the finite blob of 256-random bits returned by the management canister. Class `Random.Finite` uses this finite supply of bits to generate at most 256 coin flips, returning `null` when no more flips are possible.
- 
+
 When its current supply of bits is exhausted, the code asynchronously requests another 256-bit blob to continue the shuffle. A more efficient, and equally robust approach would be to use the first 256-bit blob as a seed to a sequential pseudo random number generator, generating an infinite, lazy stream of bits, and then complete the shuffle with a single round of communication.
 
 :::
@@ -128,7 +128,7 @@ actor {
 
 ## Resources
 
-- [On-chain randomness](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/advanced-features/randomness)
+- [Onchain randomness](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/advanced-features/randomness)
 
 - [Random base library documentation](../base/Random.md)
 
