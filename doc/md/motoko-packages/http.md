@@ -6,7 +6,7 @@ sidebar_position: 5
 
 ## Mops packages for HTTP
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for HTTP and web functionalities:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for HTTP and web functionalities:
 
 - [`assets`](https://mops.one/assets): A library for adding asset canister functionality for your canister.
 
