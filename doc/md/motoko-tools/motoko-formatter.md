@@ -48,7 +48,7 @@ It is also compatible with the the [Prettier extension](https://marketplace.visu
 
 You can set code to be skipped from formatting or being validated by using a `prettier-ignore` comment:
 
-```motoko
+```motoko no-repl
 // prettier-ignore
 func ignored<A>(a:A){a};
 

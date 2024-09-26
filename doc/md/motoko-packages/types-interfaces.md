@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## Mops packages for types and interfaces
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for types and interfaces:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for types and interfaces:
 
 - [`canistergeek`](https://mops.one/canistergeek): An open-source tool for tracking your project's cycles, memory status and logs.
 

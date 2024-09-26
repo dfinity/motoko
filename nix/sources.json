@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "5234523fca11d4cbc75f6bdca21c704918361387",
-        "sha256": "00gax2x6rybc6b0nh1nk81gb5x29il3ijk1pizlb7jwv9y215x4b",
+        "rev": "829343f682c727639386d5f306783008c6f07a45",
+        "sha256": "1h66jq09slcm9qs6kaxsvafd3dgc1y4b1gbv0wgcn6lwfq949yxr",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/5234523fca11d4cbc75f6bdca21c704918361387.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/829343f682c727639386d5f306783008c6f07a45.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "61692f44cf85b93d43311492283246bb443449d3",
-        "sha256": "1b06dphnj89qmyv4gxh8gqm1bgqfpivr4di2nl9hbvqqyx4vzb65",
+        "rev": "12f4cb76d0861aa7f72cea5741656213b4ef723b",
+        "sha256": "1ayxzgh2bvmj4c4yl9q20fmr00kyil6475lsfcwrvslg34s3lqlv",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/61692f44cf85b93d43311492283246bb443449d3.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/12f4cb76d0861aa7f72cea5741656213b4ef723b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "4abc98e92909d7b178629912057473302cf0d8be",
-        "sha256": "09yhfk17rb9xk2cvi6353hfb43df05pg0x1gw5qrf8n0g0dvd3jx",
+        "rev": "f7fe91321ccfea1bce017fbf0d5421ceafa57acb",
+        "sha256": "1vin4s74d8w2pyi6zipbqrvz2k621a4705fc0sshjd23rkd35fn1",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/4abc98e92909d7b178629912057473302cf0d8be.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/f7fe91321ccfea1bce017fbf0d5421ceafa57acb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -108,16 +108,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-23.11",
+        "branch": "release-24.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6a5b92486ae7826c07fbfad302f569ceb187b0eb",
-        "sha256": "058kf03v7yh1c4ns96af6jq3ymadv71s7ajv9s05ipl9bnkjfrhm",
+        "rev": "68f19df4809ea68e782cddc5f3e9827cb5db65cb",
+        "sha256": "1caizbyi4sc5b47il8kbr2a8aripyb6wqw56dpgdhcmfhng17wb0",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/6a5b92486ae7826c07fbfad302f569ceb187b0eb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/68f19df4809ea68e782cddc5f3e9827cb5db65cb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
@@ -131,18 +131,6 @@
         "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
         "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "nixpkgs-unstable": {
-        "branch": "master",
-        "description": "Nix Packages collection & NixOS",
-        "homepage": "",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "9d2864289e65d0dc841123ae86bc7b3f77b6d12d",
-        "sha256": "0f3bcphzrjm1hs81mhpfx1hqxfnbvhhv5hv82wi1h3f735i279ja",
-        "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/9d2864289e65d0dc841123ae86bc7b3f77b6d12d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

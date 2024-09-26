@@ -6,7 +6,7 @@ sidebar_position: 5
 
 ## Mops packages for ICRC
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for ICRC tokens:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for ICRC tokens:
 
 - [`account`](https://mops.one/account): Implementation of ICRC-1 and ICRC-7 accounts.
 

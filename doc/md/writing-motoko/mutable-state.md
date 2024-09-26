@@ -32,7 +32,7 @@ If you try to assign new values to either [`Text`](../base/Text.md) or `num` abo
 
 You may freely update the value of mutable variables `pair` and `text2` using the syntax for assignment, written as `:=`, as follows:
 
-``` motoko include=init
+``` motoko no-repl
 text2 := text2 # "xyz";
 pair := (text2, pair.1);
 pair
@@ -58,7 +58,7 @@ After the second line, the variable `num2` holds `42`, as one would expect.
 
 Motoko includes other combinations as well. For example, we can rewrite the line above that updates `text2` more concisely as:
 
-``` motoko include=init
+``` motoko no-repl
 text2 #= "xyz";
 text2
 ```
@@ -114,7 +114,7 @@ Before discussing [mutable arrays](#mutable-arrays), we introduce immutable arra
 
 ### Allocate an immutable array of constants
 
-``` motoko name=array
+``` motoko
 let a : [Nat] = [1, 2, 3] ;
 ```
 
@@ -124,7 +124,7 @@ The array `a` above holds three natural numbers, and has type `[Nat]`. In genera
 
 You can read from an array using the usual bracket syntax of `[` and `]` around the index you want to access:
 
-``` motoko include=array
+``` motoko no-repl
 let x : Nat = a[2] + a[0] ;
 ```
 
@@ -134,7 +134,7 @@ Every array access in Motoko is safe. Accesses that are out of bounds will not a
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows:
 
-``` motoko name=import
+``` motoko no-repl
 import Array "mo:base/Array";
 ```
 
@@ -156,7 +156,7 @@ The function `gen` actually functions as the array during its initialization. It
 
 For instance, you can first allocate `array1` consisting of some initial constants, then functionally update some of the indices by changing them in a pure, functional way, to produce `array2`, a second array that does not destroy the first.
 
-``` motoko include=import
+``` motoko no-repl
 let array1 : [Nat] = [1, 2, 3, 4, 6, 7, 8] ;
 
 let array2 : [Nat] = Array.tabulate<Nat>(7, func(i:Nat) : Nat {
@@ -195,7 +195,7 @@ func init<T>(size : Nat,  x : T) : [var T]
 
 For example:
 
-``` motoko include=import
+``` motoko no-repl
 var size : Nat = 42 ;
 let x : [var Nat] = Array.init<Nat>(size, 3);
 ```
