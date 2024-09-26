@@ -64,7 +64,7 @@ let bigint_of_double (f : Wasm.F64.t) : Big_int.big_int =
   in
 
   (* Negate the number if sign bit is set (double is negative) *)
-  if Int64.shift_right_logical bits 63 = Int64.one && a <> Big_int.zero_big_int then
+  if Int64.(shift_right_logical bits 63 = one) then
     Big_int.minus_big_int a
   else
     a
