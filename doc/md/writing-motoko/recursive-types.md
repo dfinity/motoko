@@ -26,11 +26,11 @@ A recursive function can be used to retrieve the last element of a given list:
 
 ```motoko no-repl
 func last<T>(l : List<T>) : ?T {
-switch l {
-case null { null };
-case (?(x, null)) { ?x };
-case (?(_, t)) { last<T>(t) };
-};
+  switch l {
+    case null { null };
+    case (?(x, null)) { ?x };
+    case (?(_, t)) { last<T>(t) };
+  };
 };
 ```
 
