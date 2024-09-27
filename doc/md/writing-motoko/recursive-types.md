@@ -10,7 +10,7 @@ A recursive type is a type that contains the values of the same type. Recursive 
 
 Motoko supports linked lists, one data structure that implements recursive types.
 
-## Recursive types
+## Recursive lists
 
 ``` motoko no-repl
 type List<T> = ?(T, List<T>);
