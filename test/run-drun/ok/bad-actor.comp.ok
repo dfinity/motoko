@@ -1,2 +1,2 @@
-bad-actor.mo:2.1-4.2: type error [M0038], misplaced await
-bad-actor.mo:2.1-4.2: type error [M0037], misplaced async expression; try enclosing in an async function
+bad-actor.mo:2.1-4.2: type error [M0141], an actor or actor class must be the only non-imported declaration in a program
+  (This is a limitation of the current version.)

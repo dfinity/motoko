@@ -2975,7 +2975,7 @@ let is_actor_dec d =
   | _ -> false
 
 let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Diag.result =
-  if check_actors then Diag.return () else
+  if not check_actors then Diag.return () else
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->

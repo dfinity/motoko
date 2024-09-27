@@ -421,7 +421,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
-let load_progs ?(viper_mode=false) ?(check_actors = false) parsefn files senv : load_result =
+let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
