@@ -1,0 +1,5 @@
+--- pass-self.run
++++ pass-self.run-ir
+@@ -1 +1 @@
+-pass-self.mo:9.12-9.16: execution error, accessing identifier before its definition
++pass-self.mo:9.12-9.23: execution error, Unknown actor "ID:1"
