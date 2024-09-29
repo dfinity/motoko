@@ -1,4 +1,2 @@
-unsupported-more.mo:2.1-5.2: type error [M0038], misplaced await
-unsupported-more.mo:2.1-5.2: type error [M0037], misplaced async expression; try enclosing in an async function
-unsupported-more.mo:8.1-8.25: type error [M0038], misplaced await
-unsupported-more.mo:8.1-8.25: type error [M0037], misplaced async expression; try enclosing in an async function
+unsupported-more.mo:2.1-5.2: type error [M0141], an actor or actor class must be the only non-imported declaration in a program
+  (This is a limitation of the current version.)
