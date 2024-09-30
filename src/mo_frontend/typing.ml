@@ -1376,7 +1376,7 @@ and infer_exp'' env exp : T.typ =
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
-    let _s, tfs =
+    let s, tfs =
       try T.as_obj_sub [id.it] t1 with Invalid_argument _ ->
       try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
       try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
@@ -1395,9 +1395,19 @@ and infer_exp'' env exp : T.typ =
         check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
+      let rec log2 x =
+       match x with
+       | 1 -> 0
+       | _ -> 1 + log2 ((x + 1) / 2) in
+      let fields = List.map (fun tf -> tf.T.lab, tf) tfs in
+      let limit = 1+log2(String.length id.it) in
+      let idx = Spelll.Index.of_list fields in
+      let tfs = Spelll.Index.retrieve_l ~limit:limit idx id.it in
+      let t1 = T.Obj (s, tfs) in
       error env exp1.at "M0072"
-        "field %s does not exist in type%a"
+        "field %s does not exist in type (%i) %a"
         id.it
+        limit
         display_typ_expand t1
     )
   | AssignE (exp1, exp2) ->
