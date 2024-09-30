@@ -1,2 +1,2 @@
 pass-self.mo:14.5-14.20: warning [M0016], cannot use method1 before method1 has been defined
-pass-self.mo:3.1-17.2: warning [M0016], cannot use Self before Self has been defined
+pass-self.mo:3.1-16.2: warning [M0016], cannot use Self before Self has been defined
