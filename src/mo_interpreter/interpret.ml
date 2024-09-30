@@ -894,7 +894,7 @@ and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
      let env' = adjoin_vals { env with self } ve_in in
      define_id' env' "Self" self'; (* HACK *)
      let partial () =
-       let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_in in
+       let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_ex in
        env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env)
      in
      interpret_dec_fields' env' (Some partial) dec_fields ve_ex
