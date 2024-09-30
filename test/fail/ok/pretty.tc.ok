@@ -45,7 +45,7 @@ pretty.mo:28.23-28.24: type error [M0096], expression of type
   }
 cannot produce expected type
   Nat
-pretty.mo:40.1-40.12: type error [M0072], field foo does not exist in type
+pretty.mo:40.1-40.12: type error [M0072], field foo does not exist in type 
   module {
     bar1 : Nat;
     bar2 : Nat;

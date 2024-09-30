@@ -114,6 +114,20 @@ let kind_of_field_pattern pf = match pf.it with
   | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
+(* suggestions *)
+
+let suggest id ids =
+  let rec log2 = function
+      | 1 -> 0
+      | n -> 1 + log2 ((n + 1) / 2) in
+  let limit = 1 + log2 (String.length id) in
+  let distance = Spelll.edit_distance id in
+  let weighted_ids = List.filter_map (fun id -> let d = distance id in if d <= limit then Some (d, id) else None) ids in
+  let suggestions = List.sort compare weighted_ids |> List.map snd in
+  if suggestions = [] then
+    ""
+  else "\nDid you mean " ^ (String.concat " or " suggestions) ^ "?"
+
 (* Error bookkeeping *)
 
 exception Recover
@@ -408,8 +422,13 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env id.at "M0028" "field %s does not exist in type%a"
+      error env id.at "M0028" "field %s does not exist in type%a%s"
         id.it display_typ_expand (T.Obj (s, fs))
+        (suggest id.it
+           (List.filter_map
+             (function
+               { T.typ=T.Typ _;_} -> None
+             | {T.lab;_} -> Some lab) fs))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -431,9 +450,12 @@ and check_typ_path' env path : T.con =
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type%a"
+        error env id.at "M0030" "type field %s does not exist in type%a%s"
           id.it display_typ_expand (T.Obj (s, fs))
-
+          (suggest id.it
+             (List.filter_map
+               (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
+               |  _ -> None) fs))
 
 (* Type helpers *)
 
@@ -1395,20 +1417,15 @@ and infer_exp'' env exp : T.typ =
         check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
-      let rec log2 x =
-       match x with
-       | 1 -> 0
-       | _ -> 1 + log2 ((x + 1) / 2) in
-      let fields = List.map (fun tf -> tf.T.lab, tf) tfs in
-      let limit = 1+log2(String.length id.it) in
-      let idx = Spelll.Index.of_list fields in
-      let tfs = Spelll.Index.retrieve_l ~limit:limit idx id.it in
-      let t1 = T.Obj (s, tfs) in
       error env exp1.at "M0072"
-        "field %s does not exist in type (%i) %a"
+        "field %s does not exist in type %a%s"
         id.it
-        limit
         display_typ_expand t1
+        (suggest id.it
+          (List.filter_map
+             (function
+               { T.typ=T.Typ _;_} -> None
+             | {T.lab;_} -> Some lab) tfs))
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
