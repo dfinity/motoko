@@ -34,9 +34,13 @@ func last<T>(l : List<T>) : ?T {
 };
 ```
 
-This generic function `last<T>` takes one argument `l` of type `List<T>`, which refers to the head of a list. If this function returns the last element of a list, it returns an optional value `?T`. If there isn't a last element, it will return `null`. The body of the function uses a `switch` statement to determine if the list passed as an argument is a null list, the last element of a list, or if it is the tail of a list with a next value.
+This generic function `last<T>` takes one argument `l` of type `List<T>`, which refers to the head of a list. If this function returns the last element of a list, it returns an optional value `?T`. If there isn't a last element, it will return `null`. The body of the function uses a `switch` statement to determine if the list passed as an argument is an empty list, the last element of a list, or if it is the tail of a list with a next value.
 
 In this switch statement, the `last<T>` function is used recursively, since it is called within itself with `t` as the argument. The function is called again each time the case statement is satisfied, and the function receives a list head that it can switch on until the last element is returned.
+
+:::info 
+Note that you will need to use recursive functions to access all data in a recursive type.
+:::
 
 ## Resources
 
