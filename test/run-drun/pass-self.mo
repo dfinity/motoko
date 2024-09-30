@@ -11,7 +11,7 @@ actor /*class () =*/ Self {
     debugPrint (debug_show(principalOfActor Self));
     debugPrint "So far so good!";
 
-    //caller(method1);
-    //public func method1() : async () { debugPrint "YESS!"; ignore principalOfActor Self };
+    caller(method1);
+    public func method1() : async () { debugPrint "YESS!"; ignore principalOfActor Self };
     
 }

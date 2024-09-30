@@ -890,9 +890,9 @@ and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
   | T.Actor ->
      let self = V.fresh_id() in
      let self' = V.Blob self in
-     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty (*Lib.Promise.make_fulfilled self' |> V.Env.singleton "SelfX"*) V.Env.empty in
+     let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
-     define_id' env' "Self" self';
+     define_id' env' "Self" self'; (* HACK *)
      let partial () =
        let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_in in
        env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env)
