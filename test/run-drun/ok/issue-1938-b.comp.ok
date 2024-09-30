@@ -1,2 +1,3 @@
+issue-1938-b.mo:1.1-1.3: type error [M0141], move these declarations into the body of the main actor or actor class
 issue-1938-b.mo:2.1-2.9: type error [M0141], an actor or actor class must be the only non-imported declaration in a program
   (This is a limitation of the current version.)

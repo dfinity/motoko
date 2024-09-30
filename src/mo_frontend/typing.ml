@@ -2991,11 +2991,12 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
         let rec go ds = function
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
-             if ds <> [] || ds' <> []  then
+            if ds <> [] || ds' <> [] then begin
               report (List.rev ds);
               report ds';
               error_in [Flags.ICMode; Flags.RefMode] env d.at "M0141"
                 "an actor or actor class must be the only non-imported declaration in a program"
+            end
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
