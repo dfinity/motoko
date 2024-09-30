@@ -180,7 +180,7 @@ actor {
     var c = init;
     var f = flag;
     public func inc() : Nat {
-      if (f) {
+      if f {
         c += 1;
       };
       return c;
