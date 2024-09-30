@@ -1,10 +1,17 @@
-import { debugPrint } = "mo:⛔";
+import { debugPrint; principalOfActor } = "mo:⛔";
 
-actor Self {
-    public func method() : async () { debugPrint "YESS!" };
+actor /*class () =*/ Self {
+    public func method() : async () { debugPrint "YESS!"; ignore principalOfActor Self };
+    func caller(_callee : shared () -> async ()) { };
 
-    var c : ?(shared () -> async ()) = null;
-    func caller(callee : shared () -> async ()) { c := ?callee };
+    debugPrint "BEFORE!";
+    ignore principalOfActor Self;
+    caller(Self.method);
+    caller(method);
+    debugPrint (debug_show(principalOfActor Self));
+    debugPrint "So far so good!";
 
-    caller(Self.method)
+    //caller(method1);
+    //public func method1() : async () { debugPrint "YESS!"; ignore principalOfActor Self };
+    
 }

@@ -206,10 +206,10 @@ and group msgs (grp : group) : f =
            defined after j *)
         if j < i
         then () (* all izz well *)
-        else
+        else (*assert eager;*)
           Diag.add_msg
             msgs
-            (Diag.error_message
+            (Diag.warning_message
                at
                "M0016"
                "definedness"
