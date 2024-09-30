@@ -8,7 +8,7 @@ sidebar_position: 29
 
 A recursive type is a type that contains the values of the same type. Recursive types enable you to create complex recursive data structures, such as linked lists or trees.
 
-Motoko supports linked lists, one data structure that implements recursive types.
+Motoko supports linked lists, a data structure that is an example of a recursive type.
 
 ## Recursive lists
 
