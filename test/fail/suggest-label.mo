@@ -1,6 +1,3 @@
 label foo {
   break fo;
 };
-
-
-
