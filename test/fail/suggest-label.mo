@@ -1,0 +1,6 @@
+label foo {
+  break fo;
+};
+
+
+
