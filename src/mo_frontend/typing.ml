@@ -121,7 +121,11 @@ let suggest id ids =
       | 1 -> 0
       | n -> 1 + log2 ((n + 1) / 2) in
   let limit = log2 (String.length id) in
-  let distance = Spelll.edit_distance id in
+  let distance id0 =
+    let d = Spelll.edit_distance id id0 in
+    assert (d = Lib.String.levenshtein_distance id id0);
+    d
+  in
   let weighted_ids = List.filter_map (fun id0 ->
     let d = distance id0 in
     if Lib.String.starts_with id id0 || d <= limit then

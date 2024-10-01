@@ -160,6 +160,7 @@ sig
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
+  val levenshtein_distance : string -> string -> int
 end
 
 module CRC :
