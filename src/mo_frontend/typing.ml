@@ -2974,18 +2974,29 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let check_actors ?(viper_mode=false) scope progs : unit Diag.result =
+let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Diag.result =
+  if not check_actors then Diag.return () else
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
         let env = env_of_scope ~viper_mode msgs scope in
+        let report ds =
+          match ds with
+            [] -> ()
+          | d :: _ ->
+            let r = { d.at with right = (Lib.List.last ds).at.right } in
+            local_error env r "M0141" "move these declarations into the body of the main actor or actor class"
+        in
         let rec go ds = function
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
-            if ds <> [] || ds' <> []  then
+            if ds <> [] || ds' <> [] then begin
+              report (List.rev ds);
+              report ds';
               error_in [Flags.ICMode; Flags.RefMode] env d.at "M0141"
                 "an actor or actor class must be the only non-imported declaration in a program"
+            end
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
