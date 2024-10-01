@@ -120,13 +120,20 @@ let suggest id ids =
   let rec log2 = function
       | 1 -> 0
       | n -> 1 + log2 ((n + 1) / 2) in
-  let limit = 1 + log2 (String.length id) in
+  let limit = log2 (String.length id) in
   let distance = Spelll.edit_distance id in
-  let weighted_ids = List.filter_map (fun id -> let d = distance id in if d <= limit then Some (d, id) else None) ids in
+  let weighted_ids = List.filter_map (fun id0 ->
+    let d = distance id0 in
+    if Lib.String.starts_with id id0 || d <= limit then
+      Some (d, id0)
+    else None) ids in
   let suggestions = List.sort compare weighted_ids |> List.map snd in
-  if suggestions = [] then
-    ""
-  else "\nDid you mean " ^ (String.concat " or " suggestions) ^ "?"
+  if suggestions = [] then ""
+  else
+    let ids, id = Lib.List.split_last suggestions in
+    "\nDid you mean " ^
+      (if ids <> [] then (String.concat ", " ids) ^ " or " else "") ^
+       id ^ "?"
 
 (* Error bookkeeping *)
 
