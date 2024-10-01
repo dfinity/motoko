@@ -893,11 +893,11 @@ and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
      define_id' env' "Self" self'; (* HACK *)
-     let partial () =
+     let increments () =
        let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_ex in
        env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env)
      in
-     interpret_dec_fields' env' (Some partial) dec_fields ve_ex
+     interpret_dec_fields env' ~increments dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
           k self'))
@@ -915,20 +915,13 @@ and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
     let ve_in' = V.Env.adjoin ve_in ve' in
     declare_dec_fields dec_fields' ve_ex' ve_in'
 
-and interpret_dec_fields' env upd dec_fields ve (k : V.value V.cont) =
-  let commit = function
-    | None -> ()
-    | Some f -> f () in
+and interpret_dec_fields env ?(increments=ignore) dec_fields ve (k : V.value V.cont) =
   match dec_fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     k obj
   | {it = {dec; _}; _}::dec_fields' ->
-    interpret_dec env dec (fun _v -> commit upd; interpret_dec_fields' env upd dec_fields' ve k)
-
-
-and interpret_dec_fields env dec_fields ve (k : V.value V.cont) =
-  interpret_dec_fields' env None dec_fields ve k
+    interpret_dec env dec (fun _v -> increments (); interpret_dec_fields env ~increments dec_fields' ve k)
 
 (* Blocks and Declarations *)
 
