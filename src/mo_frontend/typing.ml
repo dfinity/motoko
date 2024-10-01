@@ -114,18 +114,14 @@ let kind_of_field_pattern pf = match pf.it with
   | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
-(* suggestions *)
+(* Suggestions *)
 
 let suggest id ids =
   let rec log2 = function
-      | 1 -> 0
-      | n -> 1 + log2 ((n + 1) / 2) in
+    | 1 -> 0
+    | n -> 1 + log2 ((n + 1) / 2) in
   let limit = log2 (String.length id) in
-  let distance id0 =
-    let d = Spelll.edit_distance id id0 in
-    assert (d = Lib.String.levenshtein_distance id id0);
-    d
-  in
+  let distance = Lib.String.levenshtein_distance id in
   let weighted_ids = List.filter_map (fun id0 ->
     let d = distance id0 in
     if Lib.String.starts_with id id0 || d <= limit then

@@ -237,6 +237,7 @@ struct
     done;
     Buffer.contents buf
 
+  (* Courtesy of Claude.ai *)
   let levenshtein_distance s t =
     let m = String.length s
     and n = String.length t in
