@@ -572,13 +572,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
 and interpret_actor env ds fs k =
     let self = V.fresh_id () in
-    let env0 = {env with self = self} in
+    let self' = V.Blob self in
+    let env0 = {env with self} in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k (V.Blob self)
+      k self'
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
