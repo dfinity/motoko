@@ -420,7 +420,9 @@ and check_obj_path' env path : T.typ =
      | Some (t, _, _, Available) -> t
      | Some (t, _, _, Unavailable) ->
          error env id.at "M0025" "unavailable variable %s" id.it
-     | None -> error env id.at "M0026" "unbound variable %s" id.it
+     | None ->
+        error env id.at "M0026" "unbound variable %s%s" id.it
+        (suggest id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -448,7 +450,9 @@ and check_typ_path' env path : T.con =
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
-    | None -> error env id.at "M0029" "unbound type %s" id.it
+    | None ->
+       error env id.at "M0029" "unbound type %s%s" id.it
+         (suggest id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -1189,7 +1193,8 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
-      error env id.at "M0057" "unbound variable %s" id.it
+       error env id.at "M0057" "unbound variable %s%s" id.it
+         (suggest id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1630,7 +1635,8 @@ and infer_exp'' env exp : T.typ =
         match String.split_on_char ' ' id.it with
         | ["continue"; name] -> name
         | _ -> id.it
-      in local_error env id.at "M0083" "unbound label %s" name
+      in local_error env id.at "M0083" "unbound label %s%s" name
+         (suggest id.it (T.Env.keys env.labs))
     );
     T.Non
   | RetE exp1 ->
