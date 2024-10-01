@@ -463,7 +463,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in
         k (V.Obj ve)
       | SelfRef _, [] ->
-        k (V.Blob env.self)
+        k (context env)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
