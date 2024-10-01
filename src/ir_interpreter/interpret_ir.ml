@@ -572,14 +572,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
 and interpret_actor env ds fs k =
     let self = V.fresh_id () in
-    let self' = V.Blob self in
     let env0 = {env with self} in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
-    interpret_decs env' ds (fun _ ->
+    let increments () =
+      env'.actor_env := V.Env.add self (defined_fields env' fs) !(env'.actor_env) in
+    interpret_decs env' ~increments ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k self'
+      k (V.Blob self)
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
@@ -604,6 +605,17 @@ and interpret_lexp env lexp (k : (V.value ref) V.cont) =
            with Invalid_argument s -> trap lexp.at "%s" s))
       )
     )
+
+and defined_fields env fs =
+    let ve =
+      List.fold_left
+        (fun ve (f : field) ->
+          match V.Env.find_opt f.it.var env.vals with
+          | Some binding when Lib.Promise.is_fulfilled binding
+            -> V.Env.disjoint_add f.it.name (Lib.Promise.value binding) ve
+          | _ -> ve
+        ) V.Env.empty fs in
+    V.Obj ve
 
 and interpret_fields env fs =
     let ve =
@@ -801,10 +813,10 @@ and interpret_dec env dec k =
       k ()
     )
 
-and interpret_decs env decs (k : unit V.cont) =
+and interpret_decs env ?(increments=ignore) decs (k : unit V.cont) =
   match decs with
   | [] -> k ()
-  | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
+  | d::ds -> interpret_dec env d (fun () -> increments (); interpret_decs env ~increments ds k)
 
 and interpret_func env at sort x args f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
