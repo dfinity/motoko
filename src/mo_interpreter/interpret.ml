@@ -785,7 +785,7 @@ and declare_pat_fields pfs ve : val_env =
 and define_id env id v =
   define_id' env id.it v
 
-and define_id' env id v = if not(Lib.Promise.is_fulfilled (find id env.vals)) then
+and define_id' env id v =
   Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
@@ -797,19 +797,20 @@ and define_pat env pat v =
      false
 
 and match_lit lit v : bool =
+  let open Numerics in
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
-  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
+  | NatLit n, V.Int n' -> Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Nat64.eq n n'
+  | IntLit i, V.Int i' -> Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
