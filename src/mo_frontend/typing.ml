@@ -117,17 +117,22 @@ let kind_of_field_pattern pf = match pf.it with
 (* Suggestions *)
 
 let suggest id ids =
-  let rec log2 = function
-    | 1 -> 0
-    | n -> 1 + log2 ((n + 1) / 2) in
-  let limit = log2 (String.length id) in
-  let distance = Lib.String.levenshtein_distance id in
-  let weighted_ids = List.filter_map (fun id0 ->
-    let d = distance id0 in
-    if Lib.String.starts_with id id0 || d <= limit then
-      Some (d, id0)
-    else None) ids in
-  let suggestions = List.sort compare weighted_ids |> List.map snd in
+  if !Flags.ai_errors then
+    "\n Identifier " ^ id ^ " is not available. Try something else?"
+  else
+  let suggestions =
+    let rec log2 = function
+      | 1 -> 0
+      | n -> 1 + log2 ((n + 1) / 2) in
+    let limit = log2 (String.length id) in
+    let distance = Lib.String.levenshtein_distance id in
+    let weighted_ids = List.filter_map (fun id0 ->
+      let d = distance id0 in
+      if Lib.String.starts_with id id0 || d <= limit then
+        Some (d, id0)
+      else None) ids in
+    List.sort compare weighted_ids |> List.map snd
+  in
   if suggestions = [] then ""
   else
     let ids, id = Lib.List.split_last suggestions in
@@ -419,9 +424,9 @@ and check_obj_path' env path : T.typ =
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, _, _, Available) -> t
      | Some (t, _, _, Unavailable) ->
-         error env id.at "M0025" "unavailable variable %s" id.it
+       error env id.at "M0025" "unavailable variable %s" id.it
      | None ->
-        error env id.at "M0026" "unbound variable %s%s" id.it
+       error env id.at "M0026" "unbound variable %s%s" id.it
         (suggest id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
