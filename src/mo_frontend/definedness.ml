@@ -101,9 +101,9 @@ let rec exp msgs e : f = match e.it with
   | FromCandidE e       -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjBlockE (s, _, dfs) ->
+  | ObjBlockE (s, (self_id_opt, _), dfs) ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    group msgs (dec_fields msgs dfs)
+    group msgs ~extern:self_id_opt (dec_fields msgs dfs)
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | DotE (e, i)         -> exp msgs e
   | AssignE (e1, e2)    -> exps msgs [e1; e2]
@@ -192,9 +192,13 @@ and decs msgs decs : group =
     (d.at, defs, eager_vars f, delayed_vars f)
   ) decs
 
-and group msgs (grp : group) : f =
+and group msgs ?(extern=None) (grp : group) : f =
   (* Create a map from declared variable to their definition point *)
   let defWhen = M.disjoint_unions (List.mapi (fun i (_, defs, _, _) -> map_of_set i defs) grp) in
+  (* Insert the externally defined binding in front if present, non-shadowing *)
+  let defWhen = match extern with
+    | Some b when M.find_opt b.it defWhen |> Option.is_none -> M.add b.it (-1) defWhen
+    | _ -> defWhen in
   (* Calculate the relation R *)
   let r = NameRel.unions (List.map (fun (_, defs, _, delayed) -> NameRel.cross defs delayed) grp) in
   (* Check for errors *)
