@@ -213,7 +213,7 @@ and group msgs ?(extern=None) (grp : group) : f =
         else (*assert eager;*)
           Diag.add_msg
             msgs
-            (Diag.warning_message
+            (Diag.error_message
                at
                "M0016"
                "definedness"
