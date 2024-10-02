@@ -893,8 +893,13 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let self' = V.Blob self in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
+     (* Define self_id when there is non-shadowing way to do it *)
+     (* FIXME: when non-shadow *)
+     let env' = match self_id with
+       | Some self -> adjoin_vals env' (declare_id self)
+       | _ -> env' in
      Option.iter (fun id -> define_id env' id self') self_id;
-     let increments () =
+     let increments () = (* FIXME: shadowing? *)
        let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_ex in
        env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env)
      in
