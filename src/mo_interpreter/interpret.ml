@@ -482,8 +482,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, _, dec_fields) ->
-    interpret_obj env obj_sort.it dec_fields k
+  | ObjBlockE (obj_sort, (self_id_opt, _), dec_fields) ->
+    interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
     let open V.Env in
@@ -885,14 +885,14 @@ and match_shared_pat env shared_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
+and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
   match obj_sort with
   | T.Actor ->
      let self = V.fresh_id() in
      let self' = V.Blob self in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
-     define_id' env' "Self" self'; (* HACK *)
+     Option.iter (fun id -> define_id' env' id.it self') self_id;
      let increments () =
        let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_ex in
        env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env)
@@ -971,7 +971,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it dec_fields (fun v' ->
+        interpret_obj env'' obj_sort.it None dec_fields (fun v' ->
           define_id env'' id' v';
           k' v')
       else
@@ -983,7 +983,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it dec_fields (fun v' ->
+            interpret_obj env''' obj_sort.it (Some id') dec_fields (fun v' ->
               define_id env''' id' v';
               k'' v'))
           k')

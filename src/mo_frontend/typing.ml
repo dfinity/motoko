@@ -1291,7 +1291,7 @@ and infer_exp'' env exp : T.typ =
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
-      | false, Some typ ->
+      | false, (_FIXME, Some typ) ->
         let t' = check_typ env' typ in
         if not (T.sub t t') then
           local_error env exp.at "M0192"
