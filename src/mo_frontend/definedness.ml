@@ -210,7 +210,7 @@ and group msgs ?(extern=None) (grp : group) : f =
            defined after j *)
         if j < i
         then () (* all izz well *)
-        else (*assert eager;*)
+        else
           Diag.add_msg
             msgs
             (Diag.error_message
