@@ -1,3 +1,0 @@
-suggest-ai-local.mo:9.1-9.2: type error [M0057], unbound variable x in environment:
-  {Foo : module {x : Nat}; xxx : Nat}
-The variable x is not available. Try something else?
