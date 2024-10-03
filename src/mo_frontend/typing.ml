@@ -187,12 +187,12 @@ let display_labs fmt labs =
 let display_typs fmt typs =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x c acc ->
-       if (String.length x >= 0 && (x.[0] = '@' || x.[0] = '$')) ||
-          T.(match Cons.kind c with
-             | Def ([], Prim _)
-             | Def ([], Any)
-             | Def ([], Non) -> string_of_con c = x
-             | _ -> false)
+      if (String.length x >= 0 && (x.[0] = '@' || x.[0] = '$')) ||
+        T.(match Cons.kind c with
+          | Def ([], Prim _)
+          | Def ([], Any)
+          | Def ([], Non) -> string_of_con c = x
+          | _ -> false)
       then acc
       else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = T.Typ c}::acc)
       typs []
@@ -474,9 +474,9 @@ and check_obj_path' env path : T.typ =
      | Some (t, _, _, Unavailable) ->
        error env id.at "M0025" "unavailable variable %s" id.it
      | None ->
-        error env id.at "M0026" "unbound variable %s%a%s" id.it
-        display_vals env.vals
-        (suggest "variable" id.it (T.Env.keys env.vals))
+       error env id.at "M0026" "unbound variable %s%a%s" id.it
+         display_vals env.vals
+         (suggest "variable" id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -489,10 +489,10 @@ and check_obj_path' env path : T.typ =
         id.it
         display_obj (s, fs)
         (suggest "field" id.it
-           (List.filter_map
-             (function
-               { T.typ=T.Typ _;_} -> None
-             | {T.lab;_} -> Some lab) fs))
+          (List.filter_map
+            (function
+              {T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) fs))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -506,9 +506,9 @@ and check_typ_path' env path : T.con =
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
     | None ->
-       error env id.at "M0029" "unbound type %s%a%s" id.it
-         display_typs env.typs
-         (suggest "type" id.it (T.Env.keys env.typs))
+      error env id.at "M0029" "unbound type %s%a%s" id.it
+        display_typs env.typs
+        (suggest "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -1249,9 +1249,9 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
-       error env id.at "M0057" "unbound variable %s%a%s" id.it
-         display_vals env.vals
-         (suggest "variable" id.it (T.Env.keys env.vals))
+      error env id.at "M0057" "unbound variable %s%a%s" id.it
+        display_vals env.vals
+        (suggest "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
