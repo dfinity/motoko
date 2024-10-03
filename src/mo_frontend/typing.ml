@@ -116,15 +116,15 @@ let kind_of_field_pattern pf = match pf.it with
 
 (* Suggestions *)
 
-let suggest id ids =
+let suggest desc id ids =
   if !Flags.ai_errors then
-    "\n Identifier " ^ id ^ " is not available. Try something else?"
+    Printf.sprintf
+      "\nThe %s %s is not available. Try something else?"
+      desc
+      id
   else
   let suggestions =
-    let rec log2 = function
-      | 1 -> 0
-      | n -> 1 + log2 ((n + 1) / 2) in
-    let limit = log2 (String.length id) in
+    let limit = Lib.Int.log2 (String.length id) in
     let distance = Lib.String.levenshtein_distance id in
     let weighted_ids = List.filter_map (fun id0 ->
       let d = distance id0 in
@@ -135,10 +135,10 @@ let suggest id ids =
   in
   if suggestions = [] then ""
   else
-    let ids, id = Lib.List.split_last suggestions in
-    "\nDid you mean " ^
-      (if ids <> [] then (String.concat ", " ids) ^ " or " else "") ^
-       id ^ "?"
+    let rest, last = Lib.List.split_last suggestions in
+    Printf.sprintf "\nDid you mean %s %s?"
+      desc
+      ((if rest <> [] then (String.concat ", " rest) ^ " or " else "") ^ last)
 
 (* Error bookkeeping *)
 
@@ -153,6 +153,49 @@ let display_lab = Lib.Format.display T.pp_lab
 let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
+
+let display_obj fmt (s, fs) =
+  if !Flags.ai_errors || (List.length fs) < 16 then
+    Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
+  else
+    Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+
+let display_vals fmt vals =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x (t, _, _, _) acc ->
+      if x = "Prim" || (String.length x >= 0 && x.[0] = '@')
+      then acc
+      else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = t}::acc)
+      vals []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
+
+let display_labs fmt labs =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x t acc ->
+      T.{lab = x; src = {depr = None; region = Source.no_region }; typ = t}::acc)
+      labs []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in label environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
+
+let display_typs fmt typs =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x c acc ->
+      if x = "Prim" || (String.length x >= 0 && x.[0] = '@')
+      then acc
+      else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = T.Typ c}::acc)
+      typs []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in type environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
 
 let type_error at code text : Diag.message =
   Diag.error_message at code "type" text
@@ -426,8 +469,9 @@ and check_obj_path' env path : T.typ =
      | Some (t, _, _, Unavailable) ->
        error env id.at "M0025" "unavailable variable %s" id.it
      | None ->
-       error env id.at "M0026" "unbound variable %s%s" id.it
-        (suggest id.it (T.Env.keys env.vals))
+        error env id.at "M0026" "unbound variable %s%a%s" id.it
+        display_vals env.vals
+        (suggest "variable" id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -436,9 +480,10 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env id.at "M0028" "field %s does not exist in type%a%s"
-        id.it display_typ_expand (T.Obj (s, fs))
-        (suggest id.it
+      error env id.at "M0028" "field %s does not exist in %a%s"
+        id.it
+        display_obj (s, fs)
+        (suggest "field" id.it
            (List.filter_map
              (function
                { T.typ=T.Typ _;_} -> None
@@ -456,8 +501,9 @@ and check_typ_path' env path : T.con =
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
     | None ->
-       error env id.at "M0029" "unbound type %s%s" id.it
-         (suggest id.it (T.Env.keys env.typs))
+       error env id.at "M0029" "unbound type %s%a%s" id.it
+         display_typs env.typs
+         (suggest "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -468,7 +514,7 @@ and check_typ_path' env path : T.con =
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in type%a%s"
           id.it display_typ_expand (T.Obj (s, fs))
-          (suggest id.it
+          (suggest "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
                |  _ -> None) fs))
@@ -1198,8 +1244,9 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
-       error env id.at "M0057" "unbound variable %s%s" id.it
-         (suggest id.it (T.Env.keys env.vals))
+       error env id.at "M0057" "unbound variable %s%a%s" id.it
+         display_vals env.vals
+         (suggest "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1435,10 +1482,10 @@ and infer_exp'' env exp : T.typ =
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
-        "field %s does not exist in type %a%s"
+        "field %s does not exist in %a%s"
         id.it
-        display_typ_expand t1
-        (suggest id.it
+        display_obj (s, tfs)
+        (suggest "field" id.it
           (List.filter_map
              (function
                { T.typ=T.Typ _;_} -> None
@@ -1640,8 +1687,9 @@ and infer_exp'' env exp : T.typ =
         match String.split_on_char ' ' id.it with
         | ["continue"; name] -> name
         | _ -> id.it
-      in local_error env id.at "M0083" "unbound label %s%s" name
-         (suggest id.it (T.Env.keys env.labs))
+      in local_error env id.at "M0083" "unbound label %s%a%s" name
+         display_labs env.labs
+         (suggest "label" id.it (T.Env.keys env.labs))
     );
     T.Non
   | RetE exp1 ->

@@ -1,4 +1,4 @@
-suggest-ai.mo:4.1-4.5: type error [M0072], field stableM does not exist in type 
+suggest-ai.mo:4.1-4.5: type error [M0072], field stableM does not exist in type:
   module {
     type ErrorCode =
       {
@@ -256,4 +256,4 @@ suggest-ai.mo:4.1-4.5: type error [M0072], field stableM does not exist in type
     time : () -> Nat64;
     trap : Text -> None
   }
- Identifier stableM is not available. Try something else?
+The field stableM is not available. Try something else?

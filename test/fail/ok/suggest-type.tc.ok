@@ -22,4 +22,3 @@ suggest-type.mo:3.21-3.24: type error [M0030], type field Num does not exist in 
     type Region = Region;
     type Text = Text
   }
-Did you mean Nat or Null?
