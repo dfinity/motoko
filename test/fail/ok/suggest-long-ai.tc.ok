@@ -1,4 +1,4 @@
-suggest-ai.mo:4.1-4.5: type error [M0072], field stableM does not exist in type:
+suggest-long-ai.mo:4.1-4.5: type error [M0072], field stableM does not exist in type:
   module {
     type ErrorCode =
       {
