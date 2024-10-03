@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "829343f682c727639386d5f306783008c6f07a45",
-        "sha256": "1h66jq09slcm9qs6kaxsvafd3dgc1y4b1gbv0wgcn6lwfq949yxr",
+        "rev": "e3021b7a867d8c9853d75dc2eaa4af88a1738aa0",
+        "sha256": "18pqsf339z075gk61fiyssibn5h3icqfiw2x6rgrlp29az7d9asv",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/829343f682c727639386d5f306783008c6f07a45.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/e3021b7a867d8c9853d75dc2eaa4af88a1738aa0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "12f4cb76d0861aa7f72cea5741656213b4ef723b",
-        "sha256": "1ayxzgh2bvmj4c4yl9q20fmr00kyil6475lsfcwrvslg34s3lqlv",
+        "rev": "f3bcbf19237870cd13e658e24d065d90f33ddc2e",
+        "sha256": "13ca93pbr34ivgs312xczw741ksz01n3q56340yyfvqc0v2jn6i7",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/12f4cb76d0861aa7f72cea5741656213b4ef723b.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/f3bcbf19237870cd13e658e24d065d90f33ddc2e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
