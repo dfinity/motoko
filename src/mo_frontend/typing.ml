@@ -187,7 +187,12 @@ let display_labs fmt labs =
 let display_typs fmt typs =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x c acc ->
-      if x = "Prim" || (String.length x >= 0 && x.[0] = '@')
+       if (String.length x >= 0 && (x.[0] = '@' || x.[0] = '$')) ||
+          T.(match Cons.kind c with
+             | Def ([], Prim _)
+             | Def ([], Any)
+             | Def ([], Non) -> string_of_con c = x
+             | _ -> false)
       then acc
       else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = T.Typ c}::acc)
       typs []
