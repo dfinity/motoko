@@ -42,7 +42,7 @@ let encoding : Blob = to_candid ("dogs", #are, ['g', 'r', 'e', 'a', 't']);
 `from_candid` will trap if its arguments is a blob that does not contain valid Candid data.
 Because deserialization can fail if the encoded value does not have the expected Candid type, `from_candid` returns a value of option type, with `null` indicating the encoding is well-formed but of the wrong Candid type or some value `?v`, where `v` is the decoded value. `from_candid` can only be used in the context of other code that determines its optional result type, for which a type annotation may be required.
 
-For example, this code that underspecifies the expected type of the decoded value, is rejected by the compiler:
+For example, this code that under specifies the expected type of the decoded value is rejected by the compiler:
 
 ``` motoko no-repl
 let ?(t, v, cs) = from_candid encoding;
