@@ -1,10 +1,16 @@
 # Motoko compiler changelog
 
+## 0.13.1 (2024-10-07)
+
 * motoko (`moc`)
 
   * Improved error messages for unbound identifiers and fields that avoid reporting large types and use an edit-distance based metric to suggest alternatives (#4720).
 
   * Flag `--ai-errors` to tailor error messages to AI clients (#4720).
+
+  * Compilation units containing leading type definitions are now rejected with an improved error message (#4714).
+
+  * bugfix: `floatToInt64` now behaves correctly in the interpreter too (#4712).
 
 ## 0.13.0 (2024-09-17)
 
@@ -92,6 +98,10 @@
         callbackTableSize : Nat;
     }
     ```
+
+* motoko-base
+
+  * Added `Iter.concat` function (thanks to AndyGura) (dfinity/motoko-base⁠#650).
 
 ## 0.12.0 (2024-07-26)
 
