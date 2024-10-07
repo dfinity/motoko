@@ -18,7 +18,7 @@ This example will showcase a simple way to configure inter-canister calls that c
 
 Consider the following code for `canister1`:
 
-```motoko
+```motoko no-repl
 import Canister2 "canister:canister2";
 
 actor {

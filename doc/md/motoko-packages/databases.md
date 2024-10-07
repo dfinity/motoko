@@ -6,7 +6,7 @@ sidebar_position: 3
 
 ## Mops packages for databases
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for database implementations:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for database implementations:
 
 - [`candb`](https://mops.one/candb): A flexible, performant, and scalable non-relational, multi-canister data store built for ICP.
 

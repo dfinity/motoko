@@ -50,7 +50,7 @@ To access the result of an `async` value, the receiver of the future uses an `aw
 
 For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](../base/Nat.md), `n`:
 
-``` motoko include=counter
+``` motoko no-repl
 let a : async Nat = Counter.read();
 let n : Nat = await a;
 ```
@@ -61,7 +61,7 @@ The second line `await`s this future and extracts the result, a natural number. 
 
 Typically, one rolls the two steps into one and just awaits an asynchronous call directly:
 
-``` motoko include=counter
+``` motoko no-repl
 let n : Nat = await Counter.read();
 ```
 

@@ -33,7 +33,7 @@ Note that using `_` as an expression outside of a pipe operation, where it is un
 
 For example, the following example produces the compile-time error "type error [M0057], unbound variable _":
 
-``` motoko
+``` motoko no-repl
 let x = _;
 ```
 
