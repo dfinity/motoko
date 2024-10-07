@@ -99,6 +99,10 @@
     }
     ```
 
+* motoko-base
+
+  * Added `Iter.concat` function (thanks to AndyGura) (dfinity/motoko-base⁠#650).
+
 ## 0.12.0 (2024-07-26)
 
 * motoko (`moc`)
