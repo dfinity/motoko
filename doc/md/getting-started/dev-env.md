@@ -105,13 +105,13 @@ DFX_MOC_PATH="$(vessel bin)/moc" dfx deploy
 To specify a custom version of the Motoko base library to be used with `dfx`, you can use the package manager `mops` with the following command:
 
 ```
-mops add base@<VERSION> && mops install
+mops add base@<VERSION>
 ```
 
 For example, to use base library version `0.9.0`, use the command:
 
 ```
-mops add base@0.9.0 && mops install
+mops add base@0.9.0
 ```
 
 ### Specifying a custom version of `dfx`
