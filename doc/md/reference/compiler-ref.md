@@ -26,6 +26,7 @@ You can use the following options with the `moc` command.
 
 | Option                                    | Description                                                                                                                                           |
 |-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--ai-errors`                             | Emit AI tailored error messages.                                                                                                                      |
 | `--actor-idl <idl-path>`                  | Specifies a path to actor IDL (Candid) files.                                                                                                         |
 | `--actor-alias <alias> <principal>`       | Specifies an actor import alias.                                                                                                                      |
 | `--args <file>`                           | Read additional newline separated command line arguments from `<file>`.                                                                               |
@@ -39,12 +40,12 @@ You can use the following options with the `moc` command.
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
 | `--experimental-stable-memory <n>`        | Select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n = 0: warn, n > 0: allow) (default 0).                        |
 | `-fno-shared-code`                        | Do not share low-level utility code: larger code size but decreased cycle consumption (default).                                                      |
-| `--generational-gc`                       | Use generational GC (not supported with enhanced orthogonal persistence).                                                                              |
+| `--generational-gc`                       | Use generational GC (not supported with enhanced orthogonal persistence).                                                                             |
 | `-fshared-code`                           | Do share low-level utility code: smaller code size but increased cycle consumption.                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
-| `--incremental-gc`                        | Use incremental GC (default of enhanced orthogonal persistence, also available for classical persistence).                                             |
+| `--incremental-gc`                        | Use incremental GC (default of enhanced orthogonal persistence, also available for classical persistence).                                            |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |

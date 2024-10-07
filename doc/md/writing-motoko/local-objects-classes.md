@@ -109,7 +109,7 @@ In Motoko, an object encapsulates state, and an object `class` is a package of t
 
 Consider this example `class` for counters that start at zero:
 
-``` motoko name=counter
+``` motoko no-repl
 class Counter() {
   var c = 0;
   public func inc() : Nat {
@@ -121,14 +121,14 @@ class Counter() {
 
 The value of this definition is that we can construct new counters, each starting with their own unique state, initially at zero:
 
-``` motoko name=cinit include=counter
+``` motoko no-repl
 let c1 = Counter();
 let c2 = Counter();
 ```
 
 Each is independent:
 
-``` motoko include=counter,cinit
+``` motoko no-repl
 let x = c1.inc();
 let y = c2.inc();
 (x, y)
