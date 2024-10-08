@@ -22,6 +22,8 @@ New applications should use the `Region` library: it offers additional isolation
 
 - [`memory-hashtable`](https://mops.one/memory-hashtable): A library for storing, updating, deleting, and retrieving a single blob-value per key.
 
+- [`StableTrie`](https://mops.one/stable-trie): A key-value map data structure that has its main data living permanently in stable memory using Regions.
+
 ## Samples
 
 - [motoko-bucket](https://github.com/PrimLabs/Bucket): A key value database library that uses stable memory.
