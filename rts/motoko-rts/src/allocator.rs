@@ -1,7 +1,6 @@
 // c.f. https://os.phil-opp.com/heap-allocation/#dynamic-memory
 
 use alloc::alloc::{GlobalAlloc, Layout};
-use motoko_rts_macros::enhanced_orthogonal_persistence;
 //use core::ptr::null_mut;
 use crate::memory::{alloc_blob, ic};
 use crate::types::{Bytes, TAG_BLOB_B};
@@ -41,9 +40,3 @@ unsafe impl GlobalAlloc for EphemeralAllocator {
 
 #[global_allocator]
 static ALLOCATOR: EphemeralAllocator = EphemeralAllocator;
-
-#[no_mangle]
-#[enhanced_orthogonal_persistence]
-fn __rust_alloc_error_handler(_size: usize, _align: usize) -> ! {
-    panic!("Rust allocation error");
-}

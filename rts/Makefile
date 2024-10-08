@@ -23,15 +23,7 @@ TOMMATHFILES = \
    s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr \
    mp_decr mp_add_d mp_sub_d
 
-MUSLFILES_32 = \
-  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp memmove \
-  __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan
-
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
-MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
-MUSL_WASI_SYSROOT ?= $(MUSLSRC)/../../sysroot
 
 #
 # Various libtommath flags, in particular telling it to use our own memory
@@ -59,48 +51,6 @@ TOMMATH_FLAGS_64 = $(TOMMATH_FLAGS_COMMON) \
 #       as only IEEE 754 features are used.
 
 #
-# Various musl flags, in particular telling it to not have long doubles
-# and exclude <errno.h>, which pulls in too many dependencies
-#
-# Note: we use a bit of magic to get rid of invocations to __fwritex (and similar)
-#       - the headers contain a declaration, we rename it to (__fwritex ## __COUNTER__)
-#       - similarly the invocation becomes __fwritex_2(...) which we inline immediately
-#       Be aware that upon bumps of the musl sources the number of occurrences may jump a bit
-#       and will need tweaks/additions below.
-#       Similarly we define include guards (to suppress certain headers), but those should be
-#       pretty stable.
-#       TODO: run `wasm2wat --enable-memory64 mo-rts-eop.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
-#
-#       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
-
-MUSL_FLAGS_32 = \
-  -isystem $(MUSLSRC)/arch/wasm32 \
-  -isystem $(MUSLSRC)/src/include \
-  -isystem $(MUSLSRC)/src/internal \
-  -isystem $(MUSLSRC)/include \
-  -isystem $(MUSL_WASI_SYSROOT)/include \
-  -I $(MUSLSRC)/../headers/private \
-  -I $(MUSLSRC)/src/include \
-  -I $(MUSLSRC)/include \
-  -I musl \
-  -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
-  -Derrno='(*({ static int bla = 0; &bla; }))' \
-  -DNL_ARGMAX=9 \
-  -D'TOKENPASTE0(x, y)=x \#\# y' \
-  -D'TOKENPASTE(x, y)=TOKENPASTE0(x, y)' \
-  -D'__fwritex=TOKENPASTE(__fwritex_,__COUNTER__)' \
-  -D'__fwritex_2(s, l, f)=(f->write((f), (s), (l)))' \
-  -D'__towrite=TOKENPASTE(__towrite_,__COUNTER__)' \
-  -D'__towrite_3(f)=(0)' \
-  -D__wasilibc_printscan_no_long_double \
-  -D__wasilibc_printscan_full_support_option='""' \
-  -D__wasi__ \
-  -D__NEED_va_list \
-  -D__NEED_off_t \
-  -D__NEED_locale_t \
-  -Dsqrt=__builtin_sqrt \
-  -Dfabs=__builtin_fabs
-#
 # clang flags
 #
 
@@ -114,7 +64,7 @@ CLANG_FLAGS_COMMON = \
    -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
 
 CLANG_FLAGS_32 = $(CLANG_FLAGS_COMMON) \
-   --target=wasm32-emscripten
+   --target=wasm32
 
 CLANG_FLAGS_64 = $(CLANG_FLAGS_COMMON) \
    --target=wasm64
@@ -136,30 +86,11 @@ _build/wasm64:
 _build/wasm32:
 	mkdir -p $@
 
-# 
-# Common configuration
-# 
-
-# Arguments obtained by Emscripten 3.1.64:
-# `emcc -c --target=wasm64-unknown-emscripten -fpic --verbose`
-# while skipping unneeded arguments.
-RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj \
-	-mrelocation-model pic -pic-level 1 -mframe-pointer=none \
-	-ffp-contract=on -fno-rounding-math -mconstructor-aliases \
-	-target-feature +mutable-globals -fvisibility=hidden \
-	-Werror=implicit-function-declaration \
-	-iwithsysroot/include/fakesdl -iwithsysroot/include/compat \
-	-mllvm -combiner-global-alias-analysis=false \
-	-mllvm -enable-emscripten-sjlj -mllvm -disable-lsr \
-	-Wno-override-module
-RTS_LL_64_DEBUG=$(RTS_LL_64)
-RTS_LL_64_RELEASE=$(RTS_LL_64) -Oz
-
 #
-# Let make automatically search these directories (tommath and musl) for .c files
+# Let make automatically search the tommath directory for .c files
 #
 
-vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
+vpath %.c $(TOMMATHSRC)
 
 #
 # Building the libtommath files
@@ -186,26 +117,14 @@ $(TOMMATH_WASM_64_A): $(TOMMATH_WASM_64_O)
 	llvm-ranlib $@
 
 #
-# Building the musl files
-#
-
-MUSL_WASM_32_O=$(MUSLFILES_32:%=_build/wasm32/musl_%.o)
-MUSL_WASM_32_A=_build/libmusl_wasm32.a
-
-_build/wasm32/musl_%.o: %.c | _build/wasm32
-	$(WASM_CLANG) $(CLANG_FLAGS_32) $(MUSL_FLAGS_32) $< --output $@
-
-$(MUSL_WASM_32_A): $(MUSL_WASM_32_O)
-	llvm-ar rcs $@ $^
-	llvm-ranlib $@
-
-#
 # The rust code code of the RTS
 #
 
 # This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
 RTS_RUST_FILES=$(shell ls **/*.rs)
 RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
+
+RTS_COMPILE_FLAGS=-C target-feature=+bulk-memory
 
 TOMMATH_BINDINGS_RS_32=_build/wasm32/tommath_bindings.rs
 TOMMATH_BINDINGS_RS_64=_build/wasm64/tommath_bindings.rs
@@ -245,7 +164,7 @@ TOMMATH_BIND_OPTIONS = \
 $(TOMMATH_BINDINGS_RS_32): | _build/wasm32
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
-	    --ctypes-prefix=libc \
+	    --ctypes-prefix="crate::libc_declarations" \
 		$(TOMMATH_BIND_OPTIONS) \
 		-- $(TOMMATH_FLAGS_32)
 
@@ -266,11 +185,11 @@ $(TOMMATH_BINDINGS_RS_64): | _build/wasm64
 # 32-bit Wasm builds
 
 RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_RS_32) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
-RTS_BUILD_32=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+RTS_BUILD_32=cd motoko-rts && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target wasm32-unknown-shared.json -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD_32=$(RTS_BUILD_32)
 RTS_RELEASE_BUILD_32=$(RTS_BUILD_32) --release -Zbuild-std-features="panic_immediate_abort,optimize_for_size"
-RTS_DEBUG_TARGET_32=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
-RTS_RELEASE_TARGET_32=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
+RTS_DEBUG_TARGET_32=motoko-rts/target/wasm32-unknown-shared/debug/libmotoko_rts.a
+RTS_RELEASE_TARGET_32=motoko-rts/target/wasm32-unknown-shared/release/libmotoko_rts.a
 
 RTS_RUST_NON_INCREMENTAL_WASM_32_A=_build/wasm32/libmotoko_rts.a
 RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_32_A=_build/wasm32/libmotoko_rts_debug.a
@@ -297,92 +216,34 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A): $(RTS_DEPENDENCIES_32)
 # 64-bit Wasm builds
 
 RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_RS_64) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm64
-COMPILER_FLAGS_64=--emit=llvm-ir
-RTS_BUILD_64=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS_64}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc --features enhanced_orthogonal_persistence
+RTS_BUILD_64=cd motoko-rts && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target wasm64-unknown-shared.json -Zbuild-std=core,alloc --features enhanced_orthogonal_persistence
 RTS_DEBUG_BUILD_64=$(RTS_BUILD_64)
 RTS_RELEASE_BUILD_64=$(RTS_BUILD_64) --release -Zbuild-std-features="panic_immediate_abort,optimize_for_size"
 
-RTS_DEBUG_TARGET_64_FOLDER=motoko-rts/target/wasm64-unknown-unknown/debug
-RTS_RELEASE_TARGET_64_FOLDER=motoko-rts/target/wasm64-unknown-unknown/release
+RTS_DEBUG_TARGET_64=motoko-rts/target/wasm64-unknown-shared/debug/libmotoko_rts.a
+RTS_RELEASE_TARGET_64=motoko-rts/target/wasm64-unknown-shared/release/libmotoko_rts.a
 
-RTS_DEBUG_TARGET_64=$(RTS_DEBUG_TARGET_64_FOLDER)/deps/motoko_rts-*.ll
-RTS_RELEASE_TARGET_64=$(RTS_RELEASE_TARGET_64_FOLDER)/deps/motoko_rts-*.ll
+RTS_RUST_WASM_64_A=_build/wasm64/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_64_A=_build/wasm64/libmotoko_rts_debug.a
 
-CORE_DEBUG_TARGET_64=$(RTS_DEBUG_TARGET_64_FOLDER)/deps/core-*.ll
-CORE_RELEASE_TARGET_64=$(RTS_RELEASE_TARGET_64_FOLDER)/deps/core-*.ll
-
-ALLOC_DEBUG_TARGET_64=$(RTS_DEBUG_TARGET_64_FOLDER)/deps/alloc-*.ll
-ALLOC_RELEASE_TARGET_64=$(RTS_RELEASE_TARGET_64_FOLDER)/deps/alloc-*.ll
-
-COMPILER_BUILTINS_DEBUG_TARGET_64=$(RTS_DEBUG_TARGET_64_FOLDER)/deps/compiler_builtins-*.ll
-COMPILER_BUILTINS_RELEASE_TARGET_64=$(RTS_RELEASE_TARGET_64_FOLDER)/deps/compiler_builtins-*.ll
-
-BUILD_64_FOLDER=_build/wasm64
-
-RTS_RUST_LLVM_IR_64=$(BUILD_64_FOLDER)/libmotoko_rts.ll
-RTS_RUST_DEBUG_LLVM_IR_64=$(BUILD_64_FOLDER)/libmotoko_rts_debug.ll
-
-CORE_DEBUG_LLVM_IR_64=$(BUILD_64_FOLDER)/core_debug.ll
-CORE_RELEASE_LLVM_IR_64=$(BUILD_64_FOLDER)/core.ll
-
-ALLOC_DEBUG_LLVM_IR_64=$(BUILD_64_FOLDER)/alloc_debug.ll
-ALLOC_RELEASE_LLVM_IR_64=$(BUILD_64_FOLDER)/alloc.ll
-
-COMPILER_BUILTINS_DEBUG_LLVM_IR_64=$(BUILD_64_FOLDER)/compiler_builtins_debug.ll
-COMPILER_BUILTINS_RELEASE_LLVM_IR_64=$(BUILD_64_FOLDER)/compiler_builtins.ll
-
-$(RTS_RUST_LLVM_IR_64): $(RTS_DEPENDENCIES_64)
-	rm -rf $(RTS_RELEASE_TARGET_64_FOLDER)
+$(RTS_RUST_WASM_64_A): $(RTS_DEPENDENCIES_64)
 	$(RTS_RELEASE_BUILD_64)
-	cp $(CORE_RELEASE_TARGET_64) -T $(CORE_RELEASE_LLVM_IR_64)
-	cp $(ALLOC_RELEASE_TARGET_64) -T $(ALLOC_RELEASE_LLVM_IR_64)
-	cp $(COMPILER_BUILTINS_RELEASE_TARGET_64) -T $(COMPILER_BUILTINS_RELEASE_LLVM_IR_64)
-	cp $(RTS_RELEASE_TARGET_64) -T $@
+	cp $(RTS_RELEASE_TARGET_64) $@
 
-$(RTS_RUST_DEBUG_LLVM_IR_64): $(RTS_DEPENDENCIES_64)
-	rm -rf $(RTS_DEBUG_TARGET_64_FOLDER) 
+$(RTS_RUST_DEBUG_WASM_64_A): $(RTS_DEPENDENCIES_64)
 	$(RTS_DEBUG_BUILD_64)
-	cp $(CORE_DEBUG_TARGET_64) -T $(CORE_DEBUG_LLVM_IR_64)
-	cp $(ALLOC_DEBUG_TARGET_64) -T $(ALLOC_DEBUG_LLVM_IR_64)
-	cp $(COMPILER_BUILTINS_DEBUG_TARGET_64) -T $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
-	cp $(RTS_DEBUG_TARGET_64) -T $@
-
-RTS_RUST_LINKED_LLVM_BC_64=$(BUILD_64_FOLDER)/libmotoko_rts.bc
-RTS_RUST_DEBUG_LINKED_LLVM_BC_64=$(BUILD_64_FOLDER)/libmotoko_rts_debug.bc
-
-$(RTS_RUST_LINKED_LLVM_BC_64): $(RTS_RUST_LLVM_IR_64)
-	$(LLVM_LINK) -o $@ \
-		$(CORE_RELEASE_LLVM_IR_64) \
-		$(ALLOC_RELEASE_LLVM_IR_64) \
-		$(COMPILER_BUILTINS_RELEASE_LLVM_IR_64) \
-		$+
-
-$(RTS_RUST_DEBUG_LINKED_LLVM_BC_64): $(RTS_RUST_DEBUG_LLVM_IR_64)
-	$(LLVM_LINK) -o $@ \
-		$(CORE_DEBUG_LLVM_IR_64) \
-		$(ALLOC_DEBUG_LLVM_IR_64) \
-		$(COMPILER_BUILTINS_DEBUG_LLVM_IR_64) \
-		$+
-
-RTS_RUST_WASM_64_O=$(BUILD_64_FOLDER)/libmotoko_rts.o
-RTS_RUST_DEBUG_WASM_64_O=$(BUILD_64_FOLDER)/libmotoko_rts_debug.o
-
-$(RTS_RUST_WASM_64_O): $(RTS_RUST_LINKED_LLVM_BC_64)
-	$(RTS_LL_64_RELEASE) -o $@ $+
-
-$(RTS_RUST_DEBUG_WASM_64_O): $(RTS_RUST_DEBUG_LINKED_LLVM_BC_64)
-	$(RTS_LL_64_DEBUG) -o $@ $+
+	cp $(RTS_DEBUG_TARGET_64) $@
 
 #
 # The test suite
 #
 
 TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS_32)
-TEST_BUILD_32=cd motoko-rts-tests && cargo build --target=wasm32-wasi
+TEST_BUILD_32=cd motoko-rts-tests && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target=wasm32-wasi
 TEST_RUN_32=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS_64)
-TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
+TEST_BUILD_64=cd motoko-rts-tests && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
 TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
 .PHONY: test
@@ -405,12 +266,9 @@ test64: $(TEST_DEPENDENCIES_64)
 # Putting it all together
 #
 
-# These symbols from musl are used by the code generator directly
-
 EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
   __wasm_apply_data_relocs \
-  memcpy \
   memcmp \
   tan \
   asin \
@@ -424,7 +282,7 @@ EXPORTED_SYMBOLS=\
   fmod \
   log
 
-WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(MUSL_WASM_32_A)
+WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
@@ -460,13 +318,13 @@ mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_
 		$(LINKER_OPTIONS_32) \
 		$+
 
-mo-rts-eop.wasm: $(RTS_RUST_WASM_64_O) $(WASM_A_DEPENDENCIES_64)
+mo-rts-eop.wasm: $(RTS_RUST_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+
 	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
-mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_O) $(WASM_A_DEPENDENCIES_64)
+mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+

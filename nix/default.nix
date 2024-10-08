@@ -78,7 +78,7 @@ let
                 };
               };
 
-              # No testing of atdgen, as it pulls in python stuff, tricky on musl
+              # No testing of atdgen, as it pulls in python stuff
               atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
             };
           }
@@ -95,9 +95,7 @@ let
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-unknown-emscripten"
                "wasm32-wasi"
-               "i686-unknown-linux-gnu"
             ];
             extensions = ["rust-src"];
           };
