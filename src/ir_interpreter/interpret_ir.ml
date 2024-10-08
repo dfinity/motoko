@@ -307,6 +307,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
+  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when actor = "Self" && not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
+    (* method not defined yet, just pair them up *)
+    k V.(Tup [Blob (env.self); Text n])
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
@@ -337,8 +340,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ActorDotPrim n, [v1] ->
         let id = V.as_blob v1 in
         begin match V.Env.find_opt id !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" id
+        | None ->
+          (* method not defined yet, just pair them up *)
+          k (assert false;V.Tup [v1; V.Text n])
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
@@ -446,6 +450,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
+      | ICCallPrim, V.[Tup [Blob aid; Text id]; v2; kv; rv; cv] ->
+        let v1 = V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id) in
+        let call_conv, f = V.as_func v1 in
+        check_call_conv (List.hd es) call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        let vc = context env in
+        f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
@@ -575,9 +587,7 @@ and interpret_actor env ds fs k =
     let env0 = {env with self} in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
-    let increments () =
-      env'.actor_env := V.Env.add self (defined_fields env' fs) !(env'.actor_env) in
-    interpret_decs env' ~increments ds (fun _ ->
+    interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
       k (V.Blob self)
