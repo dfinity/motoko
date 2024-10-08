@@ -508,10 +508,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
-      | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
+      | V.Blob aid as actor when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
         begin match V.Env.find_opt aid !(env.actor_env) with
         (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" aid
+        | None ->
+          (* method not defined yet, just pair them up *)
+          k (V.Tup [actor; V.Text id.it])
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt id.it fs with
@@ -572,7 +574,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in k v'
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
-      interpret_exp env exp2 (fun v2 ->
+       let v1 = begin match v1 with
+         | V.Tup [V.Blob aid; V.Text id] ->
+           let methods = V.Env.find aid !(env.actor_env) in
+           V.Env.find id (V.as_obj methods)
+         | _ -> v1
+        end in
+     interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -908,7 +916,7 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
          env', increments
        end
      in
-     interpret_dec_fields env' ~increments dec_fields ve_ex
+     interpret_dec_fields env' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
           k self'))
