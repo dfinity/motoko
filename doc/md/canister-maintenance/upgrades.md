@@ -8,7 +8,7 @@ sidebar_position: 3
 
 One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
-This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicilty use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
+This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicitly use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
 
 ## Declaring stable variables
 
@@ -71,7 +71,7 @@ Unlike stable data structures in the Rust CDK, these modules do not use stable m
 
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
-```motoko
+```motoko no-repl
 actor {
   type TemperatureSeries = [Float];
 
@@ -121,7 +121,7 @@ You can emit the stable signature of the main actor or actor class to a `.most` 
 A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1>` one of the following conditions hold:
 
 - `<stab-sig2>` does not contain a stable field `<id>`.
-- `<stab-sig>` has a matchng stable field `<id> : U` with `T <: U`.
+- `<stab-sig>` has a matching stable field `<id> : U` with `T <: U`.
 
 Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields. 
 

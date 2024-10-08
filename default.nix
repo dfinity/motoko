@@ -6,6 +6,8 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
+assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "x86_64-darwin" ];
+
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
@@ -23,6 +25,14 @@ let ic-ref-run =
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+
+let emscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or []) ++ [
+      nix/emscripten-fix.patch
+    ];
+  });
+in
+
 let
   rtsBuildInputs = with nixpkgs; [
     llvmPackages_18.clang
@@ -508,7 +518,6 @@ rec {
       fail       = test_subdir "fail"       [ moc ];
       fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
-      repl-eop   = enhanced_orthogonal_persistence_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
       ld-eop     = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
@@ -587,7 +596,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
+      cargoSha256 = "sha256-//qDHK9z7feJy+kNEf6mYStAzn9E7S9ELJhIQek0WPA=";
       doCheck = false;
       patchPhase = ''
         mkdir -p .cargo

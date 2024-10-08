@@ -1005,12 +1005,12 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     )
   end else ();
 
-  let max x y = if x >= y then x else y in
+  let max x y = if x >= y then x else y in (* use `Int.max` when bumping to 4.13 *)
 
   (* Rust requires a table offset of at least 1 as elem[0] is considered invalid. 
-   There are debug checks panicking if the element index is zero.
-   On the other hand, elem[0] can be used by the Motoko backend code (em1),
-   as correct Rust-generated Wasm code does not call elem[0]. *)
+     There are debug checks panicking if the element index is zero.
+     On the other hand, elem[0] can be used by the Motoko backend code (em1),
+     as correct Rust-generated Wasm code does not call elem[0]. *)
   let old_table_size = max (read_table_size em1.module_) 1l in
   let lib_table_start = align_i32 dylink0_mem_info.table_alignment old_table_size in
 

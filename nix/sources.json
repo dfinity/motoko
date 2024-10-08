@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "0ed73c1448a07d00a1aa2d21bb2bd92208afd81a",
-        "sha256": "1m22rc38vnv63py3yxs50jb5gp7fcq4ikpprjgr3f8qvzxfvp50a",
+        "rev": "e3021b7a867d8c9853d75dc2eaa4af88a1738aa0",
+        "sha256": "18pqsf339z075gk61fiyssibn5h3icqfiw2x6rgrlp29az7d9asv",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/0ed73c1448a07d00a1aa2d21bb2bd92208afd81a.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/e3021b7a867d8c9853d75dc2eaa4af88a1738aa0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/latest-ic-wasm64-test",
+        "branch": "luc/adjust-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a",
-        "sha256": "1ykawbpaqnf1y508vh81m30p813ykmnbffxc3p0hw0p0k1ynq6zz",
+        "rev": "6c718b80e04ad1930a08e6c53440c15021ca9c3d",
+        "sha256": "0iglm7m69d836wipzi25xza25l84dmjq9b4s1y6rwa8xnmiipnbh",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/6c718b80e04ad1930a08e6c53440c15021ca9c3d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "61692f44cf85b93d43311492283246bb443449d3",
-        "sha256": "1b06dphnj89qmyv4gxh8gqm1bgqfpivr4di2nl9hbvqqyx4vzb65",
+        "rev": "f3bcbf19237870cd13e658e24d065d90f33ddc2e",
+        "sha256": "13ca93pbr34ivgs312xczw741ksz01n3q56340yyfvqc0v2jn6i7",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/61692f44cf85b93d43311492283246bb443449d3.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/f3bcbf19237870cd13e658e24d065d90f33ddc2e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "a391ab0d202537efef90431f53834819ca666c1c",
-        "sha256": "1nhya2g86l8r70wrai4gzqvdws4waag3d8r2ijbpvgqfkmam5j4r",
+        "rev": "21a80ab250501a5de3365114abb242559573fecc",
+        "sha256": "0zm60azafdfczdiqkqs1fwgxf3crb2bk0vs7y09rvnwkqgqkxxw8",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/a391ab0d202537efef90431f53834819ca666c1c.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/21a80ab250501a5de3365114abb242559573fecc.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {

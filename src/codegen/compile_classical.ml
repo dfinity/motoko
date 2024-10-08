@@ -5073,6 +5073,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
+      E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
@@ -5093,8 +5094,7 @@ module IC = struct
       E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
       E.add_func_import env "ic0" "time" [] [I64Type];
       if !Flags.global_timer then
-        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type];
-      ()
+        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
   let system_imports env =
     match E.mode env with
@@ -5490,48 +5490,49 @@ module IC = struct
 
   let cycle_balance env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "canister_cycle_balance128"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
 
   let cycles_add env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "call_cycles_add128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
   let cycles_accept env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_accept128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
 
   let cycles_available env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_available128"
     | _ ->
       E.trap_with env "cannot get cycles available when running locally"
 
   let cycles_refunded env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "msg_cycles_refunded128"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
 
+  let cycles_burn env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "cycles_burn128"
+    | _ ->
+      E.trap_with env "cannot burn cycles when running locally"
+
   let set_certified_data env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       Blob.as_ptr_len env ^^
       system_call env "certified_data_set"
     | _ ->
@@ -5539,8 +5540,7 @@ module IC = struct
 
   let get_certificate env =
     match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       system_call env "data_certificate_present" ^^
       G.if1 I32Type
       begin
@@ -5644,6 +5644,18 @@ module Cycles = struct
       Stack.with_words env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycles_refunded env ^^
+        get_dst ^^
+        from_word128_ptr env
+      )
+    )
+
+  let burn env =
+    Func.share_code1 Func.Always env "cycle_burn" ("cycles", I32Type) [I32Type] (fun env get_x ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_x ^^
+        to_two_word64 env ^^
+        get_dst ^^
+        IC.cycles_burn env ^^
         get_dst ^^
         from_word128_ptr env
       )
@@ -5841,31 +5853,40 @@ module StableMem = struct
     read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
     write env false "word32" I32Type 4l store_unskewed_ptr
+  let write_word64 env =
+    write env false "word64" I64Type 8l (G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None}))
 
+  let read_and_clear env name typ bytes zero load store =
+    Func.share_code1 Func.Always env (Printf.sprintf "__stablemem_read_and_clear_%s" name)
+      ("offset", I64Type) [typ]
+      (fun env get_offset ->
+        let words = Int32.div (Int32.add bytes 3l) 4l in
+        Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+          let (set_word, get_word, _) = new_local_ env typ "word" in
+          (* read *)
+          get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          get_offset ^^
+          compile_const_64 (Int64.of_int32 bytes) ^^
+          stable64_read env ^^
+          get_temp_ptr ^^ load ^^
+          set_word ^^
+          (* write 0 *)
+          get_temp_ptr ^^ zero ^^ store ^^
+          get_offset ^^
+          get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          compile_const_64 (Int64.of_int32 bytes) ^^
+          stable64_write env ^^
+          (* return word *)
+          get_word
+      ))
 
-  (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
-      Func.share_code1 Func.Always env "__stablemem_read_and_clear_word32"
-        ("offset", I64Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            let (set_word, get_word) = new_local env "word" in
-            (* read word *)
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            get_offset ^^
-            compile_const_64 4L ^^
-            stable64_read env ^^
-            get_temp_ptr ^^ load_unskewed_ptr ^^
-            set_word ^^
-            (* write 0 *)
-            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            compile_const_64 4L ^^
-            stable64_write env ^^
-            (* return word *)
-            get_word
-        ))
+      read_and_clear env "word32" I32Type 4l (compile_unboxed_const 0l) 
+      load_unskewed_ptr store_unskewed_ptr
+  let read_and_clear_word64 env =
+    read_and_clear env "word64" I64Type 8l (compile_const_64 0L)
+      (G.i (Load {ty = I64Type; align = 2; offset = 0L; sz = None}))
+      (G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None}))
 
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
@@ -6215,6 +6236,16 @@ module StableMemoryInterface = struct
           Region.store_float64
           StableMem.store_float64)
 
+end
+
+module UpgradeStatistics = struct
+  let register_globals env =
+    E.add_global64 env "__upgrade_instructions" Mutable 0L
+
+  let get_upgrade_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__upgrade_instructions")))
+  let set_upgrade_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__upgrade_instructions")))
 end
 
 module RTS_Exports = struct
@@ -8562,10 +8593,10 @@ module Stabilization = struct
 
         (* Case-true: Stable variables only --
            no use of either regions or experimental API. *)
-        (* ensure [0,..,3,...len+4) *)
+        (* ensure [0,..,3,...len+4, .. len+4+8 ) *)
         compile_const_64 0L ^^
         extend64 get_len ^^
-        compile_add64_const 4L ^^  (* reserve one word for size *)
+        compile_add64_const 12L ^^  (* reserve 4 bytes for size, and 8 bytes for upgrade instructions *)
         StableMem.ensure env ^^
 
         (* write len to initial word of stable memory*)
@@ -8580,7 +8611,12 @@ module Stabilization = struct
             extend64 get_dst ^^
             extend64 get_len ^^
             StableMem.stable64_write env
-          end
+          end ^^
+
+          (* store stabilization instructions at len + 4 *)
+          extend64 get_len ^^ compile_add64_const 4L ^^
+          GC.instruction_counter env ^^
+          StableMem.write_word64 env
       end
       begin
         (* Case-false: Either regions or experimental API. *)
@@ -8592,11 +8628,11 @@ module Stabilization = struct
         set_N ^^
 
         (* grow mem to page including address
-           N + 4 + len + 4 + 4 + 4 = N + len + 16
+           N + 4 + len + 4 + 4 + 4 + 8 = N + len + 24
         *)
         get_N ^^
         extend64 get_len ^^
-        compile_add64_const 16L ^^
+        compile_add64_const 24L ^^
         StableMem.ensure env ^^
 
         get_N ^^
@@ -8620,6 +8656,12 @@ module Stabilization = struct
         compile_sub64_const 1L ^^
         compile_shl64_const (Int64.of_int page_size_bits) ^^
         set_M ^^
+
+        (* store stabilization instructions at M + (pagesize - 20) *)
+        get_M ^^
+        compile_add64_const (Int64.sub page_size64 20L) ^^
+        GC.instruction_counter env ^^
+        StableMem.write_word64 env ^^
 
         (* store mem_size at M + (pagesize - 12) *)
         get_M ^^
@@ -8660,6 +8702,19 @@ module Stabilization = struct
   let destabilize env ty save_version =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
+      let (set_instructions, get_instructions) = new_local64 env "instructions" in
+      let handle_missing_instructions = 
+        get_instructions ^^
+        compile_eq64_const 0L ^^
+        (G.if0
+        begin
+          (* Default to -1 if no upgrade instructions were recorded, i.e. 
+             because the record space was lacking or was zero padding. *)
+          compile_const_64 (-1L) ^^
+          set_instructions
+        end
+        G.nop) in
+      compile_const_64 0L ^^ set_instructions ^^
       let (set_pages, get_pages) = new_local64 env "pages" in
       StableMem.stable64_size env ^^
       set_pages ^^
@@ -8747,15 +8802,36 @@ module Stabilization = struct
               (* set offset *)
               get_N ^^
               compile_add64_const 4L ^^
-              set_offset
+              set_offset ^^
+
+              (* Backwards compatibility: Check if upgrade instructions have space in the last page. *)
+              get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+              get_M ^^ compile_add64_const (Int64.sub page_size64 20L) ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+              (G.if0
+              begin
+                  (* Load stabilization instructions if defined, otherwise zero padding. *)
+                  get_M ^^
+                  compile_add64_const (Int64.sub page_size64 20L) ^^
+                  StableMem.read_and_clear_word64 env ^^
+                  set_instructions
+              end
+              G.nop) ^^
+              handle_missing_instructions
             end
             begin
               (* Sub-Case: Version 0.
                  Stable vars with NO Regions/Experimental API. *)
               (* assert mem_size == 0 *)
+              let (set_M, get_M) = new_local64 env "M" in
+
               StableMem.get_mem_size env ^^
               G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
               E.else_trap_with env "unexpected, non-zero stable memory size" ^^
+
+              StableMem.stable64_size env ^^
+              compile_shl64_const (Int64.of_int page_size_bits) ^^
+              set_M ^^
 
               (* set len *)
               get_marker ^^
@@ -8766,7 +8842,21 @@ module Stabilization = struct
               set_offset ^^
 
               compile_unboxed_const (Int32.of_int 0) ^^
-              save_version
+              save_version ^^
+
+              (* Backwards compatibility: Check if stabilization instructions have space in the last page. *)
+              get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+              get_M ^^ compile_sub64_const 8L ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+              (G.if0
+              begin
+                  (* Load stabilization instructions if defined, otherwise zero padding *)
+                  get_offset ^^ extend64 get_len ^^ G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+                  StableMem.read_and_clear_word64 env ^^
+                  set_instructions
+              end
+              G.nop) ^^
+              handle_missing_instructions
             end ^^ (* if_ *)
 
           let (set_blob, get_blob) = new_local env "blob" in
@@ -8796,7 +8886,20 @@ module Stabilization = struct
 
           (* return val *)
           get_val
-        end
+        end ^^
+        (* Record the total upgrade instructions if defined. 
+           If stabilization costs were missing due to upgrades from old Motoko programs,
+           the costs are defaulted to 0xFFFF_FFFF_FFFF_FFFF. *)
+        get_instructions ^^
+        compile_eq64_const (-1L) ^^
+        (G.if1 I64Type
+          get_instructions
+          begin
+            get_instructions ^^
+            GC.instruction_counter env ^^
+            G.i (Binary (Wasm.Values.I64 I64Op.Add))
+          end) ^^
+          UpgradeStatistics.set_upgrade_instructions env
     | _ -> assert false
 end
 
@@ -11493,6 +11596,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_upgrade_instructions", [] ->
+    SR.Vanilla,
+    UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
     StableMem.stable64_size env ^^ BigNum.from_word64 env
@@ -12067,6 +12174,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.available env
   | SystemCyclesRefundedPrim, [] ->
     SR.Vanilla, Cycles.refunded env
+  | SystemCyclesBurnPrim, [e1] ->
+    SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -13047,6 +13156,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
   Serialization.Registers.define_idl_limit_check env;
+  UpgradeStatistics.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

@@ -38,4 +38,4 @@ val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 (* For use in the IDE server *)
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
-val load_progs : ?viper_mode:bool -> parse_fn -> string list -> Scope.scope -> load_result
+val load_progs : ?viper_mode:bool -> ?check_actors:bool -> parse_fn -> string list -> Scope.scope -> load_result

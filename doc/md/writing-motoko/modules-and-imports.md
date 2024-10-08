@@ -101,7 +101,7 @@ For Vessel, edit the `vessel.dhall` file to include what packages your project w
 
 Then, import the packages as you would import other packages in the Motoko source file:
 
-```motoko
+```motoko no-repl
 import Vec "mo:vector";
 import Vec "mo:vector/Class";
 ```
@@ -125,7 +125,7 @@ For example, a Motoko actor can import and instantiate the `Counter` class descr
 
 `CountToTen.mo`:
 
-``` motoko include=Counters file=../examples/CountToTen.mo
+``` motoko no-repl file=../examples/CountToTen.mo
 ```
 
 The call to `Counters.Counter(1)` installs a fresh counter on the network. Installation is asynchronous, so the caller must `await` the result.

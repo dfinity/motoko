@@ -199,7 +199,7 @@ Debug.trap("oops!");
 
 **Assertions** allow you to conditionally trap when some Boolean test fails to hold, but continue execution otherwise:
 
-``` motoko
+``` motoko no-repl
 let n = 65535;
 assert n % 2 == 0; // traps when n not even
 ```
