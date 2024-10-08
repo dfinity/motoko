@@ -308,7 +308,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LitE lit ->
     k (interpret_lit env lit)
   | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
-    (* method not defined yet, just pair them up *)
+    (* actor not defined yet, just pair them up *)
     k V.(Tup [Blob (env.self); Text n])
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
@@ -347,7 +347,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         begin match V.Env.find_opt id !(env.actor_env) with
         | None ->
           (* method not defined yet, just pair them up *)
-          k (assert (1 = 2);V.Tup [v1; V.Text n])
+          k V.(Tup [v1; Text n])
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
