@@ -574,7 +574,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
        let v1 = begin match v1 with
-         | V.Tup [V.Blob aid; V.Text id] ->
+         | V.Tup V.[Blob aid; Text id] ->
            V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
          | _ -> v1
         end in
