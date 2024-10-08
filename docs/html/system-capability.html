@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/system-capability.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/system-capability.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#system-capability" id="toc-system-capability">System
+capability</a></li>
+</ul>
+</nav>
+<h1 id="system-capability">System capability</h1>
+<p>The <code>system</code> capability in Motoko is used to control
+access to sensitive system functions and prevent potential misuse of
+these functions. It serves as a safety mechanism to ensure that
+developers are explicitly aware when they are using or granting access
+to powerful system-level operations.</p>
+<p>Specifically, the system capability is required for calling sensitive
+functions such as:</p>
+<ol type="1">
+<li><p><code>ExperimentalCycles.add</code>: This function is used for
+cycle management, which is crucial for controlling the computational
+resources on the Internet Computer.</p></li>
+<li><p><code>Timer.setTimer</code>: This function is used for scheduling
+future computations, which can have significant impacts on system
+resources and behavior.</p></li>
+</ol>
+<p>The introduction of the system capability helps address a security
+concern where, in previous versions of Motoko, third-party library
+functions could make silent calls to these sensitive functions without
+providing any indication to the caller. This could potentially lead to
+unexpected behavior or resource usage.</p>
+<p>By requiring explicit declaration and passing of the system
+capability, Motoko now ensures that developers are fully aware when they
+are using or allowing the use of these powerful system functions. This
+helps prevent accidental misuse and makes the code's intentions clearer,
+enhancing both security and code readability.</p>
+<p>It's important to note that while the system capability allows the
+use of these sensitive functions, it doesn't automatically grant
+unlimited access to all system resources. It's a type-level mechanism to
+control and make explicit the use of specific system functions, rather
+than a comprehensive permission system.</p>
+<p>The system capability was introduced in Motoko version 0.11.0. The
+key change is the introduction of the <code>system</code> pseudo-type
+parameter and argument. For instance,
+<code>ExperimentalCycles.add</code> has been revised from having type
+<code>Nat -&gt; ()</code> to having type
+<code>&lt;system&gt;Nat -&gt; ()</code>, reflecting the new system
+capability requirement.</p>
+<p>To use system capabilities in your code, you must now explicitly
+declare them when required, and should explicitly supply them when
+granting permission to a callee.</p>
+<p>Functions that need to use system capabilities must include the
+<code>system</code> pseudo-type parameter. It's important to note that
+<code>system</code>, if specified, must be the first parameter in
+function or class declarations.</p>
+<p>For example:</p>
+<pre class="motoko"><code>func splitCycles&lt;system&gt;() {
+  let amount = ExperimentalCycles.balance() / 2;
+  ExperimentalCycles.add(amount); // generates a warning
+}</code></pre>
+<p>To suppress warnings about implicit system capability usage, you can
+explicitly pass the <code>system</code> capability at call sites
+too:</p>
+<pre class="motoko"><code>func splitCycles&lt;system&gt;() {
+  let amount = ExperimentalCycles.balance() / 2;
+  ExperimentalCycles.add&lt;system&gt;(amount); // accepted without warning
+}</code></pre>
+<p>System capabilities are available in specific contexts, such as
+within actor expression or actor class bodies, non-query shared
+functions, asynchronous functions, async expressions, local functions or
+classes declared with the <code>system</code> pseudo-type parameter, and
+the preupgrade and postupgrade system functions.</p>
+<p>However, they are not available in query methods, composite query
+methods, or functions that don't declare their need of system
+capability.</p>
+<p>For more details, see the <a
+href="../reference/language-manual#type-arguments">language
+manual</a>.</p>
+<p>For details on migrating code from earlier Motoko versions, see this
+<a href="../migration-guides/0.11.0-migration-guide">guide</a>.</p>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

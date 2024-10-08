@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/pattern-matching.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/pattern-matching.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#pattern-matching" id="toc-pattern-matching">Pattern
+matching</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#types-of-patterns" id="toc-types-of-patterns">Types of
+patterns</a></li>
+<li><a href="#using-pattern-matching"
+id="toc-using-pattern-matching">Using pattern matching</a></li>
+<li><a href="#literal-patterns" id="toc-literal-patterns">Literal
+patterns</a></li>
+<li><a href="#or-patterns" id="toc-or-patterns"><code>or</code>
+patterns</a></li>
+<li><a href="#more-on-patterns" id="toc-more-on-patterns">More on
+patterns</a>
+<ul>
+<li><a href="#terminology" id="toc-terminology">Terminology</a></li>
+<li><a href="#booleans" id="toc-booleans">Booleans</a></li>
+<li><a href="#variant-patterns" id="toc-variant-patterns">Variant
+patterns</a></li>
+<li><a href="#enumerated-types" id="toc-enumerated-types">Enumerated
+types</a></li>
+<li><a href="#error-handling" id="toc-error-handling">Error
+handling</a></li>
+<li><a href="#irrefutable-patterns"
+id="toc-irrefutable-patterns">Irrefutable patterns</a></li>
+<li><a href="#singleton-types" id="toc-singleton-types">Singleton
+types</a></li>
+<li><a href="#exhaustiveness-coverage-checking"
+id="toc-exhaustiveness-coverage-checking">Exhaustiveness (coverage)
+checking</a></li>
+</ul></li>
+<li><a href="#refutable-patterns-and-dealing-with-non-matching-data"
+id="toc-refutable-patterns-and-dealing-with-non-matching-data">Refutable
+patterns and dealing with non-matching data</a></li>
+<li><a href="#option-blocks-for-streamlined-processing-of-optional-data"
+id="toc-option-blocks-for-streamlined-processing-of-optional-data">Option
+blocks for streamlined processing of optional data</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="pattern-matching">Pattern matching</h1>
+<h2 id="overview">Overview</h2>
+<p>Pattern matching is a language feature that makes it easy to both
+test and decompose structured data into its constituent parts. While
+most programming languages provide familiar ways to build structured
+data, pattern matching enables you to take apart structured data and
+bring its fragments into scope by binding them to the names you specify.
+Syntactically, the patterns resemble the construction of structured
+data, but generally appear in input-direction positions, such as in
+function argument positions, after the <code>case</code> keyword in
+<code>switch</code> expressions, and after <code>let</code> or
+<code>var</code> declarations.</p>
+<h2 id="types-of-patterns">Types of patterns</h2>
+<p>The following table summarizes the different ways of pattern
+matching.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Pattern kind</th>
+<th>Example(s)</th>
+<th>Context</th>
+<th>Can fail</th>
+<th>Remarks</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Literal</td>
+<td><code>null</code>, <code>42</code>, <code>()</code>,
+<code>"Hi"</code></td>
+<td>Everywhere</td>
+<td>When the type has more than one value</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Named</td>
+<td><code>age</code>, <code>x</code></td>
+<td>Everywhere</td>
+<td>No</td>
+<td>Introduces identifiers into a new scope</td>
+</tr>
+<tr class="odd">
+<td>Wildcard</td>
+<td><code>_</code></td>
+<td>Everywhere</td>
+<td>No</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Typed</td>
+<td><code>age : Nat</code></td>
+<td>Everywhere</td>
+<td>Conditional</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Option</td>
+<td><code>?0</code>, <code>?val</code></td>
+<td>Everywhere</td>
+<td>Yes</td>
+<td>See also <a
+href="#option-blocks-for-streamlined-processing-of-optional-data">option
+blocks</a></td>
+</tr>
+<tr class="even">
+<td>Tuple</td>
+<td><code>( component0, component1, …​ )</code></td>
+<td>Everywhere</td>
+<td>Conditional</td>
+<td>Must have at least two components</td>
+</tr>
+<tr class="odd">
+<td>Object</td>
+<td><code>{ fieldA; fieldB; …​ }</code></td>
+<td>Everywhere</td>
+<td>Conditional</td>
+<td>Allowed to mention a subset of fields</td>
+</tr>
+<tr class="even">
+<td>Field</td>
+<td><code>age</code>, <code>count = 0</code></td>
+<td>Object</td>
+<td>Conditional</td>
+<td><code>age</code> is short for <code>age = age</code></td>
+</tr>
+<tr class="odd">
+<td>Variant</td>
+<td><code>#celsius deg</code>, <code>#sunday</code></td>
+<td>Everywhere</td>
+<td>Yes</td>
+<td><code>#sunday</code> is short form for <code>#sunday ()</code></td>
+</tr>
+<tr class="even">
+<td>Alternative (<code>or</code>-pattern)</td>
+<td><code>0 or 1</code></td>
+<td>Everywhere</td>
+<td>Depends</td>
+<td>No alternative may bind an identifier</td>
+</tr>
+</tbody>
+</table>
+<h2 id="using-pattern-matching">Using pattern matching</h2>
+<p>Consider the following function call:</p>
+<pre class="motoko"><code>let name : Text = fullName({ first = &quot;Jane&quot;; mid = &quot;M&quot;; last = &quot;Doe&quot; });</code></pre>
+<p>This code constructs a record with three fields and passes it to the
+function <code>fullName</code>. The result of the call is named and
+brought into scope by binding it to the identifier <code>name</code>.
+The last, binding step is called pattern matching, and
+<code>name : Text</code> is one of the simplest forms of a pattern. For
+instance, in the following implementation of the callee:</p>
+<pre class="motoko"><code>func fullName({ first : Text; mid : Text; last : Text }) : Text {
+  first # &quot; &quot; # mid # &quot; &quot; # last
+};</code></pre>
+<p>The input is an anonymous object which is destructured into its three
+<a href="../base/Text.md"><code>Text</code></a> fields, whose values are
+bound to the identifiers <code>first</code>, <code>mid</code> and
+<code>last</code>. They can be freely used in the block that forms the
+body of the function. Above we have resorted to name punning, a form of
+aliasing for object field patterns, using the name of a field to also
+name its contents. A more general form of field patterns allows the
+content to be named separately from the field, as in
+<code>…​; mid = m : Text; …​</code>. Here <code>mid</code> determines
+which field to match, and <code>m</code> names the content of that field
+within the scope of the pattern.</p>
+<h2 id="literal-patterns">Literal patterns</h2>
+<p>You can also use pattern matching to declare literal patterns, which
+look just like literal constants. Literal patterns are especially useful
+in <code>switch</code> expressions because they can cause the current
+pattern match to fail, and thus start to match the next pattern. For
+example:</p>
+<pre class="motoko"><code>switch (&quot;Adrienne&quot;, #female) {
+  case (name, #female) { name # &quot; is a girl!&quot; };
+  case (name, #male) { name # &quot; is a boy!&quot; };
+  case (name, _) { name # &quot;, is a human!&quot; };
+}</code></pre>
+<p>This program will match the first <code>case</code> clause because
+binding to the identifier <code>name</code> cannot fail and the
+shorthand variant literal <code>#female</code> compares as equal. Then
+it evaluates to <code>"Adrienne is a girl!"</code>. The last clause
+showcases the wildcard pattern <code>_</code>. It cannot fail, but won’t
+bind any identifier.</p>
+<h2 id="or-patterns"><code>or</code> patterns</h2>
+<p>The last kind of pattern is the <code>or</code> pattern. As its name
+suggests, these are two or more patterns that are separated by the
+keyword <code>or</code>. Each of the sub-patterns must bind to the same
+set of identifiers, and is matched from left-to-right. An
+<code>or</code> pattern fails when its rightmost sub-pattern fails.</p>
+<h2 id="more-on-patterns">More on patterns</h2>
+<p>Since pattern matching has a rich history and interesting mechanics,
+a few additional comments are justified.</p>
+<h3 id="terminology">Terminology</h3>
+<p>The expression whose value is being matched is frequently called the
+<strong>scrutinee</strong>. The patterns appearing behind the keyword
+<code>case</code> are the <strong>alternatives</strong>. When every
+possible value of the scrutinee is matched by at least one alternative,
+then the scrutinee is <strong>covered</strong>. The alternatives are
+tried in order. In case of overlapping patterns, the earlier one is
+selected. An alternative is considered dead or redundant if for every
+value that it matches there is already some earlier alternative that
+also matches the value.</p>
+<h3 id="booleans">Booleans</h3>
+<p>The data type <a href="../base/Bool.md"><code>Bool</code></a> can be
+regarded as two disjointed alternatives (<code>true</code> and
+<code>false</code>) and Motoko’s built-in <code>if</code> construct will
+eliminate the data and turn it into control flow. <code>if</code>
+expressions are a form of pattern matching that abbreviates the general
+<code>switch</code> expression for the special case of boolean
+scrutinees.</p>
+<h3 id="variant-patterns">Variant patterns</h3>
+<p>Motoko’s variant types are a form of disjoint union, sometimes also
+called a sum type. A value of variant type always has exactly one
+discriminator and a payload which can vary from discriminator to
+discriminator. When matching a variant pattern with a variant value, the
+discriminators must be the same in order to select the alternative, and
+if so, the payload gets exposed for further matching.</p>
+<h3 id="enumerated-types">Enumerated types</h3>
+<p>Other programming languages often use a keyword <code>enum</code> to
+define discrete enumerations. These are poor relations of Motoko’s more
+general variant types, as the alternatives of an enumeration are not
+allowed to carry any payload. Correspondingly, in those languages the
+<code>switch</code>-like statements used to analyse enum values lack the
+full power of pattern matching. Motoko provides the short-hand syntax,
+as in <code>type Weekday = { #mon; #tue; …​ }</code>, to define basic
+enumerations for which no payloads are required.</p>
+<h3 id="error-handling">Error handling</h3>
+<p>Error handling can be considered a use-case for pattern matching.
+When a function returns a value that has an alternative for success and
+one for failure, pattern matching can be used to distinguish between the
+two as discussed in <a href="errors.md">error handling</a>.</p>
+<h3 id="irrefutable-patterns">Irrefutable patterns</h3>
+<p>A pattern is refutable if matching some value of the expected type
+against it can fail. Literal and variant patterns are generally
+refutable, since they require an equal value or variant tag and these
+could fail to match.</p>
+<p>A pattern that cannot fail to match every value is irrefutable.
+Examples of irrefutable patterns are the wildcard pattern
+<code>_</code>, identifier patterns <code>x</code> and tuple or record
+patterns built from irrefutable sub-patterns.</p>
+<h3 id="singleton-types">Singleton types</h3>
+<p>Some types contain just a single value. We call these singleton
+types. Examples of these are the unit type, also known as an empty
+tuple, or tuples of singleton types. Variants with a single tag and with
+no or a singleton type payload are singleton types too. Pattern matching
+on singleton types is particularly straightforward, as it only has one
+possible outcome of a successful match.</p>
+<h3 id="exhaustiveness-coverage-checking">Exhaustiveness (coverage)
+checking</h3>
+<p>At runtime, a switch expression may wind up scrutinizing a value to
+which none of its alternative patterns apply, generating an undesired
+trap. To detect the possibility of such runtime failures, the Motoko
+compiler checks for the exhaustiveness of pattern matching by keeping
+track of the covered shape of the scrutinee. The compiler issues a
+warning for any non-covered scrutinees. Motoko even constructs a helpful
+example of a scrutinee that is not matched. A useful by-product of the
+exhaustiveness check is that it identifies and warns the developer about
+dead or redundant alternatives that can never be matched.</p>
+<h2 id="refutable-patterns-and-dealing-with-non-matching-data">Refutable
+patterns and dealing with non-matching data</h2>
+<p>The <code>let</code>-<code>else</code> construct in Motoko is
+designed for developers who want to work with a specific pattern of data
+while handling all non-matching data on a different control flow path.
+Unlike the standard destructuring <code>let</code>, which traps (and
+triggers a compile-time warning) when the data doesn't match the
+expected pattern, <code>let</code>-<code>else</code> provides a way to
+manage refuted matches. This construct allows programmers to gracefully
+handle mismatches, such as exiting the current function or logging a
+message before trapping.</p>
+<p><code>let</code>-<code>else</code> can be seen as a more compact
+version of a two-case <code>switch</code> statement. It has the added
+benefit of not requiring indentation for the code that follows it, which
+can improve readability. This feature enables developers to write
+non-indenting <code>if</code>-<code>else</code>-like structures in their
+code.</p>
+<p>Here's an example demonstrating how to use
+<code>let</code>-<code>else</code> to avoid a less readable,
+indentation-increasing <code>switch</code>:</p>
+<pre class="motoko"><code>func getName(optionalName : ?Text) : Text {
+  let ?name = optionalName else return &quot;Unknown&quot;;
+  name
+}</code></pre>
+<p>In a <code>let-else</code> construct, the expression or block
+following the <code>else</code> keyword must have type
+<code>None</code>. This indicates that its execution cannot enter the
+code following the <code>let</code> declaration but must change the flow
+of control, typically by returning early, breaking to some enclosing
+label or trapping.</p>
+<h2
+id="option-blocks-for-streamlined-processing-of-optional-data">Option
+blocks for streamlined processing of optional data</h2>
+<p>Motoko offers a preferred method for handling optional data (of type
+<code>?T</code>) through pattern matching, which helps avoid the
+notorious <code>null</code>-exception issues common in other programming
+languages. However, using multiple switch statements on several options
+can become cumbersome and result in deeply nested, hard-to-read code. To
+address this, Motoko introduces a feature called <em>option blocks</em>,
+written as <code>do ? { ... }</code>. These blocks allow for safe
+unwrapping of optional values using a postfix <code>!</code> operator.
+Each use of <code>!</code> within the block is equivalent to a switch
+statement on an option, but with an added benefit: if <code>!</code> is
+applied to a <code>null</code> value, the entire block immediately
+abandons execution and returns <code>null</code>. This short-circuiting
+behavior simplifies the handling of multiple optional values in a more
+concise and readable manner.</p>
+<p>For an example, see <a
+href="control-flow#option-blocks-and-null-breaks">option blocks and null
+breaks</a>.</p>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/mutable-state.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/mutable-state.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#mutable-state" id="toc-mutable-state">Mutable state</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#immutable-vs-mutable-variables"
+id="toc-immutable-vs-mutable-variables">Immutable vs mutable
+variables</a></li>
+<li><a href="#assignment-to-mutable-memory"
+id="toc-assignment-to-mutable-memory">Assignment to mutable memory</a>
+<ul>
+<li><a href="#special-assignment-operations"
+id="toc-special-assignment-operations">Special assignment
+operations</a></li>
+</ul></li>
+<li><a href="#reading-from-mutable-memory"
+id="toc-reading-from-mutable-memory">Reading from mutable
+memory</a></li>
+<li><a href="#var-vs-let-bound-variables"
+id="toc-var-vs-let-bound-variables"><code>var</code> vs <code>let</code>
+bound variables</a></li>
+<li><a href="#immutable-arrays" id="toc-immutable-arrays">Immutable
+arrays</a>
+<ul>
+<li><a href="#allocate-an-immutable-array-of-constants"
+id="toc-allocate-an-immutable-array-of-constants">Allocate an immutable
+array of constants</a></li>
+<li><a href="#read-from-an-array-index"
+id="toc-read-from-an-array-index">Read from an array index</a></li>
+</ul></li>
+<li><a href="#the-array-module" id="toc-the-array-module">The
+<code>Array</code> module</a>
+<ul>
+<li><a href="#allocate-an-immutable-array-with-varying-content"
+id="toc-allocate-an-immutable-array-with-varying-content">Allocate an
+immutable array with varying content</a></li>
+</ul></li>
+<li><a href="#mutable-arrays" id="toc-mutable-arrays">Mutable arrays</a>
+<ul>
+<li><a href="#allocate-a-mutable-array-of-constants"
+id="toc-allocate-a-mutable-array-of-constants">Allocate a mutable array
+of constants</a></li>
+<li><a href="#allocate-a-mutable-array-with-dynamic-size"
+id="toc-allocate-a-mutable-array-with-dynamic-size">Allocate a mutable
+array with dynamic size</a></li>
+<li><a href="#mutable-updates" id="toc-mutable-updates">Mutable
+updates</a></li>
+<li><a href="#subtyping-does-not-permit-mutable-to-be-used-as-immutable"
+id="toc-subtyping-does-not-permit-mutable-to-be-used-as-immutable">Subtyping
+does not permit mutable to be used as immutable</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="mutable-state">Mutable state</h1>
+<h2 id="overview">Overview</h2>
+<p>Each actor in Motoko may use, but may never directly share, internal
+mutable state.</p>
+<p>Immutable data can be <a href="sharing.md">shared among actors</a>,
+and also handled through each other's external entry points which serve
+as shareable functions. Unlike shareable data, a key Motoko design
+invariant is that mutable data is kept private to the actor that
+allocates it and is never shared remotely.</p>
+<h2 id="immutable-vs-mutable-variables">Immutable vs mutable
+variables</h2>
+<p>The <code>var</code> syntax declares mutable variables in a
+declaration block:</p>
+<pre class="motoko"><code>let text  : Text = &quot;abc&quot;;
+let num  : Nat = 30;
+
+var pair : (Text, Nat) = (text, num);
+var text2 : Text = text;</code></pre>
+<p>The declaration list above declares four variables. The first two
+variables (<code>text</code> and <code>num</code>) are lexically-scoped,
+immutable variables. The final two variables (<code>pair</code> and
+<code>text2</code>) are lexically-scoped, mutable variables.</p>
+<h2 id="assignment-to-mutable-memory">Assignment to mutable memory</h2>
+<p>Mutable variables permit assignment and immutable variables do
+not.</p>
+<p>If you try to assign new values to either <a
+href="../base/Text.md"><code>Text</code></a> or <code>num</code> above,
+you will get static type errors because these variables are
+immutable.</p>
+<p>You may freely update the value of mutable variables
+<code>pair</code> and <code>text2</code> using the syntax for
+assignment, written as <code>:=</code>, as follows:</p>
+<pre class="motoko"><code>text2 := text2 # &quot;xyz&quot;;
+pair := (text2, pair.1);
+pair</code></pre>
+<p>In the example above, each variable is updated based on applying a
+simple update rule to their current values. Likewise, an actor processes
+some calls by performing updates on its private mutable variables, using
+the same assignment syntax as above.</p>
+<h3 id="special-assignment-operations">Special assignment
+operations</h3>
+<p>The assignment operation <code>:=</code> is general and works for all
+types.</p>
+<p>Motoko includes special assignment operations that combine assignment
+with a binary operation. The assigned value uses the binary operation on
+a given operand and the current contents of the assigned variable.</p>
+<p>For example, numbers permit a combination of assignment and
+addition:</p>
+<pre class="motoko"><code>var num2 = 2;
+num2 += 40;
+num2</code></pre>
+<p>After the second line, the variable <code>num2</code> holds
+<code>42</code>, as one would expect.</p>
+<p>Motoko includes other combinations as well. For example, we can
+rewrite the line above that updates <code>text2</code> more concisely
+as:</p>
+<pre class="motoko"><code>text2 #= &quot;xyz&quot;;
+text2</code></pre>
+<p>As with <code>+=</code>, this combined form avoids repeating the
+assigned variable’s name on the right hand side of the special
+assignment operator <code>#=</code>.</p>
+<p>The full table of <a
+href="../reference/language-manual#assignment-operators">assignment
+operators</a> lists numerical, logical, and textual operations over
+appropriate types number, boolean and text values, respectively.</p>
+<h2 id="reading-from-mutable-memory">Reading from mutable memory</h2>
+<p>Once you have updated each variable, you must read from the mutable
+contents. This does not require a special syntax.</p>
+<p>Each use of a mutable variable looks like the use of an immutable
+variable, but does not act like one. In fact, its meaning is more
+complex. As in many other language, the syntax of each use hides the
+memory effect that accesses the memory cell identified by that variable
+and gets its current value. Other languages from functional traditions
+generally expose these effects syntactically.</p>
+<h2 id="var-vs-let-bound-variables"><code>var</code> vs <code>let</code>
+bound variables</h2>
+<p>Consider the following two variable declarations, which look
+similar:</p>
+<pre class="motoko"><code>let x : Nat = 0</code></pre>
+<pre class="motoko"><code>var x : Nat = 0</code></pre>
+<p>The only difference in their syntax is the use of keyword
+<code>let</code> versus <code>var</code> to define the variable
+<code>x</code>, which in each case the program initializes to
+<code>0</code>.</p>
+<p>However, these programs carry different meanings, and in the context
+of larger programs, the difference in meanings will impact the meaning
+of each occurrence of <code>x</code>.</p>
+<p>For the first program, which uses <code>let</code>, each such
+occurrence means <code>0</code>. Replacing each occurrence with
+<code>0</code> will not change the meaning of the program.</p>
+<p>For the second program, which uses <code>var</code>, each occurrence
+means “read and produce the current value of the mutable memory cell
+named <code>x</code>.” In this case, each occurrence’s value is
+determined by the dynamic state of the contents of the mutable memory
+cell named <code>x</code>.</p>
+<p>As one can see from the definitions above, there is a fundamental
+contrast between the meanings of <code>let</code>-bound and
+<code>var</code>-bound variables.</p>
+<p>In large programs, both kinds of variables can be useful, and neither
+kind serves as a good replacement for the other. However,
+<code>let</code>-bound variables are more fundamental.</p>
+<p>For instance, instead of declaring <code>x</code> as a mutable
+variable initially holding <code>0</code>, you could instead use
+<code>y</code>, an immutable variable that denotes a mutable array with
+one entry holding <code>0</code>:</p>
+<pre class="motoko"><code>var x : Nat       = 0 ;
+let y : [var Nat] = [var 0] ;</code></pre>
+<p>The read and write syntax required for this encoding reuses that of
+mutable arrays, which is not as readable as that of
+<code>var</code>-bound variables. As such, the reads and writes of
+variable <code>x</code> will be easier to read than those of variable
+<code>y</code>.</p>
+<p>For this practical reason and others, <code>var</code>-bound
+variables are a core aspect of the language's design.</p>
+<h2 id="immutable-arrays">Immutable arrays</h2>
+<p>Before discussing <a href="#mutable-arrays">mutable arrays</a>, we
+introduce immutable arrays, which share the same projection syntax but
+do not permit mutable updates after allocation.</p>
+<h3 id="allocate-an-immutable-array-of-constants">Allocate an immutable
+array of constants</h3>
+<pre class="motoko"><code>let a : [Nat] = [1, 2, 3] ;</code></pre>
+<p>The array <code>a</code> above holds three natural numbers, and has
+type <code>[Nat]</code>. In general, the type of an immutable array is
+<code>[_]</code>, using square brackets around the type of the array’s
+elements, which must share a single common type.</p>
+<h3 id="read-from-an-array-index">Read from an array index</h3>
+<p>You can read from an array using the usual bracket syntax of
+<code>[</code> and <code>]</code> around the index you want to
+access:</p>
+<pre class="motoko"><code>let x : Nat = a[2] + a[0] ;</code></pre>
+<p>Every array access in Motoko is safe. Accesses that are out of bounds
+will not access memory unsafely, but instead will cause the program to
+trap as with an <a
+href="../getting-started/basic-concepts#traps">assertion</a>
+failure.</p>
+<h2 id="the-array-module">The <a
+href="../base/Array.md"><code>Array</code></a> module</h2>
+<p>The Motoko standard library provides basic operations for immutable
+and mutable arrays. It can be imported as follows:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;</code></pre>
+<p>For more information about using arrays, see the <a
+href="../base/Array.md">array</a> library descriptions.</p>
+<h3 id="allocate-an-immutable-array-with-varying-content">Allocate an
+immutable array with varying content</h3>
+<p>Each new array allocated by a program will contain a varying number
+of elements. Without mutation, you need a way to specify this family of
+elements all at once in the argument to allocation.</p>
+<p>To accommodate this need, the Motoko language provides the
+higher-order array allocation function <code>Array.tabulate</code>,
+which allocates a new array by consulting a user-provided generation
+function, <code>gen</code>,for each element.</p>
+<pre class="motoko"><code>func tabulate&lt;T&gt;(size : Nat,  gen : Nat -&gt; T) : [T]</code></pre>
+<p>Function <code>gen</code> specifies the array as a function value of
+arrow type <code>Nat → T</code>, where <code>T</code> is the final array
+element type.</p>
+<p>The function <code>gen</code> actually functions as the array during
+its initialization. It receives the index of the array element and
+produces the element of type <code>T</code> that should reside at that
+index in the array. The allocated output array populates itself based on
+this specification.</p>
+<p>For instance, you can first allocate <code>array1</code> consisting
+of some initial constants, then functionally update some of the indices
+by changing them in a pure, functional way, to produce
+<code>array2</code>, a second array that does not destroy the first.</p>
+<pre class="motoko"><code>let array1 : [Nat] = [1, 2, 3, 4, 6, 7, 8] ;
+
+let array2 : [Nat] = Array.tabulate&lt;Nat&gt;(7, func(i:Nat) : Nat {
+    if ( i == 2 or i == 5 ) { array1[i] * i } // change 3rd and 6th entries
+    else { array1[i] } // no change to other entries
+  }) ;</code></pre>
+<p>Even though we changed <code>array1</code> into <code>array2</code>
+in a functional sense, notice that both arrays and both variables are
+immutable.</p>
+<h2 id="mutable-arrays">Mutable arrays</h2>
+<p>Each mutable array in Motoko introduces private mutable actor
+state.</p>
+<p>Because Motoko’s type system enforces that remote actors do not share
+their mutable state, the Motoko type system introduces a firm
+distinction between mutable and immutable arrays that impacts typing,
+subtyping, and the language abstractions for asynchronous
+communication.</p>
+<p>Locally, the mutable arrays can not be used in places that expect
+immutable ones, since Motoko’s definition of <a
+href="../reference/language-manual#subtyping">subtyping</a> for arrays
+correctly distinguishes those cases for the purposes of type soundness.
+Additionally, in terms of actor communication, immutable arrays are safe
+to send and share, while mutable arrays can not be shared or otherwise
+sent in messages. Unlike immutable arrays, mutable arrays have
+non-shareable types.</p>
+<h3 id="allocate-a-mutable-array-of-constants">Allocate a mutable array
+of constants</h3>
+<p>To indicate allocation of mutable arrays, the mutable array syntax
+<code>[var _]</code> uses the <code>var</code> keyword in both the
+expression and type forms:</p>
+<pre class="motoko"><code>let a : [var Nat] = [var 1, 2, 3] ;</code></pre>
+<p>As above, the array <code>a</code> above holds three natural numbers,
+but has type <code>[var Nat]</code>.</p>
+<h3 id="allocate-a-mutable-array-with-dynamic-size">Allocate a mutable
+array with dynamic size</h3>
+<p>To allocate mutable arrays of non-constant size, use the
+<code>Array.init</code> base library function and supply an initial
+value:</p>
+<pre class="motoko"><code>func init&lt;T&gt;(size : Nat,  x : T) : [var T]</code></pre>
+<p>For example:</p>
+<pre class="motoko"><code>var size : Nat = 42 ;
+let x : [var Nat] = Array.init&lt;Nat&gt;(size, 3);</code></pre>
+<p>The variable <code>size</code> does not need to be constant here. The
+array will have <code>size</code> number of entries, each holding the
+initial value <code>3</code>.</p>
+<h3 id="mutable-updates">Mutable updates</h3>
+<p>Mutable arrays, each with type form <code>[var _]</code>, permit
+mutable updates via assignment to an individual element. In this case,
+element index <code>2</code> gets updated from holding <code>3</code> to
+instead hold value <code>42</code>:</p>
+<pre class="motoko"><code>let a : [var Nat] = [var 1, 2, 3];
+a[2] := 42;
+a</code></pre>
+<h3
+id="subtyping-does-not-permit-mutable-to-be-used-as-immutable">Subtyping
+does not permit mutable to be used as immutable</h3>
+<p>Subtyping in Motoko does not permit us to use a mutable array of type
+<code>[var Nat]</code> in places that expect an immutable one of type
+<code>[Nat]</code>.</p>
+<p>There are two reasons for this. First, as with all mutable state,
+mutable arrays require different rules for sound subtyping. In
+particular, mutable arrays have a less flexible subtyping definition,
+necessarily. Second, Motoko forbids uses of mutable arrays across <a
+href="actors-async.md">asynchronous communication</a>, where mutable
+state is never shared.</p>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
