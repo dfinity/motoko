@@ -1,0 +1,5 @@
+--- incomplete-self-reference.run
++++ incomplete-self-reference.run-low
+@@ -1 +1 @@
+-Hey!
++incomplete-self-reference.mo:4.42-4.46: execution error, accessing identifier before its definition
