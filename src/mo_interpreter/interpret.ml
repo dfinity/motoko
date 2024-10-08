@@ -576,8 +576,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
        let v1 = begin match v1 with
          | V.Tup [V.Blob aid; V.Text id] ->
-           let methods = V.Env.find aid !(env.actor_env) in
-           V.Env.find id (V.as_obj methods)
+           V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
          | _ -> v1
         end in
      interpret_exp env exp2 (fun v2 ->
