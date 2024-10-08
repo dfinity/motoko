@@ -319,7 +319,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ llvmPackages_13.lld llvmPackages_18.clang ];
+      with nixpkgs; [ llvmPackages_18.lld llvmPackages_18.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
