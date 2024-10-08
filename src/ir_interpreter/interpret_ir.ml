@@ -307,7 +307,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
-  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when actor = "Self" && not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
+  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
     (* method not defined yet, just pair them up *)
     k V.(Tup [Blob (env.self); Text n])
   | PrimE (p, es) ->
@@ -459,8 +459,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
+         Printf.eprintf "ICCallPrim0\n";
         let call_conv, f = V.as_func v1 in
-        check_call_conv (List.hd es) call_conv;
+          Printf.eprintf "ICCallPrim1\n";
+       check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
