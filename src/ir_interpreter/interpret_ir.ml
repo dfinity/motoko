@@ -314,6 +314,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env es [] (fun vs ->
       match p, vs with
       | CallPrim typs, [v1; v2] ->
+        let v1 = begin match v1 with
+        | V.Tup V.[Blob aid; Text id] ->
+          V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
+        | _ -> v1
+        end in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -459,9 +464,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
-         Printf.eprintf "ICCallPrim0\n";
         let call_conv, f = V.as_func v1 in
-          Printf.eprintf "ICCallPrim1\n";
        check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)

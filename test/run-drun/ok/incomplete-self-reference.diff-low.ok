@@ -1,6 +1,0 @@
---- incomplete-self-reference.run
-+++ incomplete-self-reference.run-low
-@@ -1 +1,3 @@
- Hey!
-+ICCallPrim0
-+ICCallPrim1
