@@ -347,7 +347,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         begin match V.Env.find_opt id !(env.actor_env) with
         | None ->
           (* method not defined yet, just pair them up *)
-          k (assert false;V.Tup [v1; V.Text n])
+          k (assert (1 = 2);V.Tup [v1; V.Text n])
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
@@ -620,17 +620,6 @@ and interpret_lexp env lexp (k : (V.value ref) V.cont) =
            with Invalid_argument s -> trap lexp.at "%s" s))
       )
     )
-
-and defined_fields env fs =
-    let ve =
-      List.fold_left
-        (fun ve (f : field) ->
-          match V.Env.find_opt f.it.var env.vals with
-          | Some binding when Lib.Promise.is_fulfilled binding
-            -> V.Env.disjoint_add f.it.name (Lib.Promise.value binding) ve
-          | _ -> ve
-        ) V.Env.empty fs in
-    V.Obj ve
 
 and interpret_fields env fs =
     let ve =
