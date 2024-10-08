@@ -510,10 +510,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (find id.it fs)
       | V.Blob aid as actor when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
         begin match V.Env.find_opt aid !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
         | None ->
           (* method not defined yet, just pair them up *)
-          k (V.Tup [actor; V.Text id.it])
+          k V.(Tup [actor; Text id.it])
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt id.it fs with
