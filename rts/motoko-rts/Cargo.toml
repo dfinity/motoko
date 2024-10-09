@@ -44,4 +44,3 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 codegen-units = 1 # makes debugging easier
-opt-level = "z" # super-optimize for size

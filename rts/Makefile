@@ -4,7 +4,6 @@ CLANG ?= clang-18
 LLVM_LINK = llvm-link
 WASM_CLANG ?= clang-18
 WASM_LD ?= wasm-ld-18
-WASM_OPT = wasm-opt
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -294,13 +293,10 @@ LINKER_OPTIONS_64=\
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive --experimental-pic
 
-WASM_OPT_OPTIONS=-Oz
-
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_32) \
 		$+
-	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-non-incremental-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
@@ -311,7 +307,6 @@ mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_32) \
 		$+
-	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
@@ -322,7 +317,6 @@ mo-rts-eop.wasm: $(RTS_RUST_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS_64) \
 		$+
-	$(WASM_OPT) $(WASM_OPT_OPTIONS) -o $@ $@
 
 mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
