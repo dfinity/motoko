@@ -972,10 +972,10 @@ let encode (em : extended_module) =
             if Promise.is_fulfilled offset_promise
             then write32 (Promise.value offset_promise)
             else dw_patches :=
-                 (fun gap ps () ->
-                   ps ();
-                   dw_patch_gap32 gap (Promise.value offset_promise)
-                 ) (dw_gap32 ()) !dw_patches
+                   (fun gap ps () ->
+                     ps ();
+                     dw_patch_gap32 gap (Promise.value offset_promise)
+                   ) (dw_gap32 ()) !dw_patches
           | _ -> failwith "dw_FORM_ref_ref4"
         end
       | f when dw_FORM_ref_udata = f ->
