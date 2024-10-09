@@ -19,7 +19,7 @@ pub unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: usize, mode: usize
         0 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
         1 => format!(BUFFER_LENGTH, "{:.*e}", prec, a),
         2 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
-        3 => panic!("float_fmt: unsupported mode"), // TODO: Support this mode (or deprecate in base library).
+        3 => panic!("float_fmt: unsupported mode"), // Deprecated in the base library.
         4 => format!(BUFFER_LENGTH, "{}", a),
         _ => panic!("float_fmt: unrecognized mode"),
     };
