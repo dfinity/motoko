@@ -3,10 +3,3 @@
 [build]
 rustflags = ["-Crelocation-model=pic", "-Ccodegen-units=1"]
 
-# Use the patched wasm-ld
-[target.wasm32-unknown-shared]
-linker = "wasm-ld"
-
-# Use the patched wasm-ld
-[target.wasm64-unknown-shared]
-linker = "wasm-ld"
