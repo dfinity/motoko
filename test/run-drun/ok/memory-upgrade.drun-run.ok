@@ -1,0 +1,11 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: {rts_heap_size = 539_029_372; rts_memory_size = 603_979_776; rts_stable_memory_size = 8_192; version = 1}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {rts_heap_size = 1_075_900_400; rts_memory_size = 1_174_405_120; rts_stable_memory_size = 16_385; version = 2}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {rts_heap_size = 1_075_900_400; rts_memory_size = 1_174_405_120; rts_stable_memory_size = 16_385; version = 3}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {rts_heap_size = 1_075_900_400; rts_memory_size = 1_174_405_120; rts_stable_memory_size = 16_385; version = 4}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {rts_heap_size = 1_075_900_400; rts_memory_size = 1_174_405_120; rts_stable_memory_size = 16_385; version = 5}
+ingress Completed: Reply: 0x4449444c0000
