@@ -209,7 +209,7 @@ let encode (em : extended_module) =
 
   let rec close_dwarf genuine =
     (* hoist out referencable tags,
-      see Note [bubbling up types in the tag hierarchy] *)
+       see Note [bubbling up types in the tag hierarchy] *)
     begin match !dwarf_tags with
     | Tag (refi, t, viscera) :: Tag (refi', t', viscera') :: tail
         when genuine && Dwarf5.(dw_TAG_subprogram = t land 0xFF || dw_TAG_lexical_block = t land 0xFF) ->
@@ -288,10 +288,10 @@ let encode (em : extended_module) =
     let u16 i = u8 (i land 0xff); u8 (i lsr 8)
     let u32 i =
       Int32.(u16 (to_int (logand i 0xffffl));
-            u16 (to_int (shift_right i 16)))
+             u16 (to_int (shift_right i 16)))
     let u64 i =
       Int64.(u32 (to_int32 (logand i 0xffffffffL));
-            u32 (to_int32 (shift_right i 32)))
+             u32 (to_int32 (shift_right i 32)))
 
     let rec vu64 i =
       let b = Int64.(to_int (logand i 0x7fL)) in
@@ -651,8 +651,8 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
       (* Custom encodings for emulating stable-memory, special cases
-        of MemorySize, MemoryGrow and MemoryCopy
-        requiring wasm features bulk-memory and multi-memory
+         of MemorySize, MemoryGrow and MemoryCopy
+         requiring wasm features bulk-memory and multi-memory
       *)
       | StableSize -> op 0x3f; u8 0x01
       | StableGrow -> op 0x40; u8 0x01
@@ -792,7 +792,7 @@ let encode (em : extended_module) =
       let note i =
         if not (is_dwarf_like i.it) then
           (modif instr_notes (Instrs.add (pos s, i.at.left));
-          ignore (add_source_name i.at.left.file)
+           ignore (add_source_name i.at.left.file)
           ) in
       list (instr note) body;
       modif instr_notes (Instrs.add (pos s, f.at.right));
@@ -972,10 +972,10 @@ let encode (em : extended_module) =
             if Promise.is_fulfilled offset_promise
             then write32 (Promise.value offset_promise)
             else dw_patches :=
-                  (fun gap ps () ->
-                    ps ();
-                    dw_patch_gap32 gap (Promise.value offset_promise)
-                  ) (dw_gap32 ()) !dw_patches
+                 (fun gap ps () ->
+                   ps ();
+                   dw_patch_gap32 gap (Promise.value offset_promise)
+                 ) (dw_gap32 ()) !dw_patches
           | _ -> failwith "dw_FORM_ref_ref4"
         end
       | f when dw_FORM_ref_udata = f ->
@@ -1023,7 +1023,7 @@ let encode (em : extended_module) =
         end;
 
         (* we have to be careful to only reference tags already written,
-          so maintain creation order *)
+           so maintain creation order *)
         let ref_priority a b = match a, b with
           | Tag (Some m, _, _), Tag (Some n, _, _) -> compare n m
           | _, Tag (Some _, _, _) -> -1
@@ -1181,9 +1181,9 @@ let encode (em : extended_module) =
                 vec_format Dwarf5.[dw_LNCT_path, dw_FORM_line_strp; dw_LNCT_directory_index, dw_FORM_udata];
 
                 (* The first entry in the sequence is the primary source file whose file name exactly
-                  matches that given in the DW_AT_name attribute in the compilation unit debugging
-                  information entry. This is ensured by the heuristics, that the last noted source file
-                  will be placed at position 0 in the table *)
+                   matches that given in the DW_AT_name attribute in the compilation unit debugging
+                   information entry. This is ensured by the heuristics, that the last noted source file
+                   will be placed at position 0 in the table *)
                 vec_uleb128
                   (fun (pos, indx) -> write32 pos; uleb128 indx)
                   (map (fun (_, (p, dir_indx)) -> Promise.value p, dir_indx) !source_names);
@@ -1212,7 +1212,7 @@ let encode (em : extended_module) =
 
             let joining (prg, state) state' : int list list * Dwarf5.Machine.state =
               (* to avoid quadratic runtime, just collect (cons up) the partial lists here;
-                later we'll bring it in the right order and flatten *)
+                 later we'll bring it in the right order and flatten *)
               Dwarf5.Machine.infer state state' :: prg, state'
             in
 
