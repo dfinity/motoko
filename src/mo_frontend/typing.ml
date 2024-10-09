@@ -1992,11 +1992,35 @@ and check_exp' env0 t exp : T.typ =
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
+    begin
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
+      suggest_conversion env0 exp.at t' t
+    end;
     t'
+
+and suggest_conversion env at ty1 ty2 =
+  T.(match promote ty1, promote ty2 with
+  | Prim p1, Prim p2 ->
+    let id1 = String.trim(string_of_prim p1) in
+    let id2 = String.trim(string_of_prim p2) in
+    let find pre id1 id2 =
+      match T.Env.find_opt id1 env.vals with
+      | Some (ty1, _, _, _) ->
+        (match T.promote ty1 with
+        | T.Obj(_, tfs) ->
+          (match T.lookup_val_field_opt (pre^id2) tfs with
+          | Some ty ->
+            info env at "Maybe try conversion %s.%s%s" id1 pre id2
+          | None -> ())
+        | _ -> ())
+      | None -> ()
+    in
+    find "to" id1 id2;
+    find "from" id2 id1
+  | _ -> ())
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
