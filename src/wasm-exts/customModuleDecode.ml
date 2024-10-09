@@ -7,6 +7,7 @@ The changes are:
  * Support for additional custom sections
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -126,6 +127,7 @@ let rec vsN n s =
   then (if b land 0x40 = 0 then x else Int64.(logor x (logxor (-1L) 0x7fL)))
   else Int64.(logor x (shift_left (vsN (n - 7) s) 7))
 
+let vu8 s = Int64.to_int32 (vuN 8 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
 let vu64 s = vuN 64 s
 let vs7 s = Int64.to_int (vsN 7 s)
@@ -304,9 +306,9 @@ let rec instr s =
 
   | 0x10 -> call (at var s)
   | 0x11 ->
+    let y = at var s in
     let x = at var s in
-    expect 0x00 s "zero flag expected";
-    call_indirect x
+    call_indirect x y
 
   | 0x12 | 0x13 | 0x14 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19 as b -> illegal s pos b
 
@@ -783,18 +785,37 @@ let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option
 
 (* Dylink section *)
 
-let dylink _ s =
-  let memory_size = vu32 s in
-  let memory_alignment = vu32 s in
-  let table_size = vu32 s in
-  let table_alignment = vu32 s in
-  let needed_dynlibs = vec string s in
-  Some { memory_size; memory_alignment; table_size; table_alignment; needed_dynlibs }
+(* Cf. https://llvm.org/doxygen/WasmObjectFile_8cpp_source.html and 
+   https://github.com/WebAssembly/tool-conventions/blob/main/DynamicLinking.md *)
+let rec dylink0 sec_end s =
+  let dylink0_subsection s =
+    let subsection_type = vu8 s in
+    let subsection_size = Int32.to_int (vu32 s) in
+    let subsection_end = pos s + subsection_size in
+    match subsection_type with
+    | 0x01l -> (* mem_info *)
+      let memory_size = vu32 s in
+      let memory_alignment = vu32 s in
+      let table_size = vu32 s in
+      let table_alignment = vu32 s in
+      assert (pos s = subsection_end);
+      MemInfo { memory_size; memory_alignment; table_size; table_alignment }
+    | 0x02l -> (* needed *)
+      let dynlibs = vec string s in
+      assert (pos s = subsection_end);
+      Needed dynlibs
+    | _ -> error s (pos s - 1) "unsupported dylink.0 subsection"
+  in
+  assert (pos s <= sec_end);
+  if pos s = sec_end then []
+  else
+    let subsection = dylink0_subsection s in
+    subsection :: (dylink0 sec_end s)
 
-let is_dylink n = (n = Utf8.decode "dylink")
+let is_dylink0 n = (n = Utf8.decode "dylink.0")
 
-let dylink_section s =
-  custom_section is_dylink dylink None s
+let dylink0_section s =
+  custom_section is_dylink0 dylink0 [] s
 
 (* Name custom section *)
 
@@ -910,7 +931,7 @@ let wasm_features_section s =
     (fun sec_end s -> let t = utf8 sec_end s in String.split_on_char ',' t) [] s
 
 let is_unknown n = not (
-  is_dylink n ||
+  is_dylink0 n ||
   is_name n ||
   is_motoko n ||
   is_icp candid_service_name n ||
@@ -934,7 +955,7 @@ let module_ s =
   require (magic = 0x6d736100l) s 0 "magic header not detected";
   let version = u32 s in
   require (version = Wasm.Encode.version) s 4 "unknown binary version";
-  let dylink = dylink_section s in
+  let dylink0 = dylink0_section s in
   iterate skip_custom_section s;
   let types = type_section s in
   iterate skip_custom_section s;
@@ -982,7 +1003,7 @@ let module_ s =
   in
   { module_ =
      {types; tables; memories; globals; funcs; imports; exports; elems; datas; start};
-    dylink;
+    dylink0;
     name;
     motoko;
     enhanced_orthogonal_persistence;

@@ -9,6 +9,7 @@ The changes are:
  * Pseudo-instruction Meta for debug information
  * StableMemory, StableGrow, StableRead, StableWrite instructions.
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -101,7 +102,7 @@ and instr' =
   | BrTable of var list * var         (* indexed break *)
   | Return                            (* break from function body *)
   | Call of var                       (* call function *)
-  | CallIndirect of var               (* call function through table *)
+  | CallIndirect of var * var         (* call function through table *)
   | LocalGet of var                   (* read local variable *)
   | LocalSet of var                   (* write local variable *)
   | LocalTee of var                   (* write local variable and keep value *)
