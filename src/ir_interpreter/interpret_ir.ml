@@ -465,7 +465,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
-       check_call_conv (List.hd es) call_conv;
+        check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
