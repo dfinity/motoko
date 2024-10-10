@@ -307,10 +307,18 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     )
   | LitE lit ->
     k (interpret_lit env lit)
+  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
+    (* actor not defined yet, just pair them up *)
+    k V.(Tup [Blob (env.self); Text n])
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
       | CallPrim typs, [v1; v2] ->
+        let v1 = begin match v1 with
+        | V.Tup V.[Blob aid; Text id] ->
+          V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
+        | _ -> v1
+        end in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -335,16 +343,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
       | ActorDotPrim n, [v1] ->
-        let id = V.as_blob v1 in
-        begin match V.Env.find_opt id !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" id
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt n fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" id n
-          | Some field_value -> k field_value
-        end
+        (* delay error handling to the point when the method gets applied *)
+        k V.(Tup [v1; Text n])
       | ArrayPrim (mut, _), vs ->
         let vs' =
           match mut with
@@ -446,6 +446,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
+      | ICCallPrim, V.[Tup [Blob aid; Text id]; v2; kv; rv; cv] ->
+        let v1 = V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id) in
+        let call_conv, f = V.as_func v1 in
+        check_call_conv (List.hd es) call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        let vc = context env in
+        f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
@@ -463,7 +471,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in
         k (V.Obj ve)
       | SelfRef _, [] ->
-        k (V.Blob env.self)
+        k (context env)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
@@ -572,7 +580,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
 and interpret_actor env ds fs k =
     let self = V.fresh_id () in
-    let env0 = {env with self = self} in
+    let env0 = {env with self} in
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env0 ve in
     interpret_decs env' ds (fun _ ->

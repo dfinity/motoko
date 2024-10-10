@@ -295,8 +295,9 @@ let prim trap =
     )
 
 
-  | "blobOfPrincipal" -> fun _ v k -> k v
-  | "principalOfBlob" -> fun _ v k -> k v
+  | "cast"
+  | "blobOfPrincipal"
+  | "principalOfBlob"
   | "principalOfActor" -> fun _ v k -> k v
 
   | "blobToArray" -> fun _ v k ->
@@ -315,8 +316,6 @@ let prim trap =
     k (Blob (String.of_seq (Seq.map (fun v ->
       Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
     ) (Array.to_seq (Value.as_array v)))))
-
-  | "cast" -> fun _ v k -> k v
 
   (* calls never fail in the interpreter *)
   | "call_perform_status" -> fun _ v k -> k (Nat32 Nat32.zero)

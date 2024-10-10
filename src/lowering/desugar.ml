@@ -1145,7 +1145,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
-        I.ActorU (None, ds, fs, u, t)
+      I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 

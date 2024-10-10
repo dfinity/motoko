@@ -84,7 +84,7 @@ end
 
 module Seq :
 sig
-  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool (* 4.14 *)
 end
 
 module Option :
