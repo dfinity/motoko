@@ -783,7 +783,10 @@ and define_id env id v =
   define_id' env id.it v
 
 and define_id' env id v =
-  Lib.Promise.fulfill (find id env.vals) v
+  let b = find id env.vals in
+  if Lib.Promise.(is_fulfilled b && value b = v)
+  then ()
+  else Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
   match match_pat pat v with
