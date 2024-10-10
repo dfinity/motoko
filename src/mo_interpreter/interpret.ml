@@ -900,18 +900,15 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
      (* Define self_id in inner scope if there is a non-shadowing way to do it *)
-     let env', increments =
+     let env' =
        if match self_id with | None -> false | Some self -> V.Env.mem self.it ve_in
-       then env', ignore (* would shadow *)
+       then env' (* would shadow *)
        else begin
          let env' = match self_id with
            | Some self -> adjoin_vals env' (declare_id self)
            | _ -> env' in
          Option.iter (fun id -> define_id env' id self') self_id;
-         let increments () =
-           let fulfilled = V.Env.filter (fun _ -> Lib.Promise.is_fulfilled) ve_ex in
-           env.actor_env := V.Env.add self V.(Obj (Env.map Lib.Promise.value fulfilled)) !(env.actor_env) in
-         env', increments
+         env'
        end
      in
      interpret_dec_fields env' dec_fields ve_ex
@@ -932,13 +929,13 @@ and declare_dec_fields dec_fields ve_ex ve_in : val_env * val_env =
     let ve_in' = V.Env.adjoin ve_in ve' in
     declare_dec_fields dec_fields' ve_ex' ve_in'
 
-and interpret_dec_fields env ?(increments=ignore) dec_fields ve (k : V.value V.cont) =
+and interpret_dec_fields env dec_fields ve (k : V.value V.cont) =
   match dec_fields with
   | [] ->
     let obj = V.Obj (V.Env.map Lib.Promise.value ve) in
     k obj
   | {it = {dec; _}; _}::dec_fields' ->
-    interpret_dec env dec (fun _v -> increments (); interpret_dec_fields env ~increments dec_fields' ve k)
+    interpret_dec env dec (fun _v -> interpret_dec_fields env dec_fields' ve k)
 
 (* Blocks and Declarations *)
 
