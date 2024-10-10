@@ -817,10 +817,10 @@ and interpret_dec env dec k =
       k ()
     )
 
-and interpret_decs env ?(increments=ignore) decs (k : unit V.cont) =
+and interpret_decs env decs (k : unit V.cont) =
   match decs with
   | [] -> k ()
-  | d::ds -> interpret_dec env d (fun () -> increments (); interpret_decs env ~increments ds k)
+  | d::ds -> interpret_dec env d (fun () -> interpret_decs env ds k)
 
 and interpret_func env at sort x args f c v (k : V.value V.cont) =
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
