@@ -343,17 +343,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let fs = V.as_obj v1 in
         k (try find n fs with _ -> assert false)
       | ActorDotPrim n, [v1] ->
-        let id = V.as_blob v1 in
-        begin match V.Env.find_opt id !(env.actor_env) with
-        | None ->
-          (* method not defined yet, just pair them up *)
-          k V.(Tup [v1; Text n])
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt n fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" id n
-          | Some field_value -> k field_value
-        end
+        (* delay error handling to the point when the method gets applied *)
+        k V.(Tup [v1; Text n])
       | ArrayPrim (mut, _), vs ->
         let vs' =
           match mut with
