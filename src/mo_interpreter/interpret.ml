@@ -899,22 +899,10 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
   | T.Actor ->
      let self = V.fresh_id() in
      let self' = V.Blob self in
+     (* Define self_id eagerly *)
      Option.iter (fun id -> define_id env id self') self_id;
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
-     (* Define self_id eagerly *)
-     (* Define self_id in inner scope if there is a non-shadowing way to do it *)
-     (*let env' =
-       if match self_id with | None -> false | Some self -> V.Env.mem self.it ve_in
-       then env' (* would shadow *)
-       else begin
-         let env' = match self_id with
-           | Some self -> adjoin_vals env' (declare_id self)
-           | _ -> env' in
-         Option.iter (fun id -> define_id env' id self') self_id;
-         env'
-       end
-     in*)
      interpret_dec_fields env' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
