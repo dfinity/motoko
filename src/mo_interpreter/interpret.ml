@@ -890,8 +890,10 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let self' = V.Blob self in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals { env with self } ve_in in
+     (* Define self_id eagerly *)
+     Option.iter (fun id -> define_id env' id self') self_id;
      (* Define self_id in inner scope if there is a non-shadowing way to do it *)
-     let env' =
+     (*let env' =
        if match self_id with | None -> false | Some self -> V.Env.mem self.it ve_in
        then env' (* would shadow *)
        else begin
@@ -901,7 +903,7 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
          Option.iter (fun id -> define_id env' id self') self_id;
          env'
        end
-     in
+     in*)
      interpret_dec_fields env' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
@@ -976,9 +978,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it None dec_fields (fun v' ->
-          define_id env'' id' v';
-          k' v')
+        interpret_obj env'' obj_sort.it None dec_fields k'
       else
         async env' Source.no_region
           (fun k'' r ->
