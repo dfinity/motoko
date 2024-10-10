@@ -83,6 +83,15 @@ let find id env =
     let dom = V.Env.keys env in
     trap no_region "unbound identifier %s in domain %s" id (String.concat " " dom)
 
+let lookup_actor env at aid id =
+  match V.Env.find_opt aid !(env.actor_env) with
+  | None -> trap at "Unknown actor \"%s\"" aid
+  | Some actor_value ->
+     let fs = V.as_obj actor_value in
+     match V.Env.find_opt id fs with
+     | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
+     | Some field_value -> field_value
+
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -565,8 +574,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
        let v1 = begin match v1 with
-         | V.Tup V.[Blob aid; Text id] ->
-           V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
+         | V.Tup V.[Blob aid; Text id] -> lookup_actor env exp1.at aid id
          | _ -> v1
         end in
      interpret_exp env exp2 (fun v2 ->
