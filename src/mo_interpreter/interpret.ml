@@ -503,22 +503,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
+  | DotE (exp1, id) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+    interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
-      | V.Blob aid as actor when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
-        begin match V.Env.find_opt aid !(env.actor_env) with
-        | None ->
-          (* method not defined yet, just pair them up *)
-          k V.(Tup [actor; Text id.it])
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt id.it fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" aid id.it
-          | Some field_value -> k field_value
-        end
       | V.Array vs ->
         let f = match id.it with
           | "size" -> array_size
