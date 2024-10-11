@@ -1,0 +1,4 @@
+--- pass-class-self.run
++++ pass-class-self.run-ir
+@@ -0,0 +1 @@
++Before!

@@ -177,12 +177,15 @@ and dec msgs d = match d.it with
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (csp, i, tp, p, t, s, i', dfs) ->
+    let extern = if s.it = Type.Actor then Some i' else None in
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs (dec_fields msgs dfs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
+      group msgs ~extern (dec_fields msgs dfs @ class_self d.at i' s.it) /// pat msgs p /// shared_pat msgs csp
     )
 
 (* The class self binding is treated as defined at the very end of the group *)
-and class_self at i : group = [(at, S.singleton i.it, S.empty, S.empty)]
+and class_self at i : Type.obj_sort -> group = function
+  | Type.Actor -> []
+  | _ -> [(at, S.singleton i.it, S.empty, S.empty)]
 
 and decs msgs decs : group =
   (* Annotate the declarations with the analysis results *)

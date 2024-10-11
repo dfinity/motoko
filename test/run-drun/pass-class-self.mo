@@ -5,8 +5,8 @@ actor class C() = Self {
     func caller(_callee : shared () -> async ()) { };
 
     debugPrint "Before!";
-    //ignore principalOfActor Self;
-    //caller(Self.method);
+    ignore principalOfActor Self;
+    caller(Self.method);
     caller(method);
     //debugPrint (debug_show(principalOfActor Self));
     //debugPrint "So far so good!";
