@@ -322,14 +322,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
-      | CallPrim typs, [V.(Tup [Blob aid; Text id]); v2] ->
-        let v1 = lookup_actor env exp.at aid id in
-        let call_conv, f = V.as_func v1 in
-        check_call_conv (List.hd es) call_conv;
-        check_call_conv_arg env exp v2 call_conv;
-        last_region := exp.at; (* in case the following throws *)
-        f (context env) v2 k
       | CallPrim typs, [v1; v2] ->
+        let v1 = match v1 with
+          | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
+          | _ -> v1 in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
