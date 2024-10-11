@@ -335,7 +335,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
       | BinPrim (ot, op), [v1; v2] ->
         k (try Operator.binop op ot v1 v2 with _ ->
-          trap exp.at "arithmetic overflow")
+        trap exp.at "arithmetic overflow")
       | RelPrim (ot, op), [v1; v2] ->
         k (Operator.relop op ot v1 v2)
       | TupPrim, exps ->
