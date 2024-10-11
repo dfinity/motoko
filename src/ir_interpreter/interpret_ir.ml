@@ -71,6 +71,15 @@ let find id env =
   with Not_found ->
     trap no_region "unbound identifier %s" id
 
+let lookup_actor env at aid id =
+  match V.Env.find_opt aid !(env.actor_env) with
+  | None -> trap at "Unknown actor \"%s\"" aid
+  | Some actor_value ->
+     let fs = V.as_obj actor_value in
+     match V.Env.find_opt id fs with
+     | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
+     | Some field_value -> field_value
+
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -313,12 +322,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
+      | CallPrim typs, [V.(Tup [Blob aid; Text id]); v2] ->
+        let v1 = lookup_actor env exp.at aid id in
+        let call_conv, f = V.as_func v1 in
+        check_call_conv (List.hd es) call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        f (context env) v2 k
       | CallPrim typs, [v1; v2] ->
-        let v1 = begin match v1 with
-        | V.Tup V.[Blob aid; Text id] ->
-          V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id)
-        | _ -> v1
-        end in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -447,7 +458,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
       | ICCallPrim, V.[Tup [Blob aid; Text id]; v2; kv; rv; cv] ->
-        let v1 = V.Env.(find aid !(env.actor_env) |> V.as_obj |> find id) in
+        let v1 = lookup_actor env exp.at aid id in
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
