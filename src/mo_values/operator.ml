@@ -237,10 +237,10 @@ let structural_equality t =
     | T.Func (s, c, tbs, ts1, ts2) ->
        assert (T.is_shared_sort s);
        fun v1 v2 -> match v1, v2 with
-       | (Tup [Blob al; Text ml] as v1), (Tup [Blob ar; Text mr] as v2) -> Bool (v1 = v2) (* public methods *)
+       | Tup [Blob _; Text _], Tup [Blob _; Text _] -> Bool (v1 = v2) (* public methods *)
        | Func _, Tup [Blob _; Text _]
-       | Tup [Blob _; Text _], Func _ -> assert false;
-       | (Func _ as v1), (Func _ as v2) -> Bool (v1 == v2)  (* both internal, HACK *)
+       | Tup [Blob _; Text _], Func _ -> assert false; (* mixed, cannot determine equality *)
+       | Func _, Func _ -> Bool (v1 == v2)  (* both internal, HACK *)
        | _ -> failwith "illegal shared function"
   in
   go t
