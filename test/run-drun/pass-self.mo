@@ -1,6 +1,6 @@
 import { debugPrint; principalOfActor } = "mo:⛔";
 
-actor /*class () =*/ Self {
+actor Self {
     public func method() : async () { debugPrint "YESS!"; ignore principalOfActor Self };
     func caller(_callee : shared () -> async ()) { };
 
