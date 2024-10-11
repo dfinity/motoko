@@ -978,7 +978,9 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it None dec_fields k'
+        interpret_obj env'' obj_sort.it None dec_fields (fun v' ->
+          define_id env'' id' v';
+          k' v')
       else
         async env' Source.no_region
           (fun k'' r ->
@@ -988,9 +990,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it (Some id') dec_fields (fun v' ->
-              define_id env''' id' v';
-              k'' v'))
+            interpret_obj env''' obj_sort.it (Some id') dec_fields k'')
           k')
     in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in
