@@ -791,10 +791,7 @@ and define_id env id v =
   define_id' env id.it v
 
 and define_id' env id v =
-  let b = find id env.vals in
-  if Lib.Promise.(is_fulfilled b && value b = v)
-  then ()
-  else Lib.Promise.fulfill (find id env.vals) v
+  Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
   match match_pat pat v with
@@ -900,10 +897,13 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let self = V.fresh_id() in
      let self' = V.Blob self in
      (* Define self_id eagerly *)
-     Option.iter (fun id -> define_id env id self') self_id;
+     let env' = match self_id with
+     | Some id -> adjoin_vals env (declare_id id)
+     | None -> env in
+     Option.iter (fun id -> define_id env' id self') self_id;
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-     let env' = adjoin_vals { env with self } ve_in in
-     interpret_dec_fields env' dec_fields ve_ex
+     let env'' = adjoin_vals { env' with self } ve_in in
+     interpret_dec_fields env'' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
           k self'))
