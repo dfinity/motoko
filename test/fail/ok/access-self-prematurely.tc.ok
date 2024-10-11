@@ -1,1 +1,0 @@
-access-self-prematurely.mo:3.5-3.20: definedness error [M0016], cannot use method1 before method1 has been defined
