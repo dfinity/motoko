@@ -32,6 +32,8 @@ In Motoko, actors have dedicated syntax and types:
 
 - Waiting on `f` to be completed is expressed using `await f` to obtain a value of type `T`. To avoid introducing shared state through messaging, for example, by sending an object or mutable array, the data that can be transmitted through shared functions is restricted to immutable, shared types.
 
+- All state should be encapsulated within the actor or actor class. The main actor file should begin with imports, followed by the actor or actor class definition.
+
 ## Defining an actor
 
 Consider the following actor declaration:
