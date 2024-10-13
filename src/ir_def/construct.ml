@@ -373,14 +373,67 @@ let rec conjE : Ir.exp list -> Ir.exp = function
   | [x] -> x
   | (x::xs) -> andE x (conjE xs)
 
-let dotE exp name typ =
-  { it = PrimE (DotPrim name, [exp]);
-    at = no_region;
-    note = Note.{ def with
-      typ = typ;
-      eff = eff exp
+let rec dotE exp fname typ =
+  let field = function
+    | { it = {name;var}; _ } when fname = name -> Some var
+    | _ -> None in
+  let rec trapless = function
+    | { it = (LitE _ | VarE _ | NewObjE _ | FuncE _); _ } -> true
+    | { it = IfE (i, t, e); _ } -> List.for_all trapless [i; t; e]
+    | { it = LabelE (_, _, e); _ } -> trapless e
+    | { it = PrimE (( DotPrim _ | ActorDotPrim _ | ProjPrim _
+                    | CastPrim _ | OptPrim | TagPrim _ | ArrayPrim _
+                    | TupPrim ), exps); _ } -> List.for_all trapless exps
+    | _ -> false
+  and ltrapless = function
+    | { it = (VarLE _); _ } -> true
+    | _ -> false in
+  let needed precious l = function
+    | { it = LetD ({ it = VarP id; _ }, exp); _ }
+    | { it = VarD (id, _, exp); _ } when trapless exp -> precious id l
+    | { it = RefD (id, _, lexp); _ } when ltrapless lexp -> precious id l
+    | _ -> true in
+  match exp.it with
+  | NewObjE (_, fs, _) when List.find_map field fs <> None ->
+    var (List.find_map field fs |> Option.get) typ |> varE
+  | BlockE (defs, ({ it = NewObjE (_, fs, _); _ } as obj)) ->
+    let open List in
+    let [@warning "-8"] Some precious = find_map field fs in (* type-safety *)
+    let fds = map Freevars.dec defs in
+    (* construct maps from line number to free variables and
+       from defs to line numbers *)
+    let dls = mapi (fun i (_, d) -> Freevars.M.map (fun _ -> i) d) fds
+              |> Freevars.M.disjoint_unions in
+    let module FM = Env.Make(Int) in
+    let lfs = mapi (fun i fd ->
+                  let fs = Freevars.close fd in
+                  (Freevars.M.keys fs |> fun fs -> (i, fs))) fds
+              |> FM.from_list in
+    (* chase down a fixpoint of set of lines that are precious *)
+    let module LS = Set.Make(Int) in
+    let rec fix preciousLines =
+      let preciousLines' =
+        LS.elements preciousLines
+        |> concat_map (fun l -> FM.find l lfs)
+        |> filter_map (fun f -> Freevars.M.find_opt f dls)
+        |> LS.of_list in
+      if LS.(diff preciousLines' preciousLines |> is_empty) then preciousLines
+      else fix preciousLines'
+    in
+    let (* FIXME: Compute this lazily? *)preciousLines = Freevars.M.find_opt precious dls |> Option.to_list |> LS.of_list |> fix in
+    let is_precious id l = id = precious || LS.mem l preciousLines in
+    { exp with
+      it = BlockE (filteri (needed is_precious) defs, dotE obj fname typ);
+      note = Note.{ exp.note with typ }
     }
-  }
+  | _ ->
+    { it = PrimE (DotPrim fname, [exp]);
+      at = no_region;
+      note = Note.{ def with
+                    typ = typ;
+                    eff = eff exp
+             }
+    }
 
 let switch_optE exp1 exp2 pat exp3 typ1  =
   { it =
