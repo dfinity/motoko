@@ -144,7 +144,7 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.libiconv} \
           $out/bin/*
       '' + ''
-        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # also, there is a reference to /nix/store/…/share/menhir/standard.mly.
         # Let's remove that, too
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
@@ -817,8 +817,8 @@ EOF
   };
 
   viperServer = nixpkgs.fetchurl {
-    url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
-    sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
+    url = https://github.com/viperproject/viperserver/releases/download/v.23.01-release/viperserver.jar;
+    sha256 = "sha256-rrhvnmu0bTZufJRWmYCj4hmkP3QY7gILNv3yc28TxoA=";
   };
 
   shell = nixpkgs.mkShell {
