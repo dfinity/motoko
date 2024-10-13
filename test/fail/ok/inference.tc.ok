@@ -73,34 +73,34 @@ to argument of type
   <V>V -> V
 to produce result of type
   ()
-because no instantiation of T__102 makes
-  <V>V -> V  <:  <U>T__102 -> U
+because no instantiation of T__105 makes
+  <V>V -> V  <:  <U>T__105 -> U
 inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(<U>U -> T) -> ()
 to argument of type
   <V>V -> V
 to produce result of type
   ()
-because no instantiation of T__103 makes
-  <V>V -> V  <:  <U>U -> T__103
+because no instantiation of T__106 makes
+  <V>V -> V  <:  <U>U -> T__106
 inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
   <T>[T] -> T
 to argument of type
   [var Nat]
 to produce result of type
   Any
-because no instantiation of T__106 makes
-  [var Nat]  <:  [T__106]
+because no instantiation of T__109 makes
+  [var Nat]  <:  [T__109]
 inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
   <T>[var T] -> T
 to argument of type
   [Nat]
 to produce result of type
   ()
-because no instantiation of T__107 makes
-  [Nat]  <:  [var T__107]
+because no instantiation of T__110 makes
+  [Nat]  <:  [var T__110]
 and
-  T__107  <:  ()
+  T__110  <:  ()
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
   <T>[var T] -> T
 to argument of type
@@ -151,7 +151,7 @@ to argument of type
   {type x = Nat}
 to produce result of type
   Any
-because no instantiation of T__117 makes
-  {type x = Nat}  <:  {x : T__117}
+because no instantiation of T__120 makes
+  {type x = Nat}  <:  {x : T__120}
 inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
 inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
