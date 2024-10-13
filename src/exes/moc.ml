@@ -1,6 +1,7 @@
 open Wasm_exts
 open Mo_config
 
+(* trivial change for ci *)
 open Printf
 
 let name = "moc"
