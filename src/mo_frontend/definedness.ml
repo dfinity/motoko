@@ -93,7 +93,7 @@ let rec exp msgs e : f = match e.it with
   | ObjBlockE (s, (self_id_opt, _), dfs) ->
     group msgs ~extern:self_id_opt (dec_fields msgs dfs)
   (* The rest remaining cases just collect the uses of subexpressions: *)
-  | LitE _ | ActorUrlE _
+  | LitE _
   | PrimE _ | ImportE _ -> M.empty
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
   | TupE es
@@ -132,6 +132,7 @@ let rec exp msgs e : f = match e.it with
   | DoOptE e
   | BangE e
   | TagE (_, e)
+  | ActorUrlE e
   | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
