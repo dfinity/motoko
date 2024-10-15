@@ -577,7 +577,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
          | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
          | _ -> v1
         end in
-     interpret_exp env exp2 (fun v2 ->
+      interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
         check_call_conv exp1 call_conv;
         check_call_conv_arg env exp v2 call_conv;
