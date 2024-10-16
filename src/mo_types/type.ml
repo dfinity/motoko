@@ -1379,7 +1379,7 @@ let motoko_runtime_information_type =
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
-    typ = Func(Shared Query, Promises, [scope_bind], [], 
+    typ = Func(Shared Query, Promises, [scope_bind], [],
       [ motoko_runtime_information_type ]);
     src = empty_src;
   }

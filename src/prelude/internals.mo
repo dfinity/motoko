@@ -400,13 +400,13 @@ module @ManagementCanister = {
   };
 };
 
-type WasmMemoryPersistence = {
+type @WasmMemoryPersistence = {
   #Keep;
   #Replace;
 };
 
-type UpgradeOptions = { 
-  wasm_memory_persistence: ?WasmMemoryPersistence;
+type @UpgradeOptions = {
+  wasm_memory_persistence: ?@WasmMemoryPersistence;
 };
 
 let @ic00 = actor "aaaaa-aa" :
@@ -416,10 +416,10 @@ let @ic00 = actor "aaaaa-aa" :
       sender_canister_version : ?Nat64
     } -> async { canister_id : Principal };
     install_code : {
-      mode : { 
-        #install; 
-        #reinstall; 
-        #upgrade : ?UpgradeOptions;
+      mode : {
+        #install;
+        #reinstall;
+        #upgrade : ?@UpgradeOptions;
       };
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
@@ -434,7 +434,7 @@ func @install_actor_helper(
       #install : Principal;
       #reinstall : actor {} ;
       #upgrade : actor {} ;
-      #upgrade_with_persistence : { wasm_memory_persistence: WasmMemoryPersistence; canister: actor {} };
+      #upgrade_with_persistence : { wasm_memory_persistence: @WasmMemoryPersistence; canister: actor {} };
     },
     enhanced_orthogonal_persistence : Bool,
     wasm_module : Blob,
@@ -459,10 +459,10 @@ func @install_actor_helper(
         (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
-        let wasm_memory_persistence = if enhanced_orthogonal_persistence { 
-          ?(#Keep) 
-        } else { 
-          null 
+        let wasm_memory_persistence = if enhanced_orthogonal_persistence {
+          ?(#Keep)
+        } else {
+          null
         };
         let upgradeOptions = {
           wasm_memory_persistence;

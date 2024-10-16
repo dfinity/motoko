@@ -6,7 +6,7 @@ sidebar_position: 2
 
 ## Mops packages for data structures
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for data structure implementations:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for data structure implementations:
 
 - [`augmented-btrees`](https://mops.one/augmented-btrees): An implementation of BTree variants, most notable the B+Tree.
 
@@ -40,7 +40,7 @@ sidebar_position: 2
 
 - [`stable-rbtree`](https://mops.one/stable-rbtree): Stable RBtree.
 
-- [`stable-trie`](https://mops.one/stable-trie): Stable trie. 
+- [`stable-trie`](https://mops.one/stable-trie): Stable trie.
 
 - [`swb`](https://mops.one/swb): Sliding window buffers featuring random access functionalities.
 

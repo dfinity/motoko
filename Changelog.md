@@ -1,14 +1,31 @@
 # Motoko compiler changelog
 
+## 0.13.1 (2024-10-07)
+
 * motoko (`moc`)
 
-  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new moc flag `--enhanced-orthogonal-persistence` (#4193).
+  * Improved error messages for unbound identifiers and fields that avoid reporting large types and use an edit-distance based metric to suggest alternatives (#4720).
+
+  * Flag `--ai-errors` to tailor error messages to AI clients (#4720).
+
+  * Compilation units containing leading type definitions are now rejected with an improved error message (#4714).
+
+  * bugfix: `floatToInt64` now behaves correctly in the interpreter too (#4712).
+
+## 0.13.0 (2024-09-17)
+
+* motoko (`moc`)
+
+  * Added a new primitive `cyclesBurn : <system> Nat -> Nat` for burning the canister's cycles
+    programmatically (#4690).
+
+  * **For beta testing:** Support __enhanced orthogonal persistence__, enabled with new `moc` flag `--enhanced-orthogonal-persistence` (#4193).
 
     This implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
     * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
     * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
     * The runtime system checks that data changes of new program versions are compatible with the old state.
-    
+
     Implications:
     * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
     * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
@@ -28,10 +45,11 @@
       "args" : "--enhanced-orthogonal-persistence"
     ...
     ```
+    BREAKING CHANGE (Minor): changes some aspects of `Float` formatting.
 
     For more information, see:
     * The Motoko design documentation `design/OrthogonalPersistence.md`
-    * The Motoko user documentation `doc/md/canister-maintenance//upgrades.md`.
+    * The Motoko user documentation `doc/md/canister-maintenance/upgrades.md`.
 
   * Candid decoding: impose an upper limit on the number of values decoded or skipped in a single candid payload,
     as a linear function, `max_values`, of binary payload size.
@@ -80,6 +98,10 @@
         callbackTableSize : Nat;
     }
     ```
+
+* motoko-base
+
+  * Added `Iter.concat` function (thanks to AndyGura) (dfinity/motoko-base⁠#650).
 
 ## 0.12.0 (2024-07-26)
 

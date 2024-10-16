@@ -78,7 +78,7 @@ mo-test --testmode wasi
 
 To configure the runtime of an individual unit test, include the following comment within your test file (`*.test.mo`):
 
-```motoko
+```motoko no-repl
 // @testmode wasi
 ```
 

@@ -6,7 +6,7 @@ sidebar_position: 4
 
 ## Mops packages for encoding
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for encoding:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for encoding:
 
 - [`candid`](https://mops.one/candid): Encoding and decode Candid bytes.
 
