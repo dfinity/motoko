@@ -315,7 +315,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | None -> trap exp.at "accessing identifier before its definition"
     )
   | LitE lit ->
-     k (interpret_lit env lit)
+    k (interpret_lit env lit)
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
