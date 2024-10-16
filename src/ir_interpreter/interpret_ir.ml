@@ -599,8 +599,8 @@ and interpret_actor env ds fs k =
      | None -> env in
     Option.iter (fun id -> define_id env' id self') self_id;
     let ve = declare_decs ds V.Env.empty in
-    let env'' = adjoin_vals env' ve in
-    interpret_decs env' ds (fun _ ->
+    let env'' = adjoin_vals { env' with self } ve in
+    interpret_decs env'' ds (fun _ ->
       let obj = interpret_fields env'' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
       k self'
