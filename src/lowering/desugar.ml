@@ -90,7 +90,7 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, (self_id_opt,_), dfs) ->
+  | S.ObjBlockE (s, (self_id_opt, _), dfs) ->
     obj_block at s self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
