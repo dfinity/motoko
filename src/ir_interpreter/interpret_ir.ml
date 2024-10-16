@@ -315,10 +315,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | None -> trap exp.at "accessing identifier before its definition"
     )
   | LitE lit ->
-    k (interpret_lit env lit)
-  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
-    (* actor not defined yet, just pair them up *)
-    k V.(Tup [Blob (env.self); Text n])
+     k (interpret_lit env lit)
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
@@ -478,6 +475,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         in
         k (V.Obj ve)
       | SelfRef _, [] ->
+        Printf.printf "SelfRef";
         k (context env)
       | SystemTimePrim, [] ->
         k (V.Nat64 (Numerics.Nat64.of_int 42))
@@ -586,14 +584,26 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_fields env fs)
 
 and interpret_actor env ds fs k =
+    let self_id = (* HACK to locate self_id, better to add to ActorE *)
+      List.find_map (fun d ->
+        match d with
+        | { it = LetD({ it = VarP id; _},
+                      { it = PrimE(SelfRef _,_); _});_} ->
+           Some id
+        | _ ->
+           None) ds in
     let self = V.fresh_id () in
-    let env0 = {env with self} in
+    let self' = V.Blob self in
+    let env' = match self_id with
+     | Some id -> adjoin_vals env (declare_id id)
+     | None -> env in
+    Option.iter (fun id -> define_id env' id self') self_id;
     let ve = declare_decs ds V.Env.empty in
-    let env' = adjoin_vals env0 ve in
+    let env'' = adjoin_vals env' ve in
     interpret_decs env' ds (fun _ ->
-      let obj = interpret_fields env' fs in
+      let obj = interpret_fields env'' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k (V.Blob self)
+      k self'
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
