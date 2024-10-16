@@ -586,7 +586,7 @@ and build_actor at ts self_id es obj_typ =
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
-  I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
+  I.(ActorE (Option.map (fun id -> id.it) self_id, footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
        preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
@@ -802,8 +802,8 @@ and dec' at n = function
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it, f with
-    | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
+    | I.VarP i, I.ActorE (id, ds, fs, u, t), _ ->
+      I.LetD (p', {e' with it = I.ActorE (id, with_self i t ds, fs, u, t)})
     | _, _, None -> I.LetD (p', e')
     | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
@@ -906,8 +906,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     match e.it with
     | Ir.ActorE _ ->
       (match Rename.exp' Rename.Renaming.empty e.it with
-       |  Ir.ActorE (ds', fs, up, ot) ->
-         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       |  Ir.ActorE (id, ds', fs, up, ot) ->
+         { e with it = Ir.ActorE (id, ds @ ds', fs, up, ot) }
        | _ -> assert false)
     | _ -> blockE ds e
   in
@@ -1138,14 +1138,14 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) ->
+    | I.ActorE(_FIXME, ds, fs, u, t) ->
       I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
     let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
     begin match actor_expression with
-    | I.ActorE (ds, fs, u, t) ->
+    | I.ActorE (_FIXME, ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
@@ -1205,7 +1205,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
               [ install_arg;
                 tagE "new" (recordE ["settings", nullE()]) ])
-             { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+             { it = I.ActorE (None(*FIXME?*), ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
              (primE (Ir.OtherPrim "trap")
                [textE "actor class configuration not supported in interpreter"]))
           (List.hd cs))

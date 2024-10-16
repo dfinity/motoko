@@ -291,7 +291,7 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3, e4) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
-  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+  | ActorE (id, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -303,7 +303,7 @@ and t_exp' env = function
     let inspect' = t_exp env1 inspect in
     let stable_record' = t_exp env1 stable_record in
     let decls = show_decls !(env1.params) in
-    ActorE (decls @ ds', fields,
+    ActorE (id, decls @ ds', fields,
       { meta;
         preupgrade = preupgrade';
         postupgrade = postupgrade';

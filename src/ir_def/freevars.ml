@@ -116,7 +116,7 @@ let rec exp e : f = match e.it with
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
-  | ActorE (ds, fs, u, _)  -> actor ds fs u
+  | ActorE (_, ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some (v, _) -> id v | _ -> M.empty)
   | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]

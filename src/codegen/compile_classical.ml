@@ -12279,7 +12279,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_r
       get_c
       add_cycles
-  | ActorE (ds, fs, _, _) ->
+  | ActorE (_, ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*

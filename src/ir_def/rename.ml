@@ -33,10 +33,11 @@ and exp' rho = function
   | VarE (m, i)         -> VarE (m, id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+  | ActorE (name, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
     let ds', rho' = decs rho ds in
     ActorE
-      (ds',
+      (Option.map (id rho) name,
+       ds',
        fields rho' fs,
        {meta;
         preupgrade = exp rho' preupgrade;

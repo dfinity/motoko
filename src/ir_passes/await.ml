@@ -181,8 +181,8 @@ and t_exp' context exp =
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.singleton Return Label in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
-    ActorE (t_decs context ds, ids,
+  | ActorE (id, ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+    ActorE (id, t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;

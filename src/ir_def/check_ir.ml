@@ -814,7 +814,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_k <: T.(Construct.contT (Tup ts) unit);
     typ exp_r <: T.(Construct.err_contT unit);
     typ exp_c <: Construct.clean_contT;
-  | ActorE (ds, fs,
+  | ActorE (_, ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_record; stable_type }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in

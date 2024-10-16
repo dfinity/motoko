@@ -442,8 +442,8 @@ let transform prog =
             | (Returns | Replies), _ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
-      ActorE (t_decs ds, t_fields fs,
+    | ActorE (id, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+      ActorE (id, t_decs ds, t_fields fs,
         {meta;
          preupgrade = t_exp preupgrade;
          postupgrade = t_exp postupgrade;

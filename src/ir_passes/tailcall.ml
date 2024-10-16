@@ -127,10 +127,10 @@ and exp' env e  : exp' = match e.it with
     let exp3' = exp env exp3 in
     let exp4' = exp env exp4 in
     SelfCallE (ts, exp1', exp2', exp3', exp4')
-  | ActorE (ds, fs, u, t) ->
+  | ActorE (id, ds, fs, u, t) ->
     (* TODO: tco other upgrade fields? *)
     let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade; stable_record = exp env u.stable_record } in
-    ActorE (snd (decs env ds), fs, u, t)
+    ActorE (id, snd (decs env ds), fs, u, t)
   | NewObjE (s,is,t)    -> NewObjE (s, is, t)
   | PrimE (p, es)       -> PrimE (p, List.map (exp env) es)
 

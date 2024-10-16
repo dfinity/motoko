@@ -577,20 +577,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (ds, fs, _, _) ->
-    interpret_actor env ds fs k
+  | ActorE (id, ds, fs, _, _) ->
+    interpret_actor env id ds fs k
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
 
-and interpret_actor env ds fs k =
-    let self_id = (* HACK to locate self_id, better to add to ActorE *)
-      List.find_map (fun d ->
-        match d with
-        | { it = LetD({ it = VarP id; _},
-                      { it = PrimE(SelfRef _,_); _});_} ->
-           Some id
-        | _ ->
-           None) ds in
+and interpret_actor env self_id ds fs k =
     let self = V.fresh_id () in
     let self' = V.Blob self in
     (* Define self_id eagerly *)
@@ -891,13 +883,13 @@ and interpret_comp_unit env cu k = match cu with
   | ActorU (None, ds, fs, _, _)
   | ActorU (Some [], ds, fs, _, _) ->
     (* to match semantics of installation with empty argument *)
-    interpret_actor env ds fs (fun _ -> k ())
+    interpret_actor env None(*FIXME?*) ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
     let sort = T.Local in
     let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in
     let f = interpret_func env no_region sort "" as_
-      (fun env' -> interpret_actor env ds fs) in
+      (fun env' -> interpret_actor env None(*FIXME?*) ds fs) in
     let _v = match cc.CC.sort with
       | T.Shared _ -> make_message env "" cc f
       | _ -> V.Func (cc, f)
