@@ -594,10 +594,10 @@ and interpret_actor env ds fs k =
            None) ds in
     let self = V.fresh_id () in
     let self' = V.Blob self in
+    (* Define self_id eagerly *)
     let env' = match self_id with
-     | Some id -> adjoin_vals env (declare_id id)
+     | Some id -> adjoin_vals env (declare_defined_id id self')
      | None -> env in
-    Option.iter (fun id -> define_id env' id self') self_id;
     let ve = declare_decs ds V.Env.empty in
     let env'' = adjoin_vals { env' with self } ve in
     interpret_decs env'' ds (fun _ ->
@@ -701,6 +701,8 @@ and declare_pats pats ve : val_env =
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
 
+and declare_defined_id id v =
+  V.Env.singleton id (Lib.Promise.make_fulfilled v)
 
 and define_id env id v =
   Lib.Promise.fulfill (find id env.vals) v
