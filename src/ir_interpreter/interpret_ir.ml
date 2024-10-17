@@ -583,24 +583,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (interpret_fields env fs)
 
 and interpret_actor env ds fs k =
-    let self_id = (* HACK to locate self_id, better to add to ActorE *)
-      List.find_map (fun d ->
-        match d with
-        | { it = LetD({ it = VarP id; _},
-                      { it = PrimE(SelfRef _,_); _});_} ->
-           Some id
-        | _ ->
-           None) ds in
     let self = V.fresh_id () in
     let self' = V.Blob self in
-    (* Define self_id eagerly *)
-    let env' = match self_id with
-     | Some id -> adjoin_vals env (declare_defined_id id self')
-     | None -> env in
     let ve = declare_decs ds V.Env.empty in
-    let env'' = adjoin_vals { env' with self } ve in
-    interpret_decs env'' ds (fun _ ->
-      let obj = interpret_fields env'' fs in
+    let env' = adjoin_vals { env with self } ve in
+    interpret_decs env' ds (fun _ ->
+      let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
       k self'
     )
