@@ -182,18 +182,19 @@ and dec msgs d = match d.it with
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
 
-(* The class self binding is treated as defined at the very end of the group *)
-and add_self self_id_opt s decs =
+(* The self binding, if any, is treated as defined at the very beginning or end of the group,
+   depending on sort and shadowing  *)
+and add_self self_id_opt s group =
   match self_id_opt with
-  | None -> decs
+  | None -> group
   | Some i ->
-    if List.exists (fun (at, defs, _, _) -> S.mem i.it defs) decs
-    then (* shadowed *)
-      decs
-    else (* not shadowed *)
-    match s.it with
-    | Type.Actor -> (i.at, S.singleton i.it, S.empty, S.empty) :: decs
-    | _ -> decs @ [(i.at, S.singleton i.it, S.empty, S.empty)]
+    if List.exists (fun (at, defs, _, _) -> S.mem i.it defs) group
+    then group (* shadowed, ignore *)
+    else (* not shadowed, consider self ... *)
+      let item = (i.at, S.singleton i.it, S.empty, S.empty) in
+      match s.it with
+      | Type.Actor -> item :: group (* ... defined early *)
+      | _ -> group @ [item] (* ... defined late *)
 
 and decs msgs decs : group =
   (* Annotate the declarations with the analysis results *)
