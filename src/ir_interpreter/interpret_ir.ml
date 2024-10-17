@@ -688,9 +688,6 @@ and declare_pats pats ve : val_env =
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
 
-and declare_defined_id id v =
-  V.Env.singleton id (Lib.Promise.make_fulfilled v)
-
 and define_id env id v =
   Lib.Promise.fulfill (find id env.vals) v
 
