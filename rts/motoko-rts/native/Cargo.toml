@@ -12,9 +12,11 @@ path = "../src/lib.rs"
 incremental_gc = []
 classical_persistence = ["libc"]
 enhanced_orthogonal_persistence = ["incremental_gc"]
+ic = [] # Not used by RTS unit tests
+memory_check = []
 
 [dependencies]
-libc = { version = "0.2.112", default_features = false, optional = true }
+libc = { version = "0.2.139", default-features = false, optional = true }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
 
 [profile.dev]

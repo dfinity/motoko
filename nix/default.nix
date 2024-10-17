@@ -78,7 +78,7 @@ let
                 };
               };
 
-              # No testing of atdgen, as it pulls in python stuff, tricky on musl
+              # No testing of atdgen, as it pulls in python stuff
               atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
             };
           }
@@ -91,13 +91,11 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-04-21"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2024-07-28"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-unknown-emscripten"
                "wasm32-wasi"
-               "i686-unknown-linux-gnu"
             ];
             extensions = ["rust-src"];
           };

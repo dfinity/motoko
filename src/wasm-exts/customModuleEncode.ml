@@ -8,6 +8,7 @@ The changes are:
  * Support for additional custom sections
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -420,7 +421,7 @@ let encode (em : extended_module) =
       | BrTable (xs, x) -> op 0x0e; vec var xs; var x
       | Return -> op 0x0f
       | Call x -> op 0x10; var x
-      | CallIndirect x -> op 0x11; var x; u8 0x00
+      | CallIndirect (x, y) -> op 0x11; var y; var x
 
       | Drop -> op 0x1a
       | Select -> op 0x1b
@@ -915,7 +916,7 @@ let encode (em : extended_module) =
       patch s (p + 1) (lsb (n lsr 8));
       patch s (p + 2) (lsb (n lsr 16));
       patch s (p + 3) (lsb (n lsr 24))
-    let dw_patches = ref Fun.id
+    let dw_patches = ref (fun i -> i)
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
@@ -1251,7 +1252,7 @@ let encode (em : extended_module) =
       u32 0x6d736100l;
       u32 version;
       (* no use-case for encoding dylink section yet, but here would be the place *)
-      assert (em.dylink = None);
+      assert (em.dylink0 = []);
       type_section m.types;
       import_section m.imports;
       func_section m.funcs;
