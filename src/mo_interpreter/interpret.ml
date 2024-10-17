@@ -787,6 +787,9 @@ and declare_pat_fields pfs ve : val_env =
     let ve' = declare_pat pf.it.pat in
     declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
+and declare_defined_id id v =
+  V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
+
 and define_id env id v =
   define_id' env id.it v
 
@@ -898,9 +901,8 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let self' = V.Blob self in
      (* Define self_id eagerly *)
      let env' = match self_id with
-     | Some id -> adjoin_vals env (declare_id id)
+     | Some id -> adjoin_vals env (declare_defined_id id self')
      | None -> env in
-     Option.iter (fun id -> define_id env' id self') self_id;
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env'' = adjoin_vals { env' with self } ve_in in
      interpret_dec_fields env'' dec_fields ve_ex

@@ -8,6 +8,5 @@ actor class C() = Self {
     ignore principalOfActor Self;
     caller(Self.method);
     caller(method);
-    //debugPrint (debug_show(principalOfActor Self)); // See #4733
-    //debugPrint "So far so good!";
+    ignore debugPrint (debug_show(principalOfActor Self));
 }

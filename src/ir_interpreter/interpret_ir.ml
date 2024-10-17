@@ -315,10 +315,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | None -> trap exp.at "accessing identifier before its definition"
     )
   | LitE lit ->
-    k (interpret_lit env lit)
-  | PrimE (ActorDotPrim n, [{ it = VarE (_, actor); _ }]) when not(Lib.Promise.is_fulfilled (find actor env.vals)) ->
-    (* actor not defined yet, just pair them up *)
-    k V.(Tup [Blob (env.self); Text n])
+     k (interpret_lit env lit)
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
@@ -582,13 +579,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
 
 and interpret_actor env ds fs k =
     let self = V.fresh_id () in
-    let env0 = {env with self} in
+    let self' = V.Blob self in
     let ve = declare_decs ds V.Env.empty in
-    let env' = adjoin_vals env0 ve in
+    let env' = adjoin_vals { env with self } ve in
     interpret_decs env' ds (fun _ ->
       let obj = interpret_fields env' fs in
       env.actor_env := V.Env.add self obj !(env.actor_env);
-      k (V.Blob self)
+      k self'
     )
 
 and interpret_lexp env lexp (k : (V.value ref) V.cont) =
@@ -685,7 +682,6 @@ and declare_pats pats ve : val_env =
   | pat::pats' ->
     let ve' = declare_pat pat in
     declare_pats pats' (V.Env.adjoin ve ve')
-
 
 and define_id env id v =
   Lib.Promise.fulfill (find id env.vals) v

@@ -90,8 +90,8 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, _t, dfs) ->
-    obj_block at s None dfs note.Note.typ
+  | S.ObjBlockE (s, (self_id_opt,_), dfs) ->
+    obj_block at s self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
@@ -562,7 +562,8 @@ and build_actor at ts self_id es obj_typ =
     [expD (assignE state (nullE()))]
   in
   let ds' = match self_id with
-    | Some n -> with_self n.it obj_typ ds
+    | Some n ->
+       with_self n.it obj_typ ds
     | None -> ds in
   let meta =
     I.{ candid = candid;
