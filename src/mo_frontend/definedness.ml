@@ -91,7 +91,7 @@ let rec exp msgs e : f = match e.it with
   | FuncE (_, sp, tp, p, t, _, e) ->
     delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
   | ObjBlockE (s, (self_id_opt, _), dfs) ->
-    group msgs ~extern:self_id_opt (dec_fields msgs dfs)
+    group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _
   | PrimE _ | ImportE _ -> M.empty
@@ -178,15 +178,23 @@ and dec msgs d = match d.it with
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (csp, i, tp, p, t, s, i', dfs) ->
-    let extern = if s.it = Type.Actor then Some i' else None in
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs ~extern (dec_fields msgs dfs @ class_self d.at i' s.it) /// pat msgs p /// shared_pat msgs csp
+      group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
 
-(* The class self binding is treated as defined at the very end of the group *)
-and class_self at i : Type.obj_sort -> group = function
-  | Type.Actor -> []
-  | _ -> [(at, S.singleton i.it, S.empty, S.empty)]
+(* The self binding, if any, is treated as defined at the very beginning or end of the group,
+   depending on sort and shadowing  *)
+and add_self self_id_opt s group =
+  match self_id_opt with
+  | None -> group
+  | Some i ->
+    if List.exists (fun (at, defs, _, _) -> S.mem i.it defs) group
+    then group (* shadowed, ignore *)
+    else (* not shadowed, consider self ... *)
+      let item = (i.at, S.singleton i.it, S.empty, S.empty) in
+      match s.it with
+      | Type.Actor -> item :: group (* ... defined early *)
+      | _ -> group @ [item] (* ... defined late *)
 
 and decs msgs decs : group =
   (* Annotate the declarations with the analysis results *)
@@ -195,13 +203,9 @@ and decs msgs decs : group =
     (d.at, defs, eager_vars f, delayed_vars f)
   ) decs
 
-and group msgs ?(extern=None) (grp : group) : f =
+and group msgs (grp : group) : f =
   (* Create a map from declared variable to their definition point *)
   let defWhen = M.disjoint_unions (List.mapi (fun i (_, defs, _, _) -> map_of_set i defs) grp) in
-  (* Insert the externally defined binding in front if present, non-shadowing *)
-  let defWhen = match extern with
-    | Some b when M.find_opt b.it defWhen |> Option.is_none -> M.add b.it (-1) defWhen
-    | _ -> defWhen in
   (* Calculate the relation R *)
   let r = NameRel.unions (List.map (fun (_, defs, _, delayed) -> NameRel.cross defs delayed) grp) in
   (* Check for errors *)
