@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/base/Nat16.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/base/Nat16.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#nat16" id="toc-nat16">Nat16</a>
+<ul>
+<li><a href="#type-nat16" id="toc-type-nat16">Type
+<code>Nat16</code></a></li>
+<li><a href="#value-maximumvalue" id="toc-value-maximumvalue">Value
+<code>maximumValue</code></a></li>
+<li><a href="#value-tonat" id="toc-value-tonat">Value
+<code>toNat</code></a></li>
+<li><a href="#value-fromnat" id="toc-value-fromnat">Value
+<code>fromNat</code></a></li>
+<li><a href="#function-fromnat8" id="toc-function-fromnat8">Function
+<code>fromNat8</code></a></li>
+<li><a href="#function-tonat8" id="toc-function-tonat8">Function
+<code>toNat8</code></a></li>
+<li><a href="#function-fromnat32" id="toc-function-fromnat32">Function
+<code>fromNat32</code></a></li>
+<li><a href="#function-tonat32" id="toc-function-tonat32">Function
+<code>toNat32</code></a></li>
+<li><a href="#value-fromintwrap" id="toc-value-fromintwrap">Value
+<code>fromIntWrap</code></a></li>
+<li><a href="#function-totext" id="toc-function-totext">Function
+<code>toText</code></a></li>
+<li><a href="#function-min" id="toc-function-min">Function
+<code>min</code></a></li>
+<li><a href="#function-max" id="toc-function-max">Function
+<code>max</code></a></li>
+<li><a href="#function-equal" id="toc-function-equal">Function
+<code>equal</code></a></li>
+<li><a href="#function-notequal" id="toc-function-notequal">Function
+<code>notEqual</code></a></li>
+<li><a href="#function-less" id="toc-function-less">Function
+<code>less</code></a></li>
+<li><a href="#function-lessorequal"
+id="toc-function-lessorequal">Function <code>lessOrEqual</code></a></li>
+<li><a href="#function-greater" id="toc-function-greater">Function
+<code>greater</code></a></li>
+<li><a href="#function-greaterorequal"
+id="toc-function-greaterorequal">Function
+<code>greaterOrEqual</code></a></li>
+<li><a href="#function-compare" id="toc-function-compare">Function
+<code>compare</code></a></li>
+<li><a href="#function-add" id="toc-function-add">Function
+<code>add</code></a></li>
+<li><a href="#function-sub" id="toc-function-sub">Function
+<code>sub</code></a></li>
+<li><a href="#function-mul" id="toc-function-mul">Function
+<code>mul</code></a></li>
+<li><a href="#function-div" id="toc-function-div">Function
+<code>div</code></a></li>
+<li><a href="#function-rem" id="toc-function-rem">Function
+<code>rem</code></a></li>
+<li><a href="#function-pow" id="toc-function-pow">Function
+<code>pow</code></a></li>
+<li><a href="#function-bitnot" id="toc-function-bitnot">Function
+<code>bitnot</code></a></li>
+<li><a href="#function-bitand" id="toc-function-bitand">Function
+<code>bitand</code></a></li>
+<li><a href="#function-bitor" id="toc-function-bitor">Function
+<code>bitor</code></a></li>
+<li><a href="#function-bitxor" id="toc-function-bitxor">Function
+<code>bitxor</code></a></li>
+<li><a href="#function-bitshiftleft"
+id="toc-function-bitshiftleft">Function
+<code>bitshiftLeft</code></a></li>
+<li><a href="#function-bitshiftright"
+id="toc-function-bitshiftright">Function
+<code>bitshiftRight</code></a></li>
+<li><a href="#function-bitrotleft" id="toc-function-bitrotleft">Function
+<code>bitrotLeft</code></a></li>
+<li><a href="#function-bitrotright"
+id="toc-function-bitrotright">Function <code>bitrotRight</code></a></li>
+<li><a href="#function-bittest" id="toc-function-bittest">Function
+<code>bittest</code></a></li>
+<li><a href="#function-bitset" id="toc-function-bitset">Function
+<code>bitset</code></a></li>
+<li><a href="#function-bitclear" id="toc-function-bitclear">Function
+<code>bitclear</code></a></li>
+<li><a href="#function-bitflip" id="toc-function-bitflip">Function
+<code>bitflip</code></a></li>
+<li><a href="#value-bitcountnonzero"
+id="toc-value-bitcountnonzero">Value
+<code>bitcountNonZero</code></a></li>
+<li><a href="#value-bitcountleadingzero"
+id="toc-value-bitcountleadingzero">Value
+<code>bitcountLeadingZero</code></a></li>
+<li><a href="#value-bitcounttrailingzero"
+id="toc-value-bitcounttrailingzero">Value
+<code>bitcountTrailingZero</code></a></li>
+<li><a href="#function-addwrap" id="toc-function-addwrap">Function
+<code>addWrap</code></a></li>
+<li><a href="#function-subwrap" id="toc-function-subwrap">Function
+<code>subWrap</code></a></li>
+<li><a href="#function-mulwrap" id="toc-function-mulwrap">Function
+<code>mulWrap</code></a></li>
+<li><a href="#function-powwrap" id="toc-function-powwrap">Function
+<code>powWrap</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="nat16">Nat16</h1>
+<p>Provides utility functions on 16-bit unsigned integers.</p>
+<p>Note that most operations are available as built-in operators (e.g.
+<code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre class="motoko"><code>import Nat16 &quot;mo:base/Nat16&quot;;</code></pre>
+<h2 id="type-nat16">Type <code>Nat16</code></h2>
+<pre class="motoko"><code>type Nat16 = Prim.Types.Nat16</code></pre>
+<p>16-bit natural numbers.</p>
+<h2 id="value-maximumvalue">Value <code>maximumValue</code></h2>
+<pre class="motoko"><code>let maximumValue : Nat16</code></pre>
+<p>Maximum 16-bit natural number. <code>2 ** 16 - 1</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.maximumValue; // =&gt; 65536 : Nat16</code></pre>
+<h2 id="value-tonat">Value <code>toNat</code></h2>
+<pre class="motoko"><code>let toNat : Nat16 -&gt; Nat</code></pre>
+<p>Converts a 16-bit unsigned integer to an unsigned integer with
+infinite precision.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.toNat(123); // =&gt; 123 : Nat</code></pre>
+<h2 id="value-fromnat">Value <code>fromNat</code></h2>
+<pre class="motoko"><code>let fromNat : Nat -&gt; Nat16</code></pre>
+<p>Converts an unsigned integer with infinite precision to a 16-bit
+unsigned integer.</p>
+<p>Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.fromNat(123); // =&gt; 123 : Nat16</code></pre>
+<h2 id="function-fromnat8">Function <code>fromNat8</code></h2>
+<pre class="motoko"><code>func fromNat8(x : Nat8) : Nat16</code></pre>
+<p>Converts an 8-bit unsigned integer to a 16-bit unsigned integer.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.fromNat8(123); // =&gt; 123 : Nat16</code></pre>
+<h2 id="function-tonat8">Function <code>toNat8</code></h2>
+<pre class="motoko"><code>func toNat8(x : Nat16) : Nat8</code></pre>
+<p>Converts a 16-bit unsigned integer to an 8-bit unsigned integer.</p>
+<p>Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.toNat8(123); // =&gt; 123 : Nat8</code></pre>
+<h2 id="function-fromnat32">Function <code>fromNat32</code></h2>
+<pre class="motoko"><code>func fromNat32(x : Nat32) : Nat16</code></pre>
+<p>Converts a 32-bit unsigned integer to a 16-bit unsigned integer.</p>
+<p>Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.fromNat32(123); // =&gt; 123 : Nat16</code></pre>
+<h2 id="function-tonat32">Function <code>toNat32</code></h2>
+<pre class="motoko"><code>func toNat32(x : Nat16) : Nat32</code></pre>
+<p>Converts a 16-bit unsigned integer to a 32-bit unsigned integer.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.toNat32(123); // =&gt; 123 : Nat32</code></pre>
+<h2 id="value-fromintwrap">Value <code>fromIntWrap</code></h2>
+<pre class="motoko"><code>let fromIntWrap : Int -&gt; Nat16</code></pre>
+<p>Converts a signed integer with infinite precision to a 16-bit
+unsigned integer.</p>
+<p>Wraps on overflow/underflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.fromIntWrap(123 : Int); // =&gt; 123 : Nat16</code></pre>
+<h2 id="function-totext">Function <code>toText</code></h2>
+<pre class="motoko"><code>func toText(x : Nat16) : Text</code></pre>
+<p>Converts <code>x</code> to its textual representation. Textual
+representation <em>do not</em> contain underscores to represent
+commas.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.toText(1234); // =&gt; &quot;1234&quot; : Text</code></pre>
+<h2 id="function-min">Function <code>min</code></h2>
+<pre class="motoko"><code>func min(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the minimum of <code>x</code> and <code>y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.min(123, 200); // =&gt; 123 : Nat16</code></pre>
+<h2 id="function-max">Function <code>max</code></h2>
+<pre class="motoko"><code>func max(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the maximum of <code>x</code> and <code>y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.max(123, 200); // =&gt; 200 : Nat16</code></pre>
+<h2 id="function-equal">Function <code>equal</code></h2>
+<pre class="motoko"><code>func equal(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>Equality function for Nat16 types. This is equivalent to
+<code>x == y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.equal(1, 1); // =&gt; true
+(1 : Nat16) == (1 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>==</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>==</code> as a function value at the moment.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Buffer &quot;mo:base/Buffer&quot;;
+
+let buffer1 = Buffer.Buffer&lt;Nat16&gt;(3);
+let buffer2 = Buffer.Buffer&lt;Nat16&gt;(3);
+Buffer.equal(buffer1, buffer2, Nat16.equal) // =&gt; true</code></pre>
+<h2 id="function-notequal">Function <code>notEqual</code></h2>
+<pre class="motoko"><code>func notEqual(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>Inequality function for Nat16 types. This is equivalent to
+<code>x != y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.notEqual(1, 2); // =&gt; true
+(1 : Nat16) != (2 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>!=</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>!=</code> as a function value at the moment.</p>
+<h2 id="function-less">Function <code>less</code></h2>
+<pre class="motoko"><code>func less(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>"Less than" function for Nat16 types. This is equivalent to
+<code>x &lt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.less(1, 2); // =&gt; true
+(1 : Nat16) &lt; (2 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&lt;</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>&lt;</code> as a function value at the moment.</p>
+<h2 id="function-lessorequal">Function <code>lessOrEqual</code></h2>
+<pre class="motoko"><code>func lessOrEqual(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>"Less than or equal" function for Nat16 types. This is equivalent to
+<code>x &lt;= y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.lessOrEqual(1, 2); // =&gt; true
+(1 : Nat16) &lt;= (2 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&lt;=</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>&lt;=</code> as a function value at the
+moment.</p>
+<h2 id="function-greater">Function <code>greater</code></h2>
+<pre class="motoko"><code>func greater(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>"Greater than" function for Nat16 types. This is equivalent to
+<code>x &gt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.greater(2, 1); // =&gt; true
+(2 : Nat16) &gt; (1 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&gt;</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>&gt;</code> as a function value at the moment.</p>
+<h2 id="function-greaterorequal">Function
+<code>greaterOrEqual</code></h2>
+<pre class="motoko"><code>func greaterOrEqual(x : Nat16, y : Nat16) : Bool</code></pre>
+<p>"Greater than or equal" function for Nat16 types. This is equivalent
+to <code>x &gt;= y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.greaterOrEqual(2, 1); // =&gt; true
+(2 : Nat16) &gt;= (1 : Nat16) // =&gt; true</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&gt;=</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>&gt;=</code> as a function value at the
+moment.</p>
+<h2 id="function-compare">Function <code>compare</code></h2>
+<pre class="motoko"><code>func compare(x : Nat16, y : Nat16) : {#less; #equal; #greater}</code></pre>
+<p>General purpose comparison function for <code>Nat16</code>. Returns
+the <code>Order</code> ( either <code>#less</code>, <code>#equal</code>,
+or <code>#greater</code>) of comparing <code>x</code> with
+<code>y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.compare(2, 3) // =&gt; #less</code></pre>
+<p>This function can be used as value for a high order function, such as
+a sort function.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+Array.sort([2, 3, 1] : [Nat16], Nat16.compare) // =&gt; [1, 2, 3]</code></pre>
+<h2 id="function-add">Function <code>add</code></h2>
+<pre class="motoko"><code>func add(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the sum of <code>x</code> and <code>y</code>,
+<code>x + y</code>. Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.add(1, 2); // =&gt; 3
+(1 : Nat16) + (2 : Nat16) // =&gt; 3</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>+</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>+</code> as a function value at the moment.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+Array.foldLeft&lt;Nat16, Nat16&gt;([2, 3, 1], 0, Nat16.add) // =&gt; 6</code></pre>
+<h2 id="function-sub">Function <code>sub</code></h2>
+<pre class="motoko"><code>func sub(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the difference of <code>x</code> and <code>y</code>,
+<code>x - y</code>. Traps on underflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.sub(2, 1); // =&gt; 1
+(2 : Nat16) - (1 : Nat16) // =&gt; 1</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>-</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>-</code> as a function value at the moment.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+Array.foldLeft&lt;Nat16, Nat16&gt;([2, 3, 1], 20, Nat16.sub) // =&gt; 14</code></pre>
+<h2 id="function-mul">Function <code>mul</code></h2>
+<pre class="motoko"><code>func mul(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the product of <code>x</code> and <code>y</code>,
+<code>x * y</code>. Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.mul(2, 3); // =&gt; 6
+(2 : Nat16) * (3 : Nat16) // =&gt; 6</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>*</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>*</code> as a function value at the moment.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+Array.foldLeft&lt;Nat16, Nat16&gt;([2, 3, 1], 1, Nat16.mul) // =&gt; 6</code></pre>
+<h2 id="function-div">Function <code>div</code></h2>
+<pre class="motoko"><code>func div(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the quotient of <code>x</code> divided by <code>y</code>,
+<code>x / y</code>. Traps when <code>y</code> is zero.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.div(6, 2); // =&gt; 3
+(6 : Nat16) / (2 : Nat16) // =&gt; 3</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>/</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>/</code> as a function value at the moment.</p>
+<h2 id="function-rem">Function <code>rem</code></h2>
+<pre class="motoko"><code>func rem(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the remainder of <code>x</code> divided by <code>y</code>,
+<code>x % y</code>. Traps when <code>y</code> is zero.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.rem(6, 4); // =&gt; 2
+(6 : Nat16) % (4 : Nat16) // =&gt; 2</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>%</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>%</code> as a function value at the moment.</p>
+<h2 id="function-pow">Function <code>pow</code></h2>
+<pre class="motoko"><code>func pow(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the power of <code>x</code> to <code>y</code>,
+<code>x ** y</code>. Traps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.pow(2, 3); // =&gt; 8
+(2 : Nat16) ** (3 : Nat16) // =&gt; 8</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>**</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>**</code> as a function value at the moment.</p>
+<h2 id="function-bitnot">Function <code>bitnot</code></h2>
+<pre class="motoko"><code>func bitnot(x : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise negation of <code>x</code>, <code>^x</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitnot(0); // =&gt; 65535
+^(0 : Nat16) // =&gt; 65535</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>^</code> operator) is so that you can use
+it as a function value to pass to a higher order function. It is not
+possible to use <code>^</code> as a function value at the moment.</p>
+<h2 id="function-bitand">Function <code>bitand</code></h2>
+<pre class="motoko"><code>func bitand(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise and of <code>x</code> and <code>y</code>,
+<code>x &amp; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitand(0, 1); // =&gt; 0
+(0 : Nat16) &amp; (1 : Nat16) // =&gt; 0</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&amp;</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>&amp;</code> as a function value at the
+moment.</p>
+<h2 id="function-bitor">Function <code>bitor</code></h2>
+<pre class="motoko"><code>func bitor(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise or of <code>x</code> and <code>y</code>,
+<code>x | y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitor(0, 1); // =&gt; 1
+(0 : Nat16) | (1 : Nat16) // =&gt; 1</code></pre>
+<h2 id="function-bitxor">Function <code>bitxor</code></h2>
+<pre class="motoko"><code>func bitxor(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise exclusive or of <code>x</code> and
+<code>y</code>, <code>x ^ y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitxor(0, 1); // =&gt; 1
+(0 : Nat16) ^ (1 : Nat16) // =&gt; 1</code></pre>
+<h2 id="function-bitshiftleft">Function <code>bitshiftLeft</code></h2>
+<pre class="motoko"><code>func bitshiftLeft(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise shift left of <code>x</code> by <code>y</code>,
+<code>x &lt;&lt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitshiftLeft(1, 3); // =&gt; 8
+(1 : Nat16) &lt;&lt; (3 : Nat16) // =&gt; 8</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&lt;&lt;</code> operator) is so that you
+can use it as a function value to pass to a higher order function. It is
+not possible to use <code>&lt;&lt;</code> as a function value at the
+moment.</p>
+<h2 id="function-bitshiftright">Function <code>bitshiftRight</code></h2>
+<pre class="motoko"><code>func bitshiftRight(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise shift right of <code>x</code> by <code>y</code>,
+<code>x &gt;&gt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitshiftRight(8, 3); // =&gt; 1
+(8 : Nat16) &gt;&gt; (3 : Nat16) // =&gt; 1</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&gt;&gt;</code> operator) is so that you
+can use it as a function value to pass to a higher order function. It is
+not possible to use <code>&gt;&gt;</code> as a function value at the
+moment.</p>
+<h2 id="function-bitrotleft">Function <code>bitrotLeft</code></h2>
+<pre class="motoko"><code>func bitrotLeft(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise rotate left of <code>x</code> by <code>y</code>,
+<code>x &lt;&lt;&gt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitrotLeft(2, 1); // =&gt; 4
+(2 : Nat16) &lt;&lt;&gt; (1 : Nat16) // =&gt; 4</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&lt;&lt;&gt;</code> operator) is so that
+you can use it as a function value to pass to a higher order function.
+It is not possible to use <code>&lt;&lt;&gt;</code> as a function value
+at the moment.</p>
+<h2 id="function-bitrotright">Function <code>bitrotRight</code></h2>
+<pre class="motoko"><code>func bitrotRight(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the bitwise rotate right of <code>x</code> by <code>y</code>,
+<code>x &lt;&gt;&gt; y</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.bitrotRight(1, 1); // =&gt; 32768
+(1 : Nat16) &lt;&gt;&gt; (1 : Nat16) // =&gt; 32768</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>&lt;&gt;&gt;</code> operator) is so that
+you can use it as a function value to pass to a higher order function.
+It is not possible to use <code>&lt;&gt;&gt;</code> as a function value
+at the moment.</p>
+<h2 id="function-bittest">Function <code>bittest</code></h2>
+<pre class="motoko"><code>func bittest(x : Nat16, p : Nat) : Bool</code></pre>
+<p>Returns the value of bit <code>p mod 16</code> in <code>x</code>,
+<code>(x &amp; 2^(p mod 16)) == 2^(p mod 16)</code>. This is equivalent
+to checking if the <code>p</code>-th bit is set in <code>x</code>, using
+0 indexing.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bittest(5, 2); // =&gt; true</code></pre>
+<h2 id="function-bitset">Function <code>bitset</code></h2>
+<pre class="motoko"><code>func bitset(x : Nat16, p : Nat) : Nat16</code></pre>
+<p>Returns the value of setting bit <code>p mod 16</code> in
+<code>x</code> to <code>1</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitset(0, 2); // =&gt; 4</code></pre>
+<h2 id="function-bitclear">Function <code>bitclear</code></h2>
+<pre class="motoko"><code>func bitclear(x : Nat16, p : Nat) : Nat16</code></pre>
+<p>Returns the value of clearing bit <code>p mod 16</code> in
+<code>x</code> to <code>0</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitclear(5, 2); // =&gt; 1</code></pre>
+<h2 id="function-bitflip">Function <code>bitflip</code></h2>
+<pre class="motoko"><code>func bitflip(x : Nat16, p : Nat) : Nat16</code></pre>
+<p>Returns the value of flipping bit <code>p mod 16</code> in
+<code>x</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitflip(5, 2); // =&gt; 1</code></pre>
+<h2 id="value-bitcountnonzero">Value <code>bitcountNonZero</code></h2>
+<pre class="motoko"><code>let bitcountNonZero : (x : Nat16) -&gt; Nat16</code></pre>
+<p>Returns the count of non-zero bits in <code>x</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitcountNonZero(5); // =&gt; 2</code></pre>
+<h2 id="value-bitcountleadingzero">Value
+<code>bitcountLeadingZero</code></h2>
+<pre class="motoko"><code>let bitcountLeadingZero : (x : Nat16) -&gt; Nat16</code></pre>
+<p>Returns the count of leading zero bits in <code>x</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitcountLeadingZero(5); // =&gt; 13</code></pre>
+<h2 id="value-bitcounttrailingzero">Value
+<code>bitcountTrailingZero</code></h2>
+<pre class="motoko"><code>let bitcountTrailingZero : (x : Nat16) -&gt; Nat16</code></pre>
+<p>Returns the count of trailing zero bits in <code>x</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>Nat16.bitcountTrailingZero(5); // =&gt; 0</code></pre>
+<h2 id="function-addwrap">Function <code>addWrap</code></h2>
+<pre class="motoko"><code>func addWrap(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the sum of <code>x</code> and <code>y</code>,
+<code>x +% y</code>. Wraps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.addWrap(65532, 5); // =&gt; 1
+(65532 : Nat16) +% (5 : Nat16) // =&gt; 1</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>+%</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>+%</code> as a function value at the moment.</p>
+<h2 id="function-subwrap">Function <code>subWrap</code></h2>
+<pre class="motoko"><code>func subWrap(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the difference of <code>x</code> and <code>y</code>,
+<code>x -% y</code>. Wraps on underflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.subWrap(1, 2); // =&gt; 65535
+(1 : Nat16) -% (2 : Nat16) // =&gt; 65535</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>-%</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>-%</code> as a function value at the moment.</p>
+<h2 id="function-mulwrap">Function <code>mulWrap</code></h2>
+<pre class="motoko"><code>func mulWrap(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns the product of <code>x</code> and <code>y</code>,
+<code>x *% y</code>. Wraps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.mulWrap(655, 101); // =&gt; 619
+(655 : Nat16) *% (101 : Nat16) // =&gt; 619</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>*%</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>*%</code> as a function value at the moment.</p>
+<h2 id="function-powwrap">Function <code>powWrap</code></h2>
+<pre class="motoko"><code>func powWrap(x : Nat16, y : Nat16) : Nat16</code></pre>
+<p>Returns <code>x</code> to the power of <code>y</code>,
+<code>x **% y</code>. Wraps on overflow.</p>
+<p>Example:</p>
+<pre class="motoko"><code>ignore Nat16.powWrap(2, 16); // =&gt; 0
+(2 : Nat16) **% (16 : Nat16) // =&gt; 0</code></pre>
+<p>Note: The reason why this function is defined in this library (in
+addition to the existing <code>**%</code> operator) is so that you can
+use it as a function value to pass to a higher order function. It is not
+possible to use <code>**%</code> as a function value at the moment.</p>
+</body>
+</html>

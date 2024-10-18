@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/randomness.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/randomness.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#randomness" id="toc-randomness">Randomness</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#random-module-example"
+id="toc-random-module-example"><code>Random</code> module
+example</a></li>
+<li><a href="#calling-the-management-canisters-raw_rand-method"
+id="toc-calling-the-management-canisters-raw_rand-method">Calling the
+management canister's <code>raw_rand</code> method</a></li>
+<li><a href="#resources" id="toc-resources">Resources</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="randomness">Randomness</h1>
+<h2 id="overview">Overview</h2>
+<p>The Motoko <a href="../base/Random.md"><code>Random</code></a> base
+library can be used for generating random values within smart contracts
+on ICP. Randomness on ICP is an intricate process, since ICP uses
+deterministic computing to obtain cryptographic random values.</p>
+<p>At the low level, ICP uses a Verifiable Random Function that is
+exposed by the management canister and is used by the Motoko
+<code>Random</code> module. In each execution round, the randomness
+function is evaluated with number of the current round used as input in
+order to produce a fresh set of random bytes.</p>
+<p>To use randomness, certain guidelines must be followed:</p>
+<ul>
+<li><p>The randomness source must only be obtainable asynchronously in
+chunks of 256 bits that are 32-byte sized <code>Blobs</code>.</p></li>
+<li><p>Bets must be closed before the randomness source is requested.
+This implies that the same randomness source cannot be used for a new
+round of bets without losing its cryptographic guarantee.</p></li>
+</ul>
+<p>The Random module features a class called <code>Finite</code> and a
+<code>*From</code> method. These carry the risk of carrying over the
+state from a previous round, but they are provided for performance and
+convenience reasons. They should be used carefully.</p>
+<h2 id="random-module-example"><code>Random</code> module example</h2>
+<p>To demonstrate randomness, consider the following example that
+shuffles a deck of cards then returns the cards in their shuffled order.
+The code is annotated with additional information:</p>
+<pre class="motoko"><code>// Import the necessary modules, including the Random module:
+import Random = &quot;mo:base/Random&quot;;
+import Char = &quot;mo:base/Char&quot;;
+import Error = &quot;mo:base/Error&quot;;
+
+// Define an actor
+
+actor {
+
+  // Define a stable variable that contains each card as a unicode character:
+  stable var deck : ?[var Char] = ?[var
+    &#39;🂡&#39;,&#39;🂢&#39;,&#39;🂣&#39;,&#39;🂤&#39;,&#39;🂥&#39;,&#39;🂦&#39;,&#39;🂧&#39;,&#39;🂨&#39;,&#39;🂩&#39;,&#39;🂪&#39;,&#39;🂫&#39;,&#39;🂬&#39;,&#39;🂭&#39;,&#39;🂮&#39;,
+    &#39;🂱&#39;,&#39;🂲&#39;,&#39;🂳&#39;,&#39;🂴&#39;,&#39;🂵&#39;,&#39;🂶&#39;,&#39;🂷&#39;,&#39;🂸&#39;,&#39;🂹&#39;,&#39;🂺&#39;,&#39;🂻&#39;,&#39;🂼&#39;,&#39;🂽&#39;,&#39;🂾&#39;,
+    &#39;🃁&#39;,&#39;🃂&#39;,&#39;🃃&#39;,&#39;🃄&#39;,&#39;🃅&#39;,&#39;🃆&#39;,&#39;🃇&#39;,&#39;🃈&#39;,&#39;🃉&#39;,&#39;🃊&#39;,&#39;🃋&#39;,&#39;🃌&#39;,&#39;🃍&#39;,&#39;🃎&#39;,
+    &#39;🃑&#39;,&#39;🃒&#39;,&#39;🃓&#39;,&#39;🃔&#39;,&#39;🃕&#39;,&#39;🃖&#39;,&#39;🃗&#39;,&#39;🃘&#39;,&#39;🃙&#39;,&#39;🃚&#39;,&#39;🃛&#39;,&#39;🃜&#39;,&#39;🃝&#39;,&#39;🃞&#39;,
+    &#39;🃏&#39;
+  ];
+
+  func bit(b : Bool) : Nat {
+    if (b) 1 else 0;
+  };
+
+  // Use a finite source of randomness defined as `f`.
+  // Return an optional random number between [0..`max`) using rejection sampling.
+  // A return value of `null` indicates that `f` is exhausted and should be replaced.
+  func chooseMax(f : Random.Finite, max : Nat) : ? Nat {
+    assert max &gt; 0;
+    do ? {
+      var n = max - 1 : Nat;
+      var k = 0;
+      while (n != 0) {
+        k *= 2;
+        k += bit(f.coin()!);
+        n /= 2;
+      };
+      if (k &lt; max) k else chooseMax(f, max)!;
+    };
+  };
+
+  // Define a function to shuffle the cards using `Random.Finite`.
+  public func shuffle() : async () {
+    let ?cards = deck else throw Error.reject(&quot;shuffle in progress&quot;);
+    deck := null;
+    var f = Random.Finite(await Random.blob());
+    var i : Nat = cards.size() - 1;
+    while (i &gt; 0) {
+      switch (chooseMax(f, i + 1)) {
+        case (?j) {
+          let temp = cards[i];
+          cards[i] := cards[j];
+          cards[j] := temp;
+          i -= 1;
+        };
+        case null { // need more entropy
+          f := Random.Finite(await Random.blob());
+        }
+      }
+    };
+    deck := ?cards;
+  };
+
+  // Define a function to display the randomly shuffled cards.
+  public query func show() : async Text {
+    let ?cards = deck else throw Error.reject(&quot;shuffle in progress&quot;);
+    var t = &quot;&quot;;
+    for (card in cards.vals()) {
+       t #= Char.toText(card);
+    };
+    return t;
+  }
+
+};</code></pre>
+<p>View this example on the <a
+href="https://play.motoko.org/?tag=2675232834">Motoko Playground</a> or
+on <a
+href="https://github.com/crusso/card-shuffle/blob/main/src/cards_backend/main.mo">GitHub</a>.</p>
+<p>:::tip</p>
+<p>The above solution directly uses the finite blob of 256-random bits
+returned by the management canister. Class <code>Random.Finite</code>
+uses this finite supply of bits to generate at most 256 coin flips,
+returning <code>null</code> when no more flips are possible.</p>
+<p>When its current supply of bits is exhausted, the code asynchronously
+requests another 256-bit blob to continue the shuffle. A more efficient,
+and equally robust approach would be to use the first 256-bit blob as a
+seed to a sequential pseudo random number generator, generating an
+infinite, lazy stream of bits, and then complete the shuffle with a
+single round of communication.</p>
+<p>:::</p>
+<h2 id="calling-the-management-canisters-raw_rand-method">Calling the
+management canister's <code>raw_rand</code> method</h2>
+<p>Alternatively, you can use randomness by calling the management
+canister's <code>raw_rand</code> endpoint:</p>
+<pre class="motoko"><code>actor {
+  let SubnetManager : actor {
+    raw_rand() : async Blob;
+  } = actor &quot;aaaaa-aa&quot;;
+
+  public func random_bytes() : async Blob {
+    let bytes = await SubnetManager.raw_rand();
+    return bytes;
+  };
+};</code></pre>
+<h2 id="resources">Resources</h2>
+<ul>
+<li><p><a
+href="https://internetcomputer.org/docs/current/developer-docs/smart-contracts/advanced-features/randomness">Onchain
+randomness</a></p></li>
+<li><p><a href="../base/Random.md">Random base library
+documentation</a></p></li>
+</ul>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
