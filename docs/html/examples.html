@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/getting-started/examples.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/getting-started/examples.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#sample-projects-and-resources"
+id="toc-sample-projects-and-resources">Sample projects and resources</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#sample-apps" id="toc-sample-apps">Sample apps</a>
+<ul>
+<li><a href="#canister-management" id="toc-canister-management">Canister
+management</a></li>
+<li><a href="#games-social-and-utility-samples"
+id="toc-games-social-and-utility-samples">Games, social, and utility
+samples</a></li>
+<li><a href="#tokens--defi" id="toc-tokens--defi">Tokens &amp;
+DeFi</a></li>
+<li><a href="#writing-motoko" id="toc-writing-motoko">Writing
+Motoko</a></li>
+</ul></li>
+<li><a href="#education-resources"
+id="toc-education-resources">Education resources</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="sample-projects-and-resources">Sample projects and
+resources</h1>
+<h2 id="overview">Overview</h2>
+<p>Want to get started building with Motoko? Check out some of these
+sample projects and Motoko resources to help you get started.</p>
+<h2 id="sample-apps">Sample apps</h2>
+<h3 id="canister-management">Canister management</h3>
+<ul>
+<li><p><a href="https://github.com/canister-app">Canister app</a>: A
+series of tools for canister tools written in Motoko.</p></li>
+<li><p><a
+href="https://github.com/usergeek/canistergeek-ic-motoko">Canister
+Geek</a>: Canister cycle monitoring and management.</p></li>
+<li><p><a href="https://github.com/ninegua/tipjar">Canister tip jar</a>:
+Donate cycles to a canister on ICP.</p></li>
+<li><p><a href="https://github.com/PrimLabs/iCAN">iCAN</a>: A canister
+management platform for creating and managing canisters
+conveniently.</p></li>
+<li><p><a
+href="https://github.com/ninegua/ic-blackhole">ic-blackhole</a>: An
+example of a black hole canister.</p></li>
+<li><p><a
+href="https://github.com/ORIGYN-SA/motoko_top_up_canister">motoko_top_up_canister</a>:
+A Motoko canister that automatically tops up a user-defined list of
+canisters.</p></li>
+</ul>
+<h3 id="games-social-and-utility-samples">Games, social, and utility
+samples</h3>
+<ul>
+<li><p><a href="https://github.com/lukasvozda/bitshop">Bitshop</a>: A
+Shopify alternative that accepts Bitcoin payments.</p></li>
+<li><p><a
+href="https://github.com/matthewhammer/cleansheets">Cleansheets</a>: A
+spreadsheet application.</p></li>
+<li><p><a href="https://github.com/ava-vs/doctoken">DocToken</a>:
+Document storage.</p></li>
+<li><p><a
+href="https://github.com/horizonx-tech/evm-proof-verifier-motoko">EVM
+proof verifier</a>: Verify EVM proofs using a Motoko canister.</p></li>
+<li><p><a
+href="https://github.com/flowerpowerdao/power-equalizer-v3">Flower power
+DAO</a>.</p></li>
+<li><p><a href="https://github.com/Talentum-id/formify">Formyfi</a>:
+Question and answer forms.</p></li>
+<li><p><a href="https://github.com/krpeacock/server">HTTP server for
+Motoko</a>: A simple HTTP server.</p></li>
+<li><p><a href="https://github.com/cosmasken/ic-payroll">IC Payroll</a>:
+A simple payroll dapp that allows users to be paid in ckBTC.</p></li>
+<li><p><a href="https://github.com/av1ctor/metamob">Metabomb</a>: A
+campaign dapp for fundraising or donations.</p></li>
+<li><p><a href="https://github.com/vporton/NacDB">NacDB</a>: A
+distributed database.</p></li>
+<li><p><a
+href="https://github.com/therealbryanho/IC-Code-Sample-Unity-Play-to-Earn-Game">Play
+to earn game sample</a>: A simple play to earn game template.</p></li>
+<li><p><a
+href="https://github.com/rakeoff-labs/rakeoff_statistics">Rakeoff
+statistics</a>: A Motoko canister that provides statistic analysis for
+the <a href="https://app.rakeoff.io/">Rakeoff application</a>.</p></li>
+<li><p><a href="https://github.com/ninegua/reversi">Reversi</a>: A
+multiplayer Reversi game.</p></li>
+<li><p><a href="https://github.com/DepartureLabsIC/revo">Revo</a>: A
+drawing game.</p></li>
+<li><p><a
+href="https://github.com/bix-tech/secure-guard-escrow">SecureGuard
+Escrow</a>: ICP-based escrow platform.</p></li>
+</ul>
+<h3 id="tokens--defi">Tokens &amp; DeFi</h3>
+<ul>
+<li><p><a
+href="https://github.com/Appic-Solutions/Auto_Investment">Appic</a>:
+Automatically by and sell tokens at a specific interval or
+time.</p></li>
+<li><p><a href="https://github.com/iclighthouse/ICDex">ICDex</a>: An
+onchain orderbook decentralized exchange written in Motoko.</p></li>
+<li><p><a
+href="https://github.com/noku-team/icrc7_motoko">icrc7_motoko</a> and -
+<a href="https://github.com/PanIndustrial-Org/icrc7.mo">icrc7-mo</a>:
+Motoko implementations of the ICRC-7 NFT standard.</p></li>
+<li><p><a
+href="https://github.com/PanIndustrial-Org/icrc_nft.mo">icrc-nft-mo</a>:
+An example NFT that combines <code>icrc7-mo</code>,
+<code>icrc30-mo</code>, and <code>icrc3-mo</code>.</p></li>
+<li><p><a href="https://github.com/rocklabs-io/ic-token">ic-token</a>
+and <a href="https://github.com/enzoh/motoko-token">motoko-token</a>:
+Motoko implementations of an ERC-20 token.</p></li>
+<li><p><a
+href="https://github.com/Itoka-DAO/itoka-music-nft-standard">Itoka music
+NFT</a>: A standard for music NFTs.</p></li>
+<li><p><a href="https://github.com/tgalal/motoko-bitcoin">Motoko
+Bitcoin</a>: A Motoko Bitcoin integration.</p></li>
+<li><p><a href="https://github.com/ICTO-Labs/staking-pool">Staking
+pool</a>: A staking pool project written in Motoko.</p></li>
+<li><p><a href="https://github.com/rocklabs-io/token-faucet">Token
+faucet</a>: A token faucet for <a
+href="https://github.com/rocklabs-io/ic-token">ic-token</a>.</p></li>
+<li><p><a href="https://github.com/icpipeline-framework/mbt">Token
+minter sample</a>: A sample app that mints tokens.</p></li>
+</ul>
+<h3 id="writing-motoko">Writing Motoko</h3>
+<ul>
+<li><p><a href="https://blocks-editor.github.io/blocks/">Blocks</a>: A
+Motoko smart contract editor.</p></li>
+<li><p><a href="https://github.com/aviate-labs/json.mo">JSON for
+Motoko</a>: Motoko JSON library.</p></li>
+<li><p><a
+href="https://github.com/kritzcreek/motoko-library-template">motoko-library-template</a>:
+Template for creating Motoko libraries.</p></li>
+<li><p><a href="https://d7dm6-sqaaa-aaaag-qcgma-cai.icp0.io/">Motoko
+Pilot</a>: An AI tool for writing Motoko.</p></li>
+<li><p><a
+href="https://github.com/motoko-bootcamp/motoko-starter">Motoko
+starter</a>: Basic starter template for Motoko projects.</p></li>
+<li><p><a href="https://github.com/rvanasa/vite-react-motoko">Vite +
+React + Motoko template</a>: Boilerplate template for Vite, React, and
+Motoko.</p></li>
+<li><p><a href="https://github.com/dfinity/vscode-motoko">Visual Studio
+Code Motoko extension</a>: A VS Code extension for Motoko.</p></li>
+</ul>
+<h2 id="education-resources">Education resources</h2>
+<ul>
+<li><p><a href="https://github.com/ic123-xyz/awesome-motoko">Awesome
+Motoko</a>: A list of Motoko projects, tools, and resources.</p></li>
+<li><p><a
+href="https://github.com/dfinity/examples/tree/master/motoko">DFINITY
+Examples</a>: Simple Motoko sample projects and templates.</p></li>
+<li><p><a
+href="https://internetcomputer.org/docs/current/tutorials/developer-journey/">ICP
+developer journey</a>: A 36-part series focused on Motoko development
+for ICP canisters.</p></li>
+<li><p><a href="https://github.com/luc-blaeser/auction">Motoko Auction
+summer camp example</a>.</p></li>
+<li><p><a href="https://github.com/Web3NL/motoko-book">Motoko book</a>:
+An educational book on Motoko.</p></li>
+<li><p><a href="https://github.com/motoko-bootcamp/education">Motoko
+Bootcamp</a>: Lessons and lectures on Motoko development.</p></li>
+</ul>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html><head title="Motoko docs"><meta charset="UTF-8"/><link href="styles.css" rel="stylesheet"/></head><div class="index-container"><h1 class="index-header">Index of modules</h1><ul class="index-listing"><li class="index-item"><a class="index-item-link" href="Array.html">Array</a><div class="index-item-comment"><p>Provides extended utility functions on Arrays.</p>
+<p>Note the difference between mutable and non-mutable arrays below.</p>
+<p>WARNING: If you are looking for a list that can grow and shrink in size,
+it is recommended you use either the Buffer class or the List class for
+those purposes. Arrays must be created with a fixed size.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Array &quot;mo:base/Array&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="AssocList.html">AssocList</a><div class="index-item-comment"><p>Map implemented as a linked-list of key-value pairs (&quot;Associations&quot;).</p>
+<p>NOTE: This map implementation is mainly used as underlying buckets for other map
+structures. Thus, other map implementations are easier to use in most cases.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Blob.html">Blob</a><div class="index-item-comment"><p>Module for working with Blobs: immutable sequence of bytes.</p>
+<p>Blobs represent sequences of bytes. They are immutable, iterable, but not indexable and can be empty.</p>
+<p>Byte sequences are also often represented as <code>[Nat8]</code>, i.e. an array of bytes, but this representation is currently much less compact than <code>Blob</code>, taking 4 physical bytes to represent each logical byte in the sequence.
+If you would like to manipulate Blobs, it is recommended that you convert
+Blobs to <code>[var Nat8]</code> or <code>Buffer&lt;Nat8&gt;</code>, do the manipulation, then convert back.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Blob &quot;mo:base/Blob&quot;;</code></pre>
+
+<p>Some built in features not listed in this module:</p>
+<ul><li>You can create a <code>Blob</code> literal from a <code>Text</code> literal, provided the context expects an expression of type <code>Blob</code>.</li><li><code>b.size() : Nat</code> returns the number of bytes in the blob <code>b</code>;</li><li><code>b.vals() : Iter.Iter&lt;Nat8&gt;</code> returns an iterator to enumerate the bytes of the blob <code>b</code>.</li></ul>
+
+<p>For example:</p>
+<pre><code>motoko include=import
+import Debug &quot;mo:base/Debug&quot;;
+import Nat8 &quot;mo:base/Nat8&quot;;
+
+let blob = &quot;\00\00\00\ff&quot; : Blob; // blob literals, where each byte is delimited by a back-slash and represented in hex
+let blob2 = &quot;charsもあり&quot; : Blob; // you can also use characters in the literals
+let numBytes = blob.size(); // =&gt; 4 (returns the number of bytes in the Blob)
+for (byte : Nat8 in blob.vals()) { // iterator over the Blob
+  Debug.print(Nat8.toText(byte))
+}</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Bool.html">Bool</a><div class="index-item-comment"><p>Boolean type and operations.</p>
+<p>While boolean operators <code>_ and _</code> and <code>_ or _</code> are short-circuiting,
+avoiding computation of the right argument when possible, the functions
+<code>logand(_, _)</code> and <code>logor(_, _)</code> are <em>strict</em> and will always evaluate <em>both</em>
+of their arguments.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Buffer.html">Buffer</a><div class="index-item-comment"><p>Class <code>Buffer&lt;X&gt;</code> provides a mutable list of elements of type <code>X</code>.
+The class wraps and resizes an underyling array that holds the elements,
+and thus is comparable to ArrayLists or Vectors in other languages.</p>
+<p>When required, the current state of a buffer object can be converted to a fixed-size array of its elements.
+This is recommended for example when storing a buffer to a stable variable.</p>
+<p>Throughout this documentation, two terms come up that can be confused: <code>size</code>
+and <code>capacity</code>. <code>size</code> is the length of the list that the buffer represents.
+<code>capacity</code> is the length of the underyling array that backs this list.
+<code>capacity</code> &gt;= <code>size</code> is an invariant for this class.</p>
+<p>Like arrays, elements in the buffer are ordered by indices from 0 to <code>size</code>-1.</p>
+<p>WARNING: Certain operations are amortized O(1) time, such as <code>add</code>, but run
+in worst case O(n) time. These worst case runtimes may exceed the cycles limit
+per message if the size of the buffer is large enough. Grow these structures
+with discretion. All amortized operations below also list the worst case runtime.</p>
+<p>Constructor:
+The argument <code>initCapacity</code> determines the initial capacity of the array.
+The underlying array grows by a factor of 1.5 when its current capacity is
+exceeded. Further, when the size of the buffer shrinks to be less than 1/4th
+of the capacity, the underyling array is shrunk by a factor of 2.</p>
+<p>Example:</p>
+<pre><code>motoko name=initialize
+import Buffer &quot;mo:base/Buffer&quot;;
+
+let buffer = Buffer.Buffer&lt;Nat&gt;(3); // Creates a new Buffer</code></pre>
+
+<p>Runtime: O(initCapacity)</p>
+<p>Space: O(initCapacity)</p>
+</div></li><li class="index-item"><a class="index-item-link" href="CertifiedData.html">CertifiedData</a><div class="index-item-comment"><p>Certified data.</p>
+<p>The Internet Computer allows canister smart contracts to store a small amount of data during
+update method processing so that during query call processing, the canister can obtain
+a certificate about that data.</p>
+<p>This module provides a <em>low-level</em> interface to this API, aimed at advanced
+users and library implementors. See the Internet Computer Functional
+Specification and corresponding documentation for how to use this to make query
+calls to your canister tamperproof.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Char.html">Char</a><div class="index-item-comment"><p>Characters</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Debug.html">Debug</a><div class="index-item-comment"><p>Utility functions for debugging.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Debug &quot;mo:base/Debug&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Deque.html">Deque</a><div class="index-item-comment"><p>Double-ended queue (deque) of a generic element type <code>T</code>.</p>
+<p>The interface to deques is purely functional, not imperative, and deques are immutable values.
+In particular, deque operations such as push and pop do not update their input deque but,  instead, return the
+value of the modified deque, alongside any other data.
+The input deque is left unchanged.</p>
+<p>Examples of use-cases:
+Queue (FIFO) by using <code>pushBack()</code> and <code>popFront()</code>.
+Stack (LIFO) by using <code>pushFront()</code> and <code>popFront()</code>.</p>
+<p>A deque is internally implemented as two lists, a head access list and a (reversed) tail access list,
+that are dynamically size-balanced by splitting.</p>
+<p>Construction: Create a new deque with the <code>empty&lt;T&gt;()</code> function.</p>
+<p>Note on the costs of push and pop functions:</p>
+<ul><li>Runtime: <code>O(1) amortized costs, </code>O(n)` worst case cost per single call.</li><li>Space: <code>O(1) amortized costs, </code>O(n)` worst case cost per single call.</li></ul>
+
+<p><code>n</code> denotes the number of elements stored in the deque.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Error.html">Error</a><div class="index-item-comment"><p>Error values and inspection.</p>
+<p>The <code>Error</code> type is the argument to <code>throw</code>, parameter of <code>catch</code>.
+The <code>Error</code> type is opaque.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="ExperimentalCycles.html">ExperimentalCycles</a><div class="index-item-comment"><p>Managing cycles within actors on the Internet Computer (IC).</p>
+<p>The usage of the Internet Computer is measured, and paid for, in <em>cycles</em>.
+This library provides imperative operations for observing cycles, transferring cycles, and
+observing refunds of cycles.</p>
+<p><strong>WARNING:</strong> This low-level API is <strong>experimental</strong> and likely to change or even disappear.
+Dedicated syntactic support for manipulating cycles may be added to the language in future, obsoleting this library.</p>
+<p><strong>NOTE:</strong> Since cycles measure computational resources, the value of  <code>balance()</code> can change from one call to the next.</p>
+<p>Example for use on IC:</p>
+<pre><code>motoko no-repl
+import Cycles &quot;mo:base/ExperimentalCycles&quot;;
+import Debug &quot;mo:base/Debug&quot;;
+
+actor {
+  public func main() : async() {
+    Debug.print(&quot;Main balance: &quot; # debug_show(Cycles.balance()));
+    Cycles.add&lt;system&gt;(15_000_000);
+    await operation(); // accepts 10_000_000 cycles
+    Debug.print(&quot;Main refunded: &quot; # debug_show(Cycles.refunded())); // 5_000_000
+    Debug.print(&quot;Main balance: &quot; # debug_show(Cycles.balance())); // decreased by around 10_000_000
+  };
+
+  func operation() : async() {
+    Debug.print(&quot;Operation balance: &quot; # debug_show(Cycles.balance()));
+    Debug.print(&quot;Operation available: &quot; # debug_show(Cycles.available()));
+    let obtained = Cycles.accept&lt;system&gt;(10_000_000);
+    Debug.print(&quot;Operation obtained: &quot; # debug_show(obtained)); // =&gt; 10_000_000
+    Debug.print(&quot;Operation balance: &quot; # debug_show(Cycles.balance())); // increased by 10_000_000
+    Debug.print(&quot;Operation available: &quot; # debug_show(Cycles.available())); // decreased by 10_000_000
+  }
+}</code></pre></div></li><li class="index-item"><a class="index-item-link" href="ExperimentalInternetComputer.html">ExperimentalInternetComputer</a><div class="index-item-comment"><p>Low-level interface to the Internet Computer.</p>
+<p><strong>WARNING:</strong> This low-level API is <strong>experimental</strong> and likely to change or even disappear.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="ExperimentalStableMemory.html">ExperimentalStableMemory</a><div class="index-item-comment"><p>Byte-level access to (virtual) <em>stable memory</em>.</p>
+<p><strong>WARNING</strong>: As its name suggests, this library is <strong>experimental</strong>, subject to change
+and may be replaced by safer alternatives in later versions of Motoko.
+Use at your own risk and discretion.</p>
+<p><strong>DEPRECATION</strong>: Use of <code>ExperimentalStableMemory</code> library may be deprecated in future.
+Going forward, users should consider using library <code>Region.mo</code> to allocate <em>isolated</em> regions of memory instead.
+Using dedicated regions for different user applications ensures that writing
+to one region will not affect the state of another, unrelated region.</p>
+<p>This is a lightweight abstraction over IC <em>stable memory</em> and supports persisting
+raw binary data across Motoko upgrades.
+Use of this module is fully compatible with Motoko's use of
+<em>stable variables</em>, whose persistence mechanism also uses (real) IC stable memory internally, but does not interfere with this API.</p>
+<p>Memory is allocated, using <code>grow(pages)</code>, sequentially and on demand, in units of 64KiB pages, starting with 0 allocated pages.
+New pages are zero initialized.
+Growth is capped by a soft limit on page count controlled by compile-time flag
+<code>--max-stable-pages &lt;n&gt;</code> (the default is 65536, or 4GiB).</p>
+<p>Each <code>load</code> operation loads from byte address <code>offset</code> in little-endian
+format using the natural bit-width of the type in question.
+The operation traps if attempting to read beyond the current stable memory size.</p>
+<p>Each <code>store</code> operation stores to byte address <code>offset</code> in little-endian format using the natural bit-width of the type in question.
+The operation traps if attempting to write beyond the current stable memory size.</p>
+<p>Text values can be handled by using <code>Text.decodeUtf8</code> and <code>Text.encodeUtf8</code>, in conjunction with <code>loadBlob</code> and <code>storeBlob</code>.</p>
+<p>The current page allocation and page contents is preserved across upgrades.</p>
+<p>NB: The IC's actual stable memory size (<code>ic0.stable_size</code>) may exceed the
+page size reported by Motoko function <code>size()</code>.
+This (and the cap on growth) are to accommodate Motoko's stable variables.
+Applications that plan to use Motoko stable variables sparingly or not at all can
+increase <code>--max-stable-pages</code> as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 64Gib).
+All applications should reserve at least one page for stable variable data, even when no stable variables are used.</p>
+<p>Usage:</p>
+<pre><code>motoko no-repl
+import StableMemory &quot;mo:base/ExperimentalStableMemory&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Float.html">Float</a><div class="index-item-comment"><p>Double precision (64-bit) floating-point numbers in IEEE 754 representation.</p>
+<p>This module contains common floating-point constants and utility functions.</p>
+<p>Notation for special values in the documentation below:
+<code>+inf</code>: Positive infinity
+<code>-inf</code>: Negative infinity
+<code>NaN</code>: &quot;not a number&quot; (can have different sign bit values, but <code>NaN != NaN</code> regardless of the sign).</p>
+<p>Note:
+Floating point numbers have limited precision and operations may inherently result in numerical errors.</p>
+<p>Examples of numerical errors:</p>
+<pre class="motoko"><code class="motoko">  0.1 + 0.1 + 0.1 == 0.3 // =&gt; false
+  </code></pre>
+
+<pre class="motoko"><code class="motoko"> 1e16 + 1.0 != 1e16 // =&gt; false
+  </code></pre>
+
+<p> (and many more cases)</p>
+<p>Advice:</p>
+<ul><li>Floating point number comparisons by <code>==</code> or <code>!=</code> are discouraged. Instead, it is better to compare
+ floating-point numbers with a numerical tolerance, called epsilon.</li></ul>
+
+<p> Example:</p>
+<pre class="motoko"><code class="motoko">  import Float &quot;mo:base/Float&quot;;
+  let x = 0.1 + 0.1 + 0.1;
+  let y = 0.3;
+
+  let epsilon = 1e-6; // This depends on the application case (needs a numerical error analysis).
+  Float.equalWithin(x, y, epsilon) // =&gt; true
+  </code></pre>
+
+<ul><li>For absolute precision, it is recommened to encode the fraction number as a pair of a Nat for the base
+ and a Nat for the exponent (decimal point).</li></ul>
+
+<p>NaN sign:</p>
+<ul><li>The NaN sign is only applied by <code>abs</code>, <code>neg</code>, and <code>copySign</code>. Other operations can have an arbitrary
+ sign bit for NaN results.</li></ul></div></li><li class="index-item"><a class="index-item-link" href="Func.html">Func</a><div class="index-item-comment"><p>Functions on functions, creating functions from simpler inputs.</p>
+<p>(Most commonly used when programming in functional style using higher-order
+functions.)</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Hash.html">Hash</a><div class="index-item-comment"><p>Hash values</p>
+</div></li><li class="index-item"><a class="index-item-link" href="HashMap.html">HashMap</a><div class="index-item-comment"><p>Class <code>HashMap&lt;K, V&gt;</code> provides a hashmap from keys of type <code>K</code> to values of type <code>V</code>.
+The class is parameterized by the key's equality and hash functions,
+and an initial capacity.  However, the underlying allocation happens only when
+the first key-value entry is inserted.</p>
+<p>Internally, the map is represented as an array of <code>AssocList</code> (buckets).
+The growth policy of the underyling array is very simple, for now: double
+the current capacity when the expected bucket list size grows beyond a
+certain constant.</p>
+<p>WARNING: Certain operations are amortized O(1) time, such as <code>put</code>, but run
+in worst case O(size) time. These worst case runtimes may exceed the cycles limit
+per message if the size of the map is large enough. Further, this runtime analysis
+assumes that the hash functions uniformly maps keys over the hash space. Grow these structures
+with discretion, and with good hash functions. All amortized operations
+below also list the worst case runtime.</p>
+<p>For maps without amortization, see <code>TrieMap</code>.</p>
+<p>Note on the constructor:
+The argument <code>initCapacity</code> determines the initial number of buckets in the
+underyling array. Also, the runtime and space anlyses in this documentation
+assumes that the equality and hash functions for keys used to construct the
+map run in O(1) time and space.</p>
+<p>Example:</p>
+<pre><code>motoko name=initialize
+import HashMap &quot;mo:base/HashMap&quot;;
+import Text &quot;mo:base/Text&quot;;
+
+let map = HashMap.HashMap&lt;Text, Nat&gt;(5, Text.equal, Text.hash);</code></pre>
+
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Heap.html">Heap</a><div class="index-item-comment"><p>Class <code>Heap&lt;X&gt;</code> provides a priority queue of elements of type <code>X</code>.</p>
+<p>The class wraps a purely-functional implementation based on a leftist heap.</p>
+<p>Note on the constructor:
+The constructor takes in a comparison function <code>compare</code> that defines the
+ordering between elements of type <code>X</code>. Most primitive types have a default
+version of this comparison function defined in their modules (e.g. <code>Nat.compare</code>).
+The runtime analysis in this documentation assumes that the <code>compare</code> function
+runs in <code>O(1)</code> time and space.</p>
+<p>Example:</p>
+<pre><code>motoko name=initialize
+import Heap &quot;mo:base/Heap&quot;;
+import Text &quot;mo:base/Text&quot;;
+
+let heap = Heap.Heap&lt;Text&gt;(Text.compare);</code></pre>
+
+<p>Runtime: <code>O(1)</code></p>
+<p>Space: <code>O(1)</code></p>
+</div></li><li class="index-item"><a class="index-item-link" href="Int.html">Int</a><div class="index-item-comment"><p>Signed integer numbers with infinite precision (also called big integers).</p>
+<p>Most operations on integer numbers (e.g. addition) are available as built-in operators (e.g. <code>-1 + 1</code>).
+This module provides equivalent functions and <code>Text</code> conversion.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Int &quot;mo:base/Int&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Int16.html">Int16</a><div class="index-item-comment"><p>Provides utility functions on 16-bit signed integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Int16 &quot;mo:base/Int16&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Int32.html">Int32</a><div class="index-item-comment"><p>Provides utility functions on 32-bit signed integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Int32 &quot;mo:base/Int32&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Int64.html">Int64</a><div class="index-item-comment"><p>Provides utility functions on 64-bit signed integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Int64 &quot;mo:base/Int64&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Int8.html">Int8</a><div class="index-item-comment"><p>Provides utility functions on 8-bit signed integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Int8 &quot;mo:base/Int8&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Iter.html">Iter</a><div class="index-item-comment"><p>Iterators</p>
+</div></li><li class="index-item"><a class="index-item-link" href="IterType.html">IterType</a><div class="index-item-comment"><p>The Iterator type</p>
+</div></li><li class="index-item"><a class="index-item-link" href="List.html">List</a><div class="index-item-comment"><p>Purely-functional, singly-linked lists.
+A list of type <code>List&lt;T&gt;</code> is either <code>null</code> or an optional pair of a value of type <code>T</code> and a tail, itself of type <code>List&lt;T&gt;</code>.</p>
+<p>To use this library, import it using:</p>
+<pre><code>motoko name=initialize
+import List &quot;mo:base/List&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Nat.html">Nat</a><div class="index-item-comment"><p>Natural numbers with infinite precision.</p>
+<p>Most operations on natural numbers (e.g. addition) are available as built-in operators (e.g. <code>1 + 1</code>).
+This module provides equivalent functions and <code>Text</code> conversion.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Nat &quot;mo:base/Nat&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Nat16.html">Nat16</a><div class="index-item-comment"><p>Provides utility functions on 16-bit unsigned integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Nat16 &quot;mo:base/Nat16&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Nat32.html">Nat32</a><div class="index-item-comment"><p>Provides utility functions on 32-bit unsigned integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Nat32 &quot;mo:base/Nat32&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Nat64.html">Nat64</a><div class="index-item-comment"><p>Provides utility functions on 64-bit unsigned integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Nat64 &quot;mo:base/Nat64&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Nat8.html">Nat8</a><div class="index-item-comment"><p>Provides utility functions on 8-bit unsigned integers.</p>
+<p>Note that most operations are available as built-in operators (e.g. <code>1 + 1</code>).</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Nat8 &quot;mo:base/Nat8&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="None.html">None</a><div class="index-item-comment"><p>The absent value</p>
+<p>The <code>None</code> type represents a type with <em>no</em> value.</p>
+<p>It is often used to type code that fails to return control (e.g. an infinite loop)
+or to designate impossible values (e.g. the type <code>?None</code> only contains <code>null</code>).</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Option.html">Option</a><div class="index-item-comment"><p>Typesafe nulls</p>
+<p>Optional values can be seen as a typesafe <code>null</code>. A value of type <code>?Int</code> can
+be constructed with either <code>null</code> or <code>?42</code>. The simplest way to get at the
+contents of an optional is to use pattern matching:</p>
+<pre class="motoko"><code class="motoko">let optionalInt1 : ?Int = ?42;
+let optionalInt2 : ?Int = null;
+
+let int1orZero : Int = switch optionalInt1 {
+  case null 0;
+  case (?int) int;
+};
+assert int1orZero == 42;
+
+let int2orZero : Int = switch optionalInt2 {
+  case null 0;
+  case (?int) int;
+};
+assert int2orZero == 0;</code></pre>
+
+<p>The functions in this module capture some common operations when working
+with optionals that can be more succinct than using pattern matching.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Order.html">Order</a><div class="index-item-comment"><p>Order</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Prelude.html">Prelude</a><div class="index-item-comment"><p>General utilities</p>
+<p>This prelude file proposes standard library features that <em>may</em>
+belong in the <em>language</em> (compiler-internal) prelude sometime, after
+some further experience and discussion.  Until then, they live here.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Principal.html">Principal</a><div class="index-item-comment"><p>Module for interacting with Principals (users and canisters).</p>
+<p>Principals are used to identify entities that can interact with the Internet
+Computer. These entities are either users or canisters.</p>
+<p>Example textual representation of Principals:</p>
+<p><code>un4fu-tqaaa-aaaab-qadjq-cai</code></p>
+<p>In Motoko, there is a primitive Principal type called <code>Principal</code>. As an example
+of where you might see Principals, you can access the Principal of the
+caller of your shared function.</p>
+<pre><code>motoko no-repl
+shared(msg) func foo() {
+  let caller : Principal = msg.caller;
+};</code></pre>
+
+<p>Then, you can use this module to work with the <code>Principal</code>.</p>
+<p>Import from the base library to use this module.</p>
+<pre><code>motoko name=import
+import Principal &quot;mo:base/Principal&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="RBTree.html">RBTree</a><div class="index-item-comment"><p>Key-value map implemented as a red-black tree (RBTree) with nodes storing key-value pairs.</p>
+<p>A red-black tree is a balanced binary search tree ordered by the keys.</p>
+<p>The tree data structure internally colors each of its nodes either red or black,
+and uses this information to balance the tree during the modifying operations.</p>
+<p>Creation:
+Instantiate class <code>RBTree&lt;K, V&gt;</code> that provides a map from keys of type <code>K</code> to values of type <code>V</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code class="motoko">import RBTree &quot;mo:base/RBTree&quot;;
+import Nat &quot;mo:base/Nat&quot;;
+import Debug &quot;mo:base/Debug&quot;;
+
+let tree = RBTree.RBTree&lt;Nat, Text&gt;(Nat.compare); // Create a new red-black tree mapping Nat to Text
+tree.put(1, &quot;one&quot;);
+tree.put(2, &quot;two&quot;);
+tree.put(3, &quot;tree&quot;);
+for (entry in tree.entries()) {
+  Debug.print(&quot;Entry key=&quot; # debug_show(entry.0) # &quot; value=\&quot;&quot; # entry.1 #&quot;\&quot;&quot;);
+}</code></pre>
+
+<p>Performance:</p>
+<ul><li>Runtime: <code>O(log(n))</code> worst case cost per insertion, removal, and retrieval operation.</li><li>Space: <code>O(n)</code> for storing the entire tree.
+<code>n</code> denotes the number of key-value entries (i.e. nodes) stored in the tree.</li></ul>
+
+<p>Note:</p>
+<ul><li>Tree operations, such as retrieval, insertion, and removal create <code>O(log(n))</code> temporary objects that become garbage.</li></ul>
+
+<p>Credits:</p>
+<p>The core of this implementation is derived from:</p>
+<ul><li>Ken Friis Larsen's <a href="https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml">RedBlackMap.sml</a>, which itself is based on:</li><li>Stefan Kahrs, &quot;Red-black trees with types&quot;, Journal of Functional Programming, 11(4): 425-432 (2001), <a href="http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html">version 1 in web appendix</a>.</li></ul></div></li><li class="index-item"><a class="index-item-link" href="Random.html">Random</a><div class="index-item-comment"><p>A module for obtaining randomness on the Internet Computer (IC).</p>
+<p>This module provides the fundamentals for user abstractions to build on.</p>
+<p>Dealing with randomness on a deterministic computing platform, such
+as the IC, is intricate. Some basic rules need to be followed by the
+user of this module to obtain (and maintain) the benefits of crypto-
+graphic randomness:</p>
+<ul><li>cryptographic entropy (randomness source) is only obtainable
+ asyncronously in discrete chunks of 256 bits (32-byte sized <code>Blob</code>s)</li><li>all bets must be closed <em>before</em> entropy is being asked for in
+ order to decide them</li><li>this implies that the same entropy (i.e. <code>Blob</code>) - or surplus entropy
+ not utilised yet - cannot be used for a new round of bets without
+ losing the cryptographic guarantees.</li></ul>
+
+<p>Concretely, the below class <code>Finite</code>, as well as the
+<code>*From</code> methods risk the carrying-over of state from previous rounds.
+These are provided for performance (and convenience) reasons, and need
+special care when used. Similar caveats apply for user-defined (pseudo)
+random number generators.</p>
+<p>Usage:</p>
+<pre><code>motoko no-repl
+import Random &quot;mo:base/Random&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Region.html">Region</a><div class="index-item-comment"><p>Byte-level access to isolated, (virtual) stable memory <em>regions</em>.</p>
+<p>This is a moderately lightweight abstraction over IC <em>stable memory</em> and supports persisting
+regions of binary data across Motoko upgrades.
+Use of this module is fully compatible with Motoko's use of
+<em>stable variables</em>, whose persistence mechanism also uses (real) IC stable memory internally, but does not interfere with this API.
+It is also fully compatible with existing uses of the <code>ExperimentalStableMemory</code> library, which has a similar interface, but,
+only supported a single memory region, without isolation between different applications.</p>
+<p>The <code>Region</code> type is stable and can be used in stable data structures.</p>
+<p>A new, empty <code>Region</code> is allocated using function <code>new()</code>.</p>
+<p>Regions are stateful objects and can be distinguished by the numeric identifier returned by function <code>id(region)</code>.
+Every region owns an initially empty, but growable sequence of virtual IC stable memory pages. 
+The current size, in pages, of a region is returned by function <code>size(region)</code>.
+The size of a region determines the range, [ 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of <code>load</code>/<code>store</code> operations on the region.</p>
+<p>Memory is allocated to a region, using function <code>grow(region, pages)</code>, sequentially and on demand, in units of 64KiB logical pages, starting with 0 allocated pages.
+A call to <code>grow</code> may succeed, returning the previous size of the region, or fail, returning a sentinel value. New pages are zero initialized.</p>
+<p>A size of a region can only grow and never shrink.
+In addition, the stable memory pages allocated to a region will <em>not</em> be reclaimed by garbage collection, even
+if the region object itself becomes unreachable.</p>
+<p>Growth is capped by a soft limit on physical page count controlled by compile-time flag
+<code>--max-stable-pages &lt;n&gt;</code> (the default is 65536, or 4GiB).</p>
+<p>Each <code>load</code> operation loads from region relative byte address <code>offset</code> in little-endian
+format using the natural bit-width of the type in question.
+The operation traps if attempting to read beyond the current region size.</p>
+<p>Each <code>store</code> operation stores to region relative byte address <code>offset</code> in little-endian format using the natural bit-width of the type in question.
+The operation traps if attempting to write beyond the current region size.</p>
+<p>Text values can be handled by using <code>Text.decodeUtf8</code> and <code>Text.encodeUtf8</code>, in conjunction with <code>loadBlob</code> and <code>storeBlob</code>.</p>
+<p>The current region allocation and region contents are preserved across upgrades.</p>
+<p>NB: The IC's actual stable memory size (<code>ic0.stable_size</code>) may exceed the
+total page size reported by summing all regions sizes.
+This (and the cap on growth) are to accommodate Motoko's stable variables and bookkeeping for regions.
+Applications that plan to use Motoko stable variables sparingly or not at all can
+increase <code>--max-stable-pages</code> as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 64Gib).
+All applications should reserve at least one page for stable variable data, even when no stable variables are used.</p>
+<p>Usage:</p>
+<pre><code>motoko no-repl
+import Region &quot;mo:base/Region&quot;;</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Result.html">Result</a><div class="index-item-comment"><p>Error handling with the Result type.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Stack.html">Stack</a><div class="index-item-comment"><p>Class <code>Stack&lt;X&gt;</code> provides a Minimal LIFO stack of elements of type <code>X</code>.</p>
+<p>See library <code>Deque</code> for mixed LIFO/FIFO behavior.</p>
+<p>Example:</p>
+<pre><code>motoko name=initialize
+import Stack &quot;mo:base/Stack&quot;;
+
+let stack = Stack.Stack&lt;Nat&gt;(); // create a stack</code></pre><p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Text.html">Text</a><div class="index-item-comment"><p>Utility functions for <code>Text</code> values.</p>
+<p>A <code>Text</code> value represents human-readable text as a sequence of characters of type <code>Char</code>.</p>
+<pre class="motoko"><code class="motoko">let text = &quot;Hello!&quot;;
+let size = text.size(); // 6
+let iter = text.chars(); // iterator ('H', 'e', 'l', 'l', 'o', '!')
+let concat = text # &quot; 👋&quot;; // &quot;Hello! 👋&quot;</code></pre>
+
+<p>The <code>&quot;mo:base/Text&quot;</code> module defines additional operations on <code>Text</code> values.</p>
+<p>Import the module from the base library:</p>
+<pre><code>motoko name=import
+import Text &quot;mo:base/Text&quot;;</code></pre>
+
+<p>Note: <code>Text</code> values are represented as ropes of UTF-8 character sequences with O(1) concatenation.</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Time.html">Time</a><div class="index-item-comment"><p>System time</p>
+</div></li><li class="index-item"><a class="index-item-link" href="Timer.html">Timer</a><div class="index-item-comment"><p>Timers for one-off or periodic tasks.</p>
+<p>Note: If <code>moc</code> is invoked with <code>-no-timer</code>, the importing will fail.
+Note: The resolution of the timers is in the order of the block rate,</p>
+<pre><code>  so durations should be chosen well above that. For frequent
+  canister wake-ups the heatbeat mechanism should be considered.</code></pre></div></li><li class="index-item"><a class="index-item-link" href="Trie.html">Trie</a><div class="index-item-comment"><p>Functional key-value hash maps.</p>
+<p>This module provides an applicative (functional) hash map, called a trie.
+Notably, each operation produces a new trie rather than destructively updating an existing trie.</p>
+<p>Those looking for a more familiar (imperative,
+object-oriented) hash map should consider <code>TrieMap</code> or <code>HashMap</code> instead.</p>
+<p>The basic <code>Trie</code> operations consist of:</p>
+<ul><li><code>put</code> - put a key-value into the trie, producing a new version.</li><li><code>get</code> - get a key's value from the trie, or <code>null</code> if none.</li><li><code>remove</code> - remove a key's value from the trie</li><li><code>iter</code> - visit every key-value in the trie.</li></ul>
+
+<p>The <code>put</code>, <code>get</code> and <code>remove</code> operations work over <code>Key</code> records,
+which group the hash of the key with its non-hash key value.</p>
+<p>LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via <code>put</code> or indirectly via other operations) with the same hash value will trap.</p>
+<p>CREDITS: Based on Section 6 of <a href="https://dl.acm.org/citation.cfm?id=75305">&quot;Incremental computation via function caching&quot;, Pugh &amp; Teitelbaum</a>.</p>
+<p>Example:</p>
+<pre class="motoko"><code class="motoko">import Trie &quot;mo:base/Trie&quot;;
+import Text &quot;mo:base/Text&quot;;
+
+// we do this to have shorter type names and thus
+// better readibility
+type Trie&lt;K, V&gt; = Trie.Trie&lt;K, V&gt;;
+type Key&lt;K&gt; = Trie.Key&lt;K&gt;;
+
+// we have to provide `put`, `get` and `remove` with
+// a record of type `Key&lt;K&gt; = { hash : Hash.Hash; key : K }`;
+// thus we define the following function that takes a value of type `K`
+// (in this case `Text`) and returns a `Key&lt;K&gt;` record.
+func key(t: Text) : Key&lt;Text&gt; { { hash = Text.hash t; key = t } };
+
+// we start off by creating an empty `Trie`
+let t0 : Trie&lt;Text, Nat&gt; = Trie.empty();
+
+// `put` requires 4 arguments:
+// - the trie we want to insert the value into,
+// - the key of the value we want to insert (note that we use the `key` function defined above),
+// - a function that checks for equality of keys, and
+// - the value we want to insert.
+//
+// When inserting a value, `put` returns a tuple of type `(Trie&lt;K, V&gt;, ?V)`.
+// to get the new trie that contains the value,  we use the `0` projection
+// and assign it to `t1` and `t2` respectively.
+let t1 : Trie&lt;Text, Nat&gt; = Trie.put(t0, key &quot;hello&quot;, Text.equal, 42).0;
+let t2 : Trie&lt;Text, Nat&gt; = Trie.put(t1, key &quot;world&quot;, Text.equal, 24).0;
+
+// If for a given key there already was a value in the trie, `put` returns
+// that previous value as the second element of the tuple.
+// in our case we have already inserted the value 42 for the key &quot;hello&quot;, so
+// `put` returns 42 as the second element of the tuple.
+let (t3, n) : (Trie&lt;Text, Nat&gt;, ?Nat) = Trie.put(
+  t2,
+  key &quot;hello&quot;,
+  Text.equal,
+  0,
+);
+assert (n == ?42);
+
+// `get` requires 3 arguments:
+// - the trie we want to get the value from
+// - the key of the value we want to get (note that we use the `key` function defined above)
+// - a function that checks for equality of keys
+//
+// If the given key is nonexistent in the trie, `get` returns `null`.
+var value = Trie.get(t3, key &quot;hello&quot;, Text.equal); // Returns `?42`
+assert(value == ?0);
+value := Trie.get(t3, key &quot;universe&quot;, Text.equal); // Returns `null`
+assert(value == null);
+
+// `remove` requires 3 arguments:
+// - the trie we want to remove the value from,
+// - the key of the value we want to remove (note that we use the `key` function defined above), and
+// - a function that checks for equality of keys.
+//
+// In the case of keys of type `Text`, we can use `Text.equal`
+// to check for equality of keys. Function `remove` returns a tuple of type `(Trie&lt;K, V&gt;, ?V)`.
+// where the second element of the tuple is the value that was removed, or `null` if
+// there was no value for the given key.
+let removedValue : ?Nat = Trie.remove(
+  t3,
+  key &quot;hello&quot;,
+  Text.equal,
+).1;
+assert (removedValue == ?0);
+
+// To iterate over the Trie, we use the `iter` function that takes a trie
+// of type `Trie&lt;K,V&gt;` and returns an iterator of type `Iter&lt;(K,V)&gt;`:
+var sum : Nat = 0;
+for (kv in Trie.iter(t3)) {
+  sum += kv.1;
+};
+assert(sum == 24);</code></pre></div></li><li class="index-item"><a class="index-item-link" href="TrieMap.html">TrieMap</a><div class="index-item-comment"><p>Class <code>TrieMap&lt;K, V&gt;</code> provides a map from keys of type <code>K</code> to values of type <code>V</code>.
+The class wraps and manipulates an underyling hash trie, found in the <code>Trie</code>
+module. The trie is a binary tree in which the position of elements in the
+tree are determined using the hash of the elements.</p>
+<p>LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via <code>put</code> or indirectly via other operations) with the same hash value will trap.
+This limitation is inherited from the underlying <code>Trie</code> data structure.</p>
+<p>Note: The <code>class</code> <code>TrieMap</code> exposes the same interface as <code>HashMap</code>.</p>
+<p>Creating a map:
+The equality function is used to compare keys, and the hash function is used
+to hash keys. See the example below.</p>
+<pre><code>motoko name=initialize
+import TrieMap &quot;mo:base/TrieMap&quot;;
+import Nat &quot;mo:base/Nat&quot;;
+import Hash &quot;mo:base/Hash&quot;;
+import Iter &quot;mo:base/Iter&quot;;
+
+let map = TrieMap.TrieMap&lt;Nat, Nat&gt;(Nat.equal, Hash.hash)</code></pre></div></li><li class="index-item"><a class="index-item-link" href="TrieSet.html">TrieSet</a><div class="index-item-comment"><p>Functional set</p>
+<p>Sets are partial maps from element type to unit type,
+i.e., the partial map represents the set with its domain.</p>
+<p>LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE elements (whether directly via <code>put</code> or indirectly via other operations) with the same hash value will trap.
+This limitation is inherited from the underlying <code>Trie</code> data structure.</p>
+</div></li></ul></div></html>

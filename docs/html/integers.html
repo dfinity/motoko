@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/integers.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/integers.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#integers-and-numbers"
+id="toc-integers-and-numbers">Integers and numbers</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#using-integers" id="toc-using-integers">Using
+integers</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="integers-and-numbers">Integers and numbers</h1>
+<h2 id="overview">Overview</h2>
+<p>Motoko offers a variety types to represent integers and natural
+numbers, with the usual suite of arithmetic operators (<code>+</code>,
+<code>-</code>, <code>*</code>, '/' etc.) and comparison operators
+(<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>,
+<code>&lt;=</code>, <code>&gt;=</code>).</p>
+<p>The types <a href="../base/Int.md"><code>Int</code></a> and <a
+href="../base/Nat.md"><code>Nat</code></a> are unbounded, meaning their
+values can grow to arbitrary size, limited only by memory.</p>
+<p>The type <a href="../base/Nat.md"><code>Nat</code></a> is a subtype
+of <a href="../base/Int.md"><code>Int</code></a>, so you can always
+supply a value of type <a href="../base/Nat.md"><code>Nat</code></a>
+where and <a href="../base/Int.md"><code>Int</code></a> is expected but
+not vice versa.</p>
+<p>Motoko also provides bounded, or fixed-size integers and naturals,
+using a suffix to indicate the size of the type, in bits.</p>
+<p>Thus <a href="../base/Int8.md"><code>Int8</code></a>, <a
+href="../base/Int16.md"><code>Int16</code></a> and <a
+href="../base/Int32.md"><code>Int32</code></a> and <a
+href="../base/Int64.md"><code>Int64</code></a> are 8-, 16-, 32- and
+64-bit integer types, while <a
+href="../base/Nat8.md"><code>Nat8</code></a>, <a
+href="../base/Nat16.md"><code>Nat16</code></a>, <a
+href="../base/Nat32.md"><code>Nat32</code></a>, and <a
+href="../base/Nat64.md"><code>Nat64</code></a> are 8-, 16-, 32- and
+64-bit natural types.</p>
+<p>An arithmetic operation on a value of a fixed-size type will trap if
+its result exceeds the bounds of the fixed-size type, either due to
+overflow or underflow. For example, <code>255 : Nat8 + 3</code> traps,
+because 258 is too large for a <a
+href="../base/Nat8.md"><code>Nat8</code></a>.</p>
+<p>Wrapping, non-trapping, versions of the usual arithmetic operations,
+performing modular arithmetic, are available by suffixing the usual
+operator with a <code>%</code>. For example,
+<code>255 : Nat8 +% 3</code> evaluates to <code>2</code>.</p>
+<p>The type of an integer or natural constant is determined by the
+textual context of the constant, defaulting to <a
+href="../base/Int.md"><code>Int</code></a> for negative constants and <a
+href="../base/Nat.md"><code>Nat</code></a> for positive ones. Otherwise,
+the type of a constant can be indicated using a type annotation, for
+example <code>0 : Nat8</code>.</p>
+<p>One can force a nonnegative constant to be interpreted as an <a
+href="../base/Int.md"><code>Int</code></a> using an explicit sign, for
+example <code>+1</code> is the <a
+href="../base/Int.md"><code>Int</code></a> one.</p>
+<p>For convenience, in-place updates of a variable or array element can
+be written by using a compound assignment operator, combining an
+arithmetic operation with the assignment operator <code>:=</code> . E.g.
+<code>x += 1</code> is short-hand for <code>x := x + 1</code> and
+combines addition <code>+</code> with assignment.</p>
+<p>Motoko does not provide any implicit conversions between numeric
+types. Instead, base library functions like <code>Nat8.toNat</code> and
+<code>Nat8.fromNat</code> should be used for explicit conversion.</p>
+<p>To illustrate working with numbers, here is an example calculator
+program that creates a single actor with several public entry-point
+functions to perform basic arithmetic operations using integers.</p>
+<h2 id="using-integers">Using integers</h2>
+<pre class="motoko"><code>// This single-cell calculator defines one calculator instruction per
+// public entry point (add, sub, mul, div).
+
+// Create a simple Calc actor.
+actor Calc {
+  var cell : Int = 0;
+
+  // Define functions to add, subtract, multiply, and divide
+  public func add(n:Int) : async Int { cell += n; cell };
+  public func sub(n:Int) : async Int { cell -= n; cell };
+  public func mul(n:Int) : async Int { cell *= n; cell };
+  public func div(n:Int) : async ?Int {
+    if ( n == 0 ) {
+      return null // null indicates div-by-zero error
+    } else {
+      cell /= n; ?cell
+    }
+  };
+
+  // Clear the calculator and reset to zero
+  public func clearall() : async Int {
+    if (cell : Int != 0)
+      cell -= cell;
+    return cell
+  };
+ };</code></pre>
+<p>You might notice that this sample code uses integer (<a
+href="../base/Int.md"><code>Int</code></a>) data types, enabling you to
+use positive or negative numbers. If you wanted to restrict the
+functions in this calculator code to only use positive numbers, you
+could change the data type to only allow natural (<a
+href="../base/Nat.md"><code>Nat</code></a>) data.</p>
+<p>This program supports the following function calls:</p>
+<ul>
+<li><p>The <code>add</code> function call accepts input and performs
+addition.</p></li>
+<li><p>The <code>sub</code> function call accepts input and performs
+subtraction.</p></li>
+<li><p>The <code>mul</code> function call accepts input and performs
+multiplication.</p></li>
+<li><p>The <code>div</code> function call accepts input and performs
+division. It also includes code to prevent the program from attempting
+to divide by zero.</p></li>
+<li><p>The <code>clearall</code> function clears the <code>cell</code>
+value stored as the result of previous operations, resetting the
+<code>cell</code> value to zero.</p></li>
+</ul>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
