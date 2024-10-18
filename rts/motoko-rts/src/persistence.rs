@@ -3,8 +3,10 @@
 //! Persistent metadata table, located at 6MB, in the static partition space.
 
 pub mod compatibility;
+pub mod stable_functions;
 
 use motoko_rts_macros::ic_mem_fn;
+use stable_functions::StableFunctionState;
 
 use crate::{
     barriers::write_with_barrier,
@@ -53,6 +55,8 @@ struct PersistentMetadata {
     incremental_gc_state: State,
     /// Upgrade performance statistics: Total number of instructions consumed by the last upgrade.
     upgrade_instructions: u64,
+    /// Support for stable local functions.
+    stable_function_state: StableFunctionState,
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
@@ -226,6 +230,11 @@ pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
 pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions = instructions;
+}
+
+pub(crate) unsafe fn stable_function_state() -> &'static mut StableFunctionState {
+    let metadata = PersistentMetadata::get();
+    &mut (*metadata).stable_function_state
 }
 
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.

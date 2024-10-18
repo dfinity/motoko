@@ -837,7 +837,10 @@ let serializable allow_mut t =
          | Module -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
+      | Func (s, c, tbs, ts1, ts2) -> 
+        !Mo_config.Flags.enhanced_orthogonal_persistence || is_shared_sort s
+        (* TODO: Check that it is a stable local function or shared function *)
+        (* TODO: Specific error message that this is not supported with classical persistence *)
     end
   in go t
 

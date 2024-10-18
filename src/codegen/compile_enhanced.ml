@@ -6727,14 +6727,13 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s);
         add_sleb128 idl_func;
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
         List.iter add_idx ts2;
         begin match s, c with
-          | _, Returns ->
+          | Shared _, Returns ->
             add_leb128 1; add_u8 2; (* oneway *)
           | Shared Write, _ ->
             add_leb128 0; (* no annotation *)
@@ -6742,7 +6741,8 @@ module Serialization = struct
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
-          | _ -> assert false
+          | Local, _ -> (* TODO: Restrict to stable local *)
+            add_leb128 1; add_u8 255; (* stable local *)
         end
       | Obj (Actor, fs) ->
         add_sleb128 idl_service;
