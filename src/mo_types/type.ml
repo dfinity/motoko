@@ -1384,10 +1384,18 @@ let motoko_runtime_information_fld =
     src = empty_src;
   }
 
+let motoko_data_inspection_fld =
+  { lab = "__motoko_inspect_data";
+    (* Write because it can be a stateful incremental data inspection. *)
+    typ = Func(Shared Write, Promises, [scope_bind], [], [Prim Blob]);
+    src = empty_src;
+  }
+
 let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
     motoko_gc_trigger_fld;
+    motoko_data_inspection_fld;
   ]
 
 let decode_msg_typ tfs =
