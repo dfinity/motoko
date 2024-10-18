@@ -17,7 +17,7 @@ type lib_env = V.value V.Env.t
 type lab_env = V.value V.cont V.Env.t
 type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
-type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
+type actor_env = V.def V.Env.t ref (* indexed by actor ids *)
 
 (* The actor heap.
     NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities.
@@ -70,6 +70,8 @@ let env_of_scope flags ae scope =
 
 let context env = V.Blob env.self
 
+let defined f d = f (Lib.Promise.value d)
+
 (* Error handling *)
 
 exception Trap of Source.region * string
@@ -87,7 +89,7 @@ let lookup_actor env at aid id =
   match V.Env.find_opt aid !(env.actor_env) with
   | None -> trap at "Unknown actor \"%s\"" aid
   | Some actor_value ->
-     let fs = V.as_obj actor_value in
+     let fs = defined V.as_obj actor_value in
      match V.Env.find_opt id fs with
      | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
      | Some field_value -> field_value
@@ -907,7 +909,7 @@ and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
      let env'' = adjoin_vals { env' with self } ve_in in
      interpret_dec_fields env'' dec_fields ve_ex
      (fun obj ->
-        (env.actor_env := V.Env.add self obj !(env.actor_env);
+        (env.actor_env := V.Env.add self (Lib.Promise.make_fulfilled obj) !(env.actor_env);
           k self'))
   | _ ->
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
@@ -1047,7 +1049,7 @@ let ensure_management_canister env =
                      Source.no_region
                      (fun k' r ->
                        k' (V.Blob (V.Blob.rand32 ())))
-                     k))))
+                     k))) |> Lib.Promise.make_fulfilled)
         !(env.actor_env)
 
 let interpret_prog flags scope p : (V.value * scope) option =
