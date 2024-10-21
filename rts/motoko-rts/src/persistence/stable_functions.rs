@@ -47,7 +47,7 @@
 //! * Free function ids can be recycled for new stable functions in persistent virtual table.
 //! * Once freed, a new program version is liberated from providing a matching stable function.
 
-use core::{marker::PhantomData, mem::size_of, ptr::null_mut};
+use core::{marker::PhantomData, mem::size_of, ptr::null_mut, str::from_utf8};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -60,7 +60,7 @@ use crate::{
 
 use super::stable_function_state;
 
-// Use `usize` and not `u32` to avoid unwanted padding on Memory64. 
+// Use `usize` and not `u32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
 type FunctionId = usize;
 type WasmTableIndex = usize;
@@ -204,12 +204,10 @@ impl StableFunctionMap {
     }
 }
 
-/// Called on program initialization and on upgrade, both EOP and graph copy.
+/// Called on program initialization and on upgrade, both during EOP and graph copy.
 #[ic_mem_fn]
-pub unsafe fn register_stable_functions<M: Memory>(
-    mem: &mut M,
-    stable_functions: *mut StableFunctionMap,
-) {
+pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_blob: Value) {
+    let stable_functions = stable_functions_blob.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
     prepare_stable_function_map(stable_functions);
@@ -255,7 +253,9 @@ unsafe fn update_existing_functions(
         let name_hash = (*virtual_table_entry).function_name_hash;
         let stable_function_entry = stable_functions.find(name_hash);
         if stable_function_entry == null_mut() {
-            rts_trap_with(format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version"));
+            let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
+            let message = from_utf8(&buffer).unwrap();
+            rts_trap_with(message);
         }
         (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
         (*stable_function_entry).cached_function_id = function_id as FunctionId;

@@ -12,7 +12,7 @@ crate-type = ["staticlib"]
 # This file is used to build the RTS to be linked with moc-generated code, so
 # we enable the "ic" feature. `native/Cargo.toml` doesn't have this feature and
 # is used in RTS tests.
-default = ["ic", "enhanced_orthogonal_persistence"]
+default = ["ic"]
 
 # To enable extensive memory sanity checks in the incremental GC, use the
 # following default configuration instead:
