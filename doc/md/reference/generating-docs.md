@@ -57,7 +57,7 @@ $(dfx cache show)/mo-doc [options]
 
 Doc comments can be used to provide explanations for functions, classes, types, modules, variables, and more. They can span multiple lines and may contain rich Markdown formatting:
 
-```motoko
+```motoko no-repl
 /// Calculate the factorial of a given positive integer.
 /// 
 /// Example:

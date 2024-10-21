@@ -1,9 +1,11 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
-import { errorMessage; debugPrint; } = "mo:⛔";
+//MOC-FLAG -measure-rts-stack
+import { errorMessage; debugPrint; setCandidLimits} = "mo:⛔";
 
 actor {
-    let expectedMinimumSize = 31_000;
-
+    let expectedMinimumSize = 29_000;
+    setCandidLimits<system>{ numerator = 0;
+                             denominator = 1;
+                             bias = 1_000_000 };
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 
@@ -37,9 +39,9 @@ actor {
             done := true
           }
         };
-        
+
         assert(i > expectedMinimumSize);
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 

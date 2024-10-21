@@ -1,3 +1,5 @@
+use motoko_rts_macros::enhanced_orthogonal_persistence;
+
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
@@ -6,6 +8,7 @@ use crate::{
         time::BoundedTime,
         Roots, State,
     },
+    stable_option::StableOption,
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -21,14 +24,14 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
         heap.collect_large_objects();
         heap.plan_updates();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::update_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
         state.partitioned_heap.complete_collection();
     }
 
@@ -51,6 +54,10 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn update_roots(&mut self, roots: Roots) {
         visit_roots(roots, self.heap.base_address(), self, |gc, field| {
             let value = *field;
+
+            #[enhanced_orthogonal_persistence]
+            debug_assert_ne!(value, NULL_POINTER);
+
             if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }
@@ -113,7 +120,7 @@ impl<'a> UpdateIncrement<'a> {
                 },
                 |gc, slice_start, array| {
                     let length = slice_array(array);
-                    gc.time.advance(1 + (length - slice_start) as usize);
+                    gc.time.advance(1 + length - slice_start);
                     length
                 },
             );

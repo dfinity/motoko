@@ -370,7 +370,7 @@ becomes
 ```
 Result.chain(g(1),
   func(x) {
-    Result.chain(g(2), 
+    Result.chain(g(2),
       func(y) {
         Result.make(f(x, y))
       }
@@ -621,14 +621,8 @@ Note: the obvious "solution", namely storing closure environments inside the ori
 
 #### Upgrades and Memory
 
-The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a different memory layout internally (e.g., a new garbage collector).
-
-The drawback is that this serialisation/deserialisation step is expensive. Worse, it may even run out of cycles.
-
-There are multiple ways in which the representation of stable variables could be improved to avoid this overhead (or rather, trade it off against a different overhead). However, most of them would be extremely costly with the IC's stable memory API. This API was merely a stop-gap measure while we wait for the IC to support the upcoming Wasm proposal for accessing multiple memories. Once this becomes available, it would unlock a number of new and better implementation options.
-
-Yet, representing all persistent data in terms of serialised Motoko values might never be enough for all use cases. Imagine, for example, emulating a file system or a high-performance data base as persistent storage. For these use cases, Motoko will provide a low-level interface that enables direct access to raw stable memory, leaving it up to respective libraries to build suitable high-level abstraction on top.
-
+The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades.
+For this purpose, Motoko implements powerful and safe persistence, see [Enhanced Orthogonal Persistence](OrthogonalPersistence.md).
 
 #### Upgrades and Methods
 
@@ -669,14 +663,16 @@ The ability to link compiled modules together would also be a first step towards
 
 Unfortunately, though, this is a more difficult problem than linking modules compiled in the same language, since the data types, memory management, and calling conventions used by different languages are rarely compatible. Supporting cross-language calls requires a suitable ABI agreed upon by different Wasm compilers, which in turn requires some kind of standard. There is work on a proposal ([interface types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md)) for Wasm that could be the basis of such a mechanism, but it's not ready yet.
 
+Wasm component model offers a solution for secure intra-canister language interop on the IC.
 
-#### On-chain Linking
+
+#### Onchain Linking
 
 [Separate compilation](#separate-compilation) avoids the need to _compile_ applications in a monolitic manner, but it does not prevent the need to _deploy_ them in monolithic form. No matter how large an application and how small a change, upgrading always requires redeploying the entire code.
 
-Also, it is not possible to share modules on-chain between multiple applications. For features like [unicode support](#text), it would be desirable if respective modules of the language runtime would only have to be installed on the chain once and could be shared between applications.
+Also, it is not possible to share modules onchain between multiple applications. For features like [unicode support](#text), it would be desirable if respective modules of the language runtime would only have to be installed on the chain once and could be shared between applications.
 
-Supporting this would require a new mechanism in the IC that allows canisters to consist of more than just a single Wasm module, and linking these modules _dynamically_, "on-chain", reminiscent of dynamic linking in conventional operating systems. Unfortunately, there currently isn't any mechanism planned for the IC to support that.
+Supporting this would require a new mechanism in the IC that allows canisters to consist of more than just a single Wasm module, and linking these modules _dynamically_, "onchain", reminiscent of dynamic linking in conventional operating systems. Unfortunately, there currently isn't any mechanism planned for the IC to support that.
 
 
 ### Platform Support

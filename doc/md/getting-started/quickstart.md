@@ -61,8 +61,7 @@ Lastly, you can include extra features to be added to your project:
 This hello world actor has a single function called `greet`. It is marked as `query` because it doesn't modify the state of the actor. The function accepts a name as input in type [`Text`](../base/Text.md) and returns a greeting of type [`Text`](../base/Text.md).
 
 
-```motoko
-//src/hello_backend/main.mo
+```motoko title="src/hello_backend/main.mo"
 
 actor {
   public query func greet(name : Text) : async Text {

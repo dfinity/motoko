@@ -19,17 +19,17 @@ actor this {
    public func go() : async () {
       let t = debug_show (Prim.principalOfActor(this));
 
-      // appending Null not ok
+      // appending Null ok
       do {
         let this = actor (t) : actor {
           send_f0 : (shared {a : Int; n : Null } -> async {b : Bool; x : Null}) -> async ();
         };
         try {
           await this.send_f0(f0_1_a);
-          Prim.debugPrint "wrong_0_1_a";
+          Prim.debugPrint "ok_0_1_a";
         }
         catch e {
-          Prim.debugPrint "ok_0_1_a";
+          Prim.debugPrint "wrong_0_1_a";
         }
       };
 

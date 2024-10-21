@@ -6,9 +6,11 @@ sidebar_position: 1
 
 ## Mops packages for cryptography
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for cryptography functions:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for cryptography functions:
 
 - [`ic-certification`](https://mops.one/ic-certification): Canister signatures and certifications.
+
+- [`ed25519`](https://mops.one/ed25519): Ed25519 signatures.
 
 - [`evm-proof-verifier`](https://mops.one/evm-proof-verifier): EVM proof verification.
 

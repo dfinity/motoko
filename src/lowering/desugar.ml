@@ -90,8 +90,8 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, _t, dfs) ->
-    obj_block at s None dfs note.Note.typ
+  | S.ObjBlockE (s, (self_id_opt, _), dfs) ->
+    obj_block at s self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
@@ -183,6 +183,8 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAcceptPrim, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesBurn";_},_);_}, _, e) ->
+    I.PrimE (I.SystemCyclesBurnPrim, [exp e])
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
@@ -475,6 +477,7 @@ and export_runtime_information self_id =
   let gc_strategy = 
     let open Mo_config in
     let strategy = match !Flags.gc_strategy with
+    | Flags.Default -> "default"
     | Flags.MarkCompact -> "compacting"
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
@@ -559,7 +562,8 @@ and build_actor at ts self_id es obj_typ =
     [expD (assignE state (nullE()))]
   in
   let ds' = match self_id with
-    | Some n -> with_self n.it obj_typ ds
+    | Some n ->
+       with_self n.it obj_typ ds
     | None -> ds in
   let meta =
     I.{ candid = candid;
@@ -568,7 +572,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
@@ -584,7 +588,7 @@ and build_actor at ts self_id es obj_typ =
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
   I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
-       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -604,10 +608,11 @@ and build_actor at ts self_id es obj_typ =
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with
           | Some call -> call
-          | None -> tupE [])
+          | None -> tupE []);
+       stable_record = with_stable_vars (fun e -> e);
+       stable_type = ty;
      },
      obj_typ))
-
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -1034,7 +1039,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
     T.(Func (Local, Returns, [scope_bind],
-      [install_arg_typ; blob; blob],
+      [install_arg_typ; bool; blob; blob],
       [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
   let wasm_blob = fresh_var "wasm_blob" T.blob in
@@ -1054,6 +1059,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
+              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence)); 
               varE wasm_blob;
               primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
@@ -1125,18 +1131,22 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
+    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
-       it = build_actor u.at ts (Some self_id) fields obj_typ;
+       it = actor_expression;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some args, ds, fs, u, t)
+    | I.ActorE(ds, fs, u, t) ->
+      I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    begin match build_actor u.at [] self_id fields u.note.S.note_typ with
-    | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
+    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
+    begin match actor_expression with
+    | I.ActorE (ds, fs, u, t) ->
+      I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 

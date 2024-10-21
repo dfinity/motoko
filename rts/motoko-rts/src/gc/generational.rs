@@ -19,12 +19,15 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{classical::pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
+
+// Only designed for 32-bit.
+const _: () = assert!(core::mem::size_of::<usize>() == core::mem::size_of::<u32>());
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
@@ -98,9 +101,9 @@ unsafe fn set_limits(limits: &Limits) {
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
-    use crate::memory::ic::{self, linear_memory};
-    let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
+    use crate::memory::ic::linear_memory;
+    let live_size = Bytes(new_limits.free - new_limits.base);
+    linear_memory::MAX_LIVE = ::core::cmp::max(linear_memory::MAX_LIVE, live_size);
     linear_memory::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
@@ -201,8 +204,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             Strategy::Young => self.heap.limits.last_free / BITMAP_ALIGNMENT * BITMAP_ALIGNMENT,
             Strategy::Full => self.heap.limits.base,
         };
-        let heap_size = Bytes((self.heap.limits.free - heap_prefix) as u32);
-        alloc_bitmap(self.heap.mem, heap_size, heap_prefix as u32 / WORD_SIZE);
+        let heap_size = Bytes(self.heap.limits.free - heap_prefix);
+        alloc_bitmap(self.heap.mem, heap_size, heap_prefix / WORD_SIZE);
         alloc_mark_stack(self.heap.mem);
     }
 
@@ -260,8 +263,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn mark_object(&mut self, object: Value) {
-        let pointer = object.get_ptr() as u32;
-        assert!(pointer >= self.generation_base() as u32);
+        let pointer = object.get_ptr();
+        assert!(pointer >= self.generation_base());
         assert_eq!(pointer % WORD_SIZE, 0);
 
         let obj_idx = pointer / WORD_SIZE;
@@ -294,17 +297,18 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 gc.barrier_coverage_check(field_address);
             },
             |gc, slice_start, array| {
-                const SLICE_INCREMENT: u32 = 255;
+                const SLICE_INCREMENT: usize = 255;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+                let base_tag = array.base_tag();
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
-                    (*array).header.tag = new_start;
+                    array.set_slice_start(base_tag, new_start);
                     push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    (*array).header.tag = TAG_ARRAY;
+                    array.restore_tag(base_tag); // restore original tag
                     array.len()
                 }
             },
@@ -320,7 +324,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             assert!(REMEMBERED_SET
                 .as_ref()
                 .unwrap()
-                .contains(Value::from_raw(field_address as u32)));
+                .contains(Value::from_raw(field_address as usize)));
         }
     }
 
@@ -506,7 +510,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         assert!(self.should_be_threaded(pointed));
         let pointed_header = pointed.tag();
         *field = Value::from_raw(pointed_header);
-        (*pointed).tag = field as u32;
+        (*pointed).tag = field as usize;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {

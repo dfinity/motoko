@@ -49,7 +49,8 @@ debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: integer division by 0
+ingress Err: IC0502: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister trapped: integer division by 0.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped
 debug.print: go 0: 0
 debug.print: ping! 1
 debug.print: go 1: 1
@@ -61,4 +62,5 @@ debug.print: ping! 1
 debug.print: go 1: 1
 debug.print: ping-async! 1
 debug.print: go 2: 1
-ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: integer division by 0
+ingress Err: IC0502: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister trapped: integer division by 0.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped

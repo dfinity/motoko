@@ -421,6 +421,15 @@ module @ManagementCanister = {
   };
 };
 
+type @WasmMemoryPersistence = {
+  #Keep;
+  #Replace;
+};
+
+type @UpgradeOptions = {
+  wasm_memory_persistence: ?@WasmMemoryPersistence;
+};
+
 let @ic00 = actor "aaaaa-aa" :
   actor {
     create_canister : {
@@ -428,11 +437,15 @@ let @ic00 = actor "aaaaa-aa" :
       sender_canister_version : ?Nat64
     } -> async { canister_id : Principal };
     install_code : {
-      mode : { #install; #reinstall; #upgrade };
+      mode : {
+        #install;
+        #reinstall;
+        #upgrade : ?@UpgradeOptions;
+      };
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
       arg : Blob;
-      sender_canister_version : ?Nat64
+      sender_canister_version : ?Nat64;
     } -> async ()
  };
 
@@ -441,10 +454,13 @@ func @install_actor_helper(
       #new : { settings : ?@ManagementCanister.canister_settings } ;
       #install : Principal;
       #reinstall : actor {} ;
-      #upgrade : actor {}
+      #upgrade : actor {} ;
+      #upgrade_with_persistence : { wasm_memory_persistence: @WasmMemoryPersistence; canister: actor {} };
     },
+    enhanced_orthogonal_persistence : Bool,
     wasm_module : Blob,
-    arg : Blob)
+    arg : Blob,
+    )
   : async* Principal = async* {
   let (mode, canister_id) =
     switch install_arg {
@@ -461,18 +477,30 @@ func @install_actor_helper(
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
-        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
-      }
+        let wasm_memory_persistence = if enhanced_orthogonal_persistence {
+          ?(#Keep)
+        } else {
+          null
+        };
+        let upgradeOptions = {
+          wasm_memory_persistence;
+        };
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) actor2)
+      };
+      case (#upgrade_with_persistence { wasm_memory_persistence; canister } ) {
+        let upgradeOptions = { wasm_memory_persistence = ?wasm_memory_persistence };
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) canister)
+      };
     };
   await @ic00.install_code {
     mode;
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   };
   return canister_id;
 };
@@ -493,7 +521,7 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   };
   return canister_id;
 };
@@ -668,5 +696,5 @@ func @cancelTimer(id : Nat) {
   }
 };
 
-func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
+func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;

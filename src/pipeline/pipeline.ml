@@ -421,13 +421,14 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
-let load_progs ?(viper_mode=false) parsefn files senv : load_result =
+let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
+  let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
   let* senv'' = check_progs ~viper_mode senv' progs' in
   Diag.return (libs, progs', senv'')
 
@@ -510,7 +511,7 @@ type viper_result = (string * (Source.region -> Source.region option)) Diag.resu
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
-  let* () = Typing.check_actors ~viper_mode:true senv progs in
+  let* () = Typing.check_actors ~viper_mode:true ~check_actors:true senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
   let reqs = Viper.Common.init_reqs () in
@@ -525,8 +526,7 @@ let viper_files files : viper_result =
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
 (* Running *)
@@ -678,15 +678,46 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = match (!Flags.gc_strategy, !Flags.sanity) with
-    | (Flags.Incremental, false) -> Rts.wasm_incremental_release
-    | (Flags.Incremental, true) -> Rts.wasm_incremental_debug
-    | (_, false) -> Rts.wasm_non_incremental_release
-    | (_, true) -> Rts.wasm_non_incremental_debug
+  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity, !Flags.gc_strategy) with
+    | (true, false, Flags.Incremental) -> Rts.wasm_eop_release
+    | (true, true, Flags.Incremental) -> Rts.wasm_eop_debug
+    | (false, false, Flags.Copying) 
+    | (false, false, Flags.MarkCompact)
+    | (false, false, Flags.Generational) -> Rts.wasm_non_incremental_release
+    | (false, true, Flags.Copying)
+    | (false, true, Flags.MarkCompact)
+    | (false, true, Flags.Generational) -> Rts.wasm_non_incremental_debug
+    | (false, false, Flags.Incremental) -> Rts.wasm_incremental_release
+    | (false, true, Flags.Incremental) -> Rts.wasm_incremental_debug
+    | _ -> assert false
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
 type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
+
+let invalid_flag message =
+  builtin_error "compile" (Printf.sprintf "Invalid compiler flag combination: %s" message) []
+
+let adjust_flags () =
+  if !Flags.enhanced_orthogonal_persistence then
+    begin
+      (match !Flags.gc_strategy with
+      | Flags.Default | Flags.Incremental -> Flags.gc_strategy := Flags.Incremental;
+      | Flags.Copying -> invalid_flag "--copying-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
+      (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
+      Flags.rtti := true
+    end
+  else
+    begin
+      (if !Flags.gc_strategy = Flags.Default then Flags.gc_strategy := Flags.Copying);
+      (if !Flags.rts_stack_pages = None then Flags.rts_stack_pages := Some Flags.rts_stack_pages_default);
+      (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
+        invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence");
+      (if !Flags.stable_memory_access_limit <> Flags.stable_memory_access_limit_default then
+        invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
+    end
 
 (* This transforms the flat list of libs (some of which are classes)
    into a list of imported libs and (compiled) classes *)
@@ -709,8 +740,12 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
+  adjust_flags ();
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode rts prog_ir
+  if !Flags.enhanced_orthogonal_persistence then
+    Codegen.Compile_enhanced.compile mode rts prog_ir
+  else
+    Codegen.Compile_classical.compile mode rts prog_ir
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in
@@ -725,8 +760,7 @@ and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_modu
 
 let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
   (* validate any stable type signature *)

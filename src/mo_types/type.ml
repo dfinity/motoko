@@ -1381,7 +1381,7 @@ let motoko_runtime_information_type =
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
-    typ = Func(Shared Query, Promises, [scope_bind], [], 
+    typ = Func(Shared Query, Promises, [scope_bind], [],
       [ motoko_runtime_information_type ]);
     src = empty_src;
   }
@@ -1415,12 +1415,25 @@ let canister_settings_typ =
       ("memory_allocation", Opt nat);
       ("freezing_threshold", Opt nat)])]
 
+let wasm_memory_persistence_typ =
+  sum [
+    ("Keep", unit);
+    ("Replace", unit);
+  ]
+
+let upgrade_with_persistence_option_typ =
+  obj Object [
+    ("wasm_memory_persistence", wasm_memory_persistence_typ);
+    ("canister", obj Actor []);
+  ]
+
 let install_arg_typ =
   sum [
     ("new", canister_settings_typ);
     ("install", principal);
     ("reinstall", obj Actor []);
-    ("upgrade", obj Actor [])
+    ("upgrade", obj Actor []);
+    ("upgrade_with_persistence", upgrade_with_persistence_option_typ );
   ]
 
 let install_typ ts actor_typ =
@@ -1836,22 +1849,18 @@ let _ = str := string_of_typ
 
 let rec match_stab_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
-  | [], _ ->
-    true (* no or additional fields ok *)
-  | _, [] ->
-    false (* true, should we allow fields to be dropped *)
+  | [], _ | _, [] ->
+    (* same amount of fields, new fields, or dropped fields ok *)
+    true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       is_mut tf1.typ = is_mut tf2.typ &&
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-         (* should we enforce equal mutability or not? Seems unncessary
-            since upgrade is read-once *)
        match_stab_sig tfs1' tfs2'
      | -1 ->
-       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
+       (* dropped field ok *)
+       match_stab_sig tfs1' tfs2
      | _ ->
        (* new field ok *)
        match_stab_sig tfs1 tfs2'

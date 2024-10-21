@@ -37,6 +37,7 @@ let valid_metadata_names =
      "motoko:compiler"]
 
 let argspec = [
+  "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
@@ -149,19 +150,19 @@ let argspec = [
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC";
+  " use generational GC (only available with classical persistence)";
 
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC";
+  " use incremental GC (default with enhanced orthogonal persistence)";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC";
+  " use compacting GC (only available with classical persistence)";
 
   "--copying-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default)";
+  " use copying GC (default and only available with classical persistence)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
@@ -181,15 +182,34 @@ let argspec = [
 
   "--experimental-rtti",
   Arg.Unit (fun () -> Flags.rtti := true),
-  " enable experimental support for precise runtime type information (to assess performance changes only)";
+  " enable experimental support for precise runtime type information (default with enhanced orthogonal persistence)";
 
   "--rts-stack-pages",
-  Arg.Set_int Flags.rts_stack_pages,
-  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+  Arg.Int (fun pages -> Flags.rts_stack_pages := Some pages),
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ", only available with classical persistence)";
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+
+  "--stabilization-instruction-limit",
+  Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
+    upgrade = limit; 
+    update_call = limit;
+  })),
+  "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
+
+  "--stable-memory-access-limit",
+  Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
+    upgrade = limit; 
+    update_call = limit;
+  })),
+  "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   (* optimizations *)
   "-fno-shared-code",
@@ -343,7 +363,11 @@ let () =
   process_metadata_names "public" !Flags.public_metadata_names;
   process_metadata_names "omit" !Flags.omit_metadata_names;
   try
-    process_files !args
+    match process_files !args with
+      (* TODO: Find a better place to gracefully handle the input-dependent linker error *)
+    | exception Linking.LinkModule.TooLargeDataSegments error_message ->
+      Printf.eprintf "Error: %s" error_message; ()
+    | () -> ()
   with
   | Sys_error msg ->
     (* IO error *)

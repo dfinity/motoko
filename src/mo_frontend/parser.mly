@@ -195,13 +195,13 @@ let share_dec_field (df : dec_field) =
     }
   | _ -> df
 
-and objblock s ty dec_fields =
+and objblock s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, ty, dec_fields)
+  ObjBlockE(s, (id, ty), dec_fields)
 
 %}
 
@@ -880,12 +880,13 @@ dec_nonvar :
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
+          let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s t (List.map share_dec_field efs) @? at $sloc)
+                    objblock s id t (List.map share_dec_field efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s t efs @? at $sloc
+        else objblock s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt

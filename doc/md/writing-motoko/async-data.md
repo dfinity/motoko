@@ -50,7 +50,7 @@ To access the result of an `async` value, the receiver of the future uses an `aw
 
 For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](../base/Nat.md), `n`:
 
-``` motoko include=counter
+``` motoko no-repl
 let a : async Nat = Counter.read();
 let n : Nat = await a;
 ```
@@ -61,7 +61,7 @@ The second line `await`s this future and extracts the result, a natural number. 
 
 Typically, one rolls the two steps into one and just awaits an asynchronous call directly:
 
-``` motoko include=counter
+``` motoko no-repl
 let n : Nat = await Counter.read();
 ```
 
@@ -91,7 +91,5 @@ Each `await` suspends execution, allowing an interloper to change the state of t
 - [`maf`](https://mops.one/maf) and [`mal`](https://mops.one/mal): Async data deliveries.
 
 - [`rxmo`](https://mops.one/rxmo): A library for reactive programming using observables, making it easier to compose asynchronous or callback-based code.
-
-- [`star`](https://mops.one/star): Used for handling asynchronous behavior and traps using async* functions.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -6,6 +6,8 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
+assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "x86_64-darwin" ];
+
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
@@ -23,6 +25,14 @@ let ic-ref-run =
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+
+let emscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or []) ++ [
+      nix/emscripten-fix.patch
+    ];
+  });
+in
+
 let
   rtsBuildInputs = with nixpkgs; [
     # pulls in clang (wrapped) and clang-13 (unwrapped)
@@ -35,6 +45,7 @@ let
     wasmtime
     rust-bindgen
     python3
+    emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -193,7 +204,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
+        sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
         copyLockfile = true;
       };
 
@@ -241,6 +252,7 @@ rec {
           "directory" = "$(stripHash ${allDeps})"
         __END__
 
+        
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
@@ -255,10 +267,12 @@ rec {
 
       installPhase = ''
         mkdir -p $out/rts
-        cp mo-rts.wasm $out/rts
-        cp mo-rts-debug.wasm $out/rts
+        cp mo-rts-non-incremental.wasm $out/rts
+        cp mo-rts-non-incremental-debug.wasm $out/rts
         cp mo-rts-incremental.wasm $out/rts
         cp mo-rts-incremental-debug.wasm $out/rts
+        cp mo-rts-eop.wasm $out/rts
+        cp mo-rts-eop-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -268,12 +282,17 @@ rec {
           -t ${nixpkgs.rustc-nightly} \
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
-          $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+          $out/rts/mo-rts-non-incremental.wasm $out/rts/mo-rts-non-incremental-debug.wasm
         remove-references-to \
           -t ${nixpkgs.rustc-nightly} \
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -363,11 +382,6 @@ rec {
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
       };
-      
-    generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--generational-gc";
-      };
 
     snty_compacting_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs {
@@ -382,6 +396,16 @@ rec {
     snty_incremental_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      };
+
+    enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--enhanced-orthogonal-persistence";
+      };
+
+    snty_enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
       };
 
     perf_subdir = dir: deps:
@@ -442,23 +466,24 @@ rec {
       '';
     };
 
-    profiling-graphs = testDerivation {
-      src = test_src "perf";
-      buildInputs =
-        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc nixpkgs.drun ];
-      checkPhase = ''
-        patchShebangs .
-        type -p moc && moc --version
-        type -p drun && drun --help
-        ./profile-report.sh
-      '';
-      installPhase = ''
-        mv _profile $out;
-        mkdir -p $out/nix-support
-        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
-      '';
-    };
+    # wasm-profiler is not compatible with passive data segments and memory64
+    # profiling-graphs = testDerivation {
+    #  src = test_src "perf";
+    #  buildInputs =
+    #    (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+    #    [ moc nixpkgs.drun ];
+    #  checkPhase = ''
+    #    patchShebangs .
+    #    type -p moc && moc --version
+    #    type -p drun && drun --help
+    #    ./profile-report.sh
+    #  '';
+    #  installPhase = ''
+    #    mv _profile $out;
+    #    mkdir -p $out/nix-support
+    #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+    #  '';
+    #};
 
 
     fix_names = builtins.mapAttrs (name: deriv:
@@ -494,23 +519,32 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
+      run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
+      fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      ld-eop     = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      mo-idl-eop = enhanced_orthogonal_persistence_subdir "mo-idl" [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
+      trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
+      inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -554,7 +588,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node $test
+          NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
         '';
       };
     in
@@ -576,7 +610,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
+      cargoSha256 = "sha256-//qDHK9z7feJy+kNEf6mYStAzn9E7S9ELJhIQek0WPA=";
       doCheck = false;
       patchPhase = ''
         mkdir -p .cargo
@@ -702,15 +736,13 @@ EOF
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
       echo docs/html/motoko.html;
       echo base-doc/
-      echo coverage/
-      echo flamegraphs/ ) | \
+      echo coverage/ ) | \
       tree -H . -l --fromfile -T "Motoko build reports" > index.html
   '';
 
@@ -779,8 +811,9 @@ EOF
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues tests ++
-    builtins.attrValues js;
+    builtins.attrValues tests
+    ++ builtins.attrValues js
+    ;
   };
 
   viperServer = nixpkgs.fetchurl {

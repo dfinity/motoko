@@ -15,7 +15,6 @@ _profile_build
 *.diff
 *.wat
 *.wat.stderr
-*.wasm
 *.wasm-run
 *.run
 *.wat-run
