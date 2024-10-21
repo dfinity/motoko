@@ -286,7 +286,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of int32 * (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
+    | Fun of string * int32 * (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * v) list
     | Unit
@@ -483,9 +483,16 @@ module E = struct
 
     (* Type descriptor of current program version, created on `conclude_module`. *)
     global_type_descriptor : type_descriptor option ref;
-
+  
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
+
+    (* Stable functions, mapping the function name to the Wasm table index *)
+    stable_functions: int32 NameEnv.t ref: 
+
+    (* Data segment of the stable functions map that is passed to the runtime system. 
+      The segment is created on `conclude_module`. *)
+    stable_functions_segment : int32 option ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
@@ -527,6 +534,8 @@ module E = struct
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
+    stable_functions = ref NameEnv.empty;
+    stable_functions_segment = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -720,6 +729,12 @@ module E = struct
       env.func_ptrs := FunEnv.add fi fp !(env.func_ptrs);
       env.end_of_table := Int32.add !(env.end_of_table) 1l;
       fp
+
+  let add_stable_func (env : t) (name: string) (wasm_table_index: int32) : () 
+    match NameEnv.find_opt name !(env.stable_functions) with
+    | Some _ -> ()
+    | None -> 
+      env.stable_functions := NameEnv.add name fi !(env.stable_functions) @ [ (name, fi) ]
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -1273,6 +1288,9 @@ module RTS = struct
     E.add_func_import env "rts" "start_graph_destabilization" [I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
+    E.add_func_import env "rts" "resolve_stable_function_call" [I64Type] [I64Type];
+    E.add_func_import env "rts" "resolve_stable_function_literal" [I64Type] [I64Type];
+    E.add_func_import env "rts" "register_stable_functions" [I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -2333,15 +2351,22 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env funptr_field ^^
+    (* TODO: Support flexible function reference calls *)
+    E.call_import env "rts" "resolve_stable_function_call" ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
 
-  let constant env get_fi =
-    let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
+  let constant env name get_fi =
+    let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
+    E.add_stable_func env name wasm_table_index;
+    let name_hash = E.hash env name in
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
-      compile_unboxed_const fi;
+      (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index);  *)
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u name_hash) ^^
+      E.call_import env "rts" "resolve_stable_function_literal" ^^
+      (* TODO: Support flexible function references *)
       compile_unboxed_const 0L
     ])
 
@@ -8667,6 +8692,53 @@ module NewStableMemory = struct
       end
 end
 
+
+module StableFunctions = struct
+  let register_delayed_globals env =
+    E.add_global64_delayed env "__stable_functions_segment_length" Immutable
+
+  let get_stable_functions_segment_length env =
+    G.i (GlobalGet (nr (E.get_global env "__stable_functions_segment_length")))
+
+  let reserve_stable_function_segment (env : E.t) =
+    E.env.stable_functions_segment := Some (E.add_data_segment env "");
+
+  let create_stable_function_segment (env : E.t) set_segment_length =
+    let entries = E.NameEnv.fold (fun name wasm_table_index remainder -> 
+      (E.hash env name, wasm_table_index) :: remainder) 
+      !env.stable_functions [] 
+    in
+    let sorted = List.sort (fun (hash1, _) (hash2, _) ->
+      Lib.Uint32.compare hash1 hash2) entries
+    in
+    let encoded = List.fold_left(fun (name_hash, wasm_table_index) prefix` ->
+      (* Format: [(name_hash: u64, wasm_table_index: u64, _empty: u64)] 
+        The empty space is pre-allocated for the RTS to assign a function id when needed.
+        See RTS `persistence/stable_functions.rs`. *)
+      prefix @@ StaticBytes.[ 
+        I64 (Wasm.I64_convert.extend_i32_u name_hash); 
+        I64 (Wasm.I64_convert.extend_i32_u wasm_table_index); 
+        I64 0L; (* reserve for runtime system *) ])
+      sorted []
+    in
+    let length = E.replace_data_segment env E.env.stable_functions_segment encoded in
+    set_segment_length length
+  
+  let get_global_type_descriptor env =
+    match !(E.(env.global_type_descriptor)) with
+    | Some descriptor -> descriptor
+    | None -> assert false
+  
+  let register_stable_functions env =
+    let segment_index = match !(E.(env.stable_functions_segment)) with
+    | Some index -> index
+    | None -> assert false
+    in
+    let length = get_stable_functions_segment_length in
+    Blob.load_data_segment env Tagged.B segment_index length ^^
+    E.call_import env "rts" "update_stable_functions"
+end (* StableFunctions *)
+
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
@@ -8732,6 +8804,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let load env actor_type =
     register_stable_type env actor_type ^^
+    StableFunctions.update_stable_functions env ^^
     load_stable_actor env ^^
     compile_test I64Op.Eqz ^^
     (E.if1 I64Type
@@ -8742,7 +8815,8 @@ module EnhancedOrthogonalPersistence = struct
     UpgradeStatistics.add_instructions env
 
   let initialize env actor_type =
-    register_stable_type env actor_type
+    register_stable_type env actor_type ^^
+    StableFunctions.register_stable_functions
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -8868,7 +8942,7 @@ module StackRep = struct
   | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
   | Const.Lit (Const.Float64 number) -> Float.constant env number
   | Const.Opt value -> Opt.constant env (build_constant env value)
-  | Const.Fun (_, get_fi, _) -> Closure.constant env get_fi
+  | Const.Fun (name, _, get_fi, _) -> Closure.constant env name get_fi
   | Const.Message _ -> assert false
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) ->
@@ -9330,7 +9404,7 @@ module FuncDec = struct
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
       let fun_id = E.get_constant_function_id pre_env in
-      ( Const.Fun (fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
+      ( Const.Fun (name, fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -9381,6 +9455,8 @@ module FuncDec = struct
         (* Store the function pointer number: *)
         get_clos ^^
         compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^
+        (* TODO: Support flexible function references *)
+        E.trap_with env "Flexible function literals not yet supported"
         Tagged.store_field env Closure.funptr_field ^^
 
         (* Store the length *)
@@ -11014,7 +11090,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
-      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ ->
+      | SR.Const Const.Fun (_, _, mk_fi, Const.PrimWrapper prim), _ ->
          begin match n_args, e2.it with
          | 0, _ -> true
          | 1, _ -> true
@@ -11024,7 +11100,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | _ -> false in
 
     begin match fun_sr, sort with
-      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
+      | SR.Const Const.Fun (_, _, mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
          assert (sort = Type.Local);
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -11043,7 +11119,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const Const.Fun (_, mk_fi, _), _ ->
+      | SR.Const Const.Fun (_, _, mk_fi, _), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
@@ -13150,16 +13226,19 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o =
+and conclude_module env set_serialization_globals set_stable_function_globals start_fi_o =
 
   RTS_Exports.system_exports env;
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
   FuncDec.export_stabilization_limits env;
-  
+
   (* See Note [Candid subtype checks] *)
   Serialization.create_global_type_descriptor env set_serialization_globals;
+
+  (* See RTS `persistence/stable_functions.rs`. *)
+  StableFunctions.create_stable_function_segment env set_stable_function_globals;
 
   (* declare before building GC *)
 
@@ -13197,7 +13276,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let memories = E.get_memories env initial_memory_pages in
 
   let funcs = E.get_funcs env in
-
+  
   let datas = List.map (fun (dinit) -> nr {
     dinit;
     dmode = (nr Wasm_exts.Ast.Passive);
@@ -13269,6 +13348,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_serialization_globals = Serialization.register_delayed_globals env in
   Serialization.reserve_global_type_descriptor env;
   
+  let set_stable_functions_globals = StableFunctions.register_delayed_globals env in
+  StableFunctions.reserve_stable_function_segment env;
+  
   IC.system_imports env;
   RTS.system_imports env;
 
@@ -13284,4 +13366,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o
+  conclude_module env set_serialization_globals set_stable_function_globals start_fi_o
