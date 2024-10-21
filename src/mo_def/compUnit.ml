@@ -80,14 +80,14 @@ let obj_decs obj_sort at note id_opt fields =
   match id_opt with
   | None -> [
     { it = ExpD {
-        it = ObjBlockE ( { it = obj_sort; at; note = () }, None, fields);
+        it = ObjBlockE ( { it = obj_sort; at; note = () }, (None, None), fields);
         at;
         note };
       at; note }]
   | Some id -> [
     { it = LetD (
         { it = VarP id; at; note = note.note_typ },
-        { it = ObjBlockE ({ it = obj_sort; at; note = () }, None, fields);
+        { it = ObjBlockE ({ it = obj_sort; at; note = () }, (None, None), fields);
           at; note; },
         None);
       at; note

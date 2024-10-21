@@ -1,5 +1,14 @@
 # Motoko compiler changelog
 
+## 0.13.2 (2024-10-18)
+
+* motoko (`moc`)
+
+  * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+
+  * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
+
 ## 0.13.1 (2024-10-07)
 
 * motoko (`moc`)
