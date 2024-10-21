@@ -1041,15 +1041,14 @@ let ensure_management_canister env =
       V.Env.add
         (* ManagementCanister with raw_rand (only) *)
         ""
-        (V.Obj
-           (V.Env.singleton "raw_rand"
-              (V.async_func (T.Write) 0 1
-                 (fun c v k ->
-                   async env
-                     Source.no_region
-                     (fun k' r ->
-                       k' (V.Blob (V.Blob.rand32 ())))
-                     k))) |> Lib.Promise.make_fulfilled)
+        V.(Obj
+          (Env.singleton "raw_rand"
+             (async_func T.Write 0 1
+                (fun c v k ->
+                  async env
+                    Source.no_region
+                    (fun k' r -> k' (Blob (Blob.rand32 ())))
+                    k))) |> Lib.Promise.make_fulfilled)
         !(env.actor_env)
 
 let interpret_prog flags scope p : (V.value * scope) option =
