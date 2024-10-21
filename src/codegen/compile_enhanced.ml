@@ -297,7 +297,7 @@ module Const = struct
     | Lit of lit
 
   let rec eq v1 v2 = match v1, v2 with
-    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
+    | Fun (_, id1, _, _), Fun (_, id2, _, _) -> id1 = id2
     | Message fi1, Message fi2 -> fi1 = fi2
     | Obj fields1, Obj fields2 ->
       let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
@@ -488,7 +488,7 @@ module E = struct
     constant_functions : int32 ref;
 
     (* Stable functions, mapping the function name to the Wasm table index *)
-    stable_functions: int32 NameEnv.t ref: 
+    stable_functions: int32 NameEnv.t ref;
 
     (* Data segment of the stable functions map that is passed to the runtime system. 
       The segment is created on `conclude_module`. *)
@@ -542,7 +542,7 @@ module E = struct
       so that that data can be put in a custom section, useful for debugging.
       Thus Mo_types.Hash.hash should not be called directly!
    *)
-  let hash (env : t) lab =
+  let hash_label (env : t) lab =
     env.labs := LabSet.add lab (!(env.labs));
     Wasm.I64_convert.extend_i32_u (Mo_types.Hash.hash lab)
 
@@ -730,11 +730,11 @@ module E = struct
       env.end_of_table := Int32.add !(env.end_of_table) 1l;
       fp
 
-  let add_stable_func (env : t) (name: string) (wasm_table_index: int32) : () 
+  let add_stable_func (env : t) (name: string) (wasm_table_index: int32) =
     match NameEnv.find_opt name !(env.stable_functions) with
     | Some _ -> ()
     | None -> 
-      env.stable_functions := NameEnv.add name fi !(env.stable_functions) @ [ (name, fi) ]
+      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -2285,7 +2285,7 @@ module Variant = struct
   let payload_field = Int64.add variant_tag_field 1L
 
   let hash_variant_label env : Mo_types.Type.lab -> int64 =
-    E.hash env
+    E.hash_label env
 
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
@@ -2361,7 +2361,7 @@ module Closure = struct
   let constant env name get_fi =
     let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
     E.add_stable_func env name wasm_table_index;
-    let name_hash = E.hash env name in
+    let name_hash = Mo_types.Hash.hash name in
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index);  *)
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u name_hash) ^^
@@ -3980,7 +3980,7 @@ module Object = struct
           then we need to allocate separate boxes for the non-public ones:
           List.filter (fun (_, vis, f) -> vis.it = Public) |>
         *)
-        List.map (fun (n,_) -> (E.hash env n, n)) |>
+        List.map (fun (n,_) -> (E.hash_label env n, n)) |>
         List.sort compare |>
         List.mapi (fun i (_h,n) -> (n,Int64.of_int i)) |>
         List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
@@ -3989,7 +3989,7 @@ module Object = struct
 
       (* Create hash blob *)
       let hashes = fs |>
-        List.map (fun (n,_) -> E.hash env n) |>
+        List.map (fun (n,_) -> E.hash_label env n) |>
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
@@ -4038,7 +4038,7 @@ module Object = struct
   (* Reflection used by orthogonal persistence: 
      Check whether an (actor) object contains a specific field *)
   let contains_field env field =
-    compile_unboxed_const (E.hash env field) ^^
+    compile_unboxed_const (E.hash_label env field) ^^
     E.call_import env "rts" "contains_field" ^^
     Bool.from_rts_int32
  
@@ -4103,19 +4103,19 @@ module Object = struct
     let sorted_by_hash =
       List.sort
         (fun (h1, _) (h2, _) -> compare_uint64 h1 h2)
-        (List.map (fun f -> E.hash env f.lab, f) fields) in
+        (List.map (fun f -> E.hash_label env f.lab, f) fields) in
     match Lib.List.index_of s (List.map (fun (_, {lab; _}) -> lab) sorted_by_hash) with
     | Some i -> i
     | _ -> assert false
 
   (* Returns a pointer to the object field (without following the indirection) *)
   let idx_raw env f =
-    compile_unboxed_const (E.hash env f) ^^
+    compile_unboxed_const (E.hash_label env f) ^^
     idx_hash_raw env 0
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx env obj_type f =
-    compile_unboxed_const (E.hash env f) ^^
+    compile_unboxed_const (E.hash_label env f) ^^
     idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
 
   (* load the value (or the mutbox) *)
@@ -8692,7 +8692,6 @@ module NewStableMemory = struct
       end
 end
 
-
 module StableFunctions = struct
   let register_delayed_globals env =
     E.add_global64_delayed env "__stable_functions_segment_length" Immutable
@@ -8701,42 +8700,45 @@ module StableFunctions = struct
     G.i (GlobalGet (nr (E.get_global env "__stable_functions_segment_length")))
 
   let reserve_stable_function_segment (env : E.t) =
-    E.env.stable_functions_segment := Some (E.add_data_segment env "");
+    env.E.stable_functions_segment := Some (E.add_data_segment env "")
+
+  let get_stable_function_segment (env: E.t) : int32 =
+    match !(env.E.stable_functions_segment) with
+    | Some segment_index -> segment_index
+    | None -> assert false
 
   let create_stable_function_segment (env : E.t) set_segment_length =
     let entries = E.NameEnv.fold (fun name wasm_table_index remainder -> 
-      (E.hash env name, wasm_table_index) :: remainder) 
-      !env.stable_functions [] 
+      let name_hash = Mo_types.Hash.hash name in
+      (name_hash, wasm_table_index) :: remainder) 
+      !(env.E.stable_functions) [] 
     in
     let sorted = List.sort (fun (hash1, _) (hash2, _) ->
-      Lib.Uint32.compare hash1 hash2) entries
+      Int32.compare hash1 hash2) entries
     in
-    let encoded = List.fold_left(fun (name_hash, wasm_table_index) prefix` ->
+    let data = List.concat_map(fun (name_hash, wasm_table_index) ->
       (* Format: [(name_hash: u64, wasm_table_index: u64, _empty: u64)] 
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
-      prefix @@ StaticBytes.[ 
-        I64 (Wasm.I64_convert.extend_i32_u name_hash); 
-        I64 (Wasm.I64_convert.extend_i32_u wasm_table_index); 
+      StaticBytes.[ 
+        I64 (Int64.of_int32 name_hash);
+        I64 (Int64.of_int32 wasm_table_index); 
         I64 0L; (* reserve for runtime system *) ])
-      sorted []
+      sorted
     in
-    let length = E.replace_data_segment env E.env.stable_functions_segment encoded in
+    let segment = get_stable_function_segment env in
+    let length = E.replace_data_segment env segment data in
     set_segment_length length
-  
-  let get_global_type_descriptor env =
-    match !(E.(env.global_type_descriptor)) with
-    | Some descriptor -> descriptor
-    | None -> assert false
   
   let register_stable_functions env =
     let segment_index = match !(E.(env.stable_functions_segment)) with
     | Some index -> index
     | None -> assert false
     in
-    let length = get_stable_functions_segment_length in
+    let length = get_stable_functions_segment_length env in
     Blob.load_data_segment env Tagged.B segment_index length ^^
-    E.call_import env "rts" "update_stable_functions"
+    E.call_import env "rts" "register_stable_functions"
+
 end (* StableFunctions *)
 
 (* Enhanced orthogonal persistence *)
@@ -8804,7 +8806,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let load env actor_type =
     register_stable_type env actor_type ^^
-    StableFunctions.update_stable_functions env ^^
+    StableFunctions.register_stable_functions env ^^
     load_stable_actor env ^^
     compile_test I64Op.Eqz ^^
     (E.if1 I64Type
@@ -8816,7 +8818,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let initialize env actor_type =
     register_stable_type env actor_type ^^
-    StableFunctions.register_stable_functions
+    StableFunctions.register_stable_functions env
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -9281,7 +9283,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
+    | Some (VarEnv.Const Const.Fun (_, _, mk_fi, _)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi())))
     | _ -> assert false
@@ -9456,7 +9458,7 @@ module FuncDec = struct
         get_clos ^^
         compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^
         (* TODO: Support flexible function references *)
-        E.trap_with env "Flexible function literals not yet supported"
+        E.trap_with env "Flexible function literals not yet supported" ^^
         Tagged.store_field env Closure.funptr_field ^^
 
         (* Store the length *)
@@ -13366,4 +13368,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals set_stable_function_globals start_fi_o
+  conclude_module env set_serialization_globals set_stable_functions_globals start_fi_o
