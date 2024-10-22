@@ -76,9 +76,30 @@ pub struct StableFunctionState {
 // Transient table. GC root.
 static mut FUNCTION_LITERAL_TABLE: Value = NULL_POINTER;
 
+// Zero memory map, as seen in the initial persistent Wasm memory.
+const DEFAULT_VALUE: Value = Value::from_scalar(0);
+
 impl StableFunctionState {
+    // No dynamic allocations allowed at this point (persistence startup).
+    pub fn default() -> Self {
+        Self {
+            virtual_table: DEFAULT_VALUE,
+        }
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.virtual_table == DEFAULT_VALUE
+    }
+
+    unsafe fn initialize_virtual_table<M: Memory>(&mut self, mem: &mut M) {
+        assert_eq!(self.virtual_table, DEFAULT_VALUE);
+        let initial_virtual_table = PersistentVirtualTable::new(mem);
+        write_with_barrier(mem, self.virtual_table_location(), initial_virtual_table);
+    }
+
     /// The returned low-level pointer can only be used within the same IC message.
     unsafe fn get_virtual_table(&mut self) -> *mut PersistentVirtualTable {
+        assert_ne!(self.virtual_table, DEFAULT_VALUE);
         assert_ne!(self.virtual_table, NULL_POINTER);
         self.virtual_table.as_blob_mut() as *mut PersistentVirtualTable
     }
@@ -133,6 +154,14 @@ impl<T> IndexedTable<T> {
 /// Indexed by function id.
 type PersistentVirtualTable = IndexedTable<VirtualTableEntry>;
 
+impl PersistentVirtualTable {
+    unsafe fn new<M: Memory>(mem: &mut M) -> Value {
+        let blob = alloc_blob(mem, TAG_BLOB_B, Bytes(0));
+        allocation_barrier(blob);
+        blob
+    }
+}
+
 #[repr(C)]
 #[derive(Clone)]
 struct VirtualTableEntry {
@@ -142,9 +171,11 @@ struct VirtualTableEntry {
 
 #[no_mangle]
 pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTableIndex {
+    println!(100, "RESOLVE CALL {function_id}");
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(function_id);
+    println!(100, " RESOLVED WASM TABLE INDEX {}", (*table_entry).wasm_table_index);
     (*table_entry).wasm_table_index
 }
 
@@ -153,9 +184,11 @@ type DynamicLiteralTable = IndexedTable<FunctionId>;
 
 #[no_mangle]
 pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
+    println!(100, "RESOLVE LITERAL {wasm_table_index}");
     let literal_table = stable_function_state().get_literal_table();
     let function_id = *literal_table.get(wasm_table_index);
     assert_ne!(function_id, NULL_FUNCTION_ID); // must be a stable function.
+    println!(100, " RESOLVED FUNCTION ID {function_id}");
     function_id
 }
 
@@ -207,28 +240,39 @@ impl StableFunctionMap {
 /// Called on program initialization and on upgrade, both during EOP and graph copy.
 #[ic_mem_fn]
 pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_blob: Value) {
+    println!(100, "START: register_stable_functions");
     let stable_functions = stable_functions_blob.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
+    println!(100, "STEP 1: STABLE_FUNCTIONS BLOB {}", stable_functions.length());
     prepare_stable_function_map(stable_functions);
-    // 2. Scan the persistent virtual table and match/update all entries against
+    // 2. Retrieve the persistent virtual, or, if not present, initialize an empty one.
+    println!(100, "STEP 2");
+    let virtual_table = prepare_virtual_table(mem);
+    // 3. Scan the persistent virtual table and match/update all entries against
     // `stable_functions`. Assign the function ids in stable function map.
-    let virtual_table = stable_function_state().get_virtual_table();
+    println!(100, "STEP 3 {}", virtual_table.length());
     update_existing_functions(virtual_table, stable_functions);
-    // 3. Scan stable functions map and determine number of new stable functions that are yet
+    // 4. Scan stable functions map and determine number of new stable functions that are yet
     // not part of the persistent virtual table.
+    println!(100, "STEP 4");
     let extension_size = count_new_functions(stable_functions);
-    // 4. Extend the persistent virtual table by the new stable functions.
+    // 5. Extend the persistent virtual table by the new stable functions.
     // Assign the function ids in stable function map.
+    println!(100, "STEP 5 {extension_size}");
     let new_virtual_table = add_new_functions(mem, virtual_table, extension_size, stable_functions);
-    // 5. Create the function literal table by scanning the stable functions map and
+    // 6. Create the function literal table by scanning the stable functions map and
     // mapping Wasm table indices to their assigned function id.
+    println!(100, "STEP 6");
     let new_literal_table = create_function_literal_table(mem, stable_functions);
-    // 6. Store the new persistent virtual table and dynamic literal table.
+    // 7. Store the new persistent virtual table and dynamic literal table.
     // Apply write barriers!
+    println!(100, "STEP 7");
     let state = stable_function_state();
     write_with_barrier(mem, state.virtual_table_location(), new_virtual_table);
     write_with_barrier(mem, state.literal_table_location(), new_literal_table);
+
+    println!(100, "STOP: register_stable_functions");
 }
 
 const NULL_FUNCTION_ID: FunctionId = FunctionId::MAX;
@@ -238,10 +282,20 @@ unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) 
     for index in 0..stable_functions.length() {
         let entry = stable_functions.get(index);
         (*entry).cached_function_id = NULL_FUNCTION_ID;
+        println!(100, " ENTRY {index} {} {} {}", (*entry).function_name_hash, (*entry).wasm_table_index, (*entry).cached_function_id);
     }
 }
 
-// Step 2: Scan the persistent virtual table and match/update all entries against
+// Step 2. Retrieve the persistent virtual, or, if not present, initialize an empty one.
+unsafe fn prepare_virtual_table<M: Memory>(mem: &mut M) -> *mut PersistentVirtualTable {
+    let state = stable_function_state();
+    if state.is_default() {
+        state.initialize_virtual_table(mem);
+    }
+    state.get_virtual_table()
+}
+
+// Step 3: Scan the persistent virtual table and match/update all entries against
 // `stable_functions`. Assign the function ids in stable function map.
 unsafe fn update_existing_functions(
     virtual_table: *mut PersistentVirtualTable,
@@ -262,7 +316,7 @@ unsafe fn update_existing_functions(
     }
 }
 
-// 3. Scan stable functions map and determine number of new stable functions that are yet
+// Step 4. Scan stable functions map and determine number of new stable functions that are yet
 // not part of the persistent virtual table.
 unsafe fn count_new_functions(stable_functions: *mut StableFunctionMap) -> usize {
     let mut count = 0;
@@ -275,7 +329,7 @@ unsafe fn count_new_functions(stable_functions: *mut StableFunctionMap) -> usize
     count
 }
 
-// 4. Extend the persistent virtual table by the new stable functions.
+// Step 5. Extend the persistent virtual table by the new stable functions.
 // Assign the function ids in stable function map.
 unsafe fn add_new_functions<M: Memory>(
     mem: &mut M,
@@ -300,6 +354,7 @@ unsafe fn add_new_functions<M: Memory>(
                 function_name_hash,
                 wasm_table_index,
             };
+            println!(100, " ADD {index} {function_id} {function_name_hash} {wasm_table_index}");
             debug_assert_ne!(function_id, NULL_FUNCTION_ID);
             new_virtual_table.set(function_id, new_virtual_table_entry);
             (*stable_function_entry).cached_function_id = function_id as FunctionId;
@@ -331,24 +386,34 @@ unsafe fn extend_virtual_table<M: Memory>(
     new_blob
 }
 
-// 5. Create the function literal table by scanning the stable functions map and
+// Step 6. Create the function literal table by scanning the stable functions map and
 // mapping Wasm table indices to their assigned function id.
 unsafe fn create_function_literal_table<M: Memory>(
     mem: &mut M,
     stable_functions: *mut StableFunctionMap,
 ) -> Value {
     let table_length = compute_literal_table_length(stable_functions);
-    let byte_length = Bytes(table_length * DynamicLiteralTable::get_entry_size());
-    let new_blob = alloc_blob(mem, TAG_BLOB_B, byte_length);
-    allocation_barrier(new_blob);
-    let dynamic_literal_table = new_blob.as_blob_mut() as *mut DynamicLiteralTable;
+    println!(100, "Literal table length {table_length}");
+    let dynamic_literal_table = create_empty_literal_table(mem, table_length);
     for index in 0..stable_functions.length() {
         let entry = stable_functions.get(index);
         let wasm_table_index = (*entry).wasm_table_index;
         let function_id = (*entry).cached_function_id; // Can also be `NULL_FUNCTION_ID` if not stable.
         dynamic_literal_table.set(wasm_table_index, function_id);
+        println!(100, " LITERAL {wasm_table_index} {function_id}");
     }
-    new_blob
+    Value::from_ptr(dynamic_literal_table as usize)
+}
+
+unsafe fn create_empty_literal_table<M: Memory>(mem: &mut M, table_length: usize) -> *mut DynamicLiteralTable {
+    let byte_length = Bytes(table_length * DynamicLiteralTable::get_entry_size());
+    let new_blob = alloc_blob(mem, TAG_BLOB_B, byte_length);
+    allocation_barrier(new_blob);
+    let dynamic_literal_table = new_blob.as_blob_mut() as *mut DynamicLiteralTable;
+    for index in 0..dynamic_literal_table.length() {
+        dynamic_literal_table.set(index, NULL_FUNCTION_ID);
+    }
+    dynamic_literal_table
 }
 
 unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap) -> usize {

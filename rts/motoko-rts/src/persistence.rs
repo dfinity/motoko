@@ -81,6 +81,7 @@ impl PersistentMetadata {
                 || (*self).fingerprint == ['\0'; 32]
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
+                    && (*self).stable_function_state.is_default()
         );
         initialized
     }
@@ -103,6 +104,7 @@ impl PersistentMetadata {
         (*self).stable_type = TypeDescriptor::default();
         (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
+        (*self).stable_function_state = StableFunctionState::default();
     }
 }
 

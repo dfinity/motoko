@@ -7,6 +7,7 @@ _build
 target
 node_modules
 .docusaurus
+.emscripten_cache
 
 **/*~
 result*

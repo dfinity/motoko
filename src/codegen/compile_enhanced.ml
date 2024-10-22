@@ -731,10 +731,12 @@ module E = struct
       fp
 
   let add_stable_func (env : t) (name: string) (wasm_table_index: int32) =
+    Printf.printf "STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
     match NameEnv.find_opt name !(env.stable_functions) with
     | Some _ -> ()
-    | None -> 
-      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)
+    | None ->
+      (Printf.printf " ADD STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
+      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions))
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -2361,10 +2363,8 @@ module Closure = struct
   let constant env name get_fi =
     let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
     E.add_stable_func env name wasm_table_index;
-    let name_hash = Mo_types.Hash.hash name in
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
-      (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index);  *)
-      compile_unboxed_const (Wasm.I64_convert.extend_i32_u name_hash) ^^
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
       E.call_import env "rts" "resolve_stable_function_literal";
       (* TODO: Support flexible function references *)
       compile_unboxed_const 0L
