@@ -29,6 +29,10 @@ actor {
   Prim.debugPrint("Result: " # map(123));
 };
 
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
+//SKIP comp-ref
 //CALL upgrade ""
 //CALL ingress change "DIDL\x00\x00"
 //CALL upgrade ""

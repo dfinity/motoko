@@ -2365,7 +2365,7 @@ module Closure = struct
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index);  *)
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u name_hash) ^^
-      E.call_import env "rts" "resolve_stable_function_literal" ^^
+      E.call_import env "rts" "resolve_stable_function_literal";
       (* TODO: Support flexible function references *)
       compile_unboxed_const 0L
     ])
@@ -8735,9 +8735,10 @@ module StableFunctions = struct
     | Some index -> index
     | None -> assert false
     in
-    let length = get_stable_functions_segment_length env in
-    Blob.load_data_segment env Tagged.B segment_index length ^^
-    E.call_import env "rts" "register_stable_functions"
+    Func.share_code0 Func.Always env "register_stable_functions_on_init" [] (fun env ->  
+      let length = get_stable_functions_segment_length env in
+      Blob.load_data_segment env Tagged.B segment_index length ^^
+      E.call_import env "rts" "register_stable_functions")
 
 end (* StableFunctions *)
 
@@ -8806,7 +8807,6 @@ module EnhancedOrthogonalPersistence = struct
 
   let load env actor_type =
     register_stable_type env actor_type ^^
-    StableFunctions.register_stable_functions env ^^
     load_stable_actor env ^^
     compile_test I64Op.Eqz ^^
     (E.if1 I64Type
@@ -8817,8 +8817,8 @@ module EnhancedOrthogonalPersistence = struct
     UpgradeStatistics.add_instructions env
 
   let initialize env actor_type =
-    register_stable_type env actor_type ^^
-    StableFunctions.register_stable_functions env
+    register_stable_type env actor_type
+
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -13258,7 +13258,8 @@ and conclude_module env set_serialization_globals set_stable_function_globals st
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     E.call_import env "rts" ("initialize_incremental_gc") ^^
-    GCRoots.register_static_variables env ^^
+    StableFunctions.register_stable_functions env ^^
+    GCRoots.register_static_variables env ^^ (* uses already stable functions lookup *)
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
