@@ -1585,8 +1585,13 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (_FIXME, exp1, inst, exp2) ->
-    ignore (Option.map (infer_exp env) _FIXME);
+  | CallE (par_opt, exp1, inst, exp2) ->
+    let attrs_opt = Option.map (infer_exp env) par_opt in
+    if not env.pre then begin match attrs_opt with
+    | None -> ()
+    | Some attrs ->
+       warn env (Option.get par_opt).at "M0200" "unrecognised attribute in parenthetical note"
+    end;
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
