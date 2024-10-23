@@ -1590,7 +1590,9 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin match attrs_opt with
     | None -> ()
     | Some attrs ->
-       warn env (Option.get par_opt).at "M0200" "unrecognised attribute in parenthetical note"
+      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
+      if unrecognised <> [] then warn env (Option.get par_opt).at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised)
     end;
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
@@ -2800,7 +2802,7 @@ and infer_val_path env exp : T.typ option =
        | _ -> None
     )
   | AnnotE (_, typ) ->
-    Some (check_typ {env with pre = true}  typ)
+    Some (check_typ {env with pre = true} typ)
   | _ -> None
 
 
