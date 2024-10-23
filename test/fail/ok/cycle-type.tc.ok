@@ -1,4 +1,6 @@
-cycle-type.mo:3.31-3.38: type error [M0201], expected Nat type for attribute cycles, but it has type
+cycle-type.mo:4.40-4.47: warning [M0200], unrecognised attribute moot in parenthetical note
+cycle-type.mo:4.40-4.47: type error [M0201], expected Nat type for attribute cycles, but it has type
   Char
-cycle-type.mo:4.35-4.43: type error [M0201], expected Nat type for attribute cycles, but it has type
+cycle-type.mo:5.44-5.52: warning [M0200], unrecognised attribute moot in parenthetical note
+cycle-type.mo:5.44-5.52: type error [M0201], expected Nat type for attribute cycles, but it has type
   Text
