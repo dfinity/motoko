@@ -1587,12 +1587,19 @@ and infer_exp'' env exp : T.typ =
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
     let attrs_opt = Option.map (infer_exp env) par_opt in
-    if not env.pre then begin match attrs_opt with
+    if not env.pre
+    then begin match attrs_opt with
     | None -> ()
     | Some attrs ->
       let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
       let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
-      if unrecognised <> [] then warn env (Option.get par_opt).at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised)
+      if unrecognised <> [] then warn env (Option.get par_opt).at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
+      (*check_exp_strong env T.bool {(Option.get par_opt) with note = empty_typ_note}*)
+      let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
+      if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
+        local_error env (Option.get par_opt).at "M0201"
+          "expected Nat type for attribute cycles, but it has type%a"
+          display_typ_expand (List.hd cyc).T.typ
     end;
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->

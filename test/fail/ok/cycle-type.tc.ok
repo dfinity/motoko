@@ -1,0 +1,2 @@
+cycle-type.mo:3.31-3.38: type error [M0201], expected Nat type for attribute cycles, but it has type
+  Char
