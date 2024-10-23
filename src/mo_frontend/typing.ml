@@ -1594,7 +1594,6 @@ and infer_exp'' env exp : T.typ =
       let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
       let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
       if unrecognised <> [] then warn env (Option.get par_opt).at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
-      (*check_exp_strong env T.bool {(Option.get par_opt) with note = empty_typ_note}*)
       let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
       if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
         local_error env (Option.get par_opt).at "M0201"
