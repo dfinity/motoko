@@ -1586,20 +1586,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
-    let attrs_opt = Option.map (infer_exp env) par_opt in
-    if not env.pre
-    then begin match attrs_opt with
-    | None -> ()
-    | Some attrs ->
-      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
-      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
-      if unrecognised <> [] then warn env (Option.get par_opt).at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
-      let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
-      if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
-        local_error env (Option.get par_opt).at "M0201"
-          "expected Nat type for attribute cycles, but it has type%a"
-          display_typ_expand (List.hd cyc).T.typ
-    end;
+    if not env.pre then validate_parenthetical env par_opt;
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
@@ -1731,7 +1718,7 @@ and infer_exp'' env exp : T.typ =
   | AsyncE (par_opt, s, typ_bind, exp1) ->
     error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
-    ignore (Option.map (infer_exp env) par_opt); (* TODO: in restricted environment? *)
+    if not env.pre then validate_parenthetical env par_opt; (* TODO: in restricted environment? *)
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -2564,6 +2551,19 @@ and infer_obj env s dec_fields at : T.typ =
     check_stab env s scope dec_fields;
   end;
   t
+
+and validate_parenthetical env = function
+  | None -> ()
+  | Some par ->
+     let attrs = infer_exp env par in
+     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+     let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     if unrecognised <> [] then warn env par.at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
+     let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
+     if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
+       local_error env par.at "M0201"
+         "expected Nat type for attribute cycles, but it has type%a"
+         display_typ_expand (List.hd cyc).T.typ
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
