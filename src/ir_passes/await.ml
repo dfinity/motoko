@@ -88,7 +88,7 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 
 let rec t_async context exp =
   match exp.it with
-  | AsyncE (s, tb, exp1, typ1) ->
+  | AsyncE (par_opt, s, tb, exp1, typ1) ->
    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
@@ -99,7 +99,9 @@ let rec t_async context exp =
        (LabelEnv.add Return (Cont k_ret)
           (LabelEnv.singleton Throw (Cont k_fail)))
    in
-     cps_asyncE s typ1 (typ exp1)
+     cps_asyncE s typ1 (match par_opt with
+                        | Some par -> assert false; optE par
+                        | None -> primE ICCyclesPrim []) (typ exp1)
        (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret))))
  |  _ -> assert false
@@ -144,9 +146,9 @@ and t_exp' context exp =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (T.Cmp, _, _, _) ->
+  | AsyncE (_, T.Cmp, _, _, _) ->
      (t_async context exp).it
-  | AsyncE (T.Fut, _, _, _) ->
+  | AsyncE (_, T.Fut, _, _, _) ->
      assert false  (* must have effect T.Await *)
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
@@ -433,9 +435,9 @@ and c_exp' context exp k =
       | Some (Cont k') -> c_exp context exp1 (ContVar k')
       | _ -> assert false
     end
-  | AsyncE (T.Cmp, tb, exp1, typ1) ->
+  | AsyncE (_, T.Cmp, tb, exp1, typ1) ->
     assert false (* must have effect T.Triv, handled by first case *)
-  | AsyncE (T.Fut, tb, exp1, typ1) ->
+  | AsyncE (par_opt, T.Fut, tb, exp1, typ1) ->
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
@@ -450,7 +452,11 @@ and c_exp' context exp k =
       | _ -> assert false
     in
     let cps_async =
-      cps_asyncE T.Fut typ1 (typ exp1)
+      cps_asyncE T.Fut typ1 (match par_opt with
+                             | Some par when T.(sub (typ par) (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
+                               -> optE par
+                             | None -> primE ICCyclesPrim []
+                             | Some _ -> nullE ()) (typ exp1)
         (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
     let k' = meta (typ cps_async)
@@ -644,7 +650,7 @@ and t_comp_unit context = function
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
-          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
+          expD (c_block context' ds (tupE []) (meta T.unit (fun v1 -> tupE [])))
         ]
     end
   | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
@@ -673,7 +679,7 @@ and t_ignore_throw context exp =
      { (blockE [
           funcD throw e (tupE[]);
         ]
-        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
+        (c_exp context' exp (meta T.unit (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,
           or timer won't be initialized in compile.ml *)
        with at = exp.at

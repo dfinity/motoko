@@ -405,7 +405,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
-    | CallPrim insts, [exp1; exp2] ->
+    | CallPrim (insts, _FIXMEpars), [exp1; exp2] ->
       begin match T.promote (typ exp1) with
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
           check_inst_bounds env tbs insts exp.at;
@@ -556,6 +556,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
+
+
+    | ICCyclesPrim, [] -> () (* FIXME *)
+
+
     | CPSAwait (s, cont_typ), [a; krb] ->
       let (_, t1) =
         try T.as_async_sub s T.Non (T.normalize (typ a))
@@ -574,7 +579,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
        | _ -> error env exp.at "CPSAwait bad cont");
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-    | CPSAsync (s, t0), [exp] ->
+    | CPSAsync (s, t0, _FIXME), [exp] ->
       (match typ exp with
        | T.Func (T.Local, T.Returns, [tb],
                  T.[Func (Local, Returns, [], ts1, []);
@@ -601,7 +606,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Non <: t
     | ICCallerPrim, [] ->
       T.caller <: t
-    | ICCallPrim, [exp1; exp2; k; r; c] ->
+    | ICCallPrim setup, [exp1; exp2; k; r; c] ->
+      Option.iter (fun e -> typ e <: T.unit) setup;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
@@ -744,7 +750,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | AsyncE (s, tb, exp1, t0) ->
+  | AsyncE (_FIXME, s, tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;
     let c, tb, ce = check_open_typ_bind env tb in
@@ -803,13 +809,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (cyc, ts, exp_f, exp_k, exp_r, exp_c) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
+    check_exp env cyc;
     List.iter (check_typ env) ts;
     check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
     check_exp env exp_c;
+    typ cyc <: T.(Opt (Obj (Object, [])));
     typ exp_f <: T.unit;
     typ exp_k <: T.(Construct.contT (Tup ts) unit);
     typ exp_r <: T.(Construct.err_contT unit);
