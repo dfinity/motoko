@@ -1349,7 +1349,8 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 -   `postupgrade`: When declared, is called during an upgrade, immediately after the replacement actor body has initialized its fields, inheriting values of the retired actors' stable variables, and before its first message is processed. Its `<system>` type parameter is implicitly assumed and need not be declared.
 
 :::danger
-Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. Per best practices, using these methods should be avoided if possible.
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded. 
+Per best practices, using these methods should be avoided if possible.
 :::
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures, e.g. caches, that are better represented using non-stable types.
