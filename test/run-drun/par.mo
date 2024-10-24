@@ -12,6 +12,7 @@ actor {
     };
 
     public func oneshot() {
+        debugPrint ("oneshot: " # debug_show(Cycles.available()));
     };
 
     public func test() : async () {
@@ -54,6 +55,11 @@ actor {
         debugPrint "test2()";
         await (with cycles = 1042) async { assert Cycles.available() == 1042 };
         await (with cycles = 3042) (with cycles = 4042) async { assert Cycles.available() == 3042/*FIXME: WHY?*/ };
+    };
+
+    public func test3() : async () {
+        oneshot();
+        (with cycles = 3456) oneshot();
     }
 }
 
@@ -64,3 +70,4 @@ actor {
 
 //CALL ingress test "DIDL\x00\x00"
 //CALL ingress test2 "DIDL\x00\x00"
+//CALL ingress test3 "DIDL\x00\x00"

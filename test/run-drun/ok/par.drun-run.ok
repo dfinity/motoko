@@ -4,3 +4,6 @@ debug.print: test()
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test2()
 ingress Completed: Reply: 0x4449444c0000
+debug.print: oneshot: 0
+debug.print: oneshot: 0
+ingress Completed: Reply: 0x4449444c0000
