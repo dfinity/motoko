@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/actors-async.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/actors-async.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#actors" id="toc-actors">Actors</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+</ul></li>
+<li><a href="#actors-1" id="toc-actors-1">Actors</a>
+<ul>
+<li><a href="#defining-an-actor" id="toc-defining-an-actor">Defining an
+actor</a></li>
+<li><a href="#actor-types" id="toc-actor-types">Actor types</a></li>
+<li><a href="#asynchronous-behavior"
+id="toc-asynchronous-behavior">Asynchronous behavior</a></li>
+<li><a href="#traps-and-commit-points"
+id="toc-traps-and-commit-points">Traps and commit points</a>
+<ul>
+<li><a href="#commit-points" id="toc-commit-points">Commit
+points</a></li>
+<li><a href="#traps" id="toc-traps">Traps</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="actors">Actors</h1>
+<h2 id="overview">Overview</h2>
+<p>The programming model of the Internet Computer consists of
+memory-isolated canisters communicating by asynchronous message passing
+of binary data encoding Candid values. A canister processes its messages
+one-at-a-time, preventing race conditions. A canister uses call-backs to
+register what needs to be done with the result of any inter-canister
+messages it issues.</p>
+<p>Motoko provides an <strong>actor-based</strong> programming model to
+developers to express <strong>services</strong>, including those of
+canister smart contracts on ICP. Each canister is represented as a typed
+actor. The type of an actor lists the messages it can handle. Each
+message is abstracted as a typed, asynchronous function. A translation
+from actor types to Candid types imposes structure on the raw binary
+data of the underlying Internet Computer. An actor is similar to an
+object, but is different in that its state is completely isolated, its
+interactions with the world are entirely through asynchronous messaging,
+and its messages are processed one-at-a-time, even when issued in
+parallel by concurrent actors.</p>
+<h1 id="actors-1">Actors</h1>
+<p>An actor is similar to an object, but is different in that:</p>
+<ul>
+<li><p>Its state is completely isolated.</p></li>
+<li><p>Its interactions with the world are done entirely through
+asynchronous messaging.</p></li>
+<li><p>Its messages are processed one-at-a-time, even when issued in
+parallel by concurrent actors.</p></li>
+</ul>
+<p>All communication with and between actors involves passing messages
+asynchronously over the network using the Internet Computer’s messaging
+protocol. An actor’s messages are processed in sequence, so state
+modifications never admit race conditions, unless explicitly allowed by
+punctuating <code>await</code> expressions.</p>
+<p>The Internet Computer ensures that each message that is sent receives
+a response. The response is either success with some value or an error.
+An error can be the explicit rejection of the message by the receiving
+canister, a trap due to an illegal instruction such as division by zero,
+or a system error due to distribution or resource constraints. For
+example, a system error might be the transient or permanent
+unavailability of the receiver (either because the receiving actor is
+oversubscribed or has been deleted).</p>
+<p>In Motoko, actors have dedicated syntax and types:</p>
+<ul>
+<li><p>Messaging is handled by so called <strong>shared</strong>
+functions returning futures. Shared functions are accessible to remote
+callers and have additional restrictions: their arguments and return
+value must be shared types. Shared types are a subset of types that
+includes immutable data, actor references, and shared function
+references, but excludes references to local functions and mutable
+data.</p></li>
+<li><p>Future, <code>f</code>, is a value of the special type
+<code>async T</code> for some type <code>T</code>.</p></li>
+<li><p>Waiting on <code>f</code> to be completed is expressed using
+<code>await f</code> to obtain a value of type <code>T</code>. To avoid
+introducing shared state through messaging, for example, by sending an
+object or mutable array, the data that can be transmitted through shared
+functions is restricted to immutable, shared types.</p></li>
+</ul>
+<h2 id="defining-an-actor">Defining an actor</h2>
+<p>Consider the following actor declaration:</p>
+<pre class="motoko"><code></code></pre>
+<p>The <code>Counter</code> actor declares one field and three public,
+shared functions:</p>
+<ul>
+<li><p>The field <code>count</code> is mutable, initialized to zero and
+implicitly <code>private</code>.</p></li>
+<li><p>Function <code>inc()</code> asynchronously increments the counter
+and returns a future of type <code>async ()</code> for
+synchronization.</p></li>
+<li><p>Function <code>read()</code> asynchronously reads the counter
+value and returns a future of type <code>async Nat</code> containing its
+value.</p></li>
+<li><p>Function <code>bump()</code> asynchronously increments and reads
+the counter.</p></li>
+</ul>
+<p>Shared functions, unlike local functions, are accessible to remote
+callers and have additional restrictions. Their arguments and return
+value must be shared type. Shared types are a subset of types that
+includes immutable data, actor references, and shared function
+references, but excludes references to local functions and mutable data.
+Because all interaction with actors is asynchronous, an actor’s
+functions must return futures, that is, types of the form
+<code>async T</code>, for some type <code>T</code>.</p>
+<p>The only way to read or modify the state (<code>count</code>) of the
+<code>Counter</code> actor is through its shared functions.</p>
+<p>A value of type <code>async T</code> is a future. The producer of the
+future completes the future when it returns a result, either a value or
+error.</p>
+<p>Unlike objects and modules, actors can only expose functions, and
+these functions must be <code>shared</code>. For this reason, Motoko
+allows you to omit the <code>shared</code> modifier on public actor
+functions, allowing the more concise, but equivalent, actor
+declaration:</p>
+<pre class="motoko"><code></code></pre>
+<p>For now, the only place shared functions can be declared is in the
+body of an actor or actor class. Despite this restriction, shared
+functions are still first-class values in Motoko and can be passed as
+arguments or results, and stored in data structures.</p>
+<p>The type of a shared function is specified using a shared function
+type. For example, the value <code>inc</code> has type
+<code>shared () → async Nat</code> and could be supplied as a standalone
+callback to some other service.</p>
+<h2 id="actor-types">Actor types</h2>
+<p>Just as objects have object types, actors have actor types. The
+<code>Counter</code> example above has the following type:</p>
+<pre class="motoko"><code>actor {
+  inc  : shared () -&gt; async ();
+  read : shared () -&gt; async Nat;
+  bump : shared () -&gt; async Nat;
+}</code></pre>
+<p>Unlike objects and modules, actors can only expose functions, and
+these functions must be <code>shared</code>. For now, the only place
+shared functions can be declared is in the body of an actor or actor
+class. Despite this restriction, shared functions are still first-class
+values in Motoko and can be passed as arguments or results, and stored
+in data structures.</p>
+<p>The <code>shared</code> modifier is required on every member of an
+actor. Motoko both elides them on display and allows you to omit them
+when authoring an actor type.</p>
+<p>Thus, the previous type can be expressed more succinctly as:</p>
+<pre class="motoko"><code>actor {
+  inc  : () -&gt; async ();
+  read : () -&gt; async Nat;
+  bump : () -&gt; async Nat;
+}</code></pre>
+<p>Like object types, actor types support subtyping: an actor type is a
+subtype of a more general one that offers fewer functions with more
+general types.</p>
+<h2 id="asynchronous-behavior">Asynchronous behavior</h2>
+<p>Like other modern programming languages, Motoko permits an ergonomic
+syntax for <strong>asynchronous</strong> communication among
+components.</p>
+<p>In the case of Motoko, each communicating component is an actor. As
+an example of using actors, consider this three-line program:</p>
+<pre class="motoko"><code>let result1 = service1.computeAnswer(params);
+let result2 = service2.computeAnswer(params);
+finalStep(await result1, await result2)</code></pre>
+<p>This program’s behavior can be summarized as:</p>
+<ol type="1">
+<li><p>The program makes two requests (lines 1 and 2) to two distinct
+services, each implemented as a Motoko actor or canister smart contract
+implemented in some other language.</p></li>
+<li><p>The program waits for each result to be ready (line 3) using the
+keyword <code>await</code> on each result value.</p></li>
+<li><p>The program uses both results in the final step (line 3) by
+calling the <code>finalStep</code> function.</p></li>
+</ol>
+<p>The services <strong>interleave</strong> their executions rather than
+wait for one another, since this reduces overall latency. If you try to
+reduce latency this way without special language support, such
+interleaving will quickly sacrifice clarity and simplicity.</p>
+<p>Even in cases where there are no interleaving executions, for
+example, if there were only one call above, not two, the programming
+abstractions still permit clarity and simplicity for the same reason.
+Namely, they signal to the compiler where to transform the program,
+freeing the programmer from contorting the program’s logic in order to
+interleave its execution with the underlying system’s message-passing
+loop.</p>
+<p>In the above example, the program uses <code>await</code> in line 3
+to express that interleaving behavior in a simple fashion.</p>
+<p>In other programming languages that lack these abstractions,
+developers would not merely call these two functions directly, but would
+instead employ very advanced programming patterns, possibly registering
+developer-provided “callback functions” within system-provided “event
+handlers”. Each callback would handle an asynchronous event that arises
+when an answer is ready. This kind of systems-level programming is
+powerful, but very error-prone, since it decomposes a high-level data
+flow into low-level system events that communicate through shared
+state.</p>
+<h2 id="traps-and-commit-points">Traps and commit points</h2>
+<p>A trap is a non-recoverable runtime failure caused by errors such as
+division-by-zero, out-of-bounds array indexing, numeric overflow, cycle
+exhaustion or assertion failure.</p>
+<p>A shared function call that executes without executing an
+<code>await</code> expression never suspends and executes atomically. A
+shared function that contains no <code>await</code> expression is
+syntactically atomic.</p>
+<h3 id="commit-points">Commit points</h3>
+<p>An atomic shared function whose execution traps has no visible effect
+on the state of the enclosing actor or its environment - any state
+change is reverted, and any message that it has sent is revoked. In
+fact, all state changes and message sends are tentative during
+execution: they are committed only after a successful commit point is
+reached.</p>
+<p>The points at which tentative state changes and message sends are
+irrevocably committed are:</p>
+<ul>
+<li><p>Implicit exit from a shared function by producing a
+result.</p></li>
+<li><p>Explicit exit via <code>return</code> or <code>throw</code>
+expressions.</p></li>
+<li><p>Explicit <code>await</code> expressions.</p></li>
+</ul>
+<h3 id="traps">Traps</h3>
+<p>A trap will only revoke changes made since the last commit point. In
+particular, in a non-atomic function that does multiple awaits, a trap
+will only revoke changes attempted since the last await - all preceding
+effects will have been committed and cannot be undone.</p>
+<p>Consider the following stateful <code>Atomicity</code> actor:</p>
+<pre class="motoko"><code></code></pre>
+<p>Calling the shared function <code>atomic()</code> will fail with an
+error, since the last statement causes a trap. However, the trap leaves
+the mutable variable <code>s</code> with value <code>0</code>, not
+<code>1</code>, and variable <code>pinged</code> with value
+<code>false</code>, not <code>true</code>. This is because the trap
+happens before the method <code>atomic</code> has executed an
+<code>await</code>, or exited with a result. Even though
+<code>atomic</code> calls <code>ping()</code>, <code>ping()</code> is
+queued until the next commit point.</p>
+<p>Calling the shared function <code>nonAtomic()</code> will also fail
+with an error due to a trap. In this function, the trap leaves the
+variable <code>s</code> with value <code>3</code>, not <code>0</code>,
+and variable <code>pinged</code> with value <code>true</code>, not
+<code>false</code>. This is because each <code>await</code> commits its
+preceding side-effects, including message sends. Even though
+<code>f</code> is complete by the second await, this await also forces a
+commit of the state, suspends execution and allows for interleaved
+processing of other messages to this actor.</p>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

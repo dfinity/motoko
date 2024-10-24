@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/canister-maintenance/compatibility.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/canister-maintenance/compatibility.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#verifying-upgrade-compatibility"
+id="toc-verifying-upgrade-compatibility">Verifying upgrade
+compatibility</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#upgrade-example" id="toc-upgrade-example">Upgrade
+example</a></li>
+<li><a href="#evolving-the-stable-declarations"
+id="toc-evolving-the-stable-declarations">Evolving the stable
+declarations</a></li>
+<li><a href="#stable-type-signatures"
+id="toc-stable-type-signatures">Stable type signatures</a></li>
+<li><a href="#evolving-the-candid-interface"
+id="toc-evolving-the-candid-interface">Evolving the Candid
+interface</a></li>
+<li><a href="#dual-interface-evolution"
+id="toc-dual-interface-evolution">Dual interface evolution</a></li>
+<li><a href="#incompatible-upgrade"
+id="toc-incompatible-upgrade">Incompatible upgrade</a></li>
+<li><a href="#explicit-migration" id="toc-explicit-migration">Explicit
+migration</a></li>
+<li><a href="#upgrade-tooling" id="toc-upgrade-tooling">Upgrade
+tooling</a></li>
+<li><a href="#adding-record-fields" id="toc-adding-record-fields">Adding
+record fields</a>
+<ul>
+<li><a href="#problem" id="toc-problem">Problem</a></li>
+<li><a href="#solution" id="toc-solution">Solution</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="verifying-upgrade-compatibility">Verifying upgrade
+compatibility</h1>
+<h2 id="overview">Overview</h2>
+<p>When upgrading a canister, it is important to verify that the upgrade
+can proceed without:</p>
+<ul>
+<li>Introducing an incompatible change in stable declarations.</li>
+<li>Breaking clients due to a Candid interface change.</li>
+</ul>
+<p><code>dfx</code> checks these properties statically before attempting
+the upgrade. Moreover, with <a
+href="orthogonal-persistence/enhanced.md">enhanced orthogonal
+persistence</a>, Motoko rejects incompatible changes of stable
+declarations.</p>
+<h2 id="upgrade-example">Upgrade example</h2>
+<p>The following is a simple example of how to declare a stateful
+counter:</p>
+<pre class="motoko"><code></code></pre>
+<p>Importantly, in this example, when the counter is upgraded, its state
+is lost. This is because actor variables are by default
+<code>flexible</code>, meaning they get reinitialized on an upgrade.</p>
+<p>To fix this, you can declare a stable variable that is retained
+across upgrades:</p>
+<pre class="motoko"><code></code></pre>
+<p>If the variable <code>state</code> were not declared
+<code>stable</code>, <code>state</code> would restart from
+<code>0</code> on upgrade.</p>
+<h2 id="evolving-the-stable-declarations">Evolving the stable
+declarations</h2>
+<p>Changing counter from <code>Nat</code> to <code>Int</code> is a
+compatible change in stable declarations. The counter value is retained
+during the upgrade.</p>
+<pre class="motoko"><code></code></pre>
+<h2 id="stable-type-signatures">Stable type signatures</h2>
+<p>A stable type signature describes the stable content of a Motoko
+actor. You can think of this as the interior interface of the actor,
+that it presents to its future upgrades.</p>
+<p>For example, <code>v1</code>'s stable types:</p>
+<pre class="motoko"><code></code></pre>
+<p>An upgrade from <code>v1</code> to <code>v2</code>'s stable types
+consumes a <a href="../base/Int.md"><code>Nat</code></a> as an <a
+href="../base/Nat.md"><code>Int</code></a>, which is valid because
+<code>Int &lt;: Nat</code>.</p>
+<pre class="motoko"><code></code></pre>
+<h2 id="evolving-the-candid-interface">Evolving the Candid
+interface</h2>
+<p>In this extension of the interface, old clients remain satisfied,
+while new ones get extra features such as the <code>decrement</code>
+function and the <code>read</code> query in this example.</p>
+<pre class="motoko"><code></code></pre>
+<h2 id="dual-interface-evolution">Dual interface evolution</h2>
+<p>An upgrade is safe provided that both the Candid interface and stable
+type signatures remain compatible:</p>
+<ul>
+<li>Each stable variable must either be newly declared, dropped, or
+re-declared at a supertype of its old type.</li>
+<li>The Candid interface evolves to a subtype.</li>
+</ul>
+<p>Consider the following four versions of the counter example:</p>
+<p>Version <code>v0</code> with Candid interface <code>v0.did</code> and
+stable type interface <code>v0.most</code>:</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>Version <code>v1</code> with Candid interface <code>v1.did</code> and
+stable type interface <code>v1.most</code>,</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>Version <code>v2</code> with Candid interface <code>v2.did</code> and
+stable type interface <code>v2.most</code>,</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>Version <code>v3</code> with Candid interface <code>v3.did</code> and
+stable type interface <code>v3.most</code>:</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<h2 id="incompatible-upgrade">Incompatible upgrade</h2>
+<p>Let's take a look at another example where the counter's type is
+again changed, this time from <a
+href="../base/Int.md"><code>Int</code></a> to <a
+href="../base/Float.md"><code>Nat</code></a>:</p>
+<pre class="motoko"><code></code></pre>
+<p>This version is neither compatible to the Candid interface nor to the
+stable type declarations.</p>
+<ul>
+<li>Since <code>Float &lt;/: Int</code>, the new type of
+<code>state</code> is not compatible to the old type.</li>
+<li>The return type change of <code>read</code> is also not valid.</li>
+</ul>
+<p>Motoko rejects upgrades with incompatible state changes with <a
+href="orthogonal-persistence/enhanced.md">enhanced orthogonal
+persistence</a>. This is to guarantee that the stable state is always
+kept safe.</p>
+<pre><code>Error from Canister ...: Canister called `ic0.trap` with message: RTS error: Memory-incompatible program upgrade.</code></pre>
+<p>In addition to Motoko's check, <code>dfx</code> raises a warning
+message for these incompatible changes, including the breaking Candid
+change.</p>
+<p>:::danger Versions of Motoko using <a
+href="orthogonal-persistence/classical.md">classical orthogonal
+persistence</a> will drop the state and reinitialize the counter with
+<code>0.0</code>, if the <code>dfx</code> warning is ignored. :::</p>
+<h2 id="explicit-migration">Explicit migration</h2>
+<p>There is always a migration path to change structure of stable state,
+even if a direct type change is not compatible.</p>
+<p>For this purpose, a user-instructed migration can be done in three
+steps:</p>
+<ol type="1">
+<li><p>Introduce new variables of the desired types, while keeping the
+old declarations.</p></li>
+<li><p>Write logic to copy the state from the old variables to the new
+variables on upgrade.</p>
+<p>While the previous attempt of changing state from <a
+href="../base/Int.md"><code>Int</code></a> to <a
+href="../base/Float.md"><code>Nat</code></a> was invalid, you now can
+realize the desired change as follows:</p>
+<pre class="motoko"><code></code></pre>
+<p>To also keep the Candid interface, the <code>readFloat</code> has
+been added, while the old <code>read</code> is retired by keeping its
+declaration and raising a trap internally.</p></li>
+<li><p>Drop the old declarations once all data has been migrated:</p>
+<pre class="motoko"><code></code></pre></li>
+</ol>
+<p>Alternatively, the type of <code>state</code> can be changed to
+<code>Any</code>, also implying that this variable is no longer
+used.</p>
+<h2 id="upgrade-tooling">Upgrade tooling</h2>
+<p><code>dfx</code> incorporates an upgrade check. For this purpose, it
+uses the Motoko compiler (<code>moc</code>) that supports:</p>
+<ul>
+<li><p><code>moc --stable-types …​</code>: Emits stable types to a
+<code>.most</code> file.</p></li>
+<li><p><code>moc --stable-compatible &lt;pre&gt; &lt;post&gt;</code>:
+Checks two <code>.most</code> files for upgrade compatibility.</p></li>
+</ul>
+<p>Motoko embeds <code>.did</code> and <code>.most</code> files as Wasm
+custom sections for use by <code>dfx</code> or other tools.</p>
+<p>To upgrade e.g. from <code>cur.wasm</code> to <code>nxt.wasm</code>,
+<code>dfx</code> checks that both the Candid interface and stable
+variables are compatible:</p>
+<pre><code>didc check nxt.did cur.did  // nxt &lt;: cur
+moc --stable-compatible cur.most nxt.most  // cur &lt;&lt;: nxt</code></pre>
+<p>Using the versions above, the upgrade from <code>v3</code> to
+<code>v4</code> fails this check:</p>
+<pre><code>&gt; moc --stable-compatible v3.most v4.most
+(unknown location): Compatibility error [M0170], stable variable state of previous type
+  var Int
+cannot be consumed at new type
+  var Float</code></pre>
+<p>With <a href="orthogonal-persistence/enhanced.md">enhanced orthogonal
+persistence</a>, compatibility errors of stable variables are always
+detected in the runtime system and if failing, the upgrade is safely
+rolled back.</p>
+<p>:::danger With <a
+href="orthogonal-persistence/classical.md">classical orthogonal
+persistence</a>, however, an upgrade attempt from <code>v2.wasm</code>
+to <code>v3.wasm</code> is unpredictable and may lead to partial or
+complete data loss if the <code>dfx</code> warning is ignored. :::</p>
+<h2 id="adding-record-fields">Adding record fields</h2>
+<p>A common, real-world example of an incompatible upgrade can be found
+<a
+href="https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/">on
+the forum</a>.</p>
+<p>In that example, a user was attempting to add a field to the record
+payload of an array, by upgrading from stable type interface:</p>
+<pre class="motoko"><code>actor {
+  type Card = {
+    title : Text;
+  };
+  stable var map : [(Nat32, Card)] = [(0, { title = &quot;TEST&quot;})];
+};</code></pre>
+<p>to <em>incompatible</em> stable type interface:</p>
+<pre class="motoko"><code>actor {
+  type Card = {
+    title : Text;
+    description : Text;
+  };
+  stable var map : [(Nat32, Card)] = [];
+};</code></pre>
+<h3 id="problem">Problem</h3>
+<p>When trying this upgrade, <code>dfx</code> issues the following
+warning:</p>
+<pre><code>Stable interface compatibility check issued an ERROR for canister ...
+Upgrade will either FAIL or LOSE some stable variable data.
+
+(unknown location): Compatibility error [M0170], stable variable map of previous type
+  var [(Nat32, Card)]
+cannot be consumed at new type
+  var [(Nat32, Card__1)]
+
+Do you want to proceed? yes/No</code></pre>
+<p>It is recommended not to continue, as you will lose the state in
+older versions of Motoko that use <a
+href="orthogonal-persistence/classical.md">classical orthogonal
+persistence</a>. Upgrading with <a
+href="orthogonal-persistence/enhanced.md">enhanced orthogonal
+persistence</a> will trap and roll back, keeping the old state.</p>
+<p>Adding a new record field to the type of existing stable variable is
+not supported. The reason is simple: The upgrade would need to supply
+values for the new field out of thin air. In this example, the upgrade
+would need to conjure up some value for the <code>description</code>
+field of every existing <code>card</code> in <code>map</code>. Moreover,
+allowing adding optional fields is also a problem, as a record can be
+shared from various variables with different static types, some of them
+already declaring the added field or adding a same-named optional field
+with a potentially different type (and/or different semantics).</p>
+<h3 id="solution">Solution</h3>
+<p>To resolve this issue, an <a href="#explicit-migration">explicit</a>
+is needed:</p>
+<ol type="1">
+<li>You must keep the old variable <code>map</code> with the same
+structural type. However, you are allowed to change type alias name
+(<code>Card</code> to <code>OldCard</code>).</li>
+<li>You can introduce a new variable <code>newMap</code> and copy the
+old state to the new one, initializing the new field as needed.</li>
+<li>Then, upgrade to this new version.</li>
+</ol>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+
+actor {
+  type OldCard = {
+    title : Text;
+  };
+  type NewCard = {
+    title : Text;
+    description : Text;
+  };
+  
+  stable var map : [(Nat32, OldCard)] = [];
+  stable var newMap : [(Nat32, NewCard)] = Array.map&lt;(Nat32, OldCard), (Nat32, NewCard)&gt;(
+    map,
+    func(key, { title }) { (key, { title; description = &quot;&lt;empty&gt;&quot; }) },
+  );
+};</code></pre>
+<ol start="4" type="1">
+<li><strong>After</strong> we have successfully upgraded to this new
+version, we can upgrade once more to a version, that drops the old
+<code>map</code>.</li>
+</ol>
+<pre class="motoko"><code>actor {
+  type Card = {
+    title : Text;
+    description : Text;
+  };
+  stable var newMap : [(Nat32, Card)] = [];
+};</code></pre>
+<p><code>dfx</code> will issue a warning that <code>map</code> will be
+dropped.</p>
+<p>Make sure, you have previously migrated the old state to
+<code>newMap</code> before applying this final reduced version.</p>
+<pre><code>Stable interface compatibility check issued a WARNING for canister ...
+(unknown location): warning [M0169], stable variable map of previous type
+  var [(Nat32, OldCard)]
+ will be discarded. This may cause data loss. Are you sure?</code></pre>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

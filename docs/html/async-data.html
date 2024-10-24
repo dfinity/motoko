@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/async-data.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/async-data.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#async-data" id="toc-async-data">Async data</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#async-functions" id="toc-async-functions">Async
+functions</a></li>
+<li><a href="#using-await-to-consume-async-futures"
+id="toc-using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</a></li>
+<li><a href="#mops-packages-for-async-data-flow"
+id="toc-mops-packages-for-async-data-flow">Mops packages for async data
+flow</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="async-data">Async data</h1>
+<h2 id="overview">Overview</h2>
+<p>On ICP, communication between canisters is asynchronous. Sending a
+message together with a callback from one canister to another schedules
+a request in the receiver. Completion of the request triggers the
+callback to the sender, allowing the sender to process the result.</p>
+<p>In Motoko, sending an ICP asynchronous message is abstracted as
+calling a shared function that returns an asynchronous result. Like
+several other languages, Motoko offers <code>async</code> and
+<code>await</code> to support convenient programming with asynchronous
+functions and computations.</p>
+<p>In Motoko, executing an asynchronous expression, whether a call to a
+shared function, or just a local <code>async</code> expression, produces
+a future, an object of type <code>async T</code>, for some result type
+<code>T</code>. Instead of blocking the caller until the call has
+returned, the message is enqueued on the callee and the future
+representing that pending request is immediately returned to the caller.
+The future is a placeholder for the eventual result of the request that
+the caller can later query.</p>
+<p>The syntax <code>await</code> synchronizes on a future, and suspends
+computation until the future is completed by its producer.</p>
+<p>Between issuing the request and deciding to wait for the result, the
+caller is free to do other work. Once the callee has processed the
+request, the future is completed and its result made available to the
+caller. If the caller is waiting on the future, its execution can resume
+with the result, otherwise the result is simply stored in the future for
+later use.</p>
+<p>The combination of <code>async</code>/<code>await</code> constructs
+simplifies asynchronous programming by allowing <code>await</code>s to
+be embedded within ordinary sequential code, without requiring tricky
+management of asynchronous callbacks.</p>
+<h2 id="async-functions">Async functions</h2>
+<p>Here is an example program that uses async functions:</p>
+<pre class="motoko"><code></code></pre>
+<p>The <code>Counter</code> actor declares one field and three public,
+shared functions:</p>
+<ul>
+<li><p>The field <code>count</code> is mutable, initialized to zero and
+implicitly <code>private</code>.</p></li>
+<li><p>Function <code>inc()</code> asynchronously increments the counter
+and returns a future of type <code>async ()</code> for
+synchronization.</p></li>
+<li><p>Function <code>read()</code> asynchronously reads the counter
+value and returns a future of type <code>async Nat</code> containing its
+value.</p></li>
+<li><p>Function <code>bump()</code> asynchronously increments and reads
+the counter.</p></li>
+</ul>
+<p>The only way to read or modify the state (<code>count</code>) of the
+<code>Counter</code> actor is through its shared functions.</p>
+<h2 id="using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</h2>
+<p>The caller of a shared function typically receives a future, a value
+of type <code>async T</code> for some T.</p>
+<p>The only thing the caller can do with this future is wait for it to
+be completed by the producer, throw it away, or store it for later
+use.</p>
+<p>To access the result of an <code>async</code> value, the receiver of
+the future uses an <code>await</code> expression.</p>
+<p>For example, to use the result of <code>Counter.read()</code> above,
+we can first bind the future to an identifier <code>a</code>, and then
+<code>await a</code> to retrieve the underlying <a
+href="../base/Nat.md"><code>Nat</code></a>, <code>n</code>:</p>
+<pre class="motoko"><code>let a : async Nat = Counter.read();
+let n : Nat = await a;</code></pre>
+<p>The first line immediately receives a future of the counter value,
+but does not wait for it, and thus cannot use it as a natural number
+yet.</p>
+<p>The second line <code>await</code>s this future and extracts the
+result, a natural number. This line may suspend execution until the
+future has been completed.</p>
+<p>Typically, one rolls the two steps into one and just awaits an
+asynchronous call directly:</p>
+<pre class="motoko"><code>let n : Nat = await Counter.read();</code></pre>
+<p>Unlike a local function call, which blocks the caller until the
+callee has returned a result, a shared function call immediately returns
+a future, <code>f</code>, without blocking. Instead of blocking, a later
+call to <code>await f</code> suspends the current computation until
+<code>f</code> is complete. Once the future is completed (by the
+producer), execution of <code>await p</code> resumes with its result. If
+the result is a value, <code>await f</code> returns that value.
+Otherwise the result is some error, and <code>await f</code> propagates
+the error to the consumer of <code>await f</code>.</p>
+<p>Awaiting a future a second time will just produce the same result,
+including re-throwing any error stored in the future. Suspension occurs
+even if the future is already complete; this ensures state changes and
+message sends prior to every <code>await</code> are committed.</p>
+<p>:::danger</p>
+<p>A function that does not <code>await</code> in its body is guaranteed
+to execute atomically. In particular, the environment cannot change the
+state of the actor while the function is executing. If a function
+performs an <code>await</code>, however, atomicity is no longer
+guaranteed. Between suspension and resumption around the
+<code>await</code>, the state of the enclosing actor may change due to
+concurrent processing of other incoming actor messages. It is the
+programmer’s responsibility to guard against non-synchronized state
+changes. A programmer may, however, rely on any state change prior to
+the await being committed.</p>
+<p>:::</p>
+<p>For example, the implementation of <code>bump()</code> above is
+guaranteed to increment and read the value of <code>count</code>, in one
+atomic step. The following alternative implementation does not have the
+same semantics and allows another client of the actor to interfere with
+its operation.</p>
+<pre class="motoko"><code>  public shared func bump() : async Nat {
+    await inc();
+    await read();
+  };</code></pre>
+<p>Each <code>await</code> suspends execution, allowing an interloper to
+change the state of the actor. By design, the explicit
+<code>await</code>s make the potential points of interference clear to
+the reader.</p>
+<h2 id="mops-packages-for-async-data-flow">Mops packages for async data
+flow</h2>
+<ul>
+<li><p><a href="https://mops.one/maf"><code>maf</code></a> and <a
+href="https://mops.one/mal"><code>mal</code></a>: Async data
+deliveries.</p></li>
+<li><p><a href="https://mops.one/rxmo"><code>rxmo</code></a>: A library
+for reactive programming using observables, making it easier to compose
+asynchronous or callback-based code.</p></li>
+</ul>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

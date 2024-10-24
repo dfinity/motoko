@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/getting-started/quickstart.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/getting-started/quickstart.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#motoko-quickstart" id="toc-motoko-quickstart">Motoko
+quickstart</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#prerequisites"
+id="toc-prerequisites">Prerequisites</a></li>
+<li><a href="#creating-a-new-project"
+id="toc-creating-a-new-project">Creating a new project</a></li>
+<li><a href="#smart-contract-code" id="toc-smart-contract-code">Smart
+contract code</a></li>
+<li><a href="#starting-the-deployment-environment"
+id="toc-starting-the-deployment-environment">Starting the deployment
+environment</a></li>
+<li><a href="#register-build-and-deploy-locally-or-on-the-mainnet"
+id="toc-register-build-and-deploy-locally-or-on-the-mainnet">Register,
+build, and deploy locally or on the mainnet</a></li>
+<li><a
+href="#view-your-service-or-application-in-a-browser-using-the-urls-in-the-output-of-the-dfx-deploy-command"
+id="toc-view-your-service-or-application-in-a-browser-using-the-urls-in-the-output-of-the-dfx-deploy-command">View
+your service or application in a browser, using the URLS in the output
+of the <code>dfx deploy</code> command:</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="motoko-quickstart">Motoko quickstart</h1>
+<h2 id="overview">Overview</h2>
+<p>This quickstart guide showcases how to deploy a simple 'Hello,
+world!' Motoko smart contract.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before getting started, assure you have set up your developer
+environment according to the instructions in the <a
+href="./dev-env">developer environment guide</a>.</p>
+<h2 id="creating-a-new-project">Creating a new project</h2>
+<p>Open a terminal window on your local computer, if you don’t already
+have one open.</p>
+<p>Create a new project and change to the project directory.</p>
+<p>Use <code>dfx new [project_name]</code> to create a new project:</p>
+<pre><code>dfx new hello_world</code></pre>
+<p>You will be prompted to select the language that your backend
+canister will use:</p>
+<pre><code>? Select a backend language: ›
+❯ Motoko
+Rust
+TypeScript (Azle)
+Python (Kybra)</code></pre>
+<p>Then, select a frontend framework for your frontend canister. In this
+example, select:</p>
+<pre><code>? Select a frontend framework: ›
+SvelteKit
+React
+Vue
+Vanilla JS
+No JS template
+❯ No frontend canister</code></pre>
+<p>Lastly, you can include extra features to be added to your
+project:</p>
+<pre><code>? Add extra features (space to select, enter to confirm) ›
+⬚ Internet Identity
+⬚ Bitcoin (Regtest)
+⬚ Frontend tests</code></pre>
+<h2 id="smart-contract-code">Smart contract code</h2>
+<p>This hello world actor has a single function called
+<code>greet</code>. It is marked as <code>query</code> because it
+doesn't modify the state of the actor. The function accepts a name as
+input in type <a href="../base/Text.md"><code>Text</code></a> and
+returns a greeting of type <a
+href="../base/Text.md"><code>Text</code></a>.</p>
+<pre class="motoko"><code>
+actor {
+  public query func greet(name : Text) : async Text {
+    return &quot;Hello, &quot; # name # &quot;!&quot;;
+  };
+};</code></pre>
+<h2 id="starting-the-deployment-environment">Starting the deployment
+environment</h2>
+<p>Start the Internet Computer for local development or check your
+connection to the Internet Computer for network deployment:</p>
+<ul>
+<li><a
+href="/docs/current/developer-docs/getting-started/deploy/local">Local
+deployment</a>.</li>
+<li><a
+href="/docs/current/developer-docs/getting-started/deploy/mainnet">Mainnet
+deployment</a>.</li>
+</ul>
+<h2 id="register-build-and-deploy-locally-or-on-the-mainnet">Register,
+build, and deploy locally or on the mainnet</h2>
+<p>To deploy locally, use the command:</p>
+<pre><code>dfx deploy</code></pre>
+<p>For deploying to the mainnet, use: <code>--network ic</code>.</p>
+<pre><code>dfx deploy --network &lt;network&gt;</code></pre>
+<h2
+id="view-your-service-or-application-in-a-browser-using-the-urls-in-the-output-of-the-dfx-deploy-command">View
+your service or application in a browser, using the URLS in the output
+of the <code>dfx deploy</code> command:</h2>
+<pre><code>...
+Committing batch.
+Committing batch with 18 operations.
+Deployed canisters.
+URLs:
+Frontend canister via browser
+        access_hello_frontend: http://127.0.0.1:4943/?canisterId=cuj6u-c4aaa-aaaaa-qaajq-cai
+Backend canister via Candid interface:
+        access_hello_backend: http://127.0.0.1:4943/?canisterId=cbopz-duaaa-aaaaa-qaaka-cai&amp;id=ctiya-peaaa-aaaaa-qaaja-cai</code></pre>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
