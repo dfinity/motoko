@@ -208,7 +208,7 @@ The following aspects are retained for historical reasons and backwards compatib
 ### Pre-upgrade and post-upgrade system methods
 
 :::danger
-Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. Per best practices, using these methods should be avoided if possible.
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.  Per best practices, using these methods should be avoided if possible.
 :::
 
 Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
