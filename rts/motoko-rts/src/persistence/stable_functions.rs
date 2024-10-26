@@ -175,31 +175,24 @@ struct VirtualTableEntry {
     wasm_table_index: WasmTableIndex,
 }
 
-// TODO: change type of `function_id` back to `FunctionId`.
 #[no_mangle]
-pub unsafe fn resolve_stable_function_call(function_id: isize) -> WasmTableIndex {
-    println!(100, "RESOLVE CALL {function_id}");
+pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTableIndex {
     // TODO: Remove this provisional solution for flexible function calls.
-    if function_id < 0 {
-        let wasm_table_index = (-function_id - 1) as usize;
-        println!(100, " RESOLVED FLEXIBLE FUNCTION CALL {}", wasm_table_index);
-        return wasm_table_index;
+    if (function_id as isize) < 0 {
+        return (-(function_id as isize) - 1) as WasmTableIndex;
     }
     let function_id = function_id as usize;
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(function_id);
-    println!(100, " RESOLVED WASM TABLE INDEX {}", (*table_entry).wasm_table_index);
     (*table_entry).wasm_table_index
 }
 
 /// Indexed by Wasm table index.
 type DynamicLiteralTable = IndexedTable<FunctionId>;
 
-// TODO: Change return type back to `FunctionId`.
 #[no_mangle]
-pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> isize {
-    println!(100, "RESOLVE LITERAL {wasm_table_index}");
+pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
     let literal_table = stable_function_state().get_literal_table();
     // TODO: Remove this provisional solution for flexible function calls.
     let function_id = if wasm_table_index < literal_table.length() {
@@ -208,14 +201,11 @@ pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) 
         NULL_FUNCTION_ID
     };
     if function_id == NULL_FUNCTION_ID {
-        let function_id = -(wasm_table_index as isize) - 1;
-        println!(100, "RESOLVED FLEXIBLE FUNCTION ID {function_id}");
-        return function_id;
+        return (-(wasm_table_index as isize) - 1) as FunctionId;
     }
     // let function_id = *literal_table.get(wasm_table_index);
     // assert_ne!(function_id, NULL_FUNCTION_ID); // must be a stable function.
-    println!(100, " RESOLVED FUNCTION ID {function_id}");
-    function_id as isize
+    function_id
 }
 
 #[repr(C)]
@@ -233,7 +223,6 @@ type StableFunctionMap = IndexedTable<StableFunctionEntry>;
 
 impl StableFunctionMap {
     unsafe fn find(self: *mut Self, name: NameHash) -> *mut StableFunctionEntry {
-        println!(100, "BINARY SEARCH {name}");
         // Binary search
         let mut left = 0;
         let mut right = self.length();
@@ -241,7 +230,6 @@ impl StableFunctionMap {
             let middle = (left + right) / 2;
             let entry = self.get(middle);
             let middle_name = (*entry).function_name_hash;
-            println!(100, " SEARCH {left} {right} {middle} {middle_name}");
             debug_assert!(
                 (*self.get(left)).function_name_hash <= middle_name
                     && middle_name <= (*self.get(right - 1)).function_name_hash
@@ -255,59 +243,39 @@ impl StableFunctionMap {
         if left < self.length() {
             let entry = self.get(left);
             if (*entry).function_name_hash == name {
-                println!(100, "FOUND {name} {}", (*entry).function_name_hash);
                 return entry;
             }
         }
         return null_mut();
-    }
-
-    // TODO: Remove this debugging logic
-    unsafe fn print(self: *mut Self) {
-        println!(100, "STABLE FUNCTIONS MAP: ");
-        for index in 0..self.length() {
-            let entry = self.get(index);
-            println!(100, "  {} {}", (*entry).function_name_hash, (*entry).wasm_table_index);
-        }
     }
 }
 
 /// Called on program initialization and on upgrade, both during EOP and graph copy.
 #[ic_mem_fn]
 pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_blob: Value) {
-    println!(100, "START: register_stable_functions");
     let stable_functions = stable_functions_blob.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
-    println!(100, "STEP 1: STABLE_FUNCTIONS BLOB {}", stable_functions.length());
     prepare_stable_function_map(stable_functions);
     // 2. Retrieve the persistent virtual, or, if not present, initialize an empty one.
-    println!(100, "STEP 2");
     let virtual_table = prepare_virtual_table(mem);
     // 3. Scan the persistent virtual table and match/update all entries against
     // `stable_functions`. Assign the function ids in stable function map.
-    println!(100, "STEP 3 {}", virtual_table.length());
     update_existing_functions(virtual_table, stable_functions);
     // 4. Scan stable functions map and determine number of new stable functions that are yet
     // not part of the persistent virtual table.
-    println!(100, "STEP 4");
     let extension_size = count_new_functions(stable_functions);
     // 5. Extend the persistent virtual table by the new stable functions.
     // Assign the function ids in stable function map.
-    println!(100, "STEP 5 {extension_size}");
     let new_virtual_table = add_new_functions(mem, virtual_table, extension_size, stable_functions);
     // 6. Create the function literal table by scanning the stable functions map and
     // mapping Wasm table indices to their assigned function id.
-    println!(100, "STEP 6");
     let new_literal_table = create_function_literal_table(mem, stable_functions);
     // 7. Store the new persistent virtual table and dynamic literal table.
     // Apply write barriers!
-    println!(100, "STEP 7");
     let state = stable_function_state();
     write_with_barrier(mem, state.virtual_table_location(), new_virtual_table);
     write_with_barrier(mem, state.literal_table_location(), new_literal_table);
-
-    println!(100, "STOP: register_stable_functions");
 }
 
 const NULL_FUNCTION_ID: FunctionId = FunctionId::MAX;
@@ -317,7 +285,6 @@ unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) 
     for index in 0..stable_functions.length() {
         let entry = stable_functions.get(index);
         (*entry).cached_function_id = NULL_FUNCTION_ID;
-        println!(100, " ENTRY {index} {} {} {}", (*entry).function_name_hash, (*entry).wasm_table_index, (*entry).cached_function_id);
     }
 }
 
@@ -342,7 +309,6 @@ unsafe fn update_existing_functions(
         let name_hash = (*virtual_table_entry).function_name_hash;
         let stable_function_entry = stable_functions.find(name_hash);
         if stable_function_entry == null_mut() {
-            stable_functions.print();
             let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
             let message = from_utf8(&buffer).unwrap();
             rts_trap_with(message);
@@ -390,7 +356,6 @@ unsafe fn add_new_functions<M: Memory>(
                 function_name_hash,
                 wasm_table_index,
             };
-            println!(100, " ADD {index} {function_id} {function_name_hash} {wasm_table_index}");
             debug_assert_ne!(function_id, NULL_FUNCTION_ID);
             new_virtual_table.set(function_id, new_virtual_table_entry);
             (*stable_function_entry).cached_function_id = function_id as FunctionId;
@@ -429,14 +394,12 @@ unsafe fn create_function_literal_table<M: Memory>(
     stable_functions: *mut StableFunctionMap,
 ) -> Value {
     let table_length = compute_literal_table_length(stable_functions);
-    println!(100, "Literal table length {table_length}");
     let dynamic_literal_table = create_empty_literal_table(mem, table_length);
     for index in 0..stable_functions.length() {
         let entry = stable_functions.get(index);
         let wasm_table_index = (*entry).wasm_table_index;
         let function_id = (*entry).cached_function_id; // Can also be `NULL_FUNCTION_ID` if not stable.
         dynamic_literal_table.set(wasm_table_index, function_id);
-        println!(100, " LITERAL {wasm_table_index} {function_id}");
     }
     Value::from_ptr(dynamic_literal_table as usize)
 }

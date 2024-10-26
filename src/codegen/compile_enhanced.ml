@@ -732,14 +732,12 @@ module E = struct
 
   let add_stable_func (env : t) (name: string) (wasm_table_index: int32) =
     if (Lib.String.starts_with "$" name) || (Lib.String.starts_with "@" name) then
-      Printf.printf "FLEXIBLE FUNC %s %i\n" name (Int32.to_int wasm_table_index)
+      ()
     else
-    (Printf.printf "STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
-    match NameEnv.find_opt name !(env.stable_functions) with
-    | Some _ -> ()
-    | None ->
-      (Printf.printf " ADD STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
-      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)))
+      match NameEnv.find_opt name !(env.stable_functions) with
+      | Some _ -> ()
+      | None ->
+        env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
