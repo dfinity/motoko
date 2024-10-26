@@ -731,12 +731,15 @@ module E = struct
       fp
 
   let add_stable_func (env : t) (name: string) (wasm_table_index: int32) =
-    Printf.printf "STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
+    if (Lib.String.starts_with "$" name) || (Lib.String.starts_with "@" name) then
+      Printf.printf "FLEXIBLE FUNC %s %i\n" name (Int32.to_int wasm_table_index)
+    else
+    (Printf.printf "STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
     match NameEnv.find_opt name !(env.stable_functions) with
     | Some _ -> ()
     | None ->
       (Printf.printf " ADD STABLE FUNC %s %i %i\n" name (Int32.to_int wasm_table_index) (Int32.to_int (Mo_types.Hash.hash name));
-      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions))
+      env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)))
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -9456,9 +9459,14 @@ module FuncDec = struct
 
         (* Store the function pointer number: *)
         get_clos ^^
-        compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^
-        (* TODO: Support flexible function references *)
-        E.trap_with env "Flexible function literals not yet supported" ^^
+        
+        (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^ *)
+        (* TODO: Support flexible function references and remove this provisional functionality. *)
+
+        let wasm_table_index = Int32.to_int (E.add_fun_ptr env fi) in
+        let flexible_function_id = Int.sub (Int.sub 0 wasm_table_index) 1 in
+        compile_unboxed_const (Int64.of_int flexible_function_id) ^^
+
         Tagged.store_field env Closure.funptr_field ^^
 
         (* Store the length *)

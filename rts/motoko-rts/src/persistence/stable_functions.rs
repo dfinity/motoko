@@ -41,6 +41,12 @@
 //!    The table is discarded on upgrades and (re-)constructed by the runtime system, based on
 //!    the information of the **stable function map**.
 //!
+//! Provisional design to support flexible function references:
+//! Currently, the compiler does not yet distinguish between flexible and stable function references.
+//! Therefore, we temporarily distinguish flexible and stable function references in the runtime system.
+//! Flexible function references are thereby represented as negative function ids determining the Wasm 
+//! table index, specifically `-wasm_table_index - 1`.
+//! 
 //! Potential garbage collection in the future:
 //! * The runtime system could allow discarding old stable functions that are unused,
 //!   i.e. when it is no longer stored in a live object and and no longer part of the literal table.
@@ -169,9 +175,17 @@ struct VirtualTableEntry {
     wasm_table_index: WasmTableIndex,
 }
 
+// TODO: change type of `function_id` back to `FunctionId`.
 #[no_mangle]
-pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTableIndex {
+pub unsafe fn resolve_stable_function_call(function_id: isize) -> WasmTableIndex {
     println!(100, "RESOLVE CALL {function_id}");
+    // TODO: Remove this provisional solution for flexible function calls.
+    if function_id < 0 {
+        let wasm_table_index = (-function_id - 1) as usize;
+        println!(100, " RESOLVED FLEXIBLE FUNCTION CALL {}", wasm_table_index);
+        return wasm_table_index;
+    }
+    let function_id = function_id as usize;
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(function_id);
@@ -182,14 +196,26 @@ pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTable
 /// Indexed by Wasm table index.
 type DynamicLiteralTable = IndexedTable<FunctionId>;
 
+// TODO: Change return type back to `FunctionId`.
 #[no_mangle]
-pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
+pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> isize {
     println!(100, "RESOLVE LITERAL {wasm_table_index}");
     let literal_table = stable_function_state().get_literal_table();
-    let function_id = *literal_table.get(wasm_table_index);
-    assert_ne!(function_id, NULL_FUNCTION_ID); // must be a stable function.
+    // TODO: Remove this provisional solution for flexible function calls.
+    let function_id = if wasm_table_index < literal_table.length() {
+        *literal_table.get(wasm_table_index)
+    } else {
+        NULL_FUNCTION_ID
+    };
+    if function_id == NULL_FUNCTION_ID {
+        let function_id = -(wasm_table_index as isize) - 1;
+        println!(100, "RESOLVED FLEXIBLE FUNCTION ID {function_id}");
+        return function_id;
+    }
+    // let function_id = *literal_table.get(wasm_table_index);
+    // assert_ne!(function_id, NULL_FUNCTION_ID); // must be a stable function.
     println!(100, " RESOLVED FUNCTION ID {function_id}");
-    function_id
+    function_id as isize
 }
 
 #[repr(C)]
@@ -207,6 +233,7 @@ type StableFunctionMap = IndexedTable<StableFunctionEntry>;
 
 impl StableFunctionMap {
     unsafe fn find(self: *mut Self, name: NameHash) -> *mut StableFunctionEntry {
+        println!(100, "BINARY SEARCH {name}");
         // Binary search
         let mut left = 0;
         let mut right = self.length();
@@ -214,6 +241,7 @@ impl StableFunctionMap {
             let middle = (left + right) / 2;
             let entry = self.get(middle);
             let middle_name = (*entry).function_name_hash;
+            println!(100, " SEARCH {left} {right} {middle} {middle_name}");
             debug_assert!(
                 (*self.get(left)).function_name_hash <= middle_name
                     && middle_name <= (*self.get(right - 1)).function_name_hash
@@ -225,14 +253,21 @@ impl StableFunctionMap {
             }
         }
         if left < self.length() {
-            return null_mut();
-        } else {
             let entry = self.get(left);
             if (*entry).function_name_hash == name {
+                println!(100, "FOUND {name} {}", (*entry).function_name_hash);
                 return entry;
-            } else {
-                return null_mut();
             }
+        }
+        return null_mut();
+    }
+
+    // TODO: Remove this debugging logic
+    unsafe fn print(self: *mut Self) {
+        println!(100, "STABLE FUNCTIONS MAP: ");
+        for index in 0..self.length() {
+            let entry = self.get(index);
+            println!(100, "  {} {}", (*entry).function_name_hash, (*entry).wasm_table_index);
         }
     }
 }
@@ -307,6 +342,7 @@ unsafe fn update_existing_functions(
         let name_hash = (*virtual_table_entry).function_name_hash;
         let stable_function_entry = stable_functions.find(name_hash);
         if stable_function_entry == null_mut() {
+            stable_functions.print();
             let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
             let message = from_utf8(&buffer).unwrap();
             rts_trap_with(message);
