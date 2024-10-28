@@ -249,6 +249,49 @@ type resolved_flags = {
   actor_idl_path : actor_idl_path;
   }
 
+
+let list_files_recursively : string -> string list =
+ fun dir ->
+  let rec loop result = function
+    | f :: fs when Sys.is_directory f ->
+        Sys.readdir f
+        |> Array.to_list
+        |> List.map (Filename.concat f)
+        |> List.append fs
+        |> loop result
+    | f :: fs -> loop (f :: result) fs
+    | [] -> result
+  in
+  loop [] [ dir ]
+
+let list_files : string -> (string * string) list =
+ fun source ->
+  (* Printf.printf "%s -> %s\n" source output; *)
+  let all_files = list_files_recursively source in
+  let all_files =
+    List.filter (fun f -> Filename.extension f = ".mo") all_files
+  in
+  List.map
+    (fun file ->
+      file
+      (*      |> Lib.FilePath.relative_to source 
+      |> Option.get *)
+      |> fun f -> (file, f))
+    all_files
+
+let package_imports base packages =
+  let imports = M.fold (fun pname url acc ->
+      if base = url then acc else
+      let files = list_files url in
+      (files |> List.map (fun (file, path) ->
+        LibPath {package = Some pname;
+                 path = path}
+      (* @@ no_region *)) ) ::
+      acc) packages []
+   in
+     List.concat imports
+
+
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases } ->
   let open Diag.Syntax in
@@ -263,8 +306,12 @@ let resolve
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
   Diag.with_message_store (fun msgs ->
     let base = if Sys.is_directory base then base else Filename.dirname base in
-    let imported = ref RIM.empty in
-    List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported) (prog_imports p);
+    (*    let imported = ref RIM.empty in *)
+    let imported =
+      ref (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
+              (package_imports base packages) RIM.empty)
+           in
+    List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
     Some (List.map (fun (rim,at) -> rim @@ at) (RIM.bindings !imported))
   )
 
