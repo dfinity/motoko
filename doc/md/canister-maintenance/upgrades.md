@@ -92,9 +92,7 @@ actor {
 };
 ```
 
-3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
-The downside of this approach is that it is error-prone and does not scale for large data. 
-Conceptually, it also does not align well with the idea of orthogonal persistence.
+3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
 
 ## Stable type signatures
 
@@ -207,9 +205,11 @@ For more information, see the [example of explicit migration](compatibility.md#e
 
 The following aspects are retained for historical reasons and backwards compatibility:
 
-### Preupgrade and postupgrade system methods
+### Pre-upgrade and post-upgrade system methods
 
-This is an advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
+:::danger
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.  Per best practices, using these methods should be avoided if possible.
+:::
 
 Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
@@ -219,7 +219,7 @@ If `preupgrade` raises a trap, hits the instruction limit, or hits another IC co
 :::
 
 :::tip
-`postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
+`postupgrade` is not needed, as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
 :::
 
 ### Stable memory and stable regions
