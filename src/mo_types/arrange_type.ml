@@ -15,7 +15,8 @@ let obj_sort = function
   | Memory -> Atom "Memory"
 
 let func_sort = function
-  | Local -> "Local"
+  | Local Flexible -> "Local"
+  | Local Stable -> "Local Stable"
   | Shared Write -> "Shared"
   | Shared Query -> "Shared Query"
   | Shared Composite -> "Shared Composite"

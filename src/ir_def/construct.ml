@@ -174,7 +174,7 @@ let cps_asyncE s typ1 typ2 e =
 
 let cps_awaitE s cont_typ e1 e2 =
   match cont_typ with
-  | T.Func(T.Local, T.Returns, [], _, ts2) ->
+  | T.Func(T.Local _, T.Returns, [], _, ts2) ->
     { it = PrimE (CPSAwait (s, cont_typ), [e1; e2]);
       at = no_region;
       note = Note.{ def with typ = T.seq ts2; eff = max_eff (eff e1) (eff e2) }
@@ -637,9 +637,9 @@ let nary_funcD ((id, typ) as f) xs exp =
 
 (* Continuation types with explicit answer typ *)
 
-let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ))
+let contT typ ans_typ = T.(Func (Local Flexible, Returns, [], as_seq typ, as_seq ans_typ))
 
-let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
+let err_contT ans_typ =  T.(Func (Local Flexible, Returns, [], [catch], as_seq ans_typ))
 
 let bail_contT = T.(contT unit unit) (* when `await`ing *)
 
@@ -647,7 +647,7 @@ let clean_contT = bail_contT (* last-resort replica callback *)
 
 let answerT typ : T.typ =
   match typ with
-  | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
+  | T.Func (T.Local T.Flexible, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
 (* Sequence expressions *)
@@ -662,12 +662,12 @@ let seqE = function
 
 (* local lambda *)
 let (-->) x exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
   unary_funcE "$lambda" fun_ty x exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
+  let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
@@ -796,11 +796,11 @@ let check_call_perform_status success mk_failure =
   ifE
     (callE
       (varE (var "@call_succeeded"
-        T.(Func (Local, Returns, [], [], [bool]))))
+        T.(Func (Local Flexible, Returns, [], [], [bool]))))
       [] (unitE ()))
     success
     (mk_failure
       (callE
         (varE (var "@call_error"
-          T.(Func (Local, Returns, [], [], [error]))))
+          T.(Func (Local Flexible, Returns, [], [], [error]))))
         [] (unitE ())))

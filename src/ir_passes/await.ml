@@ -63,7 +63,7 @@ type label_sort = Cont of var | Label
 
 let precompose vthunk k =
   let typ0 = match typ_of_var k with
-    | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+    | T.(Func (Local _, Returns, [], ts1, _)) -> T.seq ts1
     | _ -> assert false in
   let v = fresh_var "v" typ0 in
   let e = blockE [expD (varE vthunk -*- unitE ())] (varE k -*- varE v) in
@@ -153,14 +153,14 @@ and t_exp' context exp =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, T.Local, c, typbinds, pat, typs,
+  | FuncE (x, T.Local sort, c, typbinds, pat, typs,
       ({ it = AsyncE _; _} as async)) ->
-    FuncE (x, T.Local, c, typbinds, pat, typs,
+    FuncE (x, T.Local sort, c, typbinds, pat, typs,
       t_async context async)
-  | FuncE (x, T.Local, c, typbinds, pat, typs,
+  | FuncE (x, T.Local sort, c, typbinds, pat, typs,
       ({it = BlockE (ds, ({ it = AsyncE _; _} as async)); _} as wrapper)) ->
     (* GH issue #3910 *)
-    FuncE (x, T.Local, c, typbinds, pat, typs,
+    FuncE (x, T.Local sort, c, typbinds, pat, typs,
       { wrapper with it = BlockE (ds, t_async context async) })
   | FuncE (x, (T.Shared _ as s), c, typbinds, pat, typs,
       ({ it = AsyncE _;_ } as body)) ->

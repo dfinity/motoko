@@ -9508,7 +9508,7 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae sort control name captured args mk_body ret_tys at =
-      let is_local = sort = Type.Local in
+      let is_local = not (Type.is_shared_sort sort) in
 
       let set_clos, get_clos = new_local env (name ^ "_clos") in
 
@@ -9588,7 +9588,7 @@ module FuncDec = struct
   (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
-    let sr, code = lit env ae "anon_async" Type.Local Type.Returns free_vars [] mk_body [] at in
+    let sr, code = lit env ae "anon_async" (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at in
     code ^^
     StackRep.adjust env sr SR.Vanilla
 
@@ -10885,7 +10885,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     begin match fun_sr, sort with
       | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ when call_as_prim ->
-         assert (sort = Type.Local);
+         assert (not (Type.is_shared_sort sort));
          (* Handle argument tuples *)
          begin match n_args, e2.it with
          | 0, _ ->
@@ -10904,7 +10904,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            raise (Invalid_argument "call_as_prim was true?")
          end
       | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
-         assert (sort = Type.Local);
+        assert (not (Type.is_shared_sort sort));
          StackRep.of_arity return_arity,
 
          code1 ^^
@@ -10912,7 +10912,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-      | _, Type.Local ->
+      | _, Type.Local _ ->
          let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
@@ -12759,7 +12759,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       match sort, control, typ_binds, e.it with
       (* Special cases for prim-wrapping functions *)
 
-      | Type.Local, Type.Returns, [], PrimE (prim, prim_args) when
+      | Type.Local _, Type.Returns, [], PrimE (prim, prim_args) when
           inlineable_prim prim &&
           List.length args = List.length prim_args &&
           List.for_all2 (fun p a -> a.it = VarE (Const, p.it)) args prim_args ->

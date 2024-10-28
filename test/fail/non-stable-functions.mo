@@ -1,4 +1,3 @@
-//ENHANCED-PERSISTENCE-ONLY
 import Prim "mo:prim";
 
 actor {
@@ -10,8 +9,8 @@ actor {
     "initial " # debug_show (x);
   };
 
-  stable var print : stable () -> () = initialPrint;
-  stable var map : stable Nat -> Text = initialMap;
+  stable var print : () -> () = initialPrint;
+  stable var map : Nat -> Text = initialMap;
 
   func newPrint() {
     Prim.debugPrint("New function");
@@ -30,10 +29,3 @@ actor {
   Prim.debugPrint("Result: " # map(123));
 };
 
-//SKIP run
-//SKIP run-low
-//SKIP run-ir
-//SKIP comp-ref
-//CALL upgrade ""
-//CALL ingress change "DIDL\x00\x00"
-//CALL upgrade ""

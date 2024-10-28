@@ -16,7 +16,7 @@ type call_conv = {
 }
 type t = call_conv
 
-let local_cc n m = { sort = Local; control = Returns; n_args = n; n_res = m}
+let local_cc n m = { sort = Local Flexible; control = Returns; n_args = n; n_res = m}
 let message_cc s n = { sort = Shared s; control = Returns; n_args = n; n_res = 0}
 let async_cc s n m = { sort = Shared s; control = Promises; n_args = n; n_res = m}
 let replies_cc s n m = { sort = Shared s; control = Replies; n_args = n; n_res = m}
@@ -26,7 +26,7 @@ let call_conv_of_typ typ =
   | Func (sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
   | Non ->
-    { sort = Local; control = Returns; n_args = 1; n_res = 1 }
+    { sort = Local Flexible; control = Returns; n_args = 1; n_res = 1 }
   | _ -> raise (Invalid_argument ("call_conv_of_typ " ^ string_of_typ typ))
 
 let string_of_call_conv {sort;control;n_args;n_res} =

@@ -189,13 +189,15 @@ module Make (Cfg : Config) = struct
     | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
-    | Type.Local -> Atom "Local"
+    | Type.Local Type.Flexible -> Atom "Local"
+    | Type.Local Type.Stable -> Atom "Local Stable"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
     | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
-    | Type.Local -> Atom "Local"
+    | Type.Local Type.Flexible -> Atom "Local"
+    | Type.Local Type.Stable -> Atom "Local Stable"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
     | Type.Shared Type.Composite -> Atom "Composite"

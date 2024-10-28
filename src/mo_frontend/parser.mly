@@ -49,7 +49,7 @@ let ensure_async_typ t_opt =
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
-  | Type.Local, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Local _, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | _ -> FuncT(sort, tbs, t1, t2)
 
@@ -119,7 +119,7 @@ let is_sugared_func_or_module dec = match dec.it with
 
 let func_exp f s tbs p t_opt is_sugar e =
   match s.it, t_opt, e with
-  | Type.Local, Some {it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Local _, Some {it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
     FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
   | _ ->
@@ -138,7 +138,7 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
 
 let share_typ t =
   match t.it with
-  | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
+  | FuncT ({it = Type.Local _; _} as s, tbs, t1, t2) ->
     { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
@@ -150,10 +150,10 @@ let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 
 let share_exp e =
   match e.it with
-  | FuncE (x, ({it = Type.Local; _} as sp), tbs, p,
+  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p,
     ((None | Some { it = TupT []; _ }) as t_opt), true, e) ->
     func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true (ignore_asyncE (scope_bind x e.at) e) @? e.at
-  | FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
+  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p, t_opt, s, e) ->
     func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s e @? e.at
   | _ -> e
 
@@ -202,6 +202,12 @@ and objblock s id ty dec_fields =
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
   ObjBlockE(s, (id, ty), dec_fields)
+
+let define_function_stability is_named shared_pattern =
+  match is_named, shared_pattern.it with
+  | true, Type.Local _ -> (Type.Local Type.Stable) @@ shared_pattern.at
+  | false, Type.Local _ -> (Type.Local Type.Flexible) @@ shared_pattern.at
+  | _, Type.Shared _ -> shared_pattern
 
 %}
 
@@ -347,8 +353,8 @@ seplist1(X, SEP) :
   | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @@ at sloc }
 
 %inline typ_id_opt :
-  | id=typ_id { fun _ _ -> id }
-  | (* empty *) { fun sort sloc -> anon_id sort (at sloc) @= at sloc }
+  | id=typ_id { fun _ _ -> true, id }
+  | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -368,12 +374,13 @@ seplist1(X, SEP) :
   | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
-  | (* empty *) { Type.Local @@ no_region }
+  | (* empty *) { Type.Local Type.Flexible @@ no_region }
+  | STABLE { Type.Local Type.Stable @@ at $sloc }
   | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
   | q=query { Type.Shared q @@ at $sloc }
 
 %inline shared_pat_opt :
-  | (* empty *) { Type.Local @@ no_region }
+  | (* empty *) { Type.Local Type.Flexible @@ no_region }
   | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
   | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
@@ -477,7 +484,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
-    { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
+    { let t = funcT(Type.Local Type.Stable @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       ValF (x, t, Const @@ no_region) @@ at $sloc }
 
@@ -887,6 +894,7 @@ dec_nonvar :
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
       let named, x = xf "func" $sloc in
+      let sp = define_function_stability named sp in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
@@ -900,7 +908,9 @@ dec_nonvar :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+      let named, id = xf "class" $sloc in
+      let sp = define_function_stability named sp in
+      ClassD(sp, id, tps', p, t', s, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var

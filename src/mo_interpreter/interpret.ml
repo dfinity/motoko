@@ -569,7 +569,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v' =
       match shared_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
-      | T.Local -> v
+      | T.Local _ -> v
     in k v'
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
@@ -883,7 +883,7 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and match_shared_pat env shared_pat c =
   match shared_pat.it, c with
-  | T.Local, _ -> V.Env.empty
+  | T.Local _, _ -> V.Env.empty
   | T.Shared (_, pat), v ->
     (match match_pat pat v with
      | None ->

@@ -37,7 +37,7 @@ let show_name_for t =
   "@show<" ^ typ_hash t ^ ">"
 
 let show_fun_typ_for t =
-  T.Func (T.Local, T.Returns, [], [t], [T.text])
+  T.Func (T.Local T.Flexible, T.Returns, [], [t], [T.text])
 
 let show_var_for t : Construct.var =
   var (show_name_for t) (show_fun_typ_for t)
@@ -58,27 +58,27 @@ let invoke_generated_show : T.typ -> Ir.exp -> Ir.exp = fun t e ->
   varE (show_var_for t) -*- e
 
 let invoke_prelude_show : string -> T.typ -> Ir.exp -> Ir.exp = fun n t e ->
-  let fun_typ = T.Func (T.Local, T.Returns, [], [t], [T.text]) in
+  let fun_typ = T.Func (T.Local T.Flexible, T.Returns, [], [t], [T.text]) in
   varE (var n fun_typ) -*- argE t
 
 let invoke_text_of_option : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
+    T.Func (T.Local T.Flexible, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Opt (T.Var ("T",0))], [T.text]) in
   callE (varE (var "@text_of_option" fun_typ)) [t] (tupE [f; e])
 
 let invoke_text_of_variant : T.typ -> Ir.exp -> T.lab -> Ir.exp -> Ir.exp = fun t f l e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
+    T.Func (T.Local T.Flexible, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [T.text; show_fun_typ_for (T.Var ("T",0)); T.Var ("T",0)], [T.text]) in
   callE (varE (var "@text_of_variant" fun_typ)) [t] (tupE [textE l; f; e])
 
 let invoke_text_of_array : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
+    T.Func (T.Local T.Flexible, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.text]) in
   callE (varE (var "@text_of_array" fun_typ)) [t] (tupE [f; e])
 
 let invoke_text_of_array_mut : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
+    T.Func (T.Local T.Flexible, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [show_fun_typ_for (T.Var ("T",0)); T.Array (T.Mut (T.Var ("T",0)))], [T.text]) in
   callE (varE (var "@text_of_array_mut" fun_typ)) [t] (tupE [f; e])
 
 let list_build : 'a -> (unit -> 'a) -> 'a -> 'a list -> 'a list = fun pre sep post xs ->

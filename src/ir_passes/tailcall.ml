@@ -184,7 +184,7 @@ and dec' env d =
   (* A local let bound function, this is what we are looking for *)
   (* TODO: Do we need to detect more? A tuple of functions? *)
   | LetD (({it = VarP id;_} as id_pat),
-          ({it = FuncE (x, Local, c, tbs, as_, typT, exp0);_} as funexp)) ->
+          ({it = FuncE (x, Local sort, c, tbs, as_, typT, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
       let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in
@@ -216,9 +216,9 @@ and dec' env d =
             )
           )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, List.map arg_of_var ids, typT, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, Local sort, c, tbs, List.map arg_of_var ids, typT, body)})
       else
-        LetD (id_pat, {funexp with it = FuncE (x, Local, c, tbs, as_, typT, exp0')})
+        LetD (id_pat, {funexp with it = FuncE (x, Local sort, c, tbs, as_, typT, exp0')})
     end,
     env
   | LetD (p, e) ->

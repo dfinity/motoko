@@ -874,7 +874,7 @@ and interpret_comp_unit env cu k = match cu with
     interpret_actor env ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
-    let sort = T.Local in
+    let sort = T.Local T.Flexible in
     let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in
     let f = interpret_func env no_region sort "" as_
       (fun env' -> interpret_actor env ds fs) in

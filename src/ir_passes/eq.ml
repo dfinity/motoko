@@ -38,7 +38,7 @@ let eq_name_for t =
   "@eq<" ^ typ_hash t ^ ">"
 
 let eq_fun_typ_for t =
-  T.Func (T.Local, T.Returns, [], [t; t], [T.bool])
+  T.Func (T.Local T.Flexible, T.Returns, [], [t; t], [T.bool])
 
 let eq_var_for t : Construct.var =
   var (eq_name_for t) (eq_fun_typ_for t)
@@ -71,7 +71,7 @@ let define_eq : T.typ -> Ir.exp -> Ir.dec = fun t e ->
 
 let array_eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp -> Ir.exp = fun t f e1 e2 ->
   let fun_typ =
-    T.Func (T.Local, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
+    T.Func (T.Local T.Flexible, T.Returns, [{T.var="T";T.sort=T.Type;T.bound=T.Any}], [eq_fun_typ_for (T.Var ("T",0)); T.Array (T.Var ("T",0)); T.Array (T.Var ("T",0))], [T.bool]) in
   callE (varE (var "@equal_array" fun_typ)) [t] (tupE [f; e1; e2])
 
 (* Synthesizing a single show function *)

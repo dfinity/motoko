@@ -38,7 +38,7 @@ let unary typ = [typ]
 
 let nary typ = as_seq typ
 
-let fulfillT as_seq typ = Func(Local, Returns, [], as_seq typ, [])
+let fulfillT as_seq typ = Func(Local Flexible, Returns, [], as_seq typ, [])
 
 let failT = err_contT unit
 let bailT = bail_contT
@@ -46,19 +46,19 @@ let bailT = bail_contT
 let cleanT = clean_contT
 
 let t_async_fut as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
+  Func (Local Flexible, Returns, [], [fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
-             ("schedule", Func(Local, Returns, [], [], []))]])
+             ("schedule", Func(Local Flexible, Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT], [])
+  Func (Local Flexible, Returns, [], [fulfillT as_seq t; failT; bailT], [])
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
 let new_asyncT =
   (Func (
-       Local,
+       Local Flexible,
        Returns,
        [ { var = "T"; sort = Type; bound = Any } ],
        [],
@@ -260,7 +260,7 @@ let transform prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp krb) (fun vkrb ->
-            let schedule = fresh_var "schedule" (Func(Local, Returns, [], [], [])) in
+            let schedule = fresh_var "schedule" (Func(Local Flexible, Returns, [], [], [])) in
             switch_variantE (t_exp a -*- varE vkrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
@@ -381,7 +381,7 @@ let transform prog =
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
-        | Local  ->
+        | Local _  ->
           FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | Shared s' ->
           begin

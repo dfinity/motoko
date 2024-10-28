@@ -1,4 +1,4 @@
-//ENHANCED-PERSISTENCE-ONLY
+//CLASSICAL-PERSISTENCE-ONLY
 import Prim "mo:prim";
 
 actor {

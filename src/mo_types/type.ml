@@ -13,9 +13,10 @@ type obj_sort =
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
+type stable_sort = Flexible | Stable
 type async_sort = Fut | Cmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local of stable_sort | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -95,10 +96,11 @@ let tag_prim = function
   | Region -> 18
 
 let tag_func_sort = function
-  | Local -> 0
-  | Shared Write -> 1
-  | Shared Query -> 2
-  | Shared Composite -> 3
+  | Local Flexible -> 0
+  | Local Stable -> 1
+  | Shared Write -> 2
+  | Shared Query -> 3
+  | Shared Composite -> 4
 
 let tag_obj_sort = function
   | Object -> 0
@@ -283,7 +285,10 @@ end
 
 (* Function sorts *)
 
-let is_shared_sort sort = sort <> Local
+let is_shared_sort sort =
+  match sort with
+  | Shared _ -> true
+  | Local _ -> false
 
 (* Constructors *)
 
@@ -388,7 +393,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
+    [{lab = "next"; typ = Func (Local Flexible, Returns, [], [], [Opt t]); src = empty_src}])
 
 
 (* Shifting *)
@@ -811,7 +816,7 @@ let concrete t =
   in go t
 
 (* stable or shared *)
-let serializable allow_mut t =
+let serializable allow_mut allow_stable_functions t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -837,10 +842,8 @@ let serializable allow_mut t =
          | Module -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> 
-        !Mo_config.Flags.enhanced_orthogonal_persistence || is_shared_sort s
-        (* TODO: Check that it is a stable local function or shared function *)
-        (* TODO: Specific error message that this is not supported with classical persistence *)
+      | Func (s, c, tbs, ts1, ts2) ->
+        is_shared_sort s || allow_stable_functions && s = Local Stable
     end
   in go t
 
@@ -886,7 +889,7 @@ let is_shared_func typ =
 let is_local_async_func typ =
   match promote typ with
   | Func
-      (Local, Returns,
+      (Local _, Returns,
        { sort = Scope; _ }::_,
        _,
        [Async (Fut, Var (_ ,0), _)]) ->
@@ -894,8 +897,9 @@ let is_local_async_func typ =
   | _ ->
     false
 
-let shared t = serializable false t
-let stable t = serializable true t
+let shared t = serializable false false t
+let stable t = serializable true true t
+let old_stable t = serializable true false t
 
 
 (* Forward declare
@@ -980,7 +984,7 @@ let rec rel_typ rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    s1 = s2 && c1 = c2 &&
+    rel_sort s1 s2 && c1 = c2 &&
     (match rel_binds eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -993,6 +997,11 @@ let rec rel_typ rel eq t1 t2 =
     rel_typ rel eq t12 t22
   | _, _ -> false
   end
+
+and rel_sort s1 s2 =
+  match s1, s2 with
+  | Local Stable, Local Flexible -> true (* stable function can be assigned to flexible function *)
+  | _, _ -> s1 = s2
 
 and rel_fields rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -1400,7 +1409,7 @@ let decode_msg_typ tfs =
        | Func(Shared (Write | Query), _, tbs, ts1, ts2) ->
          Some { tf with
            typ =
-             Func(Local, Returns, [], [],
+             Func(Local Flexible, Returns, [], [],
                List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
            src = empty_src }
        | _ -> None)
@@ -1438,9 +1447,9 @@ let install_arg_typ =
   ]
 
 let install_typ ts actor_typ =
-  Func(Local, Returns, [],
+  Func(Local Flexible, Returns, [],
     [ install_arg_typ ],
-    [ Func(Local, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
+    [ Func(Local Flexible, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
 
 (* Pretty printing *)
@@ -1477,7 +1486,8 @@ let string_of_obj_sort = function
   | Memory -> "memory "
 
 let string_of_func_sort = function
-  | Local -> ""
+  | Local Flexible -> ""
+  | Local Stable -> "stable "
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)

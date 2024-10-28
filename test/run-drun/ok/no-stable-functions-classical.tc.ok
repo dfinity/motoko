@@ -1,0 +1,2 @@
+no-stable-functions-classical.mo:13.14-13.19: type error [M0200], Stable functions are only supported with enhanced orthogonal persistence
+no-stable-functions-classical.mo:14.14-14.17: type error [M0200], Stable functions are only supported with enhanced orthogonal persistence

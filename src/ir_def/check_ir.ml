@@ -207,14 +207,14 @@ let rec check_typ env typ : unit =
           "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        if not (sort <> T.Local) then
+        if not (T.is_shared_sort sort) then
           error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ typ);
         if not (List.for_all T.shared ts2) then
           error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        if not (sort <> T.Local) then
+        if not (T.is_shared_sort sort) then
           error env no_region"replying function cannot be local:\n  %s" (T.string_of_typ typ);
         if not (List.for_all T.shared ts2) then
           error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
@@ -562,7 +562,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
       (match cont_typ with
-       | T.Func(T.Local, T.Returns, [], ts1, ts2) ->
+       | T.Func(T.Local _, T.Returns, [], ts1, ts2) ->
          begin
            (match ts2 with
             | [] -> ()
@@ -576,10 +576,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
     | CPSAsync (s, t0), [exp] ->
       (match typ exp with
-       | T.Func (T.Local, T.Returns, [tb],
-                 T.[Func (Local, Returns, [], ts1, []);
-                    Func (Local, Returns, [], [t_error], []);
-                    Func (Local, Returns, [], [], [])],
+       | T.Func (T.Local _, T.Returns, [tb],
+                 T.[Func (Local _, Returns, [], ts1, []);
+                    Func (Local _, Returns, [], [t_error], []);
+                    Func (Local _, Returns, [], [], [])],
                  []) ->
           T.catch <: t_error;
           T.Async(s, t0, T.open_ [t0] (T.seq ts1)) <: t
@@ -861,7 +861,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     match exp.it with
     | VarE (Const, id) -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
-      check (s = T.Local) "constant FuncE cannot be of shared sort";
+      check (not (T.is_shared_sort s)) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->
         if (T.Env.find v env.vals).loc_known then () else

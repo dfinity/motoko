@@ -18,6 +18,7 @@
 
 <func_sort_opt> ::= 
     <empty>
+    'stable'
     'shared' <query>?
     <query>
 

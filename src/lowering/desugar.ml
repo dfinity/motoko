@@ -113,7 +113,7 @@ and exp' at note = function
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
-      | T.Local -> (T.Local, None)
+      | T.Local ls -> (T.Local ls, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
@@ -147,19 +147,19 @@ and exp' at note = function
     I.PrimE (I.EncodeUtf8, [exp e])
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.SerializePrim ts1, [exp e])
     | _ -> assert false
     end
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.DeserializePrim ts2, [exp e])
     | _ -> assert false
     end
@@ -364,7 +364,7 @@ and call_system_func_opt name es obj_typ =
            let timer =
              blockE
                [ expD T.(callE (varE (var id.it note)) [Any]
-                   (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
+                   (varE (var "@set_global_timer" (Func (Local Flexible, Returns, [], [Prim Nat64], []))))) ]
                (unitE ()) in
            { timer with at }
         | "heartbeat" ->
@@ -389,9 +389,9 @@ and call_system_func_opt name es obj_typ =
               (List.map (fun tf ->
                 (tf.T.lab,
                   match tf.T.typ with
-                  | T.Func(T.Local, _, [], [], ts) ->
+                  | T.Func(T.Local T.Flexible, _, [], [], ts) ->
                     tagE tf.T.lab
-                      T.(funcE ("$"^tf.lab) Local Returns [] [] ts
+                      T.(funcE ("$"^tf.lab) (Local Flexible) Returns [] [] ts
                         (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
@@ -545,7 +545,7 @@ and build_actor at ts self_id es obj_typ =
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
-  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let get_state = fresh_var "getState" (T.Func(T.Local T.Flexible, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let ds =
     varD state (optE (primE (I.ICStableRead ty) []))
@@ -726,7 +726,7 @@ and typ_bind tb =
   }
 
 and array_dotE array_ty proj e =
-  let fun_ty bs t1 t2 = T.Func (T.Local, T.Returns, bs, t1, t2) in
+  let fun_ty bs t1 t2 = T.Func (T.Local T.Flexible, T.Returns, bs, t1, t2) in
   let varA = T.Var ("A", 0) in
   let element_ty = T.as_immut (T.as_array array_ty) in
   let call name t1 t2 =
@@ -750,7 +750,7 @@ and array_dotE array_ty proj e =
     | _, _ -> assert false
 
 and blob_dotE proj e =
-  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let fun_ty t1 t2 = T.Func (T.Local T.Flexible, T.Returns, [], t1, t2) in
   let call name t1 t2 =
     let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE (varE f) [] e in
@@ -760,7 +760,7 @@ and blob_dotE proj e =
     |  _ -> assert false
 
 and text_dotE proj e =
-  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let fun_ty t1 t2 = T.Func (T.Local T.Flexible, T.Returns, [], t1, t2) in
   let call name t1 t2 =
     let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE (varE f) [] e in
@@ -813,7 +813,7 @@ and dec' at n = function
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local _ -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -917,7 +917,7 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | Type.Func (sort, control, tbds, dom, res) ->
       sort, control, List.length dom, res
     | Type.Non ->
-      Type.Local, Type.Returns, 1, []
+      Type.Local Type.Flexible, Type.Returns, 1, []
     | _ -> raise (Invalid_argument ("to_args " ^ Type.string_of_typ typ))
   in
 
@@ -1038,7 +1038,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
-    T.(Func (Local, Returns, [scope_bind],
+    T.(Func (Local Flexible, Returns, [scope_bind],
       [install_arg_typ; bool; blob; blob],
       [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
@@ -1048,7 +1048,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let system_body install_arg =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
-    funcE id T.Local T.Returns
+    funcE id (T.Local T.Flexible) T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
@@ -1118,7 +1118,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local _ -> None
       | T.Shared (_, p) -> Some p in
     let args, wrap, control, _n_res = to_args fun_typ op p in
     let (ts, obj_typ) =
@@ -1194,7 +1194,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
       fresh_var "install_arg" T.install_arg_typ
     in
     let system_body install_arg =
-      funcE id T.Local T.Returns
+      funcE id (T.Local T.Flexible) T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (T.Fut, List.hd cs, actor_t)]

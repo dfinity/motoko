@@ -6,8 +6,9 @@ type var = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
+type stable_sort = Flexible | Stable
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local of stable_sort | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -210,6 +211,7 @@ val is_shared_func : typ -> bool
 val is_local_async_func : typ -> bool
 
 val stable : typ -> bool
+val old_stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool

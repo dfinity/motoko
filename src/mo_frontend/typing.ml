@@ -392,19 +392,19 @@ let infer_mut mut : T.typ -> T.typ =
 (* System method types *)
 
 let heartbeat_type =
-  T.(Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
+  T.(Func (Local Stable, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
 
 let timer_type =
-  T.(Func (Local, Returns, [scope_bind],
-    [Func (Local, Returns, [], [Prim Nat64], [])],
+  T.(Func (Local Stable, Returns, [scope_bind],
+    [Func (Local Stable, Returns, [], [Prim Nat64], [])],
     [Async (Fut, Var (default_scope_var, 0), unit)]))
 
 let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
-    T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
-    T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
+    T.("preupgrade", Func (Local Stable, Returns, [scope_bind], [], []));
+    T.("postupgrade", Func (Local Stable, Returns, [scope_bind], [], []));
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
@@ -413,7 +413,7 @@ let system_funcs tfs =
             {lab = "arg"; typ = blob; src = empty_src};
             {lab = "msg"; typ = msg_typ; src = empty_src}]))
       in
-        T.(Func (Local, Returns, [],  [record_typ], [bool]))))
+        T.(Func (Local Stable, Returns, [],  [record_typ], [bool]))))
   ]
 
 
@@ -616,7 +616,7 @@ let infer_async_cap env sort cs tbs body_opt at =
                scopes = ConEnv.add c at env.scopes;
                async = C.CompositeCap c }
   | Shared _, _, _ -> assert false (* impossible given sugaring *)
-  | Local, c::_,  { sort = Scope; _ }::_ ->
+  | Local _, c::_,  { sort = Scope; _ }::_ ->
     let async = match body_opt with
       | Some exp when not (is_asyncE exp) -> C.SystemCap c
       | _ -> C.AsyncCap c
@@ -944,7 +944,7 @@ and infer_inst env sort tbs typs t_ret at =
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | cap when sort = T.Local && not (T.is_async t_ret) ->
+     | cap when not (T.is_shared_sort sort) && not (T.is_async t_ret) ->
        begin
          match cap with
          | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
@@ -955,7 +955,7 @@ and infer_inst env sort tbs typs t_ret at =
               "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
           (T.Con(C.bogus_cap, [])::ts, at::ats)
        end
-     | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
+     | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || not (is_shared_sort sort)) ->
         (T.Con(c, [])::ts, at::ats)
      | C.(AwaitCap c | AsyncCap c) when sort = T.(Shared Composite) ->
         error env at "M0186"
@@ -965,7 +965,7 @@ and infer_inst env sort tbs typs t_ret at =
          match sort with
          | T.(Shared (Composite | Query)) ->
            (T.Con(c, [])::ts, at::ats)
-         | T.(Shared Write | Local) ->
+         | T.(Shared Write | Local _) ->
            error env at "M0187"
              "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
        end
@@ -1166,28 +1166,28 @@ let check_lit env t lit at =
 let array_obj t =
   let open T in
   let immut t =
-    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); src = empty_src};
-      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
-      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
-      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
+    [ {lab = "get";  typ = Func (Local Flexible, Returns, [], [Prim Nat], [t]); src = empty_src};
+      {lab = "size";  typ = Func (Local Flexible, Returns, [], [], [Prim Nat]); src = empty_src};
+      {lab = "keys"; typ = Func (Local Flexible, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
+      {lab = "vals"; typ = Func (Local Flexible, Returns, [], [], [iter_obj t]); src = empty_src};
     ] in
   let mut t = immut t @
-    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
+    [ {lab = "put"; typ = Func (Local Flexible, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+  [ {lab = "vals"; typ = Func (Local Flexible, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+    {lab = "size";  typ = Func (Local Flexible, Returns, [], [], [Prim Nat]); src = empty_src};
   ]
 
 let text_obj () =
   let open T in
   Object,
-  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+  [ {lab = "chars"; typ = Func (Local Flexible, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
+    {lab = "size";  typ = Func (Local Flexible, Returns, [], [], [Prim Nat]); src = empty_src};
   ]
 
 
@@ -1960,10 +1960,16 @@ and check_exp' env0 t exp : T.typ =
       | Some typ -> check_typ env typ
     in
     if sort <> s then
-      error env exp.at "M0094"
-        "%sshared function does not match expected %sshared function type"
-        (if sort = T.Local then "non-" else "")
-        (if s = T.Local then "non-" else "");
+      (match sort, s with
+      | T.Local T.Stable, T.Local T.Flexible -> () (* okay *)
+      | T.Local _, T.Local _ ->
+        error env exp.at "M0201"
+          "Flexible function cannot be assigned to a stable function type"
+      | _, _ ->
+        error env exp.at "M0094"
+          "%sshared function does not match expected %sshared function type"
+          (if T.is_shared_sort sort then "" else "non-")
+          (if T.is_shared_sort s then "" else "non-"));
     if not (T.sub t2 codom) then
       error env exp.at "M0095"
         "function return type%a\ndoes not match expected return type%a"
@@ -2021,7 +2027,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
-    try T.as_func_sub T.Local n t1
+    try T.as_func_sub (T.Local T.Flexible) n t1
     with Invalid_argument _ ->
       local_error env exp1.at "M0097"
         "expected function type, but expression produces type%a"
@@ -2029,7 +2035,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       if inst.it = None then
         info env (Source.between exp1.at exp2.at)
           "this looks like an unintended function call, perhaps a missing ';'?";
-      T.as_func_sub T.Local n T.Non
+      T.as_func_sub (T.Local T.Flexible) n T.Non
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
@@ -2214,7 +2220,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
-  | T.Local -> T.Local, T.Env.empty
+  | T.Local ls -> T.Local ls, T.Env.empty
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
@@ -2222,8 +2228,8 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
-  | T.Local, (T.Module | T.Object) -> T.Env.empty
-  | T.Local, T.Actor ->
+  | T.Local _, (T.Module | T.Object) -> T.Env.empty
+  | T.Local _, T.Actor ->
     T.Env.empty (* error instead? That's a breaking change *)
   | T.Shared (mode, pat), sort ->
     if sort <> T.Actor then
@@ -2599,6 +2605,10 @@ and check_stab env sort scope dec_fields =
         local_error env at "M0131"
           "variable %s is declared stable but has non-stable type%a" id
           display_typ t1
+      else
+        if not !Mo_config.Flags.enhanced_orthogonal_persistence && not (T.old_stable t1) then
+          local_error env at "M0200"
+            "Stable functions are only supported with enhanced orthogonal persistence"
   in
   let idss = List.map (fun df ->
     match sort, df.it.stab, df.it.dec.it with
@@ -3036,7 +3046,7 @@ and infer_dec_valdecs env dec : Scope.t =
         T.Async (T.Fut, T.Con (List.hd cs, []), obj_typ)
       else obj_typ
     in
-    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
+    let t = T.Func (T.Local T.Flexible, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
       [T.close cs t2])
     in
