@@ -114,32 +114,6 @@ let kind_of_field_pattern pf = match pf.it with
   | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
-(* Suggestions *)
-
-let suggest desc id ids =
-  if !Flags.ai_errors then
-    Printf.sprintf
-      "\nThe %s %s is not available. Try something else?"
-      desc
-      id
-  else
-  let suggestions =
-    let limit = Lib.Int.log2 (String.length id) in
-    let distance = Lib.String.levenshtein_distance id in
-    let weighted_ids = List.filter_map (fun id0 ->
-      let d = distance id0 in
-      if Lib.String.starts_with id id0 || d <= limit then
-        Some (d, id0)
-      else None) ids in
-    List.sort compare weighted_ids |> List.map snd
-  in
-  if suggestions = [] then ""
-  else
-    let rest, last = Lib.List.split_last suggestions in
-    Printf.sprintf "\nDid you mean %s %s?"
-      desc
-      ((if rest <> [] then (String.concat ", " rest) ^ " or " else "") ^ last)
-
 (* Error bookkeeping *)
 
 exception Recover
@@ -315,6 +289,80 @@ let leave_scope env inner_identifiers initial_usage =
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
   let final_usage = S.union initial_usage unshadowed_usage in
   env.used_identifiers := final_usage
+
+(* Suggestions *)
+
+let suggest desc id ids =
+  if !Flags.ai_errors then
+    Printf.sprintf
+      "\nThe %s %s is not available. Try something else?"
+      desc
+      id
+  else
+  let suggestions =
+    let limit = Lib.Int.log2 (String.length id) in
+    let distance = Lib.String.levenshtein_distance id in
+    let weighted_ids = List.filter_map (fun id0 ->
+      let d = distance id0 in
+      if Lib.String.starts_with id id0 || d <= limit then
+        Some (d, id0)
+      else None) ids in
+    List.sort compare weighted_ids |> List.map snd
+  in
+  if suggestions = [] then ""
+  else
+    let rest, last = Lib.List.split_last suggestions in
+    Printf.sprintf "\nDid you mean %s %s?"
+      desc
+      ((if rest <> [] then (String.concat ", " rest) ^ " or " else "") ^ last)
+
+let suggest_conversion env at ty1 ty2 =
+  T.(match promote ty1, promote ty2 with
+     | Prim p1, Prim p2 ->
+        let rec search_obj lib import path ty =
+          match T.promote ty with
+          | T.Obj(_, tfs) ->
+             tfs |>
+             List.iter (fun {lab;typ;_} ->
+              match T.normalize typ with
+              | T.Func _ when
+                  (Lib.String.starts_with "to" lab ||
+                   Lib.String.starts_with "from" lab) &&
+                    T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
+                 (match lib, import with
+                  | Some id, _ ->
+                     info env at "maybe try conversion `%s.%s%s(_)`" id path lab
+                  | None, Some (id, package, rel_name) ->
+                     info env at
+                       "maybe try conversion `%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
+                       id path lab id package rel_name
+                  | _ -> ())
+              | T.Obj(_, tfs) as ty1  ->
+                 search_obj lib import (path^lab^".") ty1
+              | _ -> ())
+          | _ -> ()
+        in
+        T.Env.iter (fun filename ty ->
+          if Lib.String.starts_with "@" filename then () else
+          let imported_name = T.Env.fold (fun id (ty1, _, _, _) acc ->
+             if ty == ty1 then Some id else acc) env.vals None
+          in
+          let import =
+              if imported_name <> None then None else
+              Flags.M.fold (fun package path acc  ->
+              let base = Lib.FilePath.normalise path in
+              (*              Printf.printf "base %s filename %s" base filename; *)
+              if Lib.FilePath.is_subpath base filename then
+                let Some rel_path = Lib.FilePath.relative_to base filename in
+                let rel_name = Filename.chop_extension rel_path in
+                let id = Filename.basename rel_name in
+                Some (id, package, rel_name)
+              else acc)
+              (!Flags.package_urls) None
+          in
+          search_obj imported_name import "" ty) env.libs
+  | _ -> ())
+
 
 (* Value environments *)
 
@@ -1155,11 +1203,13 @@ let check_lit env t lit at =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-      error env at "M0050"
+    begin
+      local_error env at "M0050"
         "literal of type%a\ndoes not have expected type%a"
         display_typ t'
-        display_typ_expand t
-
+        display_typ_expand t;
+      suggest_conversion env at t' t
+    end
 
 (* Coercions *)
 
@@ -2000,27 +2050,6 @@ and check_exp' env0 t exp : T.typ =
       suggest_conversion env0 exp.at t' t
     end;
     t'
-
-and suggest_conversion env at ty1 ty2 =
-  T.(match promote ty1, promote ty2 with
-  | Prim p1, Prim p2 ->
-    let id1 = String.trim(string_of_prim p1) in
-    let id2 = String.trim(string_of_prim p2) in
-    let find pre id1 id2 =
-      match T.Env.find_opt id1 env.vals with
-      | Some (ty1, _, _, _) ->
-        (match T.promote ty1 with
-        | T.Obj(_, tfs) ->
-          (match T.lookup_val_field_opt (pre^id2) tfs with
-          | Some ty ->
-            info env at "Maybe try conversion %s.%s%s" id1 pre id2
-          | None -> ())
-        | _ -> ())
-      | None -> ()
-    in
-    find "to" id1 id2;
-    find "from" id2 id1
-  | _ -> ())
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
