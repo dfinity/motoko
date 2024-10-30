@@ -1215,7 +1215,8 @@ let check_lit env t lit at suggest =
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
     begin
-      local_error env at "M0050"
+      (if suggest then local_error else error)
+        env at "M0050"
         "literal of type%a\ndoes not have expected type%a"
         display_typ t'
         display_typ_expand t;

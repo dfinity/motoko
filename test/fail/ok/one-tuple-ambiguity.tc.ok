@@ -2,3 +2,6 @@ one-tuple-ambiguity.mo:16.3-16.5: type error [M0050], literal of type
   Nat
 does not have expected type
   (Nat, Bool)
+one-tuple-ambiguity.mo:16.1-16.5: type error [M0097], expected function type, but expression produces type
+  ()
+one-tuple-ambiguity.mo:16.5-16.6: info, this looks like an unintended function call, perhaps a missing ';'?
