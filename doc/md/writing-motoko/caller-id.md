@@ -54,6 +54,52 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 :::
 
+
+## Recording principals
+
 Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.
+
+The data type of `Principal` in Motoko is both sharable and stable, meaning you can compare `Principal`s for equality directly.
+
+Below is an example of how you can record and compare principals.
+
+```motoko
+import Principal "mo:base/Principal";
+import HashMap "mo:base/HashMap";
+import Hash "mo:base/Hash";
+import Error "mo:base/Error";
+
+actor {
+    // Initialize a stable variable to store principals
+    private stable var principalEntries : [(Principal, Bool)] = [];
+
+    // Create HashMap to store principals
+    private var principals = HashMap.HashMap<Principal, Bool>(
+        10,
+        Principal.equal,
+        Principal.hash
+    );
+
+    // Check if principal is recorded
+    public shared query(msg) func isRecorded() : async Bool {
+        let caller = msg.caller;
+        switch (principals.get(caller)) {
+            case (?exists) { exists };
+            case null { false };
+        };
+    };
+
+    // Record a new principal
+    public shared(msg) func recordPrincipal() : async Bool {
+        let caller = msg.caller;
+        if (Principal.isAnonymous(caller)) {
+            throw Error.reject("Anonymous principal not allowed");
+        };
+
+        principals.put(caller, true);
+        true;
+    };
+};
+```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
