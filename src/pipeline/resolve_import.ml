@@ -281,7 +281,6 @@ let package_imports base packages =
   in
     List.concat imports
 
-
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases; _ } ->
   let open Diag.Syntax in
@@ -300,13 +299,13 @@ let resolve
       ref (if flags.include_all_libs
            then (* add all available package libraries *)
              (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
-                    (package_imports base packages) RIM.empty)
+               (package_imports base packages) RIM.empty)
            else
              (* consider only the explicitly imported package libraries *)
              RIM.empty)
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
-    Some (List.map (fun (rim,at) -> rim @@ at) (RIM.bindings !imported))
+    Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))
   )
 
 
