@@ -2354,7 +2354,6 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env funptr_field ^^
-    (* TODO: Support flexible function reference calls *)
     E.call_import env "rts" "resolve_stable_function_call" ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
@@ -2367,7 +2366,6 @@ module Closure = struct
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
       E.call_import env "rts" "resolve_stable_function_literal";
-      (* TODO: Support flexible function references *)
       compile_unboxed_const 0L
     ])
 
@@ -9460,9 +9458,6 @@ module FuncDec = struct
         (* Store the function pointer number: *)
         get_clos ^^
         
-        (* compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^ *)
-        (* TODO: Support flexible function references and remove this provisional functionality. *)
-
         let wasm_table_index = Int32.to_int (E.add_fun_ptr env fi) in
         let flexible_function_id = Int.sub (Int.sub 0 wasm_table_index) 1 in
         compile_unboxed_const (Int64.of_int flexible_function_id) ^^

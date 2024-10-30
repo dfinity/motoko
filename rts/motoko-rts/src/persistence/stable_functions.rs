@@ -6,50 +6,61 @@
 //! * a function in a named scope,
 //! * a class in a named scope,
 //! * a named object in a named scope.
+//! Syntactically, function types are prefixed by `stable` to denote a stable function, e.g.
+//! `stable X -> Y`. Stable functions implicitly have a corresponding stable reference type.
 //!
 //! Stable functions correspond to equally named functions in the new program versions.
 //!
-//! Function references are encoded by a persistent function ids that stay invariant across upgrades.
+//! All other functions, such as lambdas, or named functions in a lambda, are flexible
+//! functions. A stable function type is a sub-type of a flexible function type with
+//! type-compatible signature, i.e. `stable X' -> Y <: X -> Y'` for `X' <: X` and `Y' :< Y`.
 //!
-//! Each program version defines a set of functions that can be assigned as stable function references.
-//! Each such function obtains a function id on program initialization and upgrade.
-//! If the function was already declared in the previous version, its function id is reused on upgrade.
-//! Otherwise, if it is a new stable function, it obtains a new function id, or in the future, a recycled id.
+//! Function references are encoded by a function ids in the following representation:
+//! * Stable function id, encoded as non-negative number:
+//!   A stable function reference that stays invariant across upgrades.
+//! * Flexible functiion id, encoded as negative number:
+//!   A flexible function reference that is invalidated on upgrade.
+//!
+//! Each program version defines a set of named local functions that can be used as
+//! stable function references. Each such function obtains a stable function id on
+//! program initialization and upgrade. If the stable function was already declared in
+//! the previous version, its function id is reused on upgrade. Otherwise, if it is a new
+//! stable function, it obtains a new stable function id, or in the future, a recycled id.
 //!
 //! The runtime system supports stable functions by two mechanisms:
 //!
 //! 1. **Persistent virtual table** for stable function calls:
 //!     
-//!    The persistent virtual table maps function ids to Wasm table indices,
-//!    for supporting dynamic calls of stable functions.
-//!    Each entry also stores the hashed name of the stable function to match
-//!    and rebind the function ids to the corresponding functions of the new Wasm
-//!    binary on a program upgrade.
-//!    The table survives upgrades and is built and updated by the runtime system.
-//!    To build and update the persistent virtual table, the compiler provides
-//!    a **stable function map**, mapping the hashed name of a potential
-//!    stable function to the corresponding Wasm table index. For performance,
-//!    the stable function map is sorted by the hashed name.
+//!    The persistent virtual table maps stable function ids to Wasm table indices, for
+//!    supporting dynamic calls of stable functions. Each entry also stores the hashed name
+//!    of the stable function to match and rebind the stable function ids to the corresponding
+//!    functions of the new Wasm binary on a program upgrade. The table survives upgrades and
+//!    is built and updated by the runtime system. To build and update the persistent virtual
+//!    table, the compiler provides a **stable function map**, mapping the hashed name of a
+//!    potentially stable function to the corresponding Wasm table index. For performance, the
+//!    stable function map is sorted by the hashed names.
 //!    
 //! 2. **Function literal table** for materializing stable function literals:
 //!
 //!    As the compiler does not yet know the function ids of stable function literals/constants,
-//!    this table maps a Wasm table index of the current program version to a function id.   
-//!    The dynamic function literal table is re-built on program initialization and upgrade.
-//!    When a stable function literal is loaded, it serves for resolving the corresponding
-//!    function id and thus the stable function reference.
-//!    The table is discarded on upgrades and (re-)constructed by the runtime system, based on
-//!    the information of the **stable function map**.
+//!    this table maps a Wasm table index of the current program version to a stable function id.   
+//!    The function literal table is re-built on program initialization and upgrade. When a stable
+//!    function literal is loaded, it serves for resolving the corresponding function id and thus
+//!    the stable function reference. The table is discarded on upgrades and (re-)constructed by
+//!    the runtime system, based on the information of the **stable function map**.
 //!
-//! Provisional design to support flexible function references:
-//! Currently, the compiler does not yet distinguish between flexible and stable function references.
-//! Therefore, we temporarily distinguish flexible and stable function references in the runtime system.
-//! Flexible function references are thereby represented as negative function ids determining the Wasm 
+//! The runtime system distinguishes between flexible and stable function references by using a
+//! different encoding. This is to avoid complicated conversion logic been inserted by the compiler
+//! when a stable function reference is assigned to flexible reference, in particular in the presence
+//! of sharing (a function reference can be reached by both a stable and flexible function type) and
+//! composed types (function references can be deeply nested in a composed value that is assigned).
+//
+//! Flexible function references are represented as negative function ids determining the Wasm
 //! table index, specifically `-wasm_table_index - 1`.
-//! 
+//!
 //! Potential garbage collection in the future:
-//! * The runtime system could allow discarding old stable functions that are unused,
-//!   i.e. when it is no longer stored in a live object and and no longer part of the literal table.
+//! * The runtime system could allow discarding old stable functions that are unused, i.e. when it is
+//!   no longer stored in a live object and no longer part of the stable function map.
 //! * Free function ids can be recycled for new stable functions in persistent virtual table.
 //! * Once freed, a new program version is liberated from providing a matching stable function.
 
@@ -68,9 +79,32 @@ use super::stable_function_state;
 
 // Use `usize` and not `u32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
-type FunctionId = usize;
 type WasmTableIndex = usize;
 type NameHash = usize;
+
+type FunctionId = isize;
+
+const NULL_FUNCTION_ID: FunctionId = FunctionId::MAX;
+
+fn is_flexible_function_id(function_id: FunctionId) -> bool {
+    function_id < 0
+}
+
+fn resolve_flexible_function_id(function_id: FunctionId) -> WasmTableIndex {
+    debug_assert!(is_flexible_function_id(function_id));
+    (-function_id - 1) as WasmTableIndex
+}
+
+fn resolve_stable_function_id(function_id: FunctionId) -> usize {
+    debug_assert!(!is_flexible_function_id(function_id));
+    debug_assert_ne!(function_id, NULL_FUNCTION_ID);
+    function_id as usize
+}
+
+fn to_flexible_function_id(wasm_table_index: WasmTableIndex) -> FunctionId {
+    debug_assert!(wasm_table_index < FunctionId::MAX as WasmTableIndex);
+    -(wasm_table_index as FunctionId) - 1
+}
 
 /// Part of the persistent metadata. Contains GC-managed references to blobs.
 #[repr(C)]
@@ -116,9 +150,9 @@ impl StableFunctionState {
     }
 
     /// The returned low-level pointer can only be used within the same IC message.
-    unsafe fn get_literal_table(&mut self) -> *mut DynamicLiteralTable {
+    unsafe fn get_literal_table(&mut self) -> *mut FunctionLiteralTable {
         assert_ne!(FUNCTION_LITERAL_TABLE, NULL_POINTER);
-        FUNCTION_LITERAL_TABLE.as_blob_mut() as *mut DynamicLiteralTable
+        FUNCTION_LITERAL_TABLE.as_blob_mut() as *mut FunctionLiteralTable
     }
 
     // Transient GC root.
@@ -177,34 +211,29 @@ struct VirtualTableEntry {
 
 #[no_mangle]
 pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTableIndex {
-    // TODO: Remove this provisional solution for flexible function calls.
-    if (function_id as isize) < 0 {
-        return (-(function_id as isize) - 1) as WasmTableIndex;
+    if is_flexible_function_id(function_id) {
+        return resolve_flexible_function_id(function_id);
     }
-    let function_id = function_id as usize;
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
-    let table_entry = virtual_table.get(function_id);
+    let table_entry = virtual_table.get(resolve_stable_function_id(function_id));
     (*table_entry).wasm_table_index
 }
 
 /// Indexed by Wasm table index.
-type DynamicLiteralTable = IndexedTable<FunctionId>;
+type FunctionLiteralTable = IndexedTable<FunctionId>;
 
 #[no_mangle]
 pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
     let literal_table = stable_function_state().get_literal_table();
-    // TODO: Remove this provisional solution for flexible function calls.
     let function_id = if wasm_table_index < literal_table.length() {
         *literal_table.get(wasm_table_index)
     } else {
         NULL_FUNCTION_ID
     };
     if function_id == NULL_FUNCTION_ID {
-        return (-(wasm_table_index as isize) - 1) as FunctionId;
+        return to_flexible_function_id(wasm_table_index);
     }
-    // let function_id = *literal_table.get(wasm_table_index);
-    // assert_ne!(function_id, NULL_FUNCTION_ID); // must be a stable function.
     function_id
 }
 
@@ -271,14 +300,12 @@ pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions
     // 6. Create the function literal table by scanning the stable functions map and
     // mapping Wasm table indices to their assigned function id.
     let new_literal_table = create_function_literal_table(mem, stable_functions);
-    // 7. Store the new persistent virtual table and dynamic literal table.
+    // 7. Store the new persistent virtual table and function literal table.
     // Apply write barriers!
     let state = stable_function_state();
     write_with_barrier(mem, state.virtual_table_location(), new_virtual_table);
     write_with_barrier(mem, state.literal_table_location(), new_literal_table);
 }
-
-const NULL_FUNCTION_ID: FunctionId = FunctionId::MAX;
 
 /// Step 1: Initialize all function ids in the stable function map to null.
 unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) {
@@ -303,7 +330,7 @@ unsafe fn update_existing_functions(
     virtual_table: *mut PersistentVirtualTable,
     stable_functions: *mut StableFunctionMap,
 ) {
-    assert_ne!(virtual_table.length(), NULL_FUNCTION_ID);
+    assert_ne!(virtual_table.length(), NULL_FUNCTION_ID as usize);
     for function_id in 0..virtual_table.length() {
         let virtual_table_entry = virtual_table.get(function_id);
         let name_hash = (*virtual_table_entry).function_name_hash;
@@ -345,7 +372,7 @@ unsafe fn add_new_functions<M: Memory>(
     let new_length = old_virtual_table.length() + new_function_count;
     let new_blob = extend_virtual_table(mem, old_virtual_table, new_length);
     let new_virtual_table = new_blob.as_blob_mut() as *mut PersistentVirtualTable;
-    let mut function_id = old_virtual_table.length();
+    let mut function_id = old_virtual_table.length() as FunctionId;
     for index in 0..stable_functions.length() {
         let stable_function_entry = stable_functions.get(index);
         assert_ne!(stable_function_entry, null_mut());
@@ -356,13 +383,17 @@ unsafe fn add_new_functions<M: Memory>(
                 function_name_hash,
                 wasm_table_index,
             };
+            debug_assert!(!is_flexible_function_id(function_id));
             debug_assert_ne!(function_id, NULL_FUNCTION_ID);
-            new_virtual_table.set(function_id, new_virtual_table_entry);
-            (*stable_function_entry).cached_function_id = function_id as FunctionId;
+            new_virtual_table.set(
+                resolve_stable_function_id(function_id),
+                new_virtual_table_entry,
+            );
+            (*stable_function_entry).cached_function_id = function_id;
             function_id += 1;
         }
     }
-    debug_assert_eq!(function_id, new_virtual_table.length());
+    debug_assert_eq!(function_id as usize, new_virtual_table.length());
     new_blob
 }
 
@@ -394,25 +425,28 @@ unsafe fn create_function_literal_table<M: Memory>(
     stable_functions: *mut StableFunctionMap,
 ) -> Value {
     let table_length = compute_literal_table_length(stable_functions);
-    let dynamic_literal_table = create_empty_literal_table(mem, table_length);
+    let function_literal_table = create_empty_literal_table(mem, table_length);
     for index in 0..stable_functions.length() {
         let entry = stable_functions.get(index);
         let wasm_table_index = (*entry).wasm_table_index;
         let function_id = (*entry).cached_function_id; // Can also be `NULL_FUNCTION_ID` if not stable.
-        dynamic_literal_table.set(wasm_table_index, function_id);
+        function_literal_table.set(wasm_table_index, function_id);
     }
-    Value::from_ptr(dynamic_literal_table as usize)
+    Value::from_ptr(function_literal_table as usize)
 }
 
-unsafe fn create_empty_literal_table<M: Memory>(mem: &mut M, table_length: usize) -> *mut DynamicLiteralTable {
-    let byte_length = Bytes(table_length * DynamicLiteralTable::get_entry_size());
+unsafe fn create_empty_literal_table<M: Memory>(
+    mem: &mut M,
+    table_length: usize,
+) -> *mut FunctionLiteralTable {
+    let byte_length = Bytes(table_length * FunctionLiteralTable::get_entry_size());
     let new_blob = alloc_blob(mem, TAG_BLOB_B, byte_length);
     allocation_barrier(new_blob);
-    let dynamic_literal_table = new_blob.as_blob_mut() as *mut DynamicLiteralTable;
-    for index in 0..dynamic_literal_table.length() {
-        dynamic_literal_table.set(index, NULL_FUNCTION_ID);
+    let function_literal_table = new_blob.as_blob_mut() as *mut FunctionLiteralTable;
+    for index in 0..function_literal_table.length() {
+        function_literal_table.set(index, NULL_FUNCTION_ID);
     }
-    dynamic_literal_table
+    function_literal_table
 }
 
 unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap) -> usize {
