@@ -69,6 +69,7 @@ use core::{marker::PhantomData, mem::size_of, ptr::null_mut, str::from_utf8};
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
+    algorithms::SortedArray,
     barriers::{allocation_barrier, write_with_barrier},
     memory::{alloc_blob, Memory},
     rts_trap_with,
@@ -250,32 +251,25 @@ struct StableFunctionEntry {
 /// Sorted by hash name.
 type StableFunctionMap = IndexedTable<StableFunctionEntry>;
 
+impl SortedArray<NameHash> for *mut StableFunctionMap {
+    fn get_length(&self) -> usize {
+        unsafe { self.length() }
+    }
+
+    fn value_at(&self, index: usize) -> NameHash {
+        unsafe {
+            let entry = self.get(index);
+            (*entry).function_name_hash
+        }
+    }
+}
+
 impl StableFunctionMap {
     unsafe fn find(self: *mut Self, name: NameHash) -> *mut StableFunctionEntry {
-        // Binary search
-        let mut left = 0;
-        let mut right = self.length();
-        while left < right {
-            let middle = (left + right) / 2;
-            let entry = self.get(middle);
-            let middle_name = (*entry).function_name_hash;
-            debug_assert!(
-                (*self.get(left)).function_name_hash <= middle_name
-                    && middle_name <= (*self.get(right - 1)).function_name_hash
-            );
-            if name <= middle_name {
-                right = middle;
-            } else {
-                left = middle + 1;
-            }
+        match self.index_of(name) {
+            None => null_mut(),
+            Some(index) => self.get(index),
         }
-        if left < self.length() {
-            let entry = self.get(left);
-            if (*entry).function_name_hash == name {
-                return entry;
-            }
-        }
-        return null_mut();
     }
 }
 

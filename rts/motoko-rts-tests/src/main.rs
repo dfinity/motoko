@@ -5,6 +5,8 @@ use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 #[macro_use]
 mod print;
 
+#[enhanced_orthogonal_persistence]
+mod algorithms;
 mod bigint;
 mod bitrel;
 mod continuation_table;
@@ -59,6 +61,7 @@ fn check_architecture() {
 #[enhanced_orthogonal_persistence]
 fn persistence_test() {
     unsafe {
+        algorithms::test();
         stabilization::test();
     }
 }
