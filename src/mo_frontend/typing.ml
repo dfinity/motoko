@@ -57,6 +57,7 @@ type env =
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
     viper_mode : bool;
+    errors_only : bool;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -79,6 +80,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
     reported_stable_memory = ref false;
+    errors_only = false;
     viper_mode;
   }
 
@@ -193,10 +195,12 @@ let local_error env at code fmt =
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
 
 let check_deprecation env at desc id depr =
   match depr with
@@ -3167,7 +3171,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = env_of_scope msgs scope in
+          let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
