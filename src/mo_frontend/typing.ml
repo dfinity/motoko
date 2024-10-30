@@ -325,55 +325,61 @@ type lib_sort = Imported of string | NonImported of {id : string; package : stri
 let suggest_conversion env at ty1 ty2 =
   T.(match promote ty1, promote ty2 with
      | Prim p1, Prim p2 ->
-        let rec search_obj lib_sort path ty =
-          match T.promote ty with
-          | T.Obj(_, tfs) ->
-             tfs |>
-             List.iter (fun {lab;typ;_} ->
-              match T.normalize typ with
-              | T.Func _ when
-                  (Lib.String.starts_with "to" lab ||
-                   Lib.String.starts_with "from" lab) &&
-                    T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
-                 (match lib_sort with
-                  | Imported id ->
-                    info env at
-                      "maybe try conversion `%s.%s%s(_)`"
-                      id path lab
-                  | NonImported {id; package; rel_name} ->
-                    info env at
-                      "maybe try conversion `%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
-                      id path lab id package rel_name)
-              | T.Obj(_, tfs) as ty1  ->
-                 search_obj lib_sort (path^lab^".") ty1
-              | _ -> ())
-          | _ -> ()
-        in
-        T.Env.iter (fun filename ty ->
-          if Lib.String.starts_with "@" filename
-          then () (* skip prim etc *)
-          else
-          let imported_name = T.Env.fold (fun id (ty1, _, _, _) acc ->
-              if ty == ty1 then Some id else acc) env.vals None
-          in
-          let lib_sort_opt = match imported_name with
-            | Some id -> Some (Imported id)
-            | None ->
-              Flags.M.fold (fun package path acc  ->
-                let base = Lib.FilePath.normalise path in
-                match Lib.FilePath.relative_to base filename with
-                | None -> acc
-                | Some rel_path ->
-                  let rel_name = Filename.chop_extension rel_path in
-                  let id = Filename.basename rel_name in
+     let suggestions = ref [] in
+     let rec search_obj lib_sort path ty =
+       match T.promote ty with
+       | T.Obj(_, tfs) ->
+         tfs |>
+         List.iter (fun {lab;typ;_} ->
+           match T.normalize typ with
+           | T.Func _ when
+               (Lib.String.starts_with "to" lab ||
+                Lib.String.starts_with "from" lab) &&
+                T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
+             (match lib_sort with
+              | Imported id ->
+                suggestions := Printf.sprintf "`%s.%s%s(_)`" id path lab :: !suggestions
+              | NonImported {id; package; rel_name} ->
+                suggestions :=
+                Printf.sprintf  "`%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
+                id path lab id package rel_name :: !suggestions)
+           | T.Obj(_, tfs) as ty1  ->
+             search_obj lib_sort (path^lab^".") ty1
+           | _ -> ())
+       | _ -> ()
+     in
+       T.Env.iter (fun filename ty ->
+         if Lib.String.starts_with "@" filename
+         then () (* skip prim etc *)
+         else
+         let imported_name = T.Env.fold (fun id (ty1, _, _, _) acc ->
+           if ty == ty1 then Some id else acc) env.vals None
+         in
+         let lib_sort_opt = match imported_name with
+           | Some id -> Some (Imported id)
+           | None ->
+             Flags.M.fold (fun package path acc  ->
+                 let base = Lib.FilePath.normalise path in
+                 match Lib.FilePath.relative_to base filename with
+                 | None -> acc
+                 | Some rel_path ->
+                   let rel_name = Filename.chop_extension rel_path in
+                   let id = Filename.basename rel_name in
                    Some (NonImported {id; package; rel_name}))
-                (!Flags.package_urls) None
-          in
-          match lib_sort_opt with
-          |  None -> ()
-          |  Some lib_sort -> search_obj lib_sort "" ty)
-          env.libs
-  | _ -> ())
+               (!Flags.package_urls) None
+         in
+         match lib_sort_opt with
+         |  None -> ()
+         |  Some lib_sort -> search_obj lib_sort "" ty)
+         env.libs;
+       if !suggestions = []
+       then ""
+       else
+         let rest, last = Lib.List.split_last !suggestions in
+         Printf.sprintf "\nmaybe try conversion:\n  %s?"
+         ((if rest <> [] then (String.concat ",\n  " rest) ^ " or\n  " else "") ^ last)
+  (* not primitive types, make no suggestion *)
+  | _, _ -> "")
 
 (* Value environments *)
 
@@ -1214,14 +1220,11 @@ let check_lit env t lit at suggest =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-    begin
-      (if suggest then local_error else error)
-        env at "M0050"
-        "literal of type%a\ndoes not have expected type%a"
-        display_typ t'
-        display_typ_expand t;
-      if suggest then suggest_conversion env at t' t
-    end
+    error env at "M0050"
+      "literal of type%a\ndoes not have expected type%a%s"
+      display_typ t'
+      display_typ_expand t
+      (if suggest then suggest_conversion env at t' t else "")
 
 (* Coercions *)
 
@@ -2056,10 +2059,10 @@ and check_exp' env0 t exp : T.typ =
     if not (T.sub t' t) then
     begin
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
+        "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
-        display_typ_expand t;
-      suggest_conversion env0 exp.at t' t
+        display_typ_expand t
+        (suggest_conversion env0 exp.at t' t)
     end;
     t'
 
