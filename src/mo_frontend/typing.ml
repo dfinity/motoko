@@ -376,7 +376,7 @@ let suggest_conversion env at ty1 ty2 =
        then ""
        else
          let rest, last = Lib.List.split_last !suggestions in
-         Printf.sprintf "\nmaybe try conversion:\n  %s?"
+         Printf.sprintf "\nMaybe try conversion:\n  %s?"
          ((if rest <> [] then (String.concat ",\n  " rest) ^ " or\n  " else "") ^ last)
   (* not primitive types, make no suggestion *)
   | _, _ -> "")

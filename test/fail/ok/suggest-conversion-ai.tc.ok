@@ -2,7 +2,7 @@ suggest-conversion-ai.mo:7.3-7.5: type error [M0096], expression of type
   Nat8
 cannot produce expected type
   Nat
-maybe try conversion:
+Maybe try conversion:
   `Nat8.toNat(_)`,
   `Nat8.fromNat8(_)`,
   `Nat8.Outer.Inner.toNat(_)` or
@@ -11,7 +11,7 @@ suggest-conversion-ai.mo:8.3-8.6: type error [M0096], expression of type
   Nat16
 cannot produce expected type
   Nat
-maybe try conversion:
+Maybe try conversion:
   `Nat16.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"`,
   `Nat16.fromNat16(_)` after adding `import Nat16 = "mo:conv/Nat16"`,
   `Nat16.Outer.Inner.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"` or
