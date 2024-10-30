@@ -302,7 +302,7 @@ let resolve
              (List.fold_right (fun ri rim -> RIM.add ri Source.no_region rim)
                     (package_imports base packages) RIM.empty)
            else
-             (* consder only the explicitly imported package libraries *)
+             (* consider only the explicitly imported package libraries *)
              RIM.empty)
     in
     List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
