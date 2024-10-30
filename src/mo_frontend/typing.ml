@@ -316,10 +316,12 @@ let suggest desc id ids =
       desc
       ((if rest <> [] then (String.concat ", " rest) ^ " or " else "") ^ last)
 
+
+type lib_sort = Imported of string | NonImported of {id : string; package : string; rel_name : string }
 let suggest_conversion env at ty1 ty2 =
   T.(match promote ty1, promote ty2 with
      | Prim p1, Prim p2 ->
-        let rec search_obj lib import path ty =
+        let rec search_obj lib_sort path ty =
           match T.promote ty with
           | T.Obj(_, tfs) ->
              tfs |>
@@ -329,40 +331,45 @@ let suggest_conversion env at ty1 ty2 =
                   (Lib.String.starts_with "to" lab ||
                    Lib.String.starts_with "from" lab) &&
                     T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
-                 (match lib, import with
-                  | Some id, _ ->
+                 (match lib_sort with
+                  | Imported id ->
                      info env at "maybe try conversion `%s.%s%s(_)`" id path lab
-                  | None, Some (id, package, rel_name) ->
+                  | NonImported {id; package; rel_name} ->
                      info env at
                        "maybe try conversion `%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
-                       id path lab id package rel_name
-                  | _ -> ())
+                       id path lab id package rel_name)
               | T.Obj(_, tfs) as ty1  ->
-                 search_obj lib import (path^lab^".") ty1
+                 search_obj lib_sort (path^lab^".") ty1
               | _ -> ())
           | _ -> ()
         in
         T.Env.iter (fun filename ty ->
-          if Lib.String.starts_with "@" filename then () else
+          if Lib.String.starts_with "@" filename
+          then () (* skip prim etc *)
+          else
           let imported_name = T.Env.fold (fun id (ty1, _, _, _) acc ->
-             if ty == ty1 then Some id else acc) env.vals None
+              if ty == ty1 then Some id else acc) env.vals None
           in
-          let import =
-              if imported_name <> None then None else
+          let lib_sort_opt = match imported_name with
+            | Some id -> Some (Imported id)
+            | None ->
               Flags.M.fold (fun package path acc  ->
-              let base = Lib.FilePath.normalise path in
-              (*              Printf.printf "base %s filename %s" base filename; *)
-              if Lib.FilePath.is_subpath base filename then
-                let Some rel_path = Lib.FilePath.relative_to base filename in
-                let rel_name = Filename.chop_extension rel_path in
-                let id = Filename.basename rel_name in
-                Some (id, package, rel_name)
-              else acc)
-              (!Flags.package_urls) None
+                let base = Lib.FilePath.normalise path in
+                if Lib.FilePath.is_subpath base filename then
+                  match Lib.FilePath.relative_to base filename with
+                  | None -> None
+                  | Some rel_path ->
+                     let rel_name = Filename.chop_extension rel_path in
+                     let id = Filename.basename rel_name in
+                     Some (NonImported {id; package; rel_name})
+                else acc)
+                (!Flags.package_urls) None
           in
-          search_obj imported_name import "" ty) env.libs
+          match lib_sort_opt with
+          |  None -> ()
+          |  Some lib_sort -> search_obj lib_sort "" ty)
+          env.libs
   | _ -> ())
-
 
 (* Value environments *)
 
@@ -1174,7 +1181,7 @@ let infer_lit env lit at : T.prim =
   | PreLit _ ->
     assert false
 
-let check_lit env t lit at =
+let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
@@ -1208,7 +1215,7 @@ let check_lit env t lit at =
         "literal of type%a\ndoes not have expected type%a"
         display_typ t'
         display_typ_expand t;
-      suggest_conversion env at t' t
+      if suggest then suggest_conversion env at t' t
     end
 
 (* Coercions *)
@@ -1868,7 +1875,7 @@ and check_exp' env0 t exp : T.typ =
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
-    check_lit env t lit exp.at;
+    check_lit env t lit exp.at true;
     t
   | ActorUrlE exp', t' ->
     check_exp_strong env T.text exp';
@@ -2321,7 +2328,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | SignP (op, lit) ->
@@ -2332,7 +2339,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | TupP pats ->
