@@ -337,11 +337,13 @@ let suggest_conversion env at ty1 ty2 =
                     T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
                  (match lib_sort with
                   | Imported id ->
-                     info env at "maybe try conversion `%s.%s%s(_)`" id path lab
+                    info env at
+                      "maybe try conversion `%s.%s%s(_)`"
+                      id path lab
                   | NonImported {id; package; rel_name} ->
-                     info env at
-                       "maybe try conversion `%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
-                       id path lab id package rel_name)
+                    info env at
+                      "maybe try conversion `%s.%s%s(_)` after adding `import %s = \"mo:%s/%s\"`"
+                      id path lab id package rel_name)
               | T.Obj(_, tfs) as ty1  ->
                  search_obj lib_sort (path^lab^".") ty1
               | _ -> ())
@@ -359,14 +361,12 @@ let suggest_conversion env at ty1 ty2 =
             | None ->
               Flags.M.fold (fun package path acc  ->
                 let base = Lib.FilePath.normalise path in
-                if Lib.FilePath.is_subpath base filename then
-                  match Lib.FilePath.relative_to base filename with
-                  | None -> None
-                  | Some rel_path ->
-                     let rel_name = Filename.chop_extension rel_path in
-                     let id = Filename.basename rel_name in
-                     Some (NonImported {id; package; rel_name})
-                else acc)
+                match Lib.FilePath.relative_to base filename with
+                | None -> acc
+                | Some rel_path ->
+                  let rel_name = Filename.chop_extension rel_path in
+                  let id = Filename.basename rel_name in
+                   Some (NonImported {id; package; rel_name}))
                 (!Flags.package_urls) None
           in
           match lib_sort_opt with
