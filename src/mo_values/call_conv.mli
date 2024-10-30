@@ -14,6 +14,7 @@ val message_cc : Type.shared_sort -> int -> call_conv
 val async_cc : Type.shared_sort -> int -> int -> call_conv
 val replies_cc : Type.shared_sort -> int -> int -> call_conv
 
+val compatible_call : call_conv -> call_conv -> bool
 val call_conv_of_typ : Type.typ -> call_conv
 
 val string_of_call_conv : call_conv -> string

@@ -21,6 +21,12 @@ let message_cc s n = { sort = Shared s; control = Returns; n_args = n; n_res = 0
 let async_cc s n m = { sort = Shared s; control = Promises; n_args = n; n_res = m}
 let replies_cc s n m = { sort = Shared s; control = Replies; n_args = n; n_res = m}
 
+let compatible_call (actual: call_conv) (expected: call_conv): bool =
+  match actual, expected with
+  | { sort = Local Stable; _ }, { sort = Local Flexible; _ } ->
+    { actual with sort = Local Flexible } = expected
+  | _, _ -> actual = expected
+
 let call_conv_of_typ typ =
   match promote typ with
   | Func (sort, control, tbds, dom, res) ->

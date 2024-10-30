@@ -384,7 +384,7 @@ let text_len t at =
 let check_call_conv exp call_conv =
   let open CC in
   let exp_call_conv = call_conv_of_typ exp.note.note_typ in
-  if not (exp_call_conv = call_conv) then
+  if not (compatible_call call_conv exp_call_conv) then
     failwith (Printf.sprintf
       "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))

@@ -277,7 +277,7 @@ let interpret_lit env lit : V.value =
 let check_call_conv exp call_conv =
   let open Call_conv in
   let exp_call_conv = call_conv_of_typ exp.note.Note.typ in
-  if not (exp_call_conv = call_conv) then
+  if not (compatible_call call_conv exp_call_conv) then
     failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
       (T.string_of_typ exp.note.Note.typ)
