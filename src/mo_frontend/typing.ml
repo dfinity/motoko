@@ -395,16 +395,16 @@ let heartbeat_type =
   T.(Func (Local Stable, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
 
 let timer_type =
-  T.(Func (Local Stable, Returns, [scope_bind],
-    [Func (Local Stable, Returns, [], [Prim Nat64], [])],
+  T.(Func (Local Flexible, Returns, [scope_bind],
+    [Func (Local Flexible, Returns, [], [Prim Nat64], [])],
     [Async (Fut, Var (default_scope_var, 0), unit)]))
 
 let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
-    T.("preupgrade", Func (Local Stable, Returns, [scope_bind], [], []));
-    T.("postupgrade", Func (Local Stable, Returns, [scope_bind], [], []));
+    T.("preupgrade", Func (Local Flexible, Returns, [scope_bind], [], []));
+    T.("postupgrade", Func (Local Flexible, Returns, [scope_bind], [], []));
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
@@ -413,7 +413,7 @@ let system_funcs tfs =
             {lab = "arg"; typ = blob; src = empty_src};
             {lab = "msg"; typ = msg_typ; src = empty_src}]))
       in
-        T.(Func (Local Stable, Returns, [],  [record_typ], [bool]))))
+        T.(Func (Local Flexible, Returns, [],  [record_typ], [bool]))))
   ]
 
 
