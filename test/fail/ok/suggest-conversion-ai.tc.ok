@@ -14,4 +14,3 @@ suggest-conversion-ai.mo:8.3-8.6: info, maybe try conversion `Nat16.Outer.Inner.
 suggest-conversion-ai.mo:8.3-8.6: info, maybe try conversion `Nat16.Outer.Inner.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"`
 suggest-conversion-ai.mo:8.3-8.6: info, maybe try conversion `Nat16.fromNat16(_)` after adding `import Nat16 = "mo:conv/Nat16"`
 suggest-conversion-ai.mo:8.3-8.6: info, maybe try conversion `Nat16.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"`
-base conv filename conv/Nat16.mobase conv filename conv/Nat16.mo
