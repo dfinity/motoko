@@ -1128,12 +1128,12 @@ let transform_import (i : S.import) : import_declaration =
       primE (I.ActorOfIdBlob t) [blobE canister_id]
   in [ letP (pat p) rhs ]
 
-let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
+let transform_unit_body (scope: I.qualified_name) (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
   | S.ProgU ds -> I.ProgU (decs [] ds)
   | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {
-      it = build_obj u.at T.Module [] self_id fields u.note.S.note_typ;
+      it = build_obj u.at T.Module scope self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
   | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
@@ -1151,7 +1151,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    let actor_expression = build_actor u.at ts [] (Some self_id) fields obj_typ in
+    let actor_expression = build_actor u.at ts scope (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
@@ -1163,7 +1163,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    let actor_expression = build_actor u.at [] [] self_id fields u.note.S.note_typ in
+    let actor_expression = build_actor u.at [] scope self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
@@ -1173,7 +1173,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
-  let body' = transform_unit_body body in
+  let body' = transform_unit_body [] body in
   inject_decs imports' body', Ir.full_flavor()
 
 
@@ -1189,7 +1189,9 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
   let imports' = List.concat_map transform_import imports in
-  let body' = transform_unit_body body in
+  (* TODO: Maybe use a distinct module identifier for stable functions in imported modules *)
+  (* TODO: Sanitize filename not to contain $,@ etc. *)
+  let body' = transform_unit_body [f] body in
   let prog = inject_decs imports' body' in
   match prog with
   | I.LibU (ds, e) ->

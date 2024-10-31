@@ -735,6 +735,7 @@ module E = struct
 
   let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) =
     let name = make_stable_name qualified_name in
+    Printf.printf "FUNC %s %i\n" name (Int32.to_int wasm_table_index);
     if (String.contains name '$') || (String.contains name '@') then
       ()
     else
