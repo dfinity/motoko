@@ -378,11 +378,11 @@ let transform prog =
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
+    | FuncE (x, qn, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
         | Local _  ->
-          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+          FuncE (x, qn, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | Shared s' ->
           begin
             match c, exp with
@@ -408,7 +408,7 @@ let transform prog =
                 e --> ic_rejectE (errorMessageE (varE e)) in
               let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
-              FuncE (x, Shared s', Replies, typbinds', args', ret_tys, exp')
+              FuncE (x, qn, Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
             | Returns,
               { it = BlockE (
@@ -438,7 +438,7 @@ let transform prog =
                 e --> tupE [] in
               let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
-              FuncE (x, Shared s', Returns, typbinds', args', ret_tys, exp')
+              FuncE (x, qn, Shared s', Returns, typbinds', args', ret_tys, exp')
             | (Returns | Replies), _ -> assert false
           end
       end

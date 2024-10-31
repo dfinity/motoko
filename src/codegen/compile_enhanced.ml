@@ -731,6 +731,7 @@ module E = struct
       fp
 
   let add_stable_func (env : t) (name: string) (wasm_table_index: int32) =
+    Printf.printf "FUNC %s %i\n" name (Int32.to_int wasm_table_index);
     if (Lib.String.starts_with "$" name) || (Lib.String.starts_with "@" name) then
       ()
     else
@@ -8711,7 +8712,7 @@ module StableFunctions = struct
   let create_stable_function_segment (env : E.t) set_segment_length =
     let entries = E.NameEnv.fold (fun name wasm_table_index remainder -> 
       let name_hash = Mo_types.Hash.hash name in
-      (name_hash, wasm_table_index) :: remainder) 
+      (Printf.printf "STABLE %s %i\n" name (Int32.to_int name_hash); name_hash, wasm_table_index) :: remainder) 
       !(env.E.stable_functions) [] 
     in
     let sorted = List.sort (fun (hash1, _) (hash2, _) ->
@@ -9499,7 +9500,7 @@ module FuncDec = struct
   (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
-    let sr, code = lit env ae "anon_async" (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at in
+    let sr, code = lit env ae "@anon_async" (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at in
     code ^^
     StackRep.adjust env sr SR.Vanilla
 
@@ -12493,8 +12494,10 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
   (* Async-wait lowering support features *)
   | DeclareE (name, typ, e) ->
+    Printf.printf "ENTERING DECL %s\n" name;
     let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ in
     let sr, code = compile_exp env ae1 e in
+    Printf.printf "EXITING DECL %s\n" name;
     sr,
     MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
     code
@@ -12504,7 +12507,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
-  | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
+  | FuncE (x, qualified_name, sort, control, typ_binds, args, res_tys, e) ->
+    Printf.printf "ENTERING FUNC %s %s\n" x (String.concat "." qualified_name);
     let captured = Freevars.captured exp in
     let return_tys = match control with
       | Type.Returns -> res_tys
@@ -12512,6 +12516,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
+    Printf.printf "EXITING FUNC %s\n" x;
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
@@ -12912,7 +12917,8 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 *)
 and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
   match exp.it with
-  | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
+  | FuncE (name, qualified_name, sort, control, typ_binds, args, res_tys, e) ->
+    Printf.printf "CONST FUNC %s %s\n" name (String.concat "." qualified_name);
     let fun_rhs =
 
       (* a few prims cannot be safely inlined *)

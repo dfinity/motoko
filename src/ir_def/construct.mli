@@ -75,7 +75,7 @@ val unitE : unit -> exp
 val boolE : bool -> exp
 val nullE : unit -> exp
 
-val funcE : string -> func_sort -> control ->
+val funcE : string -> qualified_name -> func_sort -> control ->
   typ_bind list -> arg list -> typ list -> exp ->
   exp
 val callE : exp -> typ list -> exp -> exp
@@ -118,8 +118,8 @@ val letD : var -> exp -> dec
 val varD : var -> exp -> dec
 val refD : var -> lexp -> dec
 val expD : exp -> dec
-val funcD : var -> var -> exp -> dec
-val nary_funcD : var -> var list -> exp -> dec
+val funcD : var -> qualified_name -> var -> exp -> dec
+val nary_funcD : var -> qualified_name -> var list -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 

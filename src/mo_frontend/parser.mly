@@ -877,15 +877,15 @@ dec_nonvar :
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
+      let id = if named then Some x else None in
       let e =
         if s.it = Type.Actor then
-          let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock s id t (List.map share_dec_field efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s None t efs @? at $sloc
+        else objblock s id t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
