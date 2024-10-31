@@ -83,8 +83,8 @@ let suggest_conversion libs vals ty1 ty2 =
                 let rel_name = Filename.chop_extension rel_path in
                 let id = Filename.basename rel_name in
                 Some (
-                id,
-                Printf.sprintf  " after adding `import %s = \"mo:%s/%s\"`" id package rel_name))
+                  id,
+                  Printf.sprintf  " after adding `import %s = \"mo:%s/%s\"`" id package rel_name))
              !Flags.package_urls None
       in
       match lib_opt with
