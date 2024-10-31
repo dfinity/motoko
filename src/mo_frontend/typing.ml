@@ -57,6 +57,7 @@ type env =
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
     viper_mode : bool;
+    named_scope : bool;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -80,6 +81,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     unused_warnings = ref [];
     reported_stable_memory = ref false;
     viper_mode;
+    named_scope = true;
   }
 
 let use_identifier env id =
@@ -1538,6 +1540,7 @@ and infer_exp'' env exp : T.typ =
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
     let sort, ve = check_shared_pat env shared_pat in
+    let is_flexible = (not env.named_scope) || sort = T.Local T.Flexible in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
@@ -1552,6 +1555,7 @@ and infer_exp'' env exp : T.typ =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
+          named_scope = not is_flexible;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
@@ -1584,6 +1588,7 @@ and infer_exp'' env exp : T.typ =
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let sort = if is_flexible && sort = T.Local T.Stable then T.Local T.Flexible else sort in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
