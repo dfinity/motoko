@@ -294,106 +294,6 @@ let leave_scope env inner_identifiers initial_usage =
   let final_usage = S.union initial_usage unshadowed_usage in
   env.used_identifiers := final_usage
 
-(* Suggestions *)
-
-let oneof sep lastsep ss =
-  let rest, last = Lib.List.split_last ss in
-  ((if rest <> [] then (String.concat sep rest) ^ lastsep else "") ^ last)
-
-let suggest desc id ids =
-  if !Flags.ai_errors then
-    Printf.sprintf
-      "\nThe %s %s is not available. Try something else?"
-      desc
-      id
-  else
-  let suggestions =
-    let limit = Lib.Int.log2 (String.length id) in
-    let distance = Lib.String.levenshtein_distance id in
-    let weighted_ids = List.filter_map (fun id0 ->
-      let d = distance id0 in
-      if Lib.String.starts_with id id0 || d <= limit then
-        Some (d, id0)
-      else None) ids in
-    List.sort compare weighted_ids |> List.map snd
-  in
-  if suggestions = [] then ""
-  else
-  Printf.sprintf "\nDid you mean %s %s?" desc (oneof ", " " or " suggestions)
-
-let search_obj desc path ty ty1 ty2 =
-  let open T in
-  let suggestions = ref [] in
-  let seen = ref S.empty in
-  let rec go path ty =
-  if S.mem ty !seen then ()
-  else begin
-    seen := S.add ty (!seen);
-    match promote ty with
-    | Obj(_, tfs) ->
-      tfs |>
-      List.iter (fun {lab;typ;_} ->
-        match normalize typ with
-        | T.Func _ when
-          (Lib.String.starts_with "to" lab ||
-           Lib.String.starts_with "from" lab) &&
-           T.sub typ (T.Func(T.Local, T.Returns,  [], [ty1], [ty2])) ->
-          suggestions := Printf.sprintf "`%s.%s(_)`%s" path lab desc :: !suggestions
-        | Obj(_, tfs) as ty1  ->
-          go (path^"."^lab) ty1
-        | _ -> ())
-    | _ -> ()
-    end
-  in
-  go path ty;
-  !suggestions
-
-let suggest_conversion libs vals ty1 ty2 =
-  let open T in
-  match promote ty1, promote ty2 with
-  | Prim p1, Prim p2 ->
-    let suggestions = ref [] in
-    T.Env.iter (fun filename ty ->
-      if Lib.String.starts_with "@" filename
-      then () (* skip prim etc *)
-      else
-      let imported_name =
-        (* try to determine imported name, if any *)
-        T.Env.fold (fun id (ty1, _, _, _) acc ->
-            if ty == ty1 (*HACK*)
-            then Some id
-            else acc)
-          vals None
-      in
-      let lib_opt = match imported_name with
-        | Some id -> Some (id, "")
-        | None ->
-          (* search libs for suggested import *)
-          Flags.M.fold (fun package path acc  ->
-              let base = Lib.FilePath.normalise path in
-              match Lib.FilePath.relative_to base filename with
-              | None -> acc
-              | Some rel_path ->
-                let rel_name = Filename.chop_extension rel_path in
-                let id = Filename.basename rel_name in
-                Some (
-                id,
-                Printf.sprintf  " after adding `import %s = \"mo:%s/%s\"`" id package rel_name))
-             !Flags.package_urls None
-      in
-      match lib_opt with
-      | None -> ()
-      | Some (id, desc) ->
-        suggestions := (search_obj desc id ty ty1 ty2) @ !suggestions)
-      libs;
-    if !suggestions = []
-    then ""
-    else
-      Printf.sprintf "\nMaybe try conversion:\n  %s?"
-      (oneof ",\n  " " or\n  " !suggestions)
-  (* not primitive types, make no suggestion *)
-  | _, _ -> ""
-
 (* Value environments *)
 
 let singleton id t = T.Env.singleton id.it (t, id.at, Scope.Declaration)
@@ -554,7 +454,7 @@ and check_obj_path' env path : T.typ =
      | None ->
        error env id.at "M0026" "unbound variable %s%a%s" id.it
          display_vals env.vals
-         (suggest "variable" id.it (T.Env.keys env.vals))
+         (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -566,7 +466,7 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0028" "field %s does not exist in %a%s"
         id.it
         display_obj (s, fs)
-        (suggest "field" id.it
+        (Suggest.suggest_id "field" id.it
           (List.filter_map
             (function
               {T.typ=T.Typ _;_} -> None
@@ -586,7 +486,7 @@ and check_typ_path' env path : T.con =
     | None ->
       error env id.at "M0029" "unbound type %s%a%s" id.it
         display_typs env.typs
-        (suggest "type" id.it (T.Env.keys env.typs))
+        (Suggest.suggest_id "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -597,7 +497,7 @@ and check_typ_path' env path : T.con =
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in type%a%s"
           id.it display_typ_expand (T.Obj (s, fs))
-          (suggest "type field" id.it
+          (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
                |  _ -> None) fs))
@@ -1237,7 +1137,7 @@ let check_lit env t lit at suggest =
       "literal of type%a\ndoes not have expected type%a%s"
       display_typ t'
       display_typ_expand t
-      (if suggest then suggest_conversion env.libs env.vals t' t else "")
+      (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
 
 (* Coercions *)
 
@@ -1329,7 +1229,7 @@ and infer_exp'' env exp : T.typ =
     | None ->
       error env id.at "M0057" "unbound variable %s%a%s" id.it
         display_vals env.vals
-        (suggest "variable" id.it (T.Env.keys env.vals))
+        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1568,7 +1468,7 @@ and infer_exp'' env exp : T.typ =
         "field %s does not exist in %a%s"
         id.it
         display_obj (s, tfs)
-        (suggest "field" id.it
+        (Suggest.suggest_id "field" id.it
           (List.filter_map
              (function
                { T.typ=T.Typ _;_} -> None
@@ -1772,7 +1672,7 @@ and infer_exp'' env exp : T.typ =
         | _ -> id.it
       in local_error env id.at "M0083" "unbound label %s%a%s" name
          display_labs env.labs
-         (suggest "label" id.it (T.Env.keys env.labs))
+         (Suggest.suggest_id "label" id.it (T.Env.keys env.labs))
     );
     T.Non
   | RetE exp1 ->
@@ -2075,7 +1975,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
         display_typ_expand t
-        (suggest_conversion env.libs env.vals t' t)
+        (Suggest.suggest_conversion env.libs env.vals t' t)
     end;
     t'
 
