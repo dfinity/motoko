@@ -17,4 +17,19 @@ actor {
 
     stable let f2 = genericFunction2;
     assert (f2<Int, Nat>(0, 1) == ?0);
+
+    class Test<T>() {
+        public func genericFunction3<U <: T>(x : U) : ?T {
+            Prim.debugPrint("GENERIC FUNCTION 3");
+            ?x;
+        }
+    };
+    stable let f3 = Test<Int>().genericFunction3;
+    assert (f3<Nat>(1) == ?1);
 };
+
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
+//SKIP comp-ref
+//CALL upgrade ""

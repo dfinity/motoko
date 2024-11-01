@@ -6724,7 +6724,7 @@ module Serialization = struct
       let add_type_bound generic =
         match generic.sort with
         | Type ->
-          add_leb128 0; (* type bound *)
+          add_u8 0; (* type bound *)
           add_idx generic.bound
         | Scope ->
           assert false (* TODO: Stable functions: Support scope bounds *)
