@@ -1,0 +1,23 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: ---------------------
+debug.print: CLASS FUNC
+debug.print: OBJECT FUNC
+debug.print: ACTOR FUNC
+debug.print: MODULE1 CLASS FUNC
+debug.print: MODULE1 OBJECT FUNC
+debug.print: ACTOR FUNC
+debug.print: MODULE2 CLASS FUNC
+debug.print: MODULE2 OBJECT FUNC
+debug.print: ACTOR FUNC
+ingress Completed: Reply: 0x4449444c0000
+debug.print: ---------------------
+debug.print: CLASS FUNC
+debug.print: OBJECT FUNC
+debug.print: ACTOR FUNC
+debug.print: MODULE1 CLASS FUNC
+debug.print: MODULE1 OBJECT FUNC
+debug.print: ACTOR FUNC
+debug.print: MODULE2 CLASS FUNC
+debug.print: MODULE2 OBJECT FUNC
+debug.print: ACTOR FUNC
+ingress Completed: Reply: 0x4449444c0000
