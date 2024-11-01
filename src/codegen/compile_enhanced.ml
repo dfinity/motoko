@@ -6633,6 +6633,7 @@ module Serialization = struct
   
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
+  let idl_type_variable = -131l
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -6660,9 +6661,11 @@ module Serialization = struct
           | Opt t -> go t
           | Variant vs -> List.iter (fun f -> go f.typ) vs
           | Func (s, c, tbs, ts1, ts2) ->
+            List.iter (fun b -> go b.bound) tbs;
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
           | Mut t -> go t
+          | Var _ -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -6716,6 +6719,20 @@ module Serialization = struct
       | Some i -> Int32.neg i
       | None -> TM.find (normalize t) idx in
 
+    let add_generic_types env type_bounds =
+      let open Type in
+      let add_type_bound generic =
+        match generic.sort with
+        | Type ->
+          add_leb128 0; (* type bound *)
+          add_idx generic.bound
+        | Scope ->
+          assert false (* TODO: Stable functions: Support scope bounds *)
+      in
+      add_leb128 (List.length type_bounds);
+      List.iter add_type_bound type_bounds
+    in
+
     let rec add_typ t =
       match t with
       | Non -> assert false
@@ -6763,14 +6780,19 @@ module Serialization = struct
         begin match s, c with
           | Shared _, Returns ->
             add_leb128 1; add_u8 2; (* oneway *)
+            assert (tbs = [])
           | Shared Write, _ ->
             add_leb128 0; (* no annotation *)
+            assert (tbs = [])
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+            assert (tbs = [])
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
+            assert (tbs = [])
           | Local Stable, _ ->
             add_leb128 1; add_u8 255; (* stable local *)
+            add_generic_types env tbs
           | Local Flexible, _ ->
             assert false
         end
@@ -6784,6 +6806,9 @@ module Serialization = struct
         ) fs
       | Mut t ->
         add_sleb128 idl_alias; add_idx t
+      | Var (_, index) ->
+        add_sleb128 idl_type_variable;
+        add_leb128 index
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";

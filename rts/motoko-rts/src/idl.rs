@@ -69,6 +69,8 @@ const IDL_STABLE_LOCAL_FUNC_ANNOTATION: u8 = u8::MAX;
 const IDL_EXT_blob: i32 = -129;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_type_variable: i32 = -131;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -145,6 +147,11 @@ unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
         let t = sleb128_decode(buf);
         check_typearg(mode, t, n_types);
     }
+}
+
+unsafe fn parse_type_bounds(buf: *mut Buf) {
+    let count = leb128_decode(buf);
+    assert_eq!(count, 0); // TODO: Support type bounds
 }
 
 // NB. This function assumes the allocation does not need to survive GC
@@ -255,6 +262,9 @@ unsafe fn parse_idl_header<M: Memory>(
                 // Only during persistence: `IDL_STABLE_LOCAL_FUNC_ANNOTATION` denotes a stable local function.
                 if !(1 <= a && a <= 3 || extended && a == IDL_STABLE_LOCAL_FUNC_ANNOTATION) {
                     idl_trap_with("invalid func annotation");
+                }
+                if a == IDL_STABLE_LOCAL_FUNC_ANNOTATION {
+                    parse_type_bounds(buf);
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -827,7 +837,20 @@ pub(crate) unsafe fn memory_compatible(
                     _ => {}
                 }
             }
+            if a1_stable_local_func {
+                let type_bounds_length = leb128_decode(&mut tb1);
+                assert_eq!(type_bounds_length, 0); // TODO: Implement type bounds
+            }
+            if a2_stable_local_func {
+                let type_bounds_length = leb128_decode(&mut tb1);
+                assert_eq!(type_bounds_length, 0); // TODO: Implement type bounds
+            }
             a11 == a21 && a12 == a22 && a13 == a23 && a1_stable_local_func == a2_stable_local_func
+        }
+        (IDL_EXT_type_variable, IDL_EXT_type_variable) => {
+            let index1 = leb128_decode(&mut tb1);
+            let index2 = leb128_decode(&mut tb2);
+            index1 == index2
         }
         (IDL_EXT_tuple, IDL_EXT_tuple) => {
             let n1 = leb128_decode(&mut tb1);

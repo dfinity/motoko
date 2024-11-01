@@ -121,7 +121,6 @@ let rec go = function
     )
 
   | Func (s, c, tbs, ts1, ts2) ->
-    List.iter (fun bind -> assert (bind.sort = Scope)) tbs;
     ( ( TwoSeq (List.length ts1),
         "F" ^
         (match s with Local Flexible -> "" | Local Stable -> "S" | Shared Query -> "q" | Shared Write -> "s" | Shared Composite -> "C") ^
@@ -133,7 +132,7 @@ let rec go = function
 
   | Con _ as t -> go (normalize t)
   | Pre -> assert false
-  | Var _ -> assert false
+  | Var _ -> ((Nullary, "t"), []) (* t for type variable *)
   | Typ _ -> assert false
 
 let paren xs = "(" ^ String.concat "" xs ^ ")"
