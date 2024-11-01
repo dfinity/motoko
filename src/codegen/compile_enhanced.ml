@@ -735,7 +735,6 @@ module E = struct
 
   let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) =
     let name = make_stable_name qualified_name in
-    Printf.printf "FUNC %s %i\n" name (Int32.to_int wasm_table_index);
     if (String.contains name '$') || (String.contains name '@') then
       ()
     else
@@ -8716,7 +8715,7 @@ module StableFunctions = struct
   let create_stable_function_segment (env : E.t) set_segment_length =
     let entries = E.NameEnv.fold (fun name wasm_table_index remainder -> 
       let name_hash = Mo_types.Hash.hash name in
-      (Printf.printf "STABLE %s %i\n" name (Int32.to_int name_hash); name_hash, wasm_table_index) :: remainder) 
+      (name_hash, wasm_table_index) :: remainder) 
       !(env.E.stable_functions) [] 
     in
     let sorted = List.sort (fun (hash1, _) (hash2, _) ->
