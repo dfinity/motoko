@@ -6,7 +6,7 @@ pub mod compatibility;
 pub mod stable_functions;
 
 use motoko_rts_macros::ic_mem_fn;
-use stable_functions::StableFunctionState;
+use stable_functions::{register_stable_closure_types, StableFunctionState};
 
 use crate::{
     barriers::write_with_barrier,
@@ -200,6 +200,7 @@ pub unsafe fn register_stable_type<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
+    stable_functions_map: Value,
 ) {
     assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
     assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
@@ -209,6 +210,7 @@ pub unsafe fn register_stable_type<M: Memory>(
     if !old_type.is_default() && !memory_compatible(mem, old_type, &mut new_type) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
+    register_stable_closure_types(stable_functions_map, old_type, &mut new_type);
     (*metadata).stable_type.assign(mem, &new_type);
 }
 

@@ -1152,7 +1152,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I64Type; I64Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
-    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -1295,8 +1295,8 @@ module RTS = struct
     E.add_func_import env "rts" "start_graph_destabilization" [I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
-    E.add_func_import env "rts" "resolve_stable_function_call" [I64Type] [I64Type];
-    E.add_func_import env "rts" "resolve_stable_function_literal" [I64Type] [I64Type];
+    E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
+    E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "register_stable_functions" [I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
@@ -2358,7 +2358,7 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env funptr_field ^^
-    E.call_import env "rts" "resolve_stable_function_call" ^^
+    E.call_import env "rts" "resolve_function_call" ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -2369,7 +2369,7 @@ module Closure = struct
     E.add_stable_func env qualified_name wasm_table_index;
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
-      E.call_import env "rts" "resolve_stable_function_literal";
+      E.call_import env "rts" "resolve_function_literal";
       compile_unboxed_const 0L
     ])
 
@@ -8759,15 +8759,18 @@ module StableFunctions = struct
     let segment = get_stable_function_segment env in
     let length = E.replace_data_segment env segment data in
     set_segment_length length
-  
-  let register_stable_functions env =
+
+  let load_stable_functions_map env =
     let segment_index = match !(E.(env.stable_functions_segment)) with
     | Some index -> index
     | None -> assert false
     in
+    let length = get_stable_functions_segment_length env in
+    Blob.load_data_segment env Tagged.B segment_index length
+  
+  let register_stable_functions env =
     Func.share_code0 Func.Always env "register_stable_functions_on_init" [] (fun env ->  
-      let length = get_stable_functions_segment_length env in
-      Blob.load_data_segment env Tagged.B segment_index length ^^
+      load_stable_functions_map env ^^
       E.call_import env "rts" "register_stable_functions")
 
 end (* StableFunctions *)
@@ -8789,6 +8792,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let register_stable_type env actor_type =
     create_type_descriptor env actor_type ^^
+    StableFunctions.load_stable_functions_map env ^^
     E.call_import env "rts" "register_stable_type"
 
   let load_old_field env field get_old_actor =

@@ -1,15 +1,24 @@
 //! Support for stable functions during persistence.
 //!
-//! A stable function is a named local function,
-//! either contained in the actor or another named scope, such as
-//! * a module,
-//! * a function in a named scope,
-//! * a class in a named scope,
-//! * a named object in a named scope.
+//! A stable function is a named local function in a stable scope,
+//! closing over variables of stable type.
+//!
+//! A stable scope is:
+//! * the main actor
+//! * an imported module,
+//! * a named function in a stable scope,
+//! * a class in a stable scope,
+//! * a named object in a stable scope.
+//!
+//! A stable function is also a stable type.
+//!
 //! Syntactically, function types are prefixed by `stable` to denote a stable function, e.g.
 //! `stable X -> Y`. Stable functions implicitly have a corresponding stable reference type.
 //!
-//! Stable functions correspond to equally named functions in the new program versions.
+//! A stable functions are upgraded as follows:
+//! * They map to stable functions of equal fully qualified name in the new program version.
+//! * Their function type in the new version need to be compatible with the previous version (super-type).
+//! * Their closure type in the new version must be compatible with the previous version (super-type).
 //!
 //! All other functions, such as lambdas, or named functions in a lambda, are flexible
 //! functions. A stable function type is a sub-type of a flexible function type with
@@ -24,7 +33,8 @@
 //! Each program version defines a set of named local functions that can be used as
 //! stable function references. Each such function obtains a stable function id on
 //! program initialization and upgrade. If the stable function was already declared in
-//! the previous version, its function id is reused on upgrade. Otherwise, if it is a new
+//! the previous version, its function id is reused on upgrade. Thereby, the compatibility
+//! of the function type and closure type are checked. Otherwise, if it is a new
 //! stable function, it obtains a new stable function id, or in the future, a recycled id.
 //!
 //! The runtime system supports stable functions by two mechanisms:
@@ -34,11 +44,12 @@
 //!    The persistent virtual table maps stable function ids to Wasm table indices, for
 //!    supporting dynamic calls of stable functions. Each entry also stores the hashed name
 //!    of the stable function to match and rebind the stable function ids to the corresponding
-//!    functions of the new Wasm binary on a program upgrade. The table survives upgrades and
-//!    is built and updated by the runtime system. To build and update the persistent virtual
-//!    table, the compiler provides a **stable function map**, mapping the hashed name of a
-//!    potentially stable function to the corresponding Wasm table index. For performance, the
-//!    stable function map is sorted by the hashed names.
+//!    functions of the new Wasm binary on a program upgrade. Moreover, each entry also records
+//!    the type of the closure, referring to the persistent type table. The table survives
+//!    upgrades and is built and updated by the runtime system. To build and update the persistent
+//!    virtual table, the compiler provides a **stable function map**, mapping the hashed name of a
+//!    potentially stable function to the corresponding Wasm table index, plus its closure type
+//!    pointing to the new type table. For performance, the stable function map is sorted by the hashed names.
 //!    
 //! 2. **Function literal table** for materializing stable function literals:
 //!
@@ -54,6 +65,14 @@
 //! when a stable function reference is assigned to flexible reference, in particular in the presence
 //! of sharing (a function reference can be reached by both a stable and flexible function type) and
 //! composed types (function references can be deeply nested in a composed value that is assigned).
+//!
+//! Stable function compatibility check is performed by the runtime system on upgrade.
+//! * It checks for a matching function in the new version.
+//! * The function type compatibility is implicitly covered by the upgrade memory compatibility
+//!   check, since the stable function in use needs to be reachable by the stable actor type.
+//! * The closure compatibility is additionally checked for each mapped stable function. This
+//!   covers all captured variables of the stable function. This check is supported by the
+//!   information of the persistent virtual table and the stable function map.
 //
 //! Flexible function references are represented as negative function ids determining the Wasm
 //! table index, specifically `-wasm_table_index - 1`.
@@ -76,7 +95,7 @@ use crate::{
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B},
 };
 
-use super::stable_function_state;
+use super::{compatibility::TypeDescriptor, stable_function_state};
 
 // Use `usize` and not `u32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
@@ -116,6 +135,11 @@ pub struct StableFunctionState {
 
 // Transient table. GC root.
 static mut FUNCTION_LITERAL_TABLE: Value = NULL_POINTER;
+// Determines whether compatibility of closure types has been checked and function calls are allowed.
+// This is deferred because the functions literal table needs to be first set up for building up the
+// constant object pool. Thereafter, the type compatibility inluding stable closure compatibility is
+// checked before stable function calls can eventually be made.
+static mut COMPATIBILITY_CHECKED: bool = false;
 
 // Zero memory map, as seen in the initial persistent Wasm memory.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -210,11 +234,13 @@ struct VirtualTableEntry {
     wasm_table_index: WasmTableIndex,
 }
 
+/// Determine the Wasm table index for a function call (stable or flexible function).
 #[no_mangle]
-pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTableIndex {
+pub unsafe fn resolve_function_call(function_id: FunctionId) -> WasmTableIndex {
     if is_flexible_function_id(function_id) {
         return resolve_flexible_function_id(function_id);
     }
+    debug_assert!(COMPATIBILITY_CHECKED);
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(resolve_stable_function_id(function_id));
@@ -224,8 +250,9 @@ pub unsafe fn resolve_stable_function_call(function_id: FunctionId) -> WasmTable
 /// Indexed by Wasm table index.
 type FunctionLiteralTable = IndexedTable<FunctionId>;
 
+/// Determine the function id for Wasm table index (stable or flexible function).
 #[no_mangle]
-pub unsafe fn resolve_stable_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
+pub unsafe fn resolve_function_literal(wasm_table_index: WasmTableIndex) -> FunctionId {
     let literal_table = stable_function_state().get_literal_table();
     let function_id = if wasm_table_index < literal_table.length() {
         *literal_table.get(wasm_table_index)
@@ -274,9 +301,11 @@ impl StableFunctionMap {
 }
 
 /// Called on program initialization and on upgrade, both during EOP and graph copy.
+/// The compatibility of stable function closures is checked separately in `register_stable_closure_types`
+/// when the stable actor type is registered.
 #[ic_mem_fn]
-pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_blob: Value) {
-    let stable_functions = stable_functions_blob.as_blob_mut() as *mut StableFunctionMap;
+pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_map: Value) {
+    let stable_functions = stable_functions_map.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
     prepare_stable_function_map(stable_functions);
@@ -451,4 +480,17 @@ unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap)
         length = core::cmp::max(length, wasm_table_index + 1);
     }
     length
+}
+
+/// Check compatibility of the closures of upgraded stable functions.
+/// And register the closure types of the stable functions in the new program version.
+/// This check is separate to `register_stable_functions` as the actor type
+/// is not yet defined in the compiler backend on runtime system initialization.
+#[no_mangle]
+pub unsafe fn register_stable_closure_types(
+    _stable_functions_map: Value,
+    _old_type: &mut TypeDescriptor,
+    _new_type: &mut TypeDescriptor,
+) {
+    COMPATIBILITY_CHECKED = true;
 }
