@@ -490,6 +490,9 @@ module E = struct
     (* Stable functions, mapping the function name to the Wasm table index *)
     stable_functions: int32 NameEnv.t ref;
 
+    (* Closure types of stable functions, used for upgrade compatibility checks *)
+    stable_function_closures: Type.typ list ref;
+
     (* Data segment of the stable functions map that is passed to the runtime system. 
       The segment is created on `conclude_module`. *)
     stable_functions_segment : int32 option ref;
@@ -535,6 +538,7 @@ module E = struct
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
+    stable_function_closures = ref [];
     stable_functions_segment = ref None;
   }
 
@@ -826,6 +830,12 @@ module E = struct
     | Flags.WASIMode | Flags.WasmMode when !(env.requires_stable_memory) ->
       [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
     | _ -> []
+
+  let add_stable_function_closure (env : t) typ : Int32.t =
+    reg env.stable_function_closures typ
+  
+  let get_stable_function_closures (env : t) : Type.typ list =
+    !(env.stable_function_closures)
 end
 
 
@@ -8747,12 +8757,13 @@ module StableFunctions = struct
       Int32.compare hash1 hash2) entries
     in
     let data = List.concat_map(fun (name_hash, wasm_table_index) ->
-      (* Format: [(name_hash: u64, wasm_table_index: u64, _empty: u64)] 
+      (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, _empty: u64)] 
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
       StaticBytes.[ 
         I64 (Int64.of_int32 name_hash);
         I64 (Int64.of_int32 wasm_table_index); 
+        I64 (Int64.of_int32 0l); (* TODO: Insert closure type index *)
         I64 0L; (* reserve for runtime system *) ])
       sorted
     in
@@ -8784,7 +8795,8 @@ module EnhancedOrthogonalPersistence = struct
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
 
   let create_type_descriptor env actor_type =
-    let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence [actor_type]) in
+    let stable_types = actor_type::(E.get_stable_function_closures env) in
+    let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence stable_types) in
     let serialized_offsets = StaticBytes.(as_bytes [i64s (List.map Int64.of_int type_offsets)]) in
     assert (type_indices = [0l]);
     Blob.lit env Tagged.B candid_type_desc ^^
@@ -9519,6 +9531,9 @@ module FuncDec = struct
 
   let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
+    Printf.printf "CAPTURED %s: " (String.concat "." qualified_name);
+    List.iter (fun n -> Printf.printf " %s" n) captured;
+    Printf.printf "\n";
 
     if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
 

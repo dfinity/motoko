@@ -97,10 +97,11 @@ use crate::{
 
 use super::{compatibility::TypeDescriptor, stable_function_state};
 
-// Use `usize` and not `u32` to avoid unwanted padding on Memory64.
+// Use `usize` or `isize` instead of `u32` and `i32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
 type WasmTableIndex = usize;
 type NameHash = usize;
+type TypeIndex = isize;
 
 type FunctionId = isize;
 
@@ -231,6 +232,7 @@ impl PersistentVirtualTable {
 #[derive(Clone)]
 struct VirtualTableEntry {
     function_name_hash: NameHash,
+    closure_type_index: TypeIndex, // Referring to the persisted type table.
     wasm_table_index: WasmTableIndex,
 }
 
@@ -269,6 +271,8 @@ pub unsafe fn resolve_function_literal(wasm_table_index: WasmTableIndex) -> Func
 struct StableFunctionEntry {
     function_name_hash: NameHash,
     wasm_table_index: WasmTableIndex,
+    // Referring to the type table of the new prorgram version.
+    closure_type_index: TypeIndex,
     /// Cache for runtime optimization.
     /// This entry is uninitialized by the compiler and the runtime system
     /// uses this space to remember matched function ids for faster lookup.
@@ -363,6 +367,8 @@ unsafe fn update_existing_functions(
             let message = from_utf8(&buffer).unwrap();
             rts_trap_with(message);
         }
+        // Closure compatibility is checked later in `register_stable_closure_types`.
+        // Until then, no stable function calls can be made.
         (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
         (*stable_function_entry).cached_function_id = function_id as FunctionId;
     }
@@ -401,9 +407,11 @@ unsafe fn add_new_functions<M: Memory>(
         assert_ne!(stable_function_entry, null_mut());
         if (*stable_function_entry).cached_function_id == NULL_FUNCTION_ID {
             let function_name_hash = (*stable_function_entry).function_name_hash;
+            let closure_type_index = (*stable_function_entry).closure_type_index;
             let wasm_table_index = (*stable_function_entry).wasm_table_index;
             let new_virtual_table_entry = VirtualTableEntry {
                 function_name_hash,
+                closure_type_index,
                 wasm_table_index,
             };
             debug_assert!(!is_flexible_function_id(function_id));
