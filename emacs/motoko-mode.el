@@ -5,7 +5,7 @@
 (setq motoko-font-lock-keywords
       (let* (
              ;; define several category of keywords
-             ;; these are each taken from either Motoko's `lexer.mll' or `prelude.ml' files.
+             ;; these are each taken from either Motoko\\='s `lexer.mll' or `prelude.ml' files.
              (x-types
               '("Any"
                 "None"
