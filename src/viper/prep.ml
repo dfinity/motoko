@@ -83,7 +83,7 @@ let subst_typ (env : subst_env) : typ -> typ = over_typ (subst_visitor env)
 let mk_template_dec_field (df : dec_field) : dec_field_template option =
   match (df.it.vis.it, df.it.dec.it) with
     | (Private, LetD({it = VarP(_);at=p_at;note=p_note},
-                     {it = FuncE(x,sp,tp,p,t,sugar,e);
+                     {it = FuncE(x,sp,tp,p,t,sugar,closed,e);
                       at=fn_at;
                       note=fn_note},
                  None)) ->
@@ -100,7 +100,7 @@ let mk_template_dec_field (df : dec_field) : dec_field_template option =
                 LetD({it = VarP({it=x';at=Source.no_region;note=()});
                       at=p_at;
                       note=p_note},
-                     {it = FuncE(x',sp,[],p',t',sugar,e');
+                     {it = FuncE(x',sp,[],p',t',sugar,closed,e');
                       at=fn_at;
                       note=fn_note},
                   None) } } }

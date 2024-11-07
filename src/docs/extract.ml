@@ -122,7 +122,7 @@ struct
       =
    fun sort exp name ->
     match exp.it with
-    | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
+    | Syntax.FuncE (_, _, type_args, args, typ, _, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
     | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }

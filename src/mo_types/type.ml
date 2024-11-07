@@ -1341,6 +1341,13 @@ let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
 
 module Env = Env.Make(String)
 
+(* Stable function support *)
+
+type stable_closure = {
+  function_path: string list; (* fully qualified function name *)
+  captured_variables: typ Env.t; (* captured mutable variables *)
+}
+
 (* Scopes *)
 
 let scope_var var = "$" ^ var

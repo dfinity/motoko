@@ -251,6 +251,12 @@ val open_binds : bind list -> typ list
 
 module Env : Env.S with type key = string
 
+(* Stable function support *)
+
+type stable_closure = {
+  function_path: string list; (* fully qualified function name *)
+  captured_variables: typ Env.t; (* captured mutable variables *)
+}
 
 (* Scope bindings *)
 

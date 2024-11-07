@@ -82,7 +82,7 @@ module Make (Cfg : Config) = struct
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
-    | FuncE (x, sp, tp, p, t, sugar, e') ->
+    | FuncE (x, sp, tp, p, t, sugar, _, e') ->
       "FuncE" $$ [
         Atom (Type.string_of_typ e.note.note_typ);
         shared_pat sp;

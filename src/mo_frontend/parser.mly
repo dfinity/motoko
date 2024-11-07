@@ -117,13 +117,13 @@ let is_sugared_func_or_module dec = match dec.it with
   | _ -> false
 
 
-let func_exp f s tbs p t_opt is_sugar e =
+let func_exp f s tbs p t_opt is_sugar closure e =
   match s.it, t_opt, e with
   | Type.Local _, Some {it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, closure, e)
   | _ ->
-    FuncE(f, s, tbs, p, t_opt, is_sugar, e)
+    FuncE(f, s, tbs, p, t_opt, is_sugar, closure, e)
 
 let desugar_func_body sp x t_opt (is_sugar, e) =
   if not is_sugar then
@@ -151,10 +151,10 @@ let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 let share_exp e =
   match e.it with
   | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p,
-    ((None | Some { it = TupT []; _ }) as t_opt), true, e) ->
-    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true (ignore_asyncE (scope_bind x e.at) e) @? e.at
-  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p, t_opt, s, e) ->
-    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s e @? e.at
+    ((None | Some { it = TupT []; _ }) as t_opt), true, closure, e) ->
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true closure (ignore_asyncE (scope_bind x e.at) e) @? e.at
+  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p, t_opt, s, closure, e) ->
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s closure e @? e.at
   | _ -> e
 
 let share_dec d =
@@ -174,8 +174,8 @@ let share_stab stab_opt dec =
 
 let ensure_system_cap (df : dec_field) =
   match df.it.dec.it with
-    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
-      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, closure, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, closure, e) }, other) in
       { df with it = { df.it with dec = { df.it.dec with it } } }
     | _ -> df
 
@@ -896,7 +896,7 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let sp = define_function_stability named sp in
       let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar (ref None) e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
     { let x, dfs = cb in

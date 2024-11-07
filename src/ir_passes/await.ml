@@ -36,7 +36,7 @@ let letcont k scope =
     let v = fresh_var "v" typ0 in
     let e = cont v in
     let k' = fresh_cont typ0 (typ e) in
-    blockE [funcD k' [] v e] (* at this point, I'm really worried about variable capture *)
+    blockE [funcD k' [] v None e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
 (* Named labels for break, special labels for return, throw and cleanup *)
@@ -68,7 +68,7 @@ let precompose vthunk k =
   let v = fresh_var "v" typ0 in
   let e = blockE [expD (varE vthunk -*- unitE ())] (varE k -*- varE v) in
   let k' = fresh_cont typ0 (typ e) in
-  (k', funcD k' [] v e)
+  (k', funcD k' [] v None e)
 
 let preconts context vthunk scope =
   let (ds, ctxt) = LabelEnv.fold
@@ -153,20 +153,20 @@ and t_exp' context exp =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, qn, T.Local sort, c, typbinds, pat, typs,
+  | FuncE (x, qn, T.Local sort, c, typbinds, pat, typs, closure,
       ({ it = AsyncE _; _} as async)) ->
-    FuncE (x, qn, T.Local sort, c, typbinds, pat, typs,
+    FuncE (x, qn, T.Local sort, c, typbinds, pat, typs, closure,
       t_async context async)
-  | FuncE (x, qn, T.Local sort, c, typbinds, pat, typs,
+  | FuncE (x, qn, T.Local sort, c, typbinds, pat, typs, closure,
       ({it = BlockE (ds, ({ it = AsyncE _; _} as async)); _} as wrapper)) ->
     (* GH issue #3910 *)
-    FuncE (x, qn, T.Local sort, c, typbinds, pat, typs,
+    FuncE (x, qn, T.Local sort, c, typbinds, pat, typs, closure,
       { wrapper with it = BlockE (ds, t_async context async) })
-  | FuncE (x, qn, (T.Shared _ as s), c, typbinds, pat, typs,
+  | FuncE (x, qn, (T.Shared _ as s), c, typbinds, pat, typs, closure,
       ({ it = AsyncE _;_ } as body)) ->
-    FuncE (x, qn, s, c, typbinds, pat, typs,
+    FuncE (x, qn, s, c, typbinds, pat, typs, closure,
       t_async context body)
-  | FuncE (x, qn, (T.Shared _ as s), c, typbinds, pat, typs,
+  | FuncE (x, qn, (T.Shared _ as s), c, typbinds, pat, typs, closure,
       { it = BlockE ([
          { it = LetD (
             { it = WildP; _} as wild_pat,
@@ -174,13 +174,13 @@ and t_exp' context exp =
          ({ it = PrimE (TupPrim, []); _ } as unitE));
         _
       }) ->
-    FuncE (x, qn, s, c, typbinds, pat, typs,
+    FuncE (x, qn, s, c, typbinds, pat, typs, closure,
       blockE [letP wild_pat (t_async context body)] unitE)
-  | FuncE (x, qn, s, c, typbinds, pat, typs, exp1) ->
+  | FuncE (x, qn, s, c, typbinds, pat, typs, closure, exp1) ->
     assert (not (T.is_local_async_func (typ exp)));
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.singleton Return Label in
-    FuncE (x, qn, s, c, typbinds, pat, typs, t_exp context' exp1)
+    FuncE (x, qn, s, c, typbinds, pat, typs, closure, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
@@ -290,7 +290,7 @@ and c_loop context k e1 =
     let loop = fresh_var "loop" (contT T.unit T.unit) in
     let v1 = fresh_var "v" T.unit in
     blockE
-      [funcD loop [] v1 (c_exp context e1 (ContVar loop))]
+      [funcD loop [] v1 None (c_exp context e1 (ContVar loop))]
       (varE loop -*- unitE ())
 
 and c_assign context k e lexp1 exp2 =
@@ -400,7 +400,7 @@ and c_exp' context exp k =
       let context' = LabelEnv.add Throw (Cont throw) context in
       blockE
         [ let e = fresh_var "e" T.catch in
-          funcD throw [] e {
+          funcD throw [] e None {
             it = SwitchE (varE e, cases');
             at = exp.at;
             note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
@@ -643,7 +643,7 @@ and t_comp_unit context = function
             (LabelEnv.add Throw (Cont throw) context) in
         let e = fresh_var "e" T.catch in
         ProgU [
-          funcD throw [] e (assertE (falseE ()));
+          funcD throw [] e None (assertE (falseE ()));
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
@@ -671,7 +671,7 @@ and t_ignore_throw context exp =
          (LabelEnv.add Throw (Cont throw) context) in
      let e = fresh_var "e" T.catch in
      { (blockE [
-          funcD throw [] e (tupE[]);
+          funcD throw [] e None (tupE[]);
         ]
         (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,

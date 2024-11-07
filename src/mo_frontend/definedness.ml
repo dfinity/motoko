@@ -88,7 +88,7 @@ let rec exp msgs e : f = match e.it with
   | RetE e
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, sp, tp, p, t, _, e) ->
+  | FuncE (_, sp, tp, p, t, _, _, e) ->
     delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
   | ObjBlockE (s, (self_id_opt, _), dfs) ->
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))

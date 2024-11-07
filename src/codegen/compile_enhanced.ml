@@ -487,8 +487,8 @@ module E = struct
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
 
-    (* Stable functions, mapping the function name to the Wasm table index *)
-    stable_functions: int32 NameEnv.t ref;
+    (* Stable functions, mapping the function name to the Wasm table index and closure type *)
+    stable_functions: (int32 * Type.stable_closure) NameEnv.t ref;
 
     (* Closure types of stable functions, used for upgrade compatibility checks *)
     stable_function_closures: Type.typ list ref;
@@ -737,15 +737,15 @@ module E = struct
   let make_stable_name (qualified_name: string list): string =
     String.concat "." qualified_name
 
-  let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) =
+  let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) (closure_type: Type.stable_closure) =
     let name = make_stable_name qualified_name in
     if (String.contains name '$') || (String.contains name '@') then
       ()
     else
-      match NameEnv.find_opt name !(env.stable_functions) with
+      (match NameEnv.find_opt name !(env.stable_functions) with
       | Some _ -> ()
       | None ->
-        env.stable_functions := NameEnv.add name wasm_table_index !(env.stable_functions)
+        env.stable_functions := NameEnv.add name (wasm_table_index, closure_type) !(env.stable_functions))
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -2374,9 +2374,9 @@ module Closure = struct
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
 
-  let constant env qualified_name get_fi =
+  let constant env qualified_name get_fi stable_closure =
     let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
-    E.add_stable_func env qualified_name wasm_table_index;
+    E.add_stable_func env qualified_name wasm_table_index stable_closure;
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
       E.call_import env "rts" "resolve_function_literal";
@@ -8756,14 +8756,14 @@ module StableFunctions = struct
     let sorted = List.sort (fun (hash1, _) (hash2, _) ->
       Int32.compare hash1 hash2) entries
     in
-    let data = List.concat_map(fun (name_hash, wasm_table_index) ->
+    let data = List.concat_map(fun (name_hash, wasm_table_index, closure_type) ->
       (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, _empty: u64)] 
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
       StaticBytes.[ 
         I64 (Int64.of_int32 name_hash);
         I64 (Int64.of_int32 wasm_table_index); 
-        I64 (Int64.of_int32 0l); (* TODO: Insert closure type index *)
+        I64 (Int64.of_int32 closure_type_index);
         I64 0L; (* reserve for runtime system *) ])
       sorted
     in
@@ -9459,7 +9459,8 @@ module FuncDec = struct
     end
 
   (* Compile a closure declaration (captures local variables) *)
-  let closure env ae sort control name captured args mk_body ret_tys at =
+  let closure env ae sort control name captured args mk_body ret_tys at stable_context =
+      Printf.printf "COMPILE CLOSURE %s %i\n" name (List.length captured);
       let is_local = not (Type.is_shared_sort sort) in
 
       let set_clos, get_clos = new_local env (name ^ "_clos") in
@@ -9503,9 +9504,15 @@ module FuncDec = struct
         (* Store the function pointer number: *)
         get_clos ^^
         
-        let wasm_table_index = Int32.to_int (E.add_fun_ptr env fi) in
-        let flexible_function_id = Int.sub (Int.sub 0 wasm_table_index) 1 in
-        compile_unboxed_const (Int64.of_int flexible_function_id) ^^
+        let wasm_table_index = E.add_fun_ptr env fi in
+        (match stable_context with
+        | Some _ ->
+          E.add_stable_func env qualified_name wasm_table_index stable_context;
+          compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
+          E.call_import env "rts" "resolve_function_literal"
+        | None ->
+          let flexible_function_id = Int64.sub (Int64.sub 0L (Int64.of_int32 wasm_table_index)) 1L in
+          compile_unboxed_const flexible_function_id) ^^
 
         Tagged.store_field env Closure.funptr_field ^^
 
@@ -9529,25 +9536,41 @@ module FuncDec = struct
         get_clos
       else assert false (* no first class shared functions *)
 
-  let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at =
+  let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at stable_context =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
-    Printf.printf "CAPTURED %s: " (String.concat "." qualified_name);
-    List.iter (fun n -> Printf.printf " %s" n) captured;
-    Printf.printf "\n";
+    (match stable_context with
+    | Some Type.{ captured_variables; function_path } -> 
+      Printf.printf "CAPTURED1 %s:\n" (String.concat "." qualified_name);
+      List.iter (fun n -> Printf.printf " %s\n" n) captured;
+        Printf.printf "CAPTURED2: %s:\n" (String.concat "." function_path);
+      Type.Env.iter (fun n t -> Printf.printf " %s: %s\n" n (Type.string_of_typ t)) captured_variables;
+      (* List.iter (fun (n, t) -> Printf.printf " %s: %s" n (
+        match t with 
+        | Some t -> Type.string_of_typ t
+        | None -> "(undefined)")) captured_variables; *)
+      Printf.printf "\n"
+    | None -> ());
+
+    (match stable_context with
+    | Some Type.{ function_path; captured_variables } ->
+      assert(function_path = qualified_name);
+      List.iter (fun id -> 
+        assert(Type.Env.mem id captured_variables);
+      ) captured
+    | None -> ());
 
     if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
-
     if captured = []
     then
       let (ct, fill) = closed env sort control name qualified_name args mk_body Const.Complicated ret_tys at in
       fill env ae;
       (SR.Const ct, G.nop)
-    else closure env ae sort control name captured args mk_body ret_tys at
+    else closure env ae sort control name captured args mk_body ret_tys at stable_context
 
   (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
-    let sr, code = lit env ae "@anon_async" ["@anon_async"] (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at in
+    let sr, code = lit env ae "@anon_async" ["@anon_async"] (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at None in
     code ^^
     StackRep.adjust env sr SR.Vanilla
 
@@ -12552,7 +12575,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
-  | FuncE (x, qualified_name, sort, control, typ_binds, args, res_tys, e) ->
+  | FuncE (x, qualified_name, sort, control, typ_binds, args, res_tys, stable_context, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
       | Type.Returns -> res_tys
@@ -12560,7 +12583,14 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
-    FuncDec.lit env ae x qualified_name sort control captured args mk_body return_tys exp.at
+    (match stable_context with 
+      | Some Type.{ function_path; captured_variables } -> 
+        Printf.printf "COMPILE EXP FUNC %s\n" (String.concat "." qualified_name);
+        Printf.printf " PATH: %s\n CAPTURES:\n" (String.concat "." function_path);
+        Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
+      | None -> ()
+    );
+    FuncDec.lit env ae x qualified_name sort control captured args mk_body return_tys exp.at stable_context
   | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
@@ -12960,7 +12990,7 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 *)
 and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
   match exp.it with
-  | FuncE (name, qualified_name, sort, control, typ_binds, args, res_tys, e) ->
+  | FuncE (name, qualified_name, sort, control, typ_binds, args, res_tys, stable_context, e) ->
     let fun_rhs =
 
       (* a few prims cannot be safely inlined *)
@@ -12990,6 +13020,13 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
         then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
       ) (Freevars.M.keys (Freevars.exp e));
       compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
+    (match stable_context with 
+      | Some Type.{ function_path; captured_variables } -> 
+        Printf.printf "COMPILE CONST FUNC %s\n" (String.concat "." qualified_name);
+        Printf.printf " PATH: %s\n CAPTURES:\n" (String.concat "." function_path);
+        Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
+      | None -> ()
+    );
     FuncDec.closed env sort control name qualified_name args mk_body fun_rhs return_tys exp.at
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in

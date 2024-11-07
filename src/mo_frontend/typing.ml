@@ -57,7 +57,8 @@ type env =
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
     viper_mode : bool;
-    named_scope : bool;
+    named_scope: string list option;
+    captured: S.t ref;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -81,7 +82,8 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     unused_warnings = ref [];
     reported_stable_memory = ref false;
     viper_mode;
-    named_scope = true;
+    named_scope = Some [];
+    captured = ref S.empty;
   }
 
 let use_identifier env id =
@@ -316,7 +318,41 @@ let leave_scope env inner_identifiers initial_usage =
   let inner_identifiers = get_identifiers inner_identifiers in
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
   let final_usage = S.union initial_usage unshadowed_usage in
-  env.used_identifiers := final_usage
+  env.used_identifiers := final_usage;
+  env.captured := unshadowed_usage
+
+(* Stable functions support *)
+
+let collect_captured_variables env =
+  let variable_type id =
+    match T.Env.find_opt id env.vals with
+    | Some (t, _, _, _) -> Some t
+    | None -> None
+  in
+  let captured = List.filter_map (fun id -> 
+    match variable_type id with
+    | Some typ when Type.is_mut typ -> Some (id, typ)
+    | _ -> None
+  ) (S.elements !(env.captured)) in
+  T.Env.from_list captured
+
+let stable_function_closure env named_scope =
+  let captured_variables = collect_captured_variables env in
+  match named_scope with
+  | None -> None
+  | Some function_path ->
+    Some T.{
+      function_path;
+      captured_variables;
+    }
+
+let enter_named_scope env name =
+  if (String.contains name '@') || (String.contains name '$') then
+    None
+  else 
+    (match env.named_scope with
+    | None -> None
+    | Some prefix -> Some (prefix @ [name]))
 
 (* Value environments *)
 
@@ -1059,7 +1095,7 @@ let rec is_explicit_exp e =
     is_explicit_exp e1 &&
     (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
-  | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
+  | FuncE (_, _, _, p, t_opt, _, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
 
 and is_explicit_dec d =
@@ -1375,12 +1411,18 @@ and infer_exp'' env exp : T.typ =
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
+    let named_scope = match obj_sort.it, typ_opt with
+    | _, (Some id, _) -> enter_named_scope env id.it
+    | (T.Actor | T.Module), (None, _) -> env.named_scope
+    | _, _ -> None
+    in
     let env' =
       if obj_sort.it = T.Actor then
         { env with
           in_actor = true;
-          async = C.SystemCap C.top_cap }
-      else env
+          async = C.SystemCap C.top_cap;
+          named_scope; }
+      else { env with named_scope }
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
@@ -1527,7 +1569,7 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type%a"
         display_typ_expand t1
     )
-  | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
+  | FuncE (name, shared_pat, typ_binds, pat, typ_opt, _sugar, closure, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
         "shared functions are not supported";
@@ -1540,7 +1582,6 @@ and infer_exp'' env exp : T.typ =
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
     let sort, ve = check_shared_pat env shared_pat in
-    let is_flexible = (not env.named_scope) || sort = T.Local T.Flexible in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
@@ -1550,17 +1591,27 @@ and infer_exp'' env exp : T.typ =
     let ts2 = List.map (check_typ env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
+    let is_flexible = env.named_scope = None || sort = T.Local T.Flexible in
+    let named_scope = if is_flexible then None else enter_named_scope env name in
     if not env.pre then begin
+      
       let env'' =
         { env' with
           labs = T.Env.empty;
           rets = Some codom;
-          named_scope = not is_flexible;
+          named_scope;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       leave_scope env ve2 initial_usage;
+      let debug_name= (match named_scope with 
+      | Some path -> String.concat "." path
+      | None -> String.concat "NONE: " [name])
+      in
+      assert (debug_name <> "testFunc");
+      assert(!closure = None);
+      closure := stable_function_closure env named_scope;
       if Type.is_shared_sort sort then begin
         check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
@@ -1952,7 +2003,7 @@ and check_exp' env0 t exp : T.typ =
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
-  | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
+  | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, _, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_shared_pat env shared_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
@@ -1984,7 +2035,8 @@ and check_exp' env0 t exp : T.typ =
       { env with
         labs = T.Env.empty;
         rets = Some t2;
-        async = C.NullCap; }
+        async = C.NullCap;
+        named_scope = None; (* nested stable functions are resolved in `infer_dec` *) }
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
@@ -2499,7 +2551,7 @@ and object_of_scope env sort dec_fields scope at =
   T.Obj (sort, List.sort T.compare_field tfs')
 
 and is_actor_method dec : bool = match dec.it with
-  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _); _}, _) ->
+  | LetD ({it = VarP _; _}, {it = FuncE (_, shared_pat, _, _, _, _, _, _); _}, _) ->
     T.is_shared_sort shared_pat.it
   | _ -> false
 
@@ -2524,7 +2576,7 @@ and infer_obj env s dec_fields at : T.typ =
       { env with
         in_actor = true;
         labs = T.Env.empty;
-        rets = None;
+        rets = None
       }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
@@ -2719,12 +2771,14 @@ and infer_dec env dec : T.typ =
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let async_cap, _, class_cs = infer_class_cap env obj_sort.it tbs cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
+      let named_scope = enter_named_scope env id.it in
       let env''' =
         { (add_val env'' self_id self_typ) with
           labs = T.Env.empty;
           rets = None;
           async = async_cap;
           in_actor;
+          named_scope;
         }
       in
       let initial_usage = enter_scope env''' in
@@ -2829,6 +2883,11 @@ and gather_dec env scope dec : Scope.t =
       | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
+    let named_scope = match env.named_scope with
+    | Some prefix -> Some (prefix @ [id.it])
+    | None -> None
+    in
+    let env = { env with named_scope } in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let open Scope in
     if T.Env.mem id.it scope.val_env then
@@ -2840,7 +2899,7 @@ and gather_dec env scope dec : Scope.t =
       typ_env = scope.typ_env;
       lib_env = scope.lib_env;
       con_env = scope.con_env;
-      obj_env = obj_env
+      obj_env = obj_env;
     }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
@@ -2917,6 +2976,11 @@ and infer_dec_typdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
+    let named_scope = match env.named_scope with
+    | Some prefix -> Some (prefix @ [id.it])
+    | None -> None
+    in
+    let env = { env with named_scope } in
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
     let scope = T.Env.find id.it env.objs in
     let env' = adjoin env scope in
@@ -3003,11 +3067,15 @@ and infer_dec_valdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
+    let named_scope = match env.named_scope with
+    | Some prefix -> Some (prefix @ [id.it])
+    | None -> None
+    in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
       infer_block_valdecs
-        (adjoin {env with pre = true} obj_scope)
+        (adjoin {env with pre = true; named_scope} obj_scope)
         decs obj_scope
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in

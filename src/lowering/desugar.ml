@@ -121,7 +121,7 @@ and exp' at note (scope: I.qualified_name) e =
     let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
+  | S.FuncE (name, sp, tbs, p, _t_opt, _, closure, e) ->
     let s, po = match sp.it with
       | T.Local ls -> (T.Local ls, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
@@ -132,7 +132,7 @@ and exp' at note (scope: I.qualified_name) e =
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
     let qualified_name = scope @ [name] in
-    I.FuncE (name, qualified_name, s, control, tbs', args, tys, wrap (exp e))
+    I.FuncE (name, qualified_name, s, control, tbs', args, tys, !closure, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -404,7 +404,7 @@ and call_system_func_opt name es obj_typ =
                   match tf.T.typ with
                   | T.Func(T.Local T.Flexible, _, [], [], ts) ->
                     tagE tf.T.lab
-                      T.(funcE ("$"^tf.lab) ["$"^tf.lab] (Local Flexible) Returns [] [] ts
+                      T.(funcE ("$"^tf.lab) ["$"^tf.lab] (Local Flexible) Returns [] [] ts None
                         (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
@@ -461,7 +461,7 @@ and export_footprint self_id expr =
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] (
+       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE [
                    letD caller (primE I.ICCallerPrim []);
@@ -519,7 +519,7 @@ and export_runtime_information self_id =
   let ret_typ = motoko_runtime_information_type in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] (
+       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE ([
                   letD caller (primE I.ICCallerPrim []);
@@ -563,7 +563,7 @@ and build_actor at ts scope self_id es obj_typ =
   let ds =
     varD state (optE (primE (I.ICStableRead ty) []))
     ::
-    nary_funcD get_state [] []
+    nary_funcD get_state [] [] None
       (let v = fresh_var "v" ty in
        switch_optE (immuteE (varE state))
          (unreachableE ())
@@ -867,7 +867,7 @@ and dec' scope at n e =
     in
     let qualified_name = new_scope @ [id.it] in
     let fn = {
-      it = I.FuncE (id.it, qualified_name, sort, control, typ_binds tbs, args, [rng_typ], body);
+      it = I.FuncE (id.it, qualified_name, sort, control, typ_binds tbs, args, [rng_typ], None, body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in
@@ -1072,6 +1072,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
+    None
     (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
       (letE principal
@@ -1220,6 +1221,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (T.Fut, List.hd cs, actor_t)]
+        None
         (asyncE
           T.Fut
           (typ_arg c' T.Scope T.scope_bound)

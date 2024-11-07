@@ -308,7 +308,7 @@ let nullE () =
 
 (* Functions *)
 
-let funcE name scope_name sort ctrl typ_binds args typs exp =
+let funcE name scope_name sort ctrl typ_binds args typs closure exp =
   let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
   let tbs = List.map (function { it = { sort; bound; con}; _ } ->
     {T.var = Cons.name con; T.sort; T.bound = T.close cs bound})
@@ -318,7 +318,7 @@ let funcE name scope_name sort ctrl typ_binds args typs exp =
   let ts2 = List.map (T.close cs) typs in
   let typ = T.Func(sort, ctrl, tbs, ts1, ts2) in
   let qualified_name = scope_name @ [name] in
-  { it = FuncE(name, qualified_name, sort, ctrl, typ_binds, args, typs, exp);
+  { it = FuncE(name, qualified_name, sort, ctrl, typ_binds, args, typs, closure, exp);
     at = no_region;
     note = Note.{ def with typ; eff = T.Triv };
   }
@@ -583,7 +583,7 @@ let arg_of_var (id, typ) =
 
 let var_of_arg { it = id; note = typ; _} = (id, typ)
 
-let unary_funcE name scope_name typ x exp =
+let unary_funcE name scope_name typ x closure exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
@@ -606,13 +606,14 @@ let unary_funcE name scope_name typ x exp =
        args,
        (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
        ret_tys,
+       closure,
        exp'
      );
     at = no_region;
     note = Note.{ def with typ }
    })
 
-let nary_funcE name scope_name typ xs exp =
+let nary_funcE name scope_name typ xs closure exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
@@ -626,6 +627,7 @@ let nary_funcE name scope_name typ xs exp =
         [],
         List.map arg_of_var xs,
         ret_tys,
+        closure,
         exp
       );
     at = no_region;
@@ -633,12 +635,12 @@ let nary_funcE name scope_name typ xs exp =
   })
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
-let funcD ((id, typ) as f) scope_name x exp =
-  letD f (unary_funcE id scope_name typ x exp)
+let funcD ((id, typ) as f) scope_name x closure exp =
+  letD f (unary_funcE id scope_name typ x closure exp)
 
 (* Mono-morphic, n-ary function declaration *)
-let nary_funcD ((id, typ) as f) scope_name xs exp =
-  letD f (nary_funcE id scope_name typ xs exp)
+let nary_funcD ((id, typ) as f) scope_name xs closure exp =
+  letD f (nary_funcE id scope_name typ xs closure exp)
 
 (* Continuation types with explicit answer typ *)
 
@@ -668,12 +670,12 @@ let seqE = function
 (* local lambda *)
 let (-->) x exp =
   let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
-  unary_funcE "$lambda" [] fun_ty x exp
+  unary_funcE "$lambda" [] fun_ty x None exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
   let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
-  nary_funcE "$lambda" [] fun_ty xs exp
+  nary_funcE "$lambda" [] fun_ty xs None exp
 
 let close_typ_binds cs tbs =
   List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
@@ -682,10 +684,10 @@ let close_typ_binds cs tbs =
 let forall tbs e =
  let cs = List.map (fun tb -> tb.it.con) tbs in
  match e.it, e.note.Note.typ with
- | FuncE (n, qn, s, c1, [], xs, ts, exp),
+ | FuncE (n, qn, s, c1, [], xs, ts, closure, exp),
    T.Func (_, c2, [], ts1, ts2) ->
    { e with
-     it = FuncE(n, qn @ [n], s, c1, tbs, xs, ts, exp);
+     it = FuncE(n, qn @ [n], s, c1, tbs, xs, ts, closure, exp);
      note = Note.{ e.note with
        typ = T.Func(s, c2, close_typ_binds cs tbs,
          List.map (T.close cs) ts1,
@@ -697,7 +699,7 @@ let forall tbs e =
 (* changing display name of e.g. local lambda *)
 let named displ e =
   match e.it with
-  | FuncE (_, qn, s, c1, [], xs, ts, exp)
+  | FuncE (_, qn, s, c1, [], xs, ts, closure, exp)
     -> 
       let rec rename_qualified = function
       | [] -> []
@@ -705,7 +707,7 @@ let named displ e =
       | outer::inner -> outer::(rename_qualified inner)
       in
       let qualified_name = rename_qualified qn in
-      { e with it = FuncE (displ, qualified_name, s, c1, [], xs, ts, exp) }
+      { e with it = FuncE (displ, qualified_name, s, c1, [], xs, ts, closure, exp) }
   | _ -> assert false
 
 

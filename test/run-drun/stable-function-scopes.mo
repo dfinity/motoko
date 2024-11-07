@@ -22,9 +22,16 @@ actor {
         };
     };
 
+    stable var f0 = TestObject.testFunc; // temporary
+
     func testFunc() {
         Prim.debugPrint("ACTOR FUNC");
+        func testFunc() {
+            Prim.debugPrint("INNER FUNC");
+        };
+        f0 := testFunc;
     };
+    f0();
 
     Prim.debugPrint("---------------------");
 
