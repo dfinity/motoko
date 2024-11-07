@@ -67,6 +67,7 @@ pub unsafe fn start_graph_stabilization<M: Memory>(
     stable_actor: Value,
     old_candid_data: Value,
     old_type_offsets: Value,
+    stable_functions_map: Value,
 ) {
     assert!(STABILIZATION_STATE.is_none());
     assert!(is_gc_stopped());
@@ -155,6 +156,7 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
+    stable_functions_map: Value,
 ) {
     assert!(DESTABILIZATION_STATE.is_none());
 

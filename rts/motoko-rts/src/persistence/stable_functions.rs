@@ -85,8 +85,6 @@
 
 use core::{marker::PhantomData, mem::size_of, ptr::null_mut, str::from_utf8};
 
-use motoko_rts_macros::ic_mem_fn;
-
 use crate::{
     algorithms::SortedArray,
     barriers::{allocation_barrier, write_with_barrier},
@@ -95,7 +93,7 @@ use crate::{
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B},
 };
 
-use super::{compatibility::TypeDescriptor, stable_function_state};
+use super::stable_function_state;
 
 // Use `usize` or `isize` instead of `u32` and `i32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
@@ -136,11 +134,6 @@ pub struct StableFunctionState {
 
 // Transient table. GC root.
 static mut FUNCTION_LITERAL_TABLE: Value = NULL_POINTER;
-// Determines whether compatibility of closure types has been checked and function calls are allowed.
-// This is deferred because the functions literal table needs to be first set up for building up the
-// constant object pool. Thereafter, the type compatibility inluding stable closure compatibility is
-// checked before stable function calls can eventually be made.
-static mut COMPATIBILITY_CHECKED: bool = false;
 
 // Zero memory map, as seen in the initial persistent Wasm memory.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -242,7 +235,6 @@ pub unsafe fn resolve_function_call(function_id: FunctionId) -> WasmTableIndex {
     if is_flexible_function_id(function_id) {
         return resolve_flexible_function_id(function_id);
     }
-    debug_assert!(COMPATIBILITY_CHECKED);
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(resolve_stable_function_id(function_id));
@@ -305,9 +297,6 @@ impl StableFunctionMap {
 }
 
 /// Called on program initialization and on upgrade, both during EOP and graph copy.
-/// The compatibility of stable function closures is checked separately in `register_stable_closure_types`
-/// when the stable actor type is registered.
-#[ic_mem_fn]
 pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_map: Value) {
     let stable_functions = stable_functions_map.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
@@ -488,17 +477,4 @@ unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap)
         length = core::cmp::max(length, wasm_table_index + 1);
     }
     length
-}
-
-/// Check compatibility of the closures of upgraded stable functions.
-/// And register the closure types of the stable functions in the new program version.
-/// This check is separate to `register_stable_functions` as the actor type
-/// is not yet defined in the compiler backend on runtime system initialization.
-#[no_mangle]
-pub unsafe fn register_stable_closure_types(
-    _stable_functions_map: Value,
-    _old_type: &mut TypeDescriptor,
-    _new_type: &mut TypeDescriptor,
-) {
-    COMPATIBILITY_CHECKED = true;
 }
