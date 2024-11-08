@@ -414,10 +414,17 @@ module E = struct
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
-  type type_descriptor = {
+  (* For Candid sub-type tests used during deserialization *)
+  type global_type_descriptor = {
     candid_data_segment : int32;
     type_offsets_segment : int32;
     idl_types_segment : int32;
+  }
+  (* For memory compatibility checks used with enhanced orthogonal persistence *)
+  type stable_type_descriptor = {
+    candid_data_segment: int32;
+    type_offsets_segment: int32;
+    function_map_segment: int32;
   }
   (* Object allocation code. *)
   type object_allocation = t -> G.t
@@ -483,14 +490,18 @@ module E = struct
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
 
-    (* Type descriptor of current program version, created on `conclude_module`. *)
-    global_type_descriptor : type_descriptor option ref;
+    (* Type descriptor of current program version for Candid sub-typing checks, 
+       created in `conclude_module`. *)
+    global_type_descriptor : global_type_descriptor option ref;
   
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
 
     (* Stable functions, mapping the function name to the Wasm table index and closure type *)
     stable_functions: (int32 * Type.typ) NameEnv.t ref;
+
+    (* Type descriptor for the EOP memory compatibility check, created in `conclude_module` *)
+    stable_type_descriptor: stable_type_descriptor option ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
@@ -533,6 +544,7 @@ module E = struct
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
+    stable_type_descriptor = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -8740,7 +8752,7 @@ module StableFunctions = struct
       Int32.compare hash1 hash2) entries
   
   let create_stable_function_map (env : E.t) sorted_stable_functions =
-    let data = List.concat_map(fun (name_hash, wasm_table_index, closure_type_index) ->
+    List.concat_map(fun (name_hash, wasm_table_index, closure_type_index) ->
       (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, _empty: u64)] 
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
@@ -8749,24 +8761,53 @@ module StableFunctions = struct
         I64 (Int64.of_int32 wasm_table_index); 
         I64 (Int64.of_int32 closure_type_index);
         I64 0L; (* reserve for runtime system *) ]
-    ) sorted_stable_functions in
-    StaticBytes.as_bytes data
+    ) sorted_stable_functions
 
 end (* StableFunctions *)
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
+  let register_delayed_globals env =
+    (E.add_global64_delayed env "__eop_candid_data_length" Immutable,
+    E.add_global64_delayed env "__eop_type_offsets_length" Immutable,
+    E.add_global64_delayed env "__eop_function_map_length" Immutable)
+  
+  let reserve_type_table_segments env =
+    let candid_data_segment = E.add_data_segment env "" in
+    let type_offsets_segment = E.add_data_segment env "" in
+    let function_map_segment = E.add_data_segment env "" in
+    env.E.stable_type_descriptor := Some E.{ 
+      candid_data_segment; 
+      type_offsets_segment; 
+      function_map_segment 
+    }
+
+  let get_candid_data_length env =
+    G.i (GlobalGet (nr (E.get_global env "__eop_candid_data_length")))
+  
+  let get_type_offsets_length env =
+    G.i (GlobalGet (nr (E.get_global env "__eop_type_offsets_length")))
+
+  let get_function_map_length env =
+    G.i (GlobalGet (nr (E.get_global env "__eop_function_map_length")))
+
+
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
 
-  let create_type_descriptor env actor_type =
+  let get_stable_type_descriptor env =
+    match !(E.(env.stable_type_descriptor)) with
+    | Some descriptor -> descriptor
+    | None -> assert false
+
+  let create_type_descriptor env actor_type (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
     let stable_functions = StableFunctions.sorted_stable_functions env in
     let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
     let stable_types = actor_type::stable_closures in
-    let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence stable_types) in
+    let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
     let actor_type_index = List.hd type_indices in
     assert(actor_type_index = 0l);
     let closure_type_indices = List.tl type_indices in
@@ -8774,16 +8815,34 @@ module EnhancedOrthogonalPersistence = struct
       fun (name_hash, wasm_table_index, _) closure_type_index -> 
         (name_hash, wasm_table_index, closure_type_index)
     ) stable_functions closure_type_indices in
-    let serialized_offsets = StaticBytes.(as_bytes [i64s (List.map Int64.of_int type_offsets)]) in
-    let stable_functions_map = StableFunctions.create_stable_function_map env stable_functions in
-    Blob.lit env Tagged.B candid_type_desc ^^
-    Blob.lit env Tagged.B serialized_offsets ^^
-    Blob.lit env Tagged.B stable_functions_map
+    let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
+    let descriptor = get_stable_type_descriptor env in
+    let candid_data_binary = [StaticBytes.Bytes candid_data] in
+    let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
+    set_candid_data_length candid_data_length;
+    let type_offsets_binary = [StaticBytes.i64s (List.map Int64.of_int type_offsets)] in
+    let type_offsets_length = E.replace_data_segment env E.(descriptor.type_offsets_segment) type_offsets_binary in
+    set_type_offsets_length type_offsets_length;
+    let function_map_length = E.replace_data_segment env E.(descriptor.function_map_segment) stable_function_map in
+    set_function_map_length function_map_length
 
-  let register_stable_type env actor_type =
-    Printf.printf "REGISTER STABLE ACTOR %s\n" (Type.string_of_typ actor_type);
+  let load_type_descriptor env =
+    Tagged.share env (fun env -> 
+      let descriptor = get_stable_type_descriptor env in
+      Blob.load_data_segment env Tagged.B E.(descriptor.candid_data_segment) (get_candid_data_length env)
+    ) ^^
+    Tagged.share env (fun env -> 
+      let descriptor = get_stable_type_descriptor env in
+      Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+    ) ^^
+    Tagged.share env (fun env -> 
+      let descriptor = get_stable_type_descriptor env in
+      Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
+    )
+
+  let register_stable_type env =
     assert (not !(E.(env.object_pool.frozen)));
-    create_type_descriptor env actor_type ^^
+    load_type_descriptor env ^^
     E.call_import env "rts" "register_stable_type"
 
   let load_old_field env field get_old_actor =
@@ -8847,15 +8906,15 @@ module GraphCopyStabilization = struct
   let is_graph_stabilization_started env =
     E.call_import env "rts" "is_graph_stabilization_started" ^^ Bool.from_rts_int32
 
-  let start_graph_stabilization env actor_type =
-    EnhancedOrthogonalPersistence.create_type_descriptor env actor_type ^^
+  let start_graph_stabilization env =
+    EnhancedOrthogonalPersistence.load_type_descriptor env ^^
     E.call_import env "rts" "start_graph_stabilization"
 
   let graph_stabilization_increment env =
     E.call_import env "rts" "graph_stabilization_increment" ^^ Bool.from_rts_int32
 
-  let start_graph_destabilization env actor_type =
-    EnhancedOrthogonalPersistence.create_type_descriptor env actor_type ^^
+  let start_graph_destabilization env =
+    EnhancedOrthogonalPersistence.load_type_descriptor env ^^
     E.call_import env "rts" "start_graph_destabilization"
 
   let graph_destabilization_increment env =
@@ -9976,7 +10035,7 @@ module IncrementalGraphStabilization = struct
     | _ -> ()
     end
 
-  let start_graph_stabilization env actor_type =
+  let start_graph_stabilization env =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
     (E.if0
       G.nop
@@ -9985,10 +10044,10 @@ module IncrementalGraphStabilization = struct
            although it should not be called in lifecycle state `InStabilization`. *)
         E.call_import env "rts" "stop_gc_before_stabilization" ^^
         IC.get_actor_to_persist env ^^
-        GraphCopyStabilization.start_graph_stabilization env actor_type
+        GraphCopyStabilization.start_graph_stabilization env
       end)
 
-  let export_stabilize_before_upgrade_method env actor_type =
+  let export_stabilize_before_upgrade_method env =
     let name = "__motoko_stabilize_before_upgrade" in
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -9996,7 +10055,7 @@ module IncrementalGraphStabilization = struct
         IC.assert_caller_self_or_controller env ^^
         (* All messages are blocked except this method and the upgrade. *)
         Lifecycle.trans env Lifecycle.InStabilization ^^
-        start_graph_stabilization env actor_type ^^
+        start_graph_stabilization env ^^
         call_async_stabilization env
         (* Stay in lifecycle state `InStabilization`. *)
       );
@@ -10009,8 +10068,8 @@ module IncrementalGraphStabilization = struct
     | _ -> ()
     end
 
-  let complete_stabilization_on_upgrade env actor_type =
-    start_graph_stabilization env actor_type ^^
+  let complete_stabilization_on_upgrade env =
+    start_graph_stabilization env ^^
     G.loop0
     begin
       GraphCopyStabilization.graph_stabilization_increment env ^^
@@ -10104,7 +10163,7 @@ module IncrementalGraphStabilization = struct
   let partial_destabilization_on_upgrade env actor_type =
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
+    GraphCopyStabilization.start_graph_destabilization env ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
@@ -10153,7 +10212,7 @@ module IncrementalGraphStabilization = struct
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
-    export_stabilize_before_upgrade_method env actor_type;
+    export_stabilize_before_upgrade_method env;
     define_async_destabilization_reply_callback env;
     define_async_destabilization_reject_callback env;
     export_async_destabilization_method env actor_type;
@@ -10235,7 +10294,7 @@ module Persistence = struct
   let save env actor_type =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
     E.if0
-      (IncrementalGraphStabilization.complete_stabilization_on_upgrade env actor_type)
+      (IncrementalGraphStabilization.complete_stabilization_on_upgrade env)
       (EnhancedOrthogonalPersistence.save env actor_type)
 end (* Persistence *)
 
@@ -13294,7 +13353,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env actor_type set_serialization_globals start_fi_o =
+and conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o =
 
   RTS_Exports.system_exports env;
 
@@ -13304,6 +13363,9 @@ and conclude_module env actor_type set_serialization_globals start_fi_o =
 
   (* See Note [Candid subtype checks] *)
   Serialization.create_global_type_descriptor env set_serialization_globals;
+
+  (* Segments for EOP memory compatibility check *)
+  EnhancedOrthogonalPersistence.create_type_descriptor env actor_type set_eop_globals;
 
   (* declare before building GC *)
 
@@ -13320,11 +13382,11 @@ and conclude_module env actor_type set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env ->
-    let register_stable_type = EnhancedOrthogonalPersistence.register_stable_type env actor_type in
+    let register_stable_type = EnhancedOrthogonalPersistence.register_stable_type env in
     let register_static_variables = GCRoots.register_static_variables env in
     E.call_import env "rts" ("initialize_incremental_gc") ^^
-    register_stable_type ^^
-    register_static_variables ^^ (* already resolves stable functions literals *)
+    register_stable_type ^^ (* cannot use stable variables *)
+    register_static_variables ^^ (* already uses stable function literals *)
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
@@ -13415,6 +13477,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
   Serialization.reserve_global_type_descriptor env;
+
+  (* Segments for the EOP memory compatibility check *)
+  let set_eop_globals = EnhancedOrthogonalPersistence.register_delayed_globals env in
+  EnhancedOrthogonalPersistence.reserve_type_table_segments env;
   
   IC.system_imports env;
   RTS.system_imports env;
@@ -13436,4 +13502,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   | _ -> fatal "not supported"
   in
 
-  conclude_module env actor_type set_serialization_globals start_fi_o
+  conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o
