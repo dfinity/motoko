@@ -9489,7 +9489,6 @@ module FuncDec = struct
 
   (* Compile a closure declaration (captures local variables) *)
   let closure env ae sort control name captured args mk_body ret_tys at stable_context =
-      Printf.printf "COMPILE CLOSURE %s %i\n" name (List.length captured);
       let is_local = not (Type.is_shared_sort sort) in
 
       let set_clos, get_clos = new_local env (name ^ "_clos") in
@@ -13050,13 +13049,6 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
         then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
       ) captured;
       compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
-    (match stable_context with 
-      | Some Type.{ function_path; captured_variables } -> 
-        Printf.printf "COMPILE CONST FUNC %s\n" (String.concat "." qualified_name);
-        Printf.printf " PATH: %s\n CAPTURES:\n" (String.concat "." function_path);
-        Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
-      | None -> ()
-    );
     FuncDec.closed env sort control name qualified_name args mk_body fun_rhs return_tys exp.at stable_context
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
