@@ -1594,7 +1594,6 @@ and infer_exp'' env exp : T.typ =
     let is_flexible = env.named_scope = None || sort = T.Local T.Flexible in
     let named_scope = if is_flexible then None else enter_named_scope env name in
     if not env.pre then begin
-      
       let env'' =
         { env' with
           labs = T.Env.empty;
@@ -1605,11 +1604,6 @@ and infer_exp'' env exp : T.typ =
       let initial_usage = enter_scope env'' in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
       leave_scope env ve2 initial_usage;
-      let debug_name= (match named_scope with 
-      | Some path -> String.concat "." path
-      | None -> String.concat "NONE: " [name])
-      in
-      assert (debug_name <> "testFunc");
       assert(!closure = None);
       closure := stable_function_closure env named_scope;
       if Type.is_shared_sort sort then begin
