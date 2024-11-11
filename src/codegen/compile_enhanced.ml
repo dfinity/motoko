@@ -6799,16 +6799,12 @@ module Serialization = struct
         begin match s, c with
           | Shared _, Returns ->
             add_leb128 1; add_u8 2; (* oneway *)
-            assert (tbs = [])
           | Shared Write, _ ->
             add_leb128 0; (* no annotation *)
-            assert (tbs = [])
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
-            assert (tbs = [])
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
-            assert (tbs = [])
           | Local Stable, _ ->
             add_leb128 1; add_u8 255; (* stable local *)
             add_generic_types env tbs
