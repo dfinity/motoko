@@ -57,6 +57,7 @@ type env =
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
     viper_mode : bool;
+    errors_only : bool;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -79,6 +80,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
     reported_stable_memory = ref false;
+    errors_only = false;
     viper_mode;
   }
 
@@ -113,32 +115,6 @@ let sorted_unused_warnings list = List.sort compare_unused_warning list
 let kind_of_field_pattern pf = match pf.it with
   | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
-
-(* Suggestions *)
-
-let suggest desc id ids =
-  if !Flags.ai_errors then
-    Printf.sprintf
-      "\nThe %s %s is not available. Try something else?"
-      desc
-      id
-  else
-  let suggestions =
-    let limit = Lib.Int.log2 (String.length id) in
-    let distance = Lib.String.levenshtein_distance id in
-    let weighted_ids = List.filter_map (fun id0 ->
-      let d = distance id0 in
-      if Lib.String.starts_with id id0 || d <= limit then
-        Some (d, id0)
-      else None) ids in
-    List.sort compare weighted_ids |> List.map snd
-  in
-  if suggestions = [] then ""
-  else
-    let rest, last = Lib.List.split_last suggestions in
-    Printf.sprintf "\nDid you mean %s %s?"
-      desc
-      ((if rest <> [] then (String.concat ", " rest) ^ " or " else "") ^ last)
 
 (* Error bookkeeping *)
 
@@ -219,10 +195,12 @@ let local_error env at code fmt =
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
 
 let check_deprecation env at desc id depr =
   match depr with
@@ -476,7 +454,7 @@ and check_obj_path' env path : T.typ =
      | None ->
        error env id.at "M0026" "unbound variable %s%a%s" id.it
          display_vals env.vals
-         (suggest "variable" id.it (T.Env.keys env.vals))
+         (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -488,7 +466,7 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0028" "field %s does not exist in %a%s"
         id.it
         display_obj (s, fs)
-        (suggest "field" id.it
+        (Suggest.suggest_id "field" id.it
           (List.filter_map
             (function
               {T.typ=T.Typ _;_} -> None
@@ -508,7 +486,7 @@ and check_typ_path' env path : T.con =
     | None ->
       error env id.at "M0029" "unbound type %s%a%s" id.it
         display_typs env.typs
-        (suggest "type" id.it (T.Env.keys env.typs))
+        (Suggest.suggest_id "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -519,7 +497,7 @@ and check_typ_path' env path : T.con =
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in type%a%s"
           id.it display_typ_expand (T.Obj (s, fs))
-          (suggest "type field" id.it
+          (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
                |  _ -> None) fs))
@@ -1126,7 +1104,7 @@ let infer_lit env lit at : T.prim =
   | PreLit _ ->
     assert false
 
-let check_lit env t lit at =
+let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
@@ -1155,11 +1133,11 @@ let check_lit env t lit at =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-      error env at "M0050"
-        "literal of type%a\ndoes not have expected type%a"
-        display_typ t'
-        display_typ_expand t
-
+    error env at "M0050"
+      "literal of type%a\ndoes not have expected type%a%s"
+      display_typ t'
+      display_typ_expand t
+      (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
 
 (* Coercions *)
 
@@ -1251,7 +1229,7 @@ and infer_exp'' env exp : T.typ =
     | None ->
       error env id.at "M0057" "unbound variable %s%a%s" id.it
         display_vals env.vals
-        (suggest "variable" id.it (T.Env.keys env.vals))
+        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1490,7 +1468,7 @@ and infer_exp'' env exp : T.typ =
         "field %s does not exist in %a%s"
         id.it
         display_obj (s, tfs)
-        (suggest "field" id.it
+        (Suggest.suggest_id "field" id.it
           (List.filter_map
              (function
                { T.typ=T.Typ _;_} -> None
@@ -1694,7 +1672,7 @@ and infer_exp'' env exp : T.typ =
         | _ -> id.it
       in local_error env id.at "M0083" "unbound label %s%a%s" name
          display_labs env.labs
-         (suggest "label" id.it (T.Env.keys env.labs))
+         (Suggest.suggest_id "label" id.it (T.Env.keys env.labs))
     );
     T.Non
   | RetE exp1 ->
@@ -1818,7 +1796,7 @@ and check_exp' env0 t exp : T.typ =
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
-    check_lit env t lit exp.at;
+    check_lit env t lit exp.at true;
     t
   | ActorUrlE exp', t' ->
     check_exp_strong env T.text exp';
@@ -1992,10 +1970,13 @@ and check_exp' env0 t exp : T.typ =
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
+    begin
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
+        "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
-        display_typ_expand t;
+        display_typ_expand t
+        (Suggest.suggest_conversion env.libs env.vals t' t)
+    end;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -2268,7 +2249,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | SignP (op, lit) ->
@@ -2279,7 +2260,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | TupP pats ->
@@ -3107,7 +3088,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = env_of_scope msgs scope in
+          let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
