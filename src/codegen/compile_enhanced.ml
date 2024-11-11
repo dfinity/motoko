@@ -8827,18 +8827,11 @@ module EnhancedOrthogonalPersistence = struct
     set_function_map_length function_map_length
 
   let load_type_descriptor env =
-    Tagged.share env (fun env -> 
-      let descriptor = get_stable_type_descriptor env in
-      Blob.load_data_segment env Tagged.B E.(descriptor.candid_data_segment) (get_candid_data_length env)
-    ) ^^
-    Tagged.share env (fun env -> 
-      let descriptor = get_stable_type_descriptor env in
-      Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
-    ) ^^
-    Tagged.share env (fun env -> 
-      let descriptor = get_stable_type_descriptor env in
-      Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
-    )
+    (* Object pool is not yet initialized, cannot use Tagged.share *)
+    let descriptor = get_stable_type_descriptor env in
+    Blob.load_data_segment env Tagged.B E.(descriptor.candid_data_segment) (get_candid_data_length env) ^^
+    Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env) ^^
+    Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
 
   let register_stable_type env =
     assert (not !(E.(env.object_pool.frozen)));
