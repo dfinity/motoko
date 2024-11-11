@@ -205,4 +205,5 @@ let error_codes : (string * string option) list =
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
     "M0200", None; (* Stable functions are only supported with enhanced orthogonal persistence *)
     "M0201", None; (* Flexible function cannot be assigned to a stable function type *)
+    "M0202", None; (* Stable function cannot close over a non-stable variable %s*)
   ]

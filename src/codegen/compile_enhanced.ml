@@ -9563,13 +9563,14 @@ module FuncDec = struct
 
   let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at stable_context =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
-    (match stable_context with
+    (* TODO: REMOVE THIS CHECK LOGIC *)
+    (* (match stable_context with
     | Some Type.{ function_path; captured_variables } ->
       assert(function_path = qualified_name);
       List.iter (fun id -> 
         assert(Type.Env.mem id captured_variables);
       ) captured
-    | None -> ());
+    | None -> ()); *)
 
     if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
     if captured = []

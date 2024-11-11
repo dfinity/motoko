@@ -337,10 +337,10 @@ let collect_captured_variables env =
   T.Env.from_list captured
 
 let stable_function_closure env named_scope =
-  let captured_variables = collect_captured_variables env in
   match named_scope with
   | None -> None
   | Some function_path ->
+    let captured_variables = collect_captured_variables env in
     Some T.{
       function_path;
       captured_variables;
@@ -1606,6 +1606,15 @@ and infer_exp'' env exp : T.typ =
       leave_scope env ve2 initial_usage;
       assert(!closure = None);
       closure := stable_function_closure env named_scope;
+      (match !closure with
+      | Some Type.{ captured_variables; _ } ->
+        T.Env.iter (fun id typ ->
+          if not (T.stable typ) then
+          (error env exp1.at "M0202"
+                "stable function %s closes over non-stable variable %s"
+                name id)
+          ) captured_variables
+      | None -> ());
       if Type.is_shared_sort sort then begin
         check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
