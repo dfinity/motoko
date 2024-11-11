@@ -102,16 +102,20 @@ let rec exp lvl (env : env) e : Lbool.t =
     match e.it with
     | VarE (_, v) -> (find v env).const (*FIXME: use the mutability marker?*)
     | FuncE (x, _, s, c, tp, as_ , ts, _, body) ->
+      Printf.printf "CONSTNESS FUNC %s\n" x;
       exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
       (* shared functions are not const for now *)
       | Type.Shared _, _ -> surely_false
       (* top-level functions can always be const (all free variables are top-level) *)
-      | _, TopLvl -> surely_true
+      | _, TopLvl -> 
+        Printf.printf " SURELY TRUE\n";
+        surely_true
       | _, NotTopLvl ->
         let lb = maybe_false () in
         Freevars.M.iter (fun v _ ->
           let {loc_known; const} = find v env in
+          Printf.printf "CONSTNESS VAR %s %s\n" v (if loc_known then "LOC_KNOWN" else "");
           if loc_known then () else (* static definitions are ok *)
           required_for const lb
         ) (Freevars.exp e);

@@ -329,7 +329,7 @@ let collect_captured_variables env =
     | Some (t, _, _, _) -> Some t
     | None -> None
   in
-  let captured = List.filter_map (fun id -> 
+  let captured = List.filter_map (fun id ->
     match variable_type id with
     | Some typ when Type.is_mut typ -> Some (id, typ)
     | _ -> None
