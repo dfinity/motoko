@@ -2373,7 +2373,6 @@ module Closure = struct
 
   let make_stable_closure_type captured stable_closure =
     let variable_types = List.map (fun id ->
-      Printf.printf "FIND %s\n" id;
       Type.Env.find id stable_closure.Type.captured_variables
     ) captured in
     Type.Tup variable_types
@@ -9565,19 +9564,6 @@ module FuncDec = struct
   let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at stable_context =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
     (match stable_context with
-    | Some Type.{ captured_variables; function_path } -> 
-      Printf.printf "CAPTURED1 %s:\n" (String.concat "." qualified_name);
-      List.iter (fun n -> Printf.printf " %s\n" n) captured;
-        Printf.printf "CAPTURED2: %s:\n" (String.concat "." function_path);
-      Type.Env.iter (fun n t -> Printf.printf " %s: %s\n" n (Type.string_of_typ t)) captured_variables;
-      (* List.iter (fun (n, t) -> Printf.printf " %s: %s" n (
-        match t with 
-        | Some t -> Type.string_of_typ t
-        | None -> "(undefined)")) captured_variables; *)
-      Printf.printf "\n"
-    | None -> ());
-
-    (match stable_context with
     | Some Type.{ function_path; captured_variables } ->
       assert(function_path = qualified_name);
       List.iter (fun id -> 
@@ -12609,8 +12595,6 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     (match stable_context with 
       | Some Type.{ function_path; captured_variables } -> 
-        Printf.printf "COMPILE EXP FUNC %s\n" (String.concat "." qualified_name);
-        Printf.printf " PATH: %s\n CAPTURES:\n" (String.concat "." function_path);
         Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
       | None -> ()
     );
