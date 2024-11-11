@@ -5,6 +5,7 @@
 pub mod compatibility;
 pub mod stable_functions;
 
+use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;
 use stable_functions::{register_stable_functions, StableFunctionState};
 
@@ -13,7 +14,6 @@ use crate::{
     constants::{KB, MB},
     gc::incremental::{partitioned_heap::allocate_initial_memory, State},
     memory::Memory,
-    persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
@@ -205,14 +205,22 @@ pub unsafe fn register_stable_type<M: Memory>(
     assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
     assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
     assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
-    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
+    let new_type = &mut TypeDescriptor::new(new_candid_data, new_type_offsets);
     let metadata = PersistentMetadata::get();
     let old_type = &mut (*metadata).stable_type;
-    if !old_type.is_default() && !memory_compatible(mem, old_type, &mut new_type) {
+    let type_test = if old_type.is_default() {
+        None
+    } else {
+        Some(MemoryCompatibilityTest::new(mem, old_type, new_type))
+    };
+    if type_test
+        .as_ref()
+        .is_some_and(|test| !test.compatible_stable_actor())
+    {
         rts_trap_with("Memory-incompatible program upgrade");
     }
     (*metadata).stable_type.assign(mem, &new_type);
-    register_stable_functions(mem, stable_functions_map);
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {

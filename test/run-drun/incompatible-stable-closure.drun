@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID incompatible-stable-closure/version0.mo ""
+upgrade $ID incompatible-stable-closure/version1.mo ""

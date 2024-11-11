@@ -93,7 +93,7 @@ use crate::{
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B},
 };
 
-use super::stable_function_state;
+use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
 
 // Use `usize` or `isize` instead of `u32` and `i32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
@@ -297,7 +297,11 @@ impl StableFunctionMap {
 }
 
 /// Called on program initialization and on upgrade, both during EOP and graph copy.
-pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions_map: Value) {
+pub unsafe fn register_stable_functions<M: Memory>(
+    mem: &mut M,
+    stable_functions_map: Value,
+    type_test: Option<&MemoryCompatibilityTest>,
+) {
     let stable_functions = stable_functions_map.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
@@ -305,8 +309,9 @@ pub unsafe fn register_stable_functions<M: Memory>(mem: &mut M, stable_functions
     // 2. Retrieve the persistent virtual, or, if not present, initialize an empty one.
     let virtual_table = prepare_virtual_table(mem);
     // 3. Scan the persistent virtual table and match/update all entries against
-    // `stable_functions`. Assign the function ids in stable function map.
-    update_existing_functions(virtual_table, stable_functions);
+    // `stable_functions_map`. Check the compatibility of the closure types.
+    // Assign the function ids in stable function map.
+    update_existing_functions(virtual_table, stable_functions, type_test);
     // 4. Scan stable functions map and determine number of new stable functions that are yet
     // not part of the persistent virtual table.
     let extension_size = count_new_functions(stable_functions);
@@ -341,10 +346,12 @@ unsafe fn prepare_virtual_table<M: Memory>(mem: &mut M) -> *mut PersistentVirtua
 }
 
 // Step 3: Scan the persistent virtual table and match/update all entries against
-// `stable_functions`. Assign the function ids in stable function map.
+// `stable_functions_map`. Check the compatibility of the closure types.
+// Assign the function ids in stable function map.
 unsafe fn update_existing_functions(
     virtual_table: *mut PersistentVirtualTable,
     stable_functions: *mut StableFunctionMap,
+    type_test: Option<&MemoryCompatibilityTest>,
 ) {
     assert_ne!(virtual_table.length(), NULL_FUNCTION_ID as usize);
     for function_id in 0..virtual_table.length() {
@@ -356,9 +363,21 @@ unsafe fn update_existing_functions(
             let message = from_utf8(&buffer).unwrap();
             rts_trap_with(message);
         }
-        // Closure compatibility is checked later in `register_stable_closure_types`.
-        // Until then, no stable function calls can be made.
+        let old_closure = (*virtual_table_entry).closure_type_index;
+        let new_closure = (*stable_function_entry).closure_type_index;
+        assert!(old_closure >= i32::MIN as TypeIndex && old_closure <= i32::MAX as TypeIndex);
+        assert!(new_closure >= i32::MIN as TypeIndex && new_closure <= i32::MAX as TypeIndex);
+        if type_test.is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
+        {
+            let buffer = format!(
+                200,
+                "Memory-incompatible closure type of stable function {name_hash}"
+            );
+            let message = from_utf8(&buffer).unwrap();
+            rts_trap_with(message);
+        }
         (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
+        (*virtual_table_entry).closure_type_index = new_closure;
         (*stable_function_entry).cached_function_id = function_id as FunctionId;
     }
 }

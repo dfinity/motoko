@@ -7,7 +7,7 @@ use crate::{
     gc::incremental::{is_gc_stopped, resume_gc, stop_gc},
     memory::Memory,
     persistence::{
-        compatibility::{memory_compatible, TypeDescriptor},
+        compatibility::{MemoryCompatibilityTest, TypeDescriptor},
         set_upgrade_instructions,
     },
     rts_trap_with,
@@ -165,7 +165,9 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     let mut new_type_descriptor = TypeDescriptor::new(new_candid_data, new_type_offsets);
     let (metadata, statistics) = StabilizationMetadata::load(mem);
     let mut old_type_descriptor = metadata.type_descriptor;
-    if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
+    let type_test =
+        MemoryCompatibilityTest::new(mem, &mut old_type_descriptor, &mut new_type_descriptor);
+    if !type_test.compatible_stable_actor() {
         rts_trap_with("Memory-incompatible program upgrade");
     }
     // Restore the virtual size.
