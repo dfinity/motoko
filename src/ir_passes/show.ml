@@ -52,7 +52,7 @@ let argVar t = var "x" t
 let argE t = varE (argVar t)
 
 let define_show : T.typ -> Ir.exp -> Ir.dec = fun t e ->
-  Construct.funcD (show_var_for t) [] (argVar t) None e
+  Construct.funcD (show_var_for t) (argVar t) None e
 
 let invoke_generated_show : T.typ -> Ir.exp -> Ir.exp = fun t e ->
   varE (show_var_for t) -*- e
@@ -257,8 +257,8 @@ and t_exp' env = function
   | PrimE (p, es) -> PrimE (p, t_exps env es)
   | AssignE (lexp1, exp2) ->
     AssignE (t_lexp env lexp1, t_exp env exp2)
-  | FuncE (s, qn, c, id, typbinds, pat, typT, closure, exp) ->
-    FuncE (s, qn, c, id, typbinds, pat, typT, closure, t_exp env exp)
+  | FuncE (s, c, id, typbinds, pat, typT, closure, exp) ->
+    FuncE (s, c, id, typbinds, pat, typT, closure, t_exp env exp)
   | BlockE block -> BlockE (t_block env block)
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)

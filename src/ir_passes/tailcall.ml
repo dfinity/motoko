@@ -115,11 +115,11 @@ and exp' env e  : exp' = match e.it with
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
-  | FuncE (x, qn, s, c, tbs, as_, ret_tys, closure, exp0) ->
+  | FuncE (x, s, c, tbs, as_, ret_tys, closure, exp0) ->
     let env1 = { tail_pos = true; info = None} in
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
-    FuncE (x, qn, s, c, tbs, as_, ret_tys, closure, exp0')
+    FuncE (x, s, c, tbs, as_, ret_tys, closure, exp0')
   | SelfCallE (ts, exp1, exp2, exp3, exp4) ->
     let env1 = { tail_pos = true; info = None} in
     let exp1' = tailexp env1 exp1 in
@@ -184,7 +184,7 @@ and dec' env d =
   (* A local let bound function, this is what we are looking for *)
   (* TODO: Do we need to detect more? A tuple of functions? *)
   | LetD (({it = VarP id;_} as id_pat),
-          ({it = FuncE (x, qn, Local sort, c, tbs, as_, typT, closure, exp0);_} as funexp)) ->
+          ({it = FuncE (x, Local sort, c, tbs, as_, typT, closure, exp0);_} as funexp)) ->
     let env = bind env id None in
     begin fun env1 ->
       let temps = fresh_vars "temp" (List.map (fun a -> Mut a.note) as_) in
@@ -216,9 +216,9 @@ and dec' env d =
             )
           )
         in
-        LetD (id_pat, {funexp with it = FuncE (x, qn, Local sort, c, tbs, List.map arg_of_var ids, typT, closure, body)})
+        LetD (id_pat, {funexp with it = FuncE (x, Local sort, c, tbs, List.map arg_of_var ids, typT, closure, body)})
       else
-        LetD (id_pat, {funexp with it = FuncE (x, qn, Local sort, c, tbs, as_, typT, closure, exp0')})
+        LetD (id_pat, {funexp with it = FuncE (x, Local sort, c, tbs, as_, typT, closure, exp0')})
     end,
     env
   | LetD (p, e) ->

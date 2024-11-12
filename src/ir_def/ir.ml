@@ -74,7 +74,7 @@ and exp' =
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * qualified_name * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * Type.stable_closure option * exp
+      string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * Type.stable_closure option * exp
   | SelfCallE of Type.typ list * exp * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)

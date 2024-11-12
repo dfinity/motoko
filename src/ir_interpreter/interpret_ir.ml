@@ -556,14 +556,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k)))
-  | FuncE (x, _, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, _, e) ->
+  | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, _, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_message env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = make_message env x cc f in
     k v
-  | FuncE (x, _, sort, control, _typbinds, args, ret_typs, _, e) ->
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, _, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_func env exp.at sort x args
       (fun env' -> interpret_exp env' e) in

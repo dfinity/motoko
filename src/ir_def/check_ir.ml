@@ -781,7 +781,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, _, sort, control, typ_binds, args, ret_tys, _, exp) ->
+  | FuncE (x, sort, control, typ_binds, args, ret_tys, _, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let ts = List.map (fun c -> T.Con(c, [])) cs in
     let env' = adjoin_cons env ce in
@@ -860,7 +860,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   then begin
     match exp.it with
     | VarE (Const, id) -> check_var "VarE" id
-    | FuncE (x, _, s, c, tp, as_ , ts, _, body) ->
+    | FuncE (x, s, c, tp, as_ , ts, _, body) ->
       check (not (T.is_shared_sort s)) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->

@@ -40,28 +40,23 @@ let typ_note : S.typ_note -> Note.t =
 let phrase' f x =
   { x with it = f x.at x.note x.it }
 
-let typed_phrase' f scope x =
+let typed_phrase' f x =
   let n' = typ_note x.note in
-  { x with it = f x.at n' scope x.it; note = n' }
+  { x with it = f x.at n' x.it; note = n' }
 
 
-let rec exps scope es = List.map (exp scope) es
+let rec exps es = List.map exp es
 
-and exp scope e =
+and exp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
-    | S.AnnotE (e', t) -> exp scope e'
-    | _ -> typed_phrase' exp' scope e
+    | S.AnnotE (e', t) -> exp e'
+    | _ -> typed_phrase' exp' e
 
-and exp' at note (scope: I.qualified_name) e = 
-  let exp = exp scope in
-  let lexp = lexp scope in
-  let exps = exps scope in
-  let cases = cases scope in
-  match e with
+and exp' at note = function
   | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
   | S.ActorUrlE e ->
-    I.(PrimE (ActorOfIdBlob note.Note.typ, [url scope e at]))
+    I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
   | S.UnE (ot, o, e) ->
     I.PrimE (I.UnPrim (!ot, o), [exp e])
@@ -96,14 +91,9 @@ and exp' at note (scope: I.qualified_name) e =
       (* case ? v : *)
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, (self_id_opt, _), dfs) ->
-    let name = match self_id_opt with
-    | None -> "$anon_object"
-    | Some id -> id.it
-    in
-    let new_scope = scope @ [name] in
-    obj_block at s new_scope self_id_opt dfs note.Note.typ
+    obj_block at s self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
-    obj scope note.Note.typ efs bs
+    obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
   | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
@@ -131,8 +121,7 @@ and exp' at note (scope: I.qualified_name) e =
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    let qualified_name = scope @ [name] in
-    I.FuncE (name, qualified_name, s, control, tbs', args, tys, !closure, wrap (exp e))
+    I.FuncE (name, s, control, tbs', args, tys, !closure, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -221,7 +210,7 @@ and exp' at note (scope: I.qualified_name) e =
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
-  | S.BlockE ds -> I.BlockE (block scope (T.is_unit note.Note.typ) ds)
+  | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
   | S.NotE e -> (notE (exp e)).it
   | S.AndE (e1, e2) -> (andE (exp e1) (exp e2)).it
   | S.OrE (e1, e2) -> (orE (exp e1) (exp e2)).it
@@ -265,23 +254,21 @@ and exp' at note (scope: I.qualified_name) e =
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
-and url scope e at =
+and url e at =
     (* Set position explicitly *)
     match e.it with
-    | S.AnnotE (e,_) -> url scope e at
+    | S.AnnotE (e,_) -> url e at
     | _ ->
-      let e' = exp scope e in
+      let e' = exp e in
       { it = I.(PrimE (BlobOfIcUrl, [e'])); at; note = Note.{def with typ = T.blob; eff = e'.note.eff } }
 
-and lexp scope e =
+and lexp e =
     (* We short-cut AnnotE here, so that we get the position of the inner expression *)
     match e.it with
-    | S.AnnotE (e,_) -> lexp scope e
-    | _ -> { e with it = lexp' scope e.it; note = e.note.S.note_typ }
+    | S.AnnotE (e,_) -> lexp e
+    | _ -> { e with it = lexp' e.it; note = e.note.S.note_typ }
 
-and lexp' scope e =
-  let exp = exp scope in
-  match e with
+and lexp' = function
   | S.VarE i -> I.VarLE i.it
   | S.DotE (e, x) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
@@ -314,8 +301,8 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   let last = fresh_var "last" T.int in
   let lab = fresh_id "done" () in
   blockE
-    [ letD arrv (exp [] arr_exp)
-    ; expD (exp [] e1)
+    [ letD arrv (exp arr_exp)
+    ; expD (exp e1)
     ; letD last (primE I.GetLastArrayOffset [varE arrv]) (* -1 for empty array *)
     ; varD indx (natE Numerics.Nat.zero)]
     (ifE (primE I.EqArrayOffset [varE last; intE (Numerics.Int.of_int (-1))])
@@ -325,7 +312,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
         loopE (
           (blockE
             [ letP (pat p) indexing_exp
-            ; expD (exp [] e2)]
+            ; expD (exp e2)]
            (ifE (primE I.EqArrayOffset [varE indx; varE last])
              (* last, exit loop *)
              (breakE lab (tupE []))
@@ -336,12 +323,12 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj_block at s scope self_id dfs obj_typ =
+and obj_block at s self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
-    build_obj at s.it scope self_id dfs obj_typ
+    build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    build_actor at [] scope self_id dfs obj_typ
+    build_actor at [] self_id dfs obj_typ
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
@@ -404,7 +391,7 @@ and call_system_func_opt name es obj_typ =
                   match tf.T.typ with
                   | T.Func(T.Local T.Flexible, _, [], [], ts) ->
                     tagE tf.T.lab
-                      T.(funcE ("$"^tf.lab) ["$"^tf.lab] (Local Flexible) Returns [] [] ts None
+                      T.(funcE ("$"^tf.lab) (Local Flexible) Returns [] [] ts None
                         (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
@@ -461,7 +448,7 @@ and export_footprint self_id expr =
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] None (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE [
                    letD caller (primE I.ICCallerPrim []);
@@ -519,7 +506,7 @@ and export_runtime_information self_id =
   let ret_typ = motoko_runtime_information_type in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v [v] (Shared Query) Promises [bind1] [] [ret_typ] None (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE ([
                   letD caller (primE I.ICCallerPrim []);
@@ -542,11 +529,11 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and build_actor at ts scope self_id es obj_typ =
+and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
-  let ds = decs scope (List.map (fun ef -> ef.it.S.dec) es) in
+  let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
@@ -563,7 +550,7 @@ and build_actor at ts scope self_id es obj_typ =
   let ds =
     varD state (optE (primE (I.ICStableRead ty) []))
     ::
-    nary_funcD get_state [] [] None
+    nary_funcD get_state [] None
       (let v = fresh_var "v" ty in
        switch_optE (immuteE (varE state))
          (unreachableE ())
@@ -655,11 +642,10 @@ and stabilize stab_opt d =
   | (S.Stable, I.LetD _) ->
     assert false
 
-and build_obj at s scope self_id dfs obj_typ =
+and build_obj at s self_id dfs obj_typ =
   let fs = build_fields obj_typ in
   let obj_e = newObjE s fs obj_typ in
-  (* Ignore self_id for scope, as all named classes and objects contain an anonymous object block. *)
-  let ds = decs scope (List.map (fun df -> df.it.S.dec) dfs) in
+  let ds = decs (List.map (fun df -> df.it.S.dec) dfs) in
   let e = blockE ds obj_e in
   match self_id with
     | None -> e.it
@@ -667,7 +653,7 @@ and build_obj at s scope self_id dfs obj_typ =
       let self = var self_id.it obj_typ in
       (letE self e (varE self)).it
 
-and exp_field scope obj_typ ef =
+and exp_field obj_typ ef =
   let _, fts = T.as_obj_sub [] obj_typ in
   let S.{mut; id; exp = e} = ef.it in
   match mut.it with
@@ -678,7 +664,7 @@ and exp_field scope obj_typ ef =
     in
     assert (T.is_mut typ);
     let id' = fresh_var id.it typ in
-    let d = varD id' (exp scope e) in
+    let d = varD id' (exp e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
     ([d], f)
   | S.Const ->
@@ -687,17 +673,17 @@ and exp_field scope obj_typ ef =
       | None -> e.note.S.note_typ
     in
     assert (not (T.is_mut typ));
-    let e = exp scope e in
+    let e = exp e in
     let id', ds = match e.it with
     | I.(VarE (Const, v)) -> var v typ, []
     | _ -> let id' = fresh_var id.it typ in id', [letD id' e] in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
     (ds, f)
 
-and obj scope obj_typ efs bases =
+and obj obj_typ efs bases =
   let open List in
   let base_info base =
-    let base_exp, base_t = exp scope base, (typ_note base.note).Note.typ in
+    let base_exp, base_t = exp base, (typ_note base.note).Note.typ in
     let base_var = fresh_var "base" base_t in
     let base_dec = letD base_var base_exp in
     let pick l =
@@ -721,7 +707,7 @@ and obj scope obj_typ efs bases =
         let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
         [d, f] in
 
-  let dss, fs = map (exp_field scope obj_typ) efs |> split in
+  let dss, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   let decs = append base_decs (append (flatten dss) ds') in
@@ -783,12 +769,10 @@ and text_dotE proj e =
     | "chars" -> call "@text_chars" [] [T.iter_obj T.char]
     |  _ -> assert false
 
-and block scope force_unit ds =
-  let exp = exp scope in
-  let decs = decs scope in
+and block force_unit ds =
   match ds with
   | [] -> ([], tupE [])
-  | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block scope force_unit ds
+  | [{it = S.ExpD ({it = S.BlockE ds; _}); _}] -> block force_unit ds
   | _ ->
   let prefix, last = Lib.List.split_last ds in
   match force_unit, last.it with
@@ -806,14 +790,12 @@ and block scope force_unit ds =
 
 and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
 
-and decs scope ds =
-  List.map (dec scope) (List.filter is_not_typD ds)
+and decs ds =
+  List.map dec (List.filter is_not_typD ds)
 
-and dec scope d = { (phrase' (dec' scope) d) with note = () }
+and dec d = { (phrase' dec' d) with note = () }
 
-and dec' scope at n e =
-  let exp = exp scope in
-  match e with
+and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
   | S.LetD (p, e, f) ->
     let p' = pat p in
@@ -828,7 +810,6 @@ and dec' scope at n e =
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
   | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
-    let new_scope = scope @ [id.it] in
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -855,29 +836,28 @@ and dec' scope at n e =
         let (_, _, obj_typ) = T.as_async rng_typ in
         let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
-          (wrap { it = obj_block at s new_scope (Some self_id) dfs (T.promote obj_typ);
+          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj_block at s new_scope (Some self_id) dfs rng_typ;
+        { it = obj_block at s (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
-    let qualified_name = new_scope @ [id.it] in
     let fn = {
-      it = I.FuncE (id.it, qualified_name, sort, control, typ_binds tbs, args, [rng_typ], None, body);
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], None, body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in
     I.LetD (varPat, fn)
 
-and cases scope cs = List.map (case scope Fun.id) cs
+and cases cs = List.map (case Fun.id) cs
 
-and case scope f c = phrase (case' scope f) c
+and case f c = phrase (case' f) c
 
-and case' scope f c = S.{ I.pat = pat c.pat; I.exp = f (exp scope c.exp) }
+and case' f c = S.{ I.pat = pat c.pat; I.exp = f (exp c.exp) }
 
 and pats ps = List.map pat ps
 
@@ -1068,7 +1048,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let system_body install_arg =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
-    funcE id [id] (T.Local T.Flexible) T.Returns
+    funcE id (T.Local T.Flexible) T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
@@ -1096,7 +1076,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     letD (var (id_of_full_path f) mod_typ) mod_exp ]
 
 let import_prelude prelude : import_declaration =
-  decs [] prelude.it
+  decs prelude.it
 
 let inject_decs extra_ds u =
   let open Ir in
@@ -1129,12 +1109,12 @@ let transform_import (i : S.import) : import_declaration =
       primE (I.ActorOfIdBlob t) [blobE canister_id]
   in [ letP (pat p) rhs ]
 
-let transform_unit_body (scope: I.qualified_name) (u : S.comp_unit_body) : Ir.comp_unit =
+let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
-  | S.ProgU ds -> I.ProgU (decs [] ds)
+  | S.ProgU ds -> I.ProgU (decs ds)
   | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {
-      it = build_obj u.at T.Module scope self_id fields u.note.S.note_typ;
+      it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
   | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
@@ -1152,7 +1132,7 @@ let transform_unit_body (scope: I.qualified_name) (u : S.comp_unit_body) : Ir.co
         T.promote rng
       | _ -> assert false
     in
-    let actor_expression = build_actor u.at ts scope (Some self_id) fields obj_typ in
+    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
@@ -1164,7 +1144,7 @@ let transform_unit_body (scope: I.qualified_name) (u : S.comp_unit_body) : Ir.co
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    let actor_expression = build_actor u.at [] scope self_id fields u.note.S.note_typ in
+    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
@@ -1174,7 +1154,7 @@ let transform_unit_body (scope: I.qualified_name) (u : S.comp_unit_body) : Ir.co
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
   let imports' = List.concat_map transform_import imports in
-  let body' = transform_unit_body [] body in
+  let body' = transform_unit_body body in
   inject_decs imports' body', Ir.full_flavor()
 
 
@@ -1190,9 +1170,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
   let imports' = List.concat_map transform_import imports in
-  (* TODO: Maybe use a distinct module identifier for stable functions in imported modules *)
-  (* TODO: Sanitize filename not to contain $,@ etc. *)
-  let body' = transform_unit_body [f] body in
+  let body' = transform_unit_body body in
   let prog = inject_decs imports' body' in
   match prog with
   | I.LibU (ds, e) ->
@@ -1217,7 +1195,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
       fresh_var "install_arg" T.install_arg_typ
     in
     let system_body install_arg =
-      funcE id [id] (T.Local T.Flexible) T.Returns
+      funcE id (T.Local T.Flexible) T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (T.Fut, List.hd cs, actor_t)]

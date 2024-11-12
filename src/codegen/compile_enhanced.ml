@@ -286,7 +286,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of string * Ir.qualified_name * int32 * (unit -> int32) * fun_rhs * Type.stable_closure option (* closure type *) (* function pointer calculated upon first use *)
+    | Fun of string * int32 * (unit -> int32) * fun_rhs * Type.stable_closure option (* closure type *) (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * v) list
     | Unit
@@ -297,7 +297,7 @@ module Const = struct
     | Lit of lit
 
   let rec eq v1 v2 = match v1, v2 with
-    | Fun (_, _, id1, _, _, _), Fun (_, _, id2, _, _, _) -> id1 = id2
+    | Fun (_, id1, _, _, _), Fun (_, id2, _, _, _) -> id1 = id2
     | Message fi1, Message fi2 -> fi1 = fi2
     | Obj fields1, Obj fields2 ->
       let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
@@ -2377,11 +2377,12 @@ module Closure = struct
     ) captured in
     Type.Tup variable_types
 
-  let constant env qualified_name get_fi stable_closure =
+  let constant env get_fi stable_closure =
     let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
     (match stable_closure with
     | Some stable_closure ->
       (* no captured variables in constant functions *)
+      let qualified_name = stable_closure.Type.function_path in
       let closure_type = make_stable_closure_type [] stable_closure in
       E.add_stable_func env qualified_name wasm_table_index closure_type
     | None -> ());
@@ -9013,8 +9014,8 @@ module StackRep = struct
   | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
   | Const.Lit (Const.Float64 number) -> Float.constant env number
   | Const.Opt value -> Opt.constant env (build_constant env value)
-  | Const.Fun (_, qualified_name, _, get_fi, _, stable_closure) -> 
-    Closure.constant env qualified_name get_fi stable_closure
+  | Const.Fun (_, _, get_fi, _, stable_closure) -> 
+    Closure.constant env get_fi stable_closure
   | Const.Message _ -> assert false
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) ->
@@ -9353,7 +9354,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const Const.Fun (_, _, _, mk_fi, _, _)) ->
+    | Some (VarEnv.Const Const.Fun (_, _, mk_fi, _, _)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi())))
     | _ -> assert false
@@ -9465,7 +9466,7 @@ module FuncDec = struct
     ))
 
   (* Compile a closed function declaration (captures no local variables) *)
-  let closed pre_env sort control name qualified_name args mk_body fun_rhs ret_tys at stable_closure =
+  let closed pre_env sort control name args mk_body fun_rhs ret_tys at stable_closure =
     if Type.is_shared_sort sort
     then begin
       let (fi, fill) = E.reserve_fun pre_env name in
@@ -9476,7 +9477,7 @@ module FuncDec = struct
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
       let fun_id = E.get_constant_function_id pre_env in
-      ( Const.Fun (name, qualified_name, fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs, stable_closure), fun env ae ->
+      ( Const.Fun (name, fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs, stable_closure), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -9561,21 +9562,12 @@ module FuncDec = struct
         get_clos
       else assert false (* no first class shared functions *)
 
-  let lit env ae name qualified_name sort control free_vars args mk_body ret_tys at stable_context =
+  let lit env ae name sort control free_vars args mk_body ret_tys at stable_context =
     let captured = List.filter (VarEnv.needs_capture ae) free_vars in
-    (* TODO: REMOVE THIS CHECK LOGIC *)
-    (* (match stable_context with
-    | Some Type.{ function_path; captured_variables } ->
-      assert(function_path = qualified_name);
-      List.iter (fun id -> 
-        assert(Type.Env.mem id captured_variables);
-      ) captured
-    | None -> ()); *)
-
     if ae.VarEnv.lvl = VarEnv.TopLvl then assert (captured = []);
     if captured = []
     then
-      let (ct, fill) = closed env sort control name qualified_name args mk_body Const.Complicated ret_tys at stable_context in
+      let (ct, fill) = closed env sort control name args mk_body Const.Complicated ret_tys at stable_context in
       fill env ae;
       (SR.Const ct, G.nop)
     else closure env ae sort control name captured args mk_body ret_tys at stable_context
@@ -9583,7 +9575,7 @@ module FuncDec = struct
   (* Returns a closure corresponding to a future (async block) *)
   let async_body env ae ts free_vars mk_body at =
     (* We compile this as a local, returning function, so set return type to [] *)
-    let sr, code = lit env ae "@anon_async" ["@anon_async"] (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at None in
+    let sr, code = lit env ae "@anon_async" (Type.Local Type.Flexible) Type.Returns free_vars [] mk_body [] at None in
     code ^^
     StackRep.adjust env sr SR.Vanilla
 
@@ -11177,7 +11169,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
-      | SR.Const Const.Fun (_, _, _, mk_fi, Const.PrimWrapper prim, _), _ ->
+      | SR.Const Const.Fun (_, _, mk_fi, Const.PrimWrapper prim, _), _ ->
          begin match n_args, e2.it with
          | 0, _ -> true
          | 1, _ -> true
@@ -11187,7 +11179,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | _ -> false in
 
     begin match fun_sr, sort with
-      | SR.Const Const.Fun (_, _, _, mk_fi, Const.PrimWrapper prim, _), _ when call_as_prim ->
+      | SR.Const Const.Fun (_, _, mk_fi, Const.PrimWrapper prim, _), _ when call_as_prim ->
          assert (not (Type.is_shared_sort sort));
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -11206,7 +11198,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const Const.Fun (_, _, _, mk_fi, _, _), _ ->
+      | SR.Const Const.Fun (_, _, mk_fi, _, _), _ ->
         assert (not (Type.is_shared_sort sort));
          StackRep.of_arity return_arity,
 
@@ -12586,7 +12578,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
-  | FuncE (x, qualified_name, sort, control, typ_binds, args, res_tys, stable_context, e) ->
+  | FuncE (x, sort, control, typ_binds, args, res_tys, stable_context, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
       | Type.Returns -> res_tys
@@ -12599,7 +12591,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
         Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
       | None -> ()
     );
-    FuncDec.lit env ae x qualified_name sort control captured args mk_body return_tys exp.at stable_context
+    FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at stable_context
   | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
@@ -12999,7 +12991,7 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 *)
 and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
   match exp.it with
-  | FuncE (name, qualified_name, sort, control, typ_binds, args, res_tys, stable_context, e) ->
+  | FuncE (name, sort, control, typ_binds, args, res_tys, stable_context, e) ->
     let fun_rhs =
 
       (* a few prims cannot be safely inlined *)
@@ -13030,7 +13022,7 @@ and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
         then fatal "internal error: const \"%s\": captures \"%s\", not found in static environment\n" name v
       ) captured;
       compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
-    FuncDec.closed env sort control name qualified_name args mk_body fun_rhs return_tys exp.at stable_context
+    FuncDec.closed env sort control name args mk_body fun_rhs return_tys exp.at stable_context
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
     let ae' = extend pre_ae in
