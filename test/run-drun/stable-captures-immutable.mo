@@ -7,7 +7,7 @@ actor {
         };
 
         public func stableMethod() {
-            flexibleMethod(); // OK, because method declaration is immutable
+            flexibleMethod(); // ERROR
         };
     };
 
@@ -25,7 +25,7 @@ actor {
         };
 
         func inner() {
-            innerFlexible(); // OK, because function declaration is immutable
+            innerFlexible(); // ERROR
         };
 
         function := inner;
