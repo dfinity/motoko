@@ -3066,13 +3066,14 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (obj_sort, (obj_id, _), dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, (obj_id, _), dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
-    let named_scope = match env.named_scope with
-    | Some prefix -> Some (prefix @ [id.it])
-    | None -> None
+    let named_scope = match env.named_scope, obj_sort.it, obj_id with
+    | Some prefix, _, Some name -> Some (prefix @ [name.it])
+    | Some prefix, T.Module, None -> Some (prefix @ [id.it])
+    | _, _, _ -> None
     in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
