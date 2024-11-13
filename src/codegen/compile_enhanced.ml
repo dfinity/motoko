@@ -438,6 +438,7 @@ module E = struct
   and t = {
     (* Global fields *)
     (* Static *)
+    is_canister : bool; (* denotes whether it has a main actor and uses orthogonal persistence *)
     mode : Flags.compile_mode;
     rts : Wasm_exts.CustomModule.extended_module option; (* The rts. Re-used when compiling actors *)
     trap_with : t -> string -> G.t;
@@ -508,7 +509,8 @@ module E = struct
   | SharedObject of int64 (* index in object pool *)
 
   (* The initial global environment *)
-  let mk_global mode rts trap_with : t = {
+  let mk_global is_canister mode rts trap_with : t = {
+    is_canister;
     mode;
     rts;
     trap_with;
@@ -2365,7 +2367,10 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env funptr_field ^^
-    E.call_import env "rts" "resolve_function_call" ^^
+    (if env.E.is_canister then
+      E.call_import env "rts" "resolve_function_call"
+    else
+      G.nop) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -2388,7 +2393,10 @@ module Closure = struct
     | None -> ());
     Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
-      E.call_import env "rts" "resolve_function_literal";
+      (if env.E.is_canister then
+        E.call_import env "rts" "resolve_function_literal"
+      else
+        G.nop);
       compile_unboxed_const 0L (* no captured variables *)
     ])
 
@@ -8799,28 +8807,34 @@ module EnhancedOrthogonalPersistence = struct
     | Some descriptor -> descriptor
     | None -> assert false
 
-  let create_type_descriptor env actor_type (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
-    let stable_functions = StableFunctions.sorted_stable_functions env in
-    let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
-    let stable_types = actor_type::stable_closures in
-    let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
-    let actor_type_index = List.hd type_indices in
-    assert(actor_type_index = 0l);
-    let closure_type_indices = List.tl type_indices in
-    let stable_functions = List.map2 (
-      fun (name_hash, wasm_table_index, _) closure_type_index -> 
-        (name_hash, wasm_table_index, closure_type_index)
-    ) stable_functions closure_type_indices in
-    let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
-    let descriptor = get_stable_type_descriptor env in
-    let candid_data_binary = [StaticBytes.Bytes candid_data] in
-    let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
-    set_candid_data_length candid_data_length;
-    let type_offsets_binary = [StaticBytes.i64s (List.map Int64.of_int type_offsets)] in
-    let type_offsets_length = E.replace_data_segment env E.(descriptor.type_offsets_segment) type_offsets_binary in
-    set_type_offsets_length type_offsets_length;
-    let function_map_length = E.replace_data_segment env E.(descriptor.function_map_segment) stable_function_map in
-    set_function_map_length function_map_length
+  let create_type_descriptor env actor_type_opt (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
+    match actor_type_opt with
+    | None ->
+      (set_candid_data_length 0L;
+      set_type_offsets_length 0L;
+      set_function_map_length 0L)
+    | Some actor_type ->
+      (let stable_functions = StableFunctions.sorted_stable_functions env in
+      let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
+      let stable_types = actor_type::stable_closures in
+      let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
+      let actor_type_index = List.hd type_indices in
+      assert(actor_type_index = 0l);
+      let closure_type_indices = List.tl type_indices in
+      let stable_functions = List.map2 (
+        fun (name_hash, wasm_table_index, _) closure_type_index -> 
+          (name_hash, wasm_table_index, closure_type_index)
+      ) stable_functions closure_type_indices in
+      let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
+      let descriptor = get_stable_type_descriptor env in
+      let candid_data_binary = [StaticBytes.Bytes candid_data] in
+      let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
+      set_candid_data_length candid_data_length;
+      let type_offsets_binary = [StaticBytes.i64s (List.map Int64.of_int type_offsets)] in
+      let type_offsets_length = E.replace_data_segment env E.(descriptor.type_offsets_segment) type_offsets_binary in
+      set_type_offsets_length type_offsets_length;
+      let function_map_length = E.replace_data_segment env E.(descriptor.function_map_segment) stable_function_map in
+      set_function_map_length function_map_length)
 
   let load_type_descriptor env =
     (* Object pool is not yet initialized, cannot use Tagged.share *)
@@ -8831,8 +8845,11 @@ module EnhancedOrthogonalPersistence = struct
 
   let register_stable_type env =
     assert (not !(E.(env.object_pool.frozen)));
-    load_type_descriptor env ^^
-    E.call_import env "rts" "register_stable_type"
+    if env.E.is_canister then
+      (load_type_descriptor env ^^
+      E.call_import env "rts" "register_stable_type")
+    else
+      G.nop
 
   let load_old_field env field get_old_actor =
     if field.Type.typ = Type.(Opt Any) then
@@ -9529,14 +9546,16 @@ module FuncDec = struct
         get_clos ^^
         
         let wasm_table_index = E.add_fun_ptr env fi in
-        (match stable_context with
-        | Some stable_closure ->
+        (match env.E.is_canister, stable_context with
+        | false, _ ->
+          compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index)
+        | true, Some stable_closure ->
           let qualified_name = stable_closure.Type.function_path in
           let closure_type = Closure.make_stable_closure_type captured stable_closure in
           E.add_stable_func env qualified_name wasm_table_index closure_type;
           compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
           E.call_import env "rts" "resolve_function_literal"
-        | None ->
+        | true, None ->
           let flexible_function_id = Int64.sub (Int64.sub 0L (Int64.of_int32 wasm_table_index)) 1L in
           compile_unboxed_const flexible_function_id) ^^
 
@@ -13421,7 +13440,13 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Enhanced orthogonal persistence requires a fixed layout. *)
   assert !Flags.rtti; (* Use precise tagging for graph copy. *)
   assert (!Flags.gc_strategy = Flags.Incremental); (* Define heap layout with the incremental GC. *)
-  let env = E.mk_global mode rts IC.trap_with in
+
+  let is_canister = match prog, mode with
+  | (ActorU (_, _, _, _, _), _), (Flags.ICMode | Flags.RefMode) -> true
+  | _ -> false
+  in
+
+  let env = E.mk_global is_canister mode rts IC.trap_with in
 
   IC.register_globals env;
   Stack.register_globals env;
@@ -13456,8 +13481,8 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   in
 
   let actor_type = match prog with
-  | (ActorU (_, _, _, up, _), _) -> up.stable_type
-  | _ -> fatal "not supported"
+  | (ActorU (_, _, _, up, _), _) -> Some up.stable_type
+  | _ -> None
   in
 
   conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o
