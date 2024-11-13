@@ -405,7 +405,6 @@ let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        Printf.printf "NESTED IMPORTS\n";
         let identified_imports = resolve_import_names qualified_name prog in
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
         let* () = go_set identified_imports cur_pkg_opt more_imports in
@@ -453,7 +452,6 @@ let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : lo
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
-  Printf.printf "LOAD PROGS\n";
   let root_imports = List.concat_map (resolve_import_names (Some [])) progs' in
   let* libs, senv' = chase_imports root_imports parsefn senv libs in
   let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
@@ -464,7 +462,6 @@ let load_decl parse_one senv : load_decl_result =
   let open Diag.Syntax in
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
-  Printf.printf "LOAD DECL\n";
   let root_imports = resolve_import_names (Some []) prog in
   let* libs, senv' = chase_imports root_imports parse_file senv libs in
   let* t, sscope = infer_prog senv' (Some "<toplevel>") (Async_cap.(AwaitCap top_cap)) prog in

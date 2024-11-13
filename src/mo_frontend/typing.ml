@@ -3189,10 +3189,6 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
     )
 
 let check_lib named_scope scope pkg_opt lib : Scope.t Diag.result =
-  let filename = lib.Source.note.Syntax.filename in
-  Printf.printf "CHECK LIB %s %s\n" (Filename.basename filename) (match named_scope with
-  | None -> "(no name)"
-  | Some name -> String.concat "." name);
   Diag.with_message_store
     (fun msgs ->
       recover_opt

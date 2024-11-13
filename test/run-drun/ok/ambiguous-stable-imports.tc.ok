@@ -1,0 +1,8 @@
+ambiguous-stable-imports.mo:9.16-9.18: type error [M0131], variable f0 is declared stable but has non-stable type
+  () -> ()
+ambiguous-stable-imports.mo:12.16-12.18: type error [M0131], variable f1 is declared stable but has non-stable type
+  () -> ()
+ambiguous-stable-imports.mo:15.16-15.18: type error [M0131], variable f2 is declared stable but has non-stable type
+  () -> ()
+ambiguous-stable-imports.mo:18.16-18.18: type error [M0131], variable f3 is declared stable but has non-stable type
+  () -> ()

@@ -748,7 +748,6 @@ module E = struct
       (match NameEnv.find_opt name !(env.stable_functions) with
       | Some _ -> ()
       | None ->
-        Printf.printf "ADD STABLE FUNC: %s\n" name;
         env.stable_functions := NameEnv.add name (wasm_table_index, closure_type) !(env.stable_functions))
 
   let get_elems env =
