@@ -799,13 +799,20 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            // There is exactly one annotation per function in our persistent type table.
             let annotation_count1 = leb128_decode(&mut tb1);
+            let annotation_count2 = leb128_decode(&mut tb2);
+            if annotation_count1 != annotation_count2 {
+                return false;
+            }
+            if annotation_count1 == 0 && annotation_count1 == 0 {
+                return true;
+            }
+            // There is at most one annotation per function in our persistent type table.
             assert_eq!(annotation_count1, 1);
+            assert_eq!(annotation_count2, 1);
+
             let annotation1 = read_byte(&mut tb1);
 
-            let annotation_count2 = leb128_decode(&mut tb2);
-            assert_eq!(annotation_count2, 1);
             let annotation2 = read_byte(&mut tb2);
 
             if annotation1 != annotation2 {
