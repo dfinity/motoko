@@ -225,6 +225,21 @@ let prog_imports (p : prog): (url * resolved_import ref * region) list =
   let _ = ignore (Traversals.over_prog f p) in
   List.rev !res
 
+let identified_imports (p : prog) : (string * Syntax.lib_path) list =
+  List.filter_map (fun dec ->
+    match dec.it with
+    | LetD ({it = VarP id; _}, {it = ImportE (url, resolved); _}, _) ->
+      (Printf.printf "IMPORT FOUND %s %s %s\n" id.it url (match !resolved with 
+      | Unresolved -> "unresolved"
+      | LibPath { path; _} -> path
+      | IDLPath _ -> "IDL PATH"
+      | PrimPath -> "Prim" );
+      match !resolved with
+      | LibPath lib_path -> Some (id.it, lib_path)
+      | _ -> None)
+    | _ -> None
+    ) p.it
+
 type actor_idl_path = filepath option
 type package_urls = url M.t
 type actor_aliases = url M.t

@@ -208,11 +208,11 @@ let rec check_progs ?(viper_mode=false) senv progs : Scope.scope Diag.result =
     let senv' = Scope.adjoin senv sscope in
     check_progs ~viper_mode senv' progs'
 
-let check_lib senv pkg_opt lib : Scope.scope Diag.result =
+let check_lib qualified_name senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
   phase "Checking" (Filename.basename filename);
   let open Diag.Syntax in
-  let* sscope = Typing.check_lib senv pkg_opt lib in
+  let* sscope = Typing.check_lib qualified_name senv pkg_opt lib in
   phase "Definedness" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
   Diag.return sscope
@@ -315,7 +315,7 @@ let check_prim () : Syntax.lib * stat_env =
       at = no_region;
       note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
     } in
-    match check_lib senv0 None lib with
+    match check_lib None senv0 None lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -340,7 +340,27 @@ type load_result =
 type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
+type qualified_name = string list
+type identified_imports = (qualified_name * Syntax.lib_path) list
+
+let resolve_import_names base prog : identified_imports =
+  match base with
+  | None -> []
+  | Some prefix ->
+    let imports = ResolveImport.identified_imports prog in
+    List.map (fun (id, path) -> (prefix@[id], path)) imports
+
+let unique_import_name identified_imports resolved_import =
+  match resolved_import with
+  | Syntax.(LibPath {path = search_path; _}) ->
+    (let candidates = List.filter (fun (id, lib_path) -> 
+      lib_path.Syntax.path = search_path) identified_imports in
+    match candidates with
+    | [(id, _)] -> Some id (* unique import bound to variable *)
+    | _ -> None) (* import without variable binding or multiple imports of same library url *)
+  | _ -> None (* no library import *)  
+
+let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -359,7 +379,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go pkg_opt ri = match ri.Source.it with
+  let rec go qualified_name pkg_opt ri = match ri.Source.it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -385,10 +405,12 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
+        Printf.printf "NESTED IMPORTS\n";
+        let identified_imports = resolve_import_names qualified_name prog in
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
-        let* () = go_set cur_pkg_opt more_imports in
+        let* () = go_set identified_imports cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv cur_pkg_opt lib in
+        let* sscope = check_lib qualified_name !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -417,9 +439,13 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
           Diag.return ()
-  and go_set pkg_opt todo = Diag.traverse_ (go pkg_opt) todo
+  and go_set identified_imports pkg_opt todo =
+    Diag.traverse_ (fun import ->
+      let qualified_name = unique_import_name identified_imports import.Source.it in
+      go qualified_name pkg_opt import
+    ) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
+  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set root_imports None imports)
 
 let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
   let open Diag.Syntax in
@@ -427,7 +453,9 @@ let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : lo
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
-  let* libs, senv' = chase_imports parsefn senv libs in
+  Printf.printf "LOAD PROGS\n";
+  let root_imports = List.concat_map (resolve_import_names (Some [])) progs' in
+  let* libs, senv' = chase_imports root_imports parsefn senv libs in
   let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
   let* senv'' = check_progs ~viper_mode senv' progs' in
   Diag.return (libs, progs', senv'')
@@ -436,7 +464,9 @@ let load_decl parse_one senv : load_decl_result =
   let open Diag.Syntax in
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
-  let* libs, senv' = chase_imports parse_file senv libs in
+  Printf.printf "LOAD DECL\n";
+  let root_imports = resolve_import_names (Some []) prog in
+  let* libs, senv' = chase_imports root_imports parse_file senv libs in
   let* t, sscope = infer_prog senv' (Some "<toplevel>") (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)

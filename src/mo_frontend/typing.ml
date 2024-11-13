@@ -61,7 +61,7 @@ type env =
     captured: S.t ref;
   }
 
-let env_of_scope ?(viper_mode=false) msgs scope =
+let env_of_scope ?(viper_mode=false) msgs scope named_scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
@@ -82,7 +82,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     unused_warnings = ref [];
     reported_stable_memory = ref false;
     viper_mode;
-    named_scope = Some [];
+    named_scope;
     captured = ref S.empty;
   }
 
@@ -3140,7 +3140,7 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog : (T.typ * Scope
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope ~viper_mode msgs scope in
+          let env0 = env_of_scope ~viper_mode msgs scope (Some []) in
           let env = {
              env0 with async = async_cap;
           } in
@@ -3164,7 +3164,7 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
-        let env = env_of_scope ~viper_mode msgs scope in
+        let env = env_of_scope ~viper_mode msgs scope (Some []) in
         let report ds =
           match ds with
             [] -> ()
@@ -3188,12 +3188,16 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
         ) progs
     )
 
-let check_lib scope pkg_opt lib : Scope.t Diag.result =
+let check_lib named_scope scope pkg_opt lib : Scope.t Diag.result =
+  let filename = lib.Source.note.Syntax.filename in
+  Printf.printf "CHECK LIB %s %s\n" (Filename.basename filename) (match named_scope with
+  | None -> "(no name)"
+  | Some name -> String.concat "." name);
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = env_of_scope msgs scope in
+          let env = env_of_scope msgs scope named_scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
@@ -3246,7 +3250,7 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
     (fun msgs ->
       recover_opt
         (fun (decs, sfs) ->
-          let env = env_of_scope msgs scope in
+          let env = env_of_scope msgs scope (Some []) in
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           check_ids env "object type" "field"

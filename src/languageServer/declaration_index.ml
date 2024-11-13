@@ -352,6 +352,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
   in
   let package_env =
     Pipeline.chase_imports
+      []
       (fun _ -> Vfs.parse_file vfs)
       Pipeline.initial_stat_env package_paths
   in

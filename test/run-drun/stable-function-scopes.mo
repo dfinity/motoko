@@ -22,16 +22,19 @@ actor {
         };
     };
 
-    stable var f0 = TestObject.testFunc; // temporary
+    func fail() {
+        assert(false);
+    };
+
+    stable var testInner = fail; // temporary
 
     func testFunc() {
         Prim.debugPrint("ACTOR FUNC");
         func testFunc() {
             Prim.debugPrint("INNER FUNC");
         };
-        f0 := testFunc;
+        testInner := testFunc;
     };
-    f0();
 
     Prim.debugPrint("---------------------");
 
@@ -50,17 +53,13 @@ actor {
     stable let f5 = M1.TestObject.testFunc;
     f5();
 
-    stable let f6 = testFunc;
+    stable let f6 = M2.TestClass().testFunc;
     f6();
 
-    stable let f7 = M2.TestClass().testFunc;
+    stable let f7 = M2.TestObject.testFunc;
     f7();
 
-    stable let f8 = M2.TestObject.testFunc;
-    f8();
-
-    stable let f9 = testFunc;
-    f9();
+    testInner();
 };
 
 //CALL upgrade ""

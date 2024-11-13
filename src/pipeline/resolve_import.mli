@@ -12,6 +12,8 @@ type actor_aliases = string Flags.M.t
 
 type resolved_imports = Syntax.resolved_import Source.phrase list
 
+val identified_imports : Syntax.prog -> (string * Syntax.lib_path) list
+
 val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
 
 type flags = {
