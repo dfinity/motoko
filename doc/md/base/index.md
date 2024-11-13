@@ -34,6 +34,8 @@
 * [None](None.md) The absent value
 * [Option](Option.md) Typesafe nulls
 * [Order](Order.md) Order
+* [OrderedMap](OrderedMap.md) Stable key-value map implemented as a red-black tree with nodes storing key-value pairs.
+* [OrderedSet](OrderedSet.md) Stable ordered set implemented as a red-black tree.
 * [Prelude](Prelude.md) General utilities
 * [Principal](Principal.md) Module for interacting with Principals (users and canisters).
 * [RBTree](RBTree.md) Key-value map implemented as a red-black tree (RBTree) with nodes storing key-value pairs.

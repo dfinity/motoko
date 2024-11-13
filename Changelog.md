@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## 0.13.3 (2024-11-13)
+
+* motoko (`moc`)
+
+  * typing: suggest conversions between primitive types from imported libraries or, with --ai-errors, all available package libraries (#4747).
+
+* motoko-base
+
+  * Add modules `OrderedMap` and `OrderedSet` to replace `RBTree` with improved functionality, performance and ergonomics avoiding the need for preupgrade hooks (thanks to Serokell) (#662).
+
 ## 0.13.2 (2024-10-18)
 
 * motoko (`moc`)
