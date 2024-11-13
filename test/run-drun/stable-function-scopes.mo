@@ -53,11 +53,17 @@ actor {
     stable let f5 = M1.TestObject.testFunc;
     f5();
 
-    stable let f6 = M2.TestClass().testFunc;
+    stable let f6 = M1.testFunc;
     f6();
 
-    stable let f7 = M2.TestObject.testFunc;
+    stable let f7 = M2.TestClass().testFunc;
     f7();
+
+    stable let f8 = M2.TestObject.testFunc;
+    f8();
+
+    stable let f9 = M2.testFunc;
+    f9();
 
     testInner();
 };

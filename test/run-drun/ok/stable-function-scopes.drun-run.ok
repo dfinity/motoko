@@ -5,8 +5,10 @@ debug.print: OBJECT FUNC
 debug.print: ACTOR FUNC
 debug.print: MODULE1 CLASS FUNC
 debug.print: MODULE1 OBJECT FUNC
+debug.print: MODULE1 ACTOR FUNC
 debug.print: MODULE2 CLASS FUNC
 debug.print: MODULE2 OBJECT FUNC
+debug.print: MODULE2 ACTOR FUNC
 debug.print: INNER FUNC
 ingress Completed: Reply: 0x4449444c0000
 debug.print: ---------------------
@@ -15,7 +17,9 @@ debug.print: OBJECT FUNC
 debug.print: ACTOR FUNC
 debug.print: MODULE1 CLASS FUNC
 debug.print: MODULE1 OBJECT FUNC
+debug.print: MODULE1 ACTOR FUNC
 debug.print: MODULE2 CLASS FUNC
 debug.print: MODULE2 OBJECT FUNC
+debug.print: MODULE2 ACTOR FUNC
 debug.print: INNER FUNC
 ingress Completed: Reply: 0x4449444c0000

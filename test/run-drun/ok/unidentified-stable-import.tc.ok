@@ -1,4 +1,4 @@
-unidentified-stable-import.mo:8.16-8.18: type error [M0131], variable f0 is declared stable but has non-stable type
+unidentified-stable-import.mo:7.16-7.18: type error [M0131], variable f0 is declared stable but has non-stable type
   () -> ()
-unidentified-stable-import.mo:11.16-11.18: type error [M0131], variable f1 is declared stable but has non-stable type
+unidentified-stable-import.mo:10.16-10.18: type error [M0131], variable f1 is declared stable but has non-stable type
   () -> ()

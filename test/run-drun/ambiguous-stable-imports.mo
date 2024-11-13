@@ -1,5 +1,4 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-import Prim "mo:prim";
 //Multiple imports of same library
 import A "stable-function-scopes/module1";
 import B "stable-function-scopes/module1";

@@ -1,5 +1,4 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-import Prim "mo:prim";
 //No identifier for imported module -> cannot be used for stable functions/objects
 import { TestClass; TestObject } "stable-function-scopes/module1";
 

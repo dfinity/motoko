@@ -5,7 +5,7 @@
 //!
 //! A stable scope is:
 //! * the main actor
-//! * an imported module,
+//! * a module imported with a unique identifier from a stable scope,
 //! * a named function in a stable scope,
 //! * a class in a stable scope,
 //! * a named object in a stable scope.
@@ -20,8 +20,10 @@
 //! * Their function type in the new version need to be compatible with the previous version (super-type).
 //! * Their closure type in the new version must be compatible with the previous version (super-type).
 //!
-//! All other functions, such as lambdas, or named functions in a lambda, are flexible
-//! functions. A stable function type is a sub-type of a flexible function type with
+//! All other functions, such as lambdas, named functions in a lambda, or functions 
+//! imported from a module without a unique import identifier, are flexible functions. 
+//! 
+//! A stable function type is a sub-type of a flexible function type with
 //! type-compatible signature, i.e. `stable X' -> Y <: X -> Y'` for `X' <: X` and `Y' :< Y`.
 //!
 //! Function references are encoded by a function ids in the following representation:
