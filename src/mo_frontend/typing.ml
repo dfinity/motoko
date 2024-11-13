@@ -319,7 +319,7 @@ let leave_scope env inner_identifiers initial_usage =
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
   let final_usage = S.union initial_usage unshadowed_usage in
   env.used_identifiers := final_usage;
-  env.captured := unshadowed_usage
+  env.captured := S.union !(env.captured) unshadowed_usage
 
 (* Stable functions support *)
 
@@ -347,9 +347,10 @@ let stable_function_closure env named_scope =
     }
 
 let enter_named_scope env name =
+  env.captured := S.empty;
   if (String.contains name '@') || (String.contains name '$') then
     None
-  else 
+  else
     (match env.named_scope with
     | None -> None
     | Some prefix -> Some (prefix @ [name]))

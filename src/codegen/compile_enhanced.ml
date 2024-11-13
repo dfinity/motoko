@@ -12605,11 +12605,6 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
-    (match stable_context with 
-      | Some Type.{ function_path; captured_variables } -> 
-        Type.Env.iter (fun id _ -> Printf.printf "  %s\n" id) captured_variables
-      | None -> ()
-    );
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at stable_context
   | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
