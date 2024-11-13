@@ -1591,7 +1591,7 @@ and infer_exp'' env exp : T.typ =
     let ts2 = List.map (check_typ env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
-    let is_flexible = env.named_scope = None || sort = T.Local T.Flexible in
+    let is_flexible = env.named_scope = None || sort <> T.Local T.Stable in
     let named_scope = if is_flexible then None else enter_named_scope env name in
     if not env.pre then begin
       let env'' =
