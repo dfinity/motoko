@@ -1,7 +1,7 @@
-import { debugPrint } "mo:⛔";
+import { call_raw; debugPrint; principalOfActor } = "mo:⛔";
 import Cycles = "cycles/cycles";
 
-actor {
+actor A {
 
     func foo(next : () -> async ()) : async () {
         await (with cycles = 3000) next()
@@ -13,6 +13,10 @@ actor {
 
     public func oneshot() {
         debugPrint ("oneshot: " # debug_show(Cycles.available()));
+    };
+
+    public func rawable() : async () {
+        debugPrint ("rawable: " # debug_show(Cycles.available()));
     };
 
     public func test() : async () {
@@ -58,8 +62,16 @@ actor {
     };
 
     public func test3() : async () {
+        debugPrint "test3()";
         oneshot();
         (with cycles = 3456) oneshot();
+    };
+
+    public func test4() : async () {
+        debugPrint "test4()";
+        ignore await call_raw(principalOfActor A, "rawable", "DIDL\00\00");
+        //Cycles.add<system>(34567);
+        //(with cycles = 3456) oneshot();
     }
 }
 
@@ -71,3 +83,4 @@ actor {
 //CALL ingress test "DIDL\x00\x00"
 //CALL ingress test2 "DIDL\x00\x00"
 //CALL ingress test3 "DIDL\x00\x00"
+//CALL ingress test4 "DIDL\x00\x00"
