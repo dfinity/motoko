@@ -6661,6 +6661,7 @@ module Serialization = struct
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
   let idl_type_variable = -131l
+  let idl_type_parameter = -132l
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -6693,6 +6694,7 @@ module Serialization = struct
           | Prim Blob -> ()
           | Mut t -> go t
           | Var _ -> ()
+          | Con (con, ts) -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -6813,11 +6815,11 @@ module Serialization = struct
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
-          | Local Stable, _ ->
-            add_leb128 1; add_u8 255; (* stable local *)
+          | Local _, _ -> (* local *)
+            (* Note: These are generally stable functions, however with one exception:
+               In function parameters, flexible local functions can even occur. *)
+            add_leb128 1; add_u8 255; (* local *)
             add_generic_types env tbs
-          | Local Flexible, _ ->
-            assert false
         end
       | Obj (Actor, fs) ->
         add_sleb128 idl_service;
@@ -6832,6 +6834,9 @@ module Serialization = struct
       | Var (_, index) ->
         add_sleb128 idl_type_variable;
         add_leb128 index
+      | Con (con, _) ->
+        add_sleb128 idl_type_parameter;
+        add_leb128 0 (* TODO: Store index of type parameter in order of appearance, considering also nested generic classes and functions *)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -8749,6 +8754,7 @@ module StableFunctions = struct
   let sorted_stable_functions env =
     let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type) remainder -> 
       let name_hash = Mo_types.Hash.hash name in
+      Printf.printf "FUNCTION %s HASH %n\n" name (Int32.to_int name_hash);
       (name_hash, wasm_table_index, closure_type) :: remainder) 
       !(env.E.stable_functions) [] 
     in

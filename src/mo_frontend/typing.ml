@@ -756,7 +756,11 @@ and check_typ' env typ : T.typ =
   | TupT typs ->
     T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
   | FuncT (sort, binds, typ1, typ2) ->
-    let cs, tbs, te, ce = check_typ_binds env binds in
+    let stable_scope = match sort.it with
+    | T.Local T.Stable -> true
+    | _ -> false
+    in
+    let cs, tbs, te, ce = check_typ_binds env stable_scope binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
@@ -844,7 +848,7 @@ and check_typ' env typ : T.typ =
     check_typ env typ
 
 and check_typ_def env at (id, typ_binds, typ) : T.kind =
-  let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
+  let cs, tbs, te, ce = check_typ_binds {env with pre = true} false typ_binds in
   let env' = adjoin_typs env te ce in
   let t = check_typ env' typ in
   let k = T.Def (T.close_binds cs tbs, T.close cs t) in
@@ -894,13 +898,14 @@ and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
   List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
 
-and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
+and check_typ_binds env stable_scope typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
+  let binding = if stable_scope then [T.stable_binding] else [] in
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs =
     List.map2 (fun x tb ->
       match tb.note with
       | Some c -> c
-      | None -> Cons.fresh x (T.Abs ([], T.Pre))) xs typ_binds in
+      | None -> Cons.fresh x (T.Abs (binding, T.Pre))) xs typ_binds in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -916,7 +921,7 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   check_typ_bind_sorts env tbs;
   let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
-  let ks = List.map (fun t -> T.Abs ([], t)) ts in
+  let ks = List.map (fun t -> T.Abs (binding, t)) ts in
   List.iter2 (fun c k ->
     match Cons.kind c with
     | T.Abs (_, T.Pre) -> T.set_kind c k
@@ -927,12 +932,14 @@ and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * S
   List.iter2 (fun typ_bind c -> typ_bind.note <- Some c) typ_binds cs;
   cs, tbs, te, T.ConSet.of_list cs
 
-and check_typ_bind env typ_bind : T.con * T.bind * Scope.typ_env * Scope.con_env =
-  match check_typ_binds env [typ_bind] with
+and check_typ_bind env stable_scope typ_bind : T.con * T.bind * Scope.typ_env * Scope.con_env =
+  match check_typ_binds env stable_scope [typ_bind] with
   | [c], [tb], te, cs -> c, tb, te, cs
   | _ -> assert false
 
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
+  let is_stable = List.mem T.stable_binding tbs in
+  let tbs = List.filter (fun bind -> bind <> T.stable_binding) tbs in
   let pars = List.length tbs in
   let args = List.length ts in
   if pars <> args then begin
@@ -954,6 +961,10 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
             "type argument%a\ndoes not match parameter bound%a"
             display_typ_expand t
             display_typ_expand u;
+        if is_stable && not (T.stable t) then
+          local_error env at' "M0203"
+            "Type argument%a\nhas to be of a stable type to match the type parameter "
+            display_typ_expand t;
         go tbs' ts' ats'
     | [], [], [] -> ()
     | _  -> assert false
@@ -1581,7 +1592,8 @@ and infer_exp'' env exp : T.typ =
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
     let sort, ve = check_shared_pat env shared_pat in
-    let cs, tbs, te, ce = check_typ_binds env typ_binds in
+    let is_flexible = env.named_scope = None || sort <> T.Local T.Stable in
+    let cs, tbs, te, ce = check_typ_binds env (not is_flexible) typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
@@ -1590,7 +1602,6 @@ and infer_exp'' env exp : T.typ =
     let ts2 = List.map (check_typ env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
-    let is_flexible = env.named_scope = None || sort <> T.Local T.Stable in
     let named_scope = if is_flexible then None else enter_named_scope env name in
     if not env.pre then begin
       let env'' =
@@ -1776,7 +1787,7 @@ and infer_exp'' env exp : T.typ =
     error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
-    let c, tb, ce, cs = check_typ_bind env typ_bind in
+    let c, tb, ce, cs = check_typ_bind env false typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with
@@ -1971,7 +1982,7 @@ and check_exp' env0 t exp : T.typ =
       scope_info env t1 exp.at;
       scope_info env t1' exp.at
     end;
-    let c, tb, ce, cs = check_typ_bind env tb in
+    let c, tb, ce, cs = check_typ_bind env false tb in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with
@@ -2759,10 +2770,11 @@ and infer_dec env dec : T.typ =
     T.unit
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
     let (t, _, _, _, _) = T.Env.find id.it env.vals in
+    let stable_scope = env.named_scope <> None in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let cs, tbs, te, ce = check_typ_binds env typ_binds in
+      let cs, tbs, te, ce = check_typ_binds env stable_scope typ_binds in
       let env' = adjoin_typs env te ce in
       let in_actor = obj_sort.it = T.Actor in
       (* Top-level actor class identifier is implicitly public and thus considered used. *)
@@ -3021,7 +3033,8 @@ and infer_dec_typdecs env dec : Scope.t =
   | ClassD (shared_pat, id, binds, pat, _typ_opt, obj_sort, self_id, dec_fields) ->
     let c = T.Env.find id.it env.typs in
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
-    let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
+    let stable_scope = env.named_scope <> None in
+    let cs, tbs, te, ce = check_typ_binds {env with pre = true} stable_scope binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
     let in_actor = obj_sort.it = T.Actor in
@@ -3116,7 +3129,8 @@ and infer_dec_valdecs env dec : Scope.t =
         local_error env dec.at "M0140"
           "actor classes with type parameters are not supported yet";
     end;
-    let cs, tbs, te, ce = check_typ_binds env typ_binds in
+    let stable_scope = env.named_scope <> None in
+    let cs, tbs, te, ce = check_typ_binds env stable_scope typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in

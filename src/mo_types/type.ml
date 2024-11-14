@@ -73,6 +73,13 @@ and kind =
 
 let empty_src = {depr = None; region = Source.no_region}
 
+let stable_binding : bind =
+  {
+    var = "@stable";
+    sort = Scope;
+    bound = Any;
+  }
+
 (* Efficient comparison *)
 let tag_prim = function
   | Null -> 0
@@ -552,6 +559,7 @@ let open_binds tbs =
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
+  let tbs = List.filter (fun bind -> bind <> stable_binding) tbs in
   assert (List.length ts = List.length tbs);
   open_ ts t
 
@@ -831,7 +839,8 @@ let serializable allow_mut allow_stable_functions t =
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
-        | Abs _ -> false
+        | Abs (bind_list, _) ->
+          allow_stable_functions && List.mem stable_binding bind_list
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t -> go t

@@ -72,6 +72,8 @@ const IDL_EXT_blob: i32 = -129;
 const IDL_EXT_tuple: i32 = -130;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_type_variable: i32 = -131;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_type_parameter: i32 = -132;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -849,6 +851,11 @@ pub(crate) unsafe fn memory_compatible(
             true
         }
         (IDL_EXT_type_variable, IDL_EXT_type_variable) => {
+            let index1 = leb128_decode(&mut tb1);
+            let index2 = leb128_decode(&mut tb2);
+            index1 == index2
+        }
+        (IDL_EXT_type_parameter, IDL_EXT_type_parameter) => {
             let index1 = leb128_decode(&mut tb1);
             let index2 = leb128_decode(&mut tb2);
             index1 == index2
