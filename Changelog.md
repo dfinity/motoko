@@ -5,7 +5,7 @@
 * motoko (`moc`)
 
   * typing: suggest conversions between primitive types from imported libraries
-    and, with --ai-errors, all available package libraries (#4747).
+    and, with `--ai-errors`, all available package libraries (#4747).
 
 * motoko-base
 
