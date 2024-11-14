@@ -10923,22 +10923,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
          code1 ^^
          Type.(match as_obj par.note.Note.typ with
-         | Object, [] -> compile_unboxed_zero (* a dummy closure *)
-         |  _ -> compile_exp_vanilla env ae par) ^^ (* parenthetical *)
+               | Object, [] -> compile_unboxed_zero (* a dummy closure *)
+               | _ -> compile_exp_vanilla env ae par) ^^ (* parenthetical *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
       | _, Type.Local ->
-         let (set_clos, get_clos) = new_local env "clos" in
+         let set_clos, get_clos = new_local env "clos" in
 
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          Closure.prepare_closure_call env ^^ (* FIXME: move to front elsewhere too *)
          set_clos ^^
          Type.(match as_obj par.note.Note.typ, ret_tys with
-         | (Object, []), _ -> get_clos (* just the closure *)
-         |  _, [ret] when is_async_fut ret -> Arr.lit env Tagged.T [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
-         | _ -> get_clos) ^^ (* just the closure *)
+               | (Object, []), _ -> get_clos (* just the closure *)
+               | _, [ret] when is_async_fut ret -> Arr.lit env Tagged.T [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
+               | _ -> get_clos) ^^ (* just the closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
@@ -10949,8 +10949,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
          let (set_arg, get_arg) = new_local env "arg" in
          let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
-         let add_cycles = Internals.add_cycles env ae in
-
+         let add_cycles = Type.(match as_obj par.note.Note.typ with
+                                | Object, [] -> Internals.add_cycles env ae (* legacy *)
+                                | _ -> compile_exp_vanilla env ae par ^^ Object.load_idx env par.note.Note.typ "cycles" ^^ Cycles.add env) (* parenthetical *)
+         in
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          set_meth_pair ^^
