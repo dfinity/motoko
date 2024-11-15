@@ -1,0 +1,4 @@
+install $ID stable-counter/stable-counter.mo ""
+ingress $ID inc "DIDL\x00\x00"
+upgrade $ID stable-counter/stable-counter.mo ""
+ingress $ID inc "DIDL\x00\x00"

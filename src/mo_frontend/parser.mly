@@ -162,13 +162,13 @@ let share_dec d =
   | LetD (p, e, f) -> LetD (p, share_exp e, f) @? d.at
   | _ -> d
 
-let share_stab stab_opt dec =
+let share_stab default_stab stab_opt dec =
   match stab_opt with
   | None ->
     (match dec.it with
      | VarD _
      | LetD _ ->
-       Some (Flexible @@ dec.at)
+       Some (default_stab @@ dec.at)
      | _ -> None)
   | _ -> stab_opt
 
@@ -179,12 +179,12 @@ let ensure_system_cap (df : dec_field) =
       { df with it = { df.it with dec = { df.it.dec with it } } }
     | _ -> df
 
-let share_dec_field (df : dec_field) =
+let share_dec_field default_stab (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab df.it.stab df.it.dec}}
+      stab = share_stab Flexible df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
@@ -193,7 +193,14 @@ let share_dec_field (df : dec_field) =
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
     }
-  | _ -> df
+  | _ ->
+    {df with it =
+       {df.it with stab =
+          match df.it.stab with
+          | None -> Some (default_stab @@ df.it.dec.at)
+          | some -> some}
+    }
+
 
 and objblock s id ty dec_fields =
   List.iter (fun df ->
@@ -865,18 +872,23 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+  | s=obj_sort xf=id_opt t=annot_opt EQ? stab=stab efs=obj_body
     { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
+          let default_stab =
+            match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
           let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s id t (List.map share_dec_field efs) @? at $sloc)
+                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock s None t efs @? at $sloc
       in
@@ -890,11 +902,15 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
+      tps=typ_params_opt p=pat_plain t=annot_opt stab=stab cb=class_body
     { let x, dfs = cb in
       let dfs', tps', t' =
         if s.it = Type.Actor then
-          (List.map share_dec_field dfs,
+          let default_stab = match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
+          (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)
