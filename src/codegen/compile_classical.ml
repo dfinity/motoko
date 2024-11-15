@@ -12130,11 +12130,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
     let _, _, _, ts2, _ = Type.as_func k.note.Note.typ in
-    let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-    let (set_arg, get_arg) = new_local env "arg" in
-    let (set_k, get_k) = new_local env "k" in
-    let (set_r, get_r) = new_local env "r" in
-    let (set_c, get_c) = new_local env "c" in
+    let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
+    let set_arg, get_arg = new_local env "arg" in
+    let set_k, get_k = new_local env "k" in
+    let set_r, get_r = new_local env "r" in
+    let set_c, get_c = new_local env "c" in
     let add_cycles = match setup with
       | None -> Internals.add_cycles env ae
       | Some exp -> compile_exp_vanilla env ae exp ^^ G.i Drop in
@@ -12145,6 +12145,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
