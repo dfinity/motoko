@@ -197,7 +197,12 @@ let share_dec_field default_stab (df : dec_field) =
     {df with it =
        {df.it with stab =
           match df.it.stab with
-          | None -> Some (default_stab @@ df.it.dec.at)
+          | None ->
+             (match df.it.dec.it with
+             | ExpD _
+             | TypD _
+             | ClassD _ -> None
+             | _ -> Some (default_stab @@ df.it.dec.at))
           | some -> some}
     }
 
