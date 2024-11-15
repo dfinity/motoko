@@ -308,7 +308,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
 %type<Mo_def.Syntax.exp_field> exp_field
 %type<Mo_def.Syntax.dec_field> dec_field
-%type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
+%type<Mo_def.Syntax.id * Mo_def.Syntax.stab option * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list
@@ -907,8 +907,8 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt stab=stab cb=class_body
-    { let x, dfs = cb in
+      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+    { let x, stab, dfs = cb in
       let dfs', tps', t' =
         if s.it = Type.Actor then
           let default_stab = match stab with
@@ -942,8 +942,8 @@ obj_body :
   | LCURLY dfs=seplist(dec_field, semicolon) RCURLY { dfs }
 
 class_body :
-  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc), dfs }
-  | dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, dfs }
+  | EQ xf=id_opt stab=stab dfs=obj_body { snd (xf "object" $sloc), stab, dfs }
+  | stab=stab dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, stab,  dfs }
 
 
 (* Programs *)

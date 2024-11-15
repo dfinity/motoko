@@ -305,7 +305,7 @@
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? (':' <typ>)? '='? <stab> <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <stab> <class_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
@@ -321,8 +321,8 @@
     '{' <list(<dec_field>, ';')> '}'
 
 <class_body> ::= 
-    '=' <id>? <obj_body>
-    <obj_body>
+    '=' <id>? <stab> <obj_body>
+    <stab> <obj_body>
 
 <imp> ::= 
     'import' <pat_nullary> '='? <text>
