@@ -70,8 +70,8 @@ actor A {
     public func test4() : async () {
         debugPrint "test4()";
         ignore await call_raw(principalOfActor A, "rawable", "DIDL\00\00");
-        //Cycles.add<system>(34567);
-        //(with cycles = 3456) oneshot();
+        Cycles.add<system>(34567);
+        ignore await /*(with cycles = 3456)*/ call_raw(principalOfActor A, "rawable", "DIDL\00\00");
     }
 }
 

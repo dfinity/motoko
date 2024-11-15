@@ -5510,7 +5510,7 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       system_call env "call_cycles_add128"
     | _ ->
-      E.trap_with env "cannot accept cycles when running locally"
+      E.trap_with env "cannot add cycles when running locally"
 
   let cycles_accept env =
     match E.mode env with

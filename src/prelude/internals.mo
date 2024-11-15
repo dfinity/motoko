@@ -12,8 +12,8 @@ type @Iter<T_> = {next : () -> ?T_};
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @pass_cycles(par : ?{ cycles : Nat }) {
-  @reset_cycles();
   let ?{ cycles } = par else return;
+  @reset_cycles();
   if (cycles != 0) {
     (prim "cyclesAdd" : Nat -> ()) cycles;
   }
