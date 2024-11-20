@@ -307,7 +307,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
-%type<Mo_def.Syntax.dec> dec(no_stab) dec(stab) imp dec_var dec_nonvar
+%type<Mo_def.Syntax.dec> dec(no_stab) dec(stab) imp dec_var dec_nonvar(no_stab) dec_nonvar(stab)
 %type<Mo_def.Syntax.exp_field> exp_field
 %type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
@@ -582,7 +582,9 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 no_stab :
   | { None }
-%public ob : e=exp_obj { e }
+
+%public ob :
+  | e=exp_obj { e }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -598,6 +600,7 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
+
 exp_nullary(B) :
   | e=B
   | e=exp_plain
@@ -608,6 +611,8 @@ exp_nullary(B) :
     { PrimE(s) @? at $sloc }
   | UNDERSCORE
     { VarE ("_" @~ at $sloc) @? at $sloc }
+  | ACTOR e=exp_plain
+    { ActorUrlE e @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -647,8 +652,6 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-(*  | ACTOR e=exp_plain
-    { ActorUrlE e @? at $sloc } *)
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
   | DEBUG_SHOW e=exp_un(ob)
@@ -755,7 +758,7 @@ exp_un(B) :
 exp_nonvar(B) :
   | e=exp_nondec(B)
     { e }
-  | d=dec_nonvar
+  | d=dec_nonvar(no_stab)
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 exp(B) :
@@ -803,7 +806,7 @@ vis :
   | SYSTEM { System @@ at $sloc }
 
 stab :
-(*  | (* empty *) { None } *)
+  | (* empty *) { None }
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
 
@@ -875,7 +878,7 @@ dec_var :
   | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
-dec_nonvar :
+dec_nonvar(S) :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
@@ -889,6 +892,8 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
+  | d=dec_obj(S)
+    { d }
 
 dec_obj(Stab) :
   | stab=Stab s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
@@ -930,18 +935,16 @@ dec_obj(Stab) :
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
-dec(Stab) :
+dec(S) :
   | d=dec_var
     { d }
-  | d=dec_nonvar
+  | d=dec_nonvar(S)
     { d }
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
   | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
-  | d=dec_obj(Stab)
-    { d }
 
 func_body :
   | EQ e=exp(ob) { (false, e) }
