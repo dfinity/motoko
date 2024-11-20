@@ -153,6 +153,9 @@
     '<>>='
     '@='
 
+<no_stab> ::= 
+    <empty>
+
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
@@ -185,7 +188,6 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
     'to_candid' '(' <list(<exp>, ',')> ')'
@@ -242,7 +244,7 @@
     <exp>
 
 <block> ::= 
-    '{' <list(<dec>, ';')> '}'
+    '{' <list(<dec<stab>>, ';')> '}'
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
@@ -255,7 +257,7 @@
     'var'? <id> (':' <typ>)? '=' <exp>
 
 <dec_field> ::= 
-    <vis> <stab> <dec>
+    <vis> <stab> <dec<no_stab>>
 
 <vis> ::= 
     <empty>
@@ -264,7 +266,6 @@
     'system'
 
 <stab> ::= 
-    <empty>
     'flexible'
     'stable'
 
@@ -303,15 +304,18 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? (':' <typ>)? '='? <stab> <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
-<dec> ::= 
+<dec_objStab> ::= 
+    Stab <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> Stab <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+
+<decStab> ::= 
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
+    <dec_objStab>
 
 <func_body> ::= 
     '=' <exp>
@@ -321,14 +325,15 @@
     '{' <list(<dec_field>, ';')> '}'
 
 <class_body> ::= 
-    '=' <id>? <stab> <obj_body>
-    <stab> <obj_body>
+    '=' <id>? <obj_body>
+    <obj_body>
 
 <imp> ::= 
     'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
-    <list(<imp>, ';')> <list(<dec>, ';')> 
+    <list(<imp>, ';')> <list(<dec<stab>>, ';')> 
+
 
 
 
