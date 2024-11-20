@@ -20,9 +20,9 @@
 //! * Their function type in the new version need to be compatible with the previous version (super-type).
 //! * Their closure type in the new version must be compatible with the previous version (super-type).
 //!
-//! All other functions, such as lambdas, named functions in a lambda, or functions 
-//! imported from a module without a unique import identifier, are flexible functions. 
-//! 
+//! All other functions, such as lambdas, named functions in a lambda, or functions
+//! imported from a module without a unique import identifier, are flexible functions.
+//!
 //! A stable function type is a sub-type of a flexible function type with
 //! type-compatible signature, i.e. `stable X' -> Y <: X -> Y'` for `X' <: X` and `Y' :< Y`.
 //!
@@ -85,14 +85,21 @@
 //! * Free function ids can be recycled for new stable functions in persistent virtual table.
 //! * Once freed, a new program version is liberated from providing a matching stable function.
 
+mod mark_stack;
+
 use core::{marker::PhantomData, mem::size_of, ptr::null_mut, str::from_utf8};
+
+use mark_stack::{MarkStack, StackEntry};
+use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     algorithms::SortedArray,
     barriers::{allocation_barrier, write_with_barrier},
+    gc::remembered_set::RememberedSet,
     memory::{alloc_blob, Memory},
     rts_trap_with,
-    types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B},
+    types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_CLOSURE, TAG_OBJECT, TAG_SOME},
+    visitor::enhanced::visit_pointer_fields,
 };
 
 use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
@@ -229,6 +236,7 @@ struct VirtualTableEntry {
     function_name_hash: NameHash,
     closure_type_index: TypeIndex, // Referring to the persisted type table.
     wasm_table_index: WasmTableIndex,
+    marked: bool, // set by stable function GC
 }
 
 /// Determine the Wasm table index for a function call (stable or flexible function).
@@ -303,6 +311,7 @@ pub unsafe fn register_stable_functions<M: Memory>(
     mem: &mut M,
     stable_functions_map: Value,
     type_test: Option<&MemoryCompatibilityTest>,
+    old_actor: Option<Value>,
 ) {
     let stable_functions = stable_functions_map.as_blob_mut() as *mut StableFunctionMap;
     // O(n*log(n)) runtime costs:
@@ -310,20 +319,22 @@ pub unsafe fn register_stable_functions<M: Memory>(
     prepare_stable_function_map(stable_functions);
     // 2. Retrieve the persistent virtual, or, if not present, initialize an empty one.
     let virtual_table = prepare_virtual_table(mem);
-    // 3. Scan the persistent virtual table and match/update all entries against
+    // 3. Garbage collect the stable functions in the old version on an upgrade.
+    garbage_collect_functions(mem, virtual_table, old_actor);
+    // 4. Scan the persistent virtual table and match/update all entries against
     // `stable_functions_map`. Check the compatibility of the closure types.
     // Assign the function ids in stable function map.
     update_existing_functions(virtual_table, stable_functions, type_test);
-    // 4. Scan stable functions map and determine number of new stable functions that are yet
+    // 5. Scan stable functions map and determine number of new stable functions that are yet
     // not part of the persistent virtual table.
     let extension_size = count_new_functions(stable_functions);
-    // 5. Extend the persistent virtual table by the new stable functions.
+    // 6. Extend the persistent virtual table by the new stable functions.
     // Assign the function ids in stable function map.
     let new_virtual_table = add_new_functions(mem, virtual_table, extension_size, stable_functions);
-    // 6. Create the function literal table by scanning the stable functions map and
+    // 7. Create the function literal table by scanning the stable functions map and
     // mapping Wasm table indices to their assigned function id.
     let new_literal_table = create_function_literal_table(mem, stable_functions);
-    // 7. Store the new persistent virtual table and function literal table.
+    // 8. Store the new persistent virtual table and function literal table.
     // Apply write barriers!
     let state = stable_function_state();
     write_with_barrier(mem, state.virtual_table_location(), new_virtual_table);
@@ -347,7 +358,143 @@ unsafe fn prepare_virtual_table<M: Memory>(mem: &mut M) -> *mut PersistentVirtua
     state.get_virtual_table()
 }
 
-// Step 3: Scan the persistent virtual table and match/update all entries against
+extern "C" {
+    fn moc_visit_stable_functions(object: Value, type_id: u64);
+}
+
+struct FunctionGC {
+    mark_set: RememberedSet,
+    mark_stack: MarkStack,
+    virtual_table: *mut PersistentVirtualTable,
+}
+
+// Currently fields in closure (captures) are not yet discovered in a type-directed way.
+// This sentinel denotes that there is no static type known and the generic visitor is to be invoked.
+// TODO: Optimization: Use expected closure types to select a compiler-generated specialized visitor.
+const UNKNOWN_TYPE_ID: u64 = u64::MAX;
+
+impl FunctionGC {
+    unsafe fn new<M: Memory>(
+        mem: &mut M,
+        virtual_table: *mut PersistentVirtualTable,
+    ) -> FunctionGC {
+        let mark_set = RememberedSet::new(mem);
+        let mark_stack = MarkStack::new(mem);
+        FunctionGC {
+            mark_set,
+            mark_stack,
+            virtual_table,
+        }
+    }
+
+    unsafe fn run<M: Memory>(&mut self, mem: &mut M) {
+        loop {
+            self.clear_mark_bits();
+            match self.mark_stack.pop() {
+                None => {
+                    println!(100, "EMPTY STACK");
+                    return;
+                }
+                Some(StackEntry { object, type_id }) => {
+                    println!(100, "VISIT {:#x} TYPE ID: {type_id}", object.get_ptr());
+                    debug_assert_ne!(object, NULL_POINTER);
+                    if object.tag() == TAG_SOME {
+                        // skip null boxes, not visited
+                    } else if object.tag() == TAG_CLOSURE {
+                        self.visit_stable_closure(mem, object);
+                    } else if type_id == UNKNOWN_TYPE_ID {
+                        self.generic_visit(mem, object);
+                    } else {
+                        // Specialized field visitor, as optimization.
+                        moc_visit_stable_functions(object, type_id);
+                    }
+                }
+            }
+        }
+    }
+
+    unsafe fn generic_visit<M: Memory>(&mut self, mem: &mut M, object: Value) {
+        visit_pointer_fields(
+            mem,
+            object.as_obj(),
+            object.tag(),
+            |mem, field| {
+                println!(100, "GENERIC VISIT {:#x}", (*field).get_ptr());
+                collect_stable_functions(mem, *field, UNKNOWN_TYPE_ID);
+            },
+            |_, slice_start, arr| {
+                assert!(slice_start == 0);
+                arr.len()
+            },
+        );
+    }
+
+    unsafe fn visit_stable_closure<M: Memory>(&mut self, mem: &mut M, object: Value) {
+        let closure = object.as_closure();
+        let function_id = (*closure).funid;
+        println!(
+            100,
+            "CLOSURE FOUND {:#x} FUN ID: {}", closure as usize, function_id
+        );
+        assert!(!is_flexible_function_id(function_id));
+        self.generic_visit(mem, object);
+    }
+
+    unsafe fn clear_mark_bits(&mut self) {
+        for index in 0..self.virtual_table.length() {
+            let entry = self.virtual_table.get(index);
+            (*entry).marked = false;
+        }
+    }
+}
+
+static mut COLLECTOR_STATE: Option<FunctionGC> = None;
+
+// Step 3. Garbage collect the stable functions in the old version on an upgrade.
+unsafe fn garbage_collect_functions<M: Memory>(
+    mem: &mut M,
+    virtual_table: *mut PersistentVirtualTable,
+    old_actor: Option<Value>,
+) {
+    if old_actor.is_none() {
+        return;
+    }
+    let old_actor = old_actor.unwrap();
+    println!(100, "OLD ACTOR {:#x}", old_actor.get_ptr());
+    assert_eq!(old_actor.tag(), TAG_OBJECT);
+    println!(100, "GARBAGE COLLECT STABLE FUNCTIONS");
+    COLLECTOR_STATE = Some(FunctionGC::new(mem, virtual_table));
+    const ACTOR_TYPE_ID: u64 = 0;
+    collect_stable_functions(mem, old_actor, ACTOR_TYPE_ID);
+    COLLECTOR_STATE.as_mut().unwrap().run(mem);
+    COLLECTOR_STATE = None;
+}
+
+#[ic_mem_fn]
+unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, object: Value, type_id: u64) {
+    let state = COLLECTOR_STATE.as_mut().unwrap();
+    println!(
+        100,
+        "COLLECT {:#x} TAG {} TYPE_ID: {} CONTAINED: {}",
+        object.get_ptr(),
+        if object != NULL_POINTER { object.tag() } else { 0 },
+        type_id,
+        state.mark_set.contains(object)
+    );
+    if object != NULL_POINTER && !state.mark_set.contains(object) {
+        state.mark_set.insert(mem, object);
+        state.mark_stack.push(mem, StackEntry { object, type_id });
+        println!(
+            100,
+            "PUSH {:#x} TAG {} TYPE_ID: {}",
+            object.get_ptr(),
+            object.tag(),
+            type_id
+        );
+    }
+}
+
+// Step 4: Scan the persistent virtual table and match/update all entries against
 // `stable_functions_map`. Check the compatibility of the closure types.
 // Assign the function ids in stable function map.
 unsafe fn update_existing_functions(
@@ -360,32 +507,40 @@ unsafe fn update_existing_functions(
         let virtual_table_entry = virtual_table.get(function_id);
         let name_hash = (*virtual_table_entry).function_name_hash;
         let stable_function_entry = stable_functions.find(name_hash);
-        if stable_function_entry == null_mut() {
-            let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
-            let message = from_utf8(&buffer).unwrap();
-            rts_trap_with(message);
+        let marked = (*virtual_table_entry).marked;
+        if marked {
+            if stable_function_entry == null_mut()  {
+                let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
+                let message = from_utf8(&buffer).unwrap();
+                rts_trap_with(message);
+            }
+            let old_closure = (*virtual_table_entry).closure_type_index;
+            let new_closure = (*stable_function_entry).closure_type_index;
+            assert!(old_closure >= i32::MIN as TypeIndex && old_closure <= i32::MAX as TypeIndex);
+            assert!(new_closure >= i32::MIN as TypeIndex && new_closure <= i32::MAX as TypeIndex);
+            if type_test.is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
+            {
+                let buffer = format!(
+                    200,
+                    "Memory-incompatible closure type of stable function {name_hash}"
+                );
+                let message = from_utf8(&buffer).unwrap();
+                rts_trap_with(message);
+            }
         }
-        let old_closure = (*virtual_table_entry).closure_type_index;
-        let new_closure = (*stable_function_entry).closure_type_index;
-        assert!(old_closure >= i32::MIN as TypeIndex && old_closure <= i32::MAX as TypeIndex);
-        assert!(new_closure >= i32::MIN as TypeIndex && new_closure <= i32::MAX as TypeIndex);
-        if type_test.is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
-        {
-            let buffer = format!(
-                200,
-                "Memory-incompatible closure type of stable function {name_hash}"
-            );
-            let message = from_utf8(&buffer).unwrap();
-            rts_trap_with(message);
+        if stable_function_entry != null_mut() {
+            (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
+            (*virtual_table_entry).closure_type_index = (*stable_function_entry).closure_type_index;
+            (*stable_function_entry).cached_function_id = function_id as FunctionId;
+        } else {
+            (*virtual_table_entry).wasm_table_index = usize::MAX;
+            (*virtual_table_entry).closure_type_index = isize::MAX;
         }
-        (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
-        (*virtual_table_entry).closure_type_index = new_closure;
-        (*stable_function_entry).cached_function_id = function_id as FunctionId;
     }
 }
 
-// Step 4. Scan stable functions map and determine number of new stable functions that are yet
-// not part of the persistent virtual table.
+// Step 5. Scan stable functions map and determine number of new stable functions that are not yet 
+// part of the persistent virtual table.
 unsafe fn count_new_functions(stable_functions: *mut StableFunctionMap) -> usize {
     let mut count = 0;
     for index in 0..stable_functions.length() {
@@ -397,7 +552,7 @@ unsafe fn count_new_functions(stable_functions: *mut StableFunctionMap) -> usize
     count
 }
 
-// Step 5. Extend the persistent virtual table by the new stable functions.
+// Step 6. Extend the persistent virtual table by the new stable functions.
 // Assign the function ids in stable function map.
 unsafe fn add_new_functions<M: Memory>(
     mem: &mut M,
@@ -423,6 +578,7 @@ unsafe fn add_new_functions<M: Memory>(
                 function_name_hash,
                 closure_type_index,
                 wasm_table_index,
+                marked: false,
             };
             debug_assert!(!is_flexible_function_id(function_id));
             debug_assert_ne!(function_id, NULL_FUNCTION_ID);
@@ -459,7 +615,7 @@ unsafe fn extend_virtual_table<M: Memory>(
     new_blob
 }
 
-// Step 6. Create the function literal table by scanning the stable functions map and
+// Step 7. Create the function literal table by scanning the stable functions map and
 // mapping Wasm table indices to their assigned function id.
 unsafe fn create_function_literal_table<M: Memory>(
     mem: &mut M,
@@ -498,4 +654,9 @@ unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap)
         length = core::cmp::max(length, wasm_table_index + 1);
     }
     length
+}
+
+#[no_mangle]
+unsafe fn debug_print(number: usize) {
+    println!(100, "DEBUG PRINT {number}");
 }

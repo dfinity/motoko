@@ -220,7 +220,13 @@ pub unsafe fn register_stable_type<M: Memory>(
         rts_trap_with("Memory-incompatible program upgrade");
     }
     (*metadata).stable_type.assign(mem, &new_type);
-    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
+    let old_actor = (*metadata).stable_actor;
+    let old_actor = if old_actor == DEFAULT_VALUE {
+        None
+    } else {
+        Some(old_actor)
+    };
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref(), old_actor);
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
