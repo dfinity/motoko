@@ -94,7 +94,7 @@ actor AdvancedCanister1 {
 
     // Decode the return value
     let ?value : ?Nat = from_candid encodedValue
-        else Debug.trap("Error while decoding return value");
+        else Debug.trap("Unexpected return value");
     return value;
   }
 }
