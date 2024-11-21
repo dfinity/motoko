@@ -1592,7 +1592,11 @@ and infer_exp'' env exp : T.typ =
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
     let sort, ve = check_shared_pat env shared_pat in
-    let is_flexible = env.named_scope = None || sort <> T.Local T.Stable in
+    let is_async = match typ_opt with
+      | Some { it = AsyncT _; _ } -> true
+      | _ -> false
+    in
+    let is_flexible = env.named_scope = None || sort <> T.Local T.Stable || is_async in
     let cs, tbs, te, ce = check_typ_binds env (not is_flexible) typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
@@ -3142,7 +3146,7 @@ and infer_dec_valdecs env dec : Scope.t =
         T.Async (T.Fut, T.Con (List.hd cs, []), obj_typ)
       else obj_typ
     in
-    let mode = if T.stable t1 then T.Stable else T.Flexible in
+    let mode = if T.stable t1 && obj_sort.it = T.Object then T.Stable else T.Flexible in
     let t = T.Func (T.Local mode, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
       [T.close cs t2])

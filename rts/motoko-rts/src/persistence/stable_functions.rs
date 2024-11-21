@@ -1,13 +1,14 @@
 //! Support for stable functions during persistence.
 //!
-//! A stable function is a named local function in a stable scope,
-//! closing over variables of stable type.
+//! A stable function is a named non-async local function in a stable scope,
+//! only closing over variables of a stable type.
 //!
 //! A stable scope is:
-//! * the main actor
+//! * the main actor,
+//! * an actor class,
 //! * a module imported with a unique identifier from a stable scope,
-//! * a named function in a stable scope,
-//! * a class in a stable scope,
+//! * a named non-async function in a stable scope,
+//! * a class in a stable scope, or,
 //! * a named object in a stable scope.
 //!
 //! A stable function is also a stable type.
@@ -22,7 +23,7 @@
 //! * For matching functions, the function type of the new version must be compatible to the previous version (super-type).
 //! * For matching functions, the closure type in the new version must be compatible with the previous version (super-type).
 //!
-//! All other functions, such as lambdas, named functions in a lambda, or functions
+//! All other functions, such as lambdas, named functions in a lambda, async functions, or functions
 //! imported from a module without a unique import identifier, are flexible functions.
 //!
 //! A stable function type is a sub-type of a flexible function type with
