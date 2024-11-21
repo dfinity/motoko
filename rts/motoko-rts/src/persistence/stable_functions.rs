@@ -435,11 +435,6 @@ impl FunctionGC {
     unsafe fn visit_stable_closure<M: Memory>(&mut self, mem: &mut M, object: Value) {
         let closure = object.as_closure();
         let function_id = (*closure).funid;
-        println!(
-            100,
-            "CLOSURE FOUND {:#x} FUN ID: {} HASH {}", closure as usize, function_id, 
-            (*self.virtual_table.get(function_id as usize)).function_name_hash,
-        );
         assert!(!is_flexible_function_id(function_id));
         self.generic_visit(mem, object);
     }

@@ -8755,7 +8755,6 @@ module StableFunctions = struct
   let sorted_stable_functions env =
     let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type) remainder ->
       let name_hash = Mo_types.Hash.hash name in
-      Printf.printf "FUNCTION %s HASH %n\n" name (Int32.to_int name_hash);
       (name_hash, wasm_table_index, closure_type) :: remainder)
       !(env.E.stable_functions) []
     in
@@ -8834,26 +8833,30 @@ module EnhancedOrthogonalPersistence = struct
      stable functions to skip generic type traversal in closures. *)
   let visit_stable_functions env actor_type =
     let open Type in
-    let rec must_visit = function
-    | Func ((Local Stable), _, _, _, _) -> true
-    | Func ((Shared _), _, _, _, _) -> false
-    | Prim _ | Any | Non-> false
-    | Obj ((Object | Memory), field_list) | Variant field_list ->
-      List.exists (fun field -> must_visit field.typ) field_list
-    | Tup type_list ->
-      List.exists must_visit type_list
-    | Array nested | Mut nested | Opt nested ->
-      must_visit nested
-    | _ -> assert false (* illegal stable type *)
+    let rec must_visit typ = 
+      match promote typ with
+      | Func ((Local Stable), _, _, _, _) -> true
+      | Func ((Shared _), _, _, _, _) -> false
+      | Prim _ | Any | Non-> false
+      | Obj ((Object | Memory), field_list) | Variant field_list ->
+        List.exists (fun field -> must_visit field.typ) field_list
+      | Tup type_list ->
+        List.exists must_visit type_list
+      | Array nested | Mut nested | Opt nested ->
+        must_visit nested
+      | _ -> assert false (* illegal stable type *)
     in
     let rec collect_types (map, id) typ =
       if must_visit typ && not (TM.mem typ map) then
         begin
         let map = TM.add typ id map in
         let id = id + 1 in
-        match typ with
+        match promote typ with
         | Func ((Local Stable), _, _, _, _) ->
-           (* NOTE: Need to scan closure as well! *)
+          (* Note: It is important to scan the closure as well. 
+             This is done in the runtime system in generic way.
+             TODO: Optimization: Associate the static closure type for 
+             specialized closure visiting. *)
           (map, id)
         | Obj ((Object | Memory), field_list) | Variant field_list->
           let field_types = List.map (fun field -> field.typ) field_list in
@@ -8871,7 +8874,6 @@ module EnhancedOrthogonalPersistence = struct
       else (map, id)
     in
     let map, _ = collect_types (TM.empty, 0) actor_type in
-    TM.iter (fun typ id -> Printf.printf "COLLECTED %n: %s\n" id (Type.string_of_typ typ)) map;
     let get_object = G.i (LocalGet (nr 0l)) in
     let get_type_id = G.i (LocalGet (nr 1l)) in
     (* Options are inlined, visit the inner type, null box is filtered out by RTS *)
@@ -8889,7 +8891,7 @@ module EnhancedOrthogonalPersistence = struct
       get_type_id ^^ compile_eq_const (Int64.of_int type_id) ^^
       E.if0
         begin
-          match typ with
+          match promote typ with
           | Obj ((Object | Memory), field_list) ->
             let relevant_fields = List.filter (fun field -> must_visit field.typ) field_list in
             G.concat_map (fun field ->
@@ -8897,10 +8899,44 @@ module EnhancedOrthogonalPersistence = struct
               Heap.load_field 0L ^^ (* dereference field *)
               visit_field field.typ
               ) relevant_fields
-          | Mut field_type when must_visit field_type ->
-            get_object ^^ MutBox.load_field env ^^
-            visit_field field_type
-          | Mut _ -> G.nop
+          | Tup type_list ->
+            let indexed_types = List.mapi (fun index typ -> (index, typ)) type_list in
+            let relevant_types = List.filter (fun (_, typ) -> must_visit typ) indexed_types in
+            G.concat_map (fun (index, typ) ->
+              get_object ^^ Tuple.load_n env (Int64.of_int index) ^^
+              visit_field typ
+              ) relevant_types
+          | Variant field_list ->
+            let relevant_fields = List.filter (fun field -> must_visit field.typ) field_list in
+            G.concat_map (fun field ->
+              get_object ^^ Variant.test_is env field.lab ^^ 
+              E.if0
+                begin
+                  get_object ^^ Variant.project env ^^
+                  visit_field field.typ
+                end
+                G.nop
+              ) relevant_fields
+          | Mut field_type ->
+            if must_visit field_type then
+              begin
+                get_object ^^ MutBox.load_field env ^^
+                visit_field field_type
+              end
+            else G.nop
+          | Array element_type ->
+            if must_visit element_type then
+              begin
+                Arr.iterate env get_object (fun get_pointer ->
+                  get_pointer ^^ Heap.load_field 0L ^^ (* dereference element *)
+                  visit_field element_type
+                )
+              end
+            else G.nop
+          | Func _ | Opt _ ->
+            (* Stable function closures are generically visited in the RTS.
+               Inlined options are not visited and null boxes are filtered by the RTS. *)
+            E.trap_with env "visit stable function: illegal case"
           | _ ->
             (* TODO: Define special trap without object pool *)
             E.trap_with env "not implemented, visit stable functions"
