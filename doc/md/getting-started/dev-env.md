@@ -44,7 +44,7 @@ Before you start developing Motoko, verify the following:
 
 - [x] You have a command line interface (CLI) window open. This window is also referred to as the 'terminal' window.
 
-- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](/docs/current/developer-docs/getting-started/install/) page.
+- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](/docs/current/developer-docs/getting-started/install) page.
 
 - [x] You have a code editor installed. The [VS Code IDE](https://code.visualstudio.com/download) (with the [Motoko extension](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko)) is a popular choice.
 
