@@ -16,24 +16,24 @@ This example will showcase a simple way to configure inter-canister calls that c
 
 ## Example
 
-Consider the following code for `canister1`:
+Consider the following code for `Canister1`:
 
 ```motoko no-repl
 import Canister2 "canister:canister2";
 
-actor {
+actor Canister1 {
     public func main() : async Nat {
         return await Canister2.getValue();
     };
 };
 ```
 
-Then, consider the following code for `canister2`:
+Then, consider the following code for `Canister2`:
 
 ```motoko
 import Debug "mo:base/Debug";
 
-actor {
+actor Canister2 {
     public func getValue() : async Nat {
         Debug.print("Hello from canister 2!");
         return 10;
@@ -70,6 +70,45 @@ Then, use the following call, replacing `canisterID` with the principal ID of a 
 
 ```
 dfx canister call canister1 main "canisterID"
+```
+
+## Advanced usage
+
+If the method name or input types are unknown at compile time, it's possible to call arbitrary canister methods using the `ExperimentalInternetComputer` module.
+
+Modifying the above example to use this feature:
+
+```motoko
+import IC "mo:base/ExperimentalInternetComputer";
+import Debug "mo:base/Debug";
+
+actor AdvancedCanister1 {
+  public func main(canisterId : Principal) : async Nat {
+    // Define the method name and input args
+    let name = "getValueTimesTwo";
+    let args = (123);
+
+    // Call the method
+    let encodedArgs = to_candid (args);
+    let encodedValue = await IC.call(canisterId, name, encodedArgs);
+
+    // Decode the return value
+    let ?value : ?Nat = from_candid encodedValue
+        else Debug.trap("Error while decoding return value");
+    return value;
+  }
+}
+```
+
+```motoko
+import Debug "mo:base/Debug";
+
+actor AdvancedCanister2 {
+    public func getValueTimesTwo(number: Nat) : async Nat {
+        Debug.print("Hello from canister 2!");
+        return number * 2;
+    };
+};
 ```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
