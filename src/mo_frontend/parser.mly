@@ -1,3 +1,4 @@
+
 %{
 open Mo_def
 open Mo_types
@@ -578,13 +579,20 @@ lit :
   | CATASSIGN { CatOp }
 
 
-bl : DISALLOWED { PrimE("dummy") @? at $sloc }
+bl :// DISALLOWED { PrimE("dummy") @? at $sloc }
+  | LPAR ACTOR e=exp_plain t=annot_opt RPAR
+    { annot_exp  (ActorUrlE e @? at $sloc) t }
+  | ACTOR e=exp_plain
+    { ActorUrlE e @? at $sloc }
 
+(*   { ActorUrlE e @? at $sloc } *)
 %public ob :
   | e=exp_obj { e }
 
 %public ob_actor :
   | e=exp_obj { e }
+  | LPAR ACTOR e=exp_plain t=annot_opt RPAR
+    { annot_exp  (ActorUrlE e @? at $sloc) t  }
   | ACTOR e=exp_plain
     { ActorUrlE e @? at $sloc }
 

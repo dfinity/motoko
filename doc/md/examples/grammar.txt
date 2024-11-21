@@ -153,8 +153,10 @@
     '<>>='
     '@='
 
+
 <ob_actor> ::= 
     <exp_obj>
+    '(' 'actor' <exp_plain> (':' <typ>)? ')'
     'actor' <exp_plain>
 
 <exp_obj> ::= 
