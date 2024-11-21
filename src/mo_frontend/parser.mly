@@ -308,7 +308,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.dec> dec imp dec_var dec_nonvar
 %type<Mo_def.Syntax.exp_field> exp_field
 %type<Mo_def.Syntax.dec_field> dec_field
-%type<Mo_def.Syntax.id * Mo_def.Syntax.stab option * Mo_def.Syntax.dec_field list> class_body
+%type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
 %type<Mo_def.Syntax.case> catch case
 %type<Mo_def.Syntax.exp> bl ob
 %type<Mo_def.Syntax.dec list> import_list
@@ -371,9 +371,17 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE { Type.Module @@ at $sloc }
 
+dec_actor_sort :
+  | s=stab ACTOR { (s, Type.Actor @@ at $sloc) }
+%inline dec_obj_sort :
+  | OBJECT { (None, Type.Object @@ at $sloc) }
+  | a=dec_actor_sort { a }
+  | MODULE { (None, Type.Module @@ at $sloc) }
+
+
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object @@ no_region }
-  | s=obj_sort { s }
+  | (* empty *) { (None, Type.Object @@ no_region) }
+  | ds=dec_obj_sort { ds }
 
 %inline query:
   | QUERY { Type.Query }
@@ -643,7 +651,7 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | ACTOR e=exp_plain
+  | dec_actor_sort e=exp_plain
     { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
@@ -877,8 +885,9 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? stab=stab efs=obj_body
-    { let sort = Type.(match s.it with
+  | ds=dec_obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let (stab, s) = ds  in
+      let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
@@ -906,9 +915,10 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
-    { let x, stab, dfs = cb in
+    { let (stab, s) = ds in
+      let x, dfs = cb in
       let dfs', tps', t' =
         if s.it = Type.Actor then
           let default_stab = match stab with
@@ -942,8 +952,8 @@ obj_body :
   | LCURLY dfs=seplist(dec_field, semicolon) RCURLY { dfs }
 
 class_body :
-  | EQ xf=id_opt stab=stab dfs=obj_body { snd (xf "object" $sloc), stab, dfs }
-  | stab=stab dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, stab,  dfs }
+  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc),  dfs }
+  | dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, dfs }
 
 
 (* Programs *)

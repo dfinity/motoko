@@ -12,6 +12,14 @@
     'actor'
     'module'
 
+<dec_actor_sort> ::= 
+    <stab> 'actor'
+
+<dec_obj_sort> ::= 
+    'object'
+    <dec_actor_sort>
+    'module'
+
 <query> ::= 
     'query'
     'composite' 'query'
@@ -185,7 +193,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    'actor' <exp_plain>
+    <dec_actor_sort> <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
     'to_candid' '(' <list(<exp>, ',')> ')'
@@ -303,9 +311,9 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? (':' <typ>)? '='? <stab> <obj_body>
+    <dec_obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <shared_pat_opt> <dec_obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
@@ -321,8 +329,8 @@
     '{' <list(<dec_field>, ';')> '}'
 
 <class_body> ::= 
-    '=' <id>? <stab> <obj_body>
-    <stab> <obj_body>
+    '=' <id>? <obj_body>
+    <obj_body>
 
 <imp> ::= 
     'import' <pat_nullary> '='? <text>
