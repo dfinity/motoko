@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "e3021b7a867d8c9853d75dc2eaa4af88a1738aa0",
-        "sha256": "18pqsf339z075gk61fiyssibn5h3icqfiw2x6rgrlp29az7d9asv",
+        "rev": "c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2",
+        "sha256": "1pf0yb8f876n6d14j55x5dwkywnx1fxbznrnz28545bm8nxjc6k0",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/e3021b7a867d8c9853d75dc2eaa4af88a1738aa0.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "f3bcbf19237870cd13e658e24d065d90f33ddc2e",
-        "sha256": "13ca93pbr34ivgs312xczw741ksz01n3q56340yyfvqc0v2jn6i7",
+        "rev": "48db35ee8e77b40d2749961f29a6ad53e9698571",
+        "sha256": "12lnzk2y4z9bkxw4401qyhkw88zx2brq2g0gx5g7kjljadm6298w",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/f3bcbf19237870cd13e658e24d065d90f33ddc2e.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/48db35ee8e77b40d2749961f29a6ad53e9698571.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "5811560cee7fe82e31baaab7d6d856db85337e1a",
-        "sha256": "1kxsp74x2dcvzihhf6h6xmyvzrl246f7pmiwm8x9pnbrh5pqfb21",
+        "rev": "cf840985f48736d22e52db26147c9f9a2dcd19b1",
+        "sha256": "11y0nql11w9x1crg6szy0w1pa42nixld91gvn2sbiqxgpbrw02r8",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/5811560cee7fe82e31baaab7d6d856db85337e1a.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/cf840985f48736d22e52db26147c9f9a2dcd19b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
