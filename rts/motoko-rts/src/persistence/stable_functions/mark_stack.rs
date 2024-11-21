@@ -72,11 +72,9 @@ impl MarkStack {
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
         (*self.last).entries[self.top] = value;
         self.top += 1;
-        println!(100, "PUSH {}", self.top);
     }
 
     pub unsafe fn pop(&mut self) -> Option<StackEntry> {
-        println!(100, "POP {}", self.top);
         debug_assert!(self.last != null_mut());
         if self.top == 0 {
             if (*self.last).previous == null_mut() {

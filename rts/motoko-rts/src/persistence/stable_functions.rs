@@ -16,9 +16,11 @@
 //! `stable X -> Y`. Stable functions implicitly have a corresponding stable reference type.
 //!
 //! A stable functions are upgraded as follows:
-//! * They map to stable functions of equal fully qualified name in the new program version.
-//! * Their function type in the new version need to be compatible with the previous version (super-type).
-//! * Their closure type in the new version must be compatible with the previous version (super-type).
+//! * All stable functions that are reachable from stable variables are considered alive.
+//! * Each alive stable function must have a matching declaration in the new program version.
+//! * Stable functions match between program versions if they have an equal fully qualified name.
+//! * For matching functions, the function type of the new version must be compatible to the previous version (super-type).
+//! * For matching functions, the closure type in the new version must be compatible with the previous version (super-type).
 //!
 //! All other functions, such as lambdas, named functions in a lambda, or functions
 //! imported from a module without a unique import identifier, are flexible functions.
@@ -37,7 +39,7 @@
 //! program initialization and upgrade. If the stable function was already declared in
 //! the previous version, its function id is reused on upgrade. Thereby, the compatibility
 //! of the function type and closure type are checked. Otherwise, if it is a new
-//! stable function, it obtains a new stable function id, or in the future, a recycled id.
+//! stable function, it obtains a new stable function id, or a recycled id.
 //!
 //! The runtime system supports stable functions by two mechanisms:
 //!
@@ -51,7 +53,8 @@
 //!    upgrades and is built and updated by the runtime system. To build and update the persistent
 //!    virtual table, the compiler provides a **stable function map**, mapping the hashed name of a
 //!    potentially stable function to the corresponding Wasm table index, plus its closure type
-//!    pointing to the new type table. For performance, the stable function map is sorted by the hashed names.
+//!    pointing to the new type table. For performance, the stable function map is sorted by the 
+//!    hashed names.
 //!    
 //! 2. **Function literal table** for materializing stable function literals:
 //!
@@ -79,11 +82,16 @@
 //! Flexible function references are represented as negative function ids determining the Wasm
 //! table index, specifically `-wasm_table_index - 1`.
 //!
-//! Potential garbage collection in the future:
-//! * The runtime system could allow discarding old stable functions that are unused, i.e. when it is
-//!   no longer stored in a live object and no longer part of the stable function map.
-//! * Free function ids can be recycled for new stable functions in persistent virtual table.
-//! * Once freed, a new program version is liberated from providing a matching stable function.
+//! Garbage collection of stable functions:
+//! * On an upgrade, the runtime systems determines which stable functions are still alive, i.e. 
+//!   transitively reachable from stable variables.
+//! * Only those alive stable functions need to exist in the new program version.
+//! * All other stable functions of the previous version are considered garbage and their slots 
+//!   in the virtual table can be recycled.
+//! 
+//! Garbage collection is necessary to alive programs to use classes and stable functions in only
+//! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
+//! programs to drop stable functions and classes, if they are no longer used for persistence.
 
 mod mark_stack;
 
@@ -391,12 +399,8 @@ impl FunctionGC {
         loop {
             self.clear_mark_bits();
             match self.mark_stack.pop() {
-                None => {
-                    println!(100, "EMPTY STACK");
-                    return;
-                }
+                None => return,
                 Some(StackEntry { object, type_id }) => {
-                    println!(100, "VISIT {:#x} TYPE ID: {type_id}", object.get_ptr());
                     debug_assert_ne!(object, NULL_POINTER);
                     if object.tag() == TAG_SOME {
                         // skip null boxes, not visited
@@ -419,7 +423,6 @@ impl FunctionGC {
             object.as_obj(),
             object.tag(),
             |mem, field| {
-                println!(100, "GENERIC VISIT {:#x}", (*field).get_ptr());
                 collect_stable_functions(mem, *field, UNKNOWN_TYPE_ID);
             },
             |_, slice_start, arr| {
@@ -434,7 +437,8 @@ impl FunctionGC {
         let function_id = (*closure).funid;
         println!(
             100,
-            "CLOSURE FOUND {:#x} FUN ID: {}", closure as usize, function_id
+            "CLOSURE FOUND {:#x} FUN ID: {} HASH {}", closure as usize, function_id, 
+            (*self.virtual_table.get(function_id as usize)).function_name_hash,
         );
         assert!(!is_flexible_function_id(function_id));
         self.generic_visit(mem, object);
@@ -460,9 +464,7 @@ unsafe fn garbage_collect_functions<M: Memory>(
         return;
     }
     let old_actor = old_actor.unwrap();
-    println!(100, "OLD ACTOR {:#x}", old_actor.get_ptr());
     assert_eq!(old_actor.tag(), TAG_OBJECT);
-    println!(100, "GARBAGE COLLECT STABLE FUNCTIONS");
     COLLECTOR_STATE = Some(FunctionGC::new(mem, virtual_table));
     const ACTOR_TYPE_ID: u64 = 0;
     collect_stable_functions(mem, old_actor, ACTOR_TYPE_ID);
@@ -473,24 +475,9 @@ unsafe fn garbage_collect_functions<M: Memory>(
 #[ic_mem_fn]
 unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, object: Value, type_id: u64) {
     let state = COLLECTOR_STATE.as_mut().unwrap();
-    println!(
-        100,
-        "COLLECT {:#x} TAG {} TYPE_ID: {} CONTAINED: {}",
-        object.get_ptr(),
-        if object != NULL_POINTER { object.tag() } else { 0 },
-        type_id,
-        state.mark_set.contains(object)
-    );
     if object != NULL_POINTER && !state.mark_set.contains(object) {
         state.mark_set.insert(mem, object);
         state.mark_stack.push(mem, StackEntry { object, type_id });
-        println!(
-            100,
-            "PUSH {:#x} TAG {} TYPE_ID: {}",
-            object.get_ptr(),
-            object.tag(),
-            type_id
-        );
     }
 }
 
@@ -654,9 +641,4 @@ unsafe fn compute_literal_table_length(stable_functions: *mut StableFunctionMap)
         length = core::cmp::max(length, wasm_table_index + 1);
     }
     length
-}
-
-#[no_mangle]
-unsafe fn debug_print(number: usize) {
-    println!(100, "DEBUG PRINT {number}");
 }

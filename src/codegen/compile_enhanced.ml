@@ -1309,7 +1309,6 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "collect_stable_functions" [I64Type; I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
-    E.add_func_import env "rts" "debug_print" [I64Type] [];
     ()
 
 end (* RTS *)
@@ -8825,6 +8824,14 @@ module EnhancedOrthogonalPersistence = struct
      contain directly or indirectly refer to stable function. 
      It is invoked by the RTS for each visited object and 
      again calls the RTS back with the selected field values. *)
+  (* TODO: Design refactoring: We can use the type ids of the persistent 
+     type table and encode the relevant fields for each of these types 
+     in a blob format parsed by the RTS. With this, the RTS does not 
+     need to call back the compiler-generated visitor functions. 
+     Moreover, closure types would then also be known by the RTS for
+     selective traversal.
+     For generic types in stable functions, one could exclude types using 
+     stable functions to skip generic type traversal in closures. *)
   let visit_stable_functions env actor_type =
     let open Type in
     let rec must_visit = function
@@ -8879,29 +8886,24 @@ module EnhancedOrthogonalPersistence = struct
         compile_unboxed_const (Int64.of_int type_id) ^^
         E.call_import env "rts" "collect_stable_functions"
       in
-      Printf.printf "EMIT %n: %s\n" type_id (string_of_typ typ);
       get_type_id ^^ compile_eq_const (Int64.of_int type_id) ^^
       E.if0
         begin
           match typ with
           | Obj ((Object | Memory), field_list) ->
             let relevant_fields = List.filter (fun field -> must_visit field.typ) field_list in
-            compile_unboxed_const 0L ^^ E.call_import env "rts" "debug_print" ^^
             G.concat_map (fun field ->
-              compile_unboxed_const 10L ^^ E.call_import env "rts" "debug_print" ^^
               get_object ^^ Object.idx env typ field.lab ^^
               Heap.load_field 0L ^^ (* dereference field *)
               visit_field field.typ
               ) relevant_fields
           | Mut field_type when must_visit field_type ->
-            compile_unboxed_const 1L ^^ E.call_import env "rts" "debug_print" ^^
             get_object ^^ MutBox.load_field env ^^
             visit_field field_type
           | Mut _ -> G.nop
           | _ ->
-            (compile_unboxed_const 2L ^^ E.call_import env "rts" "debug_print" ^^
             (* TODO: Define special trap without object pool *)
-            E.trap_with env "not implemented, visit stable functions")
+            E.trap_with env "not implemented, visit stable functions"
         end
         G.nop
     in
