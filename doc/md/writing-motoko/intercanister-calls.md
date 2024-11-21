@@ -76,7 +76,7 @@ dfx canister call canister1 main "canisterID"
 
 If the method name or input types are unknown at compile time, it's possible to call arbitrary canister methods using the `ExperimentalInternetComputer` module.
 
-Modifying the above example to use this feature:
+Here is an example which you can modify for your specific use case:
 
 ```motoko
 import IC "mo:base/ExperimentalInternetComputer";
@@ -85,7 +85,7 @@ import Debug "mo:base/Debug";
 actor AdvancedCanister1 {
   public func main(canisterId : Principal) : async Nat {
     // Define the method name and input args
-    let name = "getValueTimesTwo";
+    let name = "getValue";
     let args = (123);
 
     // Call the method
@@ -104,8 +104,8 @@ actor AdvancedCanister1 {
 import Debug "mo:base/Debug";
 
 actor AdvancedCanister2 {
-    public func getValueTimesTwo(number: Nat) : async Nat {
-        Debug.print("Hello from canister 2!");
+    public func getValue(number: Nat) : async Nat {
+        Debug.print("Hello from advanced canister 2!");
         return number * 2;
     };
 };
