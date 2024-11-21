@@ -153,8 +153,9 @@
     '<>>='
     '@='
 
-<no_stab> ::= 
-    <empty>
+<ob_actor> ::= 
+    <exp_obj>
+    'actor' <exp_plain>
 
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
@@ -170,7 +171,6 @@
     <exp_plain>
     <id>
     '_'
-    'actor' <exp_plain>
 
 <exp_post> ::= 
     <exp_nullary>
@@ -234,7 +234,8 @@
 
 <exp_nonvar> ::= 
     <exp_nondec>
-    <dec_nonvar<no_stab>>
+    <dec_nonvar>
+    <dec_obj_no_stab>
 
 <exp> ::= 
     <exp_nonvar>
@@ -245,7 +246,7 @@
     <exp>
 
 <block> ::= 
-    '{' <list(<dec<stab>>, ';')> '}'
+    '{' <list(<dec_stab>, ';')> '}'
 
 <case> ::= 
     'case' <pat_nullary> <exp_nest>
@@ -258,7 +259,7 @@
     'var'? <id> (':' <typ>)? '=' <exp>
 
 <dec_field> ::= 
-    <vis> <stab> <dec<no_stab>>
+    <vis> <stab> <dec_no_stab>
 
 <vis> ::= 
     <empty>
@@ -303,21 +304,32 @@
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>
 
-<dec_nonvarS> ::= 
-    'let' <pat> '=' <exp>
+<dec_nonvar> ::= 
+    'let' <pat> '=' <exp<ob_actor>>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <dec_objS>
 
-<dec_objStab> ::= 
-    Stab <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> Stab <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+<dec_obj_stab> ::= 
+    <stab> <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> <stab> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
-<decS> ::= 
+<dec_obj_no_stab> ::= 
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+
+<dec_no_stab> ::= 
     <dec_var>
-    <dec_nonvarS>
+    <dec_nonvar>
+    <dec_obj_no_stab>
     <exp_nondec>
-    'let' <pat> '=' <exp> 'else' <exp_nest>
+    'let' <pat> '=' <exp<ob_actor>> 'else' <exp_nest>
+
+<dec_stab> ::= 
+    <dec_var>
+    <dec_nonvar>
+    <dec_obj_stab>
+    <exp_nondec>
+    'let' <pat> '=' <exp<ob_actor>> 'else' <exp_nest>
 
 <func_body> ::= 
     '=' <exp>
@@ -334,8 +346,7 @@
     'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
-    <list(<imp>, ';')> <list(<dec<stab>>, ';')> 
-
+    <list(<imp>, ';')> <list(<dec_stab>, ';')> 
 
 
 

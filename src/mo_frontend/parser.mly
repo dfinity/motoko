@@ -272,7 +272,6 @@ and objblock s id ty dec_fields =
 %nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
 
-%type<Mo_def.Syntax.stab option> no_stab
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
@@ -291,7 +290,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
 
-%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) (* seplist(dec(no_stab),SEMICOLON) *) seplist(dec(stab),semicolon)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) (* seplist(dec(no_stab),SEMICOLON) *) seplist(dec_stab,semicolon)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
@@ -307,7 +306,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.exp> exp_un(ob) exp_un(bl) exp_post(ob) exp_post(bl) exp_nullary(bl) exp_nonvar(ob) exp_nonvar(bl) exp_nondec(ob) exp_nondec(bl) block exp_bin(ob) exp_bin(bl) exp(bl)
 %type<bool * Mo_def.Syntax.exp> func_body
 %type<Mo_def.Syntax.lit> lit
-%type<Mo_def.Syntax.dec> dec(no_stab) dec(stab) imp dec_var dec_nonvar(no_stab) dec_nonvar(stab)
+%type<Mo_def.Syntax.dec> dec_no_stab dec_stab imp dec_var dec_nonvar
 %type<Mo_def.Syntax.exp_field> exp_field
 %type<Mo_def.Syntax.dec_field> dec_field
 %type<Mo_def.Syntax.id * Mo_def.Syntax.dec_field list> class_body
@@ -580,11 +579,14 @@ lit :
 
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
-no_stab :
-  | { None }
 
 %public ob :
   | e=exp_obj { e }
+
+%public ob_actor :
+  | e=exp_obj { e }
+  | ACTOR e=exp_plain
+    { ActorUrlE e @? at $sloc }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -611,8 +613,6 @@ exp_nullary(B) :
     { PrimE(s) @? at $sloc }
   | UNDERSCORE
     { VarE ("_" @~ at $sloc) @? at $sloc }
-  | ACTOR e=exp_plain
-    { ActorUrlE e @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -758,7 +758,9 @@ exp_un(B) :
 exp_nonvar(B) :
   | e=exp_nondec(B)
     { e }
-  | d=dec_nonvar(no_stab)
+  | d=dec_nonvar
+    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
+  | d=dec_obj_no_stab
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 exp(B) :
@@ -773,7 +775,7 @@ exp(B) :
     { e }
 
 block :
-  | LCURLY ds=seplist(dec(stab), semicolon) RCURLY
+  | LCURLY ds=seplist(dec_stab, semicolon) RCURLY
     { BlockE(ds) @? at $sloc }
 
 case :
@@ -792,7 +794,7 @@ exp_field :
     { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
 
 dec_field :
-  | v=vis s=stab d=dec(no_stab)
+  | v=vis s=stab d=dec_no_stab
     { {dec = d; vis = v; stab = s} @@ at $sloc }
 
 vis :
@@ -878,8 +880,8 @@ dec_var :
   | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
-dec_nonvar(S) :
-  | LET p=pat EQ e=exp(ob)
+dec_nonvar :
+  | LET p=pat EQ e=exp(ob_actor)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
@@ -892,11 +894,9 @@ dec_nonvar(S) :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | d=dec_obj(S)
-    { d }
 
-dec_obj(Stab) :
-  | stab=Stab s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+dec_obj_stab :
+  | stab=stab s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -918,7 +918,7 @@ dec_obj(Stab) :
       in
       let_or_exp named x e.it e.at }
 
-  | sp=shared_pat_opt stab=Stab s=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt stab=stab s=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let x, dfs = cb in
       let dfs', tps', t' =
@@ -935,14 +935,70 @@ dec_obj(Stab) :
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
-dec(S) :
+dec_obj_no_stab :
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let sort = Type.(match s.it with
+                       | Actor -> "actor" | Module -> "module" | Object -> "object"
+                       | _ -> assert false) in
+      let named, x = xf sort $sloc in
+      let e =
+        if s.it = Type.Actor then
+          let stab = None in
+          let default_stab =
+            match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
+          let id = if named then Some x else None in
+          AwaitE
+            (Type.Fut,
+             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+             @? at $sloc) @? at $sloc
+        else objblock s None t efs @? at $sloc
+      in
+      let_or_exp named x e.it e.at }
+
+  | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
+      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+    { let x, dfs = cb in
+      let dfs', tps', t' =
+        if s.it = Type.Actor then
+          let stab = None in
+          let default_stab = match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
+          (List.map (share_dec_field default_stab) dfs,
+	   ensure_scope_bind "" tps,
+           (* Not declared async: insert AsyncT but deprecate in typing *)
+	   ensure_async_typ t)
+        else (dfs, tps, t)
+      in
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+
+
+dec_no_stab :
   | d=dec_var
     { d }
-  | d=dec_nonvar(S)
+  | d=dec_nonvar
     { d }
+  | d=dec_obj_no_stab { d }
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
-  | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
+  | LET p=pat EQ e=exp(ob_actor) ELSE fail=exp_nest
+    { let p', e' = normalize_let p e in
+      LetD (p', e', Some fail) @? at $sloc }
+
+dec_stab :
+  | d=dec_var
+    { d }
+  | d=dec_nonvar
+    { d }
+  | d=dec_obj_stab { d }
+  | e=exp_nondec(ob)
+    { ExpD e @? at $sloc }
+  | LET p=pat EQ e=exp(ob_actor) ELSE fail=exp_nest
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
 
@@ -968,13 +1024,13 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
   | (* empty *) { () }
 
 parse_prog :
-  | start is=seplist(imp, semicolon) ds=seplist(dec(stab), semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(dec_stab, semicolon) EOF
     {
       let trivia = !triv_table in
       fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
-  | start is=seplist(imp, SEMICOLON) ds=seplist(dec(stab), SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(dec_stab, SEMICOLON) SEMICOLON_EOL
     {
       let trivia = !triv_table in
       fun filename -> {
