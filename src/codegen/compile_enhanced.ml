@@ -8955,7 +8955,7 @@ module EnhancedOrthogonalPersistence = struct
             (fun env -> 
               match actor_type_opt with
               | None ->
-                E.trap_with "moc_visit_stable_functions only supported for actor"
+                E.trap_with env "moc_visit_stable_functions only supported for actor"
               | Some actor_type -> visit_stable_functions env actor_type)
           )
       in
