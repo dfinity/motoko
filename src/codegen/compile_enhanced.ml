@@ -6836,8 +6836,11 @@ module Serialization = struct
         add_sleb128 idl_type_variable;
         add_leb128 index
       | Con (con, _) ->
-        add_sleb128 idl_type_parameter;
-        add_leb128 0 (* TODO: Store index of type parameter in order of appearance, considering also nested generic classes and functions *)
+        (match Cons.kind con with
+        | Abs (_, _, Some index) ->
+          add_sleb128 idl_type_parameter;
+          add_leb128 index
+        | _ -> assert false)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";

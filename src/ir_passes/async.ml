@@ -216,8 +216,8 @@ let transform prog =
 
   and t_kind k =
     match k with
-    | Abs (typ_binds,typ) ->
-      Abs (t_binds typ_binds, t_typ typ)
+    | Abs (typ_binds,typ,index) ->
+      Abs (t_binds typ_binds, t_typ typ, index)
     | Def (typ_binds,typ) ->
       Def (t_binds typ_binds, t_typ typ)
 
@@ -228,7 +228,7 @@ let transform prog =
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Cons.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre, None)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
         Type.set_kind clone (t_kind (Cons.kind c));

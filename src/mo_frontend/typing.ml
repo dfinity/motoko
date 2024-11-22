@@ -61,6 +61,7 @@ type env =
     viper_mode : bool;
     named_scope: string list option;
     captured: S.t ref;
+    generic_variable_count: int ref;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope named_scope =
@@ -87,6 +88,7 @@ let env_of_scope ?(viper_mode=false) msgs scope named_scope =
     viper_mode;
     named_scope;
     captured = ref S.empty;
+    generic_variable_count = ref 0;
   }
 
 let use_identifier env id =
@@ -313,16 +315,20 @@ let detect_unused env inner_identifiers =
         add_unused_warning env (id, at, kind)
     ) inner_identifiers
 
-let enter_scope env : S.t =
-  !(env.used_identifiers)
+let enter_scope env =
+  let used_identifiers_before = !(env.used_identifiers) in
+  let generic_count_before = !(env.generic_variable_count) in
+  (used_identifiers_before, generic_count_before)
 
 let leave_scope env inner_identifiers initial_usage =
+  let used_identifiers_before, generic_count_before = initial_usage in
   detect_unused env inner_identifiers;
   let inner_identifiers = get_identifiers inner_identifiers in
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
-  let final_usage = S.union initial_usage unshadowed_usage in
+  let final_usage = S.union used_identifiers_before unshadowed_usage in
   env.used_identifiers := final_usage;
-  env.captured := unshadowed_usage
+  env.captured := unshadowed_usage;
+  env.generic_variable_count := generic_count_before
 
 (* Stable functions support *)
 
@@ -351,6 +357,16 @@ let enter_named_scope env name =
     (match env.named_scope with
     | None -> None
     | Some prefix -> Some (prefix @ [name]))
+
+(* Within each scope, generic type parameters get a unique index by 
+   order of definition. This index serves for checking the compatibility 
+   of stable closures that capture generic type parameters.
+   For nested generic classes and functions, the numbering is continued
+   in the sub-scopes. *)
+let generic_variable_index env =
+  let index = !(env.generic_variable_count) in
+  env.generic_variable_count := index + 1;
+  Some index
 
 (* Value environments *)
 
@@ -457,8 +473,8 @@ let check_closed env id k at =
   let is_typ_param c =
     match Cons.kind c with
     | T.Def _
-    | T.Abs( _, T.Pre) -> false (* an approximated type constructor *)
-    | T.Abs( _, _) -> true in
+    | T.Abs( _, T.Pre, _) -> false (* an approximated type constructor *)
+    | T.Abs( _, _, _) -> true in
   let typ_params = T.ConSet.filter is_typ_param env.cons in
   let cs_k = T.cons_kind k in
   let free_params = T.ConSet.inter typ_params cs_k in
@@ -740,7 +756,7 @@ and check_typ' env typ : T.typ =
   | PathT (path, typs) ->
     let c = check_typ_path env path in
     let ts = List.map (check_typ env) typs in
-    let T.Def (tbs, _) | T.Abs (tbs, _) = Cons.kind c in
+    let T.Def (tbs, _) | T.Abs (tbs, _, _) = Cons.kind c in
     let tbs' = List.map (fun tb -> { tb with T.bound = T.open_ ts tb.T.bound }) tbs in
     check_typ_bounds env tbs' ts (List.map (fun typ -> typ.at) typs) typ.at;
     T.Con (c, ts)
@@ -905,7 +921,8 @@ and check_typ_binds env stable_scope typ_binds : T.con list * T.bind list * Scop
     List.map2 (fun x tb ->
       match tb.note with
       | Some c -> c
-      | None -> Cons.fresh x (T.Abs (binding, T.Pre))) xs typ_binds in
+      | None -> Cons.fresh x (T.Abs (binding, T.Pre, None))) xs typ_binds
+      in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
       if T.Env.mem id.it te then
@@ -921,10 +938,12 @@ and check_typ_binds env stable_scope typ_binds : T.con list * T.bind list * Scop
   check_typ_bind_sorts env tbs;
   let ts = List.map (fun tb -> tb.T.bound) tbs in
   check_typ_binds_acyclic env typ_binds cs ts;
-  let ks = List.map (fun t -> T.Abs (binding, t)) ts in
+  let ks = List.map (fun t -> 
+    let index = generic_variable_index env in
+    T.Abs (binding, t, index)) ts in
   List.iter2 (fun c k ->
     match Cons.kind c with
-    | T.Abs (_, T.Pre) -> T.set_kind c k
+    | T.Abs (_, T.Pre, _) -> T.set_kind c k
     | k' -> assert (T.eq_kind k k')
   ) cs ks;
   let env' = add_typs env xs cs in
@@ -2942,7 +2961,7 @@ and gather_dec env scope dec : Scope.t =
         T.bound = T.Pre })
       binds'
     in
-    let pre_k = T.Abs (pre_tbs, T.Pre) in
+    let pre_k = T.Abs (pre_tbs, T.Pre, None) in
     let c = match id.note with
       | None -> let c = Cons.fresh id.it pre_k in id.note <- Some c; c
       | Some c -> c
@@ -3060,9 +3079,9 @@ and infer_dec_typdecs env dec : Scope.t =
     }
 
 and infer_id_typdecs id c k : Scope.con_env =
-  assert (match k with T.Abs (_, T.Pre) -> false | _ -> true);
+  assert (match k with T.Abs (_, T.Pre, _) -> false | _ -> true);
   (match Cons.kind c with
-  | T.Abs (_, T.Pre) -> T.set_kind c k; id.note <- Some c
+  | T.Abs (_, T.Pre, _) -> T.set_kind c k; id.note <- Some c
   | k' -> assert (T.eq_kind k' k) (* may diverge on expansive types *)
   );
   T.ConSet.singleton c

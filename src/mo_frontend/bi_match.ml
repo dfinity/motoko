@@ -32,7 +32,7 @@ let denotable t =
   not (is_mut t' || is_typ t')
 
 let bound c = match Cons.kind c with
-  | Abs ([], t) -> t
+  | Abs ([], t, _) -> t
   | _ -> assert false
 
 (* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
@@ -123,7 +123,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         assert (ts1 = []);
         assert (ts2 = []);
         Some inst
-      | Abs (tbs, t), _ when rel != eq ->
+      | Abs (tbs, t, _), _ when rel != eq ->
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )
@@ -131,7 +131,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       (match Cons.kind con1, t2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | Abs (tbs, t), _ when rel != eq ->
+      | Abs (tbs, t, _), _ when rel != eq ->
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )

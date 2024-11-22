@@ -441,8 +441,8 @@ and export_footprint self_id expr =
   let {lab;typ;_} = motoko_stable_var_info_fld in
   let v = "$"^lab in
   let size = fresh_var "size" T.nat64 in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound, None)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any, None)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
@@ -470,8 +470,8 @@ and export_runtime_information self_id =
   let open T in
   let {lab;typ;_} = motoko_runtime_information_fld in
   let v = "$"^lab in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound, None)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any, None)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let gc_strategy = 
@@ -834,7 +834,7 @@ and dec' at n = function
     let body = if s.it = T.Actor
       then
         let (_, _, obj_typ) = T.as_async rng_typ in
-        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
+        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound, None)) in
         asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
           (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
             at = at;
@@ -846,6 +846,10 @@ and dec' at n = function
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
+    Printf.printf "LOWERING %s %s\n" id.it (match sort with
+    | T.Local T.Stable -> "STABLE"
+    | T.Local T.Flexible -> "FLEXIBLE"
+    | _ -> "OTHER");
     let fn = {
       it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], None, body);
       at = at;

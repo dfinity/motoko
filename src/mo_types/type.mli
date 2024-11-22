@@ -63,7 +63,7 @@ and field = {lab : lab; typ : typ; src : src}
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
-  | Abs of bind list * typ
+  | Abs of bind list * typ * int option
 
 val empty_src : src
 

@@ -173,7 +173,7 @@ let rec check_typ env typ : unit =
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
-      | T.Abs (tbs, _) ->
+      | T.Abs (tbs, _, _) ->
         if not (T.ConSet.mem c env.cons) then
           error env no_region "free type constructor %s " (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
@@ -254,7 +254,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
+    let T.Abs (binds,typ,_) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -316,6 +316,7 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
     (fun tb typ ->
       check env at (T.sub typ (T.open_ typs tb.T.bound))
         "type argument does not match parameter bound";
+      (* TODO: Stable functions: Check this *)
       (* check env at (is_stable && T.stable typ)
         "type argument has to be of a stable type to match the type parameter " *)
     ) tbs typs

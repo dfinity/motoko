@@ -178,13 +178,13 @@ let test t expected =
     (Printf.printf "\nExpected:\n  %s\nbut got:\n  %s\n" expected actual; false)
 
 let%test "monolist" =
-  let con = Cons.fresh "List" (Abs ([], Pre))  in
+  let con = Cons.fresh "List" (Abs ([], Pre, None))  in
   let t = Con (con, []) in
   Cons.unsafe_set_kind con (Def ([], Opt (Tup [nat; t])));
   test t "0=?(N!0)"
 
 let%test "polylist" =
-  let con = Cons.fresh "List" (Abs ([], Pre))  in
+  let con = Cons.fresh "List" (Abs ([], Pre, None))  in
   let bind = { var = "T"; sort = Type; bound = Any } in
   let v = Var ("T", 0) in
   Cons.unsafe_set_kind con (Def ([bind], Opt (Tup [v; Con (con, [v])])));
