@@ -177,7 +177,7 @@ and dec msgs d = match d.it with
   | LetD (p, e, Some f) -> pat msgs p +++ exp msgs e +++ exp msgs f
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
+  | ClassD (csp, i, tp, p, t, s, i', dfs, _) ->
     (M.empty, S.singleton i.it) +++ delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )

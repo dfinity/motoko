@@ -225,7 +225,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
+      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list * function_context (* constructor context *)
 
 
 (* Program (pre unit detection) *)

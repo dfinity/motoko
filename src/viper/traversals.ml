@@ -76,7 +76,7 @@ and over_dec (v : visitor) (d : dec) : dec =
   | ExpD e -> { d with it = ExpD (over_exp v e)}
   | VarD (x, e) -> { d with it = VarD (x, over_exp v e)}
   | LetD (p, e, fail) -> { d with it = LetD (over_pat v p, over_exp v e, Option.map (over_exp v) fail)}
-  | ClassD (sp, cid, tbs, p, t_o, s, id, dfs) -> { d with it = ClassD (sp, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, s, id, List.map (over_dec_field v) dfs)})
+  | ClassD (sp, cid, tbs, p, t_o, s, id, dfs, context) -> { d with it = ClassD (sp, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, s, id, List.map (over_dec_field v) dfs, context)})
 
 and over_dec_field (v : visitor) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec v df.it.dec } }

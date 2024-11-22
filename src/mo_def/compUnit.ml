@@ -47,7 +47,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | [{it = ExpD e; _} ] when is_actor_def e ->
       let fields, note, at = as_actor_def e in
       finish imports { it = ActorU (None, fields); note; at }
-    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+    | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields, _); _} as d] ->
       assert (List.length tbs > 0);
       finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
@@ -117,7 +117,7 @@ let decs_of_lib (cu : comp_unit) =
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs);
+    [{ it = ClassD (csp, i, tbs, p, t, { it = Type.Actor; at = no_region; note = ()}, i', efs, ref None);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

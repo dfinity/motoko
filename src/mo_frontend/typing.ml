@@ -1130,7 +1130,7 @@ and is_explicit_dec d =
   match d.it with
   | ExpD e | LetD (_, e, _) | VarD (_, e) -> is_explicit_exp e
   | TypD _ -> true
-  | ClassD (_, _, _, p, _, _, _, dfs) ->
+  | ClassD (_, _, _, p, _, _, _, dfs, _) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
 
@@ -2529,7 +2529,7 @@ and pub_dec src dec xs : visibility_env =
   | ExpD _ -> xs
   | LetD (pat, _, _) -> pub_pat src pat xs
   | VarD (id, _) -> pub_val_id src id xs
-  | ClassD (_, id, _, _, _, _, _, _) ->
+  | ClassD (_, id, _, _, _, _, _, _, _) ->
     pub_val_id src {id with note = ()} (pub_typ_id src id xs)
   | TypD (id, _, _) -> pub_typ_id src id xs
 
@@ -2742,7 +2742,7 @@ and infer_block env decs at check_unused level : T.typ * Scope.scope =
     | Flags.(ICMode | RefMode) ->
       List.fold_left (fun ve' dec ->
         match dec.it with
-        | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
+        | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _, _) ->
           T.Env.mapi (fun id' (typ, at, kind, avl, level) ->
             (typ, at, kind, (if id' = id.it then Unavailable else avl), level)) ve'
         | _ -> ve') env'.vals decs
@@ -2791,7 +2791,7 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields, closure) ->
     let (t, _, _, _, _) = T.Env.find id.it env.vals in
     let stable_scope = env.named_scope <> None in
     if not env.pre then begin
@@ -2826,6 +2826,7 @@ and infer_dec env dec : T.typ =
       let initial_usage = enter_scope env''' in
       let t' = infer_obj { env''' with check_unused = true } obj_sort.it dec_fields dec.at in
       leave_scope env ve initial_usage;
+      closure := stable_function_closure env named_scope; (* stable class constructor, e.g. in nested classes *)
       match typ_opt, obj_sort.it with
       | None, _ -> ()
       | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
@@ -2946,7 +2947,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
-  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
@@ -3053,7 +3054,7 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs id c k;
     }
-  | ClassD (shared_pat, id, binds, pat, _typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (shared_pat, id, binds, pat, _typ_opt, obj_sort, self_id, dec_fields, _) ->
     let c = T.Env.find id.it env.typs in
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let stable_scope = env.named_scope <> None in
@@ -3142,7 +3143,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
+  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
@@ -3198,7 +3199,7 @@ let is_actor_dec d =
   match d.it with
   | ExpD e
   | LetD (_, e, _) -> CompUnit.is_actor_def e
-  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields, _) ->
     obj_sort.it = T.Actor
   | _ -> false
 

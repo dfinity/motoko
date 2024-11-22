@@ -198,7 +198,7 @@ let share_dec_field (df : dec_field) =
 and objblock s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
-    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
+    | Public _, ClassD (_, id, _, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
   ObjBlockE(s, (id, ty), dec_fields)
@@ -910,7 +910,7 @@ dec_nonvar :
       in
       let named, id = xf "class" $sloc in
       let sp = define_function_stability named sp in
-      ClassD(sp, id, tps', p, t', s, x, dfs') @? at $sloc }
+      ClassD(sp, id, tps', p, t', s, x, dfs', ref None) @? at $sloc }
 
 dec :
   | d=dec_var

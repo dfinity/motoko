@@ -809,7 +809,7 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
+  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs, closure) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -846,12 +846,8 @@ and dec' at n = function
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
-    Printf.printf "LOWERING %s %s\n" id.it (match sort with
-    | T.Local T.Stable -> "STABLE"
-    | T.Local T.Flexible -> "FLEXIBLE"
-    | _ -> "OTHER");
     let fn = {
-      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], None, body);
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], !closure, body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in

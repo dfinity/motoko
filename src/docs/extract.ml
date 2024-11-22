@@ -184,7 +184,7 @@ struct
         {
           it =
             Syntax.ClassD
-              (shared_pat, name, type_args, ctor, _, obj_sort, _, fields);
+              (shared_pat, name, type_args, ctor, _, obj_sort, _, fields, _);
           _;
         } ->
         let mk_field_xref xref = mk_xref (Xref.XClass (name.it, xref)) in
