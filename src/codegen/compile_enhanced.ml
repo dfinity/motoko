@@ -8949,19 +8949,20 @@ module EnhancedOrthogonalPersistence = struct
     TM.mapi emit_visitor map |> TM.bindings |> List.map snd |> G.concat
 
     let system_export env actor_type_opt =
-      match actor_type_opt with
-      | None -> ()
-      | Some actor_type ->
-        let moc_visit_stable_functions_fi =
-          E.add_fun env "moc_visit_stable_functions" (
-            Func.of_body env ["object", I64Type; "type_id", I64Type] []
-              (fun env -> visit_stable_functions env actor_type)
-            )
-        in
-        E.add_export env (nr {
-          name = Lib.Utf8.decode "moc_visit_stable_functions";
-          edesc = nr (FuncExport (nr moc_visit_stable_functions_fi))
-        })
+      let moc_visit_stable_functions_fi =
+        E.add_fun env "moc_visit_stable_functions" (
+          Func.of_body env ["object", I64Type; "type_id", I64Type] []
+            (fun env -> 
+              match actor_type_opt with
+              | None ->
+                E.trap_with "moc_visit_stable_functions only supported for actor"
+              | Some actor_type -> visit_stable_functions env actor_type)
+          )
+      in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "moc_visit_stable_functions";
+        edesc = nr (FuncExport (nr moc_visit_stable_functions_fi))
+      })
 
   let create_type_descriptor env actor_type_opt (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
     match actor_type_opt with
