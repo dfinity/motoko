@@ -8848,6 +8848,7 @@ module EnhancedOrthogonalPersistence = struct
           | Prim _ | Any | Non-> false
           | Obj ((Object | Memory), field_list) | Variant field_list ->
             List.exists (fun field -> go visited field.typ) field_list
+          | Obj (Actor, _) -> false
           | Tup type_list ->
             List.exists (go visited) type_list
           | Array nested | Mut nested | Opt nested ->
