@@ -8817,6 +8817,7 @@ module EnhancedOrthogonalPersistence = struct
     | None -> assert false
 
   module TM = Map.Make (Type.Ord)
+  module TS = Set.Make (Type.Ord)
 
   (* Stable function garbage collection on upgrade:
      Selective traversal of stable objects that contain stable functions:
@@ -8836,18 +8837,24 @@ module EnhancedOrthogonalPersistence = struct
      stable functions to skip generic type traversal in closures. *)
   let visit_stable_functions env actor_type =
     let open Type in
-    let rec must_visit typ = 
-      match promote typ with
-      | Func ((Local Stable), _, _, _, _) -> true
-      | Func ((Shared _), _, _, _, _) -> false
-      | Prim _ | Any | Non-> false
-      | Obj ((Object | Memory), field_list) | Variant field_list ->
-        List.exists (fun field -> must_visit field.typ) field_list
-      | Tup type_list ->
-        List.exists must_visit type_list
-      | Array nested | Mut nested | Opt nested ->
-        must_visit nested
-      | _ -> assert false (* illegal stable type *)
+    let must_visit typ = 
+      let rec go visited typ =
+        if TS.mem typ visited then false
+        else
+          let visited = TS.add typ visited in
+          match promote typ with
+          | Func ((Local Stable), _, _, _, _) -> true
+          | Func ((Shared _), _, _, _, _) -> false
+          | Prim _ | Any | Non-> false
+          | Obj ((Object | Memory), field_list) | Variant field_list ->
+            List.exists (fun field -> go visited field.typ) field_list
+          | Tup type_list ->
+            List.exists (go visited) type_list
+          | Array nested | Mut nested | Opt nested ->
+            go visited nested
+          | _ -> assert false (* illegal stable type *)
+      in
+      go TS.empty typ
     in
     let rec collect_types (map, id) typ =
       if must_visit typ && not (TM.mem typ map) then
