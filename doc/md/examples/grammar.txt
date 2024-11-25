@@ -12,12 +12,12 @@
     'actor'
     'module'
 
-<dec_actor_sort> ::= 
-    <stab> 'actor'
+<dec_stable_actor_sort> ::= 
+    <stab_mod> 'actor'
 
 <dec_obj_sort> ::= 
     'object'
-    <dec_actor_sort>
+    'actor'
     'module'
 
 <query> ::= 
@@ -193,7 +193,7 @@
     '?' <exp_un>
     <unop> <exp_un>
     <unassign> <exp_un>
-    <dec_actor_sort> <exp_plain>
+    'actor' <exp_plain>
     'not' <exp_un>
     'debug_show' <exp_un>
     'to_candid' '(' <list(<exp>, ',')> ')'
@@ -276,6 +276,10 @@
     'flexible'
     'stable'
 
+<stab_mod> ::= 
+    'flexible'
+    'stable'
+
 <pat_plain> ::= 
     '_'
     <id>
@@ -311,15 +315,23 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <dec_obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <dec_obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> <dec_obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+
+<dec_stab_actor> ::= 
+    <dec_stable_actor_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> <dec_stable_actor_sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
+
+<progdec> ::= 
+    <dec>
+    <dec_stab_actor>
 
 <func_body> ::= 
     '=' <exp>
@@ -336,7 +348,7 @@
     'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
-    <list(<imp>, ';')> <list(<dec>, ';')> 
+    <list(<imp>, ';')> <list(<progdec>, ';')> 
 
 
 

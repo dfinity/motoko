@@ -289,7 +289,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
-%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(dec,SEMICOLON)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(progdec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
@@ -325,7 +325,6 @@ and objblock s id ty dec_fields =
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
 %start<string -> Mo_def.Syntax.stab_sig> parse_stab_sig
-
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
 
@@ -371,13 +370,13 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE { Type.Module @@ at $sloc }
 
-dec_actor_sort :
-  | s=stab ACTOR { (s, Type.Actor @@ at $sloc) }
+%inline dec_stable_actor_sort :
+  | s=stab_mod ACTOR { (s, Type.Actor @@ at $sloc) }
+
 %inline dec_obj_sort :
   | OBJECT { (None, Type.Object @@ at $sloc) }
-  | a=dec_actor_sort { a }
+  | ACTOR { (None, Type.Actor @@ at $sloc) }
   | MODULE { (None, Type.Module @@ at $sloc) }
-
 
 %inline obj_sort_opt :
   | (* empty *) { (None, Type.Object @@ no_region) }
@@ -651,7 +650,7 @@ exp_un(B) :
     }
   | op=unassign e=exp_un(ob)
     { assign_op e (fun e' -> UnE(ref Type.Pre, op, e') @? at $sloc) (at $sloc) }
-  | dec_actor_sort e=exp_plain
+  | ACTOR e=exp_plain
     { ActorUrlE e @? at $sloc }
   | NOT e=exp_un(ob)
     { NotE e @? at $sloc }
@@ -811,6 +810,9 @@ stab :
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
 
+%inline stab_mod :
+  | FLEXIBLE { Some (Flexible @@ at $sloc) }
+  | STABLE { Some (Stable @@ at $sloc) }
 
 (* Patterns *)
 
@@ -885,8 +887,16 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
+  | sp=shared_pat_opt FUNC xf=id_opt
+      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+    { (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
+      let named, x = xf "func" $sloc in
+      let is_sugar, e = desugar_func_body sp x t fb in
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | ds=dec_obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
-    { let (stab, s) = ds  in
+    { let (stab, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -907,15 +917,48 @@ dec_nonvar :
         else objblock s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
-    { (* This is a hack to support local func declarations that return a computed async.
-         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
-         around bodies declared as blocks *)
-      let named, x = xf "func" $sloc in
-      let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
+      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+    { let (stab, s) = ds in
+      let x, dfs = cb in
+      let dfs', tps', t' =
+        if s.it = Type.Actor then
+          let default_stab = match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
+          (List.map (share_dec_field default_stab) dfs,
+	   ensure_scope_bind "" tps,
+           (* Not declared async: insert AsyncT but deprecate in typing *)
+	   ensure_async_typ t)
+        else (dfs, tps, t)
+      in
+      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+
+dec_stab_actor :
+  | ds=dec_stable_actor_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let (stab, s) = ds in
+      let sort = Type.(match s.it with
+                       | Actor -> "actor" | Module -> "module" | Object -> "object"
+                       | _ -> assert false) in
+      let named, x = xf sort $sloc in
+      let e =
+        if s.it = Type.Actor then
+          let default_stab =
+            match stab with
+            | None -> Flexible
+            | Some stab -> stab.it
+          in
+          let id = if named then Some x else None in
+          AwaitE
+            (Type.Fut,
+             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+             @? at $sloc) @? at $sloc
+        else objblock s None t efs @? at $sloc
+      in
+      let_or_exp named x e.it e.at }
+  | sp=shared_pat_opt ds=dec_stable_actor_sort CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (stab, s) = ds in
       let x, dfs = cb in
@@ -944,6 +987,12 @@ dec :
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
 
+progdec :
+  | d=dec
+    { d }
+  | d=dec_stab_actor
+    { d }
+
 func_body :
   | EQ e=exp(ob) { (false, e) }
   | e=block { (true, e) }
@@ -966,13 +1015,13 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
   | (* empty *) { () }
 
 parse_prog :
-  | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(progdec, semicolon) EOF
     {
       let trivia = !triv_table in
       fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
-  | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(progdec, SEMICOLON) SEMICOLON_EOL
     {
       let trivia = !triv_table in
       fun filename -> {
