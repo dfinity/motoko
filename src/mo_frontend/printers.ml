@@ -147,7 +147,7 @@ let string_of_symbol = function
   | X (N N_catch) -> "<catch>"
   | X (N N_class_body) -> "<class_body>"
   | X (N N_dec) -> "<dec>"
-  | X (N N_dec_stab_actor) -> "<dec_stab_actor>"
+  (*  | X (N N_dec_stable_actor_sort) -> "<dec_stable_actor_sort>" *)
   | X (N N_progdec) -> "<progdec>"
   | X (N N_dec_field) -> "<dec_field>"
   | X (N N_dec_nonvar) -> "<dec_nonvar>"

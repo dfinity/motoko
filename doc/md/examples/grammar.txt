@@ -316,12 +316,11 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <dec_obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> <dec_obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <dec_obj_class(<dec_obj_sort>, <dec_obj_sort>?)>
 
-<dec_stab_actor> ::= 
-    <dec_stable_actor_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> <dec_stable_actor_sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+<dec_obj_class(O, C)> ::= 
+    O <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> C 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
@@ -331,7 +330,7 @@
 
 <progdec> ::= 
     <dec>
-    <dec_stab_actor>
+    <dec_obj_class(<dec_stable_actor_sort>, <dec_stable_actor_sort>)>
 
 <func_body> ::= 
     '=' <exp>
