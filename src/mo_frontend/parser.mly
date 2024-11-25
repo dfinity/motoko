@@ -365,22 +365,17 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline obj_sort :
-  | OBJECT { Type.Object @@ at $sloc }
-  | ACTOR { Type.Actor @@ at $sloc }
-  | MODULE { Type.Module @@ at $sloc }
-
-%inline dec_stable_actor_sort :
+%inline stab_actor_sort :
   | s=stab_mod ACTOR { (s, Type.Actor @@ at $sloc) }
 
-%inline dec_obj_sort :
+%inline obj_sort :
   | OBJECT { (None, Type.Object @@ at $sloc) }
   | ACTOR { (None, Type.Actor @@ at $sloc) }
   | MODULE { (None, Type.Module @@ at $sloc) }
 
-%inline dec_obj_sort_opt :
+%inline obj_sort_opt :
   | (* empty *) { (None, Type.Object @@ no_region) }
-  | ds=dec_obj_sort { ds }
+  | ds=obj_sort { ds }
 
 %inline query:
   | QUERY { Type.Query }
@@ -448,8 +443,9 @@ typ_pre :
     { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
   | ASYNCSTAR t=typ_pre
     { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
-  | s=obj_sort tfs=typ_obj
-    { let tfs' =
+  | os=obj_sort tfs=typ_obj
+    { let (_, s) = os in
+      let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
 
@@ -895,11 +891,13 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | d=dec_obj_class(dec_obj_sort, dec_obj_sort_opt)
+  | d=dec_obj(obj_sort)
+    { d }
+  | d=dec_class(obj_sort_opt)
     { d }
 
-%inline dec_obj_class(O, C) :
-  | ds=O xf=id_opt t=annot_opt EQ? efs=obj_body
+%inline dec_obj(obj_sort) :
+  | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (stab, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
@@ -921,7 +919,9 @@ dec_nonvar :
         else objblock s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt ds=C CLASS xf=typ_id_opt
+
+%inline dec_class(obj_sort) :
+  | sp=shared_pat_opt ds=obj_sort CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (stab, s) = ds in
       let x, dfs = cb in
@@ -953,7 +953,9 @@ dec :
 progdec :
   | d=dec
     { d }
-  | d=dec_obj_class(dec_stable_actor_sort, dec_stable_actor_sort)
+  | d=dec_obj(stab_actor_sort)
+    { d }
+  | d=dec_class(stab_actor_sort)
     { d }
 
 func_body :

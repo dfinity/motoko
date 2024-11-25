@@ -7,15 +7,10 @@
     X
     X SEP <list(X, SEP)>
 
-<obj_sort> ::= 
-    'object'
-    'actor'
-    'module'
-
-<dec_stable_actor_sort> ::= 
+<stab_actor_sort> ::= 
     <stab_mod> 'actor'
 
-<dec_obj_sort> ::= 
+<obj_sort> ::= 
     'object'
     'actor'
     'module'
@@ -316,11 +311,14 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <dec_obj_class(<dec_obj_sort>, <dec_obj_sort>?)>
+    <dec_obj<obj_sort>>
+    <dec_class(<obj_sort>?)>
 
-<dec_obj_class(O, C)> ::= 
-    O <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> C 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+<dec_objobj_sort> ::= 
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+
+<dec_classobj_sort> ::= 
+    <shared_pat_opt> <obj_sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
@@ -330,7 +328,8 @@
 
 <progdec> ::= 
     <dec>
-    <dec_obj_class(<dec_stable_actor_sort>, <dec_stable_actor_sort>)>
+    <dec_obj<stab_actor_sort>>
+    <dec_class<stab_actor_sort>>
 
 <func_body> ::= 
     '=' <exp>
