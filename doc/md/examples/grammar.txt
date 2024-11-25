@@ -314,11 +314,11 @@
     <dec_obj<obj_sort>>
     <dec_class(<obj_sort>?)>
 
-<dec_objobj_sort> ::= 
-    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+<dec_obj<sort>> ::= 
+    <sort> <id>? (':' <typ>)? '='? <obj_body>
 
-<dec_classobj_sort> ::= 
-    <shared_pat_opt> <obj_sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+<dec_class<sort>> ::= 
+    <shared_pat_opt> <sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>

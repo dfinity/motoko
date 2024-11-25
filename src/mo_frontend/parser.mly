@@ -896,8 +896,8 @@ dec_nonvar :
   | d=dec_class(obj_sort_opt)
     { d }
 
-%inline dec_obj(obj_sort) :
-  | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+%inline dec_obj(S) :
+  | ds=S xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (stab, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
@@ -920,8 +920,8 @@ dec_nonvar :
       in
       let_or_exp named x e.it e.at }
 
-%inline dec_class(obj_sort) :
-  | sp=shared_pat_opt ds=obj_sort CLASS xf=typ_id_opt
+%inline dec_class(S) :
+  | sp=shared_pat_opt ds=S CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (stab, s) = ds in
       let x, dfs = cb in

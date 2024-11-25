@@ -20,6 +20,8 @@ s/<start> //g
 s/<parse_prog>/<prog>/g
 s/(<bl>)//g
 s/(<ob>)//g
+s/ S / <sort> /g
+s/(S)/(<sort>)/g
 s/(B)//g
 s/ B$/ <exp_obj>/g
 s/\[/(/g
