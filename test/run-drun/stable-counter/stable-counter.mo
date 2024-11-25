@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 
-actor Counter stable {
+stable actor Counter {
 
   var count : Nat = 0;
 
