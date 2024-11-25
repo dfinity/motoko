@@ -196,7 +196,7 @@ do {
    type T = Int8;
    let load = StableMemory.loadBlob;
    let store = StableMemory.storeBlob;
-   func conv(n : Nat64) : Blob { load(0, Prim.nat64ToNat(n)) };
+   let conv = func(n : Nat64) : Blob { load(0, Prim.nat64ToNat(n)) };
    let max : Nat64 = StableMemory.size()*65536;
    var i : Nat64 = 1;
    while(i < max) {

@@ -848,7 +848,7 @@ let serializable allow_mut allow_stable_functions t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module -> allow_stable_functions (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
