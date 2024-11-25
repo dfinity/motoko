@@ -289,7 +289,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
-%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(progdec,SEMICOLON)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(top_dec,SEMICOLON)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
@@ -950,7 +950,7 @@ dec :
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
 
-progdec :
+top_dec :
   | d=dec
     { d }
   | d=dec_obj(stab_actor_sort)
@@ -980,13 +980,13 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
   | (* empty *) { () }
 
 parse_prog :
-  | start is=seplist(imp, semicolon) ds=seplist(progdec, semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(top_dec, semicolon) EOF
     {
       let trivia = !triv_table in
       fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
-  | start is=seplist(imp, SEMICOLON) ds=seplist(progdec, SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(top_dec, SEMICOLON) SEMICOLON_EOL
     {
       let trivia = !triv_table in
       fun filename -> {

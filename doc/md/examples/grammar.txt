@@ -326,7 +326,7 @@
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
 
-<progdec> ::= 
+<top_dec> ::= 
     <dec>
     <dec_obj<stab_actor_sort>>
     <dec_class<stab_actor_sort>>
@@ -346,7 +346,7 @@
     'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
-    <list(<imp>, ';')> <list(<progdec>, ';')> 
+    <list(<imp>, ';')> <list(<top_dec>, ';')> 
 
 
 
