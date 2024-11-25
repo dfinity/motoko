@@ -257,6 +257,8 @@ unsafe fn memory_sanity_check<M: Memory>(_mem: &mut M) {
             unused_root,
             unused_root,
             unused_root,
+            unused_root,
+            unused_root,
         ];
         check_memory(
             _mem,
