@@ -14,6 +14,9 @@
 //!   Type offset table
 //!     Byte length (u64)
 //!     Data
+//!   Persistent virtual table (only available with stable functions)
+//!     Byte length (u64)
+//!     Data
 //!   (possible zero padding)
 //! -- Last physical page (metadata):
 //!   (zero padding to align at page end)
@@ -64,6 +67,7 @@ pub struct StabilizationMetadata {
     pub serialized_data_start: u64,
     pub serialized_data_length: u64,
     pub type_descriptor: TypeDescriptor,
+    pub persistent_virtual_table: Value, // refers to `PersistentVirtualTable`
 }
 
 impl StabilizationMetadata {
@@ -104,6 +108,10 @@ impl StabilizationMetadata {
         Self::write_blob(offset, descriptor.type_offsets());
     }
 
+    fn save_stable_functions(offset: &mut u64, virtual_table: Value) {
+        Self::write_blob(offset, virtual_table);
+    }
+
     fn read_length(offset: &mut u64) -> u64 {
         let length = read_u64(*offset);
         // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
@@ -132,6 +140,20 @@ impl StabilizationMetadata {
         let candid_data = Self::read_blob(mem, TAG_BLOB_B, offset);
         let type_offsets = Self::read_blob(mem, TAG_BLOB_B, offset);
         TypeDescriptor::new(candid_data, type_offsets)
+    }
+
+    fn load_peristent_virtual_table<M: Memory>(mem: &mut M, offset: &mut u64) -> Value {
+        assert!(*offset <= Self::metadata_location());
+        // Backwards compatibility: The persistent virtual table may be missing,
+        // in which case the metadata directly follows the offset, or there is zero padding.
+        if *offset < Self::metadata_location() {
+            // There is either an existing virtual table, or if it is missing, there is zero padding 
+            // which is decoded as an empty blob.
+            Self::read_blob(mem, TAG_BLOB_B, offset)
+        } else {
+            // No space for persistent virtual table.
+            unsafe { alloc_blob(mem, TAG_BLOB_B, Bytes(0)) }
+        }
     }
 
     fn metadata_location() -> u64 {
@@ -172,6 +194,7 @@ impl StabilizationMetadata {
         Self::align_page_start(&mut offset);
         let type_descriptor_address = offset;
         Self::save_type_descriptor(&mut offset, &self.type_descriptor);
+        Self::save_stable_functions(&mut offset, self.persistent_virtual_table);
         Self::align_page_start(&mut offset);
         let first_word_backup = read_u32(0);
         // Clear very first word that is backed up in the last page.
@@ -202,10 +225,12 @@ impl StabilizationMetadata {
         write_u32(0, last_page_record.first_word_backup);
         let mut offset = last_page_record.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);
+        let persistent_virtual_table = Self::load_peristent_virtual_table(mem, &mut offset);
         let metadata = StabilizationMetadata {
             serialized_data_start: last_page_record.serialized_data_address,
             serialized_data_length: last_page_record.serialized_data_length,
             type_descriptor,
+            persistent_virtual_table,
         };
         (metadata, last_page_record.statistics)
     }

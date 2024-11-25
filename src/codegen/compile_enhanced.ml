@@ -13525,7 +13525,14 @@ and conclude_module env actor_type set_serialization_globals set_eop_globals sta
     let register_stable_type = EnhancedOrthogonalPersistence.register_stable_type env in
     let register_static_variables = GCRoots.register_static_variables env in
     E.call_import env "rts" ("initialize_incremental_gc") ^^
-    register_stable_type ^^ (* cannot use stable variables *)
+    (* The stable type is registered upfront as the stable function literals need to be defined before
+       te object pool can be set up. This is because the object pool contains stable closures.
+       On EOP, the new functions and types can be directly registered on program start.
+       On graph copy, the new stable type is first temporarily set in the cleared persistent memory.
+       Later, on `start_graph_destabilization`, the persistent memory compatibility is checked
+       and the stable functions are properly upgraded based on the previous program version.
+       The check happens atomically in the upgrade, even for incremental graph copy destabilization. *)
+    register_stable_type ^^ (* cannot use stable variables. *)
     register_static_variables ^^ (* already uses stable function literals *)
     match start_fi_o with
     | Some fi ->

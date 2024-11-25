@@ -7,8 +7,7 @@ use crate::{
     gc::incremental::{is_gc_stopped, resume_gc, stop_gc},
     memory::Memory,
     persistence::{
-        compatibility::{MemoryCompatibilityTest, TypeDescriptor},
-        set_upgrade_instructions,
+        compatibility::{MemoryCompatibilityTest, TypeDescriptor}, set_upgrade_instructions, stable_function_state, stable_functions::{gc::garbage_collect_functions, upgrade_stable_functions, PersistentVirtualTable, StableFunctionMap}
     },
     rts_trap_with,
     stabilization::ic::metadata::StabilizationMetadata,
@@ -24,6 +23,7 @@ use super::{deserialization::Deserialization, serialization::Serialization};
 struct StabilizationState {
     old_candid_data: Value,
     old_type_offsets: Value,
+    old_virtual_table: Value,
     completed: bool,
     serialization: Serialization,
     instruction_meter: InstructionMeter,
@@ -34,10 +34,12 @@ impl StabilizationState {
         serialization: Serialization,
         old_candid_data: Value,
         old_type_offsets: Value,
+        old_virtual_table: Value,
     ) -> StabilizationState {
         StabilizationState {
             old_candid_data,
             old_type_offsets,
+            old_virtual_table,
             completed: false,
             serialization,
             instruction_meter: InstructionMeter::new(),
@@ -67,17 +69,23 @@ pub unsafe fn start_graph_stabilization<M: Memory>(
     stable_actor: Value,
     old_candid_data: Value,
     old_type_offsets: Value,
-    stable_functions_map: Value,
+    _old_function_map: Value,
 ) {
     assert!(STABILIZATION_STATE.is_none());
     assert!(is_gc_stopped());
+    let function_state = stable_function_state();
+    garbage_collect_functions(mem, function_state.get_virtual_table(), Some(stable_actor));
     let stable_memory_pages = stable_mem::size(); // Backup the virtual size.
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
     let serialization = Serialization::start(mem, stable_actor, serialized_data_start);
+    // Mark the alive stable functions before stabilization such that destabilization can later check 
+    // their existence in the new program version.
+    let old_virtual_table = function_state.virtual_table();
     STABILIZATION_STATE = Some(StabilizationState::new(
         serialization,
         old_candid_data,
         old_type_offsets,
+        old_virtual_table,
     ));
 }
 
@@ -121,10 +129,12 @@ unsafe fn write_metadata() {
     let serialized_data_length = state.serialization.serialized_data_length();
 
     let type_descriptor = TypeDescriptor::new(state.old_candid_data, state.old_type_offsets);
+    let persistent_virtual_table = state.old_virtual_table;
     let metadata = StabilizationMetadata {
         serialized_data_start,
         serialized_data_length,
         type_descriptor,
+        persistent_virtual_table,
     };
     state.instruction_meter.stop();
     metadata.store(&mut state.instruction_meter);
@@ -156,7 +166,7 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
-    stable_functions_map: Value,
+    new_function_map: Value,
 ) {
     assert!(DESTABILIZATION_STATE.is_none());
 
@@ -170,6 +180,11 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     if !type_test.compatible_stable_actor() {
         rts_trap_with("Memory-incompatible program upgrade");
     }
+    // Upgrade the stable functions and check their compatibility.
+    // The alive stable functions have been marked by the GC in `start_graph_stabilization`.
+    let virtual_table = PersistentVirtualTable::from_blob(metadata.persistent_virtual_table);
+    let stable_functions = StableFunctionMap::from_blob(new_function_map);
+    upgrade_stable_functions(mem, virtual_table, stable_functions, Some(&type_test));
     // Restore the virtual size.
     moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
 

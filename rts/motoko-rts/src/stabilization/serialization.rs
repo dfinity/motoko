@@ -1,9 +1,7 @@
 pub mod stable_memory_stream;
 
 use crate::{
-    memory::Memory,
-    stabilization::layout::serialize,
-    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
+    memory::Memory, persistence::stable_functions::is_flexible_closure, stabilization::layout::serialize, types::{FwdPtr, Tag, Value, TAG_FWD_PTR}
 };
 
 use self::stable_memory_stream::{ScanStream, StableMemoryStream};
@@ -101,7 +99,7 @@ impl Serialization {
     }
 
     fn has_non_stable_type(old_field: Value) -> bool {
-        unsafe { old_field.tag() == TAG_CLOSURE }
+        unsafe { is_flexible_closure(old_field) }
     }
 
     pub fn pending_array_scanning(&self) -> bool {
@@ -164,8 +162,8 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
                 let old_value = original.deserialize();
                 if old_value.is_non_null_ptr() {
                     if Self::has_non_stable_type(old_value) {
-                        // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
-                        // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
+                        // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure of a flexible function) 
+                        // may be be dynamically reachable from a stable variable. The value is not accessible in the new program version.
                         // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
                         DUMMY_VALUE
                     } else {

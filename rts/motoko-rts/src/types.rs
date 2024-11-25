@@ -863,6 +863,11 @@ impl Closure {
     pub(crate) unsafe fn size(self: *mut Self) -> usize {
         (*self).size
     }
+
+    #[allow(unused)]
+    pub(crate) unsafe fn get(self: *mut Self, index: usize) -> Value {
+        *self.payload_addr().add(index)
+    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
