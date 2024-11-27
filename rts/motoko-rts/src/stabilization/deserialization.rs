@@ -26,6 +26,7 @@ pub struct Deserialization {
     stable_root: Option<Value>,
     limit: ExecutionMonitor,
     clear_position: u64,
+    started: bool,
 }
 
 /// Helper type to pass serialization context instead of closures.
@@ -49,7 +50,8 @@ impl<'a, M: Memory> DeserializationContext<'a, M> {
 /// Graph-copy-based deserialization.
 /// Usage:
 /// ```
-/// let deserialization = Deserialization::start(mem, stable_start, stable_size);
+/// let mut deserialization = Deserialization::new(mem, stable_start, stable_size);
+/// deserialization.initiate();
 /// while !deserialization.is_completed() {
 ///     deserialization.copy_increment();
 /// }
@@ -57,12 +59,12 @@ impl<'a, M: Memory> DeserializationContext<'a, M> {
 /// Note: The deserialized memory is cleared as final process, using an incremental
 /// mechanism to avoid instruction limit exceeding.
 impl Deserialization {
-    /// Start the deserialization, followed by a series of copy increments.
-    pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
+    // Prepare the deserialization state.
+    pub fn new<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
         let limit = ExecutionMonitor::new();
-        let mut deserialization = Deserialization {
+        Deserialization {
             from_space,
             scan_stack,
             stable_start,
@@ -70,9 +72,15 @@ impl Deserialization {
             stable_root: None,
             limit,
             clear_position: stable_start,
-        };
-        deserialization.start(mem, StableValue::serialize(Value::from_ptr(0)));
-        deserialization
+            started: false,
+        }
+    }
+
+    /// Start the deserialization, followed by a series of copy increments.
+    pub fn initate<M: Memory>(&mut self, mem: &mut M) {
+        assert!(!self.started);
+        self.started = true;
+        self.start(mem, StableValue::serialize(Value::from_ptr(0)));
     }
 
     pub fn get_stable_root(&self) -> Value {
@@ -146,6 +154,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn copy<M: Memory>(&mut self, mem: &mut M, stable_object: StableValue) -> Value {
+        debug_assert!(self.started);
         unsafe {
             let target = deserialize(mem, &mut self.from_space, stable_object);
             if self.stable_root.is_none() {

@@ -152,7 +152,11 @@ impl StabilizationMetadata {
             Self::read_blob(mem, TAG_BLOB_B, offset)
         } else {
             // No space for persistent virtual table.
-            unsafe { alloc_blob(mem, TAG_BLOB_B, Bytes(0)) }
+            unsafe { 
+                let blob = alloc_blob(mem, TAG_BLOB_B, Bytes(0));
+                allocation_barrier(blob);
+                blob
+            }
         }
     }
 

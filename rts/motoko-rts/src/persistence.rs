@@ -21,7 +21,7 @@ use crate::{
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
-    types::{Bytes, Value, TAG_BLOB_B},
+    types::{Bytes, Value, NULL_POINTER, TAG_BLOB_B},
 };
 
 use self::compatibility::TypeDescriptor;
@@ -191,7 +191,23 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Register the stable actor type on canister initialization and upgrade.
+/// Called on EOP upgrade: Garbage collect the stable functions.
+/// For graph copy, this is initiated on stabilization start.
+#[ic_mem_fn]
+pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M) {
+    let metadata = PersistentMetadata::get();
+    if metadata.is_initialized() {
+        let old_actor = (*metadata).stable_actor;
+        if old_actor != DEFAULT_VALUE {
+            assert_ne!(old_actor, NULL_POINTER);
+            stable_functions::collect_stable_functions(mem, old_actor);
+        }
+    }
+}
+
+/// Register the stable actor type on canister initialization and upgrade, for EOP and graph copy.
+/// Before this call, the garbage collector of stable functions must have run.
+/// This is either on EOP upgrade or on stabilization start of graph copy.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.
@@ -220,13 +236,7 @@ pub unsafe fn register_stable_type<M: Memory>(
         rts_trap_with("Memory-incompatible program upgrade");
     }
     (*metadata).stable_type.assign(mem, &new_type);
-    let old_actor = (*metadata).stable_actor;
-    let old_actor = if old_actor == DEFAULT_VALUE {
-        None
-    } else {
-        Some(old_actor)
-    };
-    register_stable_functions(mem, stable_functions_map, type_test.as_ref(), old_actor);
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
@@ -254,6 +264,11 @@ pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
 pub(crate) unsafe fn stable_function_state() -> &'static mut StableFunctionState {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_function_state
+}
+
+pub(crate) unsafe fn restore_stable_type<M: Memory>(mem: &mut M, type_descriptor: &TypeDescriptor) {
+    let metadata = PersistentMetadata::get();
+    (*metadata).stable_type.assign(mem, type_descriptor);
 }
 
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.

@@ -1302,12 +1302,14 @@ module RTS = struct
     E.add_func_import env "rts" "is_graph_stabilization_started" [] [I32Type];
     E.add_func_import env "rts" "start_graph_stabilization" [I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_stabilization_increment" [] [I32Type];
-    E.add_func_import env "rts" "start_graph_destabilization" [I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "load_stabilization_metadata" [] [];
+    E.add_func_import env "rts" "start_graph_destabilization" [] [];
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
+    E.add_func_import env "rts" "collect_stable_functions" [] [];
     E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
-    E.add_func_import env "rts" "collect_stable_functions" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -8897,7 +8899,7 @@ module EnhancedOrthogonalPersistence = struct
         let unwrapped = unwrap_options field_type in
         let type_id = TM.find unwrapped map in
         compile_unboxed_const (Int64.of_int type_id) ^^
-        E.call_import env "rts" "collect_stable_functions"
+        E.call_import env "rts" "stable_functions_gc_visit"
       in
       get_type_id ^^ compile_eq_const (Int64.of_int type_id) ^^
       E.if0
@@ -9008,15 +9010,13 @@ module EnhancedOrthogonalPersistence = struct
     Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env) ^^
     Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
 
-  let register_stable_type env =
+  let collect_stable_functions env =
     assert (not !(E.(env.object_pool.frozen)));
-    if env.E.is_canister then
-      begin
-        load_type_descriptor env ^^
-        E.call_import env "rts" "register_stable_type"
-      end
-    else
-      G.nop
+    E.call_import env "rts" "collect_stable_functions"
+
+  let register_stable_type env =
+    load_type_descriptor env ^^
+    E.call_import env "rts" "register_stable_type"
 
   let load_old_field env field get_old_actor =
     if field.Type.typ = Type.(Opt Any) then
@@ -9086,9 +9086,11 @@ module GraphCopyStabilization = struct
   let graph_stabilization_increment env =
     E.call_import env "rts" "graph_stabilization_increment" ^^ Bool.from_rts_int32
 
+  let load_stabilization_metadata env =
+    E.call_import env "rts" "load_stabilization_metadata"
+
   let start_graph_destabilization env =
-    EnhancedOrthogonalPersistence.load_type_descriptor env ^^
-    E.call_import env "rts" "start_graph_destabilization"
+    E.call_import env "rts" "start_graph_destabilization"  
 
   let graph_destabilization_increment env =
     E.call_import env "rts" "graph_destabilization_increment" ^^ Bool.from_rts_int32
@@ -10411,9 +10413,11 @@ module Persistence = struct
     compile_eq_const StableMem.version_stable_heap_regions ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
-  let initialize env actor_type =
+  let read_persistence_version env =
     E.call_import env "rts" "read_persistence_version" ^^
-    set_persistence_version env ^^
+    set_persistence_version env
+
+  let initialize env actor_type =
     use_graph_destabilization env ^^
     E.if0
       begin
@@ -10449,6 +10453,25 @@ module Persistence = struct
     E.if0
       (IncrementalGraphStabilization.complete_stabilization_on_upgrade env)
       (EnhancedOrthogonalPersistence.save env actor_type)
+
+  let register_stable_type env =
+    assert (not !(E.(env.object_pool.frozen)));
+    if env.E.is_canister then
+      begin
+        use_enhanced_orthogonal_persistence env ^^
+        (E.if0
+          (EnhancedOrthogonalPersistence.collect_stable_functions env)
+          begin
+            use_graph_destabilization env ^^
+            E.if0
+              (GraphCopyStabilization.load_stabilization_metadata env)
+              G.nop (* no stable function support with Candid stabilization *)
+          end) ^^
+        EnhancedOrthogonalPersistence.register_stable_type env
+      end
+    else
+      G.nop
+
 end (* Persistence *)
 
 module PatCode = struct
@@ -13522,16 +13545,10 @@ and conclude_module env actor_type set_serialization_globals set_eop_globals sta
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env ->
-    let register_stable_type = EnhancedOrthogonalPersistence.register_stable_type env in
+    let register_stable_type = Persistence.register_stable_type env in
     let register_static_variables = GCRoots.register_static_variables env in
     E.call_import env "rts" ("initialize_incremental_gc") ^^
-    (* The stable type is registered upfront as the stable function literals need to be defined before
-       te object pool can be set up. This is because the object pool contains stable closures.
-       On EOP, the new functions and types can be directly registered on program start.
-       On graph copy, the new stable type is first temporarily set in the cleared persistent memory.
-       Later, on `start_graph_destabilization`, the persistent memory compatibility is checked
-       and the stable functions are properly upgraded based on the previous program version.
-       The check happens atomically in the upgrade, even for incremental graph copy destabilization. *)
+    Persistence.read_persistence_version env ^^
     register_stable_type ^^ (* cannot use stable variables. *)
     register_static_variables ^^ (* already uses stable function literals *)
     match start_fi_o with

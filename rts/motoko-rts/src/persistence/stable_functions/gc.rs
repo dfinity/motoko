@@ -1,8 +1,17 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{gc::remembered_set::RememberedSet, memory::Memory, persistence::stable_functions::is_flexible_function_id, types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_OBJECT, TAG_SOME}, visitor::enhanced::visit_pointer_fields};
+use crate::{
+    gc::remembered_set::RememberedSet,
+    memory::Memory,
+    persistence::stable_functions::is_flexible_function_id,
+    types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_OBJECT, TAG_SOME},
+    visitor::enhanced::visit_pointer_fields,
+};
 
-use super::{mark_stack::{MarkStack, StackEntry}, resolve_stable_function_id, FunctionId, PersistentVirtualTable};
+use super::{
+    mark_stack::{MarkStack, StackEntry},
+    resolve_stable_function_id, FunctionId, PersistentVirtualTable,
+};
 
 // Currently fields in closure (captures) are not yet discovered in a type-directed way.
 // This sentinel denotes that there is no static type known and the generic visitor is to be invoked.
@@ -61,7 +70,7 @@ impl FunctionGC {
             object.as_obj(),
             object.tag(),
             |mem, field| {
-                collect_stable_functions(mem, *field, UNKNOWN_TYPE_ID);
+                stable_functions_gc_visit(mem, *field, UNKNOWN_TYPE_ID);
             },
             |_, slice_start, arr| {
                 assert!(slice_start == 0);
@@ -79,7 +88,9 @@ impl FunctionGC {
     }
 
     unsafe fn mark_function(&mut self, function_id: FunctionId) {
-        let entry = self.virtual_table.get(resolve_stable_function_id(function_id));
+        let entry = self
+            .virtual_table
+            .get(resolve_stable_function_id(function_id));
         (*entry).marked = true;
     }
 
@@ -97,22 +108,18 @@ static mut COLLECTOR_STATE: Option<FunctionGC> = None;
 pub unsafe fn garbage_collect_functions<M: Memory>(
     mem: &mut M,
     virtual_table: *mut PersistentVirtualTable,
-    old_actor: Option<Value>,
+    old_actor: Value,
 ) {
-    if old_actor.is_none() {
-        return;
-    }
-    let old_actor = old_actor.unwrap();
     assert_eq!(old_actor.tag(), TAG_OBJECT);
     COLLECTOR_STATE = Some(FunctionGC::new(mem, virtual_table));
     const ACTOR_TYPE_ID: u64 = 0;
-    collect_stable_functions(mem, old_actor, ACTOR_TYPE_ID);
+    stable_functions_gc_visit(mem, old_actor, ACTOR_TYPE_ID);
     COLLECTOR_STATE.as_mut().unwrap().run(mem);
     COLLECTOR_STATE = None;
 }
 
 #[ic_mem_fn]
-unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, object: Value, type_id: u64) {
+unsafe fn stable_functions_gc_visit<M: Memory>(mem: &mut M, object: Value, type_id: u64) {
     let state = COLLECTOR_STATE.as_mut().unwrap();
     if object != NULL_POINTER && !state.mark_set.contains(object) {
         state.mark_set.insert(mem, object);

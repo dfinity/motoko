@@ -52,7 +52,7 @@ impl<'a, M> SerializationContext<'a, M> {
 /// whenever the heap layout is changed.
 /// Usage:
 /// ```
-/// let serialization = Serialization::start(root, stable_start);
+/// let mut serialization = Serialization::start(root, stable_start);
 /// while !serialization.is_completed() {
 ///     serialization.copy_increment();
 /// }

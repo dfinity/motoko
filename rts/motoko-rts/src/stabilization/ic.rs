@@ -7,7 +7,7 @@ use crate::{
     gc::incremental::{is_gc_stopped, resume_gc, stop_gc},
     memory::Memory,
     persistence::{
-        compatibility::{MemoryCompatibilityTest, TypeDescriptor}, set_upgrade_instructions, stable_function_state, stable_functions::{gc::garbage_collect_functions, upgrade_stable_functions, PersistentVirtualTable, StableFunctionMap}
+        compatibility::TypeDescriptor, restore_stable_type, set_upgrade_instructions, stable_function_state, stable_functions::{gc::garbage_collect_functions, restore_virtual_table}
     },
     rts_trap_with,
     stabilization::ic::metadata::StabilizationMetadata,
@@ -74,11 +74,11 @@ pub unsafe fn start_graph_stabilization<M: Memory>(
     assert!(STABILIZATION_STATE.is_none());
     assert!(is_gc_stopped());
     let function_state = stable_function_state();
-    garbage_collect_functions(mem, function_state.get_virtual_table(), Some(stable_actor));
+    garbage_collect_functions(mem, function_state.get_virtual_table(), stable_actor);
     let stable_memory_pages = stable_mem::size(); // Backup the virtual size.
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
     let serialization = Serialization::start(mem, stable_actor, serialized_data_start);
-    // Mark the alive stable functions before stabilization such that destabilization can later check 
+    // Mark the alive stable functions before stabilization such that destabilization can later check
     // their existence in the new program version.
     let old_virtual_table = function_state.virtual_table();
     STABILIZATION_STATE = Some(StabilizationState::new(
@@ -149,49 +149,25 @@ struct DestabilizationState {
 
 static mut DESTABILIZATION_STATE: Option<DestabilizationState> = None;
 
-/// Starts the graph-copy-based destabilization process.
-/// This requires that the deserialization is subsequently run and completed.
-/// Also checks whether the new program version is compatible to the stored state by comparing the type
-/// tables of both the old and the new program version.
-/// The check is identical to enhanced orthogonal persistence, except that the metadata is obtained from
-/// stable memory and not the persistent main memory.
-/// The parameters encode the type table of the new program version to which that data is to be upgraded.
-/// `new_candid_data`: A blob encoding the Candid type as a table.
-/// `new_type_offsets`: A blob encoding the type offsets in the Candid type table.
-///   Type index 0 represents the stable actor object to be serialized.
-/// Traps if the stable state is incompatible with the new program version and the upgrade is not
-/// possible.
+/// Load the graph-copy persistence metadata from stable memory on upgrade.
+/// This step is necessary before `register_stable_type` can be invoked
+/// and graph copy destabilization can be started.
 #[ic_mem_fn(ic_only)]
-pub unsafe fn start_graph_destabilization<M: Memory>(
-    mem: &mut M,
-    new_candid_data: Value,
-    new_type_offsets: Value,
-    new_function_map: Value,
-) {
+pub unsafe fn load_stabilization_metadata<M: Memory>(mem: &mut M) {
     assert!(DESTABILIZATION_STATE.is_none());
 
     let mut instruction_meter = InstructionMeter::new();
     instruction_meter.start();
-    let mut new_type_descriptor = TypeDescriptor::new(new_candid_data, new_type_offsets);
     let (metadata, statistics) = StabilizationMetadata::load(mem);
-    let mut old_type_descriptor = metadata.type_descriptor;
-    let type_test =
-        MemoryCompatibilityTest::new(mem, &mut old_type_descriptor, &mut new_type_descriptor);
-    if !type_test.compatible_stable_actor() {
-        rts_trap_with("Memory-incompatible program upgrade");
-    }
-    // Upgrade the stable functions and check their compatibility.
-    // The alive stable functions have been marked by the GC in `start_graph_stabilization`.
-    let virtual_table = PersistentVirtualTable::from_blob(metadata.persistent_virtual_table);
-    let stable_functions = StableFunctionMap::from_blob(new_function_map);
-    upgrade_stable_functions(mem, virtual_table, stable_functions, Some(&type_test));
+    restore_stable_type(mem, &metadata.type_descriptor);
+    restore_virtual_table(mem, metadata.persistent_virtual_table);
     // Restore the virtual size.
     moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
 
     // Stop the GC until the incremental graph destabilization has been completed.
     stop_gc();
 
-    let deserialization = Deserialization::start(
+    let deserialization = Deserialization::new(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
@@ -203,6 +179,17 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
         completed: false,
         instruction_meter,
     });
+}
+
+/// Start the graph-copy-based destabilization process after stabilization metadata
+/// has been loaded and the memory compatibility has been checked.
+/// This requires that the deserialization is subsequently run and completed.
+#[ic_mem_fn(ic_only)]
+pub unsafe fn start_graph_destabilization<M: Memory>(mem: &mut M) {
+    let state = DESTABILIZATION_STATE.as_mut().unwrap();
+    state.instruction_meter.start();
+    state.deserialization.initate(mem);
+    state.instruction_meter.stop();
 }
 
 /// Incremental graph-copy-based destabilization, deserializing a limited amount of serialized data from

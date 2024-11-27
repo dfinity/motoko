@@ -54,7 +54,7 @@
 //!    upgrades and is built and updated by the runtime system. To build and update the persistent
 //!    virtual table, the compiler provides a **stable function map**, mapping the hashed name of a
 //!    potentially stable function to the corresponding Wasm table index, plus its closure type
-//!    pointing to the new type table. For performance, the stable function map is sorted by the 
+//!    pointing to the new type table. For performance, the stable function map is sorted by the
 //!    hashed names.
 //!    
 //! 2. **Function literal table** for materializing stable function literals:
@@ -84,12 +84,12 @@
 //! table index, specifically `-wasm_table_index - 1`.
 //!
 //! Garbage collection of stable functions:
-//! * On an upgrade, the runtime systems determines which stable functions are still alive, i.e. 
+//! * On an upgrade, the runtime systems determines which stable functions are still alive, i.e.
 //!   transitively reachable from stable variables.
 //! * Only those alive stable functions need to exist in the new program version.
-//! * All other stable functions of the previous version are considered garbage and their slots 
+//! * All other stable functions of the previous version are considered garbage and their slots
 //!   in the virtual table can be recycled.
-//! 
+//!
 //! Garbage collection is necessary to alive programs to use classes and stable functions in only
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
@@ -330,20 +330,12 @@ impl StableFunctionMap {
     }
 }
 
-/// Called on program initialization and on upgrade, both during EOP and graph copy.
-pub unsafe fn register_stable_functions<M: Memory>(
-    mem: &mut M,
-    stable_functions_map: Value,
-    type_test: Option<&MemoryCompatibilityTest>,
-    old_actor: Option<Value>,
-) {
-    let stable_functions = StableFunctionMap::from_blob(stable_functions_map);
+/// Garbage collect the stable functions in the old version on an upgrade.
+/// Called on EOP upgrade and graph copy stabilization start.
+pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, old_actor: Value) {
     // Retrieve the persistent virtual, or, if not present, initialize an empty one.
     let virtual_table = prepare_virtual_table(mem);
-    // Garbage collect the stable functions in the old version on an upgrade.
     garbage_collect_functions(mem, virtual_table, old_actor);
-    // Check and upgrade the alive stable functions, register new stablefunction.
-    upgrade_stable_functions(mem, virtual_table, stable_functions, type_test);
 }
 
 /// Retrieve the persistent virtual, or, if not present, initialize an empty one.
@@ -355,22 +347,23 @@ unsafe fn prepare_virtual_table<M: Memory>(mem: &mut M) -> *mut PersistentVirtua
     state.get_virtual_table()
 }
 
-/// Upgrade and extend the persistent virtual table and set the new function literal table.
+/// Register the stable functions in the persistent virtual table and the function literal table.
 /// The stable function GC has already marked all alive stable functions in the virtual table.
-/// Check that the necessary stable functions exist in the new version and
-/// that their closure types are compatible.
-pub unsafe fn upgrade_stable_functions<M: Memory>(
+/// Check that the necessary stable functions exist in the new version and that their closure types 
+/// are compatible.
+pub unsafe fn register_stable_functions<M: Memory>(
     mem: &mut M,
-    virtual_table: *mut PersistentVirtualTable,
-    stable_functions: *mut StableFunctionMap,
+    stable_function_map: Value,
     type_test: Option<&MemoryCompatibilityTest>,
 ) {
     // O(n*log(n)) runtime costs:
     // 1. Initialize all function ids in stable functions map to null sentinel.
+    let stable_functions = StableFunctionMap::from_blob(stable_function_map);
     prepare_stable_function_map(stable_functions);
-    // 2. Scan the persistent virtual table and match all marked entries with `stable_functions_map`. 
+    // 2. Scan the persistent virtual table and match all marked entries with `stable_functions_map`.
     // Check the all necessary stable functions exist in the new version and that their closure types are
     // compatible. Assign the function ids in the stable function map.
+    let virtual_table = prepare_virtual_table(mem);
     update_existing_functions(virtual_table, stable_functions, type_test);
     // 3. Scan stable functions map and determine number of new stable functions that are yet
     // not part of the persistent virtual table.
@@ -388,6 +381,12 @@ pub unsafe fn upgrade_stable_functions<M: Memory>(
     write_with_barrier(mem, state.literal_table_location(), new_literal_table);
 }
 
+/// Restore virtual table on graph copy destabilization.
+pub unsafe fn restore_virtual_table<M: Memory>(mem: &mut M, virtual_table: Value) {
+    let state = stable_function_state();
+    write_with_barrier(mem, state.virtual_table_location(), virtual_table);
+}
+
 /// Step 1. Initialize all function ids in the stable function map to null.
 unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) {
     for index in 0..stable_functions.length() {
@@ -396,7 +395,7 @@ unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) 
     }
 }
 
-/// Step 2. Scan the persistent virtual table and match all marked entries with `stable_functions_map`. 
+/// Step 2. Scan the persistent virtual table and match all marked entries with `stable_functions_map`.
 /// Check the all necessary stable functions exist in the new version and that their closure types are
 /// compatible. Assign the function ids in the stable function map.
 unsafe fn update_existing_functions(
@@ -411,7 +410,7 @@ unsafe fn update_existing_functions(
         let stable_function_entry = stable_functions.find(name_hash);
         let marked = (*virtual_table_entry).marked;
         if marked {
-            if stable_function_entry == null_mut()  {
+            if stable_function_entry == null_mut() {
                 let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
@@ -420,7 +419,8 @@ unsafe fn update_existing_functions(
             let new_closure = (*stable_function_entry).closure_type_index;
             assert!(old_closure >= i32::MIN as TypeIndex && old_closure <= i32::MAX as TypeIndex);
             assert!(new_closure >= i32::MIN as TypeIndex && new_closure <= i32::MAX as TypeIndex);
-            if type_test.is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
+            if type_test
+                .is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
             {
                 let buffer = format!(
                     200,
@@ -441,7 +441,7 @@ unsafe fn update_existing_functions(
     }
 }
 
-// Step 3. Scan stable functions map and determine number of new stable functions that are not yet 
+// Step 3. Scan stable functions map and determine number of new stable functions that are not yet
 // part of the persistent virtual table.
 unsafe fn count_new_functions(stable_functions: *mut StableFunctionMap) -> usize {
     let mut count = 0;
