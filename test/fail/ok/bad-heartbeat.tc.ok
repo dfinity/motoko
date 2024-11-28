@@ -1,4 +1,4 @@
 bad-heartbeat.mo:2.3-3.4: type error [M0127], system function heartbeat is declared with type
   stable () -> ()
 instead of expected type
-  stable () -> async ()
+  () -> async ()

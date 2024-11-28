@@ -35,7 +35,7 @@ variance.mo:82.11-82.18: type error [M0096], expression of type
 cannot produce expected type
   {get : stable () -> ?Any; put : stable Any -> ()}
 variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate function of type
-  <A>() -> Inv<A>
+  stable <A>() -> Inv<A>
 to argument of type
   ()
 because implicit instantiation of type parameter A is under-constrained with

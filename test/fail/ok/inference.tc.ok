@@ -199,11 +199,3 @@ because no instantiation of T__110 makes
   {type x = Nat}  <:  {x : T__110}
 inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
 inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
-inference.mo:193.16-193.27: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: Nat>(Nat -> async Int, T) -> async Int
-to argument of type
-  (stable Nat -> async Int, Nat)
-to produce result of type
-  Any
-because no instantiation of $__20, T__118 makes
-  (stable Nat -> async Int, Nat)  <:  (Nat -> async Int, T__118)
