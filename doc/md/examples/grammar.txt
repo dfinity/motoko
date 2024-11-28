@@ -161,6 +161,7 @@
 <exp_plain> ::= 
     <lit>
     '(' <list(<exp>, ',')> ')'
+    '(' <exp_post> 'actor' 'func' <exp_post> ')'
 
 <exp_nullary> ::= 
     <exp_obj>

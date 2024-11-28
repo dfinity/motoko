@@ -581,6 +581,8 @@ exp_plain :
     { LitE(ref l) @? at $sloc }
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
+  | LPAR princ=exp_post(ob) ACTOR FUNC meth=exp_post(ob) RPAR
+    { EndE (princ, meth) @? at $sloc }
 
 exp_nullary(B) :
   | e=B
