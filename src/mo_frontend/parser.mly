@@ -703,7 +703,7 @@ exp_un(B) :
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
-  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, COMMA) RPAR e=exp_nest (* parentheticals to qualify message sends *)
     { match e.it with
       | CallE (base0_opt, f, is, args) ->
         { e with it = CallE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), f, is, args) }
