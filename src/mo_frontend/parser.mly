@@ -242,6 +242,7 @@ and objblock s id ty dec_fields =
 %token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
 %token FLEXIBLE STABLE
+%token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
@@ -805,10 +806,16 @@ stab :
   | (* empty *) { None }
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
+  | TRANSIENT { Some (Flexible @@ at $sloc) }
+  | PERSISTENT { Some (Stable @@ at $sloc) }
 
 %inline stab_mod :
+  (* we could also forbid flexible/transient,
+    defining away flexible/transient actor class? {} ... *)
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
+  | TRANSIENT { Some (Flexible @@ at $sloc) }
+  | PERSISTENT { Some (Stable @@ at $sloc) }
 
 (* Patterns *)
 
