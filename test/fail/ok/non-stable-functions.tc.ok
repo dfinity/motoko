@@ -1,4 +1,4 @@
-non-stable-functions.mo:12.14-12.19: type error [M0131], variable print is declared stable but has non-stable type
+non-stable-functions.mo:13.14-13.19: type error [M0131], variable print is declared stable but has non-stable type
   () -> ()
-non-stable-functions.mo:13.14-13.17: type error [M0131], variable map is declared stable but has non-stable type
+non-stable-functions.mo:14.14-14.17: type error [M0131], variable map is declared stable but has non-stable type
   Nat -> Text
