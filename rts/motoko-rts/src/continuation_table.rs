@@ -56,7 +56,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set(i, Value::from_scalar(i + 1), mem);
+        table.initialize(i, Value::from_scalar(i + 1), mem);
     }
     allocation_barrier(TABLE);
 }
@@ -78,7 +78,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
     }
 
     for i in old_size..new_size {
-        new_array.set(i, Value::from_scalar(i + 1), mem);
+        new_array.initialize(i, Value::from_scalar(i + 1), mem);
     }
     allocation_barrier(new_table);
 
