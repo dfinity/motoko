@@ -51,10 +51,6 @@ actor a {
     }
   };
 
-  func test() {
-
-  };
-
   func sum(n : Int) : Expression {
      if (n <= 0)
        #const 0

@@ -92,7 +92,8 @@ let env_of_scope ?(viper_mode=false) msgs scope named_scope =
   }
 
 let use_identifier env id =
-  env.used_identifiers := S.add id !(env.used_identifiers)
+  env.used_identifiers := S.add id !(env.used_identifiers);
+  env.captured := S.add id !(env.captured)
 
 let is_unused_identifier env id =
   not (S.mem id !(env.used_identifiers))
@@ -318,17 +319,19 @@ let detect_unused env inner_identifiers =
 let enter_scope env =
   let used_identifiers_before = !(env.used_identifiers) in
   let generic_count_before = !(env.generic_variable_count) in
-  (used_identifiers_before, generic_count_before)
+  let captured_before = !(env.captured) in
+  (used_identifiers_before, generic_count_before, captured_before)
 
 let leave_scope env inner_identifiers initial_usage =
-  let used_identifiers_before, generic_count_before = initial_usage in
+  let used_identifiers_before, generic_count_before, captured_before = initial_usage in
   detect_unused env inner_identifiers;
   let inner_identifiers = get_identifiers inner_identifiers in
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
   let final_usage = S.union used_identifiers_before unshadowed_usage in
   env.used_identifiers := final_usage;
-  env.captured := unshadowed_usage;
-  env.generic_variable_count := generic_count_before
+  env.generic_variable_count := generic_count_before;
+  let unshadowed_captured = S.diff !(env.captured) inner_identifiers in
+  env.captured := S.union captured_before unshadowed_captured
 
 (* Stable functions support *)
 
@@ -1632,13 +1635,14 @@ and infer_exp'' env exp : T.typ =
           labs = T.Env.empty;
           rets = Some codom;
           named_scope;
+          captured = ref S.empty;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
-      leave_scope env ve2 initial_usage;
+      leave_scope env'' ve2 initial_usage;
       assert(!closure = None);
-      closure := stable_function_closure env named_scope;
+      closure := stable_function_closure env'' named_scope;
       (match !closure with
       | Some Type.{ captured_variables; _ } ->
         T.Env.iter (fun id typ ->
@@ -2615,7 +2619,8 @@ and infer_obj env s dec_fields at : T.typ =
       { env with
         in_actor = true;
         labs = T.Env.empty;
-        rets = None
+        rets = None;
+        captured = ref S.empty;
       }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
@@ -2821,6 +2826,7 @@ and infer_dec env dec : T.typ =
           async = async_cap;
           in_actor;
           named_scope;
+          captured = ref S.empty;
         }
       in
       let initial_usage = enter_scope env''' in

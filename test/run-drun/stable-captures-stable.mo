@@ -6,10 +6,10 @@ actor {
             Prim.debugPrint("STABLE METHOD");
         };
 
-        var other : stable () -> () = otherMethod;
+        var other1 : stable () -> () = otherMethod;
 
         public func stableMethod() {
-            other(); // OK, because method declaration is immutable
+            other1(); // OK, because method declaration is immutable
         };
     };
 
@@ -26,13 +26,13 @@ actor {
             Prim.debugPrint("STABLE INNER");
         };
 
-        var other : stable () -> () = otherFunction;
+        var other2 : stable () -> () = otherFunction;
 
-        func inner() {
-            other(); // OK, because method declaration is immutable
+        func inner2() {
+            other2(); // OK, because method declaration is immutable
         };
 
-        function := inner;
+        function := inner2;
     };
     outer();
     function();    
