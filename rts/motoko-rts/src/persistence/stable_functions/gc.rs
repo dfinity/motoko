@@ -13,6 +13,9 @@ use super::{
     resolve_stable_function_id, FunctionId, PersistentVirtualTable,
 };
 
+// Note: For a type-directed selective visiting, we need to revisit the
+// same object if it occurs with a different static type.
+
 // Currently fields in closure (captures) are not yet discovered in a type-directed way.
 // This sentinel denotes that there is no static type known and the generic visitor is to be invoked.
 // TODO: Optimization: Use expected closure types to select a compiler-generated specialized visitor.
@@ -121,6 +124,8 @@ pub unsafe fn garbage_collect_functions<M: Memory>(
 #[ic_mem_fn]
 unsafe fn stable_functions_gc_visit<M: Memory>(mem: &mut M, object: Value, type_id: u64) {
     let state = COLLECTOR_STATE.as_mut().unwrap();
+    // TODO: also remember type for the marked object. Revisit the same object if
+    // it has a different static type.
     if object != NULL_POINTER && !state.mark_set.contains(object) {
         state.mark_set.insert(mem, object);
         state.mark_stack.push(mem, StackEntry { object, type_id });
