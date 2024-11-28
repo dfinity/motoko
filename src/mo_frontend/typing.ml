@@ -354,7 +354,7 @@ let stable_function_closure env named_scope =
     }
 
 let enter_named_scope env name =
-  if (String.contains name '@') || (String.contains name '$') then
+  if (String.contains name '@') || (String.contains name '$') || not !Mo_config.Flags.enhanced_orthogonal_persistence then
     None
   else 
     (match env.named_scope with
@@ -1614,6 +1614,10 @@ and infer_exp'' env exp : T.typ =
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
     let sort, ve = check_shared_pat env shared_pat in
+    let sort = match sort, !Mo_config.Flags.enhanced_orthogonal_persistence with
+    | T.Local T.Stable, false -> T.Local T.Flexible (* named local functions are flexible in classical mode *)
+    | _ -> sort
+    in
     let is_async = match typ_opt with
       | Some { it = AsyncT _; _ } -> true
       | _ -> false
