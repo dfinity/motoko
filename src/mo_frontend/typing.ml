@@ -1981,14 +1981,14 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE (_FIXME, exp1, inst, exp2), _ ->
-    ignore (Option.map (infer_exp env) _FIXME);
+  | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
+    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
@@ -2560,12 +2560,10 @@ and validate_parenthetical env typ_opt = function
      begin match typ_opt with
      | Some fun_ty when T.is_func fun_ty ->
        let s, _, _, _, ts2 = T.as_func fun_ty in
-       local_error env par.at "M02041"
-         "result has types %a" display_typ_list ts2;
        begin match ts2 with
        | _ when T.is_shared_sort s -> ();
        | [cod] when T.is_async cod -> ();
-       | _ -> assert false; warn env par.at "M0202" "unexpected parenthetical note on a non-send call";
+       | _ -> warn env par.at "M0202" "unexpected parenthetical note on a non-send call";
        end
      | _ -> ()
      end;
