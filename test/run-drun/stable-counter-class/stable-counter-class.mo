@@ -21,5 +21,3 @@ actor class Counter() {
   ignore 1;
 
 }
-
-

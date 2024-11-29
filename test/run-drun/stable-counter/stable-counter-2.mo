@@ -22,5 +22,3 @@ persistent actor Counter {
   ignore 1;
 
 }
-
-
