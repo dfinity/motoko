@@ -335,9 +335,8 @@ let transform prog =
       let (nary_async, nary_reply, reject, clean), def =
         new_nary_async_reply ts2
       in
-      let (Object, pars_fs) = T.(as_obj pars.note.typ) in
-      let hasCycles = Type.(sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
-      assert (pars_fs = [] || hasCycles); (* FIXME: remove *)
+      let (Object, pars_fs) = T.(as_obj pars.note.Note.typ) in
+      let hasCycles = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
 
       let setup = if hasCycles
         then Some (thenE
