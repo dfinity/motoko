@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "cf840985f48736d22e52db26147c9f9a2dcd19b1",
-        "sha256": "11y0nql11w9x1crg6szy0w1pa42nixld91gvn2sbiqxgpbrw02r8",
+        "rev": "2d4135ff07470802b39e94017ebb7e46e671c59b",
+        "sha256": "0ffxacbdakkhbrnchdxrlz62c8yd1jfy77krsf0vd1ihbf48svdr",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/cf840985f48736d22e52db26147c9f9a2dcd19b1.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/2d4135ff07470802b39e94017ebb7e46e671c59b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -94,30 +94,16 @@
         "url": "https://github.com/kritzcreek/motoko-matchers/archive/cb838c192df3328ff9ae172e2dc7338cf55e74bf.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "musl-wasi": {
-        "branch": "main",
-        "builtin": false,
-        "description": "WASI libc implementation for WebAssembly",
-        "homepage": "https://wasi.dev",
-        "owner": "WebAssembly",
-        "repo": "wasi-libc",
-        "rev": "c5264e2bbe532994d06b039005f2af91bedcc1a6",
-        "sha256": "1skw2jqzaidr2zbzbjw32b36xvqniwf4if8cr4kbpp8vjvh7j2lr",
-        "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/c5264e2bbe532994d06b039005f2af91bedcc1a6.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "nixpkgs": {
         "branch": "release-24.05",
-        "builtin": true,
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "homepage": null,
+        "description": "Nix Packages collection & NixOS",
+        "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "bb8c2cf7ea0dd2e18a52746b2c3a5b0c73b93c22",
-        "sha256": "03kvrs5ai4y09hcjkbzwlxx0gv5sggqi0m82cxdqikkyriwlg97b",
+        "rev": "404f983f8c1da3ed403c95df9bd18d7c3b23399d",
+        "sha256": "025alb35qf1iwmz45615ahp400q54582kqzc0238a51ai2w88pxc",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/bb8c2cf7ea0dd2e18a52746b2c3a5b0c73b93c22.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/404f983f8c1da3ed403c95df9bd18d7c3b23399d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
