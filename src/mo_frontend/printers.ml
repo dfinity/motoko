@@ -195,7 +195,7 @@ let string_of_symbol = function
   | X (N N_path) -> "<path>"
   | X (N N_annot_opt) -> "<annot_opt>"
   | X (N N_seplist_case_semicolon_) ->  "seplist(<case>,<semicolon>)"
-  | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<top_dec>,<semicolon>)"
+  | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<dec>,;)"
   | X (N N_seplist_dec_semicolon_) -> "seplist(<dec>,<semicolon>)"
   | X (N N_seplist_typ_dec_semicolon_) -> "seplist(<typ_dec>,<semicolon>)"
   | X (N N_seplist_dec_field_semicolon_) -> "seplist(<dec_field>,<semicolon>)"
