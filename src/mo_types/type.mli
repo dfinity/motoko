@@ -210,7 +210,6 @@ val find_unshared : typ -> typ option
 val is_shared_func : typ -> bool
 val is_local_async_func : typ -> bool
 
-val stable_binding : bind
 val stable : typ -> bool
 val old_stable : typ -> bool
 

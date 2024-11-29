@@ -825,8 +825,7 @@ and dec' at n = function
     let rng_typ =
       match fun_typ with
       | T.Func(_, _, bds, dom, [rng]) ->
-        let real_bindings = List.filter ((<>) T.stable_binding) bds in
-        assert(List.length inst = List.length real_bindings);
+        assert(List.length inst = List.length bds);
         T.promote (T.open_ inst rng)
       | _ -> assert false
     in

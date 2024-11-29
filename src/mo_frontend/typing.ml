@@ -918,13 +918,12 @@ and check_typ_bind_sorts env tbs =
   List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
 
 and check_typ_binds env stable_scope typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
-  let binding = if stable_scope then [T.stable_binding] else [] in
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
   let cs =
     List.map2 (fun x tb ->
       match tb.note with
       | Some c -> c
-      | None -> Cons.fresh x (T.Abs (binding, T.Pre, None))) xs typ_binds
+      | None -> Cons.fresh x (T.Abs ([], T.Pre, None))) xs typ_binds
       in
   let te = List.fold_left2 (fun te typ_bind c ->
       let id = typ_bind.it.var in
@@ -943,7 +942,7 @@ and check_typ_binds env stable_scope typ_binds : T.con list * T.bind list * Scop
   check_typ_binds_acyclic env typ_binds cs ts;
   let ks = List.map (fun t -> 
     let index = generic_variable_index env in
-    T.Abs (binding, t, index)) ts in
+    T.Abs ([], t, index)) ts in
   List.iter2 (fun c k ->
     match Cons.kind c with
     | T.Abs (_, T.Pre, _) -> T.set_kind c k
@@ -960,8 +959,6 @@ and check_typ_bind env stable_scope typ_bind : T.con * T.bind * Scope.typ_env * 
   | _ -> assert false
 
 and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
-  let is_stable = List.mem T.stable_binding tbs in
-  let tbs = List.filter (fun bind -> bind <> T.stable_binding) tbs in
   let pars = List.length tbs in
   let args = List.length ts in
   if pars <> args then begin
@@ -983,10 +980,6 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
             "type argument%a\ndoes not match parameter bound%a"
             display_typ_expand t
             display_typ_expand u;
-        if is_stable && not (T.stable t) then
-          local_error env at' "M0203"
-            "Type argument%a\nhas to be of a stable type to match the type parameter "
-            display_typ_expand t;
         go tbs' ts' ats'
     | [], [], [] -> ()
     | _  -> assert false
@@ -1048,7 +1041,7 @@ and infer_inst env sort tbs typs t_ret at =
           "send capability required, but not available\n (need an enclosing async expression or function body)"
     )
   | tbs', typs' ->
-    assert (List.for_all (fun tb -> tb.T.sort = T.Type || tb = T.stable_binding) tbs');
+    assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     ts, ats
 
 and check_inst_bounds env sort tbs inst t_ret at =
@@ -2146,9 +2139,14 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
-      Printf.printf "INST FUNC %s %s\n" (T.string_of_typ t1) (if sort = T.Local T.Stable then "STABLE" else "FLEXIBLE");
       let ts = check_inst_bounds env sort tbs typs t_ret at in
-      List.iter (fun t -> Printf.printf " ARG %s\n" (T.string_of_typ t)) ts;
+      (if sort = T.Local T.Stable then
+        List.iter (fun t -> 
+          if (not (T.stable t)) then
+            local_error env at "M0203"
+              "Type argument%a\nhas to be of a stable type to match the type parameter "
+              display_typ_expand t
+          ) ts);
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;

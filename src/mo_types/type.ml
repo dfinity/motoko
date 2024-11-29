@@ -73,13 +73,6 @@ and kind =
 
 let empty_src = {depr = None; region = Source.no_region}
 
-let stable_binding : bind =
-  {
-    var = "@stable";
-    sort = Scope;
-    bound = Any;
-  }
-
 (* Efficient comparison *)
 let tag_prim = function
   | Null -> 0
@@ -503,12 +496,7 @@ let close cs t =
 
 let close_binds cs tbs is_stable =
   if cs = [] then tbs else
-  let list = List.map (fun tb -> { tb with bound = close cs tb.bound }) tbs in
-  if is_stable then
-    list @ [stable_binding]
-  else
-    list
-
+  List.map (fun tb -> { tb with bound = close cs tb.bound }) tbs
 
 let rec open' i ts t =
   match t with
@@ -563,7 +551,6 @@ let open_binds tbs =
 (* Normalization and Classification *)
 
 let reduce tbs t ts =
-  let tbs = List.filter (fun bind -> bind <> stable_binding) tbs in
   assert (List.length ts = List.length tbs);
   open_ ts t
 
@@ -844,7 +831,7 @@ let serializable allow_mut allow_stable_functions t =
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs (bind_list, _, _) ->
-          allow_stable_functions && List.mem stable_binding bind_list
+          allow_stable_functions
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t -> go t
@@ -1053,13 +1040,8 @@ and rel_tags rel eq tfs1 tfs2 =
   | _, _ -> false
 
 and rel_binds rel eq tbs1 tbs2 =
-  let is_stable1 = List.mem stable_binding tbs1 in
-  let is_stable2 = List.mem stable_binding tbs2 in
-  let stable_compatible = (not is_stable1) || is_stable2 in
-  let tbs1 = List.filter (fun b -> b <> stable_binding) tbs1 in
-  let tbs2 = List.filter (fun b -> b <> stable_binding) tbs2 in
   let ts = open_binds tbs2 in
-  if (rel_list (rel_bind ts) rel eq tbs2 tbs1) && stable_compatible
+  if rel_list (rel_bind ts) rel eq tbs2 tbs1
   then Some ts
   else None
 
