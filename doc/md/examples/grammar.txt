@@ -7,12 +7,14 @@
     X
     X SEP <list(X, SEP)>
 
-<stab_actor_sort> ::= 
-    <stab_mod> 'actor'
+<typ_obj_sort> ::= 
+    'object'
+    'actor'
+    'module'
 
 <obj_sort> ::= 
     'object'
-    'actor'
+    'persistent'? 'actor'
     'module'
 
 <query> ::= 
@@ -51,7 +53,7 @@
     <typ_un>
     'async' <typ_pre>
     'async*' <typ_pre>
-    <obj_sort> <typ_obj>
+    <typ_obj_sort> <typ_obj>
 
 <typ_nobin> ::= 
     <typ_pre>
@@ -270,14 +272,7 @@
     <empty>
     'flexible'
     'stable'
-    TRANSIENT
-    PERSISTENT
-
-<stab_mod> ::= 
-    'flexible'
-    'stable'
-    TRANSIENT
-    PERSISTENT
+    'transient'
 
 <pat_plain> ::= 
     '_'
@@ -315,25 +310,14 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <dec_obj<obj_sort>>
-    <dec_class(<obj_sort>?)>
-
-<dec_obj<sort>> ::= 
-    <sort> <id>? (':' <typ>)? '='? <obj_body>
-
-<dec_class<sort>> ::= 
-    <shared_pat_opt> <sort> 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
-
-<top_dec> ::= 
-    <dec>
-    <dec_obj<stab_actor_sort>>
-    <dec_class<stab_actor_sort>>
 
 <func_body> ::= 
     '=' <exp>
@@ -350,7 +334,7 @@
     'import' <pat_nullary> '='? <text>
 
 <prog> ::= 
-    <list(<imp>, ';')> <list(<top_dec>, ';')> 
+    <list(<imp>, ';')> <list(<dec>, ';')> 
 
 
 

@@ -20,8 +20,6 @@ s/<start> //g
 s/<parse_prog>/<prog>/g
 s/(<bl>)//g
 s/(<ob>)//g
-s/ S / <sort> /g
-s/(S)/(<sort>)/g
 s/(B)//g
 s/ B$/ <exp_obj>/g
 s/\[/(/g
@@ -53,6 +51,7 @@ s/SHROP/\' >>\'/g
 s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
+s/TRANSIENT/\'transient\'/g
 s/TRY/\'try\'/g
 s/THROW/\'throw\'/g
 s/FINALLY/\'finally\'/g
@@ -76,6 +75,7 @@ s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
+s/PERSISTENT/\'persistent\'/g
 s/PIPE/\'|>\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g

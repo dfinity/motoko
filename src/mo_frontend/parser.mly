@@ -290,7 +290,7 @@ and objblock s id ty dec_fields =
 %type<Mo_def.Syntax.typ list> seplist(typ,COMMA)
 %type<Mo_def.Syntax.pat_field list> seplist(pat_field,semicolon)
 %type<Mo_def.Syntax.pat list> seplist(pat_bin,COMMA)
-%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon) seplist(top_dec,SEMICOLON)
+%type<Mo_def.Syntax.dec list> seplist(imp,semicolon) seplist(imp,SEMICOLON) seplist(dec,semicolon)
 %type<Mo_def.Syntax.exp list> seplist(exp_nonvar(ob),COMMA) seplist(exp(ob),COMMA)
 %type<Mo_def.Syntax.exp_field list> seplist1(exp_field,semicolon) seplist(exp_field,semicolon)
 %type<Mo_def.Syntax.exp list> separated_nonempty_list(AND, exp_post(ob))
@@ -366,12 +366,14 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline stab_actor_sort :
-  | s=stab_mod ACTOR { (s, Type.Actor @@ at $sloc) }
+%inline typ_obj_sort :
+  | OBJECT { Type.Object @@ at $sloc }
+  | ACTOR { Type.Actor @@ at $sloc }
+  | MODULE {Type.Module @@ at $sloc }
 
 %inline obj_sort :
   | OBJECT { (None, Type.Object @@ at $sloc) }
-  | ACTOR { (None, Type.Actor @@ at $sloc) }
+  | s=stab_mod ACTOR { (s, Type.Actor @@ at $sloc) }
   | MODULE { (None, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
@@ -444,9 +446,8 @@ typ_pre :
     { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
   | ASYNCSTAR t=typ_pre
     { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
-  | os=obj_sort tfs=typ_obj
-    { let (_, s) = os in
-      let tfs' =
+  | s=typ_obj_sort tfs=typ_obj
+    { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
 
@@ -807,14 +808,9 @@ stab :
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
   | TRANSIENT { Some (Flexible @@ at $sloc) }
-  | PERSISTENT { Some (Stable @@ at $sloc) }
 
 %inline stab_mod :
-  (* we could also forbid flexible/transient,
-    defining away flexible/transient actor class? {} ... *)
-  | FLEXIBLE { Some (Flexible @@ at $sloc) }
-  | STABLE { Some (Stable @@ at $sloc) }
-  | TRANSIENT { Some (Flexible @@ at $sloc) }
+  | (* empty *) { None }
   | PERSISTENT { Some (Stable @@ at $sloc) }
 
 (* Patterns *)
@@ -898,13 +894,7 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | d=dec_obj(obj_sort)
-    { d }
-  | d=dec_class(obj_sort_opt)
-    { d }
-
-%inline dec_obj(S) :
-  | ds=S xf=id_opt t=annot_opt EQ? efs=obj_body
+  | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (stab, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
@@ -926,9 +916,7 @@ dec_nonvar :
         else objblock s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-
-%inline dec_class(S) :
-  | sp=shared_pat_opt ds=S CLASS xf=typ_id_opt
+  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (stab, s) = ds in
       let x, dfs = cb in
@@ -957,14 +945,6 @@ dec :
     { let p', e' = normalize_let p e in
       LetD (p', e', Some fail) @? at $sloc }
 
-top_dec :
-  | d=dec
-    { d }
-  | d=dec_obj(stab_actor_sort)
-    { d }
-  | d=dec_class(stab_actor_sort)
-    { d }
-
 func_body :
   | EQ e=exp(ob) { (false, e) }
   | e=block { (true, e) }
@@ -987,13 +967,13 @@ start : (* dummy non-terminal to satisfy ErrorReporting.ml, that requires a non-
   | (* empty *) { () }
 
 parse_prog :
-  | start is=seplist(imp, semicolon) ds=seplist(top_dec, semicolon) EOF
+  | start is=seplist(imp, semicolon) ds=seplist(dec, semicolon) EOF
     {
       let trivia = !triv_table in
       fun filename -> { it = is @ ds; at = at $sloc; note = { filename; trivia }} }
 
 parse_prog_interactive :
-  | start is=seplist(imp, SEMICOLON) ds=seplist(top_dec, SEMICOLON) SEMICOLON_EOL
+  | start is=seplist(imp, SEMICOLON) ds=seplist(dec, SEMICOLON) SEMICOLON_EOL
     {
       let trivia = !triv_table in
       fun filename -> {

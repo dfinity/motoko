@@ -1,8 +1,8 @@
 import Prim "mo:⛔";
 
-actor class Counter() {
+persistent actor class Counter() {
 
-  persistent var count : Nat = 0;
+  var count : Nat = 0;
 
   public func inc() : async Nat {
     count += 1;
@@ -14,7 +14,7 @@ actor class Counter() {
     Prim.debugPrint (debug_show({pre=count}));
   };
 
-  let f = func(){};
+  transient let f = func(){};
   func g() {};
   class D() {};
   type T = ?T;

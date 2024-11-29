@@ -1,8 +1,8 @@
 import Prim "mo:⛔";
 
-stable actor Counter {
+actor Counter {
 
-  var count : Nat = 0;
+  stable var count : Nat = 0;
 
   public func inc() : async Nat {
     count += 1;
