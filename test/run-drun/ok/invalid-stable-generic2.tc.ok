@@ -1,6 +1,6 @@
-invalid-stable-generic2.mo:12.23-12.39: type error [M0203], Type argument
+invalid-stable-generic2.mo:12.23-12.39: type error [M0202], Type argument
   () -> ()
 has to be of a stable type to match the type parameter 
-invalid-stable-generic2.mo:12.23-12.39: type error [M0203], Type argument
+invalid-stable-generic2.mo:12.23-12.39: type error [M0202], Type argument
   () -> ()
 has to be of a stable type to match the type parameter 

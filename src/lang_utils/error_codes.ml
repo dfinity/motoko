@@ -204,7 +204,6 @@ let error_codes : (string * string option) list =
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
     "M0200", None; (* Stable functions are only supported with enhanced orthogonal persistence *)
-    "M0201", None; (* Flexible function cannot be assigned to a stable function type *)
-    "M0202", None; (* Stable function cannot close over a non-stable variable *)
-    "M0203", None; (* Type argument has to be of a stable type to match the type parameter *)
+    "M0201", None; (* Stable function cannot close over a non-stable variable *)
+    "M0202", None; (* Type argument has to be of a stable type to match the type parameter *)
   ]

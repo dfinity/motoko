@@ -1645,7 +1645,7 @@ and infer_exp'' env exp : T.typ =
       | Some Type.{ captured_variables; _ } ->
         T.Env.iter (fun id typ ->
           if not (T.stable typ) then
-          (error env exp1.at "M0202"
+          (error env exp1.at "M0201"
                 "stable function %s closes over non-stable variable %s"
                 name id)
           ) captured_variables
@@ -2056,9 +2056,7 @@ and check_exp' env0 t exp : T.typ =
     if sort <> s then
       (match sort, s with
       | T.Local T.Stable, T.Local T.Flexible -> () (* okay *)
-      | T.Local _, T.Local _ ->
-        error env exp.at "M0201"
-          "Flexible function cannot be assigned to a stable function type"
+      | T.Local _, T.Local _ -> assert false (* caught by sub-type check *)
       | _, _ ->
         error env exp.at "M0094"
           "%sshared function does not match expected %sshared function type"
@@ -2143,7 +2141,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       (if sort = T.Local T.Stable then
         List.iter (fun t -> 
           if (not (T.stable t)) then
-            local_error env at "M0203"
+            local_error env at "M0202"
               "Type argument%a\nhas to be of a stable type to match the type parameter "
               display_typ_expand t
           ) ts);
