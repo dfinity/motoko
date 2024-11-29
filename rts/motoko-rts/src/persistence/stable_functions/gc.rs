@@ -1,17 +1,17 @@
+use crate::gc::functions::{
+    mark_stack::{MarkStack, StackEntry},
+    visited_set::{VisitedSet, VisitedValue},
+};
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    gc::remembered_set::RememberedSet,
     memory::Memory,
     persistence::stable_functions::is_flexible_function_id,
     types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_OBJECT, TAG_SOME},
     visitor::enhanced::visit_pointer_fields,
 };
 
-use super::{
-    mark_stack::{MarkStack, StackEntry},
-    resolve_stable_function_id, FunctionId, PersistentVirtualTable,
-};
+use super::{resolve_stable_function_id, FunctionId, PersistentVirtualTable};
 
 // Note: For a type-directed selective visiting, we need to revisit the
 // same object if it occurs with a different static type.
@@ -26,7 +26,7 @@ extern "C" {
 }
 
 pub struct FunctionGC {
-    mark_set: RememberedSet,
+    visited_set: VisitedSet,
     mark_stack: MarkStack,
     virtual_table: *mut PersistentVirtualTable,
 }
@@ -36,10 +36,10 @@ impl FunctionGC {
         mem: &mut M,
         virtual_table: *mut PersistentVirtualTable,
     ) -> FunctionGC {
-        let mark_set = RememberedSet::new(mem);
+        let mark_set = VisitedSet::new(mem);
         let mark_stack = MarkStack::new(mem);
         FunctionGC {
-            mark_set,
+            visited_set: mark_set,
             mark_stack,
             virtual_table,
         }
@@ -126,8 +126,9 @@ unsafe fn stable_functions_gc_visit<M: Memory>(mem: &mut M, object: Value, type_
     let state = COLLECTOR_STATE.as_mut().unwrap();
     // TODO: also remember type for the marked object. Revisit the same object if
     // it has a different static type.
-    if object != NULL_POINTER && !state.mark_set.contains(object) {
-        state.mark_set.insert(mem, object);
+    let item = VisitedValue { object, type_id };
+    if object != NULL_POINTER && !state.visited_set.contains(item) {
+        state.visited_set.insert(mem, item);
         state.mark_stack.push(mem, StackEntry { object, type_id });
     }
 }

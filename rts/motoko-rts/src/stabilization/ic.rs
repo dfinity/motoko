@@ -7,7 +7,9 @@ use crate::{
     gc::incremental::{is_gc_stopped, resume_gc, stop_gc},
     memory::Memory,
     persistence::{
-        compatibility::TypeDescriptor, restore_stable_type, set_upgrade_instructions, stable_function_state, stable_functions::{gc::garbage_collect_functions, restore_virtual_table}
+        compatibility::TypeDescriptor,
+        restore_stable_type, set_upgrade_instructions, stable_function_state,
+        stable_functions::{gc::garbage_collect_functions, restore_virtual_table},
     },
     rts_trap_with,
     stabilization::ic::metadata::StabilizationMetadata,
@@ -188,7 +190,7 @@ pub unsafe fn load_stabilization_metadata<M: Memory>(mem: &mut M) {
 pub unsafe fn start_graph_destabilization<M: Memory>(mem: &mut M) {
     let state = DESTABILIZATION_STATE.as_mut().unwrap();
     state.instruction_meter.start();
-    state.deserialization.initate(mem);
+    state.deserialization.initiate(mem);
     state.instruction_meter.stop();
 }
 

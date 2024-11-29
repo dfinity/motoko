@@ -95,7 +95,6 @@
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
 
 pub mod gc;
-mod mark_stack;
 
 use core::{marker::PhantomData, mem::size_of, ptr::null_mut, str::from_utf8};
 
@@ -349,7 +348,7 @@ unsafe fn prepare_virtual_table<M: Memory>(mem: &mut M) -> *mut PersistentVirtua
 
 /// Register the stable functions in the persistent virtual table and the function literal table.
 /// The stable function GC has already marked all alive stable functions in the virtual table.
-/// Check that the necessary stable functions exist in the new version and that their closure types 
+/// Check that the necessary stable functions exist in the new version and that their closure types
 /// are compatible.
 pub unsafe fn register_stable_functions<M: Memory>(
     mem: &mut M,

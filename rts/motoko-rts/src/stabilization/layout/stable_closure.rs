@@ -1,6 +1,5 @@
 use crate::{
     memory::Memory,
-    persistence::stable_functions::is_flexible_function_id,
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
         layout::StableObjectKind,
@@ -104,4 +103,15 @@ impl Serializer<Closure> for StableClosure {
             *target_field_address = field.deserialize();
         }
     }
+}
+
+// Wrappers are needed for RTS unit testing.
+#[cfg(feature = "ic")]
+fn is_flexible_function_id(function_id: isize) -> bool {
+    crate::persistence::stable_functions::is_flexible_function_id(function_id)
+}
+
+#[cfg(not(feature = "ic"))]
+fn is_flexible_function_id(_function_id: isize) -> bool {
+    true
 }

@@ -18,6 +18,8 @@ mod principal_id;
 
 #[enhanced_orthogonal_persistence]
 mod stabilization;
+#[enhanced_orthogonal_persistence]
+mod stable_functions;
 mod stable_option;
 mod text;
 mod utf8;
@@ -63,6 +65,7 @@ fn persistence_test() {
     unsafe {
         algorithms::test();
         stabilization::test();
+        stable_functions::test();
     }
 }
 

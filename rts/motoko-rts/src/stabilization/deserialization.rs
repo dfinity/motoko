@@ -77,7 +77,7 @@ impl Deserialization {
     }
 
     /// Start the deserialization, followed by a series of copy increments.
-    pub fn initate<M: Memory>(&mut self, mem: &mut M) {
+    pub fn initiate<M: Memory>(&mut self, mem: &mut M) {
         assert!(!self.started);
         self.started = true;
         self.start(mem, StableValue::serialize(Value::from_ptr(0)));

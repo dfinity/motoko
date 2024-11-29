@@ -1,9 +1,10 @@
 //! Write barrier, used for generational GC
 
-use crate::gc::remembered_set::RememberedSet;
 use crate::memory::Memory;
 use crate::types::Value;
 use motoko_rts_macros::ic_mem_fn;
+
+use super::remembered_set::RememberedSet;
 
 pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: usize = 0;

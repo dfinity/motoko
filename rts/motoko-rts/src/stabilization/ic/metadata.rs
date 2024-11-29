@@ -147,12 +147,12 @@ impl StabilizationMetadata {
         // Backwards compatibility: The persistent virtual table may be missing,
         // in which case the metadata directly follows the offset, or there is zero padding.
         if *offset < Self::metadata_location() {
-            // There is either an existing virtual table, or if it is missing, there is zero padding 
+            // There is either an existing virtual table, or if it is missing, there is zero padding
             // which is decoded as an empty blob.
             Self::read_blob(mem, TAG_BLOB_B, offset)
         } else {
             // No space for persistent virtual table.
-            unsafe { 
+            unsafe {
                 let blob = alloc_blob(mem, TAG_BLOB_B, Bytes(0));
                 allocation_barrier(blob);
                 blob

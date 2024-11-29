@@ -1,9 +1,9 @@
 //! In-heap extendable mark stack for the stable functions collection.
 //!
-//! Analogous to `gc::incremental::mark_stack`, but with additional 
-//! 
+//! Analogous to `gc::incremental::mark_stack`, but with additional
+//!
 //! TODO: Refactor to one code base.
-//! 
+//!
 //! Doubly linked list of stack tables, each containing a series of entries.
 //! A table is represented as a blob with the following internal layout:
 //!
@@ -36,7 +36,7 @@ pub struct MarkStack {
 pub const STACK_TABLE_CAPACITY: usize = 1018;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct StackEntry {
     pub object: Value,
     pub type_id: u64,
