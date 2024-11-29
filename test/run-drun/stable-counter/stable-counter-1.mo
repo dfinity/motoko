@@ -22,5 +22,3 @@ actor Counter {
   ignore 1;
 
 }
-
-

@@ -22,4 +22,3 @@ persistent actor class Counter() {
 
 }
 
-
