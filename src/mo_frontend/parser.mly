@@ -886,14 +886,6 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
-    { (* This is a hack to support local func declarations that return a computed async.
-         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
-         around bodies declared as blocks *)
-      let named, x = xf "func" $sloc in
-      let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (stab, s) = ds in
       let sort = Type.(match s.it with
@@ -916,6 +908,14 @@ dec_nonvar :
         else objblock s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
+  | sp=shared_pat_opt FUNC xf=id_opt
+      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+    { (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
+      let named, x = xf "func" $sloc in
+      let is_sugar, e = desugar_func_body sp x t fb in
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (stab, s) = ds in
