@@ -1,0 +1,3 @@
+invalid-stable-generic2.mo:12.28-12.36: type error [M0203], Type argument
+  () -> ()
+has to be of a stable type to match the type parameter 

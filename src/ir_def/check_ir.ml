@@ -304,8 +304,6 @@ and check_typ_binds env typ_binds : T.con list * con_env =
   cs, T.ConSet.of_list cs
 
 and check_typ_bounds env (tbs : T.bind list) typs at : unit =
-  let is_stable = List.mem T.stable_binding tbs in
-  let tbs = List.filter (fun bind -> bind <> T.stable_binding) tbs in
   let pars = List.length tbs in
   let args = List.length typs in
   if pars < args then

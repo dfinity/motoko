@@ -501,9 +501,13 @@ let close cs t =
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
-let close_binds cs tbs =
+let close_binds cs tbs is_stable =
   if cs = [] then tbs else
-  List.map (fun tb -> { tb with bound = close cs tb.bound })  tbs
+  let list = List.map (fun tb -> { tb with bound = close cs tb.bound }) tbs in
+  if is_stable then
+    list @ [stable_binding]
+  else
+    list
 
 
 let rec open' i ts t =
@@ -1049,8 +1053,13 @@ and rel_tags rel eq tfs1 tfs2 =
   | _, _ -> false
 
 and rel_binds rel eq tbs1 tbs2 =
+  let is_stable1 = List.mem stable_binding tbs1 in
+  let is_stable2 = List.mem stable_binding tbs2 in
+  let stable_compatible = (not is_stable1) || is_stable2 in
+  let tbs1 = List.filter (fun b -> b <> stable_binding) tbs1 in
+  let tbs2 = List.filter (fun b -> b <> stable_binding) tbs2 in
   let ts = open_binds tbs2 in
-  if rel_list (rel_bind ts) rel eq tbs2 tbs1
+  if (rel_list (rel_bind ts) rel eq tbs2 tbs1) && stable_compatible
   then Some ts
   else None
 

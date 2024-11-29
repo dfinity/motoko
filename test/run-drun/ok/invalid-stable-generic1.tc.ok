@@ -1,0 +1,7 @@
+invalid-stable-generic1.mo:11.28-11.36: type error [M0046], type argument
+  () -> ()
+does not match parameter bound
+  Nat
+invalid-stable-generic1.mo:11.28-11.36: type error [M0203], Type argument
+  () -> ()
+has to be of a stable type to match the type parameter 
