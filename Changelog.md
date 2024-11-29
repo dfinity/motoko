@@ -1,5 +1,26 @@
 # Motoko compiler changelog
 
+## 0.13.3 (2024-11-13)
+
+* motoko (`moc`)
+
+  * typing: suggest conversions between primitive types from imported libraries
+    and, with `--ai-errors`, all available package libraries (#4747).
+
+* motoko-base
+
+  * Add modules `OrderedMap` and `OrderedSet` to replace `RBTree` with improved functionality, performance
+    and ergonomics avoiding the need for preupgrade hooks (thanks to Serokell) (#662).
+
+## 0.13.2 (2024-10-18)
+
+* motoko (`moc`)
+
+  * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+
+  * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
+
 ## 0.13.1 (2024-10-07)
 
 * motoko (`moc`)
@@ -35,7 +56,7 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
-    
+
     To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
 
     ```

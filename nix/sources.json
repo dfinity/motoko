@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "e3021b7a867d8c9853d75dc2eaa4af88a1738aa0",
-        "sha256": "18pqsf339z075gk61fiyssibn5h3icqfiw2x6rgrlp29az7d9asv",
+        "rev": "c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2",
+        "sha256": "1pf0yb8f876n6d14j55x5dwkywnx1fxbznrnz28545bm8nxjc6k0",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/e3021b7a867d8c9853d75dc2eaa4af88a1738aa0.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -26,10 +26,10 @@
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "6c718b80e04ad1930a08e6c53440c15021ca9c3d",
-        "sha256": "0iglm7m69d836wipzi25xza25l84dmjq9b4s1y6rwa8xnmiipnbh",
+        "rev": "33075cd385ea2ec4170f522406b1ff8f507fa744",
+        "sha256": "0swx7r78wjybx7fkfqsn9p3lqxmszgg24q4hrnxmscvyhb22hqia",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/6c718b80e04ad1930a08e6c53440c15021ca9c3d.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/33075cd385ea2ec4170f522406b1ff8f507fa744.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "f3bcbf19237870cd13e658e24d065d90f33ddc2e",
-        "sha256": "13ca93pbr34ivgs312xczw741ksz01n3q56340yyfvqc0v2jn6i7",
+        "rev": "48db35ee8e77b40d2749961f29a6ad53e9698571",
+        "sha256": "12lnzk2y4z9bkxw4401qyhkw88zx2brq2g0gx5g7kjljadm6298w",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/f3bcbf19237870cd13e658e24d065d90f33ddc2e.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/48db35ee8e77b40d2749961f29a6ad53e9698571.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {

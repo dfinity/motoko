@@ -5,6 +5,11 @@ queue_rules:
       - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
       - status-success=tests (macos-12)
+    merge_method: squash
+    commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
 
 pull_request_rules:
   - name: Automatic merge (squash)
@@ -19,10 +24,6 @@ pull_request_rules:
       queue:
         name: default
         method: squash
-        commit_message_template: |
-          {{ title }} (#{{ number }})
-
-          {{ body }}
       delete_head_branch: {}
   - name: Automatically closing successful trials
     conditions:
