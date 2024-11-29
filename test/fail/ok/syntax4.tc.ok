@@ -1,4 +1,4 @@
 syntax4.mo:1.1-1.2: syntax error [M0001], unexpected token '*', expected one of token or <phrase> sequence:
   <eof>
-  seplist(<top_dec>,<semicolon>) <eof>
-  seplist(<imp>,<semicolon>) seplist(<top_dec>,<semicolon>) <eof>
+  seplist(<dec>,<semicolon>) <eof>
+  seplist(<imp>,<semicolon>) seplist(<dec>,<semicolon>) <eof>
