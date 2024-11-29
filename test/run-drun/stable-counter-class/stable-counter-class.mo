@@ -2,7 +2,7 @@ import Prim "mo:⛔";
 
 actor class Counter() {
 
-  var count : Nat = 0;
+  stable var count : Nat = 0;
 
   public func inc() : async Nat {
     count += 1;
