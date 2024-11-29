@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.13.4 (2024-11-29)
+
+* motoko (`moc`)
+
+  * refactoring: Updating and simplifying the runtime system dependencies (#4677).
+
 ## 0.13.3 (2024-11-13)
 
 * motoko (`moc`)
