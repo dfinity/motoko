@@ -191,8 +191,8 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Called on EOP upgrade: Garbage collect the stable functions.
-/// For graph copy, this is initiated on stabilization start.
+/// Called on EOP upgrade: Garbage collect the stable functions on pre-upgrade.
+/// For graph copy, this is initiated on incremental stabilization start.
 #[ic_mem_fn]
 pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M) {
     let metadata = PersistentMetadata::get();

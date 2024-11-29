@@ -9059,6 +9059,7 @@ module EnhancedOrthogonalPersistence = struct
   let save env actor_type =
     IC.get_actor_to_persist env ^^
     save_stable_actor env ^^
+    collect_stable_functions env ^^
     NewStableMemory.backup env ^^
     UpgradeStatistics.set_instructions env
 
@@ -10458,15 +10459,10 @@ module Persistence = struct
     assert (not !(E.(env.object_pool.frozen)));
     if env.E.is_canister then
       begin
-        use_enhanced_orthogonal_persistence env ^^
+        use_graph_destabilization env ^^
         (E.if0
-          (EnhancedOrthogonalPersistence.collect_stable_functions env)
-          begin
-            use_graph_destabilization env ^^
-            E.if0
-              (GraphCopyStabilization.load_stabilization_metadata env)
-              G.nop (* no stable function support with Candid stabilization *)
-          end) ^^
+          (GraphCopyStabilization.load_stabilization_metadata env)
+          G.nop) ^^
         EnhancedOrthogonalPersistence.register_stable_type env
       end
     else
