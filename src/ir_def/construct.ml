@@ -92,12 +92,11 @@ let primE prim es =
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
-    | ICStableWrite _ -> T.unit
+    | ICStableWrite _
+    | ICPerformGC
+    | SystemCyclesAddPrim -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
-    | ICPerformGC
-    | ICStableWrite _
-    | SystemCyclesAddPrim -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -170,7 +169,7 @@ let nullE () =
   }
 
 let cps_asyncE s typ1 par typ2 e =
-  { it = PrimE (CPSAsync (s, typ1, if s = Fut then par else nullE ()), [e]);
+  { it = PrimE (CPSAsync (s, typ1, if s = T.Fut then par else nullE ()), [e]);
     at = no_region;
     note = Note.{ def with typ = T.Async (s, typ1, typ2); eff = eff e }
   }
