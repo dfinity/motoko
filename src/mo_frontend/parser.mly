@@ -946,7 +946,7 @@ obj_body :
   | LCURLY dfs=seplist(dec_field, semicolon) RCURLY { dfs }
 
 class_body :
-  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc),  dfs }
+  | EQ xf=id_opt dfs=obj_body { snd (xf "object" $sloc), dfs }
   | dfs=obj_body { anon_id "object" (at $sloc) @@ at $sloc, dfs }
 
 
