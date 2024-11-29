@@ -167,6 +167,7 @@ let string_of_symbol = function
   | X (N N_exp_plain) -> "<exp_plain>"
   | X (N N_exp_post_bl_) -> "<exp_post(bl)>"
   | X (N N_exp_post_ob_) -> "<exp_post(ob)>"
+  | X (N N_option_exp_post_ob__) -> "<exp_post(ob)>?"
   | X (N N_exp_un_bl_) -> "<exp_un(bl)>"
   | X (N N_exp_un_ob_) -> "<exp_un(ob)>"
   | X (N N_func_body) -> "<func_body>"
