@@ -12,9 +12,13 @@ stable actor Counter {
 
   system func preupgrade() {
     Prim.debugPrint (debug_show({pre=count}));
-  }
+  };
 
-  // let f = func(){}; // rejected as unstable
+  flexible let f = func(){};
+  func g() {};
+  class D() {};
+  type T = ?T;
+  ignore 1;
 
 }
 
