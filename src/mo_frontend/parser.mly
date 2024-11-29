@@ -372,12 +372,12 @@ seplist1(X, SEP) :
   | MODULE {Type.Module @@ at $sloc }
 
 %inline obj_sort :
-  | OBJECT { (None, Type.Object @@ at $sloc) }
-  | s=stab_mod ACTOR { (s, Type.Actor @@ at $sloc) }
-  | MODULE { (None, Type.Module @@ at $sloc) }
+  | OBJECT { (false, Type.Object @@ at $sloc) }
+  | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
+  | MODULE { (false, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
-  | (* empty *) { (None, Type.Object @@ no_region) }
+  | (* empty *) { (false, Type.Object @@ no_region) }
   | ds=obj_sort { ds }
 
 %inline query:
@@ -809,9 +809,9 @@ stab :
   | STABLE { Some (Stable @@ at $sloc) }
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
-%inline stab_mod :
-  | (* empty *) { None }
-  | PERSISTENT { Some (Stable @@ at $sloc) }
+%inline persistent :
+  | (* empty *) { false }
+  | PERSISTENT { true }
 
 (* Patterns *)
 
@@ -887,18 +887,14 @@ dec_nonvar :
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
-    { let (stab, s) = ds in
+    { let (persistent, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
-          let default_stab =
-            match stab with
-            | None -> Flexible
-            | Some stab -> stab.it
-          in
+          let default_stab = if persistent then Stable else Flexible in
           let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
@@ -918,14 +914,11 @@ dec_nonvar :
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
-    { let (stab, s) = ds in
+    { let (persistent, s) = ds in
       let x, dfs = cb in
       let dfs', tps', t' =
-        if s.it = Type.Actor then
-          let default_stab = match stab with
-            | None -> Flexible
-            | Some stab -> stab.it
-          in
+       if s.it = Type.Actor then
+          let default_stab = if persistent then Stable else Flexible in
           (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
