@@ -332,10 +332,7 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let (nary_async, nary_reply, reject, clean), def =
-        new_nary_async_reply ts2
-      in
-      let (Object, pars_fs) = T.(as_obj pars.note.Note.typ) in
+      let (nary_async, nary_reply, reject, clean), def = new_nary_async_reply ts2 in
       let hasCycles = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
 
       let setup = if hasCycles
@@ -343,7 +340,6 @@ let transform prog =
                      (natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles")
                      (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]))
         else None in
-                                                                             
 
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::
