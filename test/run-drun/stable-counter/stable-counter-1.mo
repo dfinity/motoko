@@ -1,6 +1,6 @@
 import Prim "mo:⛔";
 
-stable actor class Counter() {
+persistent actor Counter {
 
   var count : Nat = 0;
 
@@ -14,7 +14,8 @@ stable actor class Counter() {
     Prim.debugPrint (debug_show({pre=count}));
   };
 
-  flexible let f = func(){};
+  transient let f = func(){};
+
   func g() {};
   class D() {};
   type T = ?T;

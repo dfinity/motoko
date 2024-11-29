@@ -270,10 +270,14 @@
     <empty>
     'flexible'
     'stable'
+    TRANSIENT
+    PERSISTENT
 
 <stab_mod> ::= 
     'flexible'
     'stable'
+    TRANSIENT
+    PERSISTENT
 
 <pat_plain> ::= 
     '_'
