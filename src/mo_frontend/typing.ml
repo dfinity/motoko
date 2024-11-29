@@ -151,6 +151,7 @@ let recover f y = recover_with () f y
 let display_lab = Lib.Format.display T.pp_lab
 
 let display_typ = Lib.Format.display T.pp_typ
+let display_typ_list = Lib.Format.display (Format.pp_print_list T.pp_typ)
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
@@ -1586,8 +1587,9 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
-    if not env.pre then validate_parenthetical env par_opt;
-    infer_call env exp1 inst exp2 exp.at None
+    let t = infer_call env exp1 inst exp2 exp.at None in
+    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
+    t
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
@@ -1718,7 +1720,7 @@ and infer_exp'' env exp : T.typ =
   | AsyncE (par_opt, s, typ_bind, exp1) ->
     error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
-    if not env.pre then validate_parenthetical env par_opt; (* TODO: in restricted environment? *)
+    if not env.pre then validate_parenthetical env None par_opt; (* TODO: in restricted environment? *)
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -2552,9 +2554,21 @@ and infer_obj env s dec_fields at : T.typ =
   end;
   t
 
-and validate_parenthetical env = function
+and validate_parenthetical env typ_opt = function
   | None -> ()
   | Some par ->
+     begin match typ_opt with
+     | Some fun_ty when T.is_func fun_ty ->
+       let s, _, _, _, ts2 = T.as_func fun_ty in
+       local_error env par.at "M02041"
+         "result has types %a" display_typ_list ts2;
+       begin match ts2 with
+       | _ when T.is_shared_sort s -> ();
+       | [cod] when T.is_async cod -> ();
+       | _ -> assert false; warn env par.at "M0202" "unexpected parenthetical note on a non-send call";
+       end
+     | _ -> ()
+     end;
      let attrs = infer_exp env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
