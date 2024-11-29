@@ -758,7 +758,6 @@ let remove_got_imports (imports : import list) : import list =
   let is_got name = name = got_func_str || name = got_mem_str in
   List.filter (fun import -> not (is_got import.it.module_name)) imports
 
-
 let mk_i32_const (i : int32) =
   Const (Wasm_exts.Values.I32 i @@ no_region) @@ no_region
 

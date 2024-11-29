@@ -916,7 +916,7 @@ let encode (em : extended_module) =
       patch s (p + 1) (lsb (n lsr 8));
       patch s (p + 2) (lsb (n lsr 16));
       patch s (p + 3) (lsb (n lsr 24))
-    let dw_patches = ref (fun i -> i)
+    let dw_patches = ref Fun.id
 
     let debug_abbrev_section () =
       let tag (t, ch, kvs) =
