@@ -2560,9 +2560,9 @@ and validate_parenthetical env typ_opt = function
      | Some fun_ty when T.is_func fun_ty ->
        let s, _, _, _, ts2 = T.as_func fun_ty in
        begin match ts2 with
-       | _ when T.is_shared_sort s -> ();
-       | [cod] when T.is_async cod -> ();
-       | _ -> warn env par.at "M0202" "unexpected parenthetical note on a non-send call";
+       | _ when T.is_shared_sort s -> ()
+       | [cod] when T.is_async cod -> ()
+       | _ -> warn env par.at "M0202" "unexpected parenthetical note on a non-send call"
        end
      | _ -> ()
      end;
