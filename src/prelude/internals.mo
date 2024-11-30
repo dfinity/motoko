@@ -614,8 +614,8 @@ func @timer_helper() : async () {
 
   for (o in thunks.vals()) {
     switch o {
-      case (?thunk) { ignore thunk() };
-      case _ { }
+      case (?thunk) ignore thunk();
+      case _ return
     }
   }
 };

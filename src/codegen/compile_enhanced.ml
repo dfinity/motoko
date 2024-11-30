@@ -1172,7 +1172,6 @@ module RTS = struct
     E.add_func_import env "rts" "set_static_variable" [I64Type; I64Type] [];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
-    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
@@ -1271,17 +1270,17 @@ module RTS = struct
     E.add_func_import env "rts" "blob_iter_done" [I64Type] [I64Type];
     E.add_func_import env "rts" "blob_iter" [I64Type] [I64Type];
     E.add_func_import env "rts" "blob_iter_next" [I64Type] [I64Type];
-    E.add_func_import env "rts" "pow" [F64Type; F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "sin" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "cos" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "tan" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "asin" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "acos" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "atan" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "atan2" [F64Type; F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "exp" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "log" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type]; (* remainder, musl *)
+    E.add_func_import env "rts" "pow" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "sin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "cos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "tan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "asin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "acos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "atan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "atan2" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "exp" [F64Type] [F64Type];
+    E.add_func_import env "rts" "log" [F64Type] [F64Type];
+    E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type; I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
@@ -1414,7 +1413,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
+  let memcpy env = G.i MemoryCopy
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
@@ -2376,7 +2375,8 @@ module Closure = struct
       G.nop) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr ty)) ^^
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
 
   let make_stable_closure_type captured stable_closure =
@@ -11113,7 +11113,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
           end
           get_res)
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm_exts.Values.F64 F64Op.Div))
-  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
+  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod"
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.RemS))
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
   | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
@@ -11232,7 +11232,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       env "pow" BigNum.compile_unsigned_pow
       (powInt64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
-  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow" (* musl *)
+  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow"
   | Type.(Prim (Nat8|Nat16|Nat32|Nat64|Int8|Int16|Int32|Int64)),
                                               AndOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
   | Type.(Prim (Nat8|Nat16|Nat32|Nat64|Int8|Int16|Int32|Int64)),
@@ -11916,48 +11916,48 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "fsin", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "sin" (* musl *)
+    E.call_import env "rts" "sin"
 
   | OtherPrim "fcos", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "cos" (* musl *)
+    E.call_import env "rts" "cos"
 
   | OtherPrim "ftan", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "tan" (* musl *)
+    E.call_import env "rts" "tan"
 
   | OtherPrim "fasin", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "asin" (* musl *)
+    E.call_import env "rts" "asin"
 
   | OtherPrim "facos", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "acos" (* musl *)
+    E.call_import env "rts" "acos"
 
   | OtherPrim "fatan", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "atan" (* musl *)
+    E.call_import env "rts" "atan"
 
   | OtherPrim "fatan2", [y; x] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 y ^^
     compile_exp_as env ae SR.UnboxedFloat64 x ^^
-    E.call_import env "rts" "atan2" (* musl *)
+    E.call_import env "rts" "atan2"
 
   | OtherPrim "fexp", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "exp" (* musl *)
+    E.call_import env "rts" "exp"
 
   | OtherPrim "flog", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "log" (* musl *)
+    E.call_import env "rts" "log"
 
   (* Other prims, nullary *)
 
@@ -13596,7 +13596,7 @@ and conclude_module env actor_type set_serialization_globals set_eop_globals sta
   let emodule =
     let open Wasm_exts.CustomModule in
     { module_;
-      dylink = None;
+      dylink0 = [];
       name = { empty_name_section with function_names =
                  List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
                locals_names =
