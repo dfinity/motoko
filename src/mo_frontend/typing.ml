@@ -1640,7 +1640,7 @@ and infer_exp'' env exp : T.typ =
       leave_scope env'' ve2 initial_usage;
       assert(!closure = None);
       closure := stable_function_closure env'' named_scope;
-      env.captured := !(env''.captured);
+      env.captured := S.union !(env''.captured) !(env'.captured);
       (match !closure with
       | Some Type.{ captured_variables; _ } ->
         T.Env.iter (fun id typ ->
@@ -2836,7 +2836,7 @@ and infer_dec env dec : T.typ =
       let t' = infer_obj { env''' with check_unused = true } obj_sort.it dec_fields dec.at in
       leave_scope env''' ve initial_usage;
       closure := stable_function_closure env''' named_scope; (* stable class constructor, e.g. in nested classes *)
-      env.captured := !(env''.captured);
+      env.captured := S.union !(env'''.captured) !(env'.captured);
       match typ_opt, obj_sort.it with
       | None, _ -> ()
       | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
