@@ -478,7 +478,9 @@ pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
 #[allow(dead_code)]
 #[cfg(feature = "ic")]
 pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
-    &mut REGION_0
+    use core::ptr::addr_of_mut;
+
+    addr_of_mut!(REGION_0)
 }
 
 #[classical_persistence]

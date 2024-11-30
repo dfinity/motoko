@@ -1,5 +1,7 @@
 //! Support for standard output in wasmtime.
 
+use std::ptr::addr_of_mut;
+
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
     fn fd_write(fd: i32, iovs: i32, iovs_len: i32, nwritten: i32) -> i32;
@@ -34,10 +36,10 @@ pub(crate) fn wasmtime_println(text: &str) {
         IO_VECTOR.base = &mut TEXT_BUFFER[0] as *mut u8 as i32;
         IO_VECTOR.length = length as i32;
 
-        let io_vector_array = &mut IO_VECTOR as *mut iov;
+        let io_vector_array = addr_of_mut!(IO_VECTOR) as *mut iov;
         const STANDARDD_OUTPUT: i32 = 1;
         const IO_VECTOR_ARRAY_LENGTH: i32 = 1;
-        let written_pointer = (&mut WRITTEN) as *mut i32;
+        let written_pointer = addr_of_mut!(WRITTEN) as *mut i32;
 
         fd_write(
             STANDARDD_OUTPUT,

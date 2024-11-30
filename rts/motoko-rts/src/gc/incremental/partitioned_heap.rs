@@ -889,7 +889,7 @@ impl PartitionedHeap {
 
     unsafe fn allocate_normal_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
         debug_assert!(size <= PARTITION_SIZE);
-        let mut allocation_partition = self.mut_allocation_partition();
+        let allocation_partition = self.mut_allocation_partition();
         debug_assert!(!allocation_partition.free);
         let heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(size <= allocation_partition.end_address());
