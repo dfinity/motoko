@@ -16,7 +16,7 @@
 //! Syntactically, function types are prefixed by `stable` to denote a stable function, e.g.
 //! `stable X -> Y`. Stable functions implicitly have a corresponding stable reference type.
 //!
-//! A stable functions are upgraded as follows:
+//! Stable functions are upgraded as follows:
 //! * All stable functions that are reachable from stable variables are considered alive.
 //! * Each alive stable function must have a matching declaration in the new program version.
 //! * Stable functions match between program versions if they have an equal fully qualified name.
@@ -90,7 +90,7 @@
 //! * All other stable functions of the previous version are considered garbage and their slots
 //!   in the virtual table can be recycled.
 //!
-//! Garbage collection is necessary to alive programs to use classes and stable functions in only
+//! Garbage collection is necessary to allow programs to use classes and stable functions in only
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
 
