@@ -1166,6 +1166,8 @@ let infer_lit env lit at : T.prim =
   | PreLit _ ->
     assert false
 
+let suggest_vals env = T.Env.map (fun (typ, at, kind, avl, _) -> (typ, at, kind, avl)) env.vals
+
 let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
@@ -1195,11 +1197,11 @@ let check_lit env t lit at suggest =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-    error env at "M0050"
-      "literal of type%a\ndoes not have expected type%a%s"
-      display_typ t'
-      display_typ_expand t
-      (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
+      error env at "M0050"
+        "literal of type%a\ndoes not have expected type%a%s"
+        display_typ t'
+        display_typ_expand t
+        (if suggest then Suggest.suggest_conversion env.libs (suggest_vals env) t' t else "")
 
 (* Coercions *)
 
@@ -2074,7 +2076,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
         display_typ_expand t
-        (Suggest.suggest_conversion env.libs env.vals t' t)
+        (Suggest.suggest_conversion env.libs (suggest_vals env) t' t)
     end;
     t'
 

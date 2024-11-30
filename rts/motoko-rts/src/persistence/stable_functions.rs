@@ -109,6 +109,7 @@ use crate::{
 };
 
 use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
+use core::ptr::addr_of_mut;
 
 // Use `usize` or `isize` instead of `u32` and `i32` to avoid unwanted padding on Memory64.
 // E.g. struct sizes will be rounded to 64-bit.
@@ -204,7 +205,7 @@ impl StableFunctionState {
 
     // Transient GC root.
     pub unsafe fn literal_table_location(&mut self) -> *mut Value {
-        &mut FUNCTION_LITERAL_TABLE
+        addr_of_mut!(FUNCTION_LITERAL_TABLE)
     }
 }
 
