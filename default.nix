@@ -636,7 +636,7 @@ EOF
       patchShebangs .
       export HOME=$PWD
       export MOC_JS=${js.moc}/bin/moc.js
-      export MOTOKO_BASE=${base-src}
+      # TODO: Reenable when Motoko base library has been lifted to stable functions.
       make
     '';
 
@@ -800,11 +800,12 @@ EOF
       deser
       samples
       rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
+      # TODO: Reenable when Motoko base library has been lifted to stable functions.
+      # base-src
+      # base-tests
+      # base-doc
+      # docs
+      # report-site
       # ic-ref-run
       shell
       check-formatting
@@ -870,7 +871,8 @@ EOF
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
-    MOTOKO_BASE = base-src;
+    # TODO: Reenable when Motoko base library has been lifted to stable functions.
+    # MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
     VIPER_SERVER = "${viperServer}";
 
