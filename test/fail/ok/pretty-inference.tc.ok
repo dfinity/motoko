@@ -1,5 +1,5 @@
-pretty-inference.mo:13.1-13.5: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:14.1-14.5: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   Nat
 to produce result of type
@@ -9,8 +9,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Nat  </:  ()
 so that no valid instantiation exists
-pretty-inference.mo:15.1-15.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:16.1-16.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -20,8 +20,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   (Nat, Bool)  </:  ()
 so that no valid instantiation exists
-pretty-inference.mo:17.1-17.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:18.1-18.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
@@ -31,8 +31,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   ((Nat, Bool), (Nat, Bool))  </:  ()
 so that no valid instantiation exists
-pretty-inference.mo:19.1-19.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:20.1-20.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
@@ -42,8 +42,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </:  ()
 so that no valid instantiation exists
-pretty-inference.mo:21.1-21.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:22.1-22.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -58,8 +58,8 @@ where
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
     ()
 so that no valid instantiation exists
-pretty-inference.mo:23.1-23.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: ()>T -> ()
+pretty-inference.mo:24.1-24.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: ()>T -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -80,8 +80,8 @@ where
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
     ()
 so that no valid instantiation exists
-pretty-inference.mo:28.1-28.5: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:29.1-29.5: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   Nat
 to produce result of type
@@ -91,8 +91,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Nat  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:30.1-30.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:31.1-31.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -102,8 +102,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   (Nat, Bool)  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:32.1-32.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:33.1-33.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
@@ -113,8 +113,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   ((Nat, Bool), (Nat, Bool))  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:34.1-34.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:35.1-35.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
@@ -126,8 +126,8 @@ where
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </: 
     C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:36.1-36.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:37.1-37.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -142,8 +142,8 @@ where
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
     C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:38.1-38.6: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: C<C<C<C<Nat>>>>>T -> ()
+pretty-inference.mo:39.1-39.6: type error [M0098], cannot implicitly instantiate function of type
+  <T <: C<C<C<C<Nat>>>>>T -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -164,8 +164,8 @@ where
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
     C<C<C<C<Nat>>>>
 so that no valid instantiation exists
-pretty-inference.mo:42.1-42.7: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:43.1-43.7: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   (Nat, Nat)
 to produce result of type
@@ -174,8 +174,8 @@ because no instantiation of T__42, U__12 makes
   (Nat, Nat)  <:  (T__42, U__12)
 and
   Nat  <:  ()
-pretty-inference.mo:44.1-44.9: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:45.1-45.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
@@ -184,8 +184,8 @@ because no instantiation of T__43, U__13 makes
   ((Nat, Bool), (Nat, Bool))  <:  (T__43, U__13)
 and
   Nat  <:  ()
-pretty-inference.mo:46.1-46.9: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:47.1-47.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
@@ -195,8 +195,8 @@ because no instantiation of T__44, U__14 makes
     (T__44, U__14)
 and
   Nat  <:  ()
-pretty-inference.mo:48.1-48.9: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:49.1-49.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -208,8 +208,8 @@ because no instantiation of T__45, U__15 makes
     (T__45, U__15)
 and
   Nat  <:  ()
-pretty-inference.mo:50.1-50.9: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:51.1-51.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -225,8 +225,8 @@ because no instantiation of T__46, U__16 makes
     (T__46, U__16)
 and
   Nat  <:  ()
-pretty-inference.mo:52.1-52.9: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T, U) -> Nat
+pretty-inference.mo:53.1-53.9: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>(T, U) -> Nat
 to argument of type
   ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),

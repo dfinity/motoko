@@ -1,69 +1,25 @@
-inference.mo:23.8-23.32: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U>(T -> U, T) -> U
-to argument of type
-  (stable N -> N, stable <T>(T -> T, T) -> T)
-to produce result of type
-  Any
-because no instantiation of T__57, U__9 makes
-  (stable N -> N, stable <T>(T -> T, T) -> T)  <:  (T__57 -> U__9, T__57)
-inference.mo:28.8-28.38: type error [M0098], cannot implicitly instantiate function of type
-  stable <T, U, V>(T -> U, U -> V) -> T -> V
-to argument of type
-  (stable N -> N, stable N -> N)
-to produce result of type
-  Any
-because no instantiation of T__59, U__11, V__2 makes
-  (stable N -> N, stable N -> N)  <:  (T__59 -> U__11, U__11 -> V__2)
-inference.mo:49.26-49.42: type error [M0098], cannot implicitly instantiate function of type
-  <T>(T -> T, T) -> T
-to argument of type
-  (stable N -> N, <T>(T -> T, T) -> T)
-to produce result of type
-  <T>(T -> T, T) -> T
-because no instantiation of T__69 makes
-  (stable N -> N, <T>(T -> T, T) -> T)  <:  (T__69 -> T__69, T__69)
-and
-  T__69  <:  <T>(T -> T, T) -> T
-inference.mo:53.37-53.57: type error [M0098], cannot implicitly instantiate function of type
-  stable <A, B, C>((A, B) -> C) -> A -> B -> C
-to argument of type
-  stable (N, N) -> N
-because no instantiation of A__10, B__1, C__1 makes
-  stable (N, N) -> N  <:  (A__10, B__1) -> C__1
-inference.mo:61.14-61.45: type error [M0096], expression of type
-  stable None -> Any
+inference.mo:62.14-62.45: type error [M0096], expression of type
+  None -> Any
 cannot produce expected type
   None -> None
-inference.mo:62.13-62.44: type error [M0096], expression of type
-  stable None -> Any
+inference.mo:63.13-63.44: type error [M0096], expression of type
+  None -> Any
 cannot produce expected type
   Any -> Any
-inference.mo:66.1-66.40: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(T -> T) -> ()
+inference.mo:68.1-68.40: type error [M0098], cannot implicitly instantiate function of type
+  <T>(T -> T) -> ()
 to argument of type
-  stable Any -> None
+  None -> Any
 to produce result of type
   ()
-because no instantiation of T__76 makes
-inference.mo:67.1-67.40: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(T -> T) -> ()
-to argument of type
-  stable None -> Any
-to produce result of type
-  ()
-because no instantiation of T__77 makes
-  stable None -> Any  <:  T__77 -> T__77
-inference.mo:68.1-68.41: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(T -> T) -> ()
-to argument of type
-  stable None -> None
-to produce result of type
-  ()
-because no instantiation of T__78 makes
-  stable None -> None  <:  T__78 -> T__78
-inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
-inference.mo:94.8-94.20: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: U, U>(T, T) -> (U, U)
+because implicit instantiation of type parameter T is over-constrained with
+  Any  <:  T  <:  None
+where
+  Any  </:  None
+so that no valid instantiation exists
+inference.mo:88.20-88.27: warning [M0146], this pattern is never matched
+inference.mo:95.8-95.20: type error [M0098], cannot implicitly instantiate function of type
+  <T <: U, U>(T, T) -> (U, U)
 to argument of type
   (Nat, Nat)
 to produce result of type
@@ -71,8 +27,8 @@ to produce result of type
 because type parameter T has an open bound
   U__12
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:95.8-95.26: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: U, U>(T, T) -> (U, U)
+inference.mo:96.8-96.26: type error [M0098], cannot implicitly instantiate function of type
+  <T <: U, U>(T, T) -> (U, U)
 to argument of type
   (Nat, Int)
 to produce result of type
@@ -80,8 +36,8 @@ to produce result of type
 because type parameter T has an open bound
   U__13
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:96.8-96.23: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: U, U>(T, T) -> (U, U)
+inference.mo:97.8-97.23: type error [M0098], cannot implicitly instantiate function of type
+  <T <: U, U>(T, T) -> (U, U)
 to argument of type
   (Nat, Bool)
 to produce result of type
@@ -89,8 +45,8 @@ to produce result of type
 because type parameter T has an open bound
   U__14
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: Int>T -> T
+inference.mo:112.8-112.17: type error [M0098], cannot implicitly instantiate function of type
+  <T <: Int>T -> T
 to argument of type
   Bool
 to produce result of type
@@ -100,8 +56,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Bool  </:  Int
 so that no valid instantiation exists
-inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
-  stable <T <: Int>T -> T
+inference.mo:113.1-113.10: type error [M0098], cannot implicitly instantiate function of type
+  <T <: Int>T -> T
 to argument of type
   Bool
 to produce result of type
@@ -111,42 +67,42 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Bool  </:  None
 so that no valid instantiation exists
-inference.mo:116.1-116.27: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(<U>T -> U) -> ()
+inference.mo:117.1-117.27: type error [M0098], cannot implicitly instantiate function of type
+  <T>(<U>T -> U) -> ()
 to argument of type
   <V>V -> V
 to produce result of type
   ()
-because no instantiation of T__95 makes
-  <V>V -> V  <:  <U>T__95 -> U
-inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(<U>U -> T) -> ()
+because no instantiation of T__102 makes
+  <V>V -> V  <:  <U>T__102 -> U
+inference.mo:119.1-119.31: type error [M0098], cannot implicitly instantiate function of type
+  <T>(<U>U -> T) -> ()
 to argument of type
   <V>V -> V
 to produce result of type
   ()
-because no instantiation of T__96 makes
-  <V>V -> V  <:  <U>U -> T__96
-inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>[T] -> T
+because no instantiation of T__103 makes
+  <V>V -> V  <:  <U>U -> T__103
+inference.mo:128.8-128.20: type error [M0098], cannot implicitly instantiate function of type
+  <T>[T] -> T
 to argument of type
   [var Nat]
 to produce result of type
   Any
-because no instantiation of T__99 makes
-  [var Nat]  <:  [T__99]
-inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>[var T] -> T
+because no instantiation of T__106 makes
+  [var Nat]  <:  [T__106]
+inference.mo:131.1-131.13: type error [M0098], cannot implicitly instantiate function of type
+  <T>[var T] -> T
 to argument of type
   [Nat]
 to produce result of type
   ()
-because no instantiation of T__100 makes
-  [Nat]  <:  [var T__100]
+because no instantiation of T__107 makes
+  [Nat]  <:  [var T__107]
 and
-  T__100  <:  ()
-inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>[var T] -> T
+  T__107  <:  ()
+inference.mo:133.1-133.17: type error [M0098], cannot implicitly instantiate function of type
+  <T>[var T] -> T
 to argument of type
   [var Nat]
 to produce result of type
@@ -156,8 +112,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Nat  </:  None
 so that no valid instantiation exists
-inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
-  stable <U <: {}>U -> ()
+inference.mo:138.4-138.8: type error [M0098], cannot implicitly instantiate function of type
+  <U <: {}>U -> ()
 to argument of type
   T__39
 to produce result of type
@@ -167,8 +123,8 @@ because implicit instantiation of type parameter U is over-constrained with
 where
   T__39  </:  {}
 so that no valid instantiation exists
-inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
-  stable <U <: T__42>U -> U
+inference.mo:153.11-153.15: type error [M0098], cannot implicitly instantiate function of type
+  <U <: T__42>U -> U
 to argument of type
   T__42
 to produce result of type
@@ -178,8 +134,8 @@ because implicit instantiation of type parameter U is over-constrained with
 where
   T__42  </:  None
 so that no valid instantiation exists
-inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>(Bool, [var T], [var T]) -> [var T]
+inference.mo:173.8-173.54: type error [M0098], cannot implicitly instantiate function of type
+  <T>(Bool, [var T], [var T]) -> [var T]
 to argument of type
   (Bool, [var Nat], [var Int])
 to produce result of type
@@ -189,13 +145,13 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Int  </:  Nat
 so that no valid instantiation exists
-inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
-  stable <T>{x : T} -> T
+inference.mo:178.8-178.44: type error [M0098], cannot implicitly instantiate function of type
+  <T>{x : T} -> T
 to argument of type
   {type x = Nat}
 to produce result of type
   Any
-because no instantiation of T__110 makes
-  {type x = Nat}  <:  {x : T__110}
-inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
-inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
+because no instantiation of T__117 makes
+  {type x = Nat}  <:  {x : T__117}
+inference.mo:184.8-184.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
+inference.mo:187.8-187.15: type error [M0045], wrong number of type arguments: expected 1 but got 0

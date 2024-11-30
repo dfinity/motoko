@@ -1,5 +1,5 @@
-inspect_message_wrong.mo:10.4-10.29: type error [M0127], system function inspect is declared with type
-  stable () -> ()
+inspect_message_wrong.mo:11.4-11.29: type error [M0127], system function inspect is declared with type
+  () -> ()
 instead of expected type
   {
     arg : Blob;

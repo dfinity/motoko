@@ -1,40 +1,40 @@
-variance.mo:17.3-17.5: type error [M0096], expression of type
-  {get : stable () -> ?None}
+variance.mo:18.3-18.5: type error [M0096], expression of type
+  {get : () -> ?None}
 cannot produce expected type
   ()
-variance.mo:32.3-32.9: type error [M0096], expression of type
-  {put : stable Any -> ()}
+variance.mo:33.3-33.9: type error [M0096], expression of type
+  {put : Any -> ()}
 cannot produce expected type
   ()
-variance.mo:44.24-44.27: type error [M0046], type argument
+variance.mo:45.24-45.27: type error [M0046], type argument
   Any
 does not match parameter bound
   Nat
-variance.mo:44.10-44.15: type error [M0096], expression of type
-  {put : stable Nat -> ()}
+variance.mo:45.10-45.15: type error [M0096], expression of type
+  {put : Nat -> ()}
 cannot produce expected type
-  {put : stable Any -> ()}
-variance.mo:48.3-48.8: type error [M0096], expression of type
-  {put : stable Nat -> ()}
-cannot produce expected type
-  ()
-variance.mo:64.3-64.6: type error [M0096], expression of type
-  {get : stable () -> ?Any; put : stable Any -> ()}
+  {put : Any -> ()}
+variance.mo:49.3-49.8: type error [M0096], expression of type
+  {put : Nat -> ()}
 cannot produce expected type
   ()
-variance.mo:80.3-80.10: type error [M0096], expression of type
-  {get : stable () -> ?Nat; put : stable Nat -> ()}
+variance.mo:65.3-65.6: type error [M0096], expression of type
+  {get : () -> ?Any; put : Any -> ()}
 cannot produce expected type
   ()
 variance.mo:81.3-81.10: type error [M0096], expression of type
-  {get : stable () -> ?Nat; put : stable Nat -> ()}
+  {get : () -> ?Nat; put : Nat -> ()}
 cannot produce expected type
   ()
-variance.mo:82.11-82.18: type error [M0096], expression of type
-  {get : stable () -> ?Nat; put : stable Nat -> ()}
+variance.mo:82.3-82.10: type error [M0096], expression of type
+  {get : () -> ?Nat; put : Nat -> ()}
 cannot produce expected type
-  {get : stable () -> ?Any; put : stable Any -> ()}
-variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate function of type
+  ()
+variance.mo:83.11-83.18: type error [M0096], expression of type
+  {get : () -> ?Nat; put : Nat -> ()}
+cannot produce expected type
+  {get : () -> ?Any; put : Any -> ()}
+variance.mo:85.15-85.20: type error [M0098], cannot implicitly instantiate function of type
   stable <A>() -> Inv<A>
 to argument of type
   ()
