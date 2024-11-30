@@ -206,4 +206,5 @@ let error_codes : (string * string option) list =
     "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Unrecognised attribute in parenthetical note *)
     "M0201", None; (* `cycle` attribute in parenthetical note must be of type `Nat` *)
     "M0202", None; (* parenthetical note must be applied to a message send *)
+    "M0203", None; (* parenthetical note has no attributes *)
   ]

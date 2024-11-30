@@ -151,7 +151,6 @@ let recover f y = recover_with () f y
 let display_lab = Lib.Format.display T.pp_lab
 
 let display_typ = Lib.Format.display T.pp_typ
-let display_typ_list = Lib.Format.display (Format.pp_print_list T.pp_typ)
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
@@ -2569,6 +2568,7 @@ and validate_parenthetical env typ_opt = function
      end;
      let attrs = infer_exp env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+     if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
      if unrecognised <> [] then warn env par.at "M0200" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
      let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
