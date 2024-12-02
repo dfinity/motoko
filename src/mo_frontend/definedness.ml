@@ -84,55 +84,55 @@ let rec exp msgs e : f = match e.it with
   (* Or anything that is occurring in a call (as this may call a closure): *)
   | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
   (* And break, return, throw can be thought of as calling a continuation: *)
-  | BreakE (i, e)       -> eagerify (exp msgs e)
-  | RetE e              -> eagerify (exp msgs e)
+  | BreakE (_, e)
+  | RetE e
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
   | FuncE (_, sp, tp, p, t, _, e) ->
-      delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
+    delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
+  | ObjBlockE (s, (self_id_opt, _), dfs) ->
+    group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
-  | LitE _ | ActorUrlE _
+  | LitE _
   | PrimE _ | ImportE _ -> M.empty
-  | UnE (_, uo, e)      -> exp msgs e
-  | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
-  | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
-  | ShowE (_, e)        -> exp msgs e
-  | ToCandidE es        -> exps msgs es
-  | FromCandidE e       -> exp msgs e
-  | TupE es             -> exps msgs es
-  | ProjE (e, i)        -> exp msgs e
-  | ObjBlockE (s, _, dfs) ->
-    (* For actors, this may be too permissive; to be revised when we work on actors again *)
-    group msgs (dec_fields msgs dfs)
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
-  | DotE (e, i)         -> exp msgs e
-  | AssignE (e1, e2)    -> exps msgs [e1; e2]
-  | ArrayE (m, es)      -> exps msgs es
-  | IdxE (e1, e2)       -> exps msgs [e1; e2]
+  | TupE es
+  | ArrayE (_, es)
+  | ToCandidE es        -> exps msgs es
   | BlockE ds           -> group msgs (decs msgs ds)
-  | NotE e              -> exp msgs e
-  | AndE (e1, e2)       -> exps msgs [e1; e2]
-  | OrE (e1, e2)        -> exps msgs [e1; e2]
-  | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
-  | OldE e              -> exp msgs e
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
-  | SwitchE (e, cs)     -> exp msgs e ++ cases msgs cs
+  | SwitchE (e, cs)
   | TryE (e, cs, None)  -> exp msgs e ++ cases msgs cs
   | TryE (e, cs, Some f)-> exps msgs [e; f] ++ cases msgs cs
-  | WhileE (e1, e2)     -> exps msgs [e1; e2]
   | LoopE (e1, None)    -> exp msgs e1
-  | LoopE (e1, Some e2) -> exps msgs [e1; e2]
+  | LoopE (e1, Some e2)
+  | WhileE (e1, e2)
+  | AssignE (e1, e2)
+  | IdxE (e1, e2)
+  | BinE (_, e1, _, e2)
+  | RelE (_, e1, _, e2)
+  | AndE (e1, e2)
+  | OrE (e1, e2)
+  | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
-  | LabelE (i, t, e)    -> exp msgs e
-  | DebugE e            -> exp msgs e
-  | AsyncE (_, _, e)    -> exp msgs e
-  | AwaitE (_, e)       -> exp msgs e
-  | AssertE (_, e)      -> exp msgs e
-  | AnnotE (e, t)       -> exp msgs e
-  | OptE e              -> exp msgs e
-  | DoOptE e            -> exp msgs e
-  | BangE e             -> exp msgs e
-  | TagE (_, e)         -> exp msgs e
+  | UnE (_, _, e)
+  | ShowE (_, e)
+  | FromCandidE e
+  | DotE (e, _)
+  | ProjE (e, _)
+  | NotE e
+  | OldE e
+  | LabelE (_, _, e)
+  | DebugE e
+  | AsyncE (_, _, e)
+  | AwaitE (_, e)
+  | AssertE (_, e)
+  | AnnotE (e, _)
+  | OptE e
+  | DoOptE e
+  | BangE e
+  | TagE (_, e)
+  | ActorUrlE e
   | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
@@ -179,11 +179,22 @@ and dec msgs d = match d.it with
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (csp, i, tp, p, t, s, i', dfs) ->
     (M.empty, S.singleton i.it) +++ delayify (
-      group msgs (dec_fields msgs dfs @ class_self d.at i') /// pat msgs p /// shared_pat msgs csp
+      group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
 
-(* The class self binding is treated as defined at the very end of the group *)
-and class_self at i : group = [(at, S.singleton i.it, S.empty, S.empty)]
+(* The self binding, if any, is treated as defined at the very beginning or end of the group,
+   depending on sort and shadowing  *)
+and add_self self_id_opt s group =
+  match self_id_opt with
+  | None -> group
+  | Some i ->
+    if List.exists (fun (at, defs, _, _) -> S.mem i.it defs) group
+    then group (* shadowed, ignore *)
+    else (* not shadowed, consider self ... *)
+      let item = (i.at, S.singleton i.it, S.empty, S.empty) in
+      match s.it with
+      | Type.Actor -> item :: group (* ... defined early *)
+      | _ -> group @ [item] (* ... defined late *)
 
 and decs msgs decs : group =
   (* Annotate the declarations with the analysis results *)
@@ -242,4 +253,3 @@ let check_lib lib =
     ignore (group msgs (decs msgs (imp_ds @ ds)));
     Some ()
   )
-

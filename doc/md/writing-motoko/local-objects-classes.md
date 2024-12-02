@@ -109,7 +109,7 @@ In Motoko, an object encapsulates state, and an object `class` is a package of t
 
 Consider this example `class` for counters that start at zero:
 
-``` motoko name=counter
+``` motoko no-repl
 class Counter() {
   var c = 0;
   public func inc() : Nat {
@@ -121,14 +121,14 @@ class Counter() {
 
 The value of this definition is that we can construct new counters, each starting with their own unique state, initially at zero:
 
-``` motoko name=cinit include=counter
+``` motoko no-repl
 let c1 = Counter();
 let c2 = Counter();
 ```
 
 Each is independent:
 
-``` motoko include=counter,cinit
+``` motoko no-repl
 let x = c1.inc();
 let y = c2.inc();
 (x, y)
@@ -162,7 +162,32 @@ The `class` keyword syntax shown above is a shorthand for these two definitions 
 
 An object class defines a constructor function that may carry zero or more data arguments and zero or more type arguments.
 
-The `Counter` example above has zero of each.
+The `Counter` example above has zero of each. The example below takes two data arguments, `arg1` and `arg2`, with `Type1` and `Type2` as the types of these arguments, respectively.
+
+``` motoko no-repl
+class MyClass(arg1: Type1, arg2: Type2) {
+  // class body here
+};
+```
+
+For example, you can write a `Counter` class that takes an argument of type `Nat` and an argument of type `Bool`:
+
+``` motoko no-repl
+import Nat "mo:base/Nat";
+
+actor {
+  class Counter(init : Nat, flag : Bool) {
+    var c = init;
+    var f = flag;
+    public func inc() : Nat {
+      if f {
+        c += 1;
+      };
+      return c;
+    };
+  };
+}
+```
 
 The type arguments, if any, parameterize both the type and the constructor function for the class.
 

@@ -11,6 +11,7 @@ type instruction_limits = {
   update_call: int;
 }
 
+let ai_errors = ref false
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true

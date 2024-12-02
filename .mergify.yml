@@ -1,10 +1,23 @@
 queue_rules:
   - name: default
-    conditions:
+    queue_conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-12)
+      - status-success=tests (macos-13)
+      - base=master
+      - label=automerge-squash
+    merge_conditions:
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
+      - status-success=tests (ubuntu-latest)
+      - status-success=tests (macos-13)
+    merge_method: squash
+    commit_message_template: |
+      {{ title }} (#{{ number }})
+
+      {{ body }}
+
 
 pull_request_rules:
   - name: Automatic merge (squash)
@@ -12,22 +25,16 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-12)
+      - status-success=tests (macos-13)
       - base=master
       - label=automerge-squash
     actions:
-      queue:
-        name: default
-        method: squash
-        commit_message_template: |
-          {{ title }} (#{{ number }})
-
-          {{ body }}
       delete_head_branch: {}
+      queue:
   - name: Automatically closing successful trials
     conditions:
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-12)
+      - status-success=tests (macos-13)
       - label=autoclose
     actions:
       close:
@@ -39,8 +46,8 @@ pull_request_rules:
     actions:
       label:
         remove:
-        - automerge-squash
-        - autoclose
+          - automerge-squash
+          - autoclose
   - name: Auto-approve auto-PRs
     conditions:
       - author=dfinity-bot
@@ -70,4 +77,4 @@ pull_request_rules:
         message: A change to `doc/docusaurus/package-lock.json`? I can handle that!
       label:
         add:
-        - automerge-squash
+          - automerge-squash

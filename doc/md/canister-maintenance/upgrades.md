@@ -8,7 +8,7 @@ sidebar_position: 3
 
 One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
-This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicilty use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
+This is substantially different to other languages supported on the IC, which use off-the-shelf language implementations that are not designed for orthogonal persistence in mind: They rearrange memory structures in an uncontrolled manner on re-compilation or at runtime. As an alternative, in other languages, programmers have to explicitly use stable memory or special stable data structures to rescue their data between upgrades. Contrary to Motoko, this approach is not only cumbersome, but also unsafe and inefficient. Compared to using stable data structures, Motoko's orthogonal persistence allows more natural data modeling and significantly faster data access, eventually resulting in more efficient programs.
 
 ## Declaring stable variables
 
@@ -71,7 +71,7 @@ Unlike stable data structures in the Rust CDK, these modules do not use stable m
 
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
-```motoko
+```motoko no-repl
 actor {
   type TemperatureSeries = [Float];
 
@@ -92,9 +92,7 @@ actor {
 };
 ```
 
-3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
-The downside of this approach is that it is error-prone and does not scale for large data. 
-Conceptually, it also does not align well with the idea of orthogonal persistence.
+3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
 
 ## Stable type signatures
 
@@ -121,7 +119,7 @@ You can emit the stable signature of the main actor or actor class to a `.most` 
 A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1>` one of the following conditions hold:
 
 - `<stab-sig2>` does not contain a stable field `<id>`.
-- `<stab-sig>` has a matchng stable field `<id> : U` with `T <: U`.
+- `<stab-sig>` has a matching stable field `<id> : U` with `T <: U`.
 
 Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields. 
 
@@ -207,9 +205,11 @@ For more information, see the [example of explicit migration](compatibility.md#e
 
 The following aspects are retained for historical reasons and backwards compatibility:
 
-### Preupgrade and postupgrade system methods
+### Pre-upgrade and post-upgrade system methods
 
-This is an advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
+:::danger
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.  Per best practices, using these methods should be avoided if possible.
+:::
 
 Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
@@ -219,7 +219,7 @@ If `preupgrade` raises a trap, hits the instruction limit, or hits another IC co
 :::
 
 :::tip
-`postupgrade` is not needed as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
+`postupgrade` is not needed, as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
 :::
 
 ### Stable memory and stable regions

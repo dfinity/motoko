@@ -1,5 +1,5 @@
 ---
-sidebar_position: 27
+sidebar_position: 28
 ---
 
 # Abstracting asynchronous code
@@ -129,21 +129,21 @@ the computation each time.
 For another example, suppose we define a
 clap function with the side-effect of printing "clap".
 
-``` motoko name=clap
+``` motoko no-repl
 import Debug "mo:base/Debug"
 func clap() { Debug.print("clap") }
 ```
 
 Now, using futures, this code will clap once:
 
-``` motoko include=clap
+``` motoko no-repl
 let future = async { clap() };
 ```
 
 This remains the case, no matter how often you await `future`.
 For example:
 
-``` motoko include=clap
+``` motoko no-repl
 let future = async { clap() };
 await future;
 await future;
@@ -151,12 +151,12 @@ await future;
 
 Using computations, on the other hand, the following definition has no effect on its own:
 
-``` motoko include=clap
+``` motoko no-repl
 let computation = async* { clap() };
 ```
 But, the following example will clap twice:
 
-``` motoko include=clap
+``` motoko no-repl
 let computation = async* { clap() };
 await* computation;
 await* computation;

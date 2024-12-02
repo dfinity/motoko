@@ -1,6 +1,55 @@
 # Motoko compiler changelog
 
-## 0.13.0 (2024-09-13)
+## 0.13.4 (2024-11-29)
+
+* motoko (`moc`)
+
+  * refactoring: Updating and simplifying the runtime system dependencies (#4677).
+
+* motoko-base
+
+  * Breaking change (minor): `Float.format(#hex)` is no longer supported.
+    This is because newer versions of Motoko (such as with enhanced orthogonal persistence)
+    rely on the Rust-native formatter that does not offer this functionality.
+    It is expected that this formatter is very rarely used in practice (dfinity/motoko-base⁠#589).
+
+  * Formatter change (minor): The text formatting of `NaN`, positive or negative,
+    will be `NaN` in newer Motoko versions, while it was `nan` or `-nan` in older versions (dfinity/motoko-base⁠#589).
+
+## 0.13.3 (2024-11-13)
+
+* motoko (`moc`)
+
+  * typing: suggest conversions between primitive types from imported libraries
+    and, with `--ai-errors`, all available package libraries (#4747).
+
+* motoko-base
+
+  * Add modules `OrderedMap` and `OrderedSet` to replace `RBTree` with improved functionality, performance
+    and ergonomics avoiding the need for preupgrade hooks (thanks to Serokell) (dfinity/motoko-base⁠#662).
+
+## 0.13.2 (2024-10-18)
+
+* motoko (`moc`)
+
+  * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+
+  * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
+
+## 0.13.1 (2024-10-07)
+
+* motoko (`moc`)
+
+  * Improved error messages for unbound identifiers and fields that avoid reporting large types and use an edit-distance based metric to suggest alternatives (#4720).
+
+  * Flag `--ai-errors` to tailor error messages to AI clients (#4720).
+
+  * Compilation units containing leading type definitions are now rejected with an improved error message (#4714).
+
+  * bugfix: `floatToInt64` now behaves correctly in the interpreter too (#4712).
+
+## 0.13.0 (2024-09-17)
 
 * motoko (`moc`)
 
@@ -13,7 +62,7 @@
     * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
     * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
     * The runtime system checks that data changes of new program versions are compatible with the old state.
-    
+
     Implications:
     * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
     * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
@@ -23,7 +72,7 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
-    
+
     To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
 
     ```
@@ -86,6 +135,10 @@
         callbackTableSize : Nat;
     }
     ```
+
+* motoko-base
+
+  * Added `Iter.concat` function (thanks to AndyGura) (dfinity/motoko-base⁠#650).
 
 ## 0.12.0 (2024-07-26)
 

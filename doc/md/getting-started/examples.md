@@ -60,7 +60,7 @@ Want to get started building with Motoko? Check out some of these sample project
 
 - [Appic](https://github.com/Appic-Solutions/Auto_Investment): Automatically by and sell tokens at a specific interval or time.
 
-- [ICDex](https://github.com/iclighthouse/ICDex): An on-chain orderbook decentralized exchange written in Motoko.
+- [ICDex](https://github.com/iclighthouse/ICDex): An onchain orderbook decentralized exchange written in Motoko.
 
 - [icrc7_motoko](https://github.com/noku-team/icrc7_motoko) and - [icrc7-mo](https://github.com/PanIndustrial-Org/icrc7.mo): Motoko implementations of the ICRC-7 NFT standard.
 

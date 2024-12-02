@@ -142,7 +142,8 @@ let resolve_flags () =
   ResolveImport.{
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
-    actor_idl_path = !Flags.actor_idl_path
+    actor_idl_path = !Flags.actor_idl_path;
+    include_all_libs = !Flags.ai_errors;
   }
 
 let resolve_prog (prog, base) : resolve_result =
@@ -421,13 +422,14 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
-let load_progs ?(viper_mode=false) parsefn files senv : load_result =
+let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
+  let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
   let* senv'' = check_progs ~viper_mode senv' progs' in
   Diag.return (libs, progs', senv'')
 
@@ -510,7 +512,7 @@ type viper_result = (string * (Source.region -> Source.region option)) Diag.resu
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
   let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
-  let* () = Typing.check_actors ~viper_mode:true senv progs in
+  let* () = Typing.check_actors ~viper_mode:true ~check_actors:true senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
   let reqs = Viper.Common.init_reqs () in
@@ -525,8 +527,7 @@ let viper_files files : viper_result =
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
 (* Running *)
@@ -760,8 +761,7 @@ and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_modu
 
 let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
   (* validate any stable type signature *)

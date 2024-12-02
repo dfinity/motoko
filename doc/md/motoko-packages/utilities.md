@@ -6,7 +6,7 @@ sidebar_position: 7
 
 ## Mops packages for utility functions
 
-[Mops](https://mops.one/) is an on-chain package manager for Motoko. Here are some Mops packages for utility functions:
+[Mops](https://mops.one/) is an onchain package manager for Motoko. Here are some Mops packages for utility functions:
 
 - [`backup`](https://mops.one/backup): Library for backup restore.
 
@@ -62,7 +62,7 @@ sidebar_position: 7
 
 - [`xtended-numbers`](https://mops.one/xtended-numbers): Extended functionality for number types, such as byte encoding.
 
-- [`xtended-random`](https://mops.one/xtended-random): Extended library for random number generation. 
+- [`xtended-random`](https://mops.one/xtended-random): Extended library for random number generation.
 
 - [`xtended-text`](https://mops.one/xtended-text): Text manipulation.
 

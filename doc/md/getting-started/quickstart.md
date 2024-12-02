@@ -61,8 +61,7 @@ Lastly, you can include extra features to be added to your project:
 This hello world actor has a single function called `greet`. It is marked as `query` because it doesn't modify the state of the actor. The function accepts a name as input in type [`Text`](../base/Text.md) and returns a greeting of type [`Text`](../base/Text.md).
 
 
-```motoko
-//src/hello_backend/main.mo
+```motoko title="src/hello_backend/main.mo"
 
 actor {
   public query func greet(name : Text) : async Text {
@@ -74,8 +73,8 @@ actor {
 ## Starting the deployment environment
 
 Start the Internet Computer for local development or check your connection to the Internet Computer for network deployment:
-- [Local deployment](/docs/current/developer-docs/getting-started/deploy/local).
-- [Mainnet deployment](/docs/current/developer-docs/getting-started/deploy/mainnet).
+- [Local deployment](/docs/current/developer-docs/getting-started/deploy-and-manage).
+- [Mainnet deployment](/docs/current/developer-docs/getting-started/deploy-and-manage).
 
 ## Register, build, and deploy locally or on the mainnet
 

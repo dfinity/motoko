@@ -26,9 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: niv-updater-action
-        uses: knl/niv-updater-action@v13
+        uses: knl/niv-updater-action@v15
         with:
-          whitelist: 'nixpkgs,musl-wasi,ic'
+          whitelist: 'nixpkgs,ic'
           labels: |
             autoclose
           keep_updating: true

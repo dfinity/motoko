@@ -6,6 +6,8 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
+assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "x86_64-darwin" ];
+
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
 let stdenv = nixpkgs.stdenv; in
@@ -20,26 +22,26 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
-let
-  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
-in
-
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
+
+let emscripten = nixpkgs.emscripten.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or []) ++ [
+      nix/emscripten-fix.patch
+    ];
+  });
+in
+
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-13 (unwrapped)
-    llvmPackages_13.clang
-    # pulls in wasm-ld
-    llvmPackages_13.lld
-    llvmPackages_13.bintools
+    llvmPackages_18.clang
+    llvmPackages_18.bintools
     rustc-nightly
     cargo-nightly
     wasmtime
     rust-bindgen
     python3
-    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -47,17 +49,17 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-13"
+    export WASM_CLANG="clang-18"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_13.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_18.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_13}/bin/clang"
+    # there we use plain clang-18. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_18}/bin/clang"
   '';
 in
 
@@ -147,15 +149,6 @@ let ocaml_exe = name: bin: rts:
         $out/bin/* --help >/dev/null
       '';
     };
-
-  musl-wasi-sysroot = stdenv.mkDerivation {
-    name = "musl-wasi-sysroot";
-    src = nixpkgs.sources.musl-wasi;
-    phases = [ "unpackPhase" "installPhase" ];
-    installPhase = ''
-      make SYSROOT="$out" include_dirs
-    '';
-  };
 in
 
 rec {
@@ -172,7 +165,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-A3WPIx+weu4wIYV7cweGkRxYGAPt7srxBAtMEyPOkhI=";
+      rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -249,8 +242,6 @@ rec {
         
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
-        export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
-        export MUSL_WASI_SYSROOT=${musl-wasi-sysroot}
       '';
 
       doCheck = true;
@@ -337,7 +328,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ llvmPackages_13.bintools llvmPackages_13.clang ];
+      with nixpkgs; [ llvmPackages_18.lld llvmPackages_18.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
@@ -526,7 +517,6 @@ rec {
       fail       = test_subdir "fail"       [ moc ];
       fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
-      repl-eop   = enhanced_orthogonal_persistence_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
       ld-eop     = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
@@ -605,7 +595,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
+      cargoSha256 = "sha256-lQ4I6Fmodi0jxVuWPSvxbOpXcEX+0Lny7/N3GpW8UUI=";
       doCheck = false;
       patchPhase = ''
         mkdir -p .cargo
@@ -860,8 +850,6 @@ EOF
     '';
     ESM=nixpkgs.sources.esm;
     TOMMATHSRC = nixpkgs.sources.libtommath;
-    MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
-    MUSL_WASI_SYSROOT = musl-wasi-sysroot;
     LOCALE_ARCHIVE = nixpkgs.lib.optionalString stdenv.isLinux "${nixpkgs.glibcLocales}/lib/locale/locale-archive";
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";

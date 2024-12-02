@@ -1,0 +1,57 @@
+{
+  "arch": "wasm32",
+  "crt-objects-fallback": "true",
+  "data-layout": "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20",
+  "default-hidden-visibility": true,
+  "dll-prefix": "",
+  "dll-suffix": ".wasm",
+  "dynamic-linking": true,
+  "eh-frame-header": false,
+  "emit-debug-gdb-scripts": false,
+  "exe-suffix": ".wasm",
+  "generate-arange-section": false,
+  "has-thread-local": true,
+  "is-builtin": false,
+  "is-like-wasm": true,
+  "limit-rdylib-exports": false,
+  "linker": "rust-lld",
+  "linker-flavor": "wasm-ld",
+  "linker-is-gnu": false,
+  "lld-flavor": "wasm",
+  "llvm-target": "wasm32-unknown-shared",
+  "max-atomic-width": 64,
+  "only-cdylib": true,
+  "os": "unknown",
+  "panic-strategy": "abort",
+  "pre-link-args": {
+    "gcc": [
+      "-Wl,-z",
+      "-Wl,stack-size=1048576",
+      "-Wl,--stack-first",
+      "-Wl,--allow-undefined",
+      "-Wl,--fatal-warnings",
+      "-Wl,--no-demangle",
+      "--target=wasm32-unknown-shared",
+      "-Wl,--no-entry",
+      "--shared",
+      "--experimental-pic"
+    ],
+    "wasm-ld": [
+      "-z",
+      "stack-size=1048576",
+      "--stack-first",
+      "--allow-undefined",
+      "--fatal-warnings",
+      "--no-demangle",
+      "--no-entry",
+      "--shared",
+      "--experimental-pic"
+    ]
+  },
+  "singlethread": true,
+  "target-family": [
+    "wasm"
+  ],
+  "target-pointer-width": "32",
+  "tls-model": "local-exec"
+}

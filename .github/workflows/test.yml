@@ -7,7 +7,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-12 ]
+        os: [ ubuntu-latest, macos-13 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -17,7 +17,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@V28
+    - uses: cachix/install-nix-action@v30
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@V28
+    - uses: cachix/install-nix-action@v30
     - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test
@@ -125,11 +125,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-12 ]
+        os: [ ubuntu-latest, macos-13 ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@V28
+    - uses: cachix/install-nix-action@v30
     - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test

@@ -24,7 +24,7 @@ Its single public function, `inc()`, can be invoked by this and other actors, to
 
 On ICP, [canisters can communicate](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/call/overview) with other canisters by sending [asynchronous messages](async-data.md). Asynchronous messages are function calls that return a **future**, and use an `await` construct that allows you to suspend execution until a future has completed. This simple feature avoids creating a loop of explicit asynchronous callbacks in other languages.
 
-``` motoko include=counter file=../examples/factorial.mo#L9-L21
+``` motoko no-repl file=../examples/factorial.mo#L9-L21
 ```
 
 ## Modern type system

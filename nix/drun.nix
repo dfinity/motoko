@@ -72,8 +72,8 @@ EOF
 
       buildInputs = with pkgs; [
         openssl
-        llvm_13
-        llvmPackages_13.libclang
+        llvm_18
+        llvmPackages_18.libclang
         lmdb
         libunwind
         libiconv
@@ -81,8 +81,8 @@ EOF
         pkgs.darwin.apple_sdk.frameworks.Security;
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_18.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_18.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";

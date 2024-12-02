@@ -57,6 +57,7 @@ type env =
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
     viper_mode : bool;
+    errors_only : bool;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -79,6 +80,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
     reported_stable_memory = ref false;
+    errors_only = false;
     viper_mode;
   }
 
@@ -128,6 +130,54 @@ let display_typ = Lib.Format.display T.pp_typ
 
 let display_typ_expand = Lib.Format.display T.pp_typ_expand
 
+let display_obj fmt (s, fs) =
+  if !Flags.ai_errors || (List.length fs) < 16 then
+    Format.fprintf fmt "type:%a" display_typ (T.Obj(s, fs))
+  else
+    Format.fprintf fmt "%s." (String.trim(T.string_of_obj_sort s))
+
+let display_vals fmt vals =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x (t, _, _, _) acc ->
+      if x = "Prim" || (String.length x >= 0 && x.[0] = '@')
+      then acc
+      else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = t}::acc)
+      vals []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
+
+let display_labs fmt labs =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x t acc ->
+      T.{lab = x; src = {depr = None; region = Source.no_region }; typ = t}::acc)
+      labs []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in label environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
+
+let display_typs fmt typs =
+  if !Flags.ai_errors then
+    let tfs = T.Env.fold (fun x c acc ->
+      if (String.length x >= 0 && (x.[0] = '@' || x.[0] = '$')) ||
+        T.(match Cons.kind c with
+          | Def ([], Prim _)
+          | Def ([], Any)
+          | Def ([], Non) -> string_of_con c = x
+          | _ -> false)
+      then acc
+      else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = T.Typ c}::acc)
+      typs []
+    in
+    let ty = T.Obj(T.Object, List.rev tfs) in
+    Format.fprintf fmt " in type environment:%a" display_typ ty
+  else
+    Format.fprintf fmt ""
+
 let type_error at code text : Diag.message =
   Diag.error_message at code "type" text
 
@@ -145,10 +195,12 @@ let local_error env at code fmt =
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_error at code s)) fmt
 
 let warn env at code fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_warning at code s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_warning at code s)) fmt
 
 let info env at fmt =
-  Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+  Format.kasprintf (fun s ->
+    if not env.errors_only then Diag.add_msg env.msgs (type_info at s)) fmt
 
 let check_deprecation env at desc id depr =
   match depr with
@@ -398,8 +450,11 @@ and check_obj_path' env path : T.typ =
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
      | Some (t, _, _, Available) -> t
      | Some (t, _, _, Unavailable) ->
-         error env id.at "M0025" "unavailable variable %s" id.it
-     | None -> error env id.at "M0026" "unbound variable %s" id.it
+       error env id.at "M0025" "unavailable variable %s" id.it
+     | None ->
+       error env id.at "M0026" "unbound variable %s%a%s" id.it
+         display_vals env.vals
+         (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -408,8 +463,14 @@ and check_obj_path' env path : T.typ =
       error env id.at "M0027" "cannot infer type of forward field reference %s" id.it
     | t -> t
     | exception Invalid_argument _ ->
-      error env id.at "M0028" "field %s does not exist in type%a"
-        id.it display_typ_expand (T.Obj (s, fs))
+      error env id.at "M0028" "field %s does not exist in %a%s"
+        id.it
+        display_obj (s, fs)
+        (Suggest.suggest_id "field" id.it
+          (List.filter_map
+            (function
+              {T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) fs))
 
 let rec check_typ_path env path : T.con =
   let c = check_typ_path' env path in
@@ -422,7 +483,10 @@ and check_typ_path' env path : T.con =
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
-    | None -> error env id.at "M0029" "unbound type %s" id.it
+    | None ->
+      error env id.at "M0029" "unbound type %s%a%s" id.it
+        display_typs env.typs
+        (Suggest.suggest_id "type" id.it (T.Env.keys env.typs))
     )
   | DotH (path', id) ->
     let s, fs = check_obj_path env path' in
@@ -431,9 +495,12 @@ and check_typ_path' env path : T.con =
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type%a"
+        error env id.at "M0030" "type field %s does not exist in type%a%s"
           id.it display_typ_expand (T.Obj (s, fs))
-
+          (Suggest.suggest_id "type field" id.it
+             (List.filter_map
+               (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
+               |  _ -> None) fs))
 
 (* Type helpers *)
 
@@ -1037,7 +1104,7 @@ let infer_lit env lit at : T.prim =
   | PreLit _ ->
     assert false
 
-let check_lit env t lit at =
+let check_lit env t lit at suggest =
   match t, !lit with
   | T.Prim T.Nat, PreLit (s, T.Nat) ->
     lit := NatLit (check_nat env at s)
@@ -1066,11 +1133,11 @@ let check_lit env t lit at =
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (T.sub t' t) then
-      error env at "M0050"
-        "literal of type%a\ndoes not have expected type%a"
-        display_typ t'
-        display_typ_expand t
-
+    error env at "M0050"
+      "literal of type%a\ndoes not have expected type%a%s"
+      display_typ t'
+      display_typ_expand t
+      (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
 
 (* Coercions *)
 
@@ -1160,7 +1227,9 @@ and infer_exp'' env exp : T.typ =
       else t
     | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
-      error env id.at "M0057" "unbound variable %s" id.it
+      error env id.at "M0057" "unbound variable %s%a%s" id.it
+        display_vals env.vals
+        (Suggest.suggest_id "variable" id.it (T.Env.keys env.vals))
     )
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
@@ -1291,7 +1360,7 @@ and infer_exp'' env exp : T.typ =
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
-      | false, Some typ ->
+      | false, (_, Some typ) ->
         let t' = check_typ env' typ in
         if not (T.sub t t') then
           local_error env exp.at "M0192"
@@ -1376,7 +1445,7 @@ and infer_exp'' env exp : T.typ =
     T.(glb t_base (Obj (Object, sort T.compare_field fts)))
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
-    let _s, tfs =
+    let s, tfs =
       try T.as_obj_sub [id.it] t1 with Invalid_argument _ ->
       try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
       try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
@@ -1396,9 +1465,14 @@ and infer_exp'' env exp : T.typ =
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
-        "field %s does not exist in type%a"
+        "field %s does not exist in %a%s"
         id.it
-        display_typ_expand t1
+        display_obj (s, tfs)
+        (Suggest.suggest_id "field" id.it
+          (List.filter_map
+             (function
+               { T.typ=T.Typ _;_} -> None
+             | {T.lab;_} -> Some lab) tfs))
     )
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
@@ -1596,7 +1670,9 @@ and infer_exp'' env exp : T.typ =
         match String.split_on_char ' ' id.it with
         | ["continue"; name] -> name
         | _ -> id.it
-      in local_error env id.at "M0083" "unbound label %s" name
+      in local_error env id.at "M0083" "unbound label %s%a%s" name
+         display_labs env.labs
+         (Suggest.suggest_id "label" id.it (T.Env.keys env.labs))
     );
     T.Non
   | RetE exp1 ->
@@ -1720,7 +1796,7 @@ and check_exp' env0 t exp : T.typ =
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
-    check_lit env t lit exp.at;
+    check_lit env t lit exp.at true;
     t
   | ActorUrlE exp', t' ->
     check_exp_strong env T.text exp';
@@ -1894,10 +1970,13 @@ and check_exp' env0 t exp : T.typ =
   | _ ->
     let t' = infer_exp env0 exp in
     if not (T.sub t' t) then
+    begin
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
+        "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
-        display_typ_expand t;
+        display_typ_expand t
+        (Suggest.suggest_conversion env.libs env.vals t' t)
+    end;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -2170,7 +2249,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | SignP (op, lit) ->
@@ -2181,7 +2260,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
           display_typ_expand t;
       if T.sub t' T.Non
       then ignore (infer_lit env lit pat.at)
-      else check_lit env t' lit pat.at
+      else check_lit env t' lit pat.at false
     end;
     T.Env.empty
   | TupP pats ->
@@ -2974,18 +3053,29 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let check_actors ?(viper_mode=false) scope progs : unit Diag.result =
+let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Diag.result =
+  if not check_actors then Diag.return () else
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
         let env = env_of_scope ~viper_mode msgs scope in
+        let report ds =
+          match ds with
+            [] -> ()
+          | d :: _ ->
+            let r = { d.at with right = (Lib.List.last ds).at.right } in
+            local_error env r "M0141" "move these declarations into the body of the main actor or actor class"
+        in
         let rec go ds = function
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
-            if ds <> [] || ds' <> []  then
+            if ds <> [] || ds' <> [] then begin
+              report (List.rev ds);
+              report ds';
               error_in [Flags.ICMode; Flags.RefMode] env d.at "M0141"
                 "an actor or actor class must be the only non-imported declaration in a program"
+            end
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
         in
@@ -2998,7 +3088,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = env_of_scope msgs scope in
+          let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
