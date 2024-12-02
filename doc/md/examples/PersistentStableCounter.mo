@@ -14,7 +14,7 @@ persistent actor Counter {
     value := 0;
   };
 
-  public func invocations() : async Nat {
+  public func getInvocations() : async Nat {
     invocations
   }
 

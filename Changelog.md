@@ -20,17 +20,17 @@
         transient var invocations = 0;
 
         // counts increments since first installation
-        var counter = 0;
+        var value = 0; 	// implicitly `stable`
 
         public func inc() : async () {
-          counter += 1;
+          value += 1;
           invocations += 1;
         }
 
       }
       ```
 
-      On upgrade, the transient variable `invocations` will be reset to `0` and `counter`, now implicitly `stable`, will retain its current value.
+      On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
 
       Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.
 
