@@ -22,15 +22,25 @@ The following is a simple example of how to declare a stateful counter:
 ```
 
 Importantly, in this example, when the counter is upgraded, its state is lost.
-This is because actor variables are by default `flexible`, meaning they get reinitialized on an upgrade.
+This is because actor variables are by default `transient`, meaning they get reinitialized on an upgrade.
+The above actor is equivalent to using the `transient` declaration:
 
-To fix this, you can declare a stable variable that is retained across upgrades:
+``` motoko no-repl file=../examples/count-v0transient.mo
+```
 
+
+To fix this, you can declare a `stable` variable that is retained across upgrades:
+
+
+``` motoko no-repl file=../examples/count-v1stable.mo
+```
+
+To make `stable` the default for all declarations, and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
 
 ``` motoko no-repl file=../examples/count-v1.mo
 ```
 
-If the variable `state` were not declared `stable`, `state` would restart from `0` on upgrade.
+If the variable `state` were not declared `stable`, either explicitly or by applying `persistent` to the `actor` keyword, `state` would restart from `0` on upgrade.
 
 ## Evolving the stable declarations
 

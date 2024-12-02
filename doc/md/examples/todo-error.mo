@@ -82,7 +82,7 @@ public shared func markDoneException(id : TodoId) : async Seconds {
       todos.put(id, #done(now));
       secondsBetween(todo.opened, now)
     };
-    case (?(#done(time))) {
+    case (?(#done _)) {
       throw Error.reject("Already done")
     };
     case null {
@@ -144,7 +144,7 @@ public shared func doneTodo4(id : Todo.TodoId) : async Text {
   try {
     let seconds = await Todo.markDoneException(id);
     "Congrats! That took " # Int.toText(seconds) # " seconds.";
-  } catch (e) {
+  } catch _ {
     "Something went wrong.";
   }
 };

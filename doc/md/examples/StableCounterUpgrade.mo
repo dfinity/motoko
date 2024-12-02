@@ -1,6 +1,6 @@
-actor Counter {
+persistent actor Counter {
 
-  stable var value = 0;
+  var value = 0;
 
   public func inc() : async Nat {
     value += 1;
