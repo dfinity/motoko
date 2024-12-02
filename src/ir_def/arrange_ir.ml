@@ -60,7 +60,8 @@ and args = function
 and arg a = Atom a.it
 
 and prim = function
-  | CallPrim (ts, _FIXME) -> "CallPrim" $$ List.map typ ts @ [exp _FIXME]
+  | CallPrim (ts, par) when empty par -> "CallPrim" $$ List.map typ ts
+  | CallPrim (ts, par) -> "CallPrim()" $$ List.map typ ts @ [exp par]
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
@@ -121,6 +122,11 @@ and prim = function
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
+
+and empty exp =
+  Type.(is_obj exp.note.Note.typ
+        && (let (s, fls) = as_obj exp.note.Note.typ in
+            s = Object && fls = []))
 
 and mut = function
   | Const -> Atom "Const"
