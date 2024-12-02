@@ -21,11 +21,11 @@ The semantics of the modifiers is as follows:
 * `stable` means that all values directly or indirectly reachable from that stable actor variable are considered persistent and automatically retained across upgrades. This is the primary choice for most of the program's state.
 * `transient` means that the variable is re-initialized on upgrade, such that the values referenced by this transient variable can be discarded, unless the values are transitively reachable by other variables that are stable. `transient` is only used for temporary state or references to high-order types, such as local function references, see [stable types](#stable-types).
 
-::: note
+:::note
 
 Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangebly but the legacy `flexible` keyword may be deprecated in future.
 
-::: note
+:::note
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
@@ -51,6 +51,7 @@ When you first compile and deploy a canister, all transient and stable variables
 
 :::danger
 Do not forget to declare variables `stable` if they should survive canister upgrades as the default is `transient` if no modifier is declared.
+A simple precaution is declare the entire actor or actor class `persistent`.
 :::
 
 ## Persistence modes
