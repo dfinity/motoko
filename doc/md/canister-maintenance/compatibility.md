@@ -198,23 +198,23 @@ A common, real-world example of an incompatible upgrade can be found [on the for
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
   };
-  stable var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
+  var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
 };
 ```
 
 to *incompatible* stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var map : [(Nat32, Card)] = [];
+  var map : [(Nat32, Card)] = [];
 };
 ```
 
@@ -249,7 +249,7 @@ To resolve this issue, an [explicit](#explicit-migration) is needed:
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-actor {
+persistent actor {
   type OldCard = {
     title : Text;
   };
@@ -257,9 +257,9 @@ actor {
     title : Text;
     description : Text;
   };
-  
-  stable var map : [(Nat32, OldCard)] = [];
-  stable var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
+
+  var map : [(Nat32, OldCard)] = [];
+  var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
     map,
     func(key, { title }) { (key, { title; description = "<empty>" }) },
   );
@@ -269,12 +269,12 @@ actor {
 4. **After** we have successfully upgraded to this new version, we can upgrade once more to a version, that drops the old `map`.
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var newMap : [(Nat32, Card)] = [];
+  var newMap : [(Nat32, Card)] = [];
 };
 ```
 

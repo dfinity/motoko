@@ -31,10 +31,10 @@ import Error = "mo:base/Error";
 
 // Define an actor
 
-actor {
+persistent actor {
 
   // Define a stable variable that contains each card as a unicode character:
-  stable var deck : ?[var Char] = ?[var
+  var deck : ?[var Char] = ?[var
     '🂡','🂢','🂣','🂤','🂥','🂦','🂧','🂨','🂩','🂪','🂫','🂬','🂭','🂮',
     '🂱','🂲','🂳','🂴','🂵','🂶','🂷','🂸','🂹','🂺','🂻','🂼','🂽','🂾',
     '🃁','🃂','🃃','🃄','🃅','🃆','🃇','🃈','🃉','🃊','🃋','🃌','🃍','🃎',
