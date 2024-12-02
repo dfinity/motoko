@@ -188,6 +188,7 @@ let empty : string -> t =
            package_urls = !Flags.package_urls;
            actor_aliases = !Flags.actor_aliases;
            actor_idl_path = !Flags.actor_idl_path;
+           include_all_libs = false (* TBR *);
          })
   in
   {
