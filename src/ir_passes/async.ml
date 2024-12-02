@@ -24,7 +24,7 @@ module ConRenaming = E.Make(struct type t = con let compare = Cons.compare end)
 
 (* Helpers *)
 
-let selfcallE (cyc : exp) ts e1 e2 e3 e4 =
+let selfcallE cyc ts e1 e2 e3 e4 =
   { it = SelfCallE (cyc, ts, e1, e2, e3, e4);
     at = no_region;
     note = Note.{ def with typ = unit } }
@@ -161,7 +161,7 @@ let let_seq ts e d_of_vs =
   | ts ->
     let xs = fresh_vars "x" ts in
     let p = tupVarsP xs in
-    (letP p e) :: d_of_vs xs
+    letP p e :: d_of_vs xs
 
 (* name e in f unless named already *)
 let ensureNamed e f =
