@@ -35,7 +35,7 @@ To fix this, you can declare a `stable` variable that is retained across upgrade
 ``` motoko no-repl file=../examples/count-v1stable.mo
 ```
 
-To make `stable` the default for all declarations, and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
+To make `stable` the default for all declarations and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
 
 ``` motoko no-repl file=../examples/count-v1.mo
 ```
