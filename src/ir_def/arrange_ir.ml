@@ -22,8 +22,9 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | AsyncE (par, Type.Fut, tb, e, t) -> "AsyncE"  $$ Option.(map exp par |> to_list) @ [typ_bind tb; exp e; typ t]
-  | AsyncE (_, Type.Cmp, tb, e, t) -> "AsyncE*"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (None, Type.Fut, tb, e, t) -> "AsyncE" $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Some par, Type.Fut, tb, e, t) -> "AsyncE()" $$ [exp par; typ_bind tb; exp e; typ t]
+  | AsyncE (_, Type.Cmp, tb, e, t) -> "AsyncE*" $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
