@@ -407,11 +407,11 @@ let transform prog =
                     [tb],
                     [Func(_, _, [], ts1, []) as contT; _; _],
                     []) ->
-                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
+                  t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT)
                 | t -> assert false in
               let k =
                 let v = fresh_var "v" t1 in
-                v --> (ic_replyE ret_tys (varE v)) in
+                v --> ic_replyE ret_tys (varE v) in
               let r =
                 let e = fresh_var "e" catch in
                 e --> ic_rejectE (errorMessageE (varE e)) in
@@ -437,7 +437,7 @@ let transform prog =
                     [tb],
                     [Func(_, _, [], ts1, []) as contT; _; _],
                     []) ->
-                  (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
+                  t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT)
                 | _ -> assert false in
               let k =
                 let v = fresh_var "v" t1 in
