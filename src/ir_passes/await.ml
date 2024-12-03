@@ -455,7 +455,8 @@ and c_exp' context exp k =
       cps_asyncE T.Fut typ1 (match par_opt with
                              | Some par when T.(sub (typ par) (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
                                -> optE par
-                             (*| Some _ -> FIXME: pass 0 cycles: optE (recE [cycles = 0])*)
+                             | Some _
+                               -> optE (recordE ["cycles", natE Mo_values.Numerics.Nat.zero])
                              | _ -> nullE ()) (typ exp1)
         (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
