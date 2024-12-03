@@ -86,7 +86,7 @@ all declarations are `stable` by default. Only declarations that are explicitly 
 ```
 
 In this example, `value` is now implicitly stable, while `invocations` is just a transient
-temporary that won't survive upgrades: it counts the number of calls to `inc` since installation.
+temporary that won't survive upgrades: it counts the number of calls to `inc` since the first installation or last upgrade.
 
 For scenarios that can’t be solved using stable variables alone, Motoko provides user-definable upgrade hooks that run immediately before and after an upgrade, allowing you to migrate arbitrary state to stable variables.
 
