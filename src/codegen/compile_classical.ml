@@ -12395,10 +12395,10 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (cyc, ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
-    let (set_future, get_future) = new_local env "future" in
-    let (set_k, get_k) = new_local env "k" in
-    let (set_r, get_r) = new_local env "r" in
-    let (set_c, get_c) = new_local env "c" in
+    let set_future, get_future = new_local env "future" in
+    let set_k, get_k = new_local env "k" in
+    let set_r, get_r = new_local env "r" in
+    let set_c, get_c = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
     let add_cycles = match cyc.it with
