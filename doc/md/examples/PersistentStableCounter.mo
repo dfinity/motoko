@@ -7,7 +7,7 @@ persistent actor Counter {
   public func inc() : async Nat {
     value += 1;
     invocations += 1;
-    return value;
+    value;
   };
 
   public func reset() : async () {
