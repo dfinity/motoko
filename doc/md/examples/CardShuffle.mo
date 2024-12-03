@@ -66,7 +66,7 @@ persistent actor {
     for (card in cards.vals()) {
        t #= Char.toText(card);
     };
-    return t;
+    t;
   }
 
 };
