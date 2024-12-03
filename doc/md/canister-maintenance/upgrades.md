@@ -23,7 +23,7 @@ The semantics of the modifiers is as follows:
 
 :::note
 
-Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangebly but the legacy `flexible` keyword may be deprecated in future.
+Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangeably but the legacy `flexible` keyword may be deprecated in future.
 
 :::note
 
