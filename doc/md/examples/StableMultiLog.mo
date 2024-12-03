@@ -1,13 +1,13 @@
 import Nat64 "mo:base/Nat64";
 import Region "mo:base/Region";
 
-actor StableLog {
+persistent actor StableLog {
 
   // Index of saved log entry.
   public type Index = Nat64;
 
   // Internal representation uses two regions, working together.
-  stable var state = {
+  var state = { // implicitly `stable`
     bytes = Region.new();
     var bytes_count : Nat64 = 0;
     elems = Region.new ();
@@ -29,7 +29,7 @@ actor StableLog {
     size : Nat64;
   };
 
-  let elem_size = 16 : Nat64; /* two Nat64s, for pos and size. */
+  transient let elem_size = 16 : Nat64; /* two Nat64s, for pos and size. */
 
   // Count of elements (Blobs) that have been logged.
   public func size() : async Nat64 {
