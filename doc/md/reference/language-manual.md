@@ -1805,7 +1805,7 @@ Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a construc
 
 An absent `<shared-pat>?` defaults to `shared` when `<sort>` = `persistent? actor`.
 
-If `sort` is `persisent? actor`, then:
+If `sort` is `persistent? actor`, then:
 
 -   `<typ-args>?` must be absent or empty, such that `actor` classes cannot have type parameters.
 
