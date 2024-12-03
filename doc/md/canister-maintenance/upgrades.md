@@ -23,7 +23,7 @@ The semantics of the modifiers is as follows:
 
 :::note
 
-Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangeably but the legacy `flexible` keyword may be deprecated in future.
+Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangeably but the legacy `flexible` keyword may be deprecated in the future.
 
 :::note
 
@@ -35,7 +35,7 @@ The following is a simple example of how to declare a stable counter that can be
 Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
 Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.
 
-Since Motoko 0.13.5, the recommended way to declare `StableCounter` above is:
+Since Motoko v0.13.5, the recommended way to declare `StableCounter` above is:
 
 ``` motoko file=../examples/PersistentCounter.mo
 ```

@@ -79,14 +79,14 @@ The new interface is compatible with the previous one, allowing existing clients
 
 To make it more convenient to declare stable variables, and to prevent missing
 `stable` declarations,
-Motoko let's you prefix the entire actor with the keyword `persistent`. In a `persistent` actor,
+Motoko allows you to prefix the entire actor with the keyword `persistent`. In a `persistent` actor,
 all declarations are `stable` by default. Only declarations that are explicitly marked `transient` will be discarded on upgrade.
 
 ``` motoko file=../examples/PersistentStableCounter.mo
 ```
 
 In this example, `value` is now implicitly stable, while `invocations` is just a transient
-temporary that won't survive upgrades: it counts the number of calls to `inc` since the first installation or last upgrade.
+temporary declaration that won't survive upgrades: it counts the number of calls to `inc` since the first installation or last upgrade.
 
 For scenarios that can’t be solved using stable variables alone, Motoko provides user-definable upgrade hooks that run immediately before and after an upgrade, allowing you to migrate arbitrary state to stable variables.
 
