@@ -6,12 +6,14 @@ actor counter = {
     Prim.debugPrintNat c;
   };
   public func printCounter () : async () {
+    assert Prim.replyDeadline() == (10 : Nat64);
     Prim.debugPrintNat c;
   };
   public func get() : async Nat {
     return c
   };
   public query func read() : async Nat {
+    assert Prim.replyDeadline() == (10 : Nat64);
     let tmp = c;
     c += 1;
     Prim.debugPrint "In read:";
