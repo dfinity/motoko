@@ -1314,7 +1314,7 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
 
 In a `persistent` actor or actor class, all declarations are implicitly `stable` unless explicitly declared otherwise.
-In a non-`persistent` actor or actor class, all declarations are implicitly `flexible` (equivalently `transient`) unless explicitly declared otherwise.
+In a non-`persistent` actor or actor class, all declarations are implicitly `transient` (equivalently `flexible`) unless explicitly declared otherwise.
 
 The declaration field has type `T` provided:
 
@@ -1324,7 +1324,7 @@ The declaration field has type `T` provided:
 
 -   If `<stab>?` is absent and the actor or actor class is `persistent`, then `T` must be a stable type (see [stability](#stability)).
 
-Actor fields declared `flexible` or `transient` can have any type, but will not be preserved across upgrades.
+Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
 
 Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
