@@ -49,7 +49,7 @@ actor A {
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
-        await (with yeah = 8; timeout = 55; cycles = 1000)
+        await (with yeah = 8, timeout = 55, cycles = 1000)
         foo(func() : async () = async { assert message == "Hi!" });
         await (with cycles = 5000)
         bar(func() : async () = async { assert message == "Hi!" });
