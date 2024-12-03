@@ -5086,6 +5086,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
       E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
@@ -5372,6 +5373,13 @@ module IC = struct
         (fun env -> compile_unboxed_const 0l)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
+
+  let deadline env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "msg_deadline"
+    | _ ->
+      E.trap_with env (Printf.sprintf "cannot get deadline when running locally")
 
   let reject env arg_instrs =
     match E.mode env with
@@ -12143,6 +12151,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICMethodNamePrim, [] ->
     SR.Vanilla, IC.method_name env
+
+  | ICReplyDeadlinePrim, [] ->
+    SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
   | ICStableRead ty, [] ->
     (*
