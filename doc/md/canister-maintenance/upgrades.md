@@ -32,7 +32,7 @@ The following is a simple example of how to declare a stable counter that can be
 ``` motoko file=../examples/StableCounter.mo
 ```
 
-Starting with Motoko 0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`, and only `transient` variables need an explicit `transient` declaration.
+Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
 Using a `persistent` actor can help avoid unintended data loss, and is the recommended declaration syntax for actors and actor classes. The non-`peristent` declaration is provided for backwards compatibility.
 
 Since Motoko 0.13.5, the recommended way to declare `StableCounter` above is:
