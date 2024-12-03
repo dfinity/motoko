@@ -1,5 +1,5 @@
 persistent actor {
-  let SubnetManager : actor {
+  transient let SubnetManager : actor {
     raw_rand() : async Blob;
   } = actor "aaaaa-aa";
 
