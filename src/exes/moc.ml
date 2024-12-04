@@ -37,6 +37,7 @@ let valid_metadata_names =
      "motoko:compiler"]
 
 let argspec = [
+  "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
@@ -55,6 +56,7 @@ let argspec = [
     set_mode Compile ()), (* similar to --stable-types *)
       " compile and emit Candid IDL specification to `.did` file";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
+  "--print-source-on-error", Arg.Set Flags.print_source_on_error, " prints the source code for error messages";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
   "-o", Arg.Set_string out_file, "<file>  output file";
 
@@ -141,25 +143,34 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--stable-regions",
+  Arg.Unit (fun () ->
+    Flags.use_stable_regions := true),
+      " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
+
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC";
+  " use generational GC (only available with classical persistence)";
 
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC";
-    
+  " use incremental GC (default with enhanced orthogonal persistence)";
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC";
+  " use compacting GC (only available with classical persistence)";
 
   "--copying-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default)";
+  " use copying GC (default and only available with classical persistence)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
+
+  "--experimental-stable-memory",
+  Arg.Set_int Flags.experimental_stable_memory,
+  " <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n == 0: warn, n > 0: allow) (default " ^ (Int.to_string Flags.experimental_stable_memory_default) ^ ")";
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,
@@ -169,13 +180,46 @@ let argspec = [
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
 
+  "--experimental-rtti",
+  Arg.Unit (fun () -> Flags.rtti := true),
+  " enable experimental support for precise runtime type information (default with enhanced orthogonal persistence)";
+
   "--rts-stack-pages",
-  Arg.Set_int Flags.rts_stack_pages,
-  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+  Arg.Int (fun pages -> Flags.rts_stack_pages := Some pages),
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ", only available with classical persistence)";
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
-  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+
+  "--stabilization-instruction-limit",
+  Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
+    upgrade = limit; 
+    update_call = limit;
+  })),
+  "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
+
+  "--stable-memory-access-limit",
+  Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
+    upgrade = limit; 
+    update_call = limit;
+  })),
+  "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
+
+  (* optimizations *)
+  "-fno-shared-code",
+  Arg.Unit (fun () -> Flags.share_code := false),
+  " do *not* share low-level utility code: larger code size but decreased cycle consumption (default)";
+
+  "-fshared-code",
+  Arg.Unit (fun () -> Flags.share_code := true),
+  " do share low-level utility code: smaller code size but increased cycle consumption"
+
   ]
 
   @ Args.inclusion_args
@@ -240,9 +284,11 @@ let process_files files : unit =
       end;
 
     if !idl then begin
+      let open Idllib in
       let did_file = Filename.remove_extension !out_file ^ ".did" in
       let oc = open_out did_file in
-      let idl_code = Idllib.Arrange_idl.string_of_prog idl_prog in
+      let module WithComments = Arrange_idl.Make(struct let trivia = Some idl_prog.Source.note.Syntax.trivia end) in
+      let idl_code = WithComments.string_of_prog idl_prog in
       output_string oc idl_code; close_out oc
     end;
 
@@ -317,7 +363,11 @@ let () =
   process_metadata_names "public" !Flags.public_metadata_names;
   process_metadata_names "omit" !Flags.omit_metadata_names;
   try
-    process_files !args
+    match process_files !args with
+      (* TODO: Find a better place to gracefully handle the input-dependent linker error *)
+    | exception Linking.LinkModule.TooLargeDataSegments error_message ->
+      Printf.eprintf "Error: %s" error_message; ()
+    | () -> ()
   with
   | Sys_error msg ->
     (* IO error *)

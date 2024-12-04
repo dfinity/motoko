@@ -5,7 +5,11 @@ reference implementation.
 Base revision: WebAssembly/spec@a7a1856.
 
 The changes are:
- * None for now
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
+ * Pseudo-instruction Meta for debug information
+ * StableMemory, StableGrow, StableRead, StableWrite instructions.
+ * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -29,9 +33,7 @@ easily apply diffs from the original code (possibly manually).
  * These conventions mostly follow standard practice in language semantics.
  *)
 
-open Wasm.Types
-module Values = Wasm.Values
-module Memory = Wasm.Memory
+open Types
 open Wasm.Source
 
 
@@ -100,7 +102,7 @@ and instr' =
   | BrTable of var list * var         (* indexed break *)
   | Return                            (* break from function body *)
   | Call of var                       (* call function *)
-  | CallIndirect of var               (* call function through table *)
+  | CallIndirect of var * var         (* call function through table *)
   | LocalGet of var                   (* read local variable *)
   | LocalSet of var                   (* write local variable *)
   | LocalTee of var                   (* write local variable and keep value *)
@@ -110,13 +112,31 @@ and instr' =
   | Store of storeop                  (* write memory at address *)
   | MemorySize                        (* size of linear memory *)
   | MemoryGrow                        (* grow linear memory *)
+  (* Manual extension for bulk memory operations *)
+  | MemoryFill                        (* fill memory range with value *)
+  | MemoryCopy                        (* copy memory ranges *)
+  (* End of manual extension *)
+  (* Manual extension for passive data segments *)
+  | MemoryInit of var                 (* initialize memory range from segment *)
+  (* End of manual extension *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
   | Unary of unop                     (* unary numeric operator *)
   | Binary of binop                   (* binary numeric operator *)
   | Convert of cvtop                  (* conversion *)
+
+  (* Custom addition for debugging *)
   | Meta of Dwarf5.Meta.die           (* debugging metadata *)
+
+  (* Custom additions for emulating stable-memory, special cases
+     of MemorySize, MemoryGrow and MemoryCopy
+     requiring wasm features bulk-memory and multi-memory
+  *)
+  | StableSize                        (* size of stable memory *)
+  | StableGrow                        (* grow stable memory *)
+  | StableRead                        (* read from stable memory *)
+  | StableWrite                       (* write to stable memory *)
 
 (* Globals & Functions *)
 
@@ -161,8 +181,21 @@ and 'data segment' =
 }
 
 type table_segment = var list segment
-type memory_segment = string segment
 
+(* Manual extension to support passive data segements *)
+type segment_mode = segment_mode' phrase
+and segment_mode' =
+  | Passive
+  | Active of {index : var; offset : const}
+  | Declarative
+
+type data_segment = data_segment' phrase
+and data_segment' =
+{
+  dinit : string;
+  dmode : segment_mode;
+}
+(* End of manual extension *)
 
 (* Modules *)
 
@@ -207,7 +240,9 @@ and module_' =
   funcs : func list;
   start : var option;
   elems : var list segment list;
-  data : string segment list;
+  (* Manual adjustment for passive data segment support *)
+  datas : data_segment list;
+  (* End of manual adjustment *)
   imports : import list;
   exports : export list;
 }
@@ -224,7 +259,7 @@ let empty_module =
   funcs = [];
   start = None;
   elems  = [];
-  data = [];
+  datas = [];
   imports = [];
   exports = [];
 }

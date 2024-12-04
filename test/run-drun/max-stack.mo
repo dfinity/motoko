@@ -1,9 +1,11 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
-import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
+//MOC-FLAG -measure-rts-stack
+import { errorMessage; debugPrint; setCandidLimits } = "mo:⛔";
 
-actor stack {
-    let expectedMinimumSize = 35_000;
-
+actor {
+    let expectedMinimumSize = 31_000;
+    setCandidLimits<system>{ numerator = 0;
+                             denominator = 1;
+                             bias = 1_000_000 };
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 
@@ -27,7 +29,6 @@ actor stack {
                if deserialize
                  from_candid(b)
                else null;
-              
               ()
             };
           } catch e {
@@ -37,11 +38,11 @@ actor stack {
         };
 
         assert i > expectedMinimumSize;
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 
-        let o : ?(List) =
+        let _o : ?(List) =
           if deserialize
             from_candid(b)
           else null;

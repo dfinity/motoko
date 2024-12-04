@@ -29,8 +29,9 @@ assert (not isNegative(positiveNaN));
 assert (isNegative(negativeNaN));
 assert (isNegative(negate(positiveNaN)));
 assert (not isNegative(negate(negativeNaN)));
-Prim.debugPrint(debug_show(positiveNaN));
-Prim.debugPrint(debug_show(negativeNaN));
+// Difference between 32-bit and 64-bit version. 64-bit is even more accurate (with correct sign bit on `nan`).
+// Prim.debugPrint(debug_show(positiveNaN));
+// Prim.debugPrint(debug_show(negativeNaN));
 
 assert (Prim.floatAbs(9.7) == 9.7);
 assert (Prim.floatAbs(-9.7) == 9.7);

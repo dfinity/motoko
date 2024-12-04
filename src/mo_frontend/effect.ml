@@ -54,10 +54,10 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | PrimE _
   | VarE _
   | LitE _
-  | ActorUrlE _
   | ImportE _
   | FuncE _ ->
     T.Triv
+  | ActorUrlE exp1
   | UnE (_, _, exp1)
   | ShowE (_, exp1)
   | FromCandidE exp1
@@ -99,7 +99,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     map_max_effs effect_exp exps
   | BlockE decs ->
     map_max_effs effect_dec decs
-  | ObjBlockE (sort, dfs) ->
+  | ObjBlockE (sort, _, dfs) ->
     infer_effect_dec_fields dfs
   | ObjE (bases, efs) ->
     let bases = map_max_effs effect_exp bases in
@@ -129,10 +129,10 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and infer_effect_dec_fields dfs =
-  List.fold_left (fun e (df : dec_field) -> max_eff e (effect_dec df.it.dec)) T.Triv dfs
+  map_max_effs (fun (df : dec_field) -> effect_dec df.it.dec) dfs
 
 and infer_effect_exp_fields efs =
-  List.fold_left (fun e (ef : exp_field) -> max_eff e (effect_exp ef.it.exp)) T.Triv efs
+  map_max_effs (fun (ef : exp_field) -> effect_exp ef.it.exp) efs
 
 and effect_dec dec =
   dec.note.note_eff

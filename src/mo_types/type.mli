@@ -6,7 +6,7 @@ type var = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
-type shared_sort = Query | Write
+type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
@@ -30,6 +30,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Region
 
 type t = typ
 
@@ -55,13 +56,15 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ; depr : string option}
+and src = {depr : string option; region : Source.region}
+and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+val empty_src : src
 
 (* Syntactic orderings *)
 
@@ -93,6 +96,7 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
+val region : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
@@ -232,6 +236,8 @@ val glb : typ -> typ -> typ
 
 (* First-order substitution *)
 
+val subst : typ ConEnv.t -> typ -> typ
+
 val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
 
@@ -257,12 +263,14 @@ val match_stab_sig : field list -> field list -> bool
 
 val string_of_stab_sig : field list -> string
 
+val motoko_runtime_information_type : typ
 
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
 val motoko_stable_var_info_fld : field
-val get_candid_interface_fld : field
+val motoko_gc_trigger_fld : field
+val motoko_runtime_information_fld : field
 
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ

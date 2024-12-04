@@ -10,7 +10,9 @@ deprecated.mo:19.8-19.11: warning [M0154], field f is deprecated:
 deprecated function
 deprecated.mo:21.13-21.16: warning [M0154], type field T is deprecated:
 also types
-deprecated.mo:23.11-23.12: warning [M0154], type field f is deprecated:
+deprecated.mo:23.11-23.12: warning [M0154], field f is deprecated:
 deprecated function
-deprecated.mo:24.11-24.16: warning [M0154], type field f is deprecated:
+deprecated.mo:24.11-24.16: warning [M0154], field f is deprecated:
 deprecated function
+deprecated.mo:23.11-23.12: warning [M0198], unused field f in object pattern (delete or rewrite as `f = _`)
+deprecated.mo:24.15-24.16: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

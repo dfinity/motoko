@@ -13,10 +13,12 @@ var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
-func @add_cycles() {
+func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
+  if (cycles != 0) {
+    (prim "cyclesAdd" : Nat -> ()) (cycles);
+  }
 };
 
 // Function called by backend to zero cycles on context switch.
@@ -282,8 +284,10 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
   return true;
 };
 
+type @CleanCont = () -> ();
+type @BailCont = @CleanCont;
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
+type @Async<T> = (@Cont<T>, @Cont<Error>, @BailCont) -> {
   #suspend;
   #schedule : () -> ();
 };
@@ -305,17 +309,22 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+// trivial cleanup action
+func @cleanup() {
+};
+
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
   var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
+  let getRefund = @cycles != 0;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = @getSystemRefund();
+        let refund = if getRefund @getSystemRefund() else 0;
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;
@@ -339,10 +348,17 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
+  var cleanup : @BailCont = @cleanup;
+
+  func clean() {
+      cleanup();
+  };
+
+  func enqueue(k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
     #suspend;
     #schedule : () -> ();
   } {
+    cleanup := b;
     switch result {
       case null {
         let ws_ = ws;
@@ -370,7 +386,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  (enqueue, fulfill, fail)
+  (enqueue, fulfill, fail, clean)
 };
 
 // Subset of IC management canister interface required for our use
@@ -384,16 +400,31 @@ module @ManagementCanister = {
   };
 };
 
+type @WasmMemoryPersistence = {
+  #Keep;
+  #Replace;
+};
+
+type @UpgradeOptions = {
+  wasm_memory_persistence: ?@WasmMemoryPersistence;
+};
+
 let @ic00 = actor "aaaaa-aa" :
   actor {
     create_canister : {
-      settings : ?@ManagementCanister.canister_settings
+      settings : ?@ManagementCanister.canister_settings;
+      sender_canister_version : ?Nat64
     } -> async { canister_id : Principal };
     install_code : {
-      mode : { #install; #reinstall; #upgrade };
+      mode : {
+        #install;
+        #reinstall;
+        #upgrade : ?@UpgradeOptions;
+      };
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
       arg : Blob;
+      sender_canister_version : ?Nat64;
     } -> async ()
  };
 
@@ -402,37 +433,54 @@ func @install_actor_helper(
       #new : { settings : ?@ManagementCanister.canister_settings } ;
       #install : Principal;
       #reinstall : actor {} ;
-      #upgrade : actor {}
+      #upgrade : actor {} ;
+      #upgrade_with_persistence : { wasm_memory_persistence: @WasmMemoryPersistence; canister: actor {} };
     },
+    enhanced_orthogonal_persistence : Bool,
     wasm_module : Blob,
-    arg : Blob)
+    arg : Blob,
+    )
   : async* Principal = async* {
   let (mode, canister_id) =
     switch install_arg {
       case (#new settings) {
         let available = (prim "cyclesAvailable" : () -> Nat) ();
         let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+        let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
         @cycles += accepted;
         let { canister_id } =
-          await @ic00.create_canister(settings);
+          await @ic00.create_canister { settings with sender_canister_version };
         (#install, canister_id)
       };
       case (#install principal1) {
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
-        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
-      }
+        let wasm_memory_persistence = if enhanced_orthogonal_persistence {
+          ?(#Keep)
+        } else {
+          null
+        };
+        let upgradeOptions = {
+          wasm_memory_persistence;
+        };
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) actor2)
+      };
+      case (#upgrade_with_persistence { wasm_memory_persistence; canister } ) {
+        let upgradeOptions = { wasm_memory_persistence = ?wasm_memory_persistence };
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) canister)
+      };
     };
-  await @ic00.install_code({
+  await @ic00.install_code {
     mode;
     canister_id;
     wasm_module;
-    arg
-  });
+    arg;
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
+  };
   return canister_id;
 };
 
@@ -443,15 +491,17 @@ func @install_actor_helper(
 func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+  let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   @cycles += accepted;
   let { canister_id } =
-    await @ic00.create_canister({settings = null});
-  await @ic00.install_code({
+    await @ic00.create_canister { settings = null; sender_canister_version };
+  await @ic00.install_code {
     mode = #install;
     canister_id;
     wasm_module;
     arg;
-  });
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
+  };
   return canister_id;
 };
 
@@ -564,15 +614,15 @@ func @timer_helper() : async () {
 
   for (o in thunks.vals()) {
     switch o {
-      case (?thunk) { ignore thunk() };
-      case _ { }
+      case (?thunk) ignore thunk();
+      case _ return
     }
   }
 };
 
 var @lastTimerId = 0;
 
-func @setTimer(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
+func @setTimer<system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
   @lastTimerId += 1;
   let id = @lastTimerId;
   let now = (prim "time" : () -> Nat64) ();
@@ -625,5 +675,5 @@ func @cancelTimer(id : Nat) {
   }
 };
 
-func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
+func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;

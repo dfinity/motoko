@@ -7,32 +7,54 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-13 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+    - uses: cachix/install-nix-action@v30
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v12
+    - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      # Free up disk space on Ubuntu
+    - name: Free Disk Space (Ubuntu)
+      uses: insightsengineering/disk-space-reclaimer@v1
+      if: startsWith(matrix.os, 'ubuntu-')
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tools-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
 
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
     - run: nix-env -iA nix-build-uncached -f nix/
+
+    - name: "pre-build `drun`"
+      if: startsWith(github.head_ref, 'update/ic-')
+      run: |
+        nix-build --max-jobs 1 -A drun
+        nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
@@ -57,7 +79,7 @@ jobs:
 
     - name: Find performance comment
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
-      uses: peter-evans/find-comment@v2
+      uses: peter-evans/find-comment@v3
       id: fc
       with:
         issue-number: ${{ github.event.pull_request.number }}
@@ -68,7 +90,7 @@ jobs:
     # motoko#2864.
     - name: Create or update performance comment
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-      uses: peter-evans/create-or-update-comment@v2
+      uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
@@ -83,11 +105,9 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
-    - uses: cachix/cachix-action@v12
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v30
+    - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test
     - name: Fetch report
@@ -103,15 +123,14 @@ jobs:
 
   artifacts:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
-    needs: tests
-    concurrency: ci-${{ github.ref }}
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-13 ]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
-    - uses: cachix/cachix-action@v12
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v30
+    - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test
     - name: nix-build
@@ -121,9 +140,8 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/92
     - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
     - name: upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: moc
+        name: moc-${{ matrix.os }}
         path: ${{ env.UPLOAD_PATH }}
         retention-days: 5
-

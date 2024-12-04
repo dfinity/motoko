@@ -1,0 +1,114 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: INt
+debug.print: OUTt
+debug.print: INl
+debug.print: OUTl
+debug.print: INe
+debug.print: OUTe
+debug.print: BEFORE1
+debug.print: IN1
+debug.print: IN1Inner
+debug.print: OUT1Inner
+debug.print: CAUGHT1
+debug.print: OUT1
+debug.print: AFTER1
+debug.print: BEFORE1t
+debug.print: IN1t
+debug.print: IN1tInner
+debug.print: CAUGHT1tInner
+debug.print: OUT1tInner
+debug.print: CAUGHT1t
+debug.print: OUT1t
+debug.print: AFTER1t
+debug.print: IN2
+debug.print: CAUGHT2
+debug.print: OUT2
+debug.print: IN2r
+debug.print: CAUGHT2r
+debug.print: OUT2r
+debug.print: IN2b
+debug.print: CAUGHT2b
+debug.print: OUT2b
+debug.print: AFTER2b
+debug.print: IN2i
+debug.print: CAUGHT2i
+debug.print: OUT2i
+debug.print: IN3
+debug.print: OUT3
+debug.print: IN4
+debug.print: OUT4
+debug.print: BEFORE5
+debug.print: IN5
+debug.print: OUT5
+debug.print: AFTER5
+debug.print: BEFORE6
+debug.print: IN6
+debug.print: InnerIN6
+debug.print: InnerLIVE6
+debug.print: InnerOUT6
+debug.print: OUT6
+debug.print: AFTER6
+debug.print: IN8
+debug.print: CAUGHT8
+debug.print: OUT8
+debug.print: IN8i
+debug.print: CAUGHT8i
+debug.print: OUT8i
+debug.print: IN9
+debug.print: OUT9
+debug.print: From the other side
+debug.print: IN
+debug.print: OUT
+debug.print: INr
+debug.print: OUTr
+debug.print: INd
+debug.print: AGAINd
+debug.print: OUTd
+debug.print: IN2t
+debug.print: CAUGHT2t
+debug.print: OUT2t
+debug.print: BEFORE6c
+debug.print: IN6c
+debug.print: InnerIN6c
+debug.print: InnerLIVE6c
+debug.print: InnerCATCH6c
+debug.print: InnerOUT6c
+debug.print: OUT6c
+debug.print: BEFORE6t
+debug.print: IN6t
+debug.print: InnerIN6t
+debug.print: InnerLIVE6t
+debug.print: InnerOUT6t
+debug.print: OUT6t
+debug.print: BEFORE6d
+debug.print: IN6d
+debug.print: InnerIN6d
+debug.print: InnerLIVE6d
+debug.print: InnerLIVESTILL6d
+debug.print: InnerOUT6d
+debug.print: OUT6d
+debug.print: IN8t
+debug.print: InnerIN8t
+debug.print: OUT8t
+debug.print: OTHER SIDE
+debug.print: OTHER SIDE: CLEANING UP
+debug.print: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: assertion failed at try-finally.mo:324.17-324.29.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+debug.print: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: assertion failed at try-finally.mo:330.25-330.41.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+debug.print: OUTER CAUGHT: foo
+debug.print: BEFORE7
+debug.print: IN7
+debug.print: InnerIN7
+debug.print: InnerLIVE7
+debug.print: InnerLIVESTILL7
+debug.print: InnerOUT7
+debug.print: OUT7
+debug.print: It's over
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: assertion failed at try-finally.mo:238.17-238.29.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+debug.print: go2
+debug.print: It's so over
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: assertion failed at try-finally.mo:350.13-350.25.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly

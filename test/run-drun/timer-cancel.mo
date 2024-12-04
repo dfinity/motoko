@@ -1,4 +1,4 @@
-import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
+import { debugPrint; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
   var counter = 0;
@@ -22,9 +22,9 @@ actor {
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public shared func go() : async () {
-     ignore setTimer(2 * second, false,
+     ignore setTimer<system>(2 * second, false,
         func () : async () {
-           t := setTimer(1 * second, true, remind);
+           t := setTimer<system>(1 * second, true, remind);
            await remind();
         });
 
@@ -43,6 +43,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress go "DIDL\x00\x00"

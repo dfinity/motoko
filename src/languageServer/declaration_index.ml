@@ -109,7 +109,7 @@ let lookup_module (project_root : string) (path : string) (index : t) :
       let mic_id = Flags.M.find_opt alias index.ic_aliases in
       let _ =
         Debug.log "lookup_module.ic_alias.ic_id"
-          (string_of_option (fun x -> x) mic_id)
+          (string_of_option Fun.id mic_id)
       in
       let* id = mic_id in
       let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
@@ -188,6 +188,7 @@ let empty : string -> t =
            package_urls = !Flags.package_urls;
            actor_aliases = !Flags.actor_aliases;
            actor_idl_path = !Flags.actor_idl_path;
+           include_all_libs = false (* TBR *);
          })
   in
   {
@@ -313,13 +314,14 @@ let list_files_recursively dir =
   in
   loop [] [ dir ]
 
-let scan_packages : unit -> string list =
+let scan_packages : unit -> lib_path list =
  fun _ ->
-  let scan_package path =
+  let scan_package p path =
     list_files_recursively path
     |> List.filter (fun f -> Filename.extension f = ".mo")
+    |> List.map (fun f -> { package = Some p; path = f })
   in
-  Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
+  Flags.M.fold (fun p v acc -> scan_package p v @ acc) !Flags.package_urls []
 
 let scan_actors : unit -> string list =
  fun _ ->
@@ -347,7 +349,7 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
 
 let make_index_inner project_root vfs entry_points : t Diag.result =
   let package_paths =
-    List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
+    List.map (fun lp -> LibPath lp @@ Source.no_region) (scan_packages ())
   in
   let package_env =
     Pipeline.chase_imports
@@ -365,7 +367,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
         index_from_scope project_root (empty project_root) libs scope
   in
   let actor_paths = scan_actors () in
-  let _ = Debug.log "Actor paths" (string_of_list (fun x -> x) actor_paths) in
+  let _ = Debug.log "Actor paths" (string_of_list Fun.id actor_paths) in
   let actor_env =
     List.fold_left
       (fun acc f ->

@@ -1,9 +1,9 @@
 Motoko compiler (source XXX)
 > let Prim : module {...}
->   let a_small : [var Text] = ["hello", "hello", "hello", "hello", "hello"]
+>   let a_small : [var Text] = [var "hello", "hello", "hello", "hello", "hello"]
 > let a_large :
   [var Text] =
-  ["hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+  [var "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
@@ -15,7 +15,7 @@ Motoko compiler (source XXX)
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
-   "hello", "hello", "hello", "hello"]
+   "hello", "hello", "hello", "hello", "hello"]
 >   let a_small : [Nat] = [0, 1, 2, 3, 4]
 > let a_large :
   [Nat] =
@@ -25,7 +25,7 @@ Motoko compiler (source XXX)
    57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
    75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92,
    93, 94, 95, 96, 97, 98, 99]
->   let a : <T>(T, T) -> [T] = func
+>   let a : <T>(T, T) -> [T] = <func>
 > let a1 : [{#A; #B}] = [#A, #B]
 > let a2 : [[{#A; #B}]] = [[#A, #B], [#A, #B]]
 > let a3 : [[[{#A; #B}]]] = [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]
@@ -39,7 +39,7 @@ Motoko compiler (source XXX)
     [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]],
    [[[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]],
     [[[#A, #B], [#A, #B]], [[#A, #B], [#A, #B]]]]]
->   let r : <T, U>(T, U) -> {A : T; B : U} = func
+>   let r : <T, U>(T, U) -> {A : T; B : U} = <func>
 > let r1 : {A : {#A}; B : {#B}} = {A = #A; B = #B}
 > let r2 :
   {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}} =
@@ -135,27 +135,27 @@ Motoko compiler (source XXX)
           }
       }
   }
->     let m : <T, U>(T, U) -> module {A : T; B : U} = func
+>     let m : <T, U>(T, U) -> module {A : T; B : U} = <func>
 > let m1 : module {...}
 > let m2 : module {...}
 > let m3 : module {...}
 > let m4 : module {...}
 > let m5 : module {...}
->   let f : <T, U>(T -> U) -> (U -> T) -> T -> U = func
-> let f1 : ({#B} -> {#A}) -> {#A} -> {#B} = func
+>   let f : <T, U>(T -> U) -> (U -> T) -> T -> U = <func>
+> let f1 : ({#B} -> {#A}) -> {#A} -> {#B} = <func>
 > let f2 :
   (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
-  func
+  <func>
 > let f3 :
   ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
     (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
-  func
+  <func>
 > let f4 :
   (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
      (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
     ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
       (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
-  func
+  <func>
 > let f5 :
   ((((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
       (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
@@ -165,8 +165,8 @@ Motoko compiler (source XXX)
        (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
       ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
         (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B} =
-  func
->   let p : <T, U>(T, U) -> (T, U) = func
+  <func>
+>   let p : <T, U>(T, U) -> (T, U) = <func>
 > let p1 : ({#A}, {#B}) = (#A, #B)
 > let p2 : (({#A}, {#B}), ({#A}, {#B})) = ((#A, #B), (#A, #B))
 > let p3 :
@@ -186,7 +186,7 @@ Motoko compiler (source XXX)
     (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B)))),
    ((((#A, #B), (#A, #B)), ((#A, #B), (#A, #B))),
     (((#A, #B), (#A, #B)), ((#A, #B), (#A, #B)))))
->   let v : <T, U>(T, U) -> {#A : T; #B : U} = func
+>   let v : <T, U>(T, U) -> {#A : T; #B : U} = <func>
 > let v1 : {#A : {#Foo}; #B : {#Bar}} = #A(#Foo)
 > let v2 :
   {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}} =
@@ -277,14 +277,14 @@ Motoko compiler (source XXX)
       }
   } =
   #A(#A(#A(#A(#A(#Foo)))))
->   let o : <T, U>T -> ?T = func
+>   let o : <T, U>T -> ?T = <func>
 > let o1 : ?Nat = ?666
 > let o2 : ??Nat = ?(?666)
 > let o3 : ???Nat = ?(?(?666))
 > let o4 : ????Nat = ?(?(?(?666)))
 > let o5 : ?????Nat = ?(?(?(?(?666))))
 >         type c<T, U> = {type List<T_1> = ?(T_1, List<T_1>); A : T; B : U}
-let c : <T, U>(T, U) -> c<T, U> = func
+let c : <T, U>(T, U) -> c<T, U> = <func>
 > let c1 :
   {type List<T> = ?(T, List<T>); A : {#A}; B : {#B}} =
   {A = #A; B = #B}
@@ -467,4 +467,7 @@ let c : <T, U>(T, U) -> c<T, U> = func
           }
       }
   }
+>     let a : Any = <any>
+>   let r : {a : Nat} = {a = 1}
+>   let r : Any = <any>
 >   

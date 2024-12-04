@@ -30,13 +30,18 @@ let empty_name_section : name_section = {
   data_segment_names = [];
 }
 
-type dylink_section = {
+type mem_info = {
   memory_size : int32;
   memory_alignment : int32;
   table_size : int32;
   table_alignment : int32;
-  needed_dynlibs : string list;
 }
+
+type dylink0_subsection = 
+ | MemInfo of mem_info
+ | Needed of string list
+
+type dylink0_section = dylink0_subsection list
 
 type motoko_sections = {
   labels : string list;
@@ -60,17 +65,22 @@ let empty_candid_sections = {
   service = None;
 }
 
+type persistence_section = (bool * string) option
+
 type extended_module = {
   (* The non-custom sections *)
   module_ : module_';
   (* name section *)
   name : name_section;
-  (* dylib section *)
-  dylink : dylink_section option;
+  (* dylink.0 section *)
+  dylink0 : dylink0_section;
   (* candid sections *)
   candid : candid_sections;
   (* motoko sections *)
   motoko : motoko_sections;
+  (* enhanced orthogonal persistence section *)
+  enhanced_orthogonal_persistence : persistence_section;
   (* source map section *)
   source_mapping_url : string option;
+  wasm_features : string list;
 }

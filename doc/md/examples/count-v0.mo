@@ -1,10 +1,10 @@
+import Debug "mo:base/Debug";
+
 actor Counter_v0 {
+  var state : Nat = 0;
 
-  var state : Int = 0;
-
-  public func inc() : async Int {
+  public func increment() : async () {
     state += 1;
-    return state;
+    Debug.print(debug_show (state));
   };
-
-}
+};

@@ -25,7 +25,7 @@ type prim =
   | Empty
 
 type func_mode = func_mode' Source.phrase
-and func_mode' = Oneway | Query
+and func_mode' = Oneway | Query | Composite
 
 type field_label = field_label' Source.phrase
 and field_label' = Id of Lib.Uint32.t | Named of string | Unnamed of Lib.Uint32.t
@@ -62,7 +62,8 @@ and dec' =
 
 (* Program *)
 
-type prog = (prog', string) Source.annotated_phrase
+type prog_note = { filename : string; trivia : Trivia.triv_table }
+type prog = (prog', prog_note) Source.annotated_phrase
 and prog' = { decs : dec list; actor : typ option }
 
 (* Values *)

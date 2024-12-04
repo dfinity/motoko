@@ -12,15 +12,19 @@
     'actor'
     'module'
 
+<query> ::= 
+    'query'
+    'composite' 'query'
+
 <func_sort_opt> ::= 
     <empty>
-    'shared' 'query'?
-    'query'
+    'shared' <query>?
+    <query>
 
 <shared_pat_opt> ::= 
     <empty>
-    'shared' 'query'? <pat_plain>?
-    'query' <pat_plain>?
+    'shared' <query>? <pat_plain>?
+    <query> <pat_plain>?
 
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
@@ -48,7 +52,7 @@
 
 <typ_nobin> ::= 
     <typ_pre>
-    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ_nobin>
+    <func_sort_opt> <typ_params_opt> <typ_un> '->' <typ_nobin>
 
 <typ> ::= 
     <typ_nobin>
@@ -62,10 +66,19 @@
 <typ_args> ::= 
     '<' <list(<typ>, ',')> '>'
 
+<inst> ::= 
+    <empty>
+    '<' <list(<typ>, ',')> '>'
+    '<' 'system' (',' <typ>)* '>'
+
+<typ_params_opt> ::= 
+    ('<' <list(<typ_bind>, ',')> '>')?
+    '<' 'system' (',' <typ_bind>)* '>'
+
 <typ_field> ::= 
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
-    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
+    <id> <typ_params_opt> <typ_nullary> ':' <typ>
 
 <typ_tag> ::= 
     '#' <id> (':' <typ>)?
@@ -153,6 +166,7 @@
     <exp_obj>
     <exp_plain>
     <id>
+    '_'
 
 <exp_post> ::= 
     <exp_nullary>
@@ -160,7 +174,7 @@
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
+    <exp_post> <inst> <exp_nullary>
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
@@ -184,6 +198,7 @@
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ_nobin>
+    <exp_bin> '|>' <exp_bin>
 
 <exp_nondec> ::= 
     <exp_bin>
@@ -191,7 +206,7 @@
     <exp_bin> <binassign> <exp>
     'return' <exp>?
     'async' <exp_nest>
-    'async*' <block>
+    'async*' <exp_nest>
     'await' <exp_nest>
     'await*' <exp_nest>
     'assert' <exp_nest>
@@ -202,6 +217,8 @@
     'if' <exp_nullary> <exp_nest>
     'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
     'try' <exp_nest> <catch>
+    'try' <exp_nest> <catch> 'finally' <exp_nest>
+    'try' <exp_nest> 'finally' <exp_nest>
     'throw' <exp_nest>
     'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
     'while' <exp_nullary> <exp_nest>
@@ -286,9 +303,9 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? '='? <obj_body>
-    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>

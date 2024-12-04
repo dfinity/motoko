@@ -78,6 +78,7 @@ let html_of_func_sort : Syntax.func_sort -> t =
   Mo_types.Type.(
     match sort.Source.it with
     | Local -> empty
+    | Shared Composite -> keyword "shared composite query "
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 
@@ -274,7 +275,9 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
   | Value value_doc ->
       h4 ~cls:"value-declaration" ~id
         (code
-           (keyword "public let "
+           (keyword "public "
+           ++ keyword
+                (match value_doc.sort with Let -> "let " | Var -> "var ")
            ++ fn_name value_doc.name
            ++ string " : "
            ++ Option.fold ~none:empty ~some:(html_of_type env) value_doc.typ))

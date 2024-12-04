@@ -14,6 +14,7 @@ let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
 let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
+let _WASMTIME_OPTIONS_ = "--disable-cache --enable-cranelift-nan-canonicalization --wasm-features=memory64,multi-memory,bulk-memory"
 
 (* Argument handling *)
 
@@ -75,7 +76,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
 
   try
     let defs =
-      "import Prim \"mo:⛔\";" ^
+      "import _Prim \"mo:⛔\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
@@ -254,7 +255,7 @@ let () =
             match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
             | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
             | (Ok, _, _) ->
-              match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache tmp.wasm" with
+              match must_not_trap, run_cmd ("timeout 10s wasmtime "^ _WASMTIME_OPTIONS_ ^" tmp.wasm") with
               | ShouldPass, (Ok, _, _) -> WantedPass
               | ShouldTrap, (Fail, _, _) -> WantedTrap
               | ShouldPass, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)

@@ -33,7 +33,7 @@ let print_ce =
   )
 
 let print_stat_ve =
-  Type.Env.iter (fun x t ->
+  Type.Env.iter (fun x (t, _, _) ->
     let t' = Type.as_immut t in
     Format.printf "@[<hv 2>%s %s :@ %a@]@."
       (if t == t' then "let" else "var") x
@@ -43,7 +43,7 @@ let print_stat_ve =
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
     let open Type in
-    let t = Env.find x scope.Scope.val_env in
+    let (t, _, _) = Env.find x scope.Scope.val_env in
     let t' = as_immut t in
     match normalize t' with
     | Obj (Module, fs) ->
@@ -53,16 +53,16 @@ let print_dyn_ve scope =
       Format.printf "@[<hv 2>%s %s :@ %a =@ %a@]@."
         (if t == t' then "let" else "var") x
         Type.pp_typ t'
-        (Value.pp_def !Flags.print_depth) d
+        (Value.pp_def !Flags.print_depth) (t', d)
   )
 
 let print_scope senv scope dve =
   print_ce scope.Scope.con_env;
   print_dyn_ve senv dve
 
-let print_val _senv v t =
+let print_val _senv t v =
   Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val !Flags.print_depth) v
+    (Value.pp_val !Flags.print_depth) (t, v)
     Type.pp_typ t
 
 
@@ -142,7 +142,8 @@ let resolve_flags () =
   ResolveImport.{
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
-    actor_idl_path = !Flags.actor_idl_path
+    actor_idl_path = !Flags.actor_idl_path;
+    include_all_libs = !Flags.ai_errors;
   }
 
 let resolve_prog (prog, base) : resolve_result =
@@ -167,10 +168,23 @@ let print_deps (file : string) : unit =
 
 (* Checking *)
 
-let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
+let async_cap_of_prog prog =
+  let open Syntax in
+  let open Source in
+  match (CompUnit.comp_unit_of_prog false prog).it.body.it with
+  | ActorClassU _ -> Async_cap.NullCap
+  | ActorU _ -> Async_cap.initial_cap()
+  | ModuleU _ -> assert false
+  | ProgU _ ->
+     if !Flags.compiled then
+       Async_cap.NullCap
+     else
+       Async_cap.initial_cap()
+
+let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog senv prog in
+  let r = Typing.infer_prog ~viper_mode pkg_opt senv async_cap prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
@@ -185,20 +199,21 @@ let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
   let* () = Definedness.check_prog prog in
   Diag.return t_sscope
 
-let rec check_progs senv progs : Scope.scope Diag.result =
+let rec check_progs ?(viper_mode=false) senv progs : Scope.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
-  | p::ps ->
+  | prog::progs' ->
     let open Diag.Syntax in
-    let* _t, sscope = infer_prog senv p in
+    let async_cap = async_cap_of_prog prog in
+    let* _t, sscope = infer_prog ~viper_mode senv None async_cap prog in
     let senv' = Scope.adjoin senv sscope in
-    check_progs senv' ps
+    check_progs ~viper_mode senv' progs'
 
-let check_lib senv lib : Scope.scope Diag.result =
+let check_lib senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
   phase "Checking" (Filename.basename filename);
   let open Diag.Syntax in
-  let* sscope = Typing.check_lib senv lib in
+  let* sscope = Typing.check_lib senv pkg_opt lib in
   phase "Definedness" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
   Diag.return sscope
@@ -221,7 +236,7 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
   match parse_with Lexer.mode_priv lexer parse what with
   | Error es -> builtin_error "parsing" what es
   | Ok (prog, _ws) ->
-    match infer_prog senv0 prog with
+    match infer_prog senv0 None Async_cap.NullCap prog with
     | Error es -> builtin_error "checking" what es
     | Ok ((_t, sscope), _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -283,21 +298,25 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string (Prelude.prim_module ~timers:!Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
-
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error es -> prim_error "parsing" es
   | Ok (prog, _ws) ->
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    (* Propagate deprecations *)
+    let fs = List.map (fun d ->
+      let trivia = Trivia.find_trivia prog.note.trivia d.at in
+      let depr = Trivia.deprecated_of_trivia_info trivia in
+      {vis = Public depr @@ no_region; dec = d; stab = None} @@ d.at) prog.it
+    in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {
       it = { imports = []; body };
       at = no_region;
       note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
     } in
-    match check_lib senv0 lib with
+    match check_lib senv0 None lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -341,7 +360,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go ri = match ri.Source.it with
+  let rec go pkg_opt ri = match ri.Source.it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -352,7 +371,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false
-    | Syntax.LibPath f ->
+    | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
@@ -367,9 +386,10 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        let* () = go_set more_imports in
+        let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
+        let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv lib in
+        let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -398,18 +418,19 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
           Diag.return ()
-  and go_set todo = Diag.traverse_ go todo
+  and go_set pkg_opt todo = Diag.traverse_ (go pkg_opt) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
+  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
-let load_progs parsefn files senv : load_result =
+let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
-  let* senv'' = check_progs senv' progs' in
+  let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
+  let* senv'' = check_progs ~viper_mode senv' progs' in
   Diag.return (libs, progs', senv'')
 
 let load_decl parse_one senv : load_decl_result =
@@ -417,7 +438,7 @@ let load_decl parse_one senv : load_decl_result =
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
   let* libs, senv' = chase_imports parse_file senv libs in
-  let* t, sscope = infer_prog senv' prog in
+  let* t, sscope = infer_prog senv' (Some "<toplevel>") (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)
 
@@ -490,12 +511,13 @@ type viper_result = (string * (Source.region -> Source.region option)) Diag.resu
 
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parsefn files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
+  let* () = Typing.check_actors ~viper_mode:true ~check_actors:true senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
-  let* v = Viper.Trans.unit u in
-  let s = Viper.Pretty.prog_mapped "" v in
+  let reqs = Viper.Common.init_reqs () in
+  let* v = Viper.Trans.unit reqs (Viper.Prep.prep_unit u) in
+  let s = Viper.Pretty.prog_mapped "" (Viper.Prelude.prelude reqs) v in
   Diag.return s
 
 let viper_files files : viper_result =
@@ -505,8 +527,7 @@ let viper_files files : viper_result =
 
 let generate_idl files : Idllib.Syntax.prog Diag.result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   Diag.return (Mo_idl.Mo_to_idl.prog (progs, senv))
 
 (* Running *)
@@ -544,7 +565,7 @@ let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope.Interpret.val_env;
-  if v <> Value.unit then print_val senv v t
+  if v <> Value.unit then print_val senv t v
 
 let run_stdin lexer (senv, denv) : env option =
   match Diag.flush_messages (load_decl (parse_lexer lexer) senv) with
@@ -578,9 +599,7 @@ let run_stdin_from_file files file : Value.value option =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val 10) v
-    Type.pp_typ t;
+  print_val senv t v;
   Some v
 
 let run_files_and_stdin files =
@@ -660,15 +679,46 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = match (!Flags.gc_strategy, !Flags.sanity) with
-    | (Flags.Incremental, false) -> Rts.wasm_incremental_release
-    | (Flags.Incremental, true) -> Rts.wasm_incremental_debug
-    | (_, false) -> Rts.wasm_non_incremental_release
-    | (_, true) -> Rts.wasm_non_incremental_debug
+  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity, !Flags.gc_strategy) with
+    | (true, false, Flags.Incremental) -> Rts.wasm_eop_release
+    | (true, true, Flags.Incremental) -> Rts.wasm_eop_debug
+    | (false, false, Flags.Copying) 
+    | (false, false, Flags.MarkCompact)
+    | (false, false, Flags.Generational) -> Rts.wasm_non_incremental_release
+    | (false, true, Flags.Copying)
+    | (false, true, Flags.MarkCompact)
+    | (false, true, Flags.Generational) -> Rts.wasm_non_incremental_debug
+    | (false, false, Flags.Incremental) -> Rts.wasm_incremental_release
+    | (false, true, Flags.Incremental) -> Rts.wasm_incremental_debug
+    | _ -> assert false
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
 type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
+
+let invalid_flag message =
+  builtin_error "compile" (Printf.sprintf "Invalid compiler flag combination: %s" message) []
+
+let adjust_flags () =
+  if !Flags.enhanced_orthogonal_persistence then
+    begin
+      (match !Flags.gc_strategy with
+      | Flags.Default | Flags.Incremental -> Flags.gc_strategy := Flags.Incremental;
+      | Flags.Copying -> invalid_flag "--copying-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
+      (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
+      Flags.rtti := true
+    end
+  else
+    begin
+      (if !Flags.gc_strategy = Flags.Default then Flags.gc_strategy := Flags.Copying);
+      (if !Flags.rts_stack_pages = None then Flags.rts_stack_pages := Some Flags.rts_stack_pages_default);
+      (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
+        invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence");
+      (if !Flags.stable_memory_access_limit <> Flags.stable_memory_access_limit_default then
+        invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
+    end
 
 (* This transforms the flat list of libs (some of which are classes)
    into a list of imported libs and (compiled) classes *)
@@ -691,8 +741,12 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
+  adjust_flags ();
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode rts prog_ir
+  if !Flags.enhanced_orthogonal_persistence then
+    Codegen.Compile_enhanced.compile mode rts prog_ir
+  else
+    Codegen.Compile_classical.compile mode rts prog_ir
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in
@@ -707,8 +761,7 @@ and compile_progs mode do_link libs progs : Wasm_exts.CustomModule.extended_modu
 
 let compile_files mode do_link files : compile_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parse_file files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
   (* validate any stable type signature *)
@@ -716,6 +769,11 @@ let compile_files mode do_link files : compile_result =
     match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
     | Some (_, ss) -> validate_stab_sig ss
     | _ -> Diag.return ()
+  in
+  let* () =
+    if Wasm_exts.CustomModule.(ext_module.wasm_features) <> []
+    then Diag.warn Source.no_region "M0191" "compile" (Printf.sprintf "code requires Wasm features %s to execute" (String.concat "," Wasm_exts.CustomModule.(ext_module.wasm_features)))
+    else Diag.return ()
   in
   Diag.return (idl, ext_module)
 

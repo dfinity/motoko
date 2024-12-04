@@ -69,7 +69,13 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+    | ObjBlockE (s, nt, dfs) -> "ObjBlockE" $$ [obj_sort s;
+                                                match nt with
+                                                | None, None -> Atom "_"
+                                                | None, Some t -> typ t
+                                                | Some id, Some t -> id.it $$ [Atom ":"; typ t]
+                                                | Some id, None -> Atom id.it
+                                                ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
     | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
@@ -116,6 +122,7 @@ module Make (Cfg : Config) = struct
     | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
     | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
     | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+    | AssertE (Loop_invariant, e)-> "Loop_invariant" $$ [exp e]
     | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
@@ -125,14 +132,16 @@ module Make (Cfg : Config) = struct
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
-    | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
   and exps es = List.map exp es
 
   and inst inst = match inst.it with
     | None -> []
-    | Some ts -> List.map typ ts
+    | Some (false, ts) -> List.map typ ts
+    | Some (true, ts) -> Atom "system" :: List.map typ ts
 
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
@@ -144,7 +153,7 @@ module Make (Cfg : Config) = struct
     | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
     | OptP p          -> "OptP"       $$ [pat p]
     | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
-    | AltP (p1, p2)    -> "AltP"       $$ [pat p1; pat p2]
+    | AltP (p1, p2)   -> "AltP"       $$ [pat p1; pat p2]
     | ParP p          -> "ParP"       $$ [pat p]))
 
   and lit = function
@@ -183,11 +192,13 @@ module Make (Cfg : Config) = struct
     | Type.Local -> Atom "Local"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
+    | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
     | Type.Local -> Atom "Local"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
+    | Type.Shared Type.Composite -> Atom "Composite"
 
   and mut m = match m.it with
     | Const -> Atom "Const"

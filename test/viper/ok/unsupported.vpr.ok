@@ -1,3 +1,0 @@
-unsupported.mo:5.3-5.13: viper error [0], translation to viper failed:
-(LetD (VarP x) (LitE (TextLit )))
-

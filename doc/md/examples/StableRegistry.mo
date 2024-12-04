@@ -1,6 +1,5 @@
 import Text "mo:base/Text";
 import Map "mo:base/HashMap";
-import Array "mo:base/Array";
 import Iter "mo:base/Iter";
 
 actor Registry {
@@ -23,10 +22,12 @@ actor Registry {
     map.get(name);
   };
 
+// Using preupgrade is discouraged and should be avoided if possible.
   system func preupgrade() {
     entries := Iter.toArray(map.entries());
   };
 
+// Using postupgrade is discouraged and should be avoided if possible.
   system func postupgrade() {
     entries := [];
   };

@@ -1,7 +1,7 @@
 [package]
 name = "motoko-rts"
 version = "0.1.0"
-authors = ["dfinity <sdk@dfinity.org>"]
+authors = ["dfinity <team-motoko@dfinity.org>"]
 edition = "2018"
 
 [lib]
@@ -10,9 +10,13 @@ path = "../src/lib.rs"
 
 [features]
 incremental_gc = []
+classical_persistence = ["libc"]
+enhanced_orthogonal_persistence = ["incremental_gc"]
+ic = [] # Not used by RTS unit tests
+memory_check = []
 
 [dependencies]
-libc = { version = "0.2.112", default_features = false }
+libc = { version = "0.2.139", default-features = false, optional = true }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
 
 [profile.dev]

@@ -1,0 +1,1 @@
+or-pattern-infer.mo:1.15-1.23: type error [M0184], cannot infer the type of this or-pattern, please add a type annotation

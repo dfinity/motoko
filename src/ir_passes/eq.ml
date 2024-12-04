@@ -202,8 +202,7 @@ and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
 and t_exp' env = function
-  | LitE l -> LitE l
-  | VarE id -> VarE id
+  | (LitE _ | VarE _) as e -> e
   | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when T.singleton ot ->
     (* Handle singletons here, but beware of side-effects *)
     let e1 = t_exp env exp1 in
@@ -229,14 +228,14 @@ and t_exp' env = function
         cases
     in
     SwitchE (t_exp env exp1, cases')
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, vt) ->
     let cases' =
       List.map
         (fun {it = {pat;exp}; at; note} ->
           {it = {pat = pat; exp = t_exp env exp}; at; note})
         cases
     in
-    TryE (t_exp env exp1, cases')
+    TryE (t_exp env exp1, cases', vt)
   | LoopE exp1 ->
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
@@ -248,9 +247,9 @@ and t_exp' env = function
     DefineE (id, mut, t_exp env exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t)
-  | SelfCallE (ts, e1, e2, e3) ->
-    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+  | SelfCallE (ts, e1, e2, e3, e4) ->
+    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -260,6 +259,7 @@ and t_exp' env = function
     let heartbeat' = t_exp env1 heartbeat in
     let timer' = t_exp env1 timer in
     let inspect' = t_exp env1 inspect in
+    let stable_record' = t_exp env1 stable_record in
     let decls = eq_decls !(env1.params) in
     ActorE (decls @ ds', fields,
       {meta;
@@ -267,8 +267,12 @@ and t_exp' env = function
        postupgrade = postupgrade';
        heartbeat = heartbeat';
        timer = timer';
-       inspect = inspect'
-      }, typ)
+       inspect = inspect';
+       stable_record = stable_record';
+       stable_type;
+      },
+      typ
+      )
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -297,7 +301,7 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = eq_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let preupgrade' = t_exp env preupgrade in
@@ -305,6 +309,7 @@ and t_comp_unit = function
     let heartbeat' = t_exp env heartbeat in
     let timer' = t_exp env timer in
     let inspect' = t_exp env inspect in
+    let stable_record' = t_exp env stable_record in
     let decls = eq_decls !(env.params) in
     ActorU (as_opt, decls @ ds', fields,
       {meta;
@@ -312,7 +317,9 @@ and t_comp_unit = function
        postupgrade = postupgrade';
        heartbeat = heartbeat';
        timer = timer';
-       inspect = inspect'
+       inspect = inspect';
+       stable_record = stable_record';
+       stable_type;
       }, typ)
 
 (* Entry point for the program transformation *)

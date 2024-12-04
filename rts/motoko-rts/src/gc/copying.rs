@@ -5,6 +5,9 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+// Only designed for 32-bit.
+const _: () = assert!(core::mem::size_of::<usize>() == core::mem::size_of::<u32>());
+
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_copying_gc() {
@@ -16,7 +19,7 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
     // Half of the heap.
     // NB. This expression is evaluated in compile time to a constant.
     let max_live: Bytes<u64> =
-        Bytes(u64::from((crate::constants::WASM_HEAP_SIZE / 2).as_u32()) * u64::from(WORD_SIZE));
+        Bytes((crate::constants::WASM32_HEAP_SIZE / 2).as_usize() as u64 * WORD_SIZE as u64);
 
     if super::should_do_gc(max_live) {
         copying_gc(mem);
@@ -31,33 +34,35 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || linear_memory::HP as usize,
+        || linear_memory::get_hp_unskewed(),
         // set_hp
-        |hp| linear_memory::HP = hp,
+        |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
+        |live_size| linear_memory::MAX_LIVE = ::core::cmp::max(linear_memory::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(reclaimed.as_usize() as u64),
     );
 
-    linear_memory::LAST_HP = linear_memory::HP;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed();
 }
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
+    SetHp: FnMut(usize),
+    NoteLiveSize: Fn(Bytes<usize>),
+    NoteReclaimed: Fn(Bytes<usize>),
 >(
     mem: &mut M,
-    heap_base: u32,
+    heap_base: usize,
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
+    region0_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -79,6 +84,16 @@ pub unsafe fn copying_gc_internal<
         );
     }
 
+    if (*region0_ptr_loc).is_ptr() {
+        // Region0 is not always a pointer during GC?
+        evac(
+            mem,
+            begin_from_space,
+            begin_to_space,
+            region0_ptr_loc as usize,
+        );
+    }
+
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
@@ -91,21 +106,21 @@ pub unsafe fn copying_gc_internal<
 
     // Note the stats
     let new_live_size = end_to_space - begin_to_space;
-    note_live_size(Bytes(new_live_size as u32));
+    note_live_size(Bytes(new_live_size));
 
     let reclaimed = (end_from_space - begin_from_space) - (end_to_space - begin_to_space);
-    note_reclaimed(Bytes(reclaimed as u32));
+    note_reclaimed(Bytes(reclaimed));
 
     // Copy to-space to the beginning of from-space
     memcpy_bytes(
         begin_from_space,
         begin_to_space,
-        Bytes((end_to_space - begin_to_space) as u32),
+        Bytes(end_to_space - begin_to_space),
     );
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    set_hp(new_hp);
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -136,7 +151,7 @@ unsafe fn evac<M: Memory>(
     let ptr_loc = ptr_loc as *mut Value;
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!((*ptr_loc).get_ptr() as u32 % WORD_SIZE, 0);
+    debug_assert_eq!((*ptr_loc).get_ptr() % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
     if (*ptr_loc).tag() == TAG_FWD_PTR {

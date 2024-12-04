@@ -48,14 +48,14 @@ Compiling Motoko Files to Wasm
 ------------------------------
 
 In order to compile a Motoko file, `dfx` invokes `moc` with
-
-    moc some/path/input.mo            \
-        -o another/path/output.wasm   \
-        { --package pkgname pkgpath } \
-        { --actor-alias alias url }   \
-        [ --actor-idl actorpath ]     \
-        { --public-metadata name }
-
+```
+moc some/path/input.mo            \
+    -o another/path/output.wasm   \
+    { --package pkgname pkgpath } \
+    { --actor-alias alias url }   \
+    [ --actor-idl actorpath ]     \
+    { --public-metadata name }
+```
 This _reads_ the following files
  * `some/path/input.mo`
  * any `.mo` file referenced by `some/path/input.mo`, either relatively, absolutely or via the provided package aliases
@@ -118,29 +118,37 @@ used only in very specific cases.
 The above metadata is stored in the Wasm module, and is only accessible by the controllers of the canister, unless the
 metadata name is specified in the `--public-metadata` flag.
 
+Moreover, the compiler generates a special marker custom section `"enhanced-orthogonal-persistence"` if the new orthogonal 
+persistence support is enabled, see [Orthogonal Persistence](OrthogonalPersistence.md). This section is always private and
+always emited independent of the compiler flags `--public-metadata` or `--public-metadata`.
+
 Checking stable type compatibility
 ----------------------------------
 
 The command
-
-    moc --stable-compatible old.most new.most
-
+```
+moc --stable-compatible old.most new.most
+```
 checks if the stable interface can evolve from `old.most` to `new.most` in
 a type safe way without unintentional data loss.
 
 If the check succeeds, nothing will be printed. 
 If the check fails, the error message will be printed in stderr and the command returns with exit code 1.
+The check can also emit warning messages, e.g. if stable variables are dropped.
+
+With [enhanced orthogonal persistence](OrthogonalPersistence.md), the stable compatibility is also integrated in the runtime
+system, to atomically guarantee memory compatibility during an upgrade.
 
 Invoking the IDE
 ----------------
 
 In order to start the language server, `dfx` invokes
-
-    mo-ide --canister-main some/path/main.mo \
-        { --package pkgname pkgpath }        \
-        { --actor-alias alias url }          \
-        [ --actor-idl actorpath ]
-
+```
+mo-ide --canister-main some/path/main.mo \
+    { --package pkgname pkgpath }        \
+    { --actor-alias alias url }          \
+    [ --actor-idl actorpath ]
+```
 with `stdin` and `stdout` connected to the LSP client.
 
 This may _read_ the same files as `moc` would.
@@ -149,21 +157,21 @@ Listing dependencies
 --------------------
 
 The command
-
-    moc --print-deps some/path/input.mo
-
+```
+moc --print-deps some/path/input.mo
+```
 prints to the standard output all URLs _directly_ imported by
 `some/path/input.mo`, one per line. Each line outputs the original
 URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
 For example,
-
-    mo:base/List
-    mo:other_package/Some/Module
-    ic:em77e-bvlzu-aq
-    canister:alias
-    ./local_import some/path/local_import.mo
-    ./runtime some/path/runtime.wasm
-
+```
+mo:base/List
+mo:other_package/Some/Module
+ic:em77e-bvlzu-aq
+canister:alias
+./local_import some/path/local_import.mo
+./runtime some/path/runtime.wasm
+```
 This _reads_ only `some/path/input.mo`, and writes no files.
 
 By transitively exploring the dependency graph using this command (and
@@ -175,11 +183,11 @@ Generating documentation
 ------------------------
 
 In order to generate documentation for a given Motoko package `dfx` invokes
-
-    mo-doc
-        [ --source source_dir ]
-        [ --output output_dir ]
-        [ --format html|adoc ]
-
+```
+mo-doc
+    [ --source source_dir ]
+    [ --output output_dir ]
+    [ --format html|adoc ]
+```
 The default source directory is `src`, the default output is `docs`, and the default format is `html`.
 `mo-doc` will then generate documentation in the output directory mirroring the directory/file structure of the source directory.

@@ -30,45 +30,48 @@ actor Counter {
         let a = async { 1; }; // supported async
     };
 
-}
-;
+    public func misc_unsupported () : async () {
 
-shared func bad_shared() { }; // unsupported non actor-member
+        do {
+          shared func bad_shared() { }; // unsupported non actor-member
+        };
 
-do {
-    // shared function types are sharable
-    type wellformed_1 = shared (shared () -> ()) -> async ();
+        do {
+            // shared function types are sharable
+            type wellformed_1 = shared (shared () -> ()) -> async ();
+        };
+
+        do {
+            // actors are shareable
+            type wellformed_2 = shared (actor {}) -> async ();
+        };
+
+        do {
+          actor class BadActorClass () { }; // no actor classes
+        };
+
+        do {
+          actor class BadActorClass (x : Int) { }; // no actor classes
+        };
+
+        do {
+         let bad_non_top_actor : actor {} = if true actor {} else actor {};
+        };
+
+        do {
+          let bad_nested_actor = do { let _ = actor {}; ()};
+        };
+
+        do {
+          // async functions not supported (inference mode)
+          func implicit_async() : async () { };
+        };
+
+        do {
+          // anonymous shared functions not supported (inference and checking mode)
+          let _ = shared func() : async () { };
+          ignore (shared func() : async () { }) : shared () -> async ();
+
+        };
+    }
 };
-
-do {
-    // actors are shareable
-    type wellformed_2 = shared (actor {}) -> async ();
-};
-
-
-do {
-  actor class BadActorClass () { }; // no actor classes
-};
-
-do {
-  actor class BadActorClass (x : Int) { }; // no actor classes
-};
-
-do {
- let bad_non_top_actor : actor {} = if true actor {} else actor {};
-};
-
-do {
-  let bad_nested_actor = do { let _ = actor {}; ()};
-};
-
-
-actor BadSecondActor { };
-
-// async functions not supported (inference mode)
-func implicit_async() : async () { };
-
-// anonymous shared functions not supported (inference and checking mode)
-let _ = shared func() : async () { };
-(shared func() : async () { }) : shared () -> async ();
-

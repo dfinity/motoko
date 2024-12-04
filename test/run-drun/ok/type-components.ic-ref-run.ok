@@ -1,8 +1,0 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null})
-<= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
-=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
-debug.print: {f = +1}
-debug.print: {f = +1}
-<= replied: ()
-=> update go()
-<= replied: ()

@@ -1,7 +1,7 @@
 [package]
 name = "motoko-rts"
 version = "0.1.0"
-authors = ["dfinity <sdk@dfinity.org>"]
+authors = ["dfinity <team-motoko@dfinity.org>"]
 edition = "2018"
 
 # For rlib use native/Cargo.toml
@@ -28,8 +28,14 @@ memory_check = []
 # Incremental GC, using the extended object header containing the forwarding pointer. 
 incremental_gc = []
 
+# Classical persistence, 32-bit, with Candid stabilization
+classical_persistence = ["libc"]
+
+# Enhanced orthogonal persistence, 64-bit, retaining the main memory across upgrades.
+enhanced_orthogonal_persistence = ["incremental_gc"]
+
 [dependencies]
-libc = { version = "0.2.139", default_features = false }
+libc = { version = "0.2.139", default-features = false, optional = true }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
 
 [profile.dev]
@@ -38,4 +44,3 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 codegen-units = 1 # makes debugging easier
-opt-level = "s" # optimize for size

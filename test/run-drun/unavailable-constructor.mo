@@ -1,5 +1,3 @@
-func f() : async () { ignore await C(); };
-
 actor class C() {
 
   let _ : Any = C;

@@ -2,6 +2,6 @@
 
 actor {
 
-  let x = ""; // strings aren't supported
+  let x: Char = 'a'; // chars aren't supported
 
 }

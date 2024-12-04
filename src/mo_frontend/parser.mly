@@ -54,7 +54,7 @@ let funcT (sort, tbs, t1, t2) =
   | _ -> FuncT(sort, tbs, t1, t2)
 
 
-let dup_var x = VarE (x.it @@ x.at) @? x.at
+let dup_var x = VarE (x.it @~ x.at) @? x.at
 
 let name_exp e =
   match e.it with
@@ -82,13 +82,11 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
-let annot_exp e t_opt =
-  match t_opt with
+let annot_exp e = function
   | None -> e
   | Some t -> AnnotE(e, t) @? span t.at e.at
 
-let annot_pat p t_opt =
-  match t_opt with
+let annot_pat p = function
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
@@ -101,7 +99,7 @@ let rec normalize_let p e =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP(x) @! at, e' @? at, None) @? at
+  then LetD(VarP x @! at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
@@ -110,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _) ->
+    | ObjBlockE (sort, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -137,7 +135,6 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
     | Type.Shared _, (None | Some { it = TupT []; _}) ->
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
-
 
 let share_typ t =
   match t.it with
@@ -175,29 +172,36 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
+let ensure_system_cap (df : dec_field) =
+  match df.it.dec.it with
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+      { df with it = { df.it with dec = { df.it.dec with it } } }
+    | _ -> df
+
 let share_dec_field (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  | _ ->
-    if is_sugared_func_or_module (df.it.dec) then
-      {df with it =
-        {df.it with stab =
+  | System -> ensure_system_cap df
+  | _ when is_sugared_func_or_module (df.it.dec) ->
+    {df with it =
+       {df.it with stab =
           match df.it.stab with
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
-      }
-    else df
+    }
+  | _ -> df
 
-and objblock s dec_fields =
+and objblock s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, dec_fields)
+  ObjBlockE(s, (id, ty), dec_fields)
 
 %}
 
@@ -206,7 +210,7 @@ and objblock s dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -233,15 +237,18 @@ and objblock s dec_fields =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
+%token PIPE
 %token PRIM
 %token UNDERSCORE
+%token COMPOSITE
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
-%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
-%nonassoc ELSE WHILE
+%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE TRY_CATCH_NO_FINALLY
+%nonassoc ELSE WHILE FINALLY
 
 %left COLON
+%left PIPE
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -356,19 +363,19 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
-%inline mode_opt :
-  | (* empty *) { Type.Write }
+%inline query:
   | QUERY { Type.Query }
+  | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
-  | QUERY { Type.Shared Type.Query @@ at $sloc }
+  | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
+  | q=query { Type.Shared q @@ at $sloc }
 
 %inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
+  | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
 
 (* Paths *)
@@ -452,15 +459,20 @@ inst :
   | (* empty *)
     { { it = None; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
-    { { it = Some ts; at = at $sloc; note = [] } }
+    { { it = Some (false, ts); at = at $sloc; note = [] } }
+  | LT SYSTEM ts=preceded(COMMA, typ)* GT
+    { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-
-%inline typ_params_opt :
+%inline type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
+%inline typ_params_opt :
+  | ts=type_typ_params_opt { ts }
+  | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+
 typ_field :
-  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+  | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
     { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
@@ -575,9 +587,11 @@ exp_nullary(B) :
   | e=exp_plain
     { e }
   | x=id
-    { VarE(x) @? at $sloc }
+    { VarE (x.it @~ x.at) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | UNDERSCORE
+    { VarE ("_" @~ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -610,9 +624,9 @@ exp_un(B) :
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
     { match op, e.it with
-      | (PosOp | NegOp), LitE {contents = PreLit (s, Type.Nat)} ->
+      | (PosOp | NegOp), LitE {contents = PreLit (s, (Type.(Nat | Float) as typ))} ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitE(ref (PreLit (signed, Type.Int))) @? at $sloc
+        LitE(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @? at $sloc
       | _ -> UnE(ref Type.Pre, op, e) @? at $sloc
     }
   | op=unassign e=exp_un(ob)
@@ -641,6 +655,13 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
+  | e1=exp_bin(B) PIPE e2=exp_bin(ob)
+    { let x = "_" @@ e1.at in
+      BlockE [
+        LetD (VarP x @! x.at, e1, None) @? e1.at;
+        ExpD e2 @? e2.at
+      ] @? at $sloc }
+
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
@@ -655,7 +676,7 @@ exp_un(B) :
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
-  | ASYNCSTAR e=block
+  | ASYNCSTAR e=exp_nest
     { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
@@ -686,8 +707,12 @@ exp_un(B) :
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nest c=catch
-    { TryE(e1, [c]) @? at $sloc }
+  | TRY e1=exp_nest c=catch %prec TRY_CATCH_NO_FINALLY
+    { TryE(e1, [c], None) @? at $sloc }
+  | TRY e1=exp_nest c=catch FINALLY e2=exp_nest
+    { TryE(e1, [c], Some e2) @? at $sloc }
+  | TRY e1=exp_nest FINALLY e2=exp_nest
+    { TryE(e1, [], Some e2) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
@@ -742,7 +767,7 @@ catch :
 
 exp_field :
   | m=var_opt x=id t=annot_opt
-    { let e = VarE(x.it @@ x.at) @? x.at in
+    { let e = VarE (x.it @~ x.at) @? x.at in
       { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
   | m=var_opt x=id t=annot_opt EQ e=exp(ob)
     { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
@@ -796,9 +821,9 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { match op, l with
-      | (PosOp | NegOp), PreLit (s, Type.Nat) ->
+      | (PosOp | NegOp), PreLit (s, (Type.(Nat | Float) as typ)) ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitP(ref (PreLit (signed, Type.Int))) @! at $sloc
+        LitP(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
@@ -838,20 +863,24 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let named, x = xf "object" $sloc in
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let sort = Type.(match s.it with
+                       | Actor -> "actor" | Module -> "module" | Object -> "object"
+                       | _ -> assert false) in
+      let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
+          let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (objblock s (List.map share_dec_field efs) @? (at $sloc)))
-             @? at $sloc)
-        else objblock s efs
+                    objblock s id t (List.map share_dec_field efs) @? at $sloc)
+             @? at $sloc) @? at $sloc
+        else objblock s None t efs @? at $sloc
       in
-      let_or_exp named x e (at $sloc) }
+      let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
@@ -929,7 +958,7 @@ parse_module_header :
   | start import_list EOF {}
 
 typ_dec :
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
 
 stab_field :

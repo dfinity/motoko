@@ -1,5 +1,10 @@
 #![feature(proc_macro_hygiene)]
 
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
+
+#[macro_use]
+mod print;
+
 mod bigint;
 mod bitrel;
 mod continuation_table;
@@ -8,17 +13,15 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
-mod stream;
+
+#[enhanced_orthogonal_persistence]
+mod stabilization;
+mod stable_option;
 mod text;
 mod utf8;
 
-use motoko_rts::types::Bytes;
-
 fn main() {
-    if std::mem::size_of::<usize>() != 4 {
-        println!("Motoko RTS only works on 32-bit architectures");
-        std::process::exit(1);
-    }
+    check_architecture();
 
     unsafe {
         bigint::test();
@@ -28,16 +31,60 @@ fn main() {
         gc::test();
         leb128::test();
         principal_id::test();
-        stream::test();
+        persistence_test();
+        stable_option::test();
         text::test();
         utf8::test();
     }
 }
 
+#[classical_persistence]
+fn check_architecture() {
+    if std::mem::size_of::<usize>() != 4 {
+        println!("Motoko RTS for classical persistence only works on 32-bit architectures");
+        std::process::exit(1);
+    }
+}
+
+#[enhanced_orthogonal_persistence]
+fn check_architecture() {
+    if std::mem::size_of::<usize>() != 8 {
+        println!(
+            "Motoko RTS for enhanced orthogonal persistence only works on 64-bit architectures"
+        );
+        std::process::exit(1);
+    }
+}
+
+#[enhanced_orthogonal_persistence]
+fn persistence_test() {
+    unsafe {
+        stabilization::test();
+    }
+}
+
+#[classical_persistence]
+fn persistence_test() {
+    test_read_write_64_bit();
+}
+
+#[classical_persistence]
+fn test_read_write_64_bit() {
+    use motoko_rts::types::{read64, write64};
+    println!("Testing 64-bit read-write");
+    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
+    let mut lower = 0u32;
+    let mut upper = 0u32;
+    write64(&mut lower, &mut upper, TEST_VALUE);
+    assert_eq!(lower, 0x9abc_def0);
+    assert_eq!(upper, 0x1234_5678);
+    assert_eq!(read64(lower, upper), TEST_VALUE);
+}
+
 // Called by the RTS to panic
 #[no_mangle]
-extern "C" fn rts_trap(ptr: *const u8, len: Bytes<u32>) -> ! {
-    let msg = unsafe { std::slice::from_raw_parts(ptr, len.as_usize()) };
+extern "C" fn rts_trap(ptr: *const u8, len: u32) -> ! {
+    let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
     match core::str::from_utf8(msg) {
         Err(err) => panic!(
             "rts_trap_with called with non-UTF8 string (error={:?}, string={:?})",
@@ -55,7 +102,14 @@ extern "C" fn bigint_trap() -> ! {
 
 // Called by the RTS for debug prints
 #[no_mangle]
-unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
-    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
-    println!("[RTS] {}", String::from_utf8_lossy(str));
+unsafe extern "C" fn print_ptr(ptr: usize, len: usize) {
+    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len);
+    println!("[RTS] {}", &String::from_utf8_lossy(str));
+}
+
+// Program entry point by wasmtime
+#[enhanced_orthogonal_persistence]
+#[no_mangle]
+pub fn _start() {
+    main();
 }

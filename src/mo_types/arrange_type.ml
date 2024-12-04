@@ -18,6 +18,7 @@ let func_sort = function
   | Local -> "Local"
   | Shared Write -> "Shared"
   | Shared Query -> "Shared Query"
+  | Shared Composite -> "Shared Composite"
 
 let prim = function
   | Null -> Atom "Null"
@@ -38,6 +39,7 @@ let prim = function
   | Blob -> Atom "Blob"
   | Error -> Atom "Error"
   | Principal -> Atom "Principal"
+  | Region -> Atom "Region"
 
 let con c = Atom (Type.string_of_con c)
 

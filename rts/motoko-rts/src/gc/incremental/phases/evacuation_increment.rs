@@ -6,6 +6,7 @@ use crate::{
     },
     mem_utils::memcpy_words,
     memory::Memory,
+    stable_option::StableOption,
     types::*,
 };
 
@@ -17,16 +18,16 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn start_phase(state: &mut State) {
+    pub unsafe fn start_phase(mem: &mut M, state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
-        heap.plan_evacuations();
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
+        heap.plan_evacuations(mem);
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::evacuation_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
     }
 
     pub unsafe fn evacuation_completed(state: &State) -> bool {
@@ -75,10 +76,11 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        debug_assert!(is_object_tag(original.tag()));
         debug_assert!(!original.is_forwarded());
         let size = block_size(original as usize);
         let new_address = self.mem.alloc_words(size);
+        self.heap.increase_evacuated_size(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
         (*copy).forward = new_address;
@@ -88,7 +90,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         // Marking is necessary to ensure field updates in the copy.
         let unmarked_before = self.heap.mark_object(copy);
         debug_assert!(unmarked_before);
-
         // Determined by measurements in comparison to the mark and update phases.
         const TIME_FRACTION_PER_WORD: f64 = 2.7;
         self.time

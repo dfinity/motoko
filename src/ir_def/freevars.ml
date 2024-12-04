@@ -84,8 +84,8 @@ let rec pat p : td = match p.it with
   | VarP i          -> M.singleton i p.note
   | TupP ps         -> pats ps
   | ObjP pfs        -> pats (pats_of_obj_pat pfs)
-  | OptP p          -> pat p
-  | TagP (i, p)     -> pat p
+  | OptP p
+  | TagP (_, p)     -> pat p
   | AltP (p1, p2)   -> pat p1 +- pat p2
 
 and pats ps : td = List.(fold_left (+-) M.empty (map pat ps))
@@ -103,7 +103,7 @@ let fields fs = unions (fun f ->
 ) fs
 
 let rec exp e : f = match e.it with
-  | VarE i              -> id i
+  | VarE (_, i)         -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
@@ -118,17 +118,18 @@ let rec exp e : f = match e.it with
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
-  | TryE (e, cs)        -> exp e ++ cases cs
-  | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
+  | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some (v, _) -> id v | _ -> M.empty)
+  | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect} =
+and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; _} =
   under_lambda (exp preupgrade) ++
   under_lambda (exp postupgrade) ++
   under_lambda (exp heartbeat) ++
   under_lambda (exp timer) ++
-  under_lambda (exp inspect)
+  under_lambda (exp inspect) ++
+  under_lambda (exp stable_record)
 
 and exps es : f = unions exp es
 

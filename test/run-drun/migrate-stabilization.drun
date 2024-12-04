@@ -1,0 +1,16 @@
+# CLASSICAL-PERSISTENCE-ONLY
+# DEFAULT-GC-ONLY
+# SKIP ic-ref-run
+install $ID migrate-stabilization/old-stabilization.mo ""
+ingress $ID populate "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID migrate-stabilization/old-stabilization.mo ""
+ingress $ID populate "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID migrate-stabilization/new-stabilization.mo ""
+ingress $ID populate "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID migrate-stabilization/new-stabilization.mo ""
+ingress $ID populate "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID migrate-stabilization/old-stabilization.mo ""

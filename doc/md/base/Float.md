@@ -39,6 +39,9 @@ Advice:
 * For absolute precision, it is recommened to encode the fraction number as a pair of a Nat for the base
   and a Nat for the exponent (decimal point).
 
+NaN sign:
+* The NaN sign is only applied by `abs`, `neg`, and `copySign`. Other operations can have an arbitrary
+  sign bit for NaN results.
 
 ## Type `Float`
 ``` motoko no-repl
@@ -72,7 +75,7 @@ Determines whether the `number` is a `NaN` ("not a number" in the floating point
 Notes:
 * Equality test of `NaN` with itself or another number is always `false`.
 * There exist many internal `NaN` value representations, such as positive and negative NaN,
-  signalling and quiet nans, each with many different bit representations.
+  signalling and quiet NaNs, each with many different bit representations.
 
 Example:
 ```motoko
@@ -92,7 +95,7 @@ Special cases:
 ```
 abs(+inf) => +inf
 abs(-inf) => +inf
-abs(NaN)  => NaN
+abs(-NaN)  => +NaN
 abs(-0.0) => 0.0
 ```
 
@@ -177,7 +180,7 @@ let trunc : (x : Float) -> Float
 ```
 
 Returns the nearest integral float not greater in magnitude than `x`.
-This is equilvent to returning `x` with truncating its decimal places.
+This is equivalent to returning `x` with truncating its decimal places.
 
 Special cases:
 ```
@@ -477,7 +480,7 @@ Float.log(Float.e) // => 1.0
 
 ## Function `format`
 ``` motoko no-repl
-func format(fmt : {#fix : Nat8; #exp : Nat8; #gen : Nat8; #hex : Nat8; #exact}, x : Float) : Text
+func format(fmt : {#fix : Nat8; #exp : Nat8; #gen : Nat8; #exact}, x : Float) : Text
 ```
 
 Formatting. `format(fmt, x)` formats `x` to `Text` according to the
@@ -486,13 +489,15 @@ formatting directive `fmt`, which can take one of the following forms:
 * `#fix prec` as fixed-point format with `prec` digits
 * `#exp prec` as exponential format with `prec` digits
 * `#gen prec` as generic format with `prec` digits
-* `#hex prec` as hexadecimal format with `prec` digits
 * `#exact` as exact format that can be decoded without loss.
 
 `-0.0` is formatted with negative sign bit.
-Positive infinity is formatted as `inf`.
-Negative infinity is formatted as `-inf`.
-`NaN` is formatted as `NaN` or `-NaN` depending on its sign bit.
+Positive infinity is formatted as "inf".
+Negative infinity is formatted as "-inf".
+
+Note: The numerical precision and the text format can vary between
+Motoko versions and runtime configuration. Moreover, `NaN` can be printed
+differently, i.e. "NaN" or "nan", potentially omitting the `NaN` sign.
 
 Example:
 ```motoko
@@ -616,12 +621,12 @@ Traps if `epsilon` is negative or `NaN`.
 
 Special cases:
 ```
-equal(+0.0, -0.0, epsilon) => true for any `epsilon >= 0.0`
-equal(-0.0, +0.0, epsilon) => true for any `epsilon >= 0.0`
-equal(+inf, +inf, epsilon) => true for any `epsilon >= 0.0`
-equal(-inf, -inf, epsilon) => true for any `epsilon >= 0.0`
-equal(x, NaN, epsilon)     => false for any x and `epsilon >= 0.0`
-equal(NaN, y, epsilon)     => false for any y and `epsilon >= 0.0`
+equalWithin(+0.0, -0.0, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(-0.0, +0.0, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(+inf, +inf, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(-inf, -inf, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(x, NaN, epsilon)     => false for any x and `epsilon >= 0.0`
+equalWithin(NaN, y, epsilon)     => false for any y and `epsilon >= 0.0`
 ```
 
 Example:
@@ -629,7 +634,7 @@ Example:
 import Float "mo:base/Float";
 
 let epsilon = 1e-6;
-Float.equal(-12.3, -1.23e1, epsilon) // => true
+Float.equalWithin(-12.3, -1.23e1, epsilon) // => true
 ```
 
 ## Function `notEqualWithin`
@@ -645,12 +650,12 @@ Traps if `epsilon` is negative or `NaN`.
 
 Special cases:
 ```
-notEqual(+0.0, -0.0, epsilon) => false for any `epsilon >= 0.0`
-notEqual(-0.0, +0.0, epsilon) => false for any `epsilon >= 0.0`
-notEqual(+inf, +inf, epsilon) => false for any `epsilon >= 0.0`
-notEqual(-inf, -inf, epsilon) => false for any `epsilon >= 0.0`
-notEqual(x, NaN, epsilon)     => true for any x and `epsilon >= 0.0`
-notEqual(NaN, y, epsilon)     => true for any y and `epsilon >= 0.0`
+notEqualWithin(+0.0, -0.0, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(-0.0, +0.0, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(+inf, +inf, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(-inf, -inf, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(x, NaN, epsilon)     => true for any x and `epsilon >= 0.0`
+notEqualWithin(NaN, y, epsilon)     => true for any y and `epsilon >= 0.0`
 ```
 
 Example:
@@ -658,7 +663,7 @@ Example:
 import Float "mo:base/Float";
 
 let epsilon = 1e-6;
-Float.notEqual(-12.3, -1.23e1, epsilon) // => false
+Float.notEqualWithin(-12.3, -1.23e1, epsilon) // => false
 ```
 
 ## Function `less`
@@ -757,8 +762,8 @@ func compare(x : Float, y : Float) : {#less; #equal; #greater}
 Defines a total order of `x` and `y` for use in sorting.
 
 Note: Using this operation to determine equality or inequality is discouraged for two reasons:
-* It does not consider numerical errors, see comment above. Use `equal(x, y)` or
-  `notEqual(x, y)` to test for equality or inequality, respectively.
+* It does not consider numerical errors, see comment above. Use `equalWithin(x, y, espilon)` or
+  `notEqualWithin(x, y, epsilon)` to test for equality or inequality, respectively.
 * `NaN` are here considered equal if their sign matches, which is different to the standard equality
    by `==` or when using `equal()` or `notEqual()`.
 
@@ -787,8 +792,16 @@ func neg(x : Float) : Float
 Returns the negation of `x`, `-x` .
 
 Changes the sign bit for infinity.
-Issue: Inconsistent behavior for zero and `NaN`. Probably related to
-https://github.com/dfinity/motoko/issues/3646
+
+Special cases:
+```
+neg(+inf) => -inf
+neg(-inf) => +inf
+neg(+NaN) => -NaN
+neg(-NaN) => +NaN
+neg(+0.0) => -0.0
+neg(-0.0) => +0.0
+```
 
 Example:
 ```motoko

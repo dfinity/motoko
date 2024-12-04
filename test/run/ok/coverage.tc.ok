@@ -26,11 +26,6 @@ coverage.mo:15.10-15.13: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:16.16-16.17: warning [M0146], this pattern is never matched
-coverage.mo:16.10-16.18: warning [M0145], this pattern of type
-  Nat
-does not cover value
-  0 or 1 or _
 coverage.mo:18.16-18.17: warning [M0146], this pattern is never matched
 coverage.mo:19.17-19.18: warning [M0146], this pattern is never matched
 coverage.mo:23.3-23.25: warning [M0145], this switch of type
@@ -190,3 +185,53 @@ coverage.mo:228.3-230.4: warning [M0145], this switch of type
   {#a}
 does not cover value
   #a
+coverage.mo:1.6-1.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+coverage.mo:3.7-3.8: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+coverage.mo:9.8-9.9: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+coverage.mo:13.8-13.10: warning [M0194], unused identifier f1 (delete or rename to wildcard `_` or `_f1`)
+coverage.mo:14.8-14.10: warning [M0194], unused identifier f2 (delete or rename to wildcard `_` or `_f2`)
+coverage.mo:14.11-14.12: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:15.8-15.10: warning [M0194], unused identifier f3 (delete or rename to wildcard `_` or `_f3`)
+coverage.mo:17.8-17.10: warning [M0194], unused identifier f5 (delete or rename to wildcard `_` or `_f5`)
+coverage.mo:18.8-18.10: warning [M0194], unused identifier f6 (delete or rename to wildcard `_` or `_f6`)
+coverage.mo:19.8-19.10: warning [M0194], unused identifier f7 (delete or rename to wildcard `_` or `_f7`)
+coverage.mo:22.19-22.20: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:26.30-26.31: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:28.30-28.31: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:29.19-29.20: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:30.19-30.20: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:30.30-30.31: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:100.13-100.14: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:101.14-101.15: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:101.21-101.22: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:102.14-102.15: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:102.22-102.23: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:102.25-102.26: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:103.14-103.15: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:103.22-103.23: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:103.25-103.26: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:104.19-104.20: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:104.22-104.23: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:104.26-104.27: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:105.19-105.20: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:105.22-105.23: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:105.26-105.27: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:106.13-106.14: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:106.20-106.21: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:106.23-106.24: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:106.26-106.27: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+coverage.mo:106.30-106.31: warning [M0194], unused identifier w (delete or rename to wildcard `_` or `_w`)
+coverage.mo:107.14-107.15: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:107.21-107.22: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:107.24-107.25: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:107.27-107.28: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+coverage.mo:108.13-108.14: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:108.16-108.17: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:108.24-108.25: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:108.27-108.28: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+coverage.mo:109.24-109.25: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:109.32-109.33: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)
+coverage.mo:109.35-109.36: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+coverage.mo:109.40-109.41: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+coverage.mo:109.44-109.45: warning [M0194], unused identifier w (delete or rename to wildcard `_` or `_w`)
+coverage.mo:178.6-178.7: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)

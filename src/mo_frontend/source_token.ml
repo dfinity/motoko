@@ -1,4 +1,4 @@
-open Mo_def.Trivia
+open Trivia
 
 type token =
   | EOF
@@ -22,6 +22,7 @@ type token =
   | LABEL
   | DEBUG
   | DO
+  | FINALLY
   | FLEXIBLE
   | IF
   | IGNORE
@@ -118,6 +119,7 @@ type token =
   | TEXT of string
   | PRIM
   | UNDERSCORE
+  | COMPOSITE
   | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
@@ -125,6 +127,7 @@ type token =
   | SPACE of int
   | TAB of int (* shudders *)
   | COMMENT of string
+  | PIPE
 
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
@@ -161,6 +164,7 @@ let to_parser_token :
   | RETURN -> Ok Parser.RETURN
   | TRY -> Ok Parser.TRY
   | THROW -> Ok Parser.THROW
+  | FINALLY -> Ok Parser.FINALLY
   | WITH -> Ok Parser.WITH
   | ARROW -> Ok Parser.ARROW
   | ASSIGN -> Ok Parser.ASSIGN
@@ -245,7 +249,9 @@ let to_parser_token :
   | TEXT s -> Ok (Parser.TEXT s)
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
+  | COMPOSITE -> Ok Parser.COMPOSITE
   | INVARIANT -> Ok Parser.INVARIANT
+  | PIPE -> Ok Parser.PIPE
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -287,6 +293,7 @@ let string_of_parser_token = function
   | Parser.RETURN -> "RETURN"
   | Parser.TRY -> "TRY"
   | Parser.THROW -> "THROW"
+  | Parser.FINALLY -> "FINALLY"
   | Parser.WITH -> "WITH"
   | Parser.ARROW -> "ARROW"
   | Parser.ASSIGN -> "ASSIGN"
@@ -373,9 +380,11 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
+  | Parser.COMPOSITE -> "COMPOSITE"
   | Parser.INVARIANT -> "INVARIANT"
   | Parser.IMPLIES -> "IMPLIES"
   | Parser.OLD -> "OLD"
+  | Parser.PIPE -> "PIPE"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

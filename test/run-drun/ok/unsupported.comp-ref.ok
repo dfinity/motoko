@@ -1,16 +1,16 @@
+unsupported.mo:36.36-36.39: type error [M0077], a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:50.11-50.43: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:54.11-54.50: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:58.53-58.61: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:62.47-62.55: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:72.44-72.47: type error [M0077], a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -ref-system-api.)
+unsupported.mo:73.44-73.47: type error [M0077], a shared function is only allowed as a public field of an actor
+  (This is a limitation of the current version and flag -ref-system-api.)
 unsupported.mo:4.14-4.50: type error [M0126], a shared function cannot be private
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:36.26-36.29: type error [M0077], a shared function is only allowed as a public field of an actor
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:50.3-50.35: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:54.3-54.42: type error [M0139], inner actor classes are not supported yet; any actor class must come last in your program
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:58.45-58.53: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:62.39-62.47: type error [M0069], non-toplevel actor; an actor can only be declared at the toplevel of a program
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:72.34-72.37: type error [M0077], a shared function is only allowed as a public field of an actor
-  (This is a limitation of the current version and flag -ref-system-api.)
-unsupported.mo:73.27-73.30: type error [M0077], a shared function is only allowed as a public field of an actor
   (This is a limitation of the current version and flag -ref-system-api.)

@@ -30,7 +30,7 @@ let rawReply = await IC.call(ledger, method, to_candid(input)); // serialized Ca
 let output : ?OutputType = from_candid(rawReply); // { decimals = 8 }
 ```
 
-[Learn more about Candid serialization](https://internetcomputer.org/docs/current/developer-docs/build/cdks/motoko-dfinity/language-manual#candid-serialization)
+[Learn more about Candid serialization](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual#candid-serialization)
 
 ## Function `countInstructions`
 ``` motoko no-repl
@@ -52,4 +52,33 @@ import IC "mo:base/ExperimentalInternetComputer";
 let count = IC.countInstructions(func() {
   // ...
 });
+```
+
+## Value `performanceCounter`
+``` motoko no-repl
+let performanceCounter : (counter : Nat32) -> (value : Nat64)
+```
+
+Returns the current value of IC _performance counter_ `counter`.
+
+* Counter `0` is the _current execution instruction counter_, counting instructions only since the beginning of the current IC message.
+  This counter is reset to value `0` on shared function entry and every `await`.
+  It is therefore only suitable for measuring the cost of synchronous code.
+
+* Counter `1` is the _call context instruction counter_  for the current shared function call.
+  For replicated message executing, this excludes the cost of nested IC calls (even to the current canister).
+  For non-replicated messages, such as composite queries, it includes the cost of nested calls.
+  The current value of this counter is preserved across `awaits` (unlike counter `0`).
+
+* The function (currently) traps if `counter` >= 2.
+
+Consult [Performance Counter](https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-performance-counter) for details.
+
+Example:
+```motoko no-repl
+import IC "mo:base/ExperimentalInternetComputer";
+
+let c1 = IC.performanceCounter(1);
+work();
+let diff : Nat64 = IC.performanceCounter(1) - c1;
 ```

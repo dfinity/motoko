@@ -24,7 +24,7 @@ open Lbool
     - no mutable variable are defined, and
     - pattern matching is side-effect free, i.e. irrefutable
   * Functions can be const if they do not require a closure.
-    This is the case if every free variables is
+    This is the case if every free variable is
     - const or
     - bound at the top level (`loc_known = true` below)
   * Literals can be const
@@ -100,7 +100,7 @@ let set_lazy_const e lb =
 let rec exp lvl (env : env) e : Lbool.t =
   let lb =
     match e.it with
-    | VarE v -> (find v env).const
+    | VarE (_, v) -> (find v env).const (*FIXME: use the mutability marker?*)
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
@@ -147,18 +147,24 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
-    | SelfCallE (_, e1, e2, e3) ->
+    | SelfCallE (_, e1, e2, e3, e4) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
       exp_ lvl env e3;
+      exp_ lvl env e4;
       surely_false
-    | SwitchE (e1, cs) | TryE (e1, cs) ->
+    | SwitchE (e1, cs) | TryE (e1, cs, None) ->
       exp_ lvl env e1;
       List.iter (case_ lvl env) cs;
       surely_false
+    | TryE (e1, cs, Some (v, t)) ->
+      exp_ lvl env e1;
+      List.iter (case_ lvl env) cs;
+      exp_ lvl env Construct.(var v t |> varE);
+      surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, _typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, _typ) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
       let (env', _) = decs lvl env ds in
       exp_ lvl env' preupgrade;
@@ -166,6 +172,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env' heartbeat;
       exp_ lvl env' timer;
       exp_ lvl env' inspect;
+      exp_ lvl env' stable_record;
       surely_false
   in
   set_lazy_const e lb;
@@ -221,7 +228,7 @@ and block lvl env (ds, body) =
 and comp_unit = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
-  | ActorU (as_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+  | ActorU (as_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
     let env = match as_opt with
       | None -> M.empty
       | Some as_ -> args TopLvl M.empty as_
@@ -231,7 +238,8 @@ and comp_unit = function
     exp_ TopLvl env' postupgrade;
     exp_ TopLvl env' heartbeat;
     exp_ TopLvl env' timer;
-    exp_ TopLvl env' inspect
+    exp_ TopLvl env' inspect;
+    exp_ TopLvl env' stable_record
 
 let analyze ((cu, _flavor) : prog) =
   ignore (comp_unit cu)

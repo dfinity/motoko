@@ -146,7 +146,7 @@ func append<X>(array1 : [X], array2 : [X]) : [X]
 ```
 
 Create a new array by appending the values of `array1` and `array2`.
-@deprecated `Array.append` copies its arguments and has linear complexity;
+Note that `Array.append` copies its arguments and has linear complexity;
 when used in a loop, consider using a `Buffer`, and `Buffer.append`, instead.
 
 ```motoko include=import
@@ -503,7 +503,7 @@ Space: O(1)
 
 ## Function `subArray`
 ``` motoko no-repl
-func subArray<X>(arr : [X], start : Nat, length : Nat) : [X]
+func subArray<X>(array : [X], start : Nat, length : Nat) : [X]
 ```
 
 Returns a new subarray from the given array provided the start index and length of elements in the subarray
@@ -514,5 +514,122 @@ Limitations: Traps if the start index + length is greater than the size of the a
 
 let array = [1,2,3,4,5];
 let subArray = Array.subArray<Nat>(array, 2, 3);
+```
+Runtime: O(length);
+Space: O(length);
+
+## Function `indexOf`
+``` motoko no-repl
+func indexOf<X>(element : X, array : [X], equal : (X, X) -> Bool) : ?Nat
+```
+
+Returns the index of the first `element` in the `array`.
+
+```motoko include=import
+import Char "mo:base/Char";
+let array = ['c', 'o', 'f', 'f', 'e', 'e'];
+assert Array.indexOf<Char>('c', array, Char.equal) == ?0;
+assert Array.indexOf<Char>('f', array, Char.equal) == ?2;
+assert Array.indexOf<Char>('g', array, Char.equal) == null;
+```
+
+Runtime: O(array.size());
+Space: O(1);
+
+## Function `nextIndexOf`
+``` motoko no-repl
+func nextIndexOf<X>(element : X, array : [X], fromInclusive : Nat, equal : (X, X) -> Bool) : ?Nat
+```
+
+Returns the index of the next occurence of `element` in the `array` starting from the `from` index (inclusive).
+
+```motoko include=import
+import Char "mo:base/Char";
+let array = ['c', 'o', 'f', 'f', 'e', 'e'];
+assert Array.nextIndexOf<Char>('c', array, 0, Char.equal) == ?0;
+assert Array.nextIndexOf<Char>('f', array, 0, Char.equal) == ?2;
+assert Array.nextIndexOf<Char>('f', array, 2, Char.equal) == ?2;
+assert Array.nextIndexOf<Char>('f', array, 3, Char.equal) == ?3;
+assert Array.nextIndexOf<Char>('f', array, 4, Char.equal) == null;
+```
+
+Runtime: O(array.size());
+Space: O(1);
+
+## Function `lastIndexOf`
+``` motoko no-repl
+func lastIndexOf<X>(element : X, array : [X], equal : (X, X) -> Bool) : ?Nat
+```
+
+Returns the index of the last `element` in the `array`.
+
+```motoko include=import
+import Char "mo:base/Char";
+let array = ['c', 'o', 'f', 'f', 'e', 'e'];
+assert Array.lastIndexOf<Char>('c', array, Char.equal) == ?0;
+assert Array.lastIndexOf<Char>('f', array, Char.equal) == ?3;
+assert Array.lastIndexOf<Char>('e', array, Char.equal) == ?5;
+assert Array.lastIndexOf<Char>('g', array, Char.equal) == null;
+```
+
+Runtime: O(array.size());
+Space: O(1);
+
+## Function `prevIndexOf`
+``` motoko no-repl
+func prevIndexOf<T>(element : T, array : [T], fromExclusive : Nat, equal : (T, T) -> Bool) : ?Nat
+```
+
+Returns the index of the previous occurance of `element` in the `array` starting from the `from` index (exclusive).
+
+```motoko include=import
+import Char "mo:base/Char";
+let array = ['c', 'o', 'f', 'f', 'e', 'e'];
+assert Array.prevIndexOf<Char>('c', array, array.size(), Char.equal) == ?0;
+assert Array.prevIndexOf<Char>('e', array, array.size(), Char.equal) == ?5;
+assert Array.prevIndexOf<Char>('e', array, 5, Char.equal) == ?4;
+assert Array.prevIndexOf<Char>('e', array, 4, Char.equal) == null;
+```
+
+Runtime: O(array.size());
+Space: O(1);
+
+## Function `slice`
+``` motoko no-repl
+func slice<X>(array : [X], fromInclusive : Nat, toExclusive : Nat) : I.Iter<X>
+```
+
+Returns an iterator over a slice of the given array.
+
+```motoko include=import
+let array = [1, 2, 3, 4, 5];
+let s = Array.slice<Nat>(array, 3, array.size());
+assert s.next() == ?4;
+assert s.next() == ?5;
+assert s.next() == null;
+
+let s = Array.slice<Nat>(array, 0, 0);
+assert s.next() == null;
+```
+
+Runtime: O(1)
+Space: O(1)
+
+## Function `take`
+``` motoko no-repl
+func take<T>(array : [T], length : Int) : [T]
+```
+
+Returns a new subarray of given length from the beginning or end of the given array
+
+Returns the entire array if the length is greater than the size of the array
+
+```motoko include=import
+let array = [1, 2, 3, 4, 5];
+assert Array.take(array, 2) == [1, 2];
+assert Array.take(array, -2) == [4, 5];
+assert Array.take(array, 10) == [1, 2, 3, 4, 5];
+assert Array.take(array, -99) == [1, 2, 3, 4, 5];
+```
 Runtime: O(length);
 Space: O(length);
