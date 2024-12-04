@@ -904,19 +904,17 @@ let str = ref (fun _ -> failwith "")
 
 exception PreEncountered
 
-
 module SS = Set.Make (OrdPair)
 
 let max_depth = 10_000
+
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ d rel eq t1 t2 =
-  (*  Printf.printf "%s rel  %s\n" (!str t1) (!str t2); *)
-  if d >= max_depth then failwith "subtyping: recursion too deep" else
   let d = d + 1 in
-  t1 == t2 || SS.mem (t1, t2) !rel ||
-  begin
+  if d > max_depth then failwith "subtyping: recursion too deep" else
+  t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
