@@ -1,6 +1,1 @@
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source 0.13.4-30-gcedc663ea-dirty)
-
-Fatal error: exception Stack overflow
+polyrec.mo:10.24-10.25: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
