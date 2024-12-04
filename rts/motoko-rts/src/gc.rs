@@ -1,13 +1,13 @@
 #[non_incremental_gc]
 pub mod copying;
+#[enhanced_orthogonal_persistence]
+pub mod functions;
 #[non_incremental_gc]
 pub mod generational;
 #[incremental_gc]
 pub mod incremental;
 #[non_incremental_gc]
 pub mod mark_compact;
-
-pub mod remembered_set;
 
 use motoko_rts_macros::*;
 

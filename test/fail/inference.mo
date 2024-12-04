@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 func id<T>(x : T) : T { x };
 ignore id(1);
 ignore id<Nat>(1);

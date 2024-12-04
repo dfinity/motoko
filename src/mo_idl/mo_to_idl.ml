@@ -191,7 +191,7 @@ module MakeState() = struct
     | ActorU _ -> Some (typ cub.note.note_typ)
     | ActorClassU _ ->
        (match normalize cub.note.note_typ with
-        | Func (Local, Returns, [tb], ts1, [t2]) ->
+        | Func (Local _, Returns, [tb], ts1, [t2]) ->
           let args = List.map typ (List.map (open_ [Non]) ts1) in
           let (_, _, rng) = as_async (normalize (open_ [Non] t2)) in
           let actor = typ rng in

@@ -115,6 +115,7 @@ impl TypeDescriptor {
     }
 }
 
+// NOTE: The cache needs to be explicitly (re-)initialized on every use.
 unsafe fn create_type_check_cache<M: Memory>(
     mem: &mut M,
     old_type: &TypeDescriptor,
@@ -125,6 +126,7 @@ unsafe fn create_type_check_cache<M: Memory>(
     let words = Words(BitRel::words(old_type_count, new_type_count));
     let byte_length = words.to_bytes();
     let blob_value = alloc_blob(mem, TAG_BLOB_B, byte_length);
+    // No allocation barrier as this is a temporary object that can be collected after this message.
     let ptr = blob_value.as_blob_mut().payload_addr() as *mut usize;
     let end = blob_value
         .as_blob()
@@ -136,37 +138,72 @@ unsafe fn create_type_check_cache<M: Memory>(
         size1: old_type_count,
         size2: new_type_count,
     };
-    cache.init();
     cache
 }
 
 // Fix main actor type index, see `compile.ml`.
 const MAIN_ACTOR_TYPE_INDEX: i32 = 0;
 
-/// Test whether the new stable type complies with the existing old stable type.
-/// This uses the existing IDL subtype test.
-pub unsafe fn memory_compatible<M: Memory>(
-    mem: &mut M,
-    old_type: &mut TypeDescriptor,
-    new_type: &mut TypeDescriptor,
-) -> bool {
-    let cache = create_type_check_cache(mem, old_type, new_type);
+// Helper structure to support multiple consecutive memory tests
+// for the same type tables.
+// This contains low-level pointers and must only be used within the same message,
+// not across GC increments.
+pub struct MemoryCompatibilityTest {
+    cache: BitRel,
+    old_type_table: *mut *mut u8,
+    old_table_end: *mut u8,
+    new_type_table: *mut *mut u8,
+    new_table_end: *mut u8,
+}
 
-    let old_type_table = old_type.build_type_table(mem);
-    let old_table_end = old_type.type_table_end();
+impl MemoryCompatibilityTest {
+    // Build the temporary type table with absolute addresses, to use
+    // it one or multiple times within the same IC message.
+    pub unsafe fn new<M: Memory>(
+        mem: &mut M,
+        old_type: &mut TypeDescriptor,
+        new_type: &mut TypeDescriptor,
+    ) -> Self {
+        let cache = create_type_check_cache(mem, old_type, new_type);
 
-    let new_type_table = new_type.build_type_table(mem);
-    let new_table_end = new_type.type_table_end();
+        let old_type_table = old_type.build_type_table(mem);
+        let old_table_end = old_type.type_table_end();
 
-    crate::idl::memory_compatible(
-        &cache,
-        TypeVariance::Covariance,
-        old_type_table,
-        new_type_table,
-        old_table_end,
-        new_table_end,
-        MAIN_ACTOR_TYPE_INDEX,
-        MAIN_ACTOR_TYPE_INDEX,
-        true,
-    )
+        let new_type_table = new_type.build_type_table(mem);
+        let new_table_end = new_type.type_table_end();
+
+        Self {
+            cache,
+            old_type_table,
+            old_table_end,
+            new_type_table,
+            new_table_end,
+        }
+    }
+
+    /// Test whether the new stable type complies with the existing old stable type.
+    /// This uses the existing IDL subtype test.
+    pub unsafe fn is_compatible(&self, old_type_index: i32, new_type_index: i32) -> bool {
+        debug_assert!(
+            old_type_index != MAIN_ACTOR_TYPE_INDEX || new_type_index == MAIN_ACTOR_TYPE_INDEX
+        );
+        self.cache.init(); // Needs to be-reinitialized on every check.
+        crate::idl::memory_compatible(
+            &self.cache,
+            TypeVariance::Covariance,
+            self.old_type_table,
+            self.new_type_table,
+            self.old_table_end,
+            self.new_table_end,
+            old_type_index,
+            new_type_index,
+            new_type_index == MAIN_ACTOR_TYPE_INDEX,
+        )
+    }
+
+    // Test whether the new stable type of the main actor complies with
+    // the existing old stable type of the main actor.
+    pub unsafe fn compatible_stable_actor(&self) -> bool {
+        self.is_compatible(MAIN_ACTOR_TYPE_INDEX, MAIN_ACTOR_TYPE_INDEX)
+    }
 }

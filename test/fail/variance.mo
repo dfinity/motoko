@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 // test principal defaulting of underconstrained type parameters according to
 // their variance in the result.
 // TIP: best visually verified in VSCode

@@ -391,7 +391,7 @@ and dec_field' ctxt d =
       NoInfo
   (* async functions *)
   | M.(LetD ({it=VarP f;note;_},
-             {it=FuncE(x, sp, tp, p, t_opt, sugar,
+             {it=FuncE(x, sp, tp, p, t_opt, sugar, closed,
              {it = AsyncE (T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
       { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
@@ -418,7 +418,7 @@ and dec_field' ctxt d =
         PublicFunction f.it)
   (* private sync functions *)
   | M.(LetD ({it=VarP f; note;_},
-             {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_},
+             {it=FuncE(x, sp, tp, p, t_opt, sugar, closed, e );_},
              None)) ->
       { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
@@ -960,7 +960,7 @@ and exp ctxt e =
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
       !!(CallE (tup_con_name n, List.map (exp ctxt) es))
-  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
+  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, _, e); note; _ })
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
       && (predicate_name = "forall" || predicate_name = "exists")
     ->

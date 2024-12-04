@@ -140,7 +140,7 @@ let edges_con cs c es : EdgeSet.t =
       edges_typ cs c es tb.bound) es tbs
     in
     edges_typ cs c es1 t
-  | Abs (tbs, t) ->
+  | Abs (tbs, t, _) ->
     assert false
 
 let edges cs = ConSet.fold (edges_con cs) cs EdgeSet.empty
@@ -152,7 +152,7 @@ let vertices cs =
       | Def (tbs, t) ->
         let ws = List.mapi (fun i _tb -> (c, i)) tbs in
         List.fold_left (fun vs v -> VertexSet.add v vs) vs ws
-      | Abs (tbs, t) ->
+      | Abs (tbs, t, _) ->
         assert false) cs VertexSet.empty
 
 module VertexMap = Map.Make(Vertex)
@@ -194,9 +194,9 @@ let is_expansive cs =
     (* Construct an error messages with optional debug info *)
     let op, sbs, st = Pretty.strings_of_kind (Cons.kind c) in
     let def = Printf.sprintf "type %s%s %s %s" (Cons.name c) sbs op st in
-    let x = match Cons.kind c with Def(tbs, _) | Abs(tbs, _) ->
+    let x = match Cons.kind c with Def(tbs, _) | Abs(tbs, _, _) ->
       (List.nth tbs i).var in
-    let dys = match Cons.kind d with Def(tbs, _) | Abs(tbs, _) ->
+    let dys = match Cons.kind d with Def(tbs, _) | Abs(tbs, _, _) ->
       Printf.sprintf "%s<%s>" (Cons.name d)
         (String.concat "," (List.mapi (fun k _ ->
           if i = k then "-" ^ x ^"-" else "_") tbs))

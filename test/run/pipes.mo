@@ -72,10 +72,11 @@ func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B> = object {
     }
   };
 
+let charToNat32 : Char -> Nat32 = Prim.charToNat32;
 
-let 532 = "hello".chars() |> map(_, Prim.charToNat32) |> sum _;
+let 532 = "hello".chars() |> map(_, charToNat32) |> sum _;
 
-let 532 = Prim.charToNat32 |> map("hello".chars(), _) |> sum (_);
+let 532 = charToNat32 |> map("hello".chars(), _) |> sum (_);
 
 
 /* eval order, continued */

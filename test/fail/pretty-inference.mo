@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 // test pretty printing of inference errors
 func p<T,U>(x : T, y: U) : (T, U) { (x,y);};
 let p1 = p(1,true);

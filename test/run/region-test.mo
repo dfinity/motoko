@@ -198,7 +198,7 @@ do {
    type T = Int8;
    let load = Region.loadBlob;
    let store = Region.storeBlob;
-   func conv(n : Nat64) : Blob { load(r, 0, Prim.nat64ToNat(n)) };
+   let conv = func(n : Nat64) : Blob { load(r, 0, Prim.nat64ToNat(n)) };
    let max : Nat64 = Region.size(r)*65536;
    var i : Nat64 = 1;
    while(i < max) {
