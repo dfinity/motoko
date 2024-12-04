@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/2965/head",
+        "branch": "luc/adjust-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "ggreif",
         "repo": "ic",
-        "rev": "2f1967e64c82b48c67d8623ef174806c33ab49ec",
-        "sha256": "1x0gksfk3vganypvv071x7k0mdicn144gy8ncjqzp0d84krhmr45",
+        "rev": "29af754e5cb9a63e2bf9d08f701df34dad18e839",
+        "sha256": "1g68fyi5acbcgs2kjribk97fj8ki5g6pd99nwl5azz1rw1b0xycx",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/2f1967e64c82b48c67d8623ef174806c33ab49ec.tar.gz",
+        "url": "https://github.com/ggreif/ic/archive/29af754e5cb9a63e2bf9d08f701df34dad18e839.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {

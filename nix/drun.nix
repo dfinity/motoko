@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform_moz_stable.buildRustPackage {
+    pkgs.rustPlatform.buildRustPackage {
       name = "drun";
 
       src = pkgs.sources.ic;
