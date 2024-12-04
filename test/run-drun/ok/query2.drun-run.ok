@@ -3,12 +3,4 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: 2
 debug.print: 3
 debug.print: 4
-debug.print: 4
-debug.print: In read:
-debug.print: 5
-debug.print: 4
-debug.print: In read:
-debug.print: 5
-debug.print: 4
-debug.print: The following fails in the interpreter, for lack of query semantics
-ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reject: IC0504: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister violated contract: ic0::msg_deadline is not enabled.
