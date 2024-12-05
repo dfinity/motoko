@@ -5086,6 +5086,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
       E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
@@ -5351,7 +5352,7 @@ module IC = struct
         (fun env -> system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get caller when running locally")
+      E.trap_with env "cannot get caller when running locally"
 
   let method_name env =
     match E.mode env with
@@ -5361,7 +5362,7 @@ module IC = struct
         (fun env -> system_call env "msg_method_name_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
+      E.trap_with env "cannot get method_name when running locally"
 
   let arg_data env =
     match E.mode env with
@@ -5371,7 +5372,14 @@ module IC = struct
         (fun env -> system_call env "msg_arg_data_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
+      E.trap_with env "cannot get arg_data when running locally"
+
+  let deadline env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "msg_deadline"
+    | _ ->
+      E.trap_with env "cannot get deadline when running locally"
 
   let reject env arg_instrs =
     match E.mode env with
@@ -5381,7 +5389,7 @@ module IC = struct
       Blob.as_ptr_len env ^^
       system_call env "msg_reject"
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reject when running locally")
+      E.trap_with env "cannot reject when running locally"
 
   let error_code env =
      Func.share_code0 Func.Always env "error_code" [I32Type] (fun env ->
@@ -12095,7 +12103,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       Serialization.serialize env ts ^^
       IC.reply_with_data env
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reply when running locally")
+      E.trap_with env "cannot reply when running locally"
     end
 
   | ICRejectPrim, [e] ->
@@ -12143,6 +12151,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICMethodNamePrim, [] ->
     SR.Vanilla, IC.method_name env
+
+  | ICReplyDeadlinePrim, [] ->
+    SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
   | ICStableRead ty, [] ->
     (*

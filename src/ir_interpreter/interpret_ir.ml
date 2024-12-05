@@ -462,6 +462,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
+      | ICReplyDeadlinePrim, [] ->
+        k (V.Nat64 Numerics.Nat64.zero)
       | ICStableRead t, [] ->
         let (_, tfs) = T.as_obj t in
         let ve = List.fold_left
