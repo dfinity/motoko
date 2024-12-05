@@ -1,4 +1,4 @@
-actor class Counter () {
+persistent actor class Counter () {
 
   var count = 0;
 
