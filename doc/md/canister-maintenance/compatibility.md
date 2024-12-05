@@ -22,15 +22,25 @@ The following is a simple example of how to declare a stateful counter:
 ```
 
 Importantly, in this example, when the counter is upgraded, its state is lost.
-This is because actor variables are by default `flexible`, meaning they get reinitialized on an upgrade.
+This is because actor variables are by default `transient`, meaning they get reinitialized on an upgrade.
+The above actor is equivalent to using the `transient` declaration:
 
-To fix this, you can declare a stable variable that is retained across upgrades:
+``` motoko no-repl file=../examples/count-v0transient.mo
+```
 
+
+To fix this, you can declare a `stable` variable that is retained across upgrades:
+
+
+``` motoko no-repl file=../examples/count-v1stable.mo
+```
+
+To make `stable` the default for all declarations and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
 
 ``` motoko no-repl file=../examples/count-v1.mo
 ```
 
-If the variable `state` were not declared `stable`, `state` would restart from `0` on upgrade.
+If the variable `state` were not declared `stable`, either explicitly or by applying `persistent` to the `actor` keyword, `state` would restart from `0` on upgrade.
 
 ## Evolving the stable declarations
 
@@ -188,23 +198,23 @@ A common, real-world example of an incompatible upgrade can be found [on the for
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
   };
-  stable var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
+  var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
 };
 ```
 
 to *incompatible* stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var map : [(Nat32, Card)] = [];
+  var map : [(Nat32, Card)] = [];
 };
 ```
 
@@ -239,7 +249,7 @@ To resolve this issue, an [explicit](#explicit-migration) is needed:
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-actor {
+persistent actor {
   type OldCard = {
     title : Text;
   };
@@ -247,9 +257,9 @@ actor {
     title : Text;
     description : Text;
   };
-  
-  stable var map : [(Nat32, OldCard)] = [];
-  stable var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
+
+  var map : [(Nat32, OldCard)] = [];
+  var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
     map,
     func(key, { title }) { (key, { title; description = "<empty>" }) },
   );
@@ -259,12 +269,12 @@ actor {
 4. **After** we have successfully upgraded to this new version, we can upgrade once more to a version, that drops the old `map`.
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var newMap : [(Nat32, Card)] = [];
+  var newMap : [(Nat32, Card)] = [];
 };
 ```
 
