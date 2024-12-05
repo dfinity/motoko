@@ -911,7 +911,9 @@ let rel_list p rel eq xs1 xs2 =
   try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ rel eq t1 t2 =
-  t1 == t2 || SS.mem (t1, t2) !rel || begin
+  (*  Printf.printf "%s rel  %s\n" (!str t1) (!str t2); *)
+  t1 == t2 || SS.mem (t1, t2) !rel ||
+  begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
@@ -934,6 +936,10 @@ let rec rel_typ rel eq t1 t2 =
     true
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
+    (* first clause is a hack to support (some) non-regular recursion *)
+    | Def (_, _), Def (_, _) when
+        Cons.eq con1 con2 && rel_list eq_typ rel eq ts1 ts2 ->
+      true
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
