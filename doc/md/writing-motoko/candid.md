@@ -87,7 +87,7 @@ In this example, we use the imported `call` function to make a dynamic call on t
 import Principal "mo:base/Principal";
 import {call} "mo:base/ExperimentalInternetComputer";
 
-actor This {
+persistent actor This {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";

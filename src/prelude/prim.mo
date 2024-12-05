@@ -304,6 +304,10 @@ func error(message : Text) : Error {
 func errorCode(e : Error) : ErrorCode = ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
 func errorMessage(e : Error) : Text = ((prim "cast" : Error -> (ErrorCode, Text)) e).1;
 
+// Message deadline (best-effort messaging)
+
+func replyDeadline() : Nat64 = (prim "deadline" : () -> Nat64) ();
+
 // Time
 
 func time() : Nat64 = (prim "time" : () -> Nat64)();

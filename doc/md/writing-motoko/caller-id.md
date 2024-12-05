@@ -29,7 +29,7 @@ The calls to the `inc()` function do not change. At each call site, the callerâ€
 To access the caller of an actor class constructor, you use the same syntax on the actor class declaration. For example:
 
 ``` motoko
-shared(msg) actor class Counter(init : Nat) {
+shared(msg) persistent actor class Counter(init : Nat) {
   // ... msg.caller ...
 }
 ```
@@ -61,43 +61,38 @@ Principals support equality, ordering, and hashing, so you can efficiently store
 
 The data type of `Principal` in Motoko is both sharable and stable, meaning you can compare `Principal`s for equality directly.
 
-Below is an example of how you can record and compare principals.
+Below is an example of how you can record principals in a set.
+
+``` motoko file=../examples/RecordPrincipals.mo
+```
+
 
 ```motoko
 import Principal "mo:base/Principal";
-import HashMap "mo:base/HashMap";
-import Hash "mo:base/Hash";
+import OrderedSet "mo:base/OrderedSet";
 import Error "mo:base/Error";
 
-actor {
-    // Initialize a stable variable to store principals
-    private stable var principalEntries : [(Principal, Bool)] = [];
+persistent actor {
 
-    // Create HashMap to store principals
-    private var principals = HashMap.HashMap<Principal, Bool>(
-        10,
-        Principal.equal,
-        Principal.hash
-    );
+    // Create set to store principals
+    transient var principalSet = Set.Make(Principal.compare);
+
+    var principals : OrderedSet.Set<Principal> = principalSet.empty();
 
     // Check if principal is recorded
     public shared query(msg) func isRecorded() : async Bool {
         let caller = msg.caller;
-        switch (principals.get(caller)) {
-            case (?exists) { exists };
-            case null { false };
-        };
+        principleSet.contains(principals, caller);
     };
 
     // Record a new principal
-    public shared(msg) func recordPrincipal() : async Bool {
+    public shared(msg) func recordPrincipal() : async () {
         let caller = msg.caller;
         if (Principal.isAnonymous(caller)) {
             throw Error.reject("Anonymous principal not allowed");
         };
 
-        principals.put(caller, true);
-        true;
+        principals := principalSet.put(principals, caller)
     };
 };
 ```
