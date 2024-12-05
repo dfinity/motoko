@@ -29,7 +29,7 @@ html:
 preview:
 	make -C ../src moc_interpreter.js
 	cp -f ../src/moc_interpreter.js docusaurus/static
-	cd docusaurus; npm install; npm start
+	cd docusaurus; npm install; npm run clear; npm start
 
 
 .PHONY: base
