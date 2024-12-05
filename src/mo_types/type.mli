@@ -221,7 +221,10 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
+
 (* Equivalence and Subtyping *)
+
+exception Undecided (* raised if termination depth exceeded  *)
 
 val eq : typ -> typ -> bool
 val eq_kind : kind -> kind -> bool
