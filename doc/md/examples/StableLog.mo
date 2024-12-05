@@ -4,7 +4,7 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 import StableMemory "mo:base/ExperimentalStableMemory";
 
-actor StableLog {
+persistent actor StableLog {
 
   func ensure(offset : Nat64) {
     let pages = (offset + 65536) >> 16;
@@ -14,7 +14,7 @@ actor StableLog {
     };
   };
 
-  stable var base : Nat64 = 0;
+  var base : Nat64 = 0; // implicitly `stable`
 
   public func log(t : Text) {
     let blob = Text.encodeUtf8(t);

@@ -1,5 +1,38 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Breaking change (minor):
+
+    * Add new keyword `transient` with exactly the same meaning as the old keyword `flexible` (but a more familiar reading).
+
+    * Add keyword `persistent`.
+
+      When used to modify the `actor` keyword in an actor or actor class definition, the keyword declares that the default stability of a
+      `let` or `var` declaration is `stable` (not `flexible` or `transient`).
+
+      For example, a stateful counter can now be declared as:
+
+      ``` motoko
+      persistent actor {
+
+        // counts increments since last upgrade
+        transient var invocations = 0;
+
+        // counts increments since first installation
+        var value = 0; 	// implicitly `stable`
+
+        public func inc() : async () {
+          value += 1;
+          invocations += 1;
+        }
+
+      }
+      ```
+
+      On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
+
+      Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.
 ## 0.13.4 (2024-11-29)
 
 * motoko (`moc`)

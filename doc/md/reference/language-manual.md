@@ -92,9 +92,9 @@ The following keywords are reserved and may not be used as identifiers:
 
 actor and assert async async* await await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in module not null object or label
+from_candid func if ignore import in module not null persistent object or label
 let loop private public query return shared stable switch system throw
-to_candid true try type var while with
+to_candid true transient try type var while with
 ```
 
 ### Identifiers
@@ -415,6 +415,11 @@ The syntax of a declaration is as follows:
 <class-body> ::=         Class body
   = <id>? <obj-body>      Object body, optionally binding <id> to 'this' instance
   <obj-body>              Object body
+
+<sort> ::=
+   persistent? actor
+   module
+   object
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -441,6 +446,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 <stab> ::=                                     field stability (actor only)
   stable
   flexible
+  transient                                      (equivalent to flexible)
 ```
 
 The **visibility** qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
@@ -457,7 +463,10 @@ The **visibility** qualifier `<vis>?` determines the accessibility of every fiel
 
 The **stability** qualifier `<stab>` determines the **upgrade** behavior of actor fields:
 
--   A stability qualifier should appear on `let` and `var` declarations that are actor fields. An absent stability qualifier defaults to `flexible`.
+-   A stability qualifier should appear on `let` and `var` declarations that are actor fields.
+    Within a `persistent` actor or actor class, an absent stability qualifier defaults to `stable`.
+    Within a non-`persistent` actor or actor class, an absent stability qualifier defaults to `flexible` (or `transient`).
+    The keywords `transient` and `flexible` are interchangeable.
 
 -   `<stab>` qualifiers must not appear on fields of objects or modules.
 
@@ -567,7 +576,7 @@ Type expressions are used to specify the types of arguments, constraints on type
 ``` bnf
 <typ> ::=                                     Type expressions
   <path> <type-typ-args>?                       Constructor
-  <sort>? { <typ-field>;* }                     Object
+  <typ-sort>? { <typ-field>;* }                 Object
   { <typ-tag>;* }                               Variant
   { # }                                         Empty variant
   [ var? <typ> ]                                Array
@@ -584,7 +593,8 @@ Type expressions are used to specify the types of arguments, constraints on type
   Error                                         Errors/exceptions
   ( <typ> )                                     Parenthesized type
 
-<sort> ::= (actor | module | object)
+
+<typ-sort> ::= (actor | module | object)
 
 <shared> ::=                                 Shared function type qualifier
   shared <query>?
@@ -785,13 +795,13 @@ Though typically a type identifier, more generally, `<path>` may be a `.`-separa
 
 ### Object types
 
-`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named **type fields**.
+`<typ-sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named **type fields**.
 
 Within an object type, the names of fields must be distinct both by name and hash value.
 
 Object types that differ only in the ordering of the fields are equivalent.
 
-When `<sort>?` is `actor`, all fields have `shared` function type for specifying messages.
+When `<typ-sort>?` is `actor`, all fields have `shared` function type for specifying messages.
 
 ### Variant types
 
@@ -1041,9 +1051,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 -   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `<sort0> { fts0 }`, `U` is an object type `<sort1> { fts1 }` and
+-   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
 
-    -   `<sort0>` == `<sort1>`, and, for all fields,
+    -   `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
 
     -   If field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
@@ -1303,13 +1313,18 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 
 An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
 
+In a `persistent` actor or actor class, all declarations are implicitly `stable` unless explicitly declared otherwise.
+In a non-`persistent` actor or actor class, all declarations are implicitly `transient` (equivalently `flexible`) unless explicitly declared otherwise.
+
 The declaration field has type `T` provided:
 
 -   `<dec>` has type `T`.
 
--   If `<stab>?` is `stable` then `T` must be a stable type (see [stability](#stability)).
+-   If `<stab>?` is `stable`  then `T` must be a stable type (see [stability](#stability)).
 
-Actor fields declared `flexible`, implicitly or explicitly, can have any type, but will not be preserved across upgrades.
+-   If `<stab>?` is absent and the actor or actor class is `persistent`, then `T` must be a stable type (see [stability](#stability)).
+
+Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
 
 Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
@@ -1323,7 +1338,8 @@ Sequences of declaration fields are evaluated in order by evaluating their const
 
     - Every stable identifier declared with type `T` in the retired actor and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
 
-This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor. Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
+Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
 
 #### System fields
 
@@ -1349,8 +1365,11 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 -   `postupgrade`: When declared, is called during an upgrade, immediately after the replacement actor body has initialized its fields, inheriting values of the retired actors' stable variables, and before its first message is processed. Its `<system>` type parameter is implicitly assumed and need not be declared.
 
 :::danger
-Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded. 
+
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable.
+In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.
 Per best practices, using these methods should be avoided if possible.
+
 :::
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures, e.g. caches, that are better represented using non-stable types.
@@ -1454,7 +1473,7 @@ Object patterns support punning for concision. A punned field `<id>` is shorthan
 
 Pattern matching fails if one of the pattern fields fails to match the corresponding field value of the object value. Pattern matching succeeds if every pattern field matches the corresponding named field of the object value. The binding returned by a successful match is the union of the bindings returned by the field matches.
 
-The `<sort>` of the matched object type must be determined by an enclosing type annotation or other contextual type information.
+The `<typ-sort>` of the matched object type must be determined by an enclosing type annotation or other contextual type information.
 
 ### Variant pattern
 
@@ -1640,11 +1659,12 @@ A similar looking definition that recursively instantiates `Seq` with a larger t
 
 Declaration `<sort> <id>? (: <typ>)? =? <obj-body>`, where `<obj-body>` is of the form `{ <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object’s type. The sort imposes restrictions on the types of the public object fields.
+The qualifier `<sort>` (one of `persistent? actor`, `module` or `object`) specifies the `<typ-sort>` of the object’s type (`actor`, `module` or `object`, respectively).
+The sort imposes restrictions on the types of the public object fields.
 
-Let `T = <sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type of the object. Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`. The object declaration has type `T` provided that:
+Let `T = <typ-sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type of the object. Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`. The object declaration has type `T` provided that:
 
-1.  Type `T` is well-formed for sort `sort`, and
+1.  Type `T` is well-formed for sort `<typ-sort>`, and
 
 2.  Under the assumption that `<id> : T`,
 
@@ -1662,7 +1682,7 @@ Note that the first requirement imposes further constraints on the field types o
 
 Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context, i.e. in the body of a non-`<query>` `shared` function, `async` expression or `async*` expression.
 
-Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>`, if present, to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
+Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>`, if present, to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == <typ-sort> { <id0> = v1, …​, <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
@@ -1769,7 +1789,7 @@ The class declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: 
 
 where:
 
--   `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
+-   `<shared-pat>?`, when present, requires `<sort>` == `persistent? actor`, and provides access to the `caller` of an `actor` constructor, and
 
 -   `<typ-args>?` and `<type-typ-params>?` is the sequence of type identifiers bound by `<typ-params>?`, if any, and
 
@@ -1779,13 +1799,13 @@ where:
 
 -   `<id_this>?` is the optional **this** or **self** parameter of `<class-body>`.
 
--   `async?` is present, if only if, `<sort>` == `actor`.
+-   `async?` is present, if only if, `<sort>` == `persistent? actor`.
 
 Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a constructor, unlike a function, cannot be a `query` or `composite query`.
 
-An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
+An absent `<shared-pat>?` defaults to `shared` when `<sort>` = `persistent? actor`.
 
-If `sort` is `actor`, then:
+If `sort` is `persistent? actor`, then:
 
 -   `<typ-args>?` must be absent or empty, such that `actor` classes cannot have type parameters.
 
@@ -1793,7 +1813,7 @@ If `sort` is `actor`, then:
 
 -   `(: <typ>)?`, if present, must be of the form `: async T` for some actor type `T`. Actor instantiation is asynchronous.
 
-If `(: <typ>)` is present, then the type `<async?> <sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`. In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`.
+If `(: <typ>)` is present, then the type `<async?> <typ-sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`. In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`. `<typ-sort>` is just `<sort>` erasing any `persistent?` modifier.
 
 The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
 
