@@ -17,8 +17,8 @@ queue_rules:
       {{ title }} (#{{ number }})
 
       {{ body }}
-
-
+    branch_protection_injection_mode: queue
+  - name: experimental
 pull_request_rules:
   - name: Automatic merge (squash)
     conditions:
@@ -38,7 +38,8 @@ pull_request_rules:
       - label=autoclose
     actions:
       close:
-        message: CI looks good, this dependency bump would not cause problems, hence closing this trial PR.
+        message: CI looks good, this dependency bump would not cause problems, hence
+          closing this trial PR.
       delete_head_branch: {}
   - name: Clean up automerge tags
     conditions:
@@ -78,3 +79,5 @@ pull_request_rules:
       label:
         add:
           - automerge-squash
+merge_queue:
+  max_parallel_checks: 4
