@@ -904,6 +904,8 @@ let str = ref (fun _ -> failwith "")
 
 exception PreEncountered
 
+exception Undecided
+
 module SS = Set.Make (OrdPair)
 
 let max_depth = 10_000
@@ -913,7 +915,7 @@ let rel_list d p rel eq xs1 xs2 =
 
 let rec rel_typ d rel eq t1 t2 =
   let d = d + 1 in
-  if d > max_depth then failwith "subtyping: recursion too deep" else
+  if d > max_depth then raise Undecided else
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with

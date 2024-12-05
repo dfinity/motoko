@@ -334,13 +334,21 @@ let disjoint_union env at code fmt env1 env2 =
 
 
 let sub env at t1 t2 =
-  try T.sub t1 t2  with _ -> error env at "M0XXX" "can't determine subtyping?"
+  try T.sub t1 t2  with T.Undecided ->
+    error env at "M0200" "cannot decide subtyping between type%a\nand%a"
+      display_typ_expand t1
+      display_typ_expand t2
 
 let eq env at t1 t2 =
-  try T.eq t1 t2  with _ -> error env at "M0XXX" "can't determine type equality?"
+  try T.eq t1 t2  with T.Undecided ->
+    error env at "M0200" "cannot decide equality between type%a\nand%a"
+      display_typ_expand t1
+      display_typ_expand t2
+
 
 let eq_kind env at k1 k2 =
-  try T.eq_kind k1 k2  with _ -> error env at "M0XXX" "can't determine type constructor equality?"
+  try T.eq_kind k1 k2 with T.Undecided ->
+    error env at "M0200" "cannot decide type constructor equality"
 
 (* Coverage *)
 
