@@ -8,7 +8,7 @@
 
     * Add keyword `persistent`.
 
-      When used to modify the `actor` keyword in an actor or actor class definition, the keyword declares that the default stability of an
+      When used to modify the `actor` keyword in an actor or actor class definition, the keyword declares that the default stability of a
       `let` or `var` declaration is `stable` (not `flexible` or `transient`).
 
       For example, a stateful counter can now be declared as:
@@ -33,8 +33,6 @@
       On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
 
       Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.
-
-
 ## 0.13.4 (2024-11-29)
 
 * motoko (`moc`)
