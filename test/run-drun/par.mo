@@ -1,9 +1,10 @@
-import { call_raw; debugPrint; principalOfActor } = "mo:⛔";
+import { call_raw; debugPrint; principalOfActor; replyDeadline } = "mo:⛔";
 import Cycles = "cycles/cycles";
 
 actor A {
 
     func foo(next : () -> async ()) : async () {
+        assert 0 : Nat64 == replyDeadline();
         await (with cycles = 3000) next()
     };
 
