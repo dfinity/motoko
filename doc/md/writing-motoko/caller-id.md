@@ -29,7 +29,7 @@ The calls to the `inc()` function do not change. At each call site, the callerâ€
 To access the caller of an actor class constructor, you use the same syntax on the actor class declaration. For example:
 
 ``` motoko
-shared(msg) actor class Counter(init : Nat) {
+shared(msg) persistent actor class Counter(init : Nat) {
   // ... msg.caller ...
 }
 ```
@@ -54,6 +54,47 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 :::
 
+
+## Recording principals
+
 Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.
+
+The data type of `Principal` in Motoko is both sharable and stable, meaning you can compare `Principal`s for equality directly.
+
+Below is an example of how you can record principals in a set.
+
+``` motoko file=../examples/RecordPrincipals.mo
+```
+
+
+```motoko
+import Principal "mo:base/Principal";
+import OrderedSet "mo:base/OrderedSet";
+import Error "mo:base/Error";
+
+persistent actor {
+
+    // Create set to store principals
+    transient var principalSet = Set.Make(Principal.compare);
+
+    var principals : OrderedSet.Set<Principal> = principalSet.empty();
+
+    // Check if principal is recorded
+    public shared query(msg) func isRecorded() : async Bool {
+        let caller = msg.caller;
+        principleSet.contains(principals, caller);
+    };
+
+    // Record a new principal
+    public shared(msg) func recordPrincipal() : async () {
+        let caller = msg.caller;
+        if (Principal.isAnonymous(caller)) {
+            throw Error.reject("Anonymous principal not allowed");
+        };
+
+        principals := principalSet.put(principals, caller)
+    };
+};
+```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

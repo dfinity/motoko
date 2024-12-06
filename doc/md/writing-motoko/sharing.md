@@ -43,19 +43,20 @@ The publisher side of the code stores an array of subscribers. For simplicity, a
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-actor Publisher {
-    var subs: [Subscriber] = [];
+persistent actor Publisher {
 
-    public func subscribe(sub: Subscriber) {
-        subs := Array.append<Subscriber>(subs, [sub]);
-    };
+  var subs : [Subscriber] = [];
 
-    public func publish() {
-        for (sub in subs.vals()) {
-          sub.notify();
-        };
+  public func subscribe(sub : Subscriber) {
+    subs := Array.append<Subscriber>(subs, [sub]);
+  };
+
+  public func publish() {
+    for (sub in subs.vals()) {
+      sub.notify();
     };
-};
+  };
+}
 ```
 
 Later, when some unspecified external agent invokes the `publish` function, all of the subscribers receive the `notify` message as defined in the `Subscriber` type given above.
@@ -73,21 +74,25 @@ In the simplest case, the subscriber actor has the following methods:
 The following code illustrates implementing these methods:
 
 ``` motoko no-repl
-actor Subscriber {
-  var count: Nat = 0;
+persistent actor Subscriber {
+
+  var count : Nat = 0;
+
   public func init() {
     Publisher.subscribe(Subscriber);
   };
+
   public func notify() {
     count += 1;
   };
+
   public func get() : async Nat {
     count
   };
 }
 ```
 
-The actor assumes, but does not enforce, that its `init` function is only ever called once. In the `init` function, the `Subscriber` actor passes a reference to itself of type `actor { notify : () → () };`.
+The actor assumes, but does not enforce, that its `init` function is only ever called once. In the `init` function, the `Subscriber` actor passes a reference to itself of type `actor { notify : () -> () };`.
 
 If called more than once, the actor will subscribe itself multiple times and will receive multiple duplicate notifications from the publisher. This fragility is the consequence of the basic publisher-subscriber design shown above. A more advanced publisher actor could check for duplicate subscriber actors and ignore them.
 
@@ -114,7 +119,7 @@ Motoko lets you omit this keyword for public actor methods since implicitly, any
 Using the `shared` function type, we can extend the example above to be more flexible. For example:
 
 ``` motoko
-type SubscribeMessage = { callback: shared () -> (); };
+type SubscribeMessage = { callback : shared () -> (); };
 ```
 
 This type differs from the original in that it describes a message record type with a single field called `callback`. The original type first shown above describes an actor type with a single method called `notify`:
@@ -128,18 +133,22 @@ Notably, the `actor` keyword means that this latter type is not an ordinary reco
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
 ``` motoko no-repl
-actor Subscriber {
-  var count: Nat = 0;
+persistent actor Subscriber {
+
+  var count : Nat = 0;
+
   public func init() {
     Publisher.subscribe({callback = incr;});
   };
+
   public func incr() {
     count += 1;
   };
+
   public query func get(): async Nat {
     count
   };
-};
+}
 ```
 
 Compared to the original version, the only lines that change are those that rename `notify` to `incr`, and form the new `subscribe` message payload using the expression `{callback = incr}`.
@@ -148,17 +157,21 @@ Likewise, we can update the publisher to have a matching interface:
 
 ``` motoko no-repl
 import Array "mo:base/Array";
-actor Publisher {
-  var subs: [SubscribeMessage] = [];
-  public func subscribe(sub: SubscribeMessage) {
+
+persistent actor Publisher {
+
+  var subs : [SubscribeMessage] = [];
+
+  public func subscribe(sub : SubscribeMessage) {
     subs := Array.append<SubscribeMessage>(subs, [sub]);
   };
+
   public func publish() {
     for (sub in subs.vals()) {
       sub.callback();
     };
   };
-};
+}
 ```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

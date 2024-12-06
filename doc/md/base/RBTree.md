@@ -26,18 +26,19 @@ for (entry in tree.entries()) {
 
 Performance:
 * Runtime: `O(log(n))` worst case cost per insertion, removal, and retrieval operation.
-* Space: `O(n)` for storing the entire tree.
+* Heap space: `O(n)` for storing the entire tree.
+* Stack space: `O(log(n)) for storing the entire tree.
 `n` denotes the number of key-value entries (i.e. nodes) stored in the tree.
 
 Note:
-* Tree operations, such as retrieval, insertion, and removal create `O(log(n))` temporary objects that become garbage.
+* Tree insertion, replacement, and removal produce `O(log(n))` garbage objects.
 
 Credits:
 
 The core of this implementation is derived from:
 
 * Ken Friis Larsen's [RedBlackMap.sml](https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml), which itself is based on:
-* Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
+* Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](https://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
 
 ## Type `Color`
 ``` motoko no-repl
@@ -80,7 +81,8 @@ let tree = RBTree.RBTree<Nat, Text>(Nat.compare); // Create a map of `Nat` to `T
 
 Costs of instantiation (only empty tree):
 Runtime: `O(1)`.
-Space: `O(1)`.
+Heap space: `O(1)`.
+Stack space: `O(1)`.
 
 ### Function `share`
 ``` motoko no-repl
@@ -104,7 +106,8 @@ Useful for storing the state of a tree object as a stable variable, determining 
 i.e. passing it in async arguments or async results.
 
 Runtime: `O(1)`.
-Space: `O(1)`.
+Heap space: `O(1)`.
+Stack space: `O(1)`.
 
 
 ### Function `unshare`
@@ -128,7 +131,8 @@ Iter.toArray(tree.entries()) // => [(1, "one")]
 Useful for restoring the state of a tree object from stable data, saved, for example, in a stable variable.
 
 Runtime: `O(1)`.
-Space: `O(1)`.
+Heap space: `O(1)`.
+Stack space: `O(1)`.
 
 
 ### Function `get`
@@ -149,11 +153,10 @@ tree.get(1) // => ?"one"
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)`.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree and
 assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
 
 
 ### Function `replace`
@@ -179,11 +182,12 @@ Iter.toArray(tree.entries()) // => [(1, "new one"), (2, "two")]
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree and
 assuming that the `compare` function implements an `O(1)` comparison.
 
-Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
+Note: Creates `O(log(n))` garbage objects.
 
 
 ### Function `put`
@@ -204,11 +208,12 @@ Iter.toArray(tree.entries()) // now contains three entries
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree and
 assuming that the `compare` function implements an `O(1)` comparison.
 
-Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
+Note: Creates `O(log(n))` garbage objects.
 
 
 ### Function `delete`
@@ -232,7 +237,8 @@ Iter.toArray(tree.entries()) // => [(2, "two")].
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree and
 assuming that the `compare` function implements an `O(1)` comparison.
 
@@ -259,11 +265,12 @@ Iter.toArray(tree.entries()) // => [(2, "two")].
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree and
 assuming that the `compare` function implements an `O(1)` comparison.
 
-Note: Creates `O(log(n))` temporary objects that will be collected as garbage.
+Note: Creates `O(log(n))` garbage objects.
 
 
 ### Function `entries`
@@ -293,7 +300,8 @@ for (entry in tree.entries()) {
 
 Cost of iteration over all elements:
 Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
+Heap space: `O(log(n))` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree.
 
 Note: Full tree iteration creates `O(n)` temporary objects that will be collected as garbage.
@@ -327,7 +335,8 @@ for (entry in tree.entriesRev()) {
 
 Cost of iteration over all elements:
 Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
+Heap space: `O(log(n))` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree.
 
 Note: Full tree iteration creates `O(n)` temporary objects that will be collected as garbage.
@@ -362,7 +371,8 @@ for (entry in RBTree.iter(tree.share(), #bwd)) { // backward iteration
 
 Cost of iteration over all elements:
 Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
+Heap space: `O(log(n))` retained memory plus garbage, see the note below.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree.
 
 Note: Full tree iteration creates `O(n)` temporary objects that will be collected as garbage.
@@ -388,7 +398,6 @@ RBTree.size(tree.share()) // 3 entries
 ```
 
 Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
+Heap space: `O(1)`.
+Stack space: `O(log(n))`.
 where `n` denotes the number of key-value entries stored in the tree.
-
-Note: Creates `O(log(n))` temporary objects that will be collected as garbage.

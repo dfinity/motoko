@@ -63,7 +63,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     *todo_addr = NO_OBJECT;
 
     // Initialize position field
-    array.set(ITER_POS_IDX, Value::from_scalar(0), mem);
+    array.initialize(ITER_POS_IDX, Value::from_scalar(0), mem);
 
     // Initialize blob field, no pre-update barrier, but post-update barrier.
     array.initialize(

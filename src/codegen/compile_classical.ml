@@ -1134,7 +1134,6 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
@@ -1237,17 +1236,17 @@ module RTS = struct
     E.add_func_import env "rts" "blob_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "blob_iter_next" [I32Type] [I32Type];
-    E.add_func_import env "rts" "pow" [F64Type; F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "sin" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "cos" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "tan" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "asin" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "acos" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "atan" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "atan2" [F64Type; F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "exp" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "log" [F64Type] [F64Type]; (* musl *)
-    E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type]; (* remainder, musl *)
+    E.add_func_import env "rts" "pow" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "sin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "cos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "tan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "asin" [F64Type] [F64Type];
+    E.add_func_import env "rts" "acos" [F64Type] [F64Type];
+    E.add_func_import env "rts" "atan" [F64Type] [F64Type];
+    E.add_func_import env "rts" "atan2" [F64Type; F64Type] [F64Type];
+    E.add_func_import env "rts" "exp" [F64Type] [F64Type];
+    E.add_func_import env "rts" "log" [F64Type] [F64Type];
+    E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type];
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
@@ -1413,7 +1412,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
+  let memcpy env = G.i MemoryCopy
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
 
@@ -2544,7 +2543,8 @@ module Closure = struct
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (funptr_field env) ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr ty)) ^^
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
@@ -5086,6 +5086,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
       E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
@@ -5351,7 +5352,7 @@ module IC = struct
         (fun env -> system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get caller when running locally")
+      E.trap_with env "cannot get caller when running locally"
 
   let method_name env =
     match E.mode env with
@@ -5361,7 +5362,7 @@ module IC = struct
         (fun env -> system_call env "msg_method_name_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
+      E.trap_with env "cannot get method_name when running locally"
 
   let arg_data env =
     match E.mode env with
@@ -5371,7 +5372,14 @@ module IC = struct
         (fun env -> system_call env "msg_arg_data_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
+      E.trap_with env "cannot get arg_data when running locally"
+
+  let deadline env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "msg_deadline"
+    | _ ->
+      E.trap_with env "cannot get deadline when running locally"
 
   let reject env arg_instrs =
     match E.mode env with
@@ -5381,7 +5389,7 @@ module IC = struct
       Blob.as_ptr_len env ^^
       system_call env "msg_reject"
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reject when running locally")
+      E.trap_with env "cannot reject when running locally"
 
   let error_code env =
      Func.share_code0 Func.Always env "error_code" [I32Type] (fun env ->
@@ -10554,7 +10562,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
           end
           get_res)
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
-  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
+  | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod"
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
   | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
@@ -10703,7 +10711,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       env "pow" BigNum.compile_unsigned_pow
       (powInt64_shortcut (Word64.compile_unsigned_pow env))
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
-  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow" (* musl *)
+  | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow"
   | Type.(Prim (Nat64|Int64)),                AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
   | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32)),
                                               AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
@@ -11495,48 +11503,48 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "fsin", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "sin" (* musl *)
+    E.call_import env "rts" "sin"
 
   | OtherPrim "fcos", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "cos" (* musl *)
+    E.call_import env "rts" "cos"
 
   | OtherPrim "ftan", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "tan" (* musl *)
+    E.call_import env "rts" "tan"
 
   | OtherPrim "fasin", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "asin" (* musl *)
+    E.call_import env "rts" "asin"
 
   | OtherPrim "facos", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "acos" (* musl *)
+    E.call_import env "rts" "acos"
 
   | OtherPrim "fatan", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "atan" (* musl *)
+    E.call_import env "rts" "atan"
 
   | OtherPrim "fatan2", [y; x] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 y ^^
     compile_exp_as env ae SR.UnboxedFloat64 x ^^
-    E.call_import env "rts" "atan2" (* musl *)
+    E.call_import env "rts" "atan2"
 
   | OtherPrim "fexp", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "exp" (* musl *)
+    E.call_import env "rts" "exp"
 
   | OtherPrim "flog", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    E.call_import env "rts" "log" (* musl *)
+    E.call_import env "rts" "log"
 
   (* Other prims, nullary *)
 
@@ -12095,7 +12103,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       Serialization.serialize env ts ^^
       IC.reply_with_data env
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reply when running locally")
+      E.trap_with env "cannot reply when running locally"
     end
 
   | ICRejectPrim, [e] ->
@@ -12143,6 +12151,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICMethodNamePrim, [] ->
     SR.Vanilla, IC.method_name env
+
+  | ICReplyDeadlinePrim, [] ->
+    SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
   | ICStableRead ty, [] ->
     (*
@@ -13124,7 +13135,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let emodule =
     let open Wasm_exts.CustomModule in
     { module_;
-      dylink = None;
+      dylink0 = [];
       name = { empty_name_section with function_names =
                  List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
                locals_names =
