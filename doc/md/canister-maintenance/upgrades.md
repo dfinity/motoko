@@ -14,27 +14,44 @@ This is substantially different to other languages supported on the IC, which us
 
 In an actor, you can configure which part of the program is considered to be persistent, i.e. survives upgrades, and which part are ephemeral, i.e. are reset on upgrades.
 
-More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `flexible`. If you don’t provide a modifier, the variable is assumed to be `flexible` by default.
+More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `transient`. If you don’t provide a modifier, the variable is assumed to be `transient` by default.
+
 
 The semantics of the modifiers is as follows:
 * `stable` means that all values directly or indirectly reachable from that stable actor variable are considered persistent and automatically retained across upgrades. This is the primary choice for most of the program's state.
-* `flexible` means that the variable is re-initialized on upgrade, such that the values referenced by this flexible variable can be discarded, unless the values are transitively reachable by other variables that are stable. `flexible` is only used for temporal state or references to high-order types, such as local function references, see [stable types](#stable-types).
+* `transient` means that the variable is re-initialized on upgrade, such that the values referenced by this transient variable can be discarded, unless the values are transitively reachable by other variables that are stable. `transient` is only used for temporary state or references to high-order types, such as local function references, see [stable types](#stable-types).
+
+:::note
+
+Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` instead of `transient`. Both keywords are accepted interchangeably but the legacy `flexible` keyword may be deprecated in the future.
+
+:::note
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
 ``` motoko file=../examples/StableCounter.mo
 ```
 
+Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
+Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.
+
+Since Motoko v0.13.5, the recommended way to declare `StableCounter` above is:
+
+``` motoko file=../examples/PersistentCounter.mo
+```
+
 :::note
 
-You can only use the `stable` or `flexible` modifier on `let` and `var` declarations that are **actor fields**. You cannot use these modifiers anywhere else in your program.
+You can only use the `stable`, `transient` (or legacy `flexible`) modifier on `let` and `var` declarations that are **actor fields**. You cannot use these modifiers anywhere else in your program.
 
 :::
 
-When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
+
+When you first compile and deploy a canister, all transient and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining transient and newly-added stable variables are initialized in sequence.
 
 :::danger
-Do not forget to declare variables `stable` if they should survive canister upgrades as the default is `flexible` if no modifier is declared.
+Do not forget to declare variables `stable` if they should survive canister upgrades as the default is `transient` if no modifier is declared.
+A simple precaution is declare the entire actor or actor class `persistent`.
 :::
 
 ## Persistence modes
@@ -67,30 +84,14 @@ For variables that do not have a stable type, there are two options for making t
 Unlike stable data structures in the Rust CDK, these modules do not use stable memory but rely on orthogonal persistence. The adjective "stable" only denotes a stable type in Motoko.
 :::
 
-2. Extract the state in a stable type, and wrap it in the non-stable type. 
+2. Extract the state in a stable type, and wrap it in the non-stable type.
 
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
-```motoko no-repl
-actor {
-  type TemperatureSeries = [Float];
 
-  class Weather(temperatures : TemperatureSeries) {
-    public func averageTemperature() : Float {
-      var sum = 0.0;
-      var count = 0.0;
-      for (value in temperatures.vals()) {
-        sum += value;
-        count += 1;
-      };
-      return sum / count;
-    };
-  };
-
-  stable var temperatures : TemperatureSeries = [30.0, 31.5, 29.2];
-  flexible var weather = Weather(temperatures);
-};
+``` motoko no-repl file=../examples/WeatherActor.mo
 ```
+
 
 3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
 
@@ -121,7 +122,7 @@ A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2
 - `<stab-sig2>` does not contain a stable field `<id>`.
 - `<stab-sig>` has a matching stable field `<id> : U` with `T <: U`.
 
-Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields. 
+Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields.
 
 `<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version.
 
@@ -142,7 +143,7 @@ When upgrading a canister, it is important to verify that the upgrade can procee
 -   Breaking clients due to a Candid interface change.
 
 With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations during upgrade attempt.
-Moreover, `dfx` checks the two conditions before attempting then upgrade and warns users correspondingly.
+Moreover, `dfx` checks the two conditions before attempting the upgrade and warns users correspondingly.
 
 A Motoko canister upgrade is safe provided:
 

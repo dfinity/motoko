@@ -229,6 +229,7 @@ let prim trap =
      | "rts_upgrade_instructions") ->
         fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
+  | "deadline" -> fun _ v k -> as_unit v; k (Value.Nat64 Numerics.Nat64.zero)
   | "idlHash" -> fun _ v k ->
     let s = as_text v in
     k (Nat32 (Nat32.wrapping_of_big_int (Big_int.big_int_of_int32 (Lib.Uint32.to_int32 (Idllib.IdlHash.idl_hash s)))))

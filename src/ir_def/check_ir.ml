@@ -633,6 +633,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | ICMethodNamePrim, [] ->
       T.text <: t
+    | ICReplyDeadlinePrim, [] ->
+      T.nat64 <: t
     | ICStableRead t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";

@@ -176,6 +176,7 @@ and prim =
   | ICCallPrim of exp option
   | ICCallRawPrim
   | ICMethodNamePrim
+  | ICReplyDeadlinePrim
   | ICArgDataPrim
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
@@ -323,7 +324,8 @@ let map_prim t_typ t_id t_exp p =
   | ICRejectPrim
   | ICCallerPrim
   | ICCallRawPrim
-  | ICMethodNamePrim -> p
+  | ICMethodNamePrim
+  | ICReplyDeadlinePrim -> p
   | ICCallPrim setup -> ICCallPrim (Option.map t_exp setup)
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)

@@ -7,9 +7,14 @@
     X
     X SEP <list(X, SEP)>
 
-<obj_sort> ::= 
+<typ_obj_sort> ::= 
     'object'
     'actor'
+    'module'
+
+<obj_sort> ::= 
+    'object'
+    'persistent'? 'actor'
     'module'
 
 <query> ::= 
@@ -48,7 +53,7 @@
     <typ_un>
     'async' <typ_pre>
     'async*' <typ_pre>
-    <obj_sort> <typ_obj>
+    <typ_obj_sort> <typ_obj>
 
 <typ_nobin> ::= 
     <typ_pre>
@@ -268,6 +273,7 @@
     <empty>
     'flexible'
     'stable'
+    'transient'
 
 <pat_plain> ::= 
     '_'

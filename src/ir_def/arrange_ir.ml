@@ -121,6 +121,7 @@ and prim = function
   | ICCallPrim e      -> "ICCallPrim" $$ Option.(map exp e |> to_list)
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
+  | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
