@@ -2567,13 +2567,18 @@ and validate_parenthetical env typ_opt = function
      let attrs = infer_exp env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
      if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
-     let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles") attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
      if unrecognised <> [] then warn env par.at "M0204" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
      let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
      if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
        local_error env par.at "M0201"
          "expected Nat type for attribute cycles, but it has type%a"
-         display_typ_expand (List.hd cyc).T.typ
+         display_typ_expand (List.hd cyc).T.typ;
+     let timeout = List.(filter (fun {T.lab; _} -> lab = "timeout") attrs_flds) in
+     if timeout <> [] && not T.(sub (List.hd timeout).typ nat) then
+       local_error env par.at "M0205"
+         "expected Nat32 type for attribute timeout, but it has type%a"
+         display_typ_expand (List.hd timeout).T.typ
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
