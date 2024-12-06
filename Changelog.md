@@ -44,6 +44,8 @@
 
   * Added `Text.fromArray/fromVarArray` functions (dfinity/motoko-base#674).
 
+  * Added `replyDeadline` to `ExperimentalInternetComputer` (dfinity/motoko-base⁠#677).
+
 ## 0.13.4 (2024-11-29)
 
 * motoko (`moc`)
