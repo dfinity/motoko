@@ -44,7 +44,7 @@ Before you start developing Motoko, verify the following:
 
 - [x] You have a command line interface (CLI) window open. This window is also referred to as the 'terminal' window.
 
-- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](/docs/current/developer-docs/getting-started/install/) page.
+- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](/docs/current/developer-docs/getting-started/install) page.
 
 - [x] You have a code editor installed. The [VS Code IDE](https://code.visualstudio.com/download) (with the [Motoko extension](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko)) is a popular choice.
 
@@ -105,13 +105,13 @@ DFX_MOC_PATH="$(vessel bin)/moc" dfx deploy
 To specify a custom version of the Motoko base library to be used with `dfx`, you can use the package manager `mops` with the following command:
 
 ```
-mops add base@<VERSION> && mops install
+mops add base@<VERSION>
 ```
 
 For example, to use base library version `0.9.0`, use the command:
 
 ```
-mops add base@0.9.0 && mops install
+mops add base@0.9.0
 ```
 
 ### Specifying a custom version of `dfx`

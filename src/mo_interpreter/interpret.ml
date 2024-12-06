@@ -83,6 +83,15 @@ let find id env =
     let dom = V.Env.keys env in
     trap no_region "unbound identifier %s in domain %s" id (String.concat " " dom)
 
+let lookup_actor env at aid id =
+  match V.Env.find_opt aid !(env.actor_env) with
+  | None -> trap at "Unknown actor \"%s\"" aid
+  | Some actor_value ->
+     let fs = V.as_obj actor_value in
+     match V.Env.find_opt id fs with
+     | None -> trap at "Actor \"%s\" has no method \"%s\"" aid id
+     | Some field_value -> field_value
+
 (* Tracing *)
 
 let trace_depth = ref 0
@@ -482,8 +491,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, _, dec_fields) ->
-    interpret_obj env obj_sort.it dec_fields k
+  | ObjBlockE (obj_sort, (self_id_opt, _), dec_fields) ->
+    interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
     let open V.Env in
@@ -503,21 +512,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
+  | DotE (exp1, id) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+    interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
   | DotE (exp1, id) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
       | V.Obj fs ->
         k (find id.it fs)
-      | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
-        begin match V.Env.find_opt aid !(env.actor_env) with
-        (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unknown actor \"%s\"" aid
-        | Some actor_value ->
-          let fs = V.as_obj actor_value in
-          match V.Env.find_opt id.it fs with
-          | None -> trap exp.at "Actor \"%s\" has no method \"%s\"" aid id.it
-          | Some field_value -> k field_value
-        end
       | V.Array vs ->
         let f = match id.it with
           | "size" -> array_size
@@ -572,6 +573,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     in k v'
   | CallE (exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
+       let v1 = begin match v1 with
+         | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
+         | _ -> v1
+        end in
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
         check_call_conv exp1 call_conv;
@@ -782,6 +787,9 @@ and declare_pat_fields pfs ve : val_env =
     let ve' = declare_pat pf.it.pat in
     declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
+and declare_defined_id id v =
+  V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
+
 and define_id env id v =
   define_id' env id.it v
 
@@ -797,19 +805,20 @@ and define_pat env pat v =
      false
 
 and match_lit lit v : bool =
+  let open Numerics in
   match !lit, v with
   | NullLit, V.Null -> true
   | BoolLit b, V.Bool b' -> b = b'
-  | NatLit n, V.Int n' -> Numerics.Int.eq n n'
-  | Nat8Lit n, V.Nat8 n' -> Numerics.Nat8.eq n n'
-  | Nat16Lit n, V.Nat16 n' -> Numerics.Nat16.eq n n'
-  | Nat32Lit n, V.Nat32 n' -> Numerics.Nat32.eq n n'
-  | Nat64Lit n, V.Nat64 n' -> Numerics.Nat64.eq n n'
-  | IntLit i, V.Int i' -> Numerics.Int.eq i i'
-  | Int8Lit i, V.Int8 i' -> Numerics.Int_8.eq i i'
-  | Int16Lit i, V.Int16 i' -> Numerics.Int_16.eq i i'
-  | Int32Lit i, V.Int32 i' -> Numerics.Int_32.eq i i'
-  | Int64Lit i, V.Int64 i' -> Numerics.Int_64.eq i i'
+  | NatLit n, V.Int n' -> Int.eq n n'
+  | Nat8Lit n, V.Nat8 n' -> Nat8.eq n n'
+  | Nat16Lit n, V.Nat16 n' -> Nat16.eq n n'
+  | Nat32Lit n, V.Nat32 n' -> Nat32.eq n n'
+  | Nat64Lit n, V.Nat64 n' -> Nat64.eq n n'
+  | IntLit i, V.Int i' -> Int.eq i i'
+  | Int8Lit i, V.Int8 i' -> Int_8.eq i i'
+  | Int16Lit i, V.Int16 i' -> Int_16.eq i i'
+  | Int32Lit i, V.Int32 i' -> Int_32.eq i i'
+  | Int64Lit i, V.Int64 i' -> Int_64.eq i i'
   | FloatLit z, V.Float z' -> z = z'
   | CharLit c, V.Char c' -> c = c'
   | TextLit u, V.Text u' -> u = u'
@@ -885,16 +894,21 @@ and match_shared_pat env shared_pat c =
 
 (* Objects *)
 
-and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
+and interpret_obj env obj_sort self_id dec_fields (k : V.value V.cont) =
   match obj_sort with
   | T.Actor ->
      let self = V.fresh_id() in
+     let self' = V.Blob self in
+     (* Define self_id eagerly *)
+     let env' = match self_id with
+     | Some id -> adjoin_vals env (declare_defined_id id self')
+     | None -> env in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-     let env' = adjoin_vals { env with self = self } ve_in in
-     interpret_dec_fields env' dec_fields ve_ex
+     let env'' = adjoin_vals { env' with self } ve_in in
+     interpret_dec_fields env'' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
-          k (V.Blob self)))
+          k self'))
   | _ ->
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
      let env' = adjoin_vals env ve_in in
@@ -966,7 +980,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
-        interpret_obj env'' obj_sort.it dec_fields (fun v' ->
+        interpret_obj env'' obj_sort.it None dec_fields (fun v' ->
           define_id env'' id' v';
           k' v')
       else
@@ -978,9 +992,7 @@ and interpret_dec env dec (k : V.value V.cont) =
               rets = Some k'';
               throws = Some r }
             in
-            interpret_obj env''' obj_sort.it dec_fields (fun v' ->
-              define_id env''' id' v';
-              k'' v'))
+            interpret_obj env''' obj_sort.it (Some id') dec_fields k'')
           k')
     in
     let v = V.Func (CC.call_conv_of_typ dec.note.note_typ, f) in

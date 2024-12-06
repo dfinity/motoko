@@ -144,7 +144,7 @@ let error_codes : (string * string option) list =
     "M0138", None; (* Actor classes are not supported *)
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
-    "M0141", None; (* Forbidden declaration in program *)
+    "M0141", Some([%blob "lang_utils/error_codes/M0141.md"]); (* An actor or actor class must be the only non-imported declaration in a program *)
     "M0142", None; (* An imported library should be a module or named actor class *)
     "M0143", None; (* Imported actor class cannot be anonymous *)
     "M0144", None; (* Expected a module or actor class *)
@@ -203,4 +203,5 @@ let error_codes : (string * string option) list =
     "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
+    "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]) (* Cannot determine subtyping or equality *)
   ]

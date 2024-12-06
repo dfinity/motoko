@@ -1,5 +1,5 @@
-actor Counter_v3 {
-  stable var state : Int = 0;
+persistent actor Counter_v3 {
+  var state : Int = 0; // implicitly `stable`
 
   public func increment() : async () {
     state += 1;

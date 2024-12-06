@@ -84,7 +84,7 @@ end
 
 module Seq :
 sig
-  val for_all : ('a -> bool) -> 'a Seq.t -> bool
+  val for_all : ('a -> bool) -> 'a Seq.t -> bool (* 4.14 *)
 end
 
 module Option :
@@ -160,6 +160,7 @@ sig
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
+  val levenshtein_distance : string -> string -> int
 end
 
 module CRC :

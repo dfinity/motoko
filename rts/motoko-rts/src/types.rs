@@ -709,13 +709,6 @@ impl Array {
         write_with_barrier(mem, slot_addr, value);
     }
 
-    /// Write a scalar value to an array element.
-    /// No need for a write barrier.
-    pub unsafe fn set_scalar(self: *mut Self, idx: usize, value: Value) {
-        debug_assert!(value.is_scalar());
-        self.set_raw(idx, value);
-    }
-
     /// Note: Only directly used by graph destabilization. No write barrier is applied.
     pub unsafe fn set_raw(self: *mut Self, idx: usize, value: Value) {
         let slot_addr = self.element_address(idx);

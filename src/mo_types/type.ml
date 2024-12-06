@@ -904,13 +904,18 @@ let str = ref (fun _ -> failwith "")
 
 exception PreEncountered
 
+exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-let rel_list p rel eq xs1 xs2 =
-  try List.for_all2 (p rel eq) xs1 xs2 with Invalid_argument _ -> false
+let max_depth = 10_000
 
-let rec rel_typ rel eq t1 t2 =
+let rel_list d p rel eq xs1 xs2 =
+  try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
+
+let rec rel_typ d rel eq t1 t2 =
+  let d = d + 1 in
+  if d > max_depth then raise Undecided else
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
@@ -918,9 +923,9 @@ let rec rel_typ rel eq t1 t2 =
   | Pre, _ | _, Pre ->
     raise PreEncountered
   | Mut t1', Mut t2' ->
-    eq_typ rel eq t1' t2'
+    eq_typ d rel eq t1' t2'
   | Typ c1, Typ c2 ->
-    eq_con eq c1 c2
+    eq_con d eq c1 c2
   | Mut _, _ | _, Mut _
   | Typ _, _ | _, Typ _ ->
     false
@@ -935,28 +940,28 @@ let rec rel_typ rel eq t1 t2 =
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
+      rel_typ d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      rel_list eq_typ rel eq ts1 ts2
+      rel_list d eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ d rel eq (open_ ts1 t) t2
     | _ ->
       false
     )
   | Con (con1, ts1), t2 ->
     (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ rel eq (open_ ts1 t) t2
+      rel_typ d rel eq (open_ ts1 t) t2
     | _ -> false
     )
   | t1, Con (con2, ts2) ->
     (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ rel eq t1 (open_ ts2 t)
+      rel_typ d rel eq t1 (open_ ts2 t)
     | _ -> false
     )
   | Prim p1, Prim p2 when p1 = p2 ->
@@ -965,33 +970,33 @@ let rec rel_typ rel eq t1 t2 =
     p1 = Nat && p2 = Int
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     s1 = s2 &&
-    rel_fields rel eq tfs1 tfs2
+    rel_fields d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ rel eq t1' t2'
+    rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
-    rel_typ rel eq t1' t2'
+    rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
-    rel_tags rel eq fs1 fs2
+    rel_tags d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list rel_typ rel eq ts1 ts2
+    rel_list d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     s1 = s2 && c1 = c2 &&
-    (match rel_binds eq eq tbs1 tbs2 with
+    (match rel_binds d eq eq tbs1 tbs2 with
     | Some ts ->
-      rel_list rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-      rel_list rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+      rel_list d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+      rel_list d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
     | None -> false
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     s1 = s2 &&
-    eq_typ rel eq t11 t21 &&
-    rel_typ rel eq t12 t22
+    eq_typ d rel eq t11 t21 &&
+    rel_typ d rel eq t12 t22
   | _, _ -> false
   end
 
-and rel_fields rel eq tfs1 tfs2 =
+and rel_fields d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1001,15 +1006,15 @@ and rel_fields rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ rel eq tf1.typ tf2.typ &&
-      rel_fields rel eq tfs1' tfs2'
+      rel_typ d rel eq tf1.typ tf2.typ &&
+      rel_fields d rel eq tfs1' tfs2'
     | -1 when rel != eq ->
-      rel_fields rel eq tfs1' tfs2
+      rel_fields d rel eq tfs1' tfs2
     | _ -> false
     )
   | _, _ -> false
 
-and rel_tags rel eq tfs1 tfs2 =
+and rel_tags d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1019,46 +1024,46 @@ and rel_tags rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ rel eq tf1.typ tf2.typ &&
-      rel_tags rel eq tfs1' tfs2'
+      rel_typ d rel eq tf1.typ tf2.typ &&
+      rel_tags d rel eq tfs1' tfs2'
     | +1 when rel != eq ->
-      rel_tags rel eq tfs1 tfs2'
+      rel_tags d rel eq tfs1 tfs2'
     | _ -> false
     )
   | _, _ -> false
 
-and rel_binds rel eq tbs1 tbs2 =
+and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
-  if rel_list (rel_bind ts) rel eq tbs2 tbs1
+  if rel_list d (rel_bind ts) rel eq tbs2 tbs1
   then Some ts
   else None
 
-and rel_bind ts rel eq tb1 tb2 =
+and rel_bind ts d rel eq tb1 tb2 =
   tb1.sort == tb2.sort &&
-  rel_typ rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
+  rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-and eq_typ rel eq t1 t2 = rel_typ eq eq t1 t2
+and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ eq eq t1 t2
+  let eq = ref SS.empty in eq_typ 0 eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ (ref SS.empty) (ref SS.empty) t1 t2
+  rel_typ 0 (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds eq eq tbs1 tbs2 <> None
+  let eq = ref SS.empty in rel_binds 0 eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    (match rel_binds eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds 0 eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ 0 eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
 
-and eq_con eq c1 c2 =
+and eq_con d eq c1 c2 =
   match Cons.kind c1, Cons.kind c2 with
   | (Def (tbs1, t1)) as k1, (Def (tbs2, t2) as k2) ->
     eq_kind' eq k1 k2
@@ -1066,8 +1071,8 @@ and eq_con eq c1 c2 =
     Cons.eq c1 c2
   | Def (tbs1, t1), Abs (tbs2, t2)
   | Abs (tbs2, t2), Def (tbs1, t1) ->
-    (match rel_binds eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ eq eq (open_ ts t1) (Con (c2, ts))
+    (match rel_binds d eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ d eq eq (open_ ts t1) (Con (c2, ts))
     | None -> false
     )
 
@@ -1379,7 +1384,7 @@ let motoko_runtime_information_type =
 
 let motoko_runtime_information_fld =
   { lab = "__motoko_runtime_information";
-    typ = Func(Shared Query, Promises, [scope_bind], [], 
+    typ = Func(Shared Query, Promises, [scope_bind], [],
       [ motoko_runtime_information_type ]);
     src = empty_src;
   }

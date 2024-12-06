@@ -2,11 +2,11 @@ import Text "mo:base/Text";
 import Map "mo:base/HashMap";
 import Iter "mo:base/Iter";
 
-actor Registry {
+persistent actor Registry {
 
-  stable var entries : [(Text, Nat)] = [];
+  var entries : [(Text, Nat)] = []; // implicitly `stable`
 
-  let map = Map.fromIter<Text,Nat>(
+  transient let map = Map.fromIter<Text,Nat>(
     entries.vals(), 10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {
@@ -14,7 +14,7 @@ actor Registry {
       case null  {
         map.put(name, map.size());
       };
-      case (?id) { };
+      case (?_) { };
     }
   };
 
@@ -22,10 +22,12 @@ actor Registry {
     map.get(name);
   };
 
+// Using preupgrade is discouraged and should be avoided if possible.
   system func preupgrade() {
     entries := Iter.toArray(map.entries());
   };
 
+// Using postupgrade is discouraged and should be avoided if possible.
   system func postupgrade() {
     entries := [];
   };

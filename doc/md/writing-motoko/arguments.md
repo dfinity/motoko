@@ -13,14 +13,14 @@ Arguments can be passed to an actor's function for the function to use as input.
 First, define an argument that has a `location` function and the `name` argument with a `city` argument:
 
 ```motoko
-actor {
-public func location(city : Text) : async Text {
+persistent actor {
+  public func location(city : Text) : async Text {
     return "Hello, " # city # "!";
-};
+  };
 };
 ```
 
-Once your canister is [deployed](/docs/current/developer-docs/getting-started/deploy/local), you can call the `location` method in the program and pass your `city` argument of type [`Text`](../base/Text.md) by running the following command:
+Once your canister is [deployed](/docs/current/developer-docs/getting-started/deploy-and-manage), you can call the `location` method in the program and pass your `city` argument of type [`Text`](../base/Text.md) by running the following command:
 
 ```
 dfx canister call location_hello_backend location "San Francisco"
@@ -33,19 +33,19 @@ You might want to try modifying the source code to return different results. For
 Revise the `location` function with two new functions:
 
 ```motoko
-actor {
+persistent actor {
 
-public func location(cities : [Text]) : async Text {
+  public func location(cities : [Text]) : async Text {
     return "Hello, from " # (debug_show cities) # "!";
-};
+  };
 
-public func location_pretty(cities : [Text]) : async Text {
+  public func location_pretty(cities : [Text]) : async Text {
     var str = "Hello from ";
     for (city in cities.vals()) {
         str := str # city # ", ";
     };
     return str # "bon voyage!";
-}
+  }
 };
 
 ```
