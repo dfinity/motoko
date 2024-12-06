@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.13.5 (FUTURE)
+## 0.13.5 (2024-12-06)
 
 * motoko (`moc`)
 
@@ -38,11 +38,15 @@
 
   * Added new primitive `replyDeadline : () -> Nat64` to obtain when a response for a best-effort message is due (#4795).
 
+  * bugfix: fail-fast by limiting subtyping depth to avoid reliance on unpredictable stack overflow (#3057, #4798).
+
 * motoko-base
 
   * Added `Text.fromList` and `Text.toList` functions (dfinity/motoko-base#676).
 
   * Added `Text.fromArray/fromVarArray` functions (dfinity/motoko-base#674).
+
+  * Added `replyDeadline` to `ExperimentalInternetComputer` (dfinity/motoko-base⁠#677).
 
 ## 0.13.4 (2024-11-29)
 
