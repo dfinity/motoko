@@ -50,7 +50,7 @@ actor A {
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
-        await (with yeah = 8; timeout = 55; cycles = 1000)
+        await (with yeah = 8; timeout = 55 : Nat32/* FIXME: checking mode */; cycles = 1000)
         foo(func() : async () = async { assert message == "Hi!" });
         await (with cycles = 5000)
         bar(func() : async () = async { assert message == "Hi!" });
@@ -73,6 +73,13 @@ actor A {
         ignore await call_raw(principalOfActor A, "rawable", "DIDL\00\00");
         Cycles.add<system>(34567);
         ignore await /*(with cycles = 3456)*/ call_raw(principalOfActor A, "rawable", "DIDL\00\00");
+    };
+
+    public func test5() : async () {
+        await (with timeout = 3 : Nat32/* FIXME: checking mode */) async {
+            assert 0 : Nat64 == replyDeadline();
+            debugPrint "test5()";
+        }
     }
 }
 
@@ -85,3 +92,4 @@ actor A {
 //CALL ingress test2 "DIDL\x00\x00"
 //CALL ingress test3 "DIDL\x00\x00"
 //CALL ingress test4 "DIDL\x00\x00"
+//CALL ingress test5 "DIDL\x00\x00"

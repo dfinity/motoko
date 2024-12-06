@@ -452,8 +452,9 @@ and c_exp' context exp k =
       | _ -> assert false
     in
     let cps_async =
+      let has par lab ty = T.(sub (typ par) (Obj (Object, [{ lab; typ = ty; src = empty_src}]))) in
       cps_asyncE T.Fut typ1 (match par_opt with
-                             | Some par when T.(sub (typ par) (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
+                             | Some par when has par "cycles" T.nat || has par "timeout" T.nat32
                                -> optE par
                              | Some _
                                -> optE (recordE ["cycles", natE Mo_values.Numerics.Nat.zero])

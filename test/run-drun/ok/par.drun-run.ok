@@ -12,3 +12,5 @@ debug.print: test4()
 debug.print: rawable: 0
 debug.print: rawable: 34_567
 ingress Completed: Reply: 0x4449444c0000
+debug.print: test5()
+ingress Completed: Reply: 0x4449444c0000

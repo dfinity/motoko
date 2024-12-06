@@ -2575,7 +2575,7 @@ and validate_parenthetical env typ_opt = function
          "expected Nat type for attribute cycles, but it has type%a"
          display_typ_expand (List.hd cyc).T.typ;
      let timeout = List.(filter (fun {T.lab; _} -> lab = "timeout") attrs_flds) in
-     if timeout <> [] && not T.(sub (List.hd timeout).typ nat) then
+     if timeout <> [] && not T.(sub (List.hd timeout).typ nat32) then
        local_error env par.at "M0205"
          "expected Nat32 type for attribute timeout, but it has type%a"
          display_typ_expand (List.hd timeout).T.typ
