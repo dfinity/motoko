@@ -23,8 +23,8 @@ let write_file : string -> string -> unit =
   flush oc;
   close_out oc
 
-let extract : string -> extracted option =
- fun in_file ->
+let extract : bool -> string -> extracted option =
+ fun skip_comments in_file ->
   let parse_result = Pipeline.parse_file Source.no_region in_file in
   match parse_result with
   | Error err ->
@@ -32,7 +32,7 @@ let extract : string -> extracted option =
       Diag.print_messages err;
       None
   | Ok ((prog, _), _) -> (
-      match extract_docs prog with
+      match extract_docs skip_comments prog with
       | Error err ->
           Printf.eprintf "Skipping %s:\n%s\n" in_file err;
           None
@@ -69,9 +69,9 @@ let list_files : string -> string -> (string * string * string) list =
       |> fun f -> (file, Filename.concat output f, f))
     all_files
 
-let make_render_inputs : string -> string -> (string * Common.render_input) list
+let make_render_inputs : string -> string -> bool -> (string * Common.render_input) list
     =
- fun source output ->
+ fun source output strip_comments ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
   List.filter_map
@@ -87,15 +87,15 @@ let make_render_inputs : string -> string -> (string * Common.render_input) list
                 module_comment;
                 declarations = docs;
               } ))
-        (extract input))
+        (extract strip_comments input))
     all_files
 
-let start : output_format -> string -> string -> unit =
- fun output_format src out ->
+let start : output_format -> string -> string -> bool -> unit =
+ fun output_format src out skip_comments ->
   (try Unix.mkdir out 0o777 with _ -> ());
   match output_format with
   | Plain ->
-      let inputs = make_render_inputs src out in
+      let inputs = make_render_inputs src out skip_comments in
       List.iter
         (fun (out, input) -> write_file (out ^ ".md") (Plain.render_docs input))
         inputs;
@@ -103,14 +103,14 @@ let start : output_format -> string -> string -> unit =
         (Filename.concat out "index.md")
         (Plain.make_index (List.map snd inputs))
   | Adoc ->
-      let inputs = make_render_inputs src out in
+      let inputs = make_render_inputs src out skip_comments in
       List.iter
         (fun (out, input) ->
           write_file (out ^ ".adoc") (Adoc.render_docs input))
         inputs
   | Html ->
       write_file (Filename.concat out "styles.css") Styles.styles;
-      let inputs = make_render_inputs src out in
+      let inputs = make_render_inputs src out skip_comments in
       List.iter
         (fun (out, input) ->
           write_file (out ^ ".html") (Html.render_docs input))

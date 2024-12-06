@@ -218,9 +218,10 @@ struct
     else None
 end
 
-let extract_docs : Syntax.prog -> (extracted, string) result =
- fun prog ->
-  let lookup_trivia (line, column) =
+let extract_docs : bool -> Syntax.prog -> (extracted, string) result =
+ fun skip_comments prog ->
+ let lookup_trivia (line, column) =
+    if skip_comments then None else
     PosTable.find_opt prog.note.Syntax.trivia Trivia.{ line; column }
   in
   let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
