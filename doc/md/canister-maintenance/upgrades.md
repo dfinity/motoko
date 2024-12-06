@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Stable variables and upgrade methods
 
-## Overview
+
 
 One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
@@ -91,7 +91,6 @@ For example, the stable type `TemperatureSeries` covers the persistent data, whi
 
 ``` motoko no-repl file=../examples/WeatherActor.mo
 ```
-
 
 3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
 
@@ -212,7 +211,7 @@ The following aspects are retained for historical reasons and backwards compatib
 Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.  Per best practices, using these methods should be avoided if possible.
 :::
 
-Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
+Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade.
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
 
 :::danger

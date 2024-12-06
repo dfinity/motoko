@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Overview
+# Writing Motoko code
 
 The Motoko programming language is a new, modern and type safe language for developers who want to build the next generation of distributed applications on ICP, as it is specifically designed to support the unique features of ICP while providing a familiar, yet robust, programming environment. As a new language, Motoko is constantly evolving with support for new features and other improvements.
 
