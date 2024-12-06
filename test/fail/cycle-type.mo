@@ -7,5 +7,6 @@ actor {
         ignore (with) nonSend();
         (with cycles = 999) a.oneway(); // should not warn
         ({} with) a.oneway();
+        await (with timeout = 'T') a.foo();
     }
 }

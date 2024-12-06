@@ -7,3 +7,5 @@ cycle-type.mo:5.48-5.56: type error [M0201], expected Nat type for attribute cyc
 cycle-type.mo:7.23-7.32: warning [M0202], unexpected parenthetical note on a non-send call
 cycle-type.mo:7.23-7.32: warning [M0203], redundant empty parenthetical note
 cycle-type.mo:9.19-9.29: warning [M0203], redundant empty parenthetical note
+cycle-type.mo:10.36-10.43: type error [M0205], expected Nat32 type for attribute timeout, but it has type
+  Char
