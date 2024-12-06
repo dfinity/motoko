@@ -35,6 +35,7 @@ type token =
   | RETURN
   | SYSTEM
   | STABLE
+  | TRANSIENT
   | TRY
   | THROW
   | WITH
@@ -45,6 +46,7 @@ type token =
   | OBJECT
   | ACTOR
   | CLASS
+  | PERSISTENT
   | PUBLIC
   | PRIVATE
   | SHARED
@@ -162,6 +164,7 @@ let to_parser_token :
   | WHILE -> Ok Parser.WHILE
   | FOR -> Ok Parser.FOR
   | RETURN -> Ok Parser.RETURN
+  | TRANSIENT -> Ok Parser.TRANSIENT
   | TRY -> Ok Parser.TRY
   | THROW -> Ok Parser.THROW
   | FINALLY -> Ok Parser.FINALLY
@@ -173,6 +176,7 @@ let to_parser_token :
   | OBJECT -> Ok Parser.OBJECT
   | ACTOR -> Ok Parser.ACTOR
   | CLASS -> Ok Parser.CLASS
+  | PERSISTENT -> Ok Parser.PERSISTENT
   | PUBLIC -> Ok Parser.PUBLIC
   | PRIVATE -> Ok Parser.PRIVATE
   | SHARED -> Ok Parser.SHARED
@@ -302,11 +306,13 @@ let string_of_parser_token = function
   | Parser.OBJECT -> "OBJECT"
   | Parser.ACTOR -> "ACTOR"
   | Parser.CLASS -> "CLASS"
+  | Parser.PERSISTENT -> "PERSISTENT"
   | Parser.PUBLIC -> "PUBLIC"
   | Parser.PRIVATE -> "PRIVATE"
   | Parser.SHARED -> "SHARED"
   | Parser.STABLE -> "STABLE"
   | Parser.SYSTEM -> "SYSTEM"
+  | Parser.TRANSIENT -> "TRANSIENT"
   | Parser.QUERY -> "QUERY"
   | Parser.SEMICOLON -> "SEMICOLON"
   | Parser.SEMICOLON_EOL -> "SEMICOLON_EOL"

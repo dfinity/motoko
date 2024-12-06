@@ -234,6 +234,7 @@ rule token mode = parse
   | "label" { LABEL }
   | "let" { LET }
   | "loop" { LOOP }
+  | "persistent" { PERSISTENT}
   | "private" { PRIVATE }
   | "public" { PUBLIC }
   | "query" { QUERY }
@@ -242,6 +243,7 @@ rule token mode = parse
   | "stable" { STABLE }
   | "switch" { SWITCH }
   | "system" { SYSTEM }
+  | "transient" { TRANSIENT }
   | "try" { TRY }
   | "throw" { THROW }
   | "to_candid" { TO_CANDID }
