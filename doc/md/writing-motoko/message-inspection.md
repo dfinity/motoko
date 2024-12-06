@@ -4,7 +4,7 @@ sidebar_position: 14
 
 # Message inspection
 
-## Overview
+
 
 On ICP, a canister can selectively inspect, then choose to accept or decline ingress messages submitted through the HTTP interface.
 

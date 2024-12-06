@@ -4,7 +4,7 @@ sidebar_position: 19
 
 # Pattern matching
 
-## Overview
+
 
 Pattern matching is a language feature that makes it easy to both test and decompose structured data into its constituent parts. While most programming languages provide familiar ways to build structured data, pattern matching enables you to take apart structured data and bring its fragments into scope by binding them to the names you specify. Syntactically, the patterns resemble the construction of structured data, but generally appear in input-direction positions, such as in function argument positions, after the `case` keyword in `switch` expressions, and after `let` or `var` declarations.
 
@@ -123,11 +123,11 @@ In a `let-else` construct, the expression or block following the `else` keyword 
 
 ## Option blocks for streamlined processing of optional data
 
-Motoko offers a preferred method for handling optional data (of type `?T`) through pattern matching, which helps avoid the notorious `null`-exception issues common in other programming languages. 
-However, using multiple switch statements on several options can become cumbersome and result in deeply nested, hard-to-read code. 
-To address this, Motoko introduces a feature called *option blocks*, written as `do ? { ... }`. 
+Motoko offers a preferred method for handling optional data (of type `?T`) through pattern matching, which helps avoid the notorious `null`-exception issues common in other programming languages.
+However, using multiple switch statements on several options can become cumbersome and result in deeply nested, hard-to-read code.
+To address this, Motoko introduces a feature called *option blocks*, written as `do ? { ... }`.
 These blocks allow for safe unwrapping of optional values using a postfix `!` operator.
-Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`. 
+Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`.
 This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
 
 For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).

@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Embed Motoko
 
-## Overview
+
 
 The Embed Motoko tool enables Motoko smart contracts to be embedded in web pages such as a blog, web application, or even a Medium article. Simply insert your Motoko smart contract into the Embed Motoko tool and copy either the generated embedded URL or the HTML iframe to use in your web page.
 

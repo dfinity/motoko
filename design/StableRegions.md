@@ -206,7 +206,7 @@ In ordinary operation, the second feature is not required.  In the event of an u
  - the location of each entry gives its corresponding block ID.
 
 
-### Overview of `rebuild`
+# of `rebuild`
 
 When upgrades work as expected, stable `Regions` are serialized and deserialized just like other stable data.
 
@@ -228,7 +228,7 @@ Currently, we need only recover region 0 (when upgrading).
   - Region 1 -- "Reclaimed blocks" region that consists of blocks reclaimed from GC'd regions.
   - Regions 2-15 -- Future use by Motoko RTS (TBD).
 
-### Overview of GC support (future work)
+# of GC support (future work)
 
 - Regions are represented (see special subsection) with heap objects that are `stable`, but mutable.
 - They have special GC headers to recognize their special structure.

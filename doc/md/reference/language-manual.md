@@ -31,7 +31,7 @@ sidebar_position: 1
 * [ ] Re-section so headings appear in content outline
 -->
 
-## Overview
+
 
 This reference page provides technical details of interest to the following audiences:
 
@@ -2391,7 +2391,7 @@ The expression `return <exp>` has type `None` provided:
 
    -  `T` is the return type of the nearest enclosing function with no intervening `async` expression.
 
-   -  `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration. 
+   -  `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration.
 
 
 The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic `async` or `async*` expression with the result of `<exp>`.

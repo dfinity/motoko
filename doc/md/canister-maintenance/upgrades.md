@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Stable variables and upgrade methods
 
-## Overview
+
 
 One key feature of Motoko is its ability to automatically persist the program's state without explicit user instruction, called **orthogonal persistence**. This not only covers persistence across transactions but also includes canister upgrades. For this purpose, Motoko features a bespoke compiler and runtime system that manages upgrades in a sophisticated way such that a new program version can pick up the state left behind by a previous program version. As a result, Motoko data persistence is not simple but also prevents data corruption or loss, while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare an data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles.
 
@@ -67,7 +67,7 @@ For variables that do not have a stable type, there are two options for making t
 Unlike stable data structures in the Rust CDK, these modules do not use stable memory but rely on orthogonal persistence. The adjective "stable" only denotes a stable type in Motoko.
 :::
 
-2. Extract the state in a stable type, and wrap it in the non-stable type. 
+2. Extract the state in a stable type, and wrap it in the non-stable type.
 
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
@@ -93,7 +93,7 @@ actor {
 ```
 
 3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
-The downside of this approach is that it is error-prone and does not scale for large data. 
+The downside of this approach is that it is error-prone and does not scale for large data.
 Conceptually, it also does not align well with the idea of orthogonal persistence.
 
 ## Stable type signatures
@@ -123,7 +123,7 @@ A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2
 - `<stab-sig2>` does not contain a stable field `<id>`.
 - `<stab-sig>` has a matching stable field `<id> : U` with `T <: U`.
 
-Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields. 
+Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields.
 
 `<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version.
 
@@ -211,7 +211,7 @@ The following aspects are retained for historical reasons and backwards compatib
 
 This is an advanced functionality that is not recommended for standard cases, as it is error-prone and can render the canister unusable.
 
-Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade. 
+Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow triggering additional logic on upgrade.
 These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
 
 :::danger

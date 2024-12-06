@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # Motoko quickstart
 
-## Overview
+
 
 This quickstart guide showcases how to deploy a simple 'Hello, world!' Motoko smart contract.
 
