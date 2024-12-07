@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>prep.ml &mdash; Coverage report</title>
+    <meta name="description" content="25.00% coverage in viper/prep.ml">
+    <link rel="stylesheet" href="../coverage.css"/>
+    <script src="../highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="../index.html">
+          <span class="dirname">viper/</span>prep.ml
+        </a>
+      </h1>
+      <h2>25.00%</h2>
+    </div>
+    <div id="navbar">
+      <span class="unvisited" style="top:11.64%"></span>
+      <span class="unvisited" style="top:12.33%"></span>
+      <span class="unvisited" style="top:13.01%"></span>
+      <span class="unvisited" style="top:16.44%"></span>
+      <span class="unvisited" style="top:17.12%"></span>
+      <span class="unvisited" style="top:17.81%"></span>
+      <span class="unvisited" style="top:18.49%"></span>
+      <span class="unvisited" style="top:19.18%"></span>
+      <span class="unvisited" style="top:19.86%"></span>
+      <span class="unvisited" style="top:20.55%"></span>
+      <span class="unvisited" style="top:23.29%"></span>
+      <span class="unvisited" style="top:24.66%"></span>
+      <span class="unvisited" style="top:26.03%"></span>
+      <span class="unvisited" style="top:32.88%"></span>
+      <span class="unvisited" style="top:33.56%"></span>
+      <span class="unvisited" style="top:34.25%"></span>
+      <span class="unvisited" style="top:34.93%"></span>
+      <span class="some-visited" style="top:38.36%"></span>
+      <span class="unvisited" style="top:44.52%"></span>
+      <span class="unvisited" style="top:45.21%"></span>
+      <span class="unvisited" style="top:45.89%"></span>
+      <span class="unvisited" style="top:47.95%"></span>
+      <span class="unvisited" style="top:50.00%"></span>
+      <span class="unvisited" style="bottom:49.32%"></span>
+      <span class="unvisited" style="bottom:48.63%"></span>
+      <span class="unvisited" style="bottom:47.95%"></span>
+      <span class="unvisited" style="bottom:47.26%"></span>
+      <span class="unvisited" style="bottom:45.89%"></span>
+      <span class="unvisited" style="bottom:45.21%"></span>
+      <span class="unvisited" style="bottom:44.52%"></span>
+      <span class="unvisited" style="bottom:41.78%"></span>
+      <span class="unvisited" style="bottom:38.36%"></span>
+      <span class="unvisited" style="bottom:37.67%"></span>
+      <span class="unvisited" style="bottom:36.30%"></span>
+      <span class="unvisited" style="bottom:34.93%"></span>
+      <span class="unvisited" style="bottom:34.25%"></span>
+      <span class="unvisited" style="bottom:33.56%"></span>
+      <span class="unvisited" style="bottom:32.88%"></span>
+      <span class="unvisited" style="bottom:32.19%"></span>
+      <span class="unvisited" style="bottom:20.55%"></span>
+      <span class="some-visited" style="bottom:18.49%"></span>
+      <span class="unvisited" style="bottom:14.38%"></span>
+      <span class="unvisited" style="bottom:13.70%"></span>
+      <span class="unvisited" style="bottom:13.01%"></span>
+      <span class="unvisited" style="bottom:12.33%"></span>
+      <span class="unvisited" style="bottom:11.64%"></span>
+      <span class="some-visited" style="bottom:7.53%"></span>
+      <span class="unvisited" style="bottom:0.00%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span > </span>
+<a id="L9"></a><span > </span>
+<a id="L10"></a><span > </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span > </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span > </span>
+<a id="L16"></a><span > </span>
+<a id="L17"></a><span class="unvisited"> </span>
+<a id="L18"></a><span class="unvisited"> </span>
+<a id="L19"></a><span class="unvisited"> </span>
+<a id="L20"></a><span > </span>
+<a id="L21"></a><span > </span>
+<a id="L22"></a><span > </span>
+<a id="L23"></a><span > </span>
+<a id="L24"></a><span class="unvisited"> </span>
+<a id="L25"></a><span class="unvisited"> </span>
+<a id="L26"></a><span class="unvisited"> </span>
+<a id="L27"></a><span class="unvisited"> </span>
+<a id="L28"></a><span class="unvisited"> </span>
+<a id="L29"></a><span class="unvisited"> </span>
+<a id="L30"></a><span class="unvisited"> </span>
+<a id="L31"></a><span > </span>
+<a id="L32"></a><span > </span>
+<a id="L33"></a><span class="visited"> </span>
+<a id="L34"></a><span class="unvisited"> </span>
+<a id="L35"></a><span > </span>
+<a id="L36"></a><span class="unvisited"> </span>
+<a id="L37"></a><span > </span>
+<a id="L38"></a><span class="unvisited"> </span>
+<a id="L39"></a><span > </span>
+<a id="L40"></a><span class="visited"> </span>
+<a id="L41"></a><span > </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span > </span>
+<a id="L44"></a><span > </span>
+<a id="L45"></a><span > </span>
+<a id="L46"></a><span > </span>
+<a id="L47"></a><span > </span>
+<a id="L48"></a><span class="unvisited"> </span>
+<a id="L49"></a><span class="unvisited"> </span>
+<a id="L50"></a><span class="unvisited"> </span>
+<a id="L51"></a><span class="unvisited"> </span>
+<a id="L52"></a><span > </span>
+<a id="L53"></a><span > </span>
+<a id="L54"></a><span class="visited"> </span>
+<a id="L55"></a><span class="visited"> </span>
+<a id="L56"></a><span class="some-visited"> </span>
+<a id="L57"></a><span class="visited"> </span>
+<a id="L58"></a><span > </span>
+<a id="L59"></a><span > </span>
+<a id="L60"></a><span > </span>
+<a id="L61"></a><span > </span>
+<a id="L62"></a><span > </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span class="unvisited"> </span>
+<a id="L66"></a><span class="unvisited"> </span>
+<a id="L67"></a><span class="unvisited"> </span>
+<a id="L68"></a><span > </span>
+<a id="L69"></a><span > </span>
+<a id="L70"></a><span class="unvisited"> </span>
+<a id="L71"></a><span > </span>
+<a id="L72"></a><span > </span>
+<a id="L73"></a><span class="unvisited"> </span>
+<a id="L74"></a><span class="unvisited"> </span>
+<a id="L75"></a><span class="unvisited"> </span>
+<a id="L76"></a><span class="unvisited"> </span>
+<a id="L77"></a><span class="unvisited"> </span>
+<a id="L78"></a><span > </span>
+<a id="L79"></a><span class="unvisited"> </span>
+<a id="L80"></a><span class="unvisited"> </span>
+<a id="L81"></a><span class="unvisited"> </span>
+<a id="L82"></a><span > </span>
+<a id="L83"></a><span > </span>
+<a id="L84"></a><span class="visited"> </span>
+<a id="L85"></a><span class="unvisited"> </span>
+<a id="L86"></a><span > </span>
+<a id="L87"></a><span > </span>
+<a id="L88"></a><span > </span>
+<a id="L89"></a><span > </span>
+<a id="L90"></a><span class="unvisited"> </span>
+<a id="L91"></a><span class="unvisited"> </span>
+<a id="L92"></a><span > </span>
+<a id="L93"></a><span class="unvisited"> </span>
+<a id="L94"></a><span > </span>
+<a id="L95"></a><span class="unvisited"> </span>
+<a id="L96"></a><span class="unvisited"> </span>
+<a id="L97"></a><span class="unvisited"> </span>
+<a id="L98"></a><span class="unvisited"> </span>
+<a id="L99"></a><span class="unvisited"> </span>
+<a id="L100"></a><span > </span>
+<a id="L101"></a><span > </span>
+<a id="L102"></a><span > </span>
+<a id="L103"></a><span > </span>
+<a id="L104"></a><span > </span>
+<a id="L105"></a><span > </span>
+<a id="L106"></a><span > </span>
+<a id="L107"></a><span > </span>
+<a id="L108"></a><span class="visited"> </span>
+<a id="L109"></a><span > </span>
+<a id="L110"></a><span > </span>
+<a id="L111"></a><span class="visited"> </span>
+<a id="L112"></a><span > </span>
+<a id="L113"></a><span > </span>
+<a id="L114"></a><span class="visited"> </span>
+<a id="L115"></a><span class="visited"> </span>
+<a id="L116"></a><span class="unvisited"> </span>
+<a id="L117"></a><span > </span>
+<a id="L118"></a><span > </span>
+<a id="L119"></a><span class="some-visited"> </span>
+<a id="L120"></a><span class="visited"> </span>
+<a id="L121"></a><span > </span>
+<a id="L122"></a><span > </span>
+<a id="L123"></a><span class="visited"> </span>
+<a id="L124"></a><span class="visited"> </span>
+<a id="L125"></a><span class="unvisited"> </span>
+<a id="L126"></a><span class="unvisited"> </span>
+<a id="L127"></a><span class="unvisited"> </span>
+<a id="L128"></a><span class="unvisited"> </span>
+<a id="L129"></a><span class="unvisited"> </span>
+<a id="L130"></a><span > </span>
+<a id="L131"></a><span > </span>
+<a id="L132"></a><span class="visited"> </span>
+<a id="L133"></a><span class="visited"> </span>
+<a id="L134"></a><span class="visited"> </span>
+<a id="L135"></a><span class="some-visited"> </span>
+<a id="L136"></a><span > </span>
+<a id="L137"></a><span > </span>
+<a id="L138"></a><span class="visited"> </span>
+<a id="L139"></a><span > </span>
+<a id="L140"></a><span class="visited"> </span>
+<a id="L141"></a><span > </span>
+<a id="L142"></a><span > </span>
+<a id="L143"></a><span class="visited"> </span>
+<a id="L144"></a><span > </span>
+<a id="L145"></a><span > </span>
+<a id="L146"></a><span class="unvisited"> </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1">  1</a>
+<a href="#L2">  2</a>
+<a href="#L3">  3</a>
+<a href="#L4">  4</a>
+<a href="#L5">  5</a>
+<a href="#L6">  6</a>
+<a href="#L7">  7</a>
+<a href="#L8">  8</a>
+<a href="#L9">  9</a>
+<a href="#L10"> 10</a>
+<a href="#L11"> 11</a>
+<a href="#L12"> 12</a>
+<a href="#L13"> 13</a>
+<a href="#L14"> 14</a>
+<a href="#L15"> 15</a>
+<a href="#L16"> 16</a>
+<a href="#L17"> 17</a>
+<a href="#L18"> 18</a>
+<a href="#L19"> 19</a>
+<a href="#L20"> 20</a>
+<a href="#L21"> 21</a>
+<a href="#L22"> 22</a>
+<a href="#L23"> 23</a>
+<a href="#L24"> 24</a>
+<a href="#L25"> 25</a>
+<a href="#L26"> 26</a>
+<a href="#L27"> 27</a>
+<a href="#L28"> 28</a>
+<a href="#L29"> 29</a>
+<a href="#L30"> 30</a>
+<a href="#L31"> 31</a>
+<a href="#L32"> 32</a>
+<a href="#L33"> 33</a>
+<a href="#L34"> 34</a>
+<a href="#L35"> 35</a>
+<a href="#L36"> 36</a>
+<a href="#L37"> 37</a>
+<a href="#L38"> 38</a>
+<a href="#L39"> 39</a>
+<a href="#L40"> 40</a>
+<a href="#L41"> 41</a>
+<a href="#L42"> 42</a>
+<a href="#L43"> 43</a>
+<a href="#L44"> 44</a>
+<a href="#L45"> 45</a>
+<a href="#L46"> 46</a>
+<a href="#L47"> 47</a>
+<a href="#L48"> 48</a>
+<a href="#L49"> 49</a>
+<a href="#L50"> 50</a>
+<a href="#L51"> 51</a>
+<a href="#L52"> 52</a>
+<a href="#L53"> 53</a>
+<a href="#L54"> 54</a>
+<a href="#L55"> 55</a>
+<a href="#L56"> 56</a>
+<a href="#L57"> 57</a>
+<a href="#L58"> 58</a>
+<a href="#L59"> 59</a>
+<a href="#L60"> 60</a>
+<a href="#L61"> 61</a>
+<a href="#L62"> 62</a>
+<a href="#L63"> 63</a>
+<a href="#L64"> 64</a>
+<a href="#L65"> 65</a>
+<a href="#L66"> 66</a>
+<a href="#L67"> 67</a>
+<a href="#L68"> 68</a>
+<a href="#L69"> 69</a>
+<a href="#L70"> 70</a>
+<a href="#L71"> 71</a>
+<a href="#L72"> 72</a>
+<a href="#L73"> 73</a>
+<a href="#L74"> 74</a>
+<a href="#L75"> 75</a>
+<a href="#L76"> 76</a>
+<a href="#L77"> 77</a>
+<a href="#L78"> 78</a>
+<a href="#L79"> 79</a>
+<a href="#L80"> 80</a>
+<a href="#L81"> 81</a>
+<a href="#L82"> 82</a>
+<a href="#L83"> 83</a>
+<a href="#L84"> 84</a>
+<a href="#L85"> 85</a>
+<a href="#L86"> 86</a>
+<a href="#L87"> 87</a>
+<a href="#L88"> 88</a>
+<a href="#L89"> 89</a>
+<a href="#L90"> 90</a>
+<a href="#L91"> 91</a>
+<a href="#L92"> 92</a>
+<a href="#L93"> 93</a>
+<a href="#L94"> 94</a>
+<a href="#L95"> 95</a>
+<a href="#L96"> 96</a>
+<a href="#L97"> 97</a>
+<a href="#L98"> 98</a>
+<a href="#L99"> 99</a>
+<a href="#L100">100</a>
+<a href="#L101">101</a>
+<a href="#L102">102</a>
+<a href="#L103">103</a>
+<a href="#L104">104</a>
+<a href="#L105">105</a>
+<a href="#L106">106</a>
+<a href="#L107">107</a>
+<a href="#L108">108</a>
+<a href="#L109">109</a>
+<a href="#L110">110</a>
+<a href="#L111">111</a>
+<a href="#L112">112</a>
+<a href="#L113">113</a>
+<a href="#L114">114</a>
+<a href="#L115">115</a>
+<a href="#L116">116</a>
+<a href="#L117">117</a>
+<a href="#L118">118</a>
+<a href="#L119">119</a>
+<a href="#L120">120</a>
+<a href="#L121">121</a>
+<a href="#L122">122</a>
+<a href="#L123">123</a>
+<a href="#L124">124</a>
+<a href="#L125">125</a>
+<a href="#L126">126</a>
+<a href="#L127">127</a>
+<a href="#L128">128</a>
+<a href="#L129">129</a>
+<a href="#L130">130</a>
+<a href="#L131">131</a>
+<a href="#L132">132</a>
+<a href="#L133">133</a>
+<a href="#L134">134</a>
+<a href="#L135">135</a>
+<a href="#L136">136</a>
+<a href="#L137">137</a>
+<a href="#L138">138</a>
+<a href="#L139">139</a>
+<a href="#L140">140</a>
+<a href="#L141">141</a>
+<a href="#L142">142</a>
+<a href="#L143">143</a>
+<a href="#L144">144</a>
+<a href="#L145">145</a>
+<a href="#L146">146</a>
+</pre>
+<pre><code class="ocaml">open Common
+open Source
+open Mo_def.Syntax
+open Traversals
+
+module T = Mo_types.Type
+module Cons = Mo_types.Cons
+module Arrange = Mo_def.Arrange
+
+(*
+  Monomorphisation goal. For example, a function call f&lt;Int,Bool&gt;(a,b,c)
+  yields a mono_goal of {id="f", typs=[Int,Bool]}
+*)
+type mono_goal = { mg_id : string; mg_typs : T.typ list; }
+
+let compare_mono_goal (g1 : mono_goal) (g2 : mono_goal) =
+  <span data-count="0">m</span>atch String.compare g1.mg_id g2.mg_id with
+  | <span data-count="0">0</span> -&gt; List.compare T.Ord.compare g1.mg_typs g2.mg_typs
+  | <span data-count="0">o</span>rd -&gt; ord
+
+type dec_field_template = { dft_id : string; dft_mk : T.typ list -&gt; dec_field }
+
+let string_of_mono_goal (g : mono_goal) : string =
+  <span data-count="0">S</span>tring.concat "$" (g.mg_id :: List.ma<span data-count="0">p</span> (fun t -&gt;
+    <span data-count="0">m</span>atch t, T.normaliz<span data-count="0">e</span> t with
+    | <span data-count="0">_</span>, T.Prim T.Int  -&gt; "Int"
+    | <span data-count="0">_</span>, T.Prim T.Nat  -&gt; "Nat"
+    | <span data-count="0">_</span>, T.Prim T.Bool -&gt; "Bool"
+    | <span data-count="0">T</span>.Con (con, []), _ -&gt; Mo_types.Cons.name con (* TODO: encode type arguments *)
+    | <span data-count="0">_</span> -&gt; unsupported Source.no_region (Mo_types.Arrange_type.ty<span data-count="0">p</span> t)) g.mg_typs)
+
+let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
+  <span data-count="1">{</span> visit_exp = (function
+    | <span data-count="0">{</span>it = CallE({it = VarE v; at = v_at; note = v_note},inst,e); at; note} -&gt;
+        let goal = { mg_id = v.it; mg_typs = inst.note } in
+        let _ = (if goal.mg_typs = [] then <span data-count="0">(</span>) else <span data-count="0">S</span>tack.pus<span data-count="0">h</span> goal stk) in
+        let s = string_of_mono_goal goal in
+        <span data-count="0">{</span>it = CallE({it = VarE (s @<span data-count="0">~</span> v_at); at=v_at; note=v_note},
+                    {it = None; at=inst.at; note = []}, e); at; note}
+    | <span data-count="43">e</span> -&gt; e);
+    visit_typ = Fun.id;
+    visit_pat = Fun.id;
+    visit_dec = Fun.id;
+    visit_inst = Fun.id;
+  }
+
+let mono_calls_dec_field (df : dec_field) : (mono_goal list * dec_field) =
+  <span data-count="0">l</span>et stk = Stack.create () in
+  <span data-count="0">l</span>et df' = over_dec_field (mono_calls_visito<span data-count="0">r</span> stk) df in
+  <span data-count="0">l</span>et goals = Stack.fold (fun gs g -&gt; <span data-count="0">g</span> :: gs) [] stk in
+  <span data-count="0">(</span>goals, df')
+
+let mono_calls_dec_fields (dfs : dec_field list) : (mono_goal list * dec_field list) =
+  <span data-count="1">l</span>et stk = Stack.create () in
+  <span data-count="1">l</span>et dfs' = List.map (over_dec_fiel<span data-count="1">d</span> (mono_calls_visito<span data-count="1">r</span> stk)) dfs in
+  <span data-count="1">l</span>et goals = Stack.fold (fun gs g -&gt; <span data-count="0">g</span> :: gs) [] stk in
+  <span data-count="1">(</span>goals, dfs')
+
+module M = Map.Make(String)
+module MonoGoalEnv = Map.Make(struct type t = mono_goal let compare = compare_mono_goal end)
+
+type subst_env = T.typ T.ConEnv.t   (* con -&gt; typ *)
+
+let unwrap_typ_bind_con (tb : typ_bind) : T.con =
+  <span data-count="0">m</span>atch tb.note with
+  | <span data-count="0">N</span>one -&gt; unsupported tb.at (Arrange.typ_bin<span data-count="0">d</span> tb)
+  | <span data-count="0">S</span>ome(c) -&gt; c
+
+let init_subst_env (tbs : typ_bind list) (ts : T.typ list) : subst_env =
+  <span data-count="0">T</span>.ConEnv.from_list2 (List.ma<span data-count="0">p</span> unwrap_typ_bind_con tbs) ts
+
+let subst_visitor (env : subst_env) : visitor =
+  <span data-count="0">{</span> visit_exp = (fun e -&gt; <span data-count="0">{</span> e with note = { e.note with note_typ = T.subs<span data-count="0">t</span> env e.note.note_typ } });
+    visit_typ = (fun t -&gt; <span data-count="0">{</span> t with note = T.subs<span data-count="0">t</span> env t.note });
+    visit_pat = (fun p -&gt; <span data-count="0">{</span> p with note = T.subs<span data-count="0">t</span> env p.note });
+    visit_dec = (fun d -&gt; <span data-count="0">{</span> d with note = { d.note with note_typ = T.subs<span data-count="0">t</span> env d.note.note_typ } });
+    visit_inst = (fun i -&gt; <span data-count="0">{</span> i with note = List.ma<span data-count="0">p</span> (T.subs<span data-count="0">t</span> env) i.note; }) }
+
+let subst_exp (env : subst_env) : exp -&gt; exp = <span data-count="0">o</span>ver_exp (subst_visito<span data-count="0">r</span> env)
+let subst_pat (env : subst_env) : pat -&gt; pat = <span data-count="0">o</span>ver_pat (subst_visito<span data-count="0">r</span> env)
+let subst_typ (env : subst_env) : typ -&gt; typ = <span data-count="0">o</span>ver_typ (subst_visito<span data-count="0">r</span> env)
+
+let mk_template_dec_field (df : dec_field) : dec_field_template option =
+  <span data-count="5">m</span>atch (df.it.vis.it, df.it.dec.it) with
+    | <span data-count="0">(</span>Private, LetD({it = VarP(_);at=p_at;note=p_note},
+                     {it = FuncE(x,sp,tp,p,t,sugar,e);
+                      at=fn_at;
+                      note=fn_note},
+                 None)) -&gt;
+      if tp = [] then <span data-count="0">N</span>one else
+      <span data-count="0">S</span>ome({dft_id = x;
+            dft_mk = fun typs -&gt;
+              <span data-count="0">l</span>et env = init_subst_env tp typs in
+              (* let _ = T.ConEnv.iter (fun c t -&gt; print_endline (String.concat " " [Cons.to_string true ":" c; "="; T.string_of_typ t])) env in *)
+              <span data-count="0">l</span>et p' = subst_pat env p in
+              <span data-count="0">l</span>et t' = Option.map (subst_ty<span data-count="0">p</span> env) t in
+              <span data-count="0">l</span>et e' = subst_exp env e in
+              <span data-count="0">l</span>et x' = string_of_mono_goal ({ mg_id = x; mg_typs = typs }) in
+              <span data-count="0">{</span> df with it = { df.it with dec = { df.it.dec with it =
+                LetD({it = VarP({it=x';at=Source.no_region;note=()});
+                      at=p_at;
+                      note=p_note},
+                     {it = FuncE(x',sp,[],p',t',sugar,e');
+                      at=fn_at;
+                      note=fn_note},
+                  None) } } }
+      })
+    | <span data-count="5">_</span> -&gt; None
+
+let mono_partition (dfs : dec_field list) : (dec_field list * dec_field_template M.t) =
+  <span data-count="1">l</span>et (dfs', tmpls) =
+    List.partition_map
+      (fun df -&gt;
+        <span data-count="5">m</span>atch mk_template_dec_field df with
+        | <span data-count="5">N</span>one -&gt; Either.Left df
+        | <span data-count="0">S</span>ome(dft) -&gt; Either.Right dft)
+      dfs
+  in
+  <span data-count="1">l</span>et tmpls' = List.fold_left (fun acc tmpl -&gt; <span data-count="0">M</span>.add tmpl.dft_id tmpl acc) M.empty tmpls in
+  <span data-count="1">(</span>dfs', tmpls')
+
+let rec mono_iterate (ts : dec_field_template M.t) (dfs : dec_field MonoGoalEnv.t) (goals : mono_goal list) : dec_field MonoGoalEnv.t =
+  <span data-count="1">m</span>atch goals with
+  | <span data-count="1">[</span>] -&gt; dfs
+  | <span data-count="0">g</span> :: gs -&gt;
+      if MonoGoalEnv.mem g dfs then <span data-count="0">m</span>ono_iterate ts dfs gs else (* skip already instantiated goals *)
+      <span data-count="0">l</span>et df = (M.fin<span data-count="0">d</span> g.mg_id ts).dft_mk g.mg_typs in  (* instantiate the goal *)
+      <span data-count="0">l</span>et (gs', df') = mono_calls_dec_field df in       (* collect new goals *)
+      <span data-count="0">m</span>ono_iterate ts (MonoGoalEnv.ad<span data-count="0">d</span> g df' dfs) (List.appen<span data-count="0">d</span> gs' gs)
+
+let mono_dec_fields (dfs : dec_field list) : dec_field list =
+  <span data-count="1">l</span>et (base_dfs, tmpls) = mono_partition dfs in
+  <span data-count="1">l</span>et (base_goals, base_dfs') = mono_calls_dec_fields base_dfs in
+  <span data-count="1">l</span>et mono_dfs = mono_iterate tmpls MonoGoalEnv.empty base_goals in
+  <span data-count="1">M</span>onoGoalEnv.fold (fun _ df dfs -&gt; <span data-count="0">d</span>f :: dfs) mono_dfs base_dfs'
+
+let prep_unit (u : comp_unit) : comp_unit =
+  <span data-count="1">l</span>et { imports; body } = u.it in
+  match body.it with
+  | <span data-count="1">A</span>ctorU(id_opt, decs) -&gt;
+    let decs' = mono_dec_fields decs in
+    (* let _ = List.map (fun g -&gt; print_endline (string_of_mono_goal g)) goals in *)
+    <span data-count="1">l</span>et body' = ActorU(id_opt, decs') in
+    (* let _ = List.map (fun d -&gt; print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec_field d))) decs' in *)
+    { u with it = {imports; body = { body with it = body' } } }
+  | <span data-count="0">_</span> -&gt; u
+</code></pre>
+      </div>
+    </div>
+    <script src="../coverage.js"></script>
+  </body>
+</html>
