@@ -24,8 +24,8 @@ module ConRenaming = E.Make(struct type t = con let compare = Cons.compare end)
 
 (* Helpers *)
 
-let selfcallE cyc ts e1 e2 e3 e4 =
-  { it = SelfCallE (cyc, ts, e1, e2, e3, e4);
+let selfcallE par ts e1 e2 e3 e4 =
+  { it = SelfCallE (par, ts, e1, e2, e3, e4);
     at = no_region;
     note = Note.{ def with typ = unit } }
 
@@ -287,7 +287,7 @@ let transform prog =
          (t_exp a -*- t_exp krb).it
       | _ -> assert false
       end
-    | PrimE (CPSAsync (Fut, t, cyc), [exp1]) ->
+    | PrimE (CPSAsync (Fut, t, par), [exp1]) ->
       let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _; _], []) ->
@@ -306,7 +306,7 @@ let transform prog =
             e --> ic_rejectE (errorMessageE (varE e)) in
           let ic_cleanup = varE (var "@cleanup" clean_contT) in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
-          expD (selfcallE cyc ts1 exp' (varE nary_reply) (varE reject) (varE clean))
+          expD (selfcallE par ts1 exp' (varE nary_reply) (varE reject) (varE clean))
         ]
         (varE nary_async)
       ).it

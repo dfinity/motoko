@@ -12405,7 +12405,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (cyc, ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (par, ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let set_future, get_future = new_local env "future" in
     let set_k, get_k = new_local env "k" in
@@ -12413,11 +12413,16 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let set_c, get_c = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_cycles = match cyc.it with
+    let add_cycles = match par.it with
       | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
-      | _ when Type.(sub cyc.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
-        Internals.pass_cycles env ae (compile_exp_vanilla env ae cyc)
+      | _ when Type.(sub par.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
+        Internals.pass_cycles env ae (compile_exp_vanilla env ae par)
       | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
+    let add_timeout = match par.it with
+      | _ when Type.(sub par.note.Note.typ (Opt (Obj (Object, [{ lab = "timeout"; typ = nat; src = empty_src}])))) ->
+        compile_unboxed_const 3l ^^
+        IC.system_call env "call_with_best_effort_response"
+      | _ -> G.nop in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^
@@ -12433,7 +12438,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       get_c
-      add_cycles
+      (add_cycles ^^ add_timeout)
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
