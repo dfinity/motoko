@@ -77,8 +77,8 @@ actor A {
 
     public func test5() : async () {
         await (with timeout = 3 : Nat32/* FIXME: checking mode */) async {
-            assert 0 : Nat64 == replyDeadline();
             debugPrint "test5()";
+            assert 0 : Nat64 != replyDeadline();
         }
     }
 }
