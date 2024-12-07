@@ -1033,8 +1033,8 @@ let rec is_explicit_exp e =
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
-  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
-  | LabelE (_, _, e1) | AsyncE (_, _, e1) | AwaitE (_, e1) ->
+  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (_(*FIXME: correct?*), e1, _, _)
+  | LabelE (_, _, e1) | AsyncE (_, _, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
@@ -1580,8 +1580,10 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, inst, exp2) ->
-    infer_call env exp1 inst exp2 exp.at None
+  | CallE (par_opt, exp1, inst, exp2) ->
+    let t = infer_call env exp1 inst exp2 exp.at None in
+    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
+    t
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
@@ -1709,9 +1711,10 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
-  | AsyncE (s, typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (par_opt, s, typ_bind, exp1) ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
+    if not env.pre then validate_parenthetical env None par_opt; (* TODO: in restricted environment? *)
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1885,8 +1888,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (_FIXME, s1, tb, exp1), T.Async (s2, t1', t') ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
@@ -1972,13 +1975,14 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE (exp1, inst, exp2), _ ->
+  | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (sub env exp1.at t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
+    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
@@ -2547,6 +2551,35 @@ and infer_obj env s dec_fields at : T.typ =
   end;
   t
 
+and validate_parenthetical env typ_opt = function
+  | None -> ()
+  | Some par ->
+     begin match typ_opt with
+     | Some fun_ty when T.is_func fun_ty ->
+       let s, _, _, _, ts2 = T.as_func fun_ty in
+       begin match ts2 with
+       | _ when T.is_shared_sort s -> ()
+       | [cod] when T.is_async cod -> ()
+       | _ -> warn env par.at "M0202" "unexpected parenthetical note on a non-send call"
+       end
+     | _ -> ()
+     end;
+     let attrs = infer_exp env par in
+     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+     if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
+     let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     if unrecognised <> [] then warn env par.at "M0204" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
+     let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
+     if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
+       local_error env par.at "M0201"
+         "expected Nat type for attribute cycles, but it has type%a"
+         display_typ_expand (List.hd cyc).T.typ;
+     let timeout = List.(filter (fun {T.lab; _} -> lab = "timeout") attrs_flds) in
+     if timeout <> [] && not T.(sub (List.hd timeout).typ nat32) then
+       local_error env par.at "M0205"
+         "expected Nat32 type for attribute timeout, but it has type%a"
+         display_typ_expand (List.hd timeout).T.typ
+
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
     match sort, df.it.vis.it, df.it.dec.it with
@@ -2790,7 +2823,7 @@ and infer_val_path env exp : T.typ option =
        | _ -> None
     )
   | AnnotE (_, typ) ->
-    Some (check_typ {env with pre = true}  typ)
+    Some (check_typ {env with pre = true} typ)
   | _ -> None
 
 
@@ -2809,7 +2842,7 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_,{ it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2897,7 +2930,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2983,7 +3016,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in

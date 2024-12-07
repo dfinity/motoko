@@ -89,6 +89,7 @@ val is_shared_sort : 'a shared -> bool
 val unit : typ
 val bool : typ
 val nat : typ
+val nat32 : typ
 val nat64 : typ
 val int : typ
 val text : typ
@@ -129,6 +130,8 @@ val is_unit : typ -> bool
 val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
+val is_async_cmp : typ -> bool
+val is_async_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
