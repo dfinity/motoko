@@ -81,8 +81,14 @@ module MakeExtract (Env : sig
   val all_decs : Syntax.dec_field list
   val imports : (string * string) list
   val find_trivia : Source.region -> Trivia.trivia_info
+  val strip_comments : bool
 end) =
 struct
+
+  let doc_comment_of_trivia_info ti =
+    if Env.strip_comments then None else
+    Trivia.doc_comment_of_trivia_info ti
+
   let namespace : Namespace.t =
     let import_ns = Namespace.from_imports Env.imports in
     let module_ns = Namespace.from_module Env.all_decs in
@@ -97,7 +103,7 @@ struct
           {
             name;
             typ = None;
-            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+            doc = doc_comment_of_trivia_info (Env.find_trivia at);
           }
     | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
         Option.map
@@ -105,7 +111,7 @@ struct
             {
               x with
               typ = Some ty;
-              doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+              doc = doc_comment_of_trivia_info (Env.find_trivia at);
             })
           (extract_args p)
     | Source.{ it = Syntax.WildP; _ } -> None
@@ -131,7 +137,7 @@ struct
   let extract_obj_field_doc :
       Syntax.typ_field -> Syntax.typ_field * string option =
    fun ({ at; _ } as tf) ->
-    (tf, Trivia.doc_comment_of_trivia_info (Env.find_trivia at))
+    (tf, doc_comment_of_trivia_info (Env.find_trivia at))
 
   let rec extract_doc mk_xref = function
     | Source.
@@ -211,7 +217,7 @@ struct
              {
                xref;
                doc_comment =
-                 Trivia.doc_comment_of_trivia_info
+                 doc_comment_of_trivia_info
                    (Env.find_trivia dec_field.at);
                declaration = decl_doc;
              })
@@ -219,13 +225,12 @@ struct
 end
 
 let extract_docs : bool -> Syntax.prog -> (extracted, string) result =
- fun skip_comments prog ->
+ fun strip_comments prog ->
  let lookup_trivia (line, column) =
-    if skip_comments then None else
     PosTable.find_opt prog.note.Syntax.trivia Trivia.{ line; column }
   in
   let find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
-    lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
+     lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column)
     |> Option.get
   in
   let module_docs = find_trivia prog.at in
@@ -236,11 +241,14 @@ let extract_docs : bool -> Syntax.prog -> (extracted, string) result =
         let all_decs = decls
         let imports = imports
         let find_trivia = find_trivia
+        let strip_comments = strip_comments
       end) in
       let docs = List.filter_map (Ex.extract_dec_field Fun.id) decls in
       Ok
         {
-          module_comment = Trivia.doc_comment_of_trivia_info module_docs;
+          module_comment =
+            if strip_comments then None else
+            Trivia.doc_comment_of_trivia_info module_docs;
           lookup_type = Ex.lookup_type;
           docs;
         }

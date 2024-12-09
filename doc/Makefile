@@ -16,6 +16,9 @@ overview-slides.html : overview-slides.md
 	  # # -V minScale=2 \
 	  # # -V maxScale=2
 
+outline:
+	mo-doc --strip-comments --source $(MOTOKO_BASE) --output $(OUT)/outline --format plain
+
 base:
 	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
