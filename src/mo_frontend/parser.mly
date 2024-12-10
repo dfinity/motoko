@@ -622,7 +622,7 @@ exp_post(B) :
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
+    { CallE(None, e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -692,9 +692,9 @@ exp_un(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
-    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
-    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
@@ -720,6 +720,14 @@ exp_un(B) :
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
+    { match e.it with
+      | CallE (base0_opt, f, is, args) ->
+        { e with it = CallE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), f, is, args) }
+      | AsyncE (base0_opt, Type.Fut, binds, exp) ->
+        { e with it = AsyncE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), Type.Fut, binds, exp) }
+      | _ -> e (* FIXME: meh, can we emit a warning? *)
+    }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
@@ -898,7 +906,7 @@ dec_nonvar :
           let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
-             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+             AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock s None t efs @? at $sloc
