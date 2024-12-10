@@ -95,9 +95,9 @@ let rec t_async context exp =
    let k_fail = fresh_err_cont T.unit in
    let k_clean = fresh_bail_cont T.unit in
    let context' =
-     LabelEnv.add Cleanup (Cont k_clean)
-       (LabelEnv.add Return (Cont k_ret)
-          (LabelEnv.singleton Throw (Cont k_fail)))
+     LabelEnv.(add Cleanup (Cont k_clean)
+                 (add Return (Cont k_ret)
+                    (singleton Throw (Cont k_fail))))
    in
      cps_asyncE s typ1 (match par_opt with
                         | Some par -> assert false(*FIXME:; optE par*)
@@ -443,9 +443,9 @@ and c_exp' context exp k =
     let k_fail = fresh_err_cont T.unit in
     let k_clean = fresh_bail_cont T.unit in
     let context' =
-      LabelEnv.add Cleanup (Cont k_clean)
-        (LabelEnv.add Return (Cont k_ret)
-           (LabelEnv.singleton Throw (Cont k_fail)))
+      LabelEnv.(add Cleanup (Cont k_clean)
+                  (add Return (Cont k_ret)
+                     (singleton Throw (Cont k_fail))))
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
@@ -647,8 +647,8 @@ and t_comp_unit context = function
       | T.Await ->
         let throw = fresh_err_cont T.unit in
         let context' =
-          LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
-            (LabelEnv.add Throw (Cont throw) context) in
+          LabelEnv.(add Cleanup (Cont (var "@cleanup" bail_contT))
+                      (add Throw (Cont throw) context)) in
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
@@ -675,8 +675,8 @@ and t_ignore_throw context exp =
   | _ ->
      let throw = fresh_err_cont T.unit in
      let context' =
-       LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
-         (LabelEnv.add Throw (Cont throw) context) in
+       LabelEnv.(add Cleanup (Cont (var "@cleanup" bail_contT))
+                   (add Throw (Cont throw) context)) in
      let e = fresh_var "e" T.catch in
      { (blockE [
           funcD throw e (tupE[]);
