@@ -312,8 +312,9 @@ let map_prim t_typ t_id t_exp p =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
-  | ICCyclesPrim
   | SystemCyclesBurnPrim
+  | ICCyclesPrim
+  | SystemTimeoutPrim
   | SetCertifiedData
   | GetCertificate
   | OtherPrim _ -> p
