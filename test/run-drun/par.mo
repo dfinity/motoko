@@ -14,6 +14,7 @@ actor A {
     };
 
     public func oneshot() {
+        assert 0 : Nat64 == replyDeadline();
         debugPrint ("oneshot: " # debug_show(Cycles.available()));
     };
 
@@ -67,6 +68,7 @@ actor A {
         debugPrint "test3()";
         oneshot();
         (with cycles = 3456) oneshot();
+        (with timeout = 5) oneshot(); // FIXME: DUBIOUS!
     };
 
     public func test4() : async () {

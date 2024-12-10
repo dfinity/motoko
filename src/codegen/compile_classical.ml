@@ -10958,16 +10958,19 @@ and compile_prim_invocation (env : E.t) ae p es at =
          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
          let (set_arg, get_arg) = new_local env "arg" in
          let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
+         let has attr attrs = None <> List.find_opt (fun Type.{lab; _} -> attr = lab) attrs in
          let add_cycles = Type.(match as_obj par.note.Note.typ with
-                                | Object, [] -> Internals.add_cycles env ae (* legacy *)
-                                | _ -> compile_exp_vanilla env ae par ^^ Object.load_idx env par.note.Note.typ "cycles" ^^ Cycles.add env) (* parenthetical *)
-         in
+                                | Object, attrs when has "cycles" attrs -> compile_exp_vanilla env ae par ^^ Object.load_idx env par.note.Note.typ "cycles" ^^ Cycles.add env (* parenthetical FIXME: effects! *)
+                                | _ -> Internals.add_cycles env ae) (* legacy *) in
+         let add_timeout = Type.(match as_obj par.note.Note.typ with
+                                 | Object, attrs when has "timeout" attrs -> compile_exp_vanilla env ae par ^^ Object.load_idx env par.note.Note.typ "timeout" ^^ BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^ IC.system_call env "call_with_best_effort_response" (* parenthetical FIXME: effects! *)
+                                 | _ -> G.nop) in
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          set_meth_pair ^^
          compile_exp_vanilla env ae e2 ^^ set_arg ^^
 
-         FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
+         FuncDec.ic_call_one_shot env ts get_meth_pair get_arg (add_cycles ^^ add_timeout)
     end
 
   (* Operators *)
