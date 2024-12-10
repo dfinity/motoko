@@ -341,7 +341,7 @@ let transform prog =
                      (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]))
         else None in
       let timeoutSetup = if hasTimeout
-        then Some (primE SystemTimeoutPrim [nat32E  Mo_values.Numerics.Nat32.zero])
+        then Some (primE SystemTimeoutPrim [dotE pars "timeout" T.nat32])
         else None in
       let setup = match cyclesSetup, timeoutSetup with
         | Some c, Some t -> Some (thenE c t)
