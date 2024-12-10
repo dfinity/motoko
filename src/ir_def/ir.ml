@@ -159,8 +159,9 @@ and prim =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
-  | ICCyclesPrim                      (* cycles to send by parenthetical *)
   | SystemCyclesBurnPrim
+  | ICCyclesPrim                      (* cycles to send by parenthetical *)
+  | SystemTimeoutPrim
   | SetCertifiedData
   | GetCertificate
 

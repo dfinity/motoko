@@ -5,6 +5,7 @@ actor A {
 
     func foo(next : () -> async ()) : async () {
         assert 0 : Nat64 == replyDeadline();
+        debugPrint ("foo: " # debug_show(Cycles.available()));
         await (with cycles = 3000) next()
     };
 
@@ -80,6 +81,15 @@ actor A {
             debugPrint "test5()";
             assert 0 : Nat64 != replyDeadline();
         }
+    };
+
+    public func ext() : async () {
+        assert 0 : Nat64 != replyDeadline();
+        debugPrint ("ext: " # debug_show(Cycles.available()));
+    };
+
+    public func test6() : async () {
+        await (with timeout = 3; cycles = 6543) A.ext()
     }
 }
 
@@ -93,3 +103,4 @@ actor A {
 //CALL ingress test3 "DIDL\x00\x00"
 //CALL ingress test4 "DIDL\x00\x00"
 //CALL ingress test5 "DIDL\x00\x00"
+//CALL ingress test6 "DIDL\x00\x00"

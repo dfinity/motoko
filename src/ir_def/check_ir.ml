@@ -690,6 +690,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat;
       T.unit <: t
+    | SystemTimeoutPrim, [e1] ->
+      typ e1 <: T.nat32;
+      T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;

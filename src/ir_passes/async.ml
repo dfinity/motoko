@@ -334,12 +334,19 @@ let transform prog =
       let exp2' = t_exp exp2 in
       let (nary_async, nary_reply, reject, clean), def = new_nary_async_reply ts2 in
       let hasCycles = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
-
-      let setup = if hasCycles
+      let hasTimeout = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) in
+      let cyclesSetup = if hasCycles
         then Some (thenE
                      (natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles")
                      (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]))
         else None in
+      let timeoutSetup = if hasTimeout
+        then Some (primE SystemTimeoutPrim [nat32E  Mo_values.Numerics.Nat32.zero])
+        else None in
+      let setup = match cyclesSetup, timeoutSetup with
+        | Some c, Some t -> Some (thenE c t)
+        | None, t -> t
+        | c, _ -> c in
 
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::

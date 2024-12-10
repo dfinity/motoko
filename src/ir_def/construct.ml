@@ -94,6 +94,7 @@ let primE prim es =
     | ICCallerPrim -> T.caller
     | ICStableWrite _
     | ICPerformGC
+    | SystemTimeoutPrim
     | SystemCyclesAddPrim -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
@@ -116,7 +117,7 @@ let primE prim es =
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | ICCyclesPrim -> T.(Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
     | OtherPrim "trap" -> T.Non
-    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
+    | OtherPrim "call_perform_status" -> T.nat32
     | OtherPrim "call_perform_message" -> T.text
     | OtherPrim "array_len"
     | OtherPrim "blob_size"
@@ -268,7 +269,7 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.(Prim Nat32) }
+    note = Note.{ def with typ = T.nat32 }
   }
 
 let natE n =

@@ -98,13 +98,14 @@ and prim = function
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef" $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
+  | SystemTimeoutPrim -> Atom "SystemTimeoutPrim"
   | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
-  | ICCyclesPrim      -> Atom "ICCyclesPrim"
   | SystemCyclesBurnPrim -> Atom "SystemCyclesBurnPrim"
+  | ICCyclesPrim      -> Atom "ICCyclesPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
