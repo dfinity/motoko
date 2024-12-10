@@ -165,7 +165,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjBlockE of obj_sort * (id option * typ option) * dec_field list  (* object block *)
+  | ObjBlockE of obj_sort * exp option * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
@@ -223,7 +223,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
+      sort_pat * exp option * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
 
 
 (* Program (pre unit detection) *)
@@ -245,10 +245,10 @@ and import' = pat * string * resolved_import ref
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * dec_field list      (* main IC actor *)
+ | ActorU of exp option * id option * dec_field list      (* main IC actor *)
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+     sort_pat * exp option * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {

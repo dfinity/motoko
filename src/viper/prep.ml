@@ -137,10 +137,11 @@ let mono_dec_fields (dfs : dec_field list) : dec_field list =
 let prep_unit (u : comp_unit) : comp_unit =
   let { imports; body } = u.it in
   match body.it with
-  | ActorU(id_opt, decs) ->
+  | ActorU(id_opt, exp_opt, decs) ->
+    (* TODO exp_opt (also below) *)
     let decs' = mono_dec_fields decs in
     (* let _ = List.map (fun g -> print_endline (string_of_mono_goal g)) goals in *)
-    let body' = ActorU(id_opt, decs') in
+    let body' = ActorU(id_opt, exp_opt, decs') in
     (* let _ = List.map (fun d -> print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec_field d))) decs' in *)
     { u with it = {imports; body = { body with it = body' } } }
   | _ -> u

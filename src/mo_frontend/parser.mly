@@ -108,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _, _) ->
+     | ObjBlockE (sort, _, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -207,13 +207,13 @@ let share_dec_field default_stab (df : dec_field) =
     }
 
 
-and objblock s id ty dec_fields =
+and objblock s po id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
-    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
+    | Public _, ClassD (_, _, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, (id, ty), dec_fields)
+  ObjBlockE(s, po, (id, ty), dec_fields)
 
 %}
 
@@ -371,13 +371,17 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE {Type.Module @@ at $sloc }
 
+%inline migration :
+  | LBRACKET e=exp(ob) RBRACKET { Some e }
+  | (* empty *) { None }
+
 %inline obj_sort :
-  | OBJECT { (false, Type.Object @@ at $sloc) }
-  | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
-  | MODULE { (false, Type.Module @@ at $sloc) }
+  | OBJECT { (false, Type.Object @@ at $sloc, None) }
+  | po=persistent ACTOR m=migration { (po, Type.Actor @@ at $sloc, m) }
+  | MODULE { (false, Type.Module @@ at $sloc, None) }
 
 %inline obj_sort_opt :
-  | (* empty *) { (false, Type.Object @@ no_region) }
+  | (* empty *) { (false, Type.Object @@ no_region, None) }
   | ds=obj_sort { ds }
 
 %inline query:
@@ -887,7 +891,7 @@ dec_nonvar :
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
-    { let (persistent, s) = ds in
+    { let (persistent, s, po) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -899,9 +903,9 @@ dec_nonvar :
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock s po id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s None t efs @? at $sloc
+        else objblock s po None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -914,7 +918,7 @@ dec_nonvar :
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
-    { let (persistent, s) = ds in
+    { let (persistent, s, eo) = ds in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
@@ -925,7 +929,7 @@ dec_nonvar :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+      ClassD(sp, eo, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var

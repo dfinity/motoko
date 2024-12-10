@@ -14,7 +14,7 @@
 
 <obj_sort> ::= 
     'object'
-    'persistent'? 'actor'
+    'persistent'? 'actor' ('[' <exp> ']')?
     'module'
 
 <query> ::= 
