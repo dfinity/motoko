@@ -1213,9 +1213,9 @@ and infer_exp_promote env exp : T.typ =
       display_typ_expand t;
   t'
 
-and infer_exp' f env exp : T.typ =
+and infer_exp_wrapper inf f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
-  let t = infer_exp'' env exp in
+  let t = inf env exp in
   assert (t <> T.Pre);
   let t' = f t in
   if not env.pre then begin
@@ -1225,6 +1225,8 @@ and infer_exp' f env exp : T.typ =
     exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
+
+and infer_exp' f env exp : T.typ = infer_exp_wrapper infer_exp'' f env exp
 
 and infer_exp'' env exp : T.typ =
   let context = env.context in
@@ -1388,78 +1390,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | ObjE (exp_bases, exp_fields) ->
-    let open List in
-    check_ids env "object" "field"
-      (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    let fts = map (infer_exp_field env) exp_fields in
-    let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
-    let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
-
-    (* removing explicit fields from the bases *)
-    let strip (base_t, base) =
-      let s, base_fts =
-        try T.as_obj base_t with Invalid_argument _ ->
-          error env base.at "M0093"
-            "expected object type, but expression produces type%a"
-            display_typ_expand base_t in
-      (* forbid actors as bases *)
-      if s = T.Actor then
-        error env base.at "M0178"
-          "actors cannot serve as bases in record extensions";
-      T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
-    in
-    let stripped_bases = map strip bases in
-
-    let ambiguous_fields ft1 ft2 =
-      homonymous_fields ft1 ft2 &&
-      (* allow equivalent type fields *)
-      match ft1.T.typ, ft2.T.typ with
-         (* homonymous type fields are ambiguous when unequal *)
-         | T.Typ c1, T.Typ c2 ->  not (eq env exp.at ft1.T.typ ft2.T.typ)
-         (* homonymous value fields are always ambiguous *)
-         | _ -> true
-    in
-
-    (* field disjointness of stripped bases *)
-    let rec disjoint = function
-      | [] | [_] -> ()
-      | (h, h_exp) :: t ->
-        let avoid ft =
-          let avoid_fields b b_fts =
-            if exists (ambiguous_fields ft) b_fts then
-              begin
-                let frag_typ, frag_sug = match ft.T.typ with
-                  | T.Typ c -> "type ", ""
-                  | _ -> "", " (consider overwriting)" in
-                info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
-                error env b.at "M0177"
-                  "ambiguous %sfield in base%a"
-                  frag_typ
-                  display_lab ft.T.lab
-              end in
-          iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
-        iter avoid (T.as_obj h |> snd);
-        disjoint t in
-    disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
-
-    (* do not allow var fields for now (to avoid aliasing) *)
-    begin if not (!Flags.experimental_field_aliasing) then
-      let immutable_base b_typ b_exp =
-        let constant_field (ft : T.field) =
-          if T.(is_mut ft.typ) then
-            begin
-              info env b_exp.at "overwrite field to resolve error";
-              error env b_exp.at "M0179"
-                "base has non-aliasable var field%a"
-                display_lab ft.T.lab
-            end
-        in
-        iter constant_field (T.as_obj b_typ |> snd)
-      in
-      iter2 immutable_base stripped_bases exp_bases
-    end;
-    let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
-    T.(glb t_base (Obj (Object, sort T.compare_field fts)))
+    infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let s, tfs =
@@ -1795,6 +1726,89 @@ and infer_exp_field env rf =
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
   T.{ lab = id.it; typ = t1; src = empty_src }
+
+and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
+  let open List in
+  check_ids env "object" "field"
+    (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
+
+  let infer_or_check rf =
+    let { mut; id; exp } = rf.it in
+    match List.find_opt (fun ft -> ft.T.lab = id.it) check_fields with
+    | Some exp_field ->
+      check_exp_field env rf [exp_field];
+      exp_field
+    | _ -> infer_exp_field env rf in
+
+  let fts = map infer_or_check exp_fields in
+  let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
+  let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
+
+  (* removing explicit fields from the bases *)
+  let strip (base_t, base) =
+    let s, base_fts =
+      try T.as_obj base_t with Invalid_argument _ ->
+        error env base.at "M0093"
+          "expected object type, but expression produces type%a"
+          display_typ_expand base_t in
+    (* forbid actors as bases *)
+    if s = T.Actor then
+      error env base.at "M0178"
+        "actors cannot serve as bases in record extensions";
+    T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
+  in
+  let stripped_bases = map strip bases in
+
+  let ambiguous_fields ft1 ft2 =
+    homonymous_fields ft1 ft2 &&
+    (* allow equivalent type fields *)
+    match ft1.T.typ, ft2.T.typ with
+    (* homonymous type fields are ambiguous when unequal *)
+    | T.Typ c1, T.Typ c2 ->  not (eq env exp_at ft1.T.typ ft2.T.typ)
+    (* homonymous value fields are always ambiguous *)
+    | _ -> true
+  in
+
+  (* field disjointness of stripped bases *)
+  let rec disjoint = function
+    | [] | [_] -> ()
+    | (h, h_exp) :: t ->
+       let avoid ft =
+         let avoid_fields b b_fts =
+           if exists (ambiguous_fields ft) b_fts then
+             begin
+               let frag_typ, frag_sug = match ft.T.typ with
+                 | T.Typ c -> "type ", ""
+                 | _ -> "", " (consider overwriting)" in
+               info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
+               error env b.at "M0177"
+                 "ambiguous %sfield in base%a"
+                 frag_typ
+                 display_lab ft.T.lab
+             end in
+         iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
+       iter avoid (T.as_obj h |> snd);
+       disjoint t in
+  disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+
+  (* do not allow var fields for now (to avoid aliasing) *)
+  begin if not (!Flags.experimental_field_aliasing) then
+          let immutable_base b_typ b_exp =
+            let constant_field (ft : T.field) =
+              if T.(is_mut ft.typ) then
+                begin
+                  info env b_exp.at "overwrite field to resolve error";
+                  error env b_exp.at "M0179"
+                    "base has non-aliasable var field%a"
+                    display_lab ft.T.lab
+                end
+            in
+            iter constant_field (T.as_obj b_typ |> snd)
+          in
+          iter2 immutable_base stripped_bases exp_bases
+  end;
+  let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
+  T.(glb t_base (Obj (Object, sort T.compare_field fts)))
 
 and check_exp_strong env t exp =
   check_exp {env with weak = false} t exp
@@ -2564,7 +2578,15 @@ and validate_parenthetical env typ_opt = function
        end
      | _ -> ()
      end;
-     let attrs = infer_exp env par in
+     (*let [@warning "-8"] ObjE (bases, fields) = par.it in*)
+     let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
+       let checked = T.[ { lab = "cycles"; typ = nat; src = empty_src}
+                       ; { lab = "timeout"; typ = nat32; src = empty_src}
+                       ] in
+       infer_check_bases_fields env checked par.at bases fields in
+     let attrs = infer_exp_wrapper par_infer T.as_immut env par in
+     (*let attrs = infer_check_bases_fields env checked par.at bases fields in*)
+     (*let attrs = infer_exp env par in*)
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
      if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in

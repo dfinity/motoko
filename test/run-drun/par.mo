@@ -50,7 +50,7 @@ actor A {
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
-        await (with yeah = 8; timeout = 55 : Nat32/* FIXME: checking mode */; cycles = 1000)
+        await (with yeah = 8; timeout = 55; cycles = 1000)
         foo(func() : async () = async { assert message == "Hi!" });
         await (with cycles = 5000)
         bar(func() : async () = async { assert message == "Hi!" });
@@ -76,7 +76,7 @@ actor A {
     };
 
     public func test5() : async () {
-        await (with timeout = 3 : Nat32/* FIXME: checking mode */) async {
+        await (with timeout = 3) async {
             debugPrint "test5()";
             assert 0 : Nat64 != replyDeadline();
         }
