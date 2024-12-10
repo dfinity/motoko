@@ -6,8 +6,14 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: test2()
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test3()
-debug.print: oneshot: 0
-debug.print: oneshot: 3_456
+debug.print: oneshot deadline set: false
+debug.print: oneshot cycles: 0
+debug.print: oneshot deadline set: false
+debug.print: oneshot cycles: 3_456
+debug.print: oneshot deadline set: true
+debug.print: oneshot cycles: 0
+debug.print: oneshot deadline set: true
+debug.print: oneshot cycles: 4_567
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test4()
 debug.print: rawable: 0

@@ -14,8 +14,8 @@ actor A {
     };
 
     public func oneshot() {
-        assert 0 : Nat64 == replyDeadline();
-        debugPrint ("oneshot: " # debug_show(Cycles.available()));
+        debugPrint ("oneshot deadline set: " # debug_show(0 != replyDeadline()));
+        debugPrint ("oneshot cycles: " # debug_show(Cycles.available()));
     };
 
     public func rawable() : async () {
@@ -68,7 +68,8 @@ actor A {
         debugPrint "test3()";
         oneshot();
         (with cycles = 3456) oneshot();
-        (with timeout = 5) oneshot(); // FIXME: DUBIOUS!
+        (with timeout = 5) oneshot();
+        (with timeout = 5; cycles = 4567) A.oneshot();
     };
 
     public func test4() : async () {
