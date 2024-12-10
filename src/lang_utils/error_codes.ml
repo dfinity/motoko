@@ -204,9 +204,7 @@ let error_codes : (string * string option) list =
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
     "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Cannot determine subtyping or equality *)
-    "M0201", None; (* `cycle` attribute in parenthetical note must be of type `Nat` *)
     "M0202", None; (* parenthetical note must be applied to a message send *)
     "M0203", None; (* parenthetical note has no attributes *)
     "M0204", Some([%blob "lang_utils/error_codes/M0204.md"]); (* Unrecognised attribute in parenthetical note *)
-    "M0205", None; (* `timeout` attribute in parenthetical note must be of type `Nat32` *)
   ]
