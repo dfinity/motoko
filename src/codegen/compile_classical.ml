@@ -12425,9 +12425,9 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
         Internals.pass_cycles env ae (compile_exp_vanilla env ae par (*FIXME: effects?!*))
       | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
     let add_timeout = match par.note.Note.typ with
-      | (Type.Opt typ) when Type.(sub typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) ->
+      | Type.Opt typ when Type.(sub typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) ->
         compile_exp_vanilla env ae par (*FIXME: effects?!*) ^^
-        (* this is a naked option, and no need to check is_some *)
+        (* this is a naked option, thus no need to check is_some *)
         Object.load_idx env typ "timeout" ^^
         BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
         IC.system_call env "call_with_best_effort_response"
