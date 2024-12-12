@@ -48,7 +48,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | TupE exps -> { exp with it = TupE (List.map (over_exp v) exps) }
   | ArrayE (x, exps) -> { exp with it = ArrayE (x, List.map (over_exp v) exps) }
   | BlockE ds -> { exp with it = BlockE (List.map (over_dec v) ds) }
-  | ObjBlockE (x, (n, t), dfs) -> { exp with it = ObjBlockE (x, (n, Option.map (over_typ v) t), List.map (over_dec_field v) dfs) }
+  | ObjBlockE (x, eo, (n, t), dfs) -> { exp with it = ObjBlockE (x, Option.map (over_exp v) eo, (n, Option.map (over_typ v) t), List.map (over_dec_field v) dfs) }
   | ObjE (bases, efs) -> { exp with it = ObjE (List.map (over_exp v) bases, List.map (over_exp_field v) efs) }
   | IfE (exp1, exp2, exp3) -> { exp with it = IfE(over_exp v exp1, over_exp v exp2, over_exp v exp3) }
   | TryE (exp1, cases, exp2) -> { exp with it = TryE (over_exp v exp1, List.map (over_case v) cases, Option.map (over_exp v) exp2) }
@@ -76,7 +76,7 @@ and over_dec (v : visitor) (d : dec) : dec =
   | ExpD e -> { d with it = ExpD (over_exp v e)}
   | VarD (x, e) -> { d with it = VarD (x, over_exp v e)}
   | LetD (p, e, fail) -> { d with it = LetD (over_pat v p, over_exp v e, Option.map (over_exp v) fail)}
-  | ClassD (sp, cid, tbs, p, t_o, s, id, dfs) -> { d with it = ClassD (sp, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, s, id, List.map (over_dec_field v) dfs)})
+  | ClassD (sp, e_o, cid, tbs, p, t_o, s, id, dfs) -> { d with it = ClassD (sp, Option.map (over_exp v) e_o, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, s, id, List.map (over_dec_field v) dfs)})
 
 and over_dec_field (v : visitor) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec v df.it.dec } }

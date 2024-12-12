@@ -232,7 +232,8 @@ let rec unit reqs (u : M.comp_unit) : prog Diag.result =
 and unit' reqs (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
-  | M.ActorU(id_opt, decs) ->
+  | M.ActorU(eo_, id_opt, decs) ->
+    (* TODO eo *)
     let ctxt = {
       self = None;
       imports = tr_imports imports;

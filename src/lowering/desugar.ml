@@ -90,8 +90,8 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, (self_id_opt, _), dfs) ->
-    obj_block at s self_id_opt dfs note.Note.typ
+  | S.ObjBlockE (s, exp_opt, (self_id_opt, _), dfs) ->
+    obj_block at s exp_opt self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
@@ -326,12 +326,12 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj_block at s self_id dfs obj_typ =
+and obj_block at s exp_opt self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    build_actor at [] self_id dfs obj_typ
+    build_actor at [] exp_opt self_id dfs obj_typ
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
@@ -532,7 +532,7 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and build_actor at ts self_id es obj_typ =
+and build_actor at ts exp_opt self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -812,7 +812,8 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
+  | S.ClassD (sp, exp_opt, id, tbs, p, _t_opt, s, self_id, dfs) ->
+     (* TODO exp_opt *)
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -839,13 +840,13 @@ and dec' at n = function
         let (_, _, obj_typ) = T.as_async rng_typ in
         let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
-          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
+          (wrap { it = obj_block at  s exp_opt (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj_block at s (Some self_id) dfs rng_typ;
+        { it = obj_block at s exp_opt (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
@@ -1023,7 +1024,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
   let { body; _ } = lib.it in
   let id = match body.it with
-    | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+    | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
   let fun_typ = T.normalize body.note.S.note_typ in
@@ -1118,7 +1119,8 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (sp, exp_opt, typ_id, _tbs, p, _, self_id, fields) ->
+    (* TODO exp_opt *)
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
@@ -1134,7 +1136,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
+    let actor_expression = build_actor u.at ts exp_opt (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
@@ -1145,8 +1147,8 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
-  | S.ActorU (self_id, fields) ->
-    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
+  | S.ActorU (exp_opt, self_id, fields) ->
+    let actor_expression = build_actor u.at [] exp_opt self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
@@ -1182,7 +1184,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
     raise (Invalid_argument "Desugar: Cannot import actor")
   | I.ActorU (Some as_, ds, fs, up, actor_t) ->
     let id = match body.it with
-      | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+      | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
       | _ -> assert false
     in
     let s, cntrl, tbs, ts1, ts2 = T.as_func t in
