@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>prelude.ml &mdash; Coverage report</title>
+    <meta name="description" content="36.00% coverage in viper/prelude.ml">
+    <link rel="stylesheet" href="../coverage.css"/>
+    <script src="../highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="../index.html">
+          <span class="dirname">viper/</span>prelude.ml
+        </a>
+      </h1>
+      <h2>36.00%</h2>
+    </div>
+    <div id="navbar">
+      <span class="unvisited" style="top:21.62%"></span>
+      <span class="unvisited" style="top:24.32%"></span>
+      <span class="unvisited" style="top:25.68%"></span>
+      <span class="unvisited" style="top:27.03%"></span>
+      <span class="unvisited" style="top:29.73%"></span>
+      <span class="unvisited" style="top:33.78%"></span>
+      <span class="unvisited" style="top:35.14%"></span>
+      <span class="unvisited" style="top:39.19%"></span>
+      <span class="unvisited" style="top:41.89%"></span>
+      <span class="unvisited" style="top:43.24%"></span>
+      <span class="unvisited" style="top:47.30%"></span>
+      <span class="unvisited" style="bottom:25.68%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span > </span>
+<a id="L9"></a><span > </span>
+<a id="L10"></a><span > </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span > </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span > </span>
+<a id="L16"></a><span class="unvisited"> </span>
+<a id="L17"></a><span > </span>
+<a id="L18"></a><span class="unvisited"> </span>
+<a id="L19"></a><span class="unvisited"> </span>
+<a id="L20"></a><span class="unvisited"> </span>
+<a id="L21"></a><span > </span>
+<a id="L22"></a><span class="unvisited"> </span>
+<a id="L23"></a><span > </span>
+<a id="L24"></a><span > </span>
+<a id="L25"></a><span class="unvisited"> </span>
+<a id="L26"></a><span class="unvisited"> </span>
+<a id="L27"></a><span > </span>
+<a id="L28"></a><span > </span>
+<a id="L29"></a><span class="unvisited"> </span>
+<a id="L30"></a><span > </span>
+<a id="L31"></a><span class="unvisited"> </span>
+<a id="L32"></a><span class="unvisited"> </span>
+<a id="L33"></a><span > </span>
+<a id="L34"></a><span > </span>
+<a id="L35"></a><span class="unvisited"> </span>
+<a id="L36"></a><span > </span>
+<a id="L37"></a><span > </span>
+<a id="L38"></a><span > </span>
+<a id="L39"></a><span > </span>
+<a id="L40"></a><span > </span>
+<a id="L41"></a><span class="visited"> </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span class="visited"> </span>
+<a id="L44"></a><span > </span>
+<a id="L45"></a><span > </span>
+<a id="L46"></a><span > </span>
+<a id="L47"></a><span > </span>
+<a id="L48"></a><span > </span>
+<a id="L49"></a><span > </span>
+<a id="L50"></a><span > </span>
+<a id="L51"></a><span > </span>
+<a id="L52"></a><span > </span>
+<a id="L53"></a><span > </span>
+<a id="L54"></a><span > </span>
+<a id="L55"></a><span class="unvisited"> </span>
+<a id="L56"></a><span > </span>
+<a id="L57"></a><span > </span>
+<a id="L58"></a><span > </span>
+<a id="L59"></a><span > </span>
+<a id="L60"></a><span class="visited"> </span>
+<a id="L61"></a><span > </span>
+<a id="L62"></a><span class="visited"> </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span class="visited"> </span>
+<a id="L66"></a><span > </span>
+<a id="L67"></a><span > </span>
+<a id="L68"></a><span > </span>
+<a id="L69"></a><span class="visited"> </span>
+<a id="L70"></a><span > </span>
+<a id="L71"></a><span > </span>
+<a id="L72"></a><span class="visited"> </span>
+<a id="L73"></a><span > </span>
+<a id="L74"></a><span > </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1"> 1</a>
+<a href="#L2"> 2</a>
+<a href="#L3"> 3</a>
+<a href="#L4"> 4</a>
+<a href="#L5"> 5</a>
+<a href="#L6"> 6</a>
+<a href="#L7"> 7</a>
+<a href="#L8"> 8</a>
+<a href="#L9"> 9</a>
+<a href="#L10">10</a>
+<a href="#L11">11</a>
+<a href="#L12">12</a>
+<a href="#L13">13</a>
+<a href="#L14">14</a>
+<a href="#L15">15</a>
+<a href="#L16">16</a>
+<a href="#L17">17</a>
+<a href="#L18">18</a>
+<a href="#L19">19</a>
+<a href="#L20">20</a>
+<a href="#L21">21</a>
+<a href="#L22">22</a>
+<a href="#L23">23</a>
+<a href="#L24">24</a>
+<a href="#L25">25</a>
+<a href="#L26">26</a>
+<a href="#L27">27</a>
+<a href="#L28">28</a>
+<a href="#L29">29</a>
+<a href="#L30">30</a>
+<a href="#L31">31</a>
+<a href="#L32">32</a>
+<a href="#L33">33</a>
+<a href="#L34">34</a>
+<a href="#L35">35</a>
+<a href="#L36">36</a>
+<a href="#L37">37</a>
+<a href="#L38">38</a>
+<a href="#L39">39</a>
+<a href="#L40">40</a>
+<a href="#L41">41</a>
+<a href="#L42">42</a>
+<a href="#L43">43</a>
+<a href="#L44">44</a>
+<a href="#L45">45</a>
+<a href="#L46">46</a>
+<a href="#L47">47</a>
+<a href="#L48">48</a>
+<a href="#L49">49</a>
+<a href="#L50">50</a>
+<a href="#L51">51</a>
+<a href="#L52">52</a>
+<a href="#L53">53</a>
+<a href="#L54">54</a>
+<a href="#L55">55</a>
+<a href="#L56">56</a>
+<a href="#L57">57</a>
+<a href="#L58">58</a>
+<a href="#L59">59</a>
+<a href="#L60">60</a>
+<a href="#L61">61</a>
+<a href="#L62">62</a>
+<a href="#L63">63</a>
+<a href="#L64">64</a>
+<a href="#L65">65</a>
+<a href="#L66">66</a>
+<a href="#L67">67</a>
+<a href="#L68">68</a>
+<a href="#L69">69</a>
+<a href="#L70">70</a>
+<a href="#L71">71</a>
+<a href="#L72">72</a>
+<a href="#L73">73</a>
+<a href="#L74">74</a>
+</pre>
+<pre><code class="ocaml">open Common
+
+let prelude_array_encoding : string = {prelude|/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a &amp;&amp; $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) &gt;= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 &lt;= j &amp;&amp; j &lt; $size(a) ==&gt; acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 &lt;= j &amp;&amp; j &lt; $size(a) ==&gt; $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 &lt;= i &amp;&amp; i &lt; $size(a) ==&gt; $loc(a, i).t == x|prelude}
+
+let pp_tup_decl_param  ppf i = <span data-count="0">F</span>ormat.fprintf ppf "T%d" i
+let pp_tup_decl_params ppf = function
+  | <span data-count="0">0</span> -&gt; ()
+  | <span data-count="0">n</span> -&gt;
+      let comma ppf () = <span data-count="0">F</span>ormat.fprintf ppf ",@ " in
+      Format.fprintf ppf "[%a]"
+        (Format.pp_print_lis<span data-count="0">t</span> pp_tup_decl_param ~pp_sep:comma) (List.ini<span data-count="0">t</span> n Fun.id)
+
+let pp_tup_decl_con_field n ppf i =
+  <span data-count="0">F</span>ormat.fprintf ppf "%s : %a"
+    (tup_prj_nam<span data-count="0">e</span> n i)
+    pp_tup_decl_param i
+let pp_tup_decl_con ppf n =
+  <span data-count="0">l</span>et comma ppf () = <span data-count="0">F</span>ormat.fprintf ppf ",@ " in
+  Format.fprintf ppf "%s@[(%a)@]"
+    (tup_con_nam<span data-count="0">e</span> n)
+    (Format.pp_print_lis<span data-count="0">t</span> ~pp_sep:comma (pp_tup_decl_con_fiel<span data-count="0">d</span> n)) (List.ini<span data-count="0">t</span> n Fun.id)
+
+let pp_tup_decl n =
+  <span data-count="0">F</span>ormat.asprintf "@[&lt;2&gt;adt Tuple$%d@;%a@;@[&lt;v 2&gt;{ %a }@]@]"
+    n
+    pp_tup_decl_params n
+    pp_tup_decl_con n
+
+let prelude_tuple_encoding (tuple_arities : IntSet.t) : string =
+  <span data-count="1">S</span>tring.concat "\n"
+  ("/* Tuple encoding */" ::
+    List.ma<span data-count="1">p</span> pp_tup_decl (IntSet.element<span data-count="1">s</span> tuple_arities))
+
+let prelude_option_encoding : string = {prelude|/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}|prelude}
+
+let prelude_text_encoding : string = {prelude|/* Text encoding */
+function $concat(a: Int, b: Int): Int|prelude}
+
+let pp_typed_field (name, typ) =
+  <span data-count="0">F</span>ormat.asprintf "@[&lt;2&gt;field %s:@ %a@]"
+      name
+      Pretty.pp_typ typ
+
+let prelude_typed_references typed_fields : string =
+  <span data-count="1">S</span>tring.concat "\n"
+  ("/* Typed references */" ::
+    List.ma<span data-count="1">p</span> pp_typed_field (StrMap.binding<span data-count="1">s</span> typed_fields))
+
+let prelude reqs: string =
+  <span data-count="1">S</span>tring.concat "\n"
+  [
+    "/* BEGIN PRELUDE */";
+    prelude_array_encoding;
+    prelude_tuple_encodin<span data-count="1">g</span> !(reqs.tuple_arities);
+    prelude_option_encoding;
+    prelude_text_encoding;
+    prelude_typed_reference<span data-count="1">s</span> !(reqs.typed_fields);
+    "/* END PRELUDE */"
+  ]
+</code></pre>
+      </div>
+    </div>
+    <script src="../coverage.js"></script>
+  </body>
+</html>
