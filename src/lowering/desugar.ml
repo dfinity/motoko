@@ -550,8 +550,62 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let migration = match exp_opt with
+    | None -> primE (I.ICStableRead ty) [] (* as before *)
+    | Some exp0 ->
+      let e = exp exp0 in
+      let (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
+      let (T.Object, dom_fields) = T.as_obj dom in
+      let (T.Object, rng_fields) = T.as_obj rng in
+      ifE (primE (Ir.RelPrim (T.nat, Operator.EqOp)) [
+               primE (I.OtherPrim "rts_stable_memory_size") [];
+               natE Numerics.Nat.zero])
+        (primE (I.ICStableRead ty) [])
+        (let fields' = List.map (fun (i,t) ->
+           let t' = match T.lookup_val_field_opt i dom_fields with
+             | None -> t
+             | Some t -> t
+           in
+           T.{lab = i; typ = T.Opt (T.as_immut t'); src = T.empty_src}) ids in
+         let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
+         let v = fresh_var "v" ty' in
+(*         let fields'' = List.map (fun (i,t) ->
+           let t' = match T.lookup_val_field_opt i dom_fields with
+             | None -> t
+             | Some t -> t
+           in
+           T.{lab = i; typ = T.Opt (T.as_immut t'); src = T.empty_src}) ids in *)
+         (* let ty'' = T.Obj (T.Memory, List.sort T.compare_field fields'') in *)
+         let v_dom = fresh_var "v_dom" dom in
+         let v_rng = fresh_var "v_rng" rng in
+         (*         let v_res = fresh_var "v_res" ty in *)
+         letE v (primE (I.ICStableRead ty') [])
+           (letE v_dom
+              (objE T.Object []
+                (List.map (fun T.{lab=i;typ=t;_} ->
+                  let vi = fresh_var ("v_"^i) t in
+                  (i, switch_optE (dotE (varE v) i (T.Opt t))
+                       (primE (Ir.OtherPrim "trap")
+                         [textE ("stable variable "^i^"required but no found")])
+                       (varP vi) (varE vi)
+                       t)) dom_fields))
+              (letE v_rng (callE e [] (varE v))
+                 (objE T.Memory []
+                    (List.map (fun T.{lab=i;typ=t;_} ->
+                     i,
+                     match T.lookup_val_field_opt i rng_fields with
+                       (* produced by migration *)
+                     | Some t -> optE (dotE (varE v_rng) i t) (* wrap in ? _*)
+                       | None ->
+                         (* not produced by migration *)
+                         match T.lookup_val_field_opt i dom_fields with
+                         | Some t -> nullE() (* consumed by migration (not produced) *)
+                            (*TBR: could also reuse if compatible *)
+                         | None -> dotE (varE v) i (T.Opt t))
+                       fields)))))
+  in
   let ds =
-    varD state (optE (primE (I.ICStableRead ty) []))
+    varD state (optE migration)
     ::
     nary_funcD get_state []
       (let v = fresh_var "v" ty in
