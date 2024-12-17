@@ -1368,7 +1368,8 @@ and infer_exp'' env exp : T.typ =
          error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0069"
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
-    end;
+      end;
+    let _t_opt = Option.map (infer_exp env) exp_opt in
     let env' =
       if obj_sort.it = T.Actor then
         { env with
@@ -2687,6 +2688,7 @@ and infer_dec env dec : T.typ =
      (*TODO exp_opt *)
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
+      let _t_opt = Option.map (infer_exp env) exp_opt in
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in

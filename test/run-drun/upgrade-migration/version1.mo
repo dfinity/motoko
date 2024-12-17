@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 import Migration "Migration1";
 
-actor {
+actor [Migration.run] {
 
    Prim.debugPrint("Version 1");
 

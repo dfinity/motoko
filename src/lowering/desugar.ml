@@ -561,12 +561,17 @@ and build_actor at ts exp_opt self_id es obj_typ =
                primE (I.OtherPrim "rts_stable_memory_size") [];
                natE Numerics.Nat.zero])
         (primE (I.ICStableRead ty) [])
-        (let fields' = List.map (fun (i,t) ->
-           let t' = match T.lookup_val_field_opt i dom_fields with
-             | None -> t
-             | Some t -> t
-           in
-           T.{lab = i; typ = T.Opt (T.as_immut t'); src = T.empty_src}) ids in
+        (let fields' =
+           List.map
+             (fun (i,t) ->
+                T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src})
+             ((List.map (fun T.{lab;typ;_} -> (lab,typ)) dom_fields) @
+                (List.filter_map
+                   (fun (i,t) ->
+                     match T.lookup_val_field_opt i dom_fields with
+                     | Some t -> None (* ignore overriden *)
+                     | None -> Some (i, t) (* retain others *))
+                   ids)) in
          let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
          let v = fresh_var "v" ty' in
 (*         let fields'' = List.map (fun (i,t) ->
@@ -581,28 +586,28 @@ and build_actor at ts exp_opt self_id es obj_typ =
          (*         let v_res = fresh_var "v_res" ty in *)
          letE v (primE (I.ICStableRead ty') [])
            (letE v_dom
-              (objE T.Object []
-                (List.map (fun T.{lab=i;typ=t;_} ->
-                  let vi = fresh_var ("v_"^i) t in
-                  (i, switch_optE (dotE (varE v) i (T.Opt t))
+              (objectE T.Object
+                 (List.map (fun T.{lab=i;typ=t;_} ->
+                  let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                  (i, switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
                        (primE (Ir.OtherPrim "trap")
-                         [textE ("stable variable "^i^"required but no found")])
+                         [textE ("stable variable " ^ i ^ " expected but not found")])
                        (varP vi) (varE vi)
-                       t)) dom_fields))
-              (letE v_rng (callE e [] (varE v))
-                 (objE T.Memory []
+                       (T.as_immut t))) dom_fields) dom_fields)
+              (letE v_rng (callE e [] (varE v_dom))
+                 (objectE T.Memory
                     (List.map (fun T.{lab=i;typ=t;_} ->
                      i,
                      match T.lookup_val_field_opt i rng_fields with
                        (* produced by migration *)
-                     | Some t -> optE (dotE (varE v_rng) i t) (* wrap in ? _*)
-                       | None ->
+                     | Some t -> optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+                     | None ->
                          (* not produced by migration *)
                          match T.lookup_val_field_opt i dom_fields with
                          | Some t -> nullE() (* consumed by migration (not produced) *)
                             (*TBR: could also reuse if compatible *)
-                         | None -> dotE (varE v) i (T.Opt t))
-                       fields)))))
+                         | None -> dotE (varE v) i t)
+                       fields) fields))))
   in
   let ds =
     varD state (optE migration)
