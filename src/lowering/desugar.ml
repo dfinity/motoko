@@ -554,9 +554,9 @@ and build_actor at ts exp_opt self_id es obj_typ =
     | None -> primE (I.ICStableRead ty) [] (* as before *)
     | Some exp0 ->
       let e = exp exp0 in
-      let (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
-      let (T.Object, dom_fields) = T.as_obj dom in
-      let (T.Object, rng_fields) = T.as_obj rng in
+      let [@warning "-8"] (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
+      let [@warning "-8"] (T.Object, dom_fields) = T.as_obj dom in
+      let [@warning "-8"] (T.Object, rng_fields) = T.as_obj rng in
       ifE (primE (Ir.RelPrim (T.nat, Operator.EqOp)) [
                primE (I.OtherPrim "rts_stable_memory_size") [];
                natE Numerics.Nat.zero])
@@ -574,16 +574,8 @@ and build_actor at ts exp_opt self_id es obj_typ =
                    ids)) in
          let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
          let v = fresh_var "v" ty' in
-(*         let fields'' = List.map (fun (i,t) ->
-           let t' = match T.lookup_val_field_opt i dom_fields with
-             | None -> t
-             | Some t -> t
-           in
-           T.{lab = i; typ = T.Opt (T.as_immut t'); src = T.empty_src}) ids in *)
-         (* let ty'' = T.Obj (T.Memory, List.sort T.compare_field fields'') in *)
          let v_dom = fresh_var "v_dom" dom in
          let v_rng = fresh_var "v_rng" rng in
-         (*         let v_res = fresh_var "v_res" ty in *)
          letE v (primE (I.ICStableRead ty') [])
            (letE v_dom
               (objectE T.Object
