@@ -90,7 +90,8 @@ let rec exp msgs e : f = match e.it with
   (* Uses are delayed by function expressions *)
   | FuncE (_, sp, tp, p, t, _, e) ->
     delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
-  | ObjBlockE (s, (self_id_opt, _), dfs) ->
+  | ObjBlockE (s, eo, (self_id_opt, _), dfs) ->
+    (* TODO eo *)
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _
@@ -177,7 +178,8 @@ and dec msgs d = match d.it with
   | LetD (p, e, Some f) -> pat msgs p +++ exp msgs e +++ exp msgs f
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
+  | ClassD (csp, eo, i, tp, p, t, s, i', dfs) ->
+    (* TODO eo *)
     (M.empty, S.singleton i.it) +++ delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )

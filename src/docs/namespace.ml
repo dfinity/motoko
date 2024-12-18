@@ -32,7 +32,7 @@ let from_module =
         | Syntax.ExpD _ -> acc
         | Syntax.LetD
             ( { it = Syntax.VarP id; _ },
-              { it = Syntax.ObjBlockE (_, _, decs); _ },
+              { it = Syntax.ObjBlockE (_, _, _, decs); _ },
               _ ) ->
             let mk_nested x = mk_xref (Xref.XNested (id.it, x)) in
             {
@@ -69,7 +69,7 @@ let from_module =
                   (mk_xref (Xref.XValue id.it), None)
                   acc.values;
             }
-        | Syntax.ClassD (_, id, _, _, _, _, _, _) ->
+        | Syntax.ClassD (_, _, id, _, _, _, _, _, _) ->
             {
               acc with
               types = StringMap.add id.it (mk_xref (Xref.XType id.it)) acc.types;

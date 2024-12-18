@@ -147,6 +147,8 @@ val (-*-) : exp -> exp -> exp (* application *)
 
 val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
 
+val objectE : obj_sort -> (lab * exp) list -> field list -> exp
+
 (* Records *)
 
 val recordE : (lab * exp) list -> exp

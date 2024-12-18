@@ -790,7 +790,41 @@ let objE sort typ_flds flds =
   in
   go [] [] [] flds
 
+
 let recordE flds = objE T.Object [] flds
+
+let objectE sort flds (tfs : T.field list) =
+  let rec go ds fields = function
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+          (T.Obj (sort, List.sort T.compare_field tfs)))
+    | (lab, exp)::flds ->
+       let v, typ, ds =
+         match T.lookup_val_field_opt lab tfs with
+         | None -> assert false
+         | Some typ ->
+           if T.is_mut typ
+           then
+             let v = fresh_var lab typ in
+             v, typ, varD v exp :: ds
+           else
+             match exp.it with
+             | VarE (Const, v) ->
+                var v typ, typ, ds
+             | _ ->
+                let v = fresh_var lab typ in
+                v, typ, letD v exp :: ds
+       in
+       let field = {
+         it = {name = lab; var = id_of_var v};
+         at = no_region;
+         note = typ
+       } in
+      go ds (field::fields) flds
+  in
+  go [] [] flds
 
 let check_call_perform_status success mk_failure =
   ifE

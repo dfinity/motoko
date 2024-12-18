@@ -1,0 +1,20 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Version 0
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {three = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}; old = {one = [var 1, 2, 3, 4]; two = [var "1", "2", "3", "4"]}}}
+debug.print: Version 1
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {three = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {four = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}; old = {three = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}}}
+debug.print: Version 2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: stable variable `three` of type `var [var (Nat, Text)]` expected but not found.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+debug.print: {four = [var (1, "1"), (2, "2"), (3, "3"), (4, "4")]}
+ingress Completed: Reply: 0x4449444c0000

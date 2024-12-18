@@ -1,0 +1,4 @@
+migration-more.mo:1.9-1.30: type error [M0093], expected object type, but migration expression produces non-object type
+  Int
+migration-more.mo:1.9-1.30: type error [M0093], expected object type, but migration expression consumes non-object type
+  Nat
