@@ -591,7 +591,8 @@ and build_actor at ts exp_opt self_id es obj_typ =
                   let vi = fresh_var ("v_"^i) (T.as_immut t) in
                   (i, switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
                        (primE (Ir.OtherPrim "trap")
-                         [textE ("stable variable " ^ i ^ " expected but not found")])
+                          [textE (Printf.sprintf
+                             "stable variable `%s` of type `%s` expected but not found" i (T.string_of_typ t))])
                        (varP vi) (varE vi)
                        (T.as_immut t))) dom_fields) dom_fields)
               (letE v_rng (callE e [] (varE v_dom))

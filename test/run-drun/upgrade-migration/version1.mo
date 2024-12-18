@@ -7,8 +7,9 @@ actor [Migration.run] {
 
    stable var version = 0;
 
-   stable var three : [var (Nat,Nat)] = [var ];
+   stable var three : [var (Nat, Text)] = [var];
 
    public func check(): async() {
+     Prim.debugPrint (debug_show {three});
    }
 };

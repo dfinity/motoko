@@ -1,14 +1,15 @@
 import Prim "mo:prim";
+
 module {
 
-  public func run( pre : { var three : [var (Nat,Nat)] } ) :
-     { var four : [var (Nat,Nat)] } {
-    let post =
+  public func run( old : { var three : [var (Nat, Text)] } ) :
+      { var four : [var (Nat, Text)] } {
+    let new =
     {
-      var four = pre.three;
+      var four = old.three;
     };
-    Prim.debugPrint(debug_show{pre;post});
-    post
+    Prim.debugPrint(debug_show {migration = {old; new}});
+    new
   }
 
 }
