@@ -69,9 +69,9 @@ and infer_effect_exp (exp: exp) : T.eff =
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE (T.Fut, _, _, _) ->
+  | AsyncE (_, T.Fut, _, _, _) ->
     T.Await
-  | AsyncE (T.Cmp, _, _, _) ->
+  | AsyncE (_, T.Cmp, _, _, _) ->
     T.Triv
   | TryE _ ->
     T.Await
@@ -81,13 +81,9 @@ and infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | FuncE _ ->
     T.Triv
-  | SelfCallE (_, _, exp1, exp2, exp3) ->
-    let e1 = effect_exp exp1 in
-    let e2 = effect_exp exp2 in
-    let e3 = effect_exp exp3 in
-    max_eff e1 (max_eff e2 e3)
-  | ActorE _ ->
-    T.Triv
+  | SelfCallE (par, _, _, exp1, exp2, exp3) ->
+    map_max_effs effect_exp [par; exp1; exp2; exp3]
+  | ActorE _
   | NewObjE _ ->
     T.Triv
 
@@ -102,7 +98,7 @@ and effect_cases cases =
 and effect_dec dec = match dec.it with
   | LetD (_, e) | VarD (_, _, e) -> effect_exp e
   | RefD (_, _, { it = DotLE (e, _); _ }) -> effect_exp e
-  | RefD (_, _, _) -> assert false
+  | RefD _ -> assert false
 
 let infer_effect_dec = effect_dec
 
