@@ -240,7 +240,7 @@ Adding a new record field to the type of existing stable variable is not support
 
 ### Solution
 
-To resolve this issue, an [explicit](#explicit-migration) is needed:
+To resolve this issue, an [explicit migration](#explicit-migration) is needed:
 
 1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
