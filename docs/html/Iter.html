@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/base/Iter.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/base/Iter.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#iter" id="toc-iter">Iter</a>
+<ul>
+<li><a href="#type-iter" id="toc-type-iter">Type
+<code>Iter</code></a></li>
+<li><a href="#class-range" id="toc-class-range">Class
+<code>range</code></a>
+<ul>
+<li><a href="#function-next" id="toc-function-next">Function
+<code>next</code></a></li>
+</ul></li>
+<li><a href="#class-revrange" id="toc-class-revrange">Class
+<code>revRange</code></a>
+<ul>
+<li><a href="#function-next-1" id="toc-function-next-1">Function
+<code>next</code></a></li>
+</ul></li>
+<li><a href="#function-iterate" id="toc-function-iterate">Function
+<code>iterate</code></a></li>
+<li><a href="#function-size" id="toc-function-size">Function
+<code>size</code></a></li>
+<li><a href="#function-map" id="toc-function-map">Function
+<code>map</code></a></li>
+<li><a href="#function-filter" id="toc-function-filter">Function
+<code>filter</code></a></li>
+<li><a href="#function-make" id="toc-function-make">Function
+<code>make</code></a></li>
+<li><a href="#function-concat" id="toc-function-concat">Function
+<code>concat</code></a></li>
+<li><a href="#function-fromarray" id="toc-function-fromarray">Function
+<code>fromArray</code></a></li>
+<li><a href="#function-fromarraymut"
+id="toc-function-fromarraymut">Function
+<code>fromArrayMut</code></a></li>
+<li><a href="#value-fromlist" id="toc-value-fromlist">Value
+<code>fromList</code></a></li>
+<li><a href="#function-toarray" id="toc-function-toarray">Function
+<code>toArray</code></a></li>
+<li><a href="#function-toarraymut" id="toc-function-toarraymut">Function
+<code>toArrayMut</code></a></li>
+<li><a href="#function-tolist" id="toc-function-tolist">Function
+<code>toList</code></a></li>
+<li><a href="#function-sort" id="toc-function-sort">Function
+<code>sort</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="iter">Iter</h1>
+<p>Iterators</p>
+<h2 id="type-iter">Type <code>Iter</code></h2>
+<pre class="motoko"><code>type Iter&lt;T&gt; = { next : () -&gt; ?T }</code></pre>
+<p>An iterator that produces values of type <code>T</code>. Calling
+<code>next</code> returns <code>null</code> when iteration is
+finished.</p>
+<p>Iterators are inherently stateful. Calling <code>next</code>
+"consumes" a value from the Iterator that cannot be put back, so keep
+that in mind when sharing iterators between consumers.</p>
+<p>An iterater <code>i</code> can be iterated over using</p>
+<pre><code>for (x in i) {
+  …do something with x…
+}</code></pre>
+<h2 id="class-range">Class <code>range</code></h2>
+<pre class="motoko"><code>class range(x : Nat, y : Int)</code></pre>
+<p>Creates an iterator that produces all <code>Nat</code>s from
+<code>x</code> to <code>y</code> including both of the bounds.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.range(1, 3);
+assert(?1 == iter.next());
+assert(?2 == iter.next());
+assert(?3 == iter.next());
+assert(null == iter.next());</code></pre>
+<h3 id="function-next">Function <code>next</code></h3>
+<pre class="motoko"><code>func next() : ?Nat</code></pre>
+<h2 id="class-revrange">Class <code>revRange</code></h2>
+<pre class="motoko"><code>class revRange(x : Int, y : Int)</code></pre>
+<p>Like <code>range</code> but produces the values in the opposite
+order.</p>
+<h3 id="function-next-1">Function <code>next</code></h3>
+<pre class="motoko"><code>func next() : ?Int</code></pre>
+<h2 id="function-iterate">Function <code>iterate</code></h2>
+<pre class="motoko"><code>func iterate&lt;A&gt;(xs : Iter&lt;A&gt;, f : (A, Nat) -&gt; ())</code></pre>
+<p>Calls a function <code>f</code> on every value produced by an
+iterator and discards the results. If you're looking to keep these
+results use <code>map</code> instead.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+var sum = 0;
+Iter.iterate&lt;Nat&gt;(Iter.range(1, 3), func(x, _index) {
+  sum += x;
+});
+assert(6 == sum)</code></pre>
+<h2 id="function-size">Function <code>size</code></h2>
+<pre class="motoko"><code>func size&lt;A&gt;(xs : Iter&lt;A&gt;) : Nat</code></pre>
+<p>Consumes an iterator and counts how many elements were produced
+(discarding them in the process).</p>
+<h2 id="function-map">Function <code>map</code></h2>
+<pre class="motoko"><code>func map&lt;A, B&gt;(xs : Iter&lt;A&gt;, f : A -&gt; B) : Iter&lt;B&gt;</code></pre>
+<p>Takes a function and an iterator and returns a new iterator that
+lazily applies the function to every element produced by the argument
+iterator.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.range(1, 3);
+let mappedIter = Iter.map(iter, func (x : Nat) : Nat { x * 2 });
+assert(?2 == mappedIter.next());
+assert(?4 == mappedIter.next());
+assert(?6 == mappedIter.next());
+assert(null == mappedIter.next());</code></pre>
+<h2 id="function-filter">Function <code>filter</code></h2>
+<pre class="motoko"><code>func filter&lt;A&gt;(xs : Iter&lt;A&gt;, f : A -&gt; Bool) : Iter&lt;A&gt;</code></pre>
+<p>Takes a function and an iterator and returns a new iterator that
+produces elements from the original iterator if and only if the
+predicate is true.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.range(1, 3);
+let mappedIter = Iter.filter(iter, func (x : Nat) : Bool { x % 2 == 1 });
+assert(?1 == mappedIter.next());
+assert(?3 == mappedIter.next());
+assert(null == mappedIter.next());</code></pre>
+<h2 id="function-make">Function <code>make</code></h2>
+<pre class="motoko"><code>func make&lt;A&gt;(x : A) : Iter&lt;A&gt;</code></pre>
+<p>Creates an iterator that produces an infinite sequence of
+<code>x</code>.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.make(10);
+assert(?10 == iter.next());
+assert(?10 == iter.next());
+assert(?10 == iter.next());
+// ...</code></pre>
+<h2 id="function-concat">Function <code>concat</code></h2>
+<pre class="motoko"><code>func concat&lt;A&gt;(a : Iter&lt;A&gt;, b : Iter&lt;A&gt;) : Iter&lt;A&gt;</code></pre>
+<p>Takes two iterators and returns a new iterator that produces elements
+from the original iterators sequentally.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter1 = Iter.range(1, 2);
+let iter2 = Iter.range(5, 6);
+let concatenatedIter = Iter.concat(iter1, iter2);
+assert(?1 == concatenatedIter.next());
+assert(?2 == concatenatedIter.next());
+assert(?5 == concatenatedIter.next());
+assert(?6 == concatenatedIter.next());
+assert(null == concatenatedIter.next());</code></pre>
+<h2 id="function-fromarray">Function <code>fromArray</code></h2>
+<pre class="motoko"><code>func fromArray&lt;A&gt;(xs : [A]) : Iter&lt;A&gt;</code></pre>
+<p>Creates an iterator that produces the elements of an Array in
+ascending index order.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.fromArray([1, 2, 3]);
+assert(?1 == iter.next());
+assert(?2 == iter.next());
+assert(?3 == iter.next());
+assert(null == iter.next());</code></pre>
+<h2 id="function-fromarraymut">Function <code>fromArrayMut</code></h2>
+<pre class="motoko"><code>func fromArrayMut&lt;A&gt;(xs : [var A]) : Iter&lt;A&gt;</code></pre>
+<p>Like <code>fromArray</code> but for Arrays with mutable elements.
+Captures the elements of the Array at the time the iterator is created,
+so further modifications won't be reflected in the iterator.</p>
+<h2 id="value-fromlist">Value <code>fromList</code></h2>
+<pre class="motoko"><code>let fromList</code></pre>
+<p>Like <code>fromArray</code> but for Lists.</p>
+<h2 id="function-toarray">Function <code>toArray</code></h2>
+<pre class="motoko"><code>func toArray&lt;A&gt;(xs : Iter&lt;A&gt;) : [A]</code></pre>
+<p>Consumes an iterator and collects its produced elements in an
+Array.</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+let iter = Iter.range(1, 3);
+assert([1, 2, 3] == Iter.toArray(iter));</code></pre>
+<h2 id="function-toarraymut">Function <code>toArrayMut</code></h2>
+<pre class="motoko"><code>func toArrayMut&lt;A&gt;(xs : Iter&lt;A&gt;) : [var A]</code></pre>
+<p>Like <code>toArray</code> but for Arrays with mutable elements.</p>
+<h2 id="function-tolist">Function <code>toList</code></h2>
+<pre class="motoko"><code>func toList&lt;A&gt;(xs : Iter&lt;A&gt;) : List.List&lt;A&gt;</code></pre>
+<p>Like <code>toArray</code> but for Lists.</p>
+<h2 id="function-sort">Function <code>sort</code></h2>
+<pre class="motoko"><code>func sort&lt;A&gt;(xs : Iter&lt;A&gt;, compare : (A, A) -&gt; Order.Order) : Iter&lt;A&gt;</code></pre>
+<p>Sorted iterator. Will iterate over <em>all</em> elements to sort
+them, necessarily.</p>
+</body>
+</html>

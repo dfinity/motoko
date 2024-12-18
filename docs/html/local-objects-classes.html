@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/writing-motoko/local-objects-classes.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/writing-motoko/local-objects-classes.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#objects-and-classes" id="toc-objects-and-classes">Objects
+and classes</a>
+<ul>
+<li><a href="#example" id="toc-example">Example</a></li>
+<li><a href="#object-types" id="toc-object-types">Object types</a></li>
+<li><a href="#object-and-actor-classes"
+id="toc-object-and-actor-classes">Object and actor classes</a></li>
+<li><a href="#object-classes" id="toc-object-classes">Object classes</a>
+<ul>
+<li><a href="#class-constructor" id="toc-class-constructor">Class
+constructor</a></li>
+</ul></li>
+<li><a href="#object-combination-and-extension"
+id="toc-object-combination-and-extension">Object combination and
+extension</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="objects-and-classes">Objects and classes</h1>
+<!--
+TODO: Move examples into doc/modules/language-guide/examples
+-->
+
+<p>In Motoko, an object is just a collection of named fields, holding
+values. These values can either be plain data, or function values. In
+addition, each field can be mutable or immutable.</p>
+<p>A simple object containing just fields of data is like a record in a
+database. When the fields are immutable and have shared types, the
+object itself is shareable and can be sent and received from shared
+functions.</p>
+<p>When fields contain function values, Motoko objects can represent
+traditional objects with methods, familiar from object-oriented
+programming (OOP). From an OOP perspective, an object is an abstraction,
+defined by the behavior of its methods. Methods are typically used to
+modify or observe some encapsulated (i.e. hidden) state of an object.
+Motoko programs benefit from the ability to encapsulate state as objects
+with abstract types. The <a href="mutable-state.md">mutable state</a>
+introduces declarations of mutable state in the form of
+<code>var</code>-declared variables. Using such declarations privately
+in its body, an object can encapsulate the state, declaring public
+methods that access and update it.</p>
+<p>By design, objects with mutable fields or methods cannot be sent to
+remote actors. If that were allowed, a receiver would either have to
+receive a remote reference to the local object, breaking the isolation
+of the actor model by allowing remote updates to local state. Or, the
+receiver would have to receive a copy of the local object. Then, the
+effect of any changes to the copy would not be reflected in the
+original, leading to confusion.</p>
+<p>To compensate for this necessary limitation, <code>actor</code>
+objects are shareable, but always execute remotely. They communicate
+with shareable Motoko data only. Local objects interact in less
+restricted ways with themselves, and can pass any Motoko data to each
+other’s methods, including other objects. In most other ways, local
+objects and classes are non-shareable counterparts to actor objects and
+classes.</p>
+<h2 id="example">Example</h2>
+<p>The following example illustrates a general evolution path for Motoko
+programs. Each object has the potential to be refactored into a service
+by refactoring the local object into an actor object.</p>
+<p>Consider the following object declaration of the object value
+<code>counter</code>:</p>
+<pre class="motoko"><code>object counter {
+  var count = 0;
+  public func inc() { count += 1 };
+  public func read() : Nat { count };
+  public func bump() : Nat {
+    inc();
+    read()
+  };
+};</code></pre>
+<p>This declaration introduces a single object instance named
+<code>counter</code>. The developer exposes three public functions
+<code>inc</code>, <code>read</code> and <code>bump</code> using keyword
+<code>public</code> to declare each in the object body. The body of the
+object, like a block expression, consists of a list of declarations.</p>
+<p>In addition to these three functions, the object has one private
+mutable variable <code>count</code>, which holds the current count and
+is initially zero.</p>
+<h2 id="object-types">Object types</h2>
+<p>This object <code>counter</code> has the following object type,
+written as a list of field-type pairs, enclosed in braces <code>{</code>
+and <code>}</code>:</p>
+<pre class="motoko"><code>{
+  inc  : () -&gt; () ;
+  read : () -&gt; Nat ;
+  bump : () -&gt; Nat ;
+}</code></pre>
+<p>Each field type consists of an identifier, a colon <code>:</code>,
+and a type for the field content. Here, each field is a function, and
+thus has an arrow type form (<code>_ -&gt; _</code>).</p>
+<p>In the declaration of <code>object</code>, the variable
+<code>count</code> was explicitly declared neither as
+<code>public</code> nor as <code>private</code>.</p>
+<p>By default, all declarations in an object block are
+<code>private</code>. Consequently, the type for <code>count</code> does
+not appear in the type of the object. Its name and presence are both
+inaccessible from the outside.</p>
+<p>By not exposing this implementation detail, the object has a more
+general type with fewer fields, and as a result, is interchangeable with
+objects that have the same interface but a different implementation.</p>
+<p>To illustrate the point just above, consider this variation of the
+<code>counter</code> declaration above, of <code>byteCounter</code>:</p>
+<pre class="motoko"><code>import Nat8 &quot;mo:base/Nat8&quot;;
+object byteCounter {
+  var count : Nat8 = 0;
+  public func inc() { count += 1 };
+  public func read() : Nat { Nat8.toNat(count) };
+  public func bump() : Nat { inc(); read() };
+};</code></pre>
+<p>This object has the same type as the previous one, and thus from the
+standpoint of type checking, this object is interchangeable with the
+prior one:</p>
+<pre class="motoko"><code>{
+  inc  : () -&gt; () ;
+  read : () -&gt; Nat ;
+  bump : () -&gt; Nat ;
+}</code></pre>
+<p>This version does not use the same implementation of the counter
+field. Rather than use an ordinary natural <a
+href="../base/Nat.md"><code>Nat</code></a>, this version uses a
+byte-sized natural number, type <a
+href="../base/Nat8.md"><code>Nat8</code></a>, whose size is always eight
+bits.</p>
+<p>As such, the <code>inc</code> operation may fail with an overflow for
+this object but never the prior one, which may instead fill the
+program’s memory.</p>
+<p>Neither implementation of a counter comes without some complexity. In
+this case, they share a common type.</p>
+<p>The common type abstracts the differences in the implementations of
+the objects, shielding the rest of the application from their
+implementation details.</p>
+<p>Objects types can also have <a
+href="object-subtyping.md">subtypes</a>, allowing an object with a more
+specific type to pass as an object of a more general type, for example,
+to pass as an object with fewer fields.</p>
+<h2 id="object-and-actor-classes">Object and actor classes</h2>
+<p><strong>Object classes</strong> : A family of related objects to
+perform a task with a customizable initial state. Motoko provides a
+syntactical construct, called a <code>class</code> definition, which
+simplifies building objects of the same type and implementation.</p>
+<p><strong>Actor classes</strong> : An object class that exposes a <a
+href="async-data.md">service</a> using asynchronous behavior. The
+corresponding Motoko construct is an <a href="actor-classes.md">actor
+class</a>, which follows a similar but distinct design.</p>
+<h2 id="object-classes">Object classes</h2>
+<p>In Motoko, an object encapsulates state, and an object
+<code>class</code> is a package of two entities that share a common
+name.</p>
+<p>Consider this example <code>class</code> for counters that start at
+zero:</p>
+<pre class="motoko"><code>class Counter() {
+  var c = 0;
+  public func inc() : Nat {
+    c += 1;
+    return c;
+  }
+};</code></pre>
+<p>The value of this definition is that we can construct new counters,
+each starting with their own unique state, initially at zero:</p>
+<pre class="motoko"><code>let c1 = Counter();
+let c2 = Counter();</code></pre>
+<p>Each is independent:</p>
+<pre class="motoko"><code>let x = c1.inc();
+let y = c2.inc();
+(x, y)</code></pre>
+<p>You could achieve the same results by writing a function that returns
+an object:</p>
+<pre class="motoko"><code>func Counter() : { inc : () -&gt; Nat } =
+  object {
+    var c = 0;
+    public func inc() : Nat { c += 1; c }
+  };</code></pre>
+<p>Notice the return type of this constructor function is an object
+type:</p>
+<pre class="motoko"><code>{ inc : () -&gt; Nat }</code></pre>
+<p>You may want to name this type such as <code>Counter</code> for use
+in further type declarations:</p>
+<pre class="motoko"><code>type Counter = { inc : () -&gt; Nat };</code></pre>
+<p>The <code>class</code> keyword syntax shown above is a shorthand for
+these two definitions of <code>Counter</code>: a factory function
+<code>Counter</code> that constructs objects, and the type
+<code>Counter</code> of these objects. Classes do not provide any new
+functionality beyond this convenience.</p>
+<h3 id="class-constructor">Class constructor</h3>
+<p>An object class defines a constructor function that may carry zero or
+more data arguments and zero or more type arguments.</p>
+<p>The <code>Counter</code> example above has zero of each. The example
+below takes two data arguments, <code>arg1</code> and <code>arg2</code>,
+with <code>Type1</code> and <code>Type2</code> as the types of these
+arguments, respectively.</p>
+<pre class="motoko"><code>class MyClass(arg1: Type1, arg2: Type2) {
+  // class body here
+};</code></pre>
+<p>For example, you can write a <code>Counter</code> class that takes an
+argument of type <code>Nat</code> and an argument of type
+<code>Bool</code>:</p>
+<pre class="motoko"><code>import Nat &quot;mo:base/Nat&quot;;
+
+persistent actor {
+
+  class Counter(init : Nat, flag : Bool) {
+    var c = init;
+    var f = flag;
+    public func inc() : Nat {
+      if f {
+        c += 1;
+      };
+      return c;
+    };
+  };
+
+}</code></pre>
+<p>The type arguments, if any, parameterize both the type and the
+constructor function for the class.</p>
+<p>The data arguments, if any, parameterize only the constructor
+function for the class.</p>
+<h4 id="data-arguments">Data arguments</h4>
+<p>Suppose you want to initialize the counter with some non-zero value.
+You can supply that value as a data argument to the <code>class</code>
+constructor:</p>
+<pre class="motoko"><code>class Counter(init : Nat) {
+  var c = init;
+  public func inc() : Nat { c += 1; c };
+};</code></pre>
+<p>This parameter is available to all methods. For instance, you can
+<code>reset</code> the <code>Counter</code> to its initial value, a
+parameter:</p>
+<pre class="motoko"><code>class Counter(init : Nat) {
+  var c = init;
+  public func inc() : Nat { c += 1; c };
+  public func reset() { c := init };
+};</code></pre>
+<h4 id="type-arguments">Type arguments</h4>
+<p>Suppose you want the counter to actually carry data that it counts,
+like a specialized <code>Buffer</code>.</p>
+<p>When classes use or contain data of arbitrary type, they carry a type
+argument. This is equivalent to a type parameter for an unknown type,
+just as with functions.</p>
+<p>The scope of this type parameter covers the entire <code>class</code>
+with data parameters. As such, the methods of the class can use these
+type parameters without reintroducing them.</p>
+<pre class="motoko"><code>import Buffer &quot;mo:base/Buffer&quot;;
+
+class Counter&lt;X&gt;(init : Buffer.Buffer&lt;X&gt;) {
+  var buffer = init.clone();
+  public func add(x : X) : Nat {
+    buffer.add(x);
+    buffer.size()
+  };
+
+  public func reset() {
+    buffer := init.clone()
+  };
+};</code></pre>
+<h4 id="type-annotation">Type annotation</h4>
+<p>The class constructor may also carry a type annotation for its return
+type. When supplied, Motoko checks that this type annotation is
+compatible with the body of the class, which is an object definition.
+This check ensures that each object produced by the constructor meets
+the supplied specification.</p>
+<p>For example, repeat the <code>Counter</code> as a buffer and annotate
+it with a more general type <code>Accum&lt;X&gt;</code> that permits
+adding, but not resetting, the counter. This annotation ensures that the
+objects are compatible with the type <code>Accum&lt;X&gt;</code>.</p>
+<pre class="motoko"><code>import Buffer &quot;mo:base/Buffer&quot;;
+
+type Accum&lt;X&gt; = { add : X -&gt; Nat };
+
+class Counter&lt;X&gt;(init : Buffer.Buffer&lt;X&gt;) : Accum&lt;X&gt; {
+  var buffer = init.clone();
+  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
+  public func reset() { buffer := init.clone() };
+};</code></pre>
+<h4 id="full-syntax">Full syntax</h4>
+<p>Classes are defined by the keyword <code>class</code>, followed
+by:</p>
+<ul>
+<li><p>A name for the constructor and type being defined. For example,
+<code>Counter</code>.</p></li>
+<li><p>Optional type arguments. For example, omitted, or
+<code>&lt;X&gt;</code>, or <code>&lt;X, Y&gt;</code>.</p></li>
+<li><p>An argument list. For example, <code>()</code>, or
+<code>(init : Nat)</code>, etc.</p></li>
+<li><p>An optional type annotation for the constructed objects. For
+example, omitted, or <code>Accum&lt;X&gt;</code>.</p></li>
+<li><p>The class "body" is an object definition, parameterized by the
+type and value arguments, if any.</p></li>
+</ul>
+<p>The constituents of the body marked <code>public</code> contribute to
+the resulting objects' type and these types compared against the
+optional annotation, if given.</p>
+<p>Consider the task of walking the bits of a natural <a
+href="../base/Nat.md"><code>Nat</code></a> number. For this example, you
+could define the following:</p>
+<pre class="motoko"><code>class Bits(n : Nat) {
+  var state = n;
+  public func next() : ?Bool {
+    if (state == 0) { return null };
+    let prev = state;
+    state /= 2;
+    ?(state * 2 != prev)
+  }
+}</code></pre>
+<p>The above class definition is equivalent to the simultaneous
+definition of a structural type synonym and a factory function, both
+named <code>Bits</code>:</p>
+<pre class="motoko"><code>type Bits = {next : () -&gt; ?Bool};
+func Bits(n : Nat) : Bits = object {
+  // class body
+};</code></pre>
+<h2 id="object-combination-and-extension">Object combination and
+extension</h2>
+<p>Motoko allows you to construct a single object from a simple record
+and a more complicated object block, while also providing syntax for
+building new objects from existing ones, adding new fields, or replacing
+existing fields. The <em>base</em> records and objects are separated by
+the <code>and</code> keyword and can be followed by <code>with</code>
+and semicolon-separated additional (or overriden) fields. The bases and
+fields are enclosed in braces, indicating record formation. When the
+bases have overlapping fields (according to their types), then a
+disambiguating field overwrite must be provided. The original bases are
+never modified; instead, their fields are copied to create a new object,
+and thus we refer to this as a functional object combination and
+extension.</p>
+<p>Here are some simple examples:</p>
+<ol type="1">
+<li>Object combination with <code>and</code>: The <code>and</code>
+keyword combines two or more objects.</li>
+</ol>
+<pre class="motoko"><code>let person = { name = &quot;Alice&quot;; };
+let employee = { id = 123; department = &quot;Engineering&quot; };
+
+let employedPerson = { person and employee };
+// employeePerson now has: name, id, and department</code></pre>
+<ol start="2" type="1">
+<li>Object extension with <code>with</code>: The <code>with</code>
+keyword allows you to add new fields or override existing ones.</li>
+</ol>
+<pre class="motoko"><code>let person = { name = &quot;Alice&quot; };
+
+let agedPerson = { person with age = 30 };
+
+// agedPersion now has: name and age</code></pre>
+<ol start="3" type="1">
+<li>Combining <code>and</code> and <code>with</code>: You can use both
+<code>and</code> and <code>with</code> together for more complex object
+manipulations.</li>
+</ol>
+<pre class="motoko"><code>let person = { name = &quot;Alice&quot; };
+let employee = { id = 123; department = &quot;Engineering&quot; };
+
+let employedPersonWithAge = { person and employee with age = 30 };
+// employedPersionWithAge now has: name, id, department and age</code></pre>
+<p>Key points to remember:</p>
+<ul>
+<li>When using <code>and</code>, if there are conflicting field names in
+the bases, the conflict must be resolved using a <code>with</code>
+field.</li>
+<li>The <code>with</code> clause is used to disambiguate field labels,
+define new fields, override existing fields, add new <code>var</code>
+fields, or redefine existing <code>var</code> fields to prevent
+aliasing.</li>
+<li>You must explicitly override any <code>var</code> fields from base
+objects to prevent introducing aliases.</li>
+</ul>
+<p>This syntax provides a convenient way to create modular and reusable
+code in Motoko, allowing developers to build complex objects from
+simpler components and extend existing objects with new
+functionality.</p>
+<p>For more details, see the <a
+href="../reference/language-manual#object-combinationextension">language
+manual</a>.</p>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
