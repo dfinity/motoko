@@ -1369,7 +1369,6 @@ and infer_exp'' env exp : T.typ =
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
       end;
-    let _t_opt = Option.map (infer_exp env) exp_opt in
     let env' =
       if obj_sort.it = T.Actor then
         { env with
@@ -1377,7 +1376,7 @@ and infer_exp'' env exp : T.typ =
           async = C.SystemCap C.top_cap }
       else env
     in
-    let t = infer_obj env' obj_sort.it dec_fields exp.at in
+    let t = infer_obj env' obj_sort.it exp_opt dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
@@ -2496,7 +2495,7 @@ and is_typ_dec dec : bool = match dec.it with
   | TypD _ -> true
   | _ -> false
 
-and infer_obj env s dec_fields at : T.typ =
+and infer_obj env s exp_opt dec_fields at : T.typ =
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
@@ -2545,7 +2544,7 @@ and infer_obj env s dec_fields at : T.typ =
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
-    check_stab env s scope dec_fields;
+    check_stab env s exp_opt scope dec_fields;
   end;
   t
 
@@ -2589,7 +2588,40 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
-and check_stab env sort scope dec_fields =
+and check_migration env exp_opt =
+  match exp_opt with
+  | None -> ([],[])
+  | Some exp ->
+     let check_fields desc typ =
+       match T.promote typ with
+       | T.Obj(T.Object, tfs) ->
+          if not (T.stable typ) then
+            local_error env exp.at "M0131"
+              "expected stable type, but migration expression %s non-stable type %a"
+              desc
+              display_typ_expand typ;
+          tfs
+       | _ ->
+          local_error env exp.at "M0093"
+            "expected object type, but migration expression %s non-object type%a"
+            desc
+            display_typ_expand typ;
+          []
+    in
+    let typ = infer_exp env exp in
+    try
+      let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
+      (check_fields "consumes" t_dom,
+       check_fields "produces" t_rng)
+    with Invalid_argument _ ->
+      local_error env exp.at "M0097"
+        "expected function type, but expression produces type%a"
+        display_typ_expand typ;
+      ([],[])
+
+
+and check_stab env sort exp_opt scope dec_fields =
+  let (_dom_tfs, rng_tfs) = check_migration env exp_opt in
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
@@ -2598,7 +2630,16 @@ and check_stab env sort scope dec_fields =
       if not (T.stable t1) then
         local_error env at "M0131"
           "variable %s is declared stable but has non-stable type%a" id
-          display_typ t1
+          display_typ t1;
+      match T.lookup_val_field_opt id rng_tfs with
+      | None -> ()
+      | Some t2 ->
+        if not (T.sub (T.as_immut t2) t1) then
+         local_error env at "M0096"
+           "migration expression produces field `%s` of type %a\n, not the expected type%a"
+           id
+           display_typ_expand t2
+           display_typ_expand t1
   in
   let idss = List.map (fun df ->
     match sort, df.it.stab, df.it.dec.it with
@@ -2621,7 +2662,20 @@ and check_stab env sort scope dec_fields =
       []
     | _ -> []) dec_fields
   in
-  check_ids env "actor type" "stable variable" (List.concat idss)
+  let ids = List.concat idss in
+  check_ids env "actor type" "stable variable" ids;
+  let ids = List.map (fun id -> id.it) ids in
+  List.iter (fun T.{lab;typ;src} ->
+      match typ with
+      | T.Typ c -> ()
+      | _ ->
+         if List.mem lab ids then () else
+         local_error env (Option.get exp_opt).at "M0096" (*TODO: custom error*)
+           "migration expression produces unexpected field `%s` of type %a\n%s"
+           lab
+           display_typ_expand typ
+           (Suggest.suggest_id "field" lab ids))
+    rng_tfs
 
 
 (* Blocks and Declarations *)
@@ -2715,7 +2769,7 @@ and infer_dec env dec : T.typ =
         }
       in
       let initial_usage = enter_scope env''' in
-      let t' = infer_obj { env''' with check_unused = true } obj_sort.it dec_fields dec.at in
+      let t' = infer_obj { env''' with check_unused = true } obj_sort.it exp_opt dec_fields dec.at in
       leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
@@ -2950,7 +3004,7 @@ and infer_dec_typdecs env dec : Scope.t =
           async = async_cap;
           in_actor}
     in
-    let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
+    let t = infer_obj { env'' with check_unused = false } obj_sort.it exp_opt dec_fields dec.at in
     let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
