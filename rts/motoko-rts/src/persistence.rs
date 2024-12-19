@@ -222,7 +222,6 @@ pub unsafe fn assign_stable_type<M: Memory>(
     (*metadata).stable_type.assign(mem, &new_type);
 }
 
-
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_type

@@ -129,6 +129,7 @@ let primE prim es =
     | OtherPrim "rts_max_stack_size" -> T.nat
     | OtherPrim "rts_callback_table_count" -> T.nat
     | OtherPrim "rts_callback_table_size" -> T.nat
+    | OtherPrim "rts_in_install" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let eff = map_max_effs eff es in

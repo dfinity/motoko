@@ -8757,6 +8757,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let initialize env actor_type =
     register_stable_type env actor_type
+
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -11684,6 +11685,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_install", [] -> (* EOP specific *)
+    assert (!Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    EnhancedOrthogonalPersistence.load_stable_actor env ^^
+    compile_test I64Op.Eqz ^^
+    E.if1 I64Type
+      (Bool.lit true)
+      (Bool.lit false)
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -12258,9 +12268,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableRead ty, [] ->
     SR.Vanilla,
+    (*    IC.compile_static_print env ("ICStableRead" ^ Type.string_of_typ ty) ^^ *)
     Persistence.load env ty
   | ICStableWrite ty, [] ->
     SR.unit,
+    (*    IC.compile_static_print env ("ICStableWrite" ^ Type.string_of_typ ty) ^^ *)
     Persistence.save env ty
 
   (* Cycles *)

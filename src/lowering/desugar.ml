@@ -575,9 +575,7 @@ and build_actor at ts exp_opt self_id es obj_typ =
       let v_dom = fresh_var "v_dom" dom in
       let v_rng = fresh_var "v_rng" rng in
       I.{pre = ty'; post = ty},
-      ifE (primE (Ir.RelPrim (T.nat, Operator.EqOp)) [
-               primE (I.OtherPrim "rts_stable_memory_size") [];
-               natE Numerics.Nat.zero])
+      ifE (primE (I.OtherPrim "rts_in_install") [])
         (primE (I.ICStableRead ty) [])
         (letE v (primE (I.ICStableRead ty') [])
            (letE v_dom
