@@ -550,18 +550,16 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
-  let migration = match exp_opt with
-    | None -> primE (I.ICStableRead ty) [] (* as before *)
+  let stable_type, migration = match exp_opt with
+    | None ->
+      I.{pre = ty; post = ty},
+      primE (I.ICStableRead ty) [] (* as before *)
     | Some exp0 ->
       let e = exp exp0 in
       let [@warning "-8"] (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
       let [@warning "-8"] (T.Object, dom_fields) = T.as_obj dom in
       let [@warning "-8"] (T.Object, rng_fields) = T.as_obj rng in
-      ifE (primE (Ir.RelPrim (T.nat, Operator.EqOp)) [
-               primE (I.OtherPrim "rts_stable_memory_size") [];
-               natE Numerics.Nat.zero])
-        (primE (I.ICStableRead ty) [])
-        (let fields' =
+      let fields' =
            List.map
              (fun (i,t) ->
                 T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src})
@@ -572,11 +570,16 @@ and build_actor at ts exp_opt self_id es obj_typ =
                      | Some t -> None (* ignore overriden *)
                      | None -> Some (i, t) (* retain others *))
                    ids)) in
-         let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
-         let v = fresh_var "v" ty' in
-         let v_dom = fresh_var "v_dom" dom in
-         let v_rng = fresh_var "v_rng" rng in
-         letE v (primE (I.ICStableRead ty') [])
+      let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
+      let v = fresh_var "v" ty' in
+      let v_dom = fresh_var "v_dom" dom in
+      let v_rng = fresh_var "v_rng" rng in
+      I.{pre = ty'; post = ty},
+      ifE (primE (Ir.RelPrim (T.nat, Operator.EqOp)) [
+               primE (I.OtherPrim "rts_stable_memory_size") [];
+               natE Numerics.Nat.zero])
+        (primE (I.ICStableRead ty) [])
+        (letE v (primE (I.ICStableRead ty') [])
            (letE v_dom
               (objectE T.Object
                  (List.map (fun T.{lab=i;typ=t;_} ->
@@ -665,7 +668,7 @@ and build_actor at ts exp_opt self_id es obj_typ =
           | Some call -> call
           | None -> tupE []);
        stable_record = with_stable_vars (fun e -> e);
-       stable_type = ty;
+       stable_type = stable_type
      },
      obj_typ))
 
