@@ -77,6 +77,8 @@ and exp' =
   | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)
   | TryE of exp * case list * (id * Type.typ) option (* try/catch/cleanup *)
 
+and stable_actor_typ = { pre: Type.typ; post: Type.typ }
+
 and system = {
   meta : meta;
   (* TODO: use option expressions for (some or all of) these *)
@@ -86,7 +88,7 @@ and system = {
   timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
   inspect : exp;
   stable_record: exp;
-  stable_type: Type.typ;
+  stable_type: stable_actor_typ;
 }
 
 and candid = {
@@ -242,7 +244,7 @@ type actor_type = {
   transient_actor_type: Type.typ;
   (* record of stable actor fields used for persistence,
      the fields are without mutability distinctions *)
-  stable_actor_type: Type.typ
+  stable_actor_type: stable_actor_typ
 }
 
 (* Program *)

@@ -43,7 +43,7 @@ and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_re
       "Timer" $$ [exp timer];
       "Inspect" $$ [exp inspect];
       "StableRecord" $$ [exp stable_record];
-      "StableType" $$ [typ stable_type]
+      "StableType" $$ [typ stable_type.pre; typ stable_type.post]
     ]
 
 and lexp le = match le.it with

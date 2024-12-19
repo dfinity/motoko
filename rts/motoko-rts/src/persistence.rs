@@ -206,6 +206,23 @@ pub unsafe fn register_stable_type<M: Memory>(
     (*metadata).stable_type.assign(mem, &new_type);
 }
 
+/// Register the stable actor type on canister initialization and upgrade.
+/// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
+/// The `new_type` value points to a blob encoding the new stable actor type.
+#[ic_mem_fn]
+pub unsafe fn assign_stable_type<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+) {
+    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
+    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
+    let new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
+    let metadata = PersistentMetadata::get();
+    (*metadata).stable_type.assign(mem, &new_type);
+}
+
+
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_type
