@@ -1131,6 +1131,7 @@ module RTS = struct
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -8694,6 +8695,10 @@ module EnhancedOrthogonalPersistence = struct
     create_type_descriptor env actor_type ^^
     E.call_import env "rts" "register_stable_type"
 
+  let assign_stable_type env actor_type =
+    create_type_descriptor env actor_type ^^
+    E.call_import env "rts" "assign_stable_type"
+
   let load_old_field env field get_old_actor =
     if field.Type.typ = Type.(Opt Any) then
       (* A stable variable may have been promoted to type `Any`: Therefore, drop its former content. *)
@@ -8733,6 +8738,7 @@ module EnhancedOrthogonalPersistence = struct
     free_stable_actor env
 
   let save env actor_type =
+    assign_stable_type env actor_type ^^
     IC.get_actor_to_persist env ^^
     save_stable_actor env ^^
     NewStableMemory.backup env ^^
@@ -8751,6 +8757,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let initialize env actor_type =
     register_stable_type env actor_type
+
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -9981,12 +9988,12 @@ module IncrementalGraphStabilization = struct
   let partial_destabilization_on_upgrade env actor_type =
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
+    GraphCopyStabilization.start_graph_destabilization env actor_type.Ir.pre ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
       begin
-        destabilization_increment env actor_type ^^
+        destabilization_increment env actor_type.Ir.pre ^^
         get_destabilized_actor env ^^
         (E.if0
           G.nop
@@ -10018,7 +10025,7 @@ module IncrementalGraphStabilization = struct
       })
     | _ -> ()
     end
-  
+
   let load env =
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
@@ -10026,14 +10033,14 @@ module IncrementalGraphStabilization = struct
     get_destabilized_actor env
     (* Upgrade costs are already record in RTS for graph-copy-based (de-)stabilization. *)
 
-  let define_methods env actor_type =
+  let define_methods env (actor_type : Ir.stable_actor_typ) =
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
-    export_stabilize_before_upgrade_method env actor_type;
+    export_stabilize_before_upgrade_method env actor_type.Ir.post;
     define_async_destabilization_reply_callback env;
     define_async_destabilization_reject_callback env;
-    export_async_destabilization_method env actor_type;
+    export_async_destabilization_method env actor_type.Ir.pre;
     export_destabilize_after_upgrade_method env;
 
 end (* IncrementalGraphStabilization *)
@@ -11678,6 +11685,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_install", [] -> (* EOP specific *)
+    assert (!Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    EnhancedOrthogonalPersistence.load_stable_actor env ^^
+    compile_test I64Op.Eqz ^^
+    E.if1 I64Type
+      (Bool.lit true)
+      (Bool.lit false)
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -12252,9 +12268,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableRead ty, [] ->
     SR.Vanilla,
+    (*    IC.compile_static_print env ("ICStableRead" ^ Type.string_of_typ ty) ^^ *)
     Persistence.load env ty
   | ICStableWrite ty, [] ->
     SR.unit,
+    (*    IC.compile_static_print env ("ICStableWrite" ^ Type.string_of_typ ty) ^^ *)
     Persistence.save env ty
 
   (* Cycles *)

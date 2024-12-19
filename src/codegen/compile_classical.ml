@@ -11616,6 +11616,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_install", [] -> (* classical specific *)
+    assert (not !Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    StableMem.stable64_size env ^^
+    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+    G.if1 I32Type
+      (Bool.lit true)
+      (Bool.lit false)
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
