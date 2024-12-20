@@ -541,7 +541,7 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let sig_ = List.sort T.compare_field
+  let sig_post = List.sort T.compare_field
     (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
   let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src}) ids in
@@ -550,8 +550,9 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
-  let stable_type, migration = match exp_opt with
+  let sig_, stable_type, migration = match exp_opt with
     | None ->
+      T.Single sig_post,
       I.{pre = ty; post = ty},
       primE (I.ICStableRead ty) [] (* as before *)
     | Some exp0 ->
@@ -559,21 +560,30 @@ and build_actor at ts exp_opt self_id es obj_typ =
       let [@warning "-8"] (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
       let [@warning "-8"] (T.Object, dom_fields) = T.as_obj dom in
       let [@warning "-8"] (T.Object, rng_fields) = T.as_obj rng in
+      let sig_pre =
+         List.sort T.compare_field
+           (dom_fields @
+              (List.filter_map
+                 (fun (i,t) ->
+                   match T.lookup_val_field_opt i dom_fields with
+                   | Some t ->
+                     (* ignore overriden *)
+                     None
+                   | None ->
+                    (* retain others *)
+                   Some T.{lab = i; typ = t; src = T.empty_src})                                                   ids))
+      in
       let fields' =
            List.map
-             (fun (i,t) ->
-                T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src})
-             ((List.map (fun T.{lab;typ;_} -> (lab,typ)) dom_fields) @
-                (List.filter_map
-                   (fun (i,t) ->
-                     match T.lookup_val_field_opt i dom_fields with
-                     | Some t -> None (* ignore overriden *)
-                     | None -> Some (i, t) (* retain others *))
-                   ids)) in
-      let ty' = T.Obj (T.Memory, List.sort T.compare_field fields') in
+             (fun tf ->
+               { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
+             sig_pre
+      in
+      let ty' = T.Obj (T.Memory, fields') in
       let v = fresh_var "v" ty' in
       let v_dom = fresh_var "v_dom" dom in
       let v_rng = fresh_var "v_rng" rng in
+      T.PrePost (sig_pre, sig_post),
       I.{pre = ty'; post = ty},
       ifE (primE (I.OtherPrim "rts_in_install") [])
         (primE (I.ICStableRead ty) [])

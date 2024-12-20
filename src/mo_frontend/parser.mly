@@ -997,7 +997,22 @@ stab_field :
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
-      fun filename -> { it = (ds, sfs); at = at $sloc; note = { filename; trivia }}
+      let sigs = Single sfs in
+      fun filename -> {
+          it = (ds, {it=sigs; at = at $sloc; note = ()});
+          at = at $sloc;
+          note =
+          { filename; trivia }}
+    }
+  | start ds=seplist(typ_dec, semicolon)
+       ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
+             LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
+    { let trivia = !triv_table in
+      let sigs = PrePost(sfs_pre, sfs_post) in (* FIX ME*)
+      fun filename -> {
+          it = (ds, {it=sigs; at = at $sloc; note = ()});
+          at = at $sloc;
+          note = { filename; trivia }}
     }
 
 %%

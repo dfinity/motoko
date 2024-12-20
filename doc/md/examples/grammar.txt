@@ -336,5 +336,6 @@
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
 
+    <list(<typ_dec>, ';')> 'actor' '(' '{' <list(<stab_field>, ';')> '}' ',' '{' <list(<stab_field>, ';')> '}' ')'
 
 

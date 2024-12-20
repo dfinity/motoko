@@ -3214,7 +3214,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
         ) lib
     )
 
-let check_stab_sig scope sig_ : (T.field list) Diag.result =
+let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
@@ -3222,25 +3222,31 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           let env = env_of_scope msgs scope in
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
-          check_ids env "object type" "field"
-            (List.filter_map (fun (field : typ_field) ->
-                 match field.it with ValF (id, _, _) -> Some id | _ -> None)
-               sfs);
-          check_ids env "object type" "type field"
-            (List.filter_map (fun (field : typ_field) ->
-                 match field.it with TypF (id, _, _) -> Some id | _ -> None)
-               sfs);
-          let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
-          let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
-          List.iter (fun (field : Syntax.typ_field) ->
-              match field.it with
-              | TypF _ -> ()
-              | ValF (id, typ, _) ->
-                if not (T.stable typ.note) then
-                   error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
-                   id.it
-                   display_typ typ.note)
-            sfs;
-          List.sort T.compare_field fs
+          let check_fields sfs =
+            check_ids env "object type" "field"
+              (List.filter_map (fun (field : typ_field) ->
+                   match field.it with ValF (id, _, _) -> Some id | _ -> None)
+                 sfs);
+            check_ids env "object type" "type field"
+              (List.filter_map (fun (field : typ_field) ->
+                   match field.it with TypF (id, _, _) -> Some id | _ -> None)
+                 sfs);
+            let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
+            let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
+            List.iter (fun (field : Syntax.typ_field) ->
+                match field.it with
+                | TypF _ -> ()
+                | ValF (id, typ, _) ->
+                  if not (T.stable typ.note) then
+                     error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                     id.it
+                     display_typ typ.note)
+              sfs;
+            List.sort T.compare_field fs
+          in
+          match sfs.it with
+          | Single sfs -> T.Single (check_fields sfs)
+          | PrePost (pre,post) ->
+             T.PrePost (check_fields pre, check_fields post)
         ) sig_.it
     )
