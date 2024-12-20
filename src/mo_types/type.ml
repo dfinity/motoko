@@ -1789,18 +1789,18 @@ and pp_stab_sig ppf sig_ =
     match sig_ with
     | Single tfs ->
       fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
-       (string_of_obj_sort Actor)
-       (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
     | PrePost (pre, post) ->
       fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
-       (string_of_obj_sort Actor)
-       (pp_print_list ~pp_sep:semi (pp_stab_field vs)) pre
-       (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
   in
-    fprintf ppf "@[<v 0>%a%a%a;@]"
-      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-      (if fs = [] then fun ppf () -> () else semi) ()
-      pp_stab_actor sig_
+  fprintf ppf "@[<v 0>%a%a%a;@]"
+    (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+    (if fs = [] then fun ppf () -> () else semi) ()
+    pp_stab_actor sig_
 
 let rec pp_typ_expand' vs ppf t =
   match t with
