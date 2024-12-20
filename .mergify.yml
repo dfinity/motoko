@@ -18,7 +18,6 @@ queue_rules:
 
       {{ body }}
     branch_protection_injection_mode: queue
-  - name: experimental
 pull_request_rules:
   - name: Automatic merge (squash)
     conditions:
