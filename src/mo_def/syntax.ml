@@ -235,7 +235,11 @@ and prog' = dec list
 (* Signatures (stable variables) *)
 
 type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
-and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
+and stab_sig' = (dec list * stab_body)      (* type declarations & stable actor fields *)
+and stab_body = stab_body' Source.phrase    (* type declarations & stable actor fields *)
+and stab_body' =
+  | Single of typ_field list
+  | PrePost of typ_field list * typ_field list
 
 (* Compilation units *)
 
