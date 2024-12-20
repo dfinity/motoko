@@ -4,7 +4,7 @@ sidebar_position: 23
 
 # Sharing data and behavior
 
-## Overview
+
 
 In Motoko, mutable state is always private to an actor. However, two actors can share message data, and those messages can refer to actors, including themselves and one another. Additionally, messages can refer to individual functions, if those functions are `shared`.
 

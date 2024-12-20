@@ -4,7 +4,7 @@ sidebar_position: 10
 
 # Heartbeats
 
-## Overview
+
 
 ICP canisters can elect to receive regular heartbeat messages by exposing a particular `canister_heartbeat` function (see [heartbeat](https://smartcontracts.org/docs/interface-spec/index.html#heartbeat)).
 

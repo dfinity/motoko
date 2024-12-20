@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Stable regions
 
-## Overview
+
 
 The `Region` library provides low-level access to ICP stable memory feature.
 
@@ -79,7 +79,7 @@ module {
 A stable region exposes low-level linear memory and it is the programmer's task to properly manipulate and interpret this data.
 This can be very error-prone when managing data in a stable region.
 However, the safety of Motoko's native values heap objects is always guaranteed, independent of the stable region content.
-::: 
+:::
 
 :::note
 The cost of accessing stable regions is significantly higher than using Motoko's native memory, i.e. regular Motoko values and objects.

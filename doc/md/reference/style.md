@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Motoko style guidelines
 
-## Overview
+
 
 To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
 

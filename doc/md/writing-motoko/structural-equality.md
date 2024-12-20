@@ -4,7 +4,7 @@ sidebar_position: 25
 
 # Structural equality
 
-## Overview
+
 
 Equality (`==`) — and by extension inequality (`!=`) — is **structural**. Two values, `a` and `b`, are equal, `a == b`. They have equal contents regardless of the physical representation or identity of those values in memory.
 

@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Generating Motoko documentation
 
-## Overview
+
 
 `mo-doc` is a command-line tool for generating documentation for Motoko source code. It processes source files and generates documentation in various formats.
 
@@ -26,7 +26,7 @@ $(dfx cache show)/mo-doc [options]
   - `html`: Generates HTML format documentation.
   - `adoc`: Generates AsciiDoc format documentation.
   - `plain`: Generates Markdown documentation.
-  
+
   Defaults to `html`.
 
 - `--help`: Shows usage information.
@@ -59,7 +59,7 @@ Doc comments can be used to provide explanations for functions, classes, types, 
 
 ```motoko no-repl
 /// Calculate the factorial of a given positive integer.
-/// 
+///
 /// Example:
 /// ```motoko
 /// factorial(0); // => null
@@ -71,7 +71,7 @@ func factorial(n : Nat) : ?Nat {
 ```
 
 ## Resources
-Check out Motoko's [base library source code](https://github.com/dfinity/motoko-base/tree/master/src) for additional examples and best practices. 
+Check out Motoko's [base library source code](https://github.com/dfinity/motoko-base/tree/master/src) for additional examples and best practices.
 
 The source code for `mo-doc` is available in the [dfinity/motoko](https://github.com/dfinity/motoko/tree/master/src/docs) GitHub repository. Contributions are welcome!
 

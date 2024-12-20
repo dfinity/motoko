@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # Developer environment
 
-## Overview
+
 
 To develop and deploy Motoko canister smart contracts, you will need a developer environment that contains the Motoko compiler and base library. It is recommended to use the [IC SDK](https://github.com/dfinity/sdk#readme), which includes Motoko, along with `dfx`, a command-line tool used to create, build, and deploy canisters on ICP.
 
@@ -54,14 +54,14 @@ Before you start developing Motoko, verify the following:
 
 ## Motoko version
 
-The following table details which version of Motoko shipped with each major version of the IC SDK. 
+The following table details which version of Motoko shipped with each major version of the IC SDK.
 
 | IC SDK version  | Motoko version   |
 |-----------------|------------------|
 | 0.20.0          | 0.11.1           |
 | 0.19.0          | 0.11.1           |
 | 0.18.0          | 0.11.0           |
-| 0.17.0          | 0.10.4           |  
+| 0.17.0          | 0.10.4           |
 | 0.16.0          | 0.10.4           |
 | 0.15.0          | 0.9.7            |
 | 0.14.0          | 0.8.7            |
