@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Arguments
 
-## Overview
+
 
 Arguments can be passed to an actor's function for the function to use as input. Arguments can be [primitive values](../getting-started/basic-concepts#primitive-values), such as [`Int`](../base/Int.md), [`Nat`](../base/Nat.md), [`Bool`](../base/Bool.md), or [`Text`](../base/Text.md), or they can be non-primitive values such as tuples, arrays, or objects. To showcase a basic example of how an actor can accept an argument, this page will use an example Motoko actor that accepts multiple text arguments.
 

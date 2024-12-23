@@ -4,7 +4,7 @@ sidebar_position: 28
 
 # Abstracting asynchronous code
 
-## Overview
+
 Functions are an abstraction mechanism, allowing you to name a computation and re-use that computation in different locations within your code simply by invoking the name of that function. When the function takes parameters, you can tailor the computation to different call sites by providing different arguments.
 
 Programmers often improve their code by re-factoring common patterns of code into

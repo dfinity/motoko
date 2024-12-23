@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2",
-        "sha256": "1pf0yb8f876n6d14j55x5dwkywnx1fxbznrnz28545bm8nxjc6k0",
+        "rev": "87f42eefb1070381565d8de3235628a674641fbd",
+        "sha256": "1kfchlrfwk5b6ahhkkrkf9iby9znjri4jcjwbm3kwiqx8g9v97dp",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/87f42eefb1070381565d8de3235628a674641fbd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "4ace26675fc1222daefb24ac160e0d03000429d2",
-        "sha256": "0v05djp8ymwc5c9y8ms80cqzx8h2jb9fskfmw8l2mszdcwn8ahsw",
+        "rev": "bf3b522b3e2dab992c9d2544cb438e10ef2fac1a",
+        "sha256": "0pyqwv7af6ccd3imwbnww64959k56vl8r9dsr2g25spmnfsnrl7a",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/4ace26675fc1222daefb24ac160e0d03000429d2.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/bf3b522b3e2dab992c9d2544cb438e10ef2fac1a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {

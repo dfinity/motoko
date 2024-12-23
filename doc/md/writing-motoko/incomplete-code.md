@@ -3,7 +3,7 @@ sidebar_position: 27
 ---
 # Writing incomplete code
 
-## Overview
+
 
 In the midst of writing a program, you may want to run an incomplete version or a version where one or more execution paths are either missing or simply invalid.
 

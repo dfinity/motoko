@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Async data
 
-## Overview
+
 
 On ICP, communication between canisters is asynchronous. Sending a message together with a callback from one canister to another schedules a request in the receiver. Completion of the request triggers the callback to the sender, allowing the sender to process the result.
 
