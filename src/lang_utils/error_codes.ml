@@ -203,7 +203,8 @@ let error_codes : (string * string option) list =
     "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
-    "M0200", None; (* Stable functions are only supported with enhanced orthogonal persistence *)
-    "M0201", None; (* Stable function cannot close over a non-stable variable *)
-    "M0202", None; (* Type argument has to be of a stable type to match the type parameter *)
+    "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Cannot determine subtyping or equality *)
+    "M0201", None; (* Stable functions are only supported with enhanced orthogonal persistence *)
+    "M0202", None; (* Stable function cannot close over a non-stable variable *)
+    "M0203", None; (* Type argument has to be of a stable type to match the type parameter *)
   ]

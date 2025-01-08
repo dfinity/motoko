@@ -90,7 +90,8 @@ function normalize () {
     sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
     sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
         -e 's/Motoko compiler (source .*)/Motoko compiler (source XXX)/ig' \
-        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
+        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' |
 
     # Normalize canister id prefixes and timestamps in debug prints
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
@@ -331,6 +332,7 @@ do
     # Typecheck
     run tc $moc_with_flags --check $base.mo
     tc_succeeded=$?
+    normalize $out/$base.tc
 
     if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
     then

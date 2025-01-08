@@ -4,7 +4,7 @@ sidebar_position: 20
 
 # Piping values into expressions
 
-## Overview
+
 
 It can sometimes be hard to read deeply nested expressions involving several function applications.
 

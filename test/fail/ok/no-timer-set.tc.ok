@@ -204,6 +204,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     regionStoreNat32 : (Region, Nat64, Nat32) -> ();
     regionStoreNat64 : (Region, Nat64, Nat64) -> ();
     regionStoreNat8 : (Region, Nat64, Nat8) -> ();
+    replyDeadline : () -> Nat64;
     rts_callback_table_count : () -> Nat;
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;

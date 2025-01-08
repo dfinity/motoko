@@ -4,7 +4,7 @@ sidebar_position: 14
 
 # Message inspection
 
-## Overview
+
 
 On ICP, a canister can selectively inspect, then choose to accept or decline ingress messages submitted through the HTTP interface.
 
@@ -81,12 +81,12 @@ Declining anonymous calls:
 
 Declining large messages, based on the raw size in bytes of `arg` prior to any decoding from Candid binary blob to Motoko value:
 
-``` motoko no-repl file=../examples/InspectArg.mo#L12-L14
+``` motoko no-repl file=../examples/InspectArg.mo#L10-L13
 ```
 
 Declining messages by name only, ignoring message arguments. Note the use of type `Any` as message argument variants:
 
-``` motoko no-repl file=../examples/InspectName.mo#L12-L25
+``` motoko no-repl file=../examples/InspectName.mo#L10-L23
 ```
 
 A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases:
@@ -100,7 +100,7 @@ Implementing `inspect` after the fact once all shared functions of an actor have
 
 For example, in the actor from the previous section, incorrectly declaring forces the compiler to report the expected type below, which you can then cut-and-paste into your code:
 
-``` motoko no-repl file=../examples/InspectTrick.mo#L12-L14
+``` motoko no-repl file=../examples/InspectTrick.mo#L11-L13
 ```
 
 ``` motoko no-repl

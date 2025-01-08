@@ -4,7 +4,7 @@ sidebar_position: 28
 
 # Candid serialization
 
-## Overview
+
 
 Candid is an interface description language and serialization format designed specifically for the Internet Computer protocol.
 It's a crucial component that enables seamless communication between different services and canister smart contracts on ICP, regardless of the programming languages they're implemented in.
@@ -87,7 +87,7 @@ In this example, we use the imported `call` function to make a dynamic call on t
 import Principal "mo:base/Principal";
 import {call} "mo:base/ExperimentalInternetComputer";
 
-actor This {
+persistent actor This {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";

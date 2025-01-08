@@ -162,13 +162,13 @@ let share_dec d =
   | LetD (p, e, f) -> LetD (p, share_exp e, f) @? d.at
   | _ -> d
 
-let share_stab stab_opt dec =
+let share_stab default_stab stab_opt dec =
   match stab_opt with
   | None ->
     (match dec.it with
      | VarD _
      | LetD _ ->
-       Some (Flexible @@ dec.at)
+       Some (default_stab @@ dec.at)
      | _ -> None)
   | _ -> stab_opt
 
@@ -179,12 +179,12 @@ let ensure_system_cap (df : dec_field) =
       { df with it = { df.it with dec = { df.it.dec with it } } }
     | _ -> df
 
-let share_dec_field (df : dec_field) =
+let share_dec_field default_stab (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab df.it.stab df.it.dec}}
+      stab = share_stab Flexible df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
@@ -193,7 +193,19 @@ let share_dec_field (df : dec_field) =
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
     }
-  | _ -> df
+  | _ ->
+    {df with it =
+       {df.it with stab =
+          match df.it.stab with
+          | None ->
+             (match df.it.dec.it with
+             | ExpD _
+             | TypD _
+             | ClassD _ -> None
+             | _ -> Some (default_stab @@ df.it.dec.at))
+          | some -> some}
+    }
+
 
 and objblock s id ty dec_fields =
   List.iter (fun df ->
@@ -236,6 +248,7 @@ let define_function_stability is_named shared_pattern =
 %token WRAPADDASSIGN WRAPSUBASSIGN WRAPMULASSIGN WRAPPOWASSIGN
 %token NULL
 %token FLEXIBLE STABLE
+%token TRANSIENT PERSISTENT
 %token<string> DOT_NUM
 %token<string> NAT
 %token<string> FLOAT
@@ -319,7 +332,6 @@ let define_function_stability is_named shared_pattern =
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
 %start<unit> parse_module_header (* Result passed via the Parser_lib.Imports exception *)
 %start<string -> Mo_def.Syntax.stab_sig> parse_stab_sig
-
 %on_error_reduce exp_bin(ob) exp_bin(bl) exp_nondec(bl) exp_nondec(ob)
 %%
 
@@ -360,14 +372,19 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline obj_sort :
+%inline typ_obj_sort :
   | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
-  | MODULE { Type.Module @@ at $sloc }
+  | MODULE {Type.Module @@ at $sloc }
+
+%inline obj_sort :
+  | OBJECT { (false, Type.Object @@ at $sloc) }
+  | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
+  | MODULE { (false, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
-  | (* empty *) { Type.Object @@ no_region }
-  | s=obj_sort { s }
+  | (* empty *) { (false, Type.Object @@ no_region) }
+  | ds=obj_sort { ds }
 
 %inline query:
   | QUERY { Type.Query }
@@ -436,7 +453,7 @@ typ_pre :
     { AsyncT(Type.Fut, scopeT (at $sloc), t) @! at $sloc }
   | ASYNCSTAR t=typ_pre
     { AsyncT(Type.Cmp, scopeT (at $sloc), t) @! at $sloc }
-  | s=obj_sort tfs=typ_obj
+  | s=typ_obj_sort tfs=typ_obj
     { let tfs' =
         if s.it = Type.Actor then List.map share_typfield tfs else tfs
       in ObjT(s, tfs') @! at $sloc }
@@ -797,7 +814,11 @@ stab :
   | (* empty *) { None }
   | FLEXIBLE { Some (Flexible @@ at $sloc) }
   | STABLE { Some (Stable @@ at $sloc) }
+  | TRANSIENT { Some (Flexible @@ at $sloc) }
 
+%inline persistent :
+  | (* empty *) { false }
+  | PERSISTENT { true }
 
 (* Patterns *)
 
@@ -872,18 +893,20 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
-    { let sort = Type.(match s.it with
+  | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let (persistent, s) = ds in
+      let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
       let id = if named then Some x else None in
       let e =
         if s.it = Type.Actor then
+          let default_stab = if persistent then Stable else Flexible in
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s id t (List.map share_dec_field efs) @? at $sloc)
+                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock s id t efs @? at $sloc
       in
@@ -897,12 +920,14 @@ dec_nonvar :
       let sp = define_function_stability named sp in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar (ref None) e) (at $sloc) }
-  | sp=shared_pat_opt s=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt cb=class_body
-    { let x, dfs = cb in
+    { let (persistent, s) = ds in
+      let x, dfs = cb in
       let dfs', tps', t' =
-        if s.it = Type.Actor then
-          (List.map share_dec_field dfs,
+       if s.it = Type.Actor then
+          let default_stab = if persistent then Stable else Flexible in
+          (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)

@@ -118,6 +118,7 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
+  | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 

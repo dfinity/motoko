@@ -4,7 +4,7 @@ sidebar_position: 12
 
 # Inter-canister calls
 
-## Overview
+
 
 One of the most important features of ICP for developers is the ability to call functions in one canister from another canister. This capability to make calls between canisters, also sometimes referred to as **inter-canister calls**, enables you to reuse and share functionality in multiple dapps.
 
@@ -21,10 +21,12 @@ Consider the following code for `Canister1`:
 ```motoko no-repl
 import Canister2 "canister:canister2";
 
-actor Canister1 {
-    public func main() : async Nat {
-        return await Canister2.getValue();
-    };
+persistent actor Canister1 {
+
+  public func main() : async Nat {
+    return await Canister2.getValue();
+  };
+
 };
 ```
 
@@ -33,11 +35,11 @@ Then, consider the following code for `Canister2`:
 ```motoko
 import Debug "mo:base/Debug";
 
-actor Canister2 {
-    public func getValue() : async Nat {
-        Debug.print("Hello from canister 2!");
-        return 10;
-    };
+persistent actor Canister2 {
+  public func getValue() : async Nat {
+    Debug.print("Hello from canister 2!");
+    return 10;
+  };
 };
 ```
 
@@ -58,11 +60,13 @@ The output should resemble the following:
 Alternatively, you can also use a canister id to access a previously deployed canister by using the following piece of code in `canister1`:
 
 ```motoko
-actor {
-    public func main(canisterId: Text) : async Nat {
-        let canister2 = actor(canisterId): actor { getValue: () -> async Nat };
-        return await canister2.getValue();
-    };
+persistent actor {
+
+  public func main(canisterId: Text) : async Nat {
+    let canister2 = actor(canisterId): actor { getValue: () -> async Nat };
+    return await canister2.getValue();
+  };
+
 };
 ```
 
@@ -82,7 +86,7 @@ Here is an example which you can modify for your specific use case:
 import IC "mo:base/ExperimentalInternetComputer";
 import Debug "mo:base/Debug";
 
-actor AdvancedCanister1 {
+persistent actor AdvancedCanister1 {
   public func main(canisterId : Principal) : async Nat {
     // Define the method name and input args
     let name = "getValue";
@@ -103,11 +107,13 @@ actor AdvancedCanister1 {
 ```motoko
 import Debug "mo:base/Debug";
 
-actor AdvancedCanister2 {
-    public func getValue(number: Nat) : async Nat {
-        Debug.print("Hello from advanced canister 2!");
-        return number * 2;
-    };
+persistent actor AdvancedCanister2 {
+
+  public func getValue(number: Nat) : async Nat {
+     Debug.print("Hello from advanced canister 2!");
+     return number * 2;
+  };
+
 };
 ```
 

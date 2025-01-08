@@ -4,14 +4,14 @@ sidebar_position: 4
 
 # Verifying upgrade compatibility
 
-## Overview
+
 
 When upgrading a canister, it is important to verify that the upgrade can proceed without:
 
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-`dfx` checks these properties statically before attempting the upgrade. 
+`dfx` checks these properties statically before attempting the upgrade.
 Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
@@ -22,15 +22,25 @@ The following is a simple example of how to declare a stateful counter:
 ```
 
 Importantly, in this example, when the counter is upgraded, its state is lost.
-This is because actor variables are by default `flexible`, meaning they get reinitialized on an upgrade.
+This is because actor variables are by default `transient`, meaning they get reinitialized on an upgrade.
+The above actor is equivalent to using the `transient` declaration:
 
-To fix this, you can declare a stable variable that is retained across upgrades:
+``` motoko no-repl file=../examples/count-v0transient.mo
+```
 
+
+To fix this, you can declare a `stable` variable that is retained across upgrades:
+
+
+``` motoko no-repl file=../examples/count-v1stable.mo
+```
+
+To make `stable` the default for all declarations and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
 
 ``` motoko no-repl file=../examples/count-v1.mo
 ```
 
-If the variable `state` were not declared `stable`, `state` would restart from `0` on upgrade.
+If the variable `state` were not declared `stable`, either explicitly or by applying `persistent` to the `actor` keyword, `state` would restart from `0` on upgrade.
 
 ## Evolving the stable declarations
 
@@ -188,23 +198,23 @@ A common, real-world example of an incompatible upgrade can be found [on the for
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
   };
-  stable var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
+  var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
 };
 ```
 
 to *incompatible* stable type interface:
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var map : [(Nat32, Card)] = [];
+  var map : [(Nat32, Card)] = [];
 };
 ```
 
@@ -223,14 +233,14 @@ cannot be consumed at new type
 
 Do you want to proceed? yes/No
 ```
-It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md). 
+It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md).
 Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
 Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
 ### Solution
 
-To resolve this issue, an [explicit](#explicit-migration) is needed:
+To resolve this issue, an [explicit migration](#explicit-migration) is needed:
 
 1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
@@ -239,7 +249,7 @@ To resolve this issue, an [explicit](#explicit-migration) is needed:
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-actor {
+persistent actor {
   type OldCard = {
     title : Text;
   };
@@ -247,9 +257,8 @@ actor {
     title : Text;
     description : Text;
   };
-  
-  stable var map : [(Nat32, OldCard)] = [];
-  stable var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
+  var map : [(Nat32, OldCard)] = [];
+  var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
     map,
     func(key, { title }) { (key, { title; description = "<empty>" }) },
   );
@@ -259,16 +268,16 @@ actor {
 4. **After** we have successfully upgraded to this new version, we can upgrade once more to a version, that drops the old `map`.
 
 ``` motoko no-repl
-actor {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
   };
-  stable var newMap : [(Nat32, Card)] = [];
+  var newMap : [(Nat32, Card)] = [];
 };
 ```
 
-`dfx` will issue a warning that `map` will be dropped. 
+`dfx` will issue a warning that `map` will be dropped.
 
 Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
 

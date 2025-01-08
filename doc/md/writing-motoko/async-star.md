@@ -4,7 +4,7 @@ sidebar_position: 28
 
 # Abstracting asynchronous code
 
-## Overview
+
 Functions are an abstraction mechanism, allowing you to name a computation and re-use that computation in different locations within your code simply by invoking the name of that function. When the function takes parameters, you can tailor the computation to different call sites by providing different arguments.
 
 Programmers often improve their code by re-factoring common patterns of code into
@@ -24,7 +24,7 @@ Though this can work, it has some overhead and pitfalls:
 Consider the following code that does some logging to a remote canister.
 
 ``` motoko
-actor class (Logger : actor { log : Text -> async () }) {
+persistent actor class (Logger : actor { log : Text -> async () }) {
 
   var logging = true;
 
@@ -42,7 +42,7 @@ The `maybeLog` function needs to be asynchronous because communicating with the 
 
 
 ``` motoko
-actor class (Logger : actor { log : Text -> async () }) {
+persistent actor class (Logger : actor { log : Text -> async () }) {
 
   var logging = true;
 
@@ -66,7 +66,7 @@ A safer refactoring passes the current state of the `logging` variable with each
 
 
 ``` motoko
-actor class (Logger : actor { log : Text -> async () }) {
+persistent actor class (Logger : actor { log : Text -> async () }) {
 
   var logging = true;
 
@@ -102,7 +102,7 @@ To compute the result of an `async*` computation, you just use an `await*`.
 Here's how we can refactor our original class to be clearer, efficient and have the same meaning, using computations instead of futures:
 
 ``` motoko
-actor class (Logger : actor { log : Text -> async () }) {
+persistent actor class (Logger : actor { log : Text -> async () }) {
 
   var logging = true;
 

@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Cycles
 
-## Overview
+
 
 Usage of a canister's resources on ICP is measured and paid for in [cycles](/docs/current/developer-docs/defi/cycles/converting_icp_tokens_into_cycles).
 
