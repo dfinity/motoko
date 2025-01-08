@@ -542,11 +542,11 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let stab_fields = List.sort T.compare_field
-     (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
+    (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
   let mem_fields =
     List.map
-      (fun fld -> {fld with T.typ = T.Opt (T.as_immut fld.T.typ) } )
+      (fun tf -> {tf with T.typ = T.Opt (T.as_immut tf.T.typ) } )
       stab_fields in
   let mk_ds = List.map snd pairs in
   let mem_ty = T.Obj (T.Memory, mem_fields) in
@@ -567,14 +567,14 @@ and build_actor at ts exp_opt self_id es obj_typ =
         List.sort T.compare_field
           (dom_fields @
             (List.filter_map
-              (fun fld ->
-                match T.lookup_val_field_opt fld.T.lab dom_fields with
+              (fun tf ->
+                match T.lookup_val_field_opt tf.T.lab dom_fields with
                 | Some t ->
                   (* ignore overriden *)
                   None
                 | None ->
                   (* retain others *)
-                  Some fld)
+                  Some tf)
               stab_fields))
       in
       let mem_fields_pre =
