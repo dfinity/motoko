@@ -1008,7 +1008,7 @@ parse_stab_sig :
        ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
              LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
     { let trivia = !triv_table in
-      let sigs = PrePost(sfs_pre, sfs_post) in (* FIX ME*)
+      let sigs = PrePost(sfs_pre, sfs_post) in
       fun filename -> {
           it = (ds, {it=sigs; at = at $sloc; note = ()});
           at = at $sloc;
