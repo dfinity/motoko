@@ -14,5 +14,5 @@ no-stable-functions-classical.mo:26.12-26.18: type error [M0096], expression of 
   Nat -> Text
 cannot produce expected type
   stable Nat -> Text
-no-stable-functions-classical.mo:13.14-13.19: type error [M0200], Stable functions are only supported with enhanced orthogonal persistence
-no-stable-functions-classical.mo:14.14-14.17: type error [M0200], Stable functions are only supported with enhanced orthogonal persistence
+no-stable-functions-classical.mo:13.14-13.19: type error [M0201], Stable functions are only supported with enhanced orthogonal persistence
+no-stable-functions-classical.mo:14.14-14.17: type error [M0201], Stable functions are only supported with enhanced orthogonal persistence

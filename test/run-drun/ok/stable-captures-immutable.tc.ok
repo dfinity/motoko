@@ -1,2 +1,2 @@
-stable-captures-immutable.mo:10.36-12.10: type error [M0201], stable function stableMethod closes over non-stable variable flexibleMethod
-stable-captures-immutable.mo:28.22-30.10: type error [M0201], stable function inner closes over non-stable variable innerFlexible
+stable-captures-immutable.mo:10.36-12.10: type error [M0202], stable function stableMethod closes over non-stable variable flexibleMethod
+stable-captures-immutable.mo:28.22-30.10: type error [M0202], stable function inner closes over non-stable variable innerFlexible
