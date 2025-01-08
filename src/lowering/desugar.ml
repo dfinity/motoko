@@ -590,38 +590,40 @@ and build_actor at ts exp_opt self_id es obj_typ =
       I.{pre = mem_ty_pre; post = mem_ty},
       ifE (primE (I.OtherPrim "rts_in_install") [])
         (primE (I.ICStableRead mem_ty) [])
-        (letE v (primE (I.ICStableRead mem_ty_pre) [])
-          (letE v_dom
-             (objectE T.Object
-               (List.map
-                 (fun T.{lab=i;typ=t;_} ->
-                   let vi = fresh_var ("v_"^i) (T.as_immut t) in
-                   (i,
-                    switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
-                      (primE (Ir.OtherPrim "trap")
-                        [textE (Printf.sprintf
-                          "stable variable `%s` of type `%s` expected but not found"
-                          i (T.string_of_typ t))])
-                        (varP vi) (varE vi)
-                        (T.as_immut t)))
-                 dom_fields)
-             dom_fields)
-             (letE v_rng (callE e [] (varE v_dom))
-               (objectE T.Memory
-                 (List.map
-                   (fun T.{lab=i;typ=t;_} ->
-                     i,
-                     match T.lookup_val_field_opt i rng_fields with
-                     | Some t -> (* produced by migration *)
-                       optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
-                     | None -> (* not produced by migration *)
-                       match T.lookup_val_field_opt i dom_fields with
-                       | Some t ->
-                          (* consumed by migration (not produced) *)
-                          nullE() (* TBR: could also reuse if compatible *)
-                       | None -> dotE (varE v) i t)
-                   mem_fields)
-                 mem_fields))))
+        (blockE [
+            letD v (primE (I.ICStableRead mem_ty_pre) []);
+            letD v_dom
+              (objectE T.Object
+                (List.map
+                  (fun T.{lab=i;typ=t;_} ->
+                    let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                    (i,
+                     switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                       (primE (Ir.OtherPrim "trap")
+                         [textE (Printf.sprintf
+                           "stable variable `%s` of type `%s` expected but not found"
+                           i (T.string_of_typ t))])
+                         (varP vi) (varE vi)
+                         (T.as_immut t)))
+                  dom_fields)
+                dom_fields);
+            letD v_rng (callE e [] (varE v_dom))
+          ]
+          (objectE T.Memory
+            (List.map
+              (fun T.{lab=i;typ=t;_} ->
+               i,
+               match T.lookup_val_field_opt i rng_fields with
+               | Some t -> (* produced by migration *)
+                 optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+               | None -> (* not produced by migration *)
+                 match T.lookup_val_field_opt i dom_fields with
+                 | Some t ->
+                   (* consumed by migration (not produced) *)
+                   nullE() (* TBR: could also reuse if compatible *)
+                 | None -> dotE (varE v) i t)
+              mem_fields)
+            mem_fields))
   in
   let ds =
     varD state (optE migration)
