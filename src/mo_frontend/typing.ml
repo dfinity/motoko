@@ -2621,7 +2621,7 @@ and check_migration env exp_opt =
 
 
 and check_stab env sort exp_opt scope dec_fields =
-  let (_dom_tfs, rng_tfs) = check_migration env exp_opt in
+  let (dom_tfs, rng_tfs) = check_migration env exp_opt in
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
@@ -2664,6 +2664,19 @@ and check_stab env sort exp_opt scope dec_fields =
   in
   let ids = List.concat idss in
   check_ids env "actor type" "stable variable" ids;
+  begin
+    if not (dom_tfs = []) then
+      (* check for collisions in induced pre signature *)
+      let dom_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) dom_tfs in
+      let pre_ids =
+        dom_ids @
+          (List.filter_map
+            (fun id ->
+            if List.exists (fun dom_id -> dom_id.it = id.it) dom_ids then None else Some id)
+            ids)
+    in
+    check_ids env "pre actor type" "stable variable" pre_ids
+  end;
   let ids = List.map (fun id -> id.it) ids in
   List.iter (fun T.{lab;typ;src} ->
       match typ with
