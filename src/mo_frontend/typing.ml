@@ -2593,7 +2593,7 @@ and check_migration env exp_opt =
   | None -> ([],[])
   | Some exp ->
      let check_fields desc typ =
-       match T.promote typ with
+       match typ with
        | T.Obj(T.Object, tfs) ->
           if not (T.stable typ) then
             local_error env exp.at "M0131"
@@ -2611,13 +2611,14 @@ and check_migration env exp_opt =
     let typ = infer_exp env exp in
     try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
-      (check_fields "consumes" t_dom,
-       check_fields "produces" t_rng)
+      if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
+      (check_fields "consumes" (T.normalize t_dom),
+       check_fields "produces" (T.promote t_rng))
     with Invalid_argument _ ->
       local_error env exp.at "M0097"
-        "expected function type, but expression produces type%a"
+        "expected non-generic, local function type, but migration expression produces type%a"
         display_typ_expand typ;
-      ([],[])
+      ([], [])
 
 
 and check_stab env sort exp_opt scope dec_fields =
