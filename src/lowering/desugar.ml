@@ -541,87 +541,99 @@ and build_actor at ts exp_opt self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let sig_post = List.sort T.compare_field
-    (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
+  let stab_fields = List.sort T.compare_field
+    (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src}) ids in
+  let mem_fields =
+    List.map
+      (fun tf -> {tf with T.typ = T.Opt (T.as_immut tf.T.typ) } )
+      stab_fields in
   let mk_ds = List.map snd pairs in
-  let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
-  let state = fresh_var "state" (T.Mut (T.Opt ty)) in
-  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let mem_ty = T.Obj (T.Memory, mem_fields) in
+  let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
+  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let sig_, stable_type, migration = match exp_opt with
     | None ->
-      T.Single sig_post,
-      I.{pre = ty; post = ty},
-      primE (I.ICStableRead ty) [] (* as before *)
+      T.Single stab_fields,
+      I.{pre = mem_ty; post = mem_ty},
+      primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
       let e = exp exp0 in
       let [@warning "-8"] (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
       let [@warning "-8"] (T.Object, dom_fields) = T.as_obj dom in
       let [@warning "-8"] (T.Object, rng_fields) = T.as_obj rng in
-      let sig_pre =
-         List.sort T.compare_field
-           (dom_fields @
-              (List.filter_map
-                 (fun (i,t) ->
-                   match T.lookup_val_field_opt i dom_fields with
-                   | Some t ->
-                     (* ignore overriden *)
-                     None
-                   | None ->
-                    (* retain others *)
-                   Some T.{lab = i; typ = t; src = T.empty_src})                                                   ids))
+      let stab_fields_pre =
+        List.sort T.compare_field
+          (dom_fields @
+            (List.filter_map
+              (fun tf ->
+                match T.lookup_val_field_opt tf.T.lab dom_fields with
+                | Some t ->
+                  (* ignore overriden *)
+                  None
+                | None ->
+                  (* retain others *)
+                  Some tf)
+              stab_fields))
       in
-      let fields' =
-           List.map
-             (fun tf ->
-               { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
-             sig_pre
+      let mem_fields_pre =
+        List.map
+          (fun tf -> { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
+          stab_fields_pre
       in
-      let ty' = T.Obj (T.Memory, fields') in
-      let v = fresh_var "v" ty' in
+      let mem_ty_pre = T.Obj (T.Memory, mem_fields_pre) in
+      let v = fresh_var "v" mem_ty_pre in
       let v_dom = fresh_var "v_dom" dom in
       let v_rng = fresh_var "v_rng" rng in
-      T.PrePost (sig_pre, sig_post),
-      I.{pre = ty'; post = ty},
+      T.PrePost (stab_fields_pre, stab_fields),
+      I.{pre = mem_ty_pre; post = mem_ty},
       ifE (primE (I.OtherPrim "rts_in_install") [])
-        (primE (I.ICStableRead ty) [])
-        (letE v (primE (I.ICStableRead ty') [])
-           (letE v_dom
+        (primE (I.ICStableRead mem_ty) [])
+        (blockE [
+            letD v (primE (I.ICStableRead mem_ty_pre) []);
+            letD v_dom
               (objectE T.Object
-                 (List.map (fun T.{lab=i;typ=t;_} ->
-                  let vi = fresh_var ("v_"^i) (T.as_immut t) in
-                  (i, switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                (List.map
+                  (fun T.{lab=i;typ=t;_} ->
+                    let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                    (i,
+                     switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
                        (primE (Ir.OtherPrim "trap")
-                          [textE (Printf.sprintf
-                             "stable variable `%s` of type `%s` expected but not found" i (T.string_of_typ t))])
-                       (varP vi) (varE vi)
-                       (T.as_immut t))) dom_fields) dom_fields)
-              (letE v_rng (callE e [] (varE v_dom))
-                 (objectE T.Memory
-                    (List.map (fun T.{lab=i;typ=t;_} ->
-                     i,
-                     match T.lookup_val_field_opt i rng_fields with
-                       (* produced by migration *)
-                     | Some t -> optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
-                     | None ->
-                         (* not produced by migration *)
-                         match T.lookup_val_field_opt i dom_fields with
-                         | Some t -> nullE() (* consumed by migration (not produced) *)
-                            (*TBR: could also reuse if compatible *)
-                         | None -> dotE (varE v) i t)
-                       fields) fields))))
+                         [textE (Printf.sprintf
+                           "stable variable `%s` of type `%s` expected but not found"
+                           i (T.string_of_typ t))])
+                         (varP vi) (varE vi)
+                         (T.as_immut t)))
+                  dom_fields)
+                dom_fields);
+            letD v_rng (callE e [] (varE v_dom))
+          ]
+          (objectE T.Memory
+            (List.map
+              (fun T.{lab=i;typ=t;_} ->
+               i,
+               match T.lookup_val_field_opt i rng_fields with
+               | Some t -> (* produced by migration *)
+                 optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+               | None -> (* not produced by migration *)
+                 match T.lookup_val_field_opt i dom_fields with
+                 | Some t ->
+                   (* consumed by migration (not produced) *)
+                   nullE() (* TBR: could also reuse if compatible *)
+                 | None -> dotE (varE v) i t)
+              mem_fields)
+            mem_fields))
   in
   let ds =
     varD state (optE migration)
     ::
     nary_funcD get_state []
-      (let v = fresh_var "v" ty in
+      (let v = fresh_var "v" mem_ty in
        switch_optE (immuteE (varE state))
          (unreachableE ())
          (varP v) (varE v)
-         ty)
+         mem_ty)
     ::
     ds
     @
@@ -629,32 +641,32 @@ and build_actor at ts exp_opt self_id es obj_typ =
   in
   let ds' = match self_id with
     | Some n ->
-       with_self n.it obj_typ ds
+      with_self n.it obj_typ ds
     | None -> ds in
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
   let with_stable_vars wrap =
-    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) mem_fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
         | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
+            (seqE (List.map (fun tf -> optE (varE (var tf.T.lab tf.T.typ))) stab_fields))])
       (wrap
          (newObjE T.Memory
             (List.map2 (fun f v ->
                  { it = I.{name = f.T.lab; var = id_of_var v};
                    at = no_region;
                    note = f.T.typ }
-               ) fields vs)
-            ty)) in
+               ) mem_fields vs)
+            mem_ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
   I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
-       preupgrade = (primE (I.ICStableWrite ty) []);
+       preupgrade = (primE (I.ICStableWrite mem_ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
