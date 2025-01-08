@@ -477,7 +477,7 @@ and export_runtime_information self_id =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let gc_strategy = 
+  let gc_strategy =
     let open Mo_config in
     let strategy = match !Flags.gc_strategy with
     | Flags.Default -> "default"
@@ -513,19 +513,19 @@ and export_runtime_information self_id =
            (asyncE T.Fut bind2
               (blockE ([
                   letD caller (primE I.ICCallerPrim []);
-                  expD (ifE (orE 
+                  expD (ifE (orE
                       (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
                       (primE (I.OtherPrim "is_controller") [varE caller]))
-                    (unitE()) 
+                    (unitE())
                     (primE (Ir.OtherPrim "trap")
                       [textE "Unauthorized call of __motoko_runtime_information"]))
                   ] @
-                  (List.map2 (fun field (_, load_info, _) -> 
+                  (List.map2 (fun field (_, load_info, _) ->
                     letD field load_info
                   ) fields information))
                 (newObjE T.Object
-                  (List.map2 (fun field (name, _, typ) -> 
-                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ }) 
+                  (List.map2 (fun field (name, _, typ) ->
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ })
                     fields information
                   ) ret_typ))
               (Con (scope_con1, []))))
@@ -560,9 +560,9 @@ and build_actor at ts exp_opt self_id es obj_typ =
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
       let e = exp exp0 in
-      let [@warning "-8"] (_s,_c, [], [dom], [rng]) = T.as_func (exp0.note.S.note_typ) in
-      let [@warning "-8"] (T.Object, dom_fields) = T.as_obj dom in
-      let [@warning "-8"] (T.Object, rng_fields) = T.as_obj rng in
+      let dom, rng = T.as_mono_func_sub (exp0.note.S.note_typ) in
+      let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
+      let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
       let stab_fields_pre =
         List.sort T.compare_field
           (dom_fields @
@@ -1138,7 +1138,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
-              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence)); 
+              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence));
               varE wasm_blob;
               primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
