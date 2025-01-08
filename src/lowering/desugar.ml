@@ -639,7 +639,7 @@ and build_actor at ts exp_opt self_id es obj_typ =
   in
   let ds' = match self_id with
     | Some n ->
-       with_self n.it obj_typ ds
+      with_self n.it obj_typ ds
     | None -> ds in
   let meta =
     I.{ candid = candid;
@@ -651,7 +651,7 @@ and build_actor at ts exp_opt self_id es obj_typ =
         | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
+            (seqE (List.map (fun tf -> optE (varE (var tf.T.lab tf.T.typ))) stab_fields))])
       (wrap
          (newObjE T.Memory
             (List.map2 (fun f v ->
