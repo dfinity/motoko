@@ -39,4 +39,12 @@ actor this {
             case null Prim.trap("Null");
         };
     };
+
+
+
+    public query func principalX() : async { canister_id : Principal } {
+        { canister_id = Prim.principalOfActor this }
+    };
+
+    
 };

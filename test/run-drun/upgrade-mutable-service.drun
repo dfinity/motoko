@@ -1,10 +1,12 @@
-# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID upgrade-mutable-service/version0.mo ""
 ingress $ID initialize "DIDL\x00\x00"
 ingress $ID test "DIDL\x00\x00"
+query $ID principalX "DIDL\x00\x00"
 upgrade $ID upgrade-mutable-service/version0.mo ""
 ingress $ID test "DIDL\x00\x00"
 upgrade $ID upgrade-mutable-service/version1.mo ""
 ingress $ID initialize "DIDL\x00\x01\x7d\x0F"
 ingress $ID test "DIDL\x00\x00"
+ingress aaaaa-aa stop_canister 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress aaaaa-aa start_canister $PRINCIPAL
