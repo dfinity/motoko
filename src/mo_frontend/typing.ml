@@ -1218,7 +1218,7 @@ let check_lit env t lit at suggest =
         "literal of type%a\ndoes not have expected type%a%s"
         display_typ t'
         display_typ_expand t
-        (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
+        (if suggest then Suggest.suggest_conversion env.libs (suggest_vals env) t' t else "")
 
 (* Coercions *)
 
