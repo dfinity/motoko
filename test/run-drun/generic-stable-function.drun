@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID generic-stable-function/version0.mo ""
+upgrade $ID generic-stable-function/version1.mo ""
