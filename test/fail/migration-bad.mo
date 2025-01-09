@@ -1,5 +1,3 @@
-import Prim "mo:prim";
-
 // test migration function restrictions
 
 actor [()] a = { // reject, not a function
