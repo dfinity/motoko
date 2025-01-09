@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
 actor {
-    Prim.debugPrint("Version 0");
+    Prim.debugPrint("Version 1");
 
     func outer<T>(x : T, op : stable T -> ()) : stable () -> () {
         func inner() {
