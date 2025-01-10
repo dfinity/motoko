@@ -1,16 +1,16 @@
-migration-bad.mo:5.8-5.10: type error [M0097], expected non-generic, local function type, but migration expression produces type
+migration-bad.mo:3.8-3.10: type error [M0097], expected non-generic, local function type, but migration expression produces type
   ()
-migration-bad.mo:8.8-8.29: type error [M0097], expected non-generic, local function type, but migration expression produces type
+migration-bad.mo:6.8-6.29: type error [M0097], expected non-generic, local function type, but migration expression produces type
   <T>T -> T
-migration-bad.mo:11.8-11.25: type error [M0093], expected object type, but migration expression consumes non-object type
+migration-bad.mo:9.8-9.25: type error [M0093], expected object type, but migration expression consumes non-object type
   ()
-migration-bad.mo:14.8-14.25: type error [M0093], expected object type, but migration expression produces non-object type
+migration-bad.mo:12.8-12.25: type error [M0093], expected object type, but migration expression produces non-object type
   ()
-migration-bad.mo:18.8-18.33: type error [M0093], expected object type, but migration expression produces non-object type
+migration-bad.mo:16.8-16.33: type error [M0093], expected object type, but migration expression produces non-object type
   ()
-migration-bad.mo:18.8-18.33: type error [M0131], expected stable type, but migration expression consumes non-stable type 
+migration-bad.mo:16.8-16.33: type error [M0131], expected stable type, but migration expression consumes non-stable type 
   {f : () -> ()}
-migration-bad.mo:21.8-21.46: type error [M0131], expected stable type, but migration expression produces non-stable type 
+migration-bad.mo:19.8-19.46: type error [M0131], expected stable type, but migration expression produces non-stable type 
   {f : () -> ()}
-migration-bad.mo:21.8-21.46: type error [M0093], expected object type, but migration expression consumes non-object type
+migration-bad.mo:19.8-19.46: type error [M0093], expected object type, but migration expression consumes non-object type
   ()
