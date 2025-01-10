@@ -1043,7 +1043,6 @@ let rec is_explicit_exp e =
     List.(for_all is_explicit_exp bases
           && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
   | ObjBlockE (_, _e_opt, _, dfs) ->
-    (* TODO e_opt *)
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) ->
@@ -2604,13 +2603,13 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       match typ with
       | T.Obj(T.Object, tfs) ->
          if not (T.stable typ) then
-           local_error env exp.at "M0131"
-             "expected stable type, but migration expression %s non-stable type %a"
+           local_error env exp.at "M0201"
+             "expected stable type, but migration expression %s non-stable type%a"
              desc
              display_typ_expand typ;
          tfs
       | _ ->
-         local_error env exp.at "M0093"
+         local_error env exp.at "M0202"
            "expected object type, but migration expression %s non-object type%a"
            desc
            display_typ_expand typ;
@@ -2624,7 +2623,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       (check_fields "consumes" (T.normalize t_dom),
        check_fields "produces" (T.promote t_rng))
      with Invalid_argument _ ->
-       local_error env exp.at "M0097"
+       local_error env exp.at "M0203"
          "expected non-generic, local function type, but migration expression produces type%a"
          display_typ_expand typ;
        ([], [])
@@ -2635,7 +2634,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | None -> ()
        | Some typ ->
          if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
-           local_error env exp.at "M0096"
+           local_error env exp.at "M0204"
              "migration expression produces field `%s` of type %a\n, not the expected type%a"
               tf.T.lab
               display_typ_expand typ
@@ -2662,11 +2661,12 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt lab stab_tfs with
        | Some _ -> ()
        | None ->
-         local_error env (Option.get exp_opt).at "M0096" (*TODO: custom error*)
-           "migration expression produces unexpected field `%s` of type %a\n%s"
+         local_error env (Option.get exp_opt).at "M0205"
+           "migration expression produces unexpected field `%s` of type %a\n%s\n%s"
             lab
             display_typ_expand typ
-            (Suggest.suggest_id "field" lab stab_ids))
+            (Suggest.suggest_id "field" lab stab_ids)
+           "The actor should declare a corresponding `stable` field.")
      rng_tfs
 
 
