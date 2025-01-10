@@ -910,8 +910,7 @@ and dec' at n = function
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let eo = Option.map exp exp_opt in
-    let args, eo, wrap, control, _n_res = to_args n.S.note_typ op eo p in
+    let args, eo, wrap, control, _n_res = to_args n.S.note_typ op exp_opt p in
     let body = if s.it = T.Actor
       then
         let (_, _, obj_typ) = T.as_async rng_typ in
@@ -981,7 +980,7 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
-and to_args typ po eo p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.control * T.typ list =
 
   let mergeE ds e =
     match e.it with
@@ -1010,11 +1009,14 @@ and to_args typ po eo p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.c
     | _ -> p
   in
 
-  (* In source, the context pattern is outside the argument pattern,
-  but in the IR, parameters are bound first. So if there is a context pattern,
-  we _must_ create fresh names for the parameters and bind the actual parameters
-  inside the wrapper. *)
-  let must_wrap = po <> None || eo <> None in
+  (*
+     In source, the optional shared pattern and migration expression
+     are outside the argument pattern, but in the IR, parameters are
+     bound first. So if there is either a shared pattern or migration
+     expression, we _must_ create fresh names for the parameters and
+     bind the actual parameters inside the wrapper.
+  *)
+  let must_wrap = po <> None || exp_opt <> None in
 
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
@@ -1056,22 +1058,23 @@ and to_args typ po eo p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.c
       (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
-  let mo =
-    match eo with
-    | None -> None
-    | Some e -> Some (fresh_var "migration" e.note.Note.typ)
-  in
-  let wrap_eo e =
-    match mo with
-    | None -> wrap e
-    | Some v ->
-      mergeE
-        [letD v (Option.get eo)]
+  let eo, wrap_exp_opt =
+    match exp_opt with
+    | None ->
+      None,
+      fun e -> wrap e
+    | Some exp0 ->
+      let v = fresh_var "migration" exp0.note.S.note_typ in
+      Some (varE v),
+      fun e ->
+        mergeE
+        [letD v (exp exp0)]
         (wrap e)
   in
+
   let wrap_po e =
     match po with
-    | None -> wrap_eo e
+    | None -> wrap_exp_opt e
     | Some p ->
       let v = fresh_var "caller" T.caller in
       mergeE
@@ -1082,7 +1085,7 @@ and to_args typ po eo p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.c
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
-        (wrap_eo e)
+        (wrap_exp_opt e)
   in
 
   let wrap_under_async e =
@@ -1099,7 +1102,6 @@ and to_args typ po eo p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.c
     else
       wrap_po e
   in
-  let eo = Option.map varE mo in
   args, eo, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list
@@ -1216,8 +1218,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let op = match sp.it with
       | T.Local -> None
       | T.Shared (_, p) -> Some p in
-    let eo = Option.map exp exp_opt in
-    let args, eo, wrap, control, _n_res = to_args fun_typ op eo p in
+    let args, eo, wrap, control, _n_res = to_args fun_typ op exp_opt p in
     let (ts, obj_typ) =
       match fun_typ with
       | T.Func(_s, _c, bds, ts1, [async_rng]) ->
