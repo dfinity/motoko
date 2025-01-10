@@ -44,8 +44,10 @@ let rec exp m e = match e.it with
       | Const ->  List.iter (exp m) es
       | Var -> err m e.at
     end
-  | ObjBlockE (_, _eo, _, dfs) -> dec_fields m dfs (* TODO eo *)
-  | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
+  | ObjBlockE (_, eo, _, dfs) ->
+    Option.iter (exp m) eo; dec_fields m dfs
+  | ObjE (bases, efs) ->
+    List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()

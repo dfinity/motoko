@@ -99,9 +99,9 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     map_max_effs effect_exp exps
   | BlockE decs ->
     map_max_effs effect_dec decs
-  | ObjBlockE (sort, _, _, dfs) ->
-    (* TODO *)
-    infer_effect_dec_fields dfs
+  | ObjBlockE (sort, eo, _, dfs) ->
+    let e = match eo with None -> T.Triv | Some exp -> effect_exp exp in
+    max_eff e (infer_effect_dec_fields dfs)
   | ObjE (bases, efs) ->
     let bases = map_max_effs effect_exp bases in
     let fields = infer_effect_exp_fields efs in

@@ -491,8 +491,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, exp_opt, (self_id_opt, _), dec_fields) ->
-     (*TODO*)
+  | ObjBlockE (obj_sort, _exp_opt, (self_id_opt, _), dec_fields) ->
+    (* NB: we ignore the migration expression _exp_opt *)
     interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
@@ -978,7 +978,7 @@ and interpret_dec env dec (k : V.value V.cont) =
   | TypD _ ->
     k V.unit
   | ClassD (shared_pat, _eo, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
-    (* TODO _eo *)
+    (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
@@ -1091,7 +1091,7 @@ let import_lib env lib =
   | Syntax.ModuleU _ ->
     Fun.id
   | Syntax.ActorClassU (_sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
-    (* TODO eo *)
+    (* NB: we ignore the migration expression _eo *)
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
         ("system",
