@@ -1902,6 +1902,6 @@ let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
   (match stab_sig with
   | Single _ -> "// Version: 1.0.0\n"
-  | PrePost _-> "// Version: 2.0.0\n") ^
+  | PrePost _ -> "// Version: 2.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig
 
