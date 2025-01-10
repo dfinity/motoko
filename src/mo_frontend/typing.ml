@@ -2545,7 +2545,8 @@ and infer_obj env s exp_opt dec_fields at : T.typ =
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
-    check_stab env s exp_opt scope dec_fields;
+    let stab_tfs = check_stab env s scope dec_fields in
+    check_migration env stab_tfs exp_opt
   end;
   t
 
@@ -2595,41 +2596,81 @@ and infer_migration env exp_opt =
     Some (infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
   | None -> None
 
-and check_migration env exp_opt =
+and check_migration env (stab_tfs : T.field list) exp_opt =
   match exp_opt with
-  | None -> ([],[])
+  | None -> ()
   | Some exp ->
-     let check_fields desc typ =
-       match typ with
-       | T.Obj(T.Object, tfs) ->
-          if not (T.stable typ) then
-            local_error env exp.at "M0131"
-              "expected stable type, but migration expression %s non-stable type %a"
-              desc
-              display_typ_expand typ;
-          tfs
-       | _ ->
-          local_error env exp.at "M0093"
-            "expected object type, but migration expression %s non-object type%a"
-            desc
-            display_typ_expand typ;
-          []
-    in
-    let typ = exp.note.note_typ in
-    try
+    let check_fields desc typ =
+      match typ with
+      | T.Obj(T.Object, tfs) ->
+         if not (T.stable typ) then
+           local_error env exp.at "M0131"
+             "expected stable type, but migration expression %s non-stable type %a"
+             desc
+             display_typ_expand typ;
+         tfs
+      | _ ->
+         local_error env exp.at "M0093"
+           "expected object type, but migration expression %s non-object type%a"
+           desc
+           display_typ_expand typ;
+         []
+   in
+   let typ = exp.note.note_typ in
+   let (dom_tfs, rng_tfs) =
+     try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
       (check_fields "consumes" (T.normalize t_dom),
        check_fields "produces" (T.promote t_rng))
-    with Invalid_argument _ ->
-      local_error env exp.at "M0097"
-        "expected non-generic, local function type, but migration expression produces type%a"
-        display_typ_expand typ;
-      ([], [])
+     with Invalid_argument _ ->
+       local_error env exp.at "M0097"
+         "expected non-generic, local function type, but migration expression produces type%a"
+         display_typ_expand typ;
+       ([], [])
+   in
+   List.iter
+     (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab rng_tfs with
+       | None -> ()
+       | Some typ ->
+         if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
+           local_error env exp.at "M0096"
+             "migration expression produces field `%s` of type %a\n, not the expected type%a"
+              tf.T.lab
+              display_typ_expand typ
+              display_typ_expand tf.T.typ) stab_tfs;
+   (* Construct the pre signature *)
+   let pre_tfs = List.sort T.compare_field
+      dom_tfs @
+        (List.filter_map
+           (fun tf ->
+             match T.lookup_val_field_opt tf.T.lab dom_tfs with
+             | Some _ -> None
+             | None -> Some tf)
+           stab_tfs)
+   in
+   (* Check for duplicates and hash collisions in pre-signature *)
+   let pre_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) pre_tfs in
+   check_ids env "pre actor type" "stable variable" pre_ids;
+   (* Reject any fields in range not in post signature (unintended data loss) *)
+   let stab_ids = List.map (fun tf -> tf.T.lab) stab_tfs in
+   List.iter (fun T.{lab;typ;src} ->
+     match typ with
+     | T.Typ c -> ()
+     | _ ->
+       match T.lookup_val_field_opt lab stab_tfs with
+       | Some _ -> ()
+       | None ->
+         local_error env (Option.get exp_opt).at "M0096" (*TODO: custom error*)
+           "migration expression produces unexpected field `%s` of type %a\n%s"
+            lab
+            display_typ_expand typ
+            (Suggest.suggest_id "field" lab stab_ids))
+     rng_tfs
 
 
-and check_stab env sort exp_opt scope dec_fields =
-  let (dom_tfs, rng_tfs) = check_migration env exp_opt in
+and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
@@ -2639,15 +2680,6 @@ and check_stab env sort exp_opt scope dec_fields =
         local_error env at "M0131"
           "variable %s is declared stable but has non-stable type%a" id
           display_typ t1;
-      match T.lookup_val_field_opt id rng_tfs with
-      | None -> ()
-      | Some t2 ->
-        if not (T.sub (T.as_immut t2) t1) then
-         local_error env at "M0096"
-           "migration expression produces field `%s` of type %a\n, not the expected type%a"
-           id
-           display_typ_expand t2
-           display_typ_expand t1
   in
   let idss = List.map (fun df ->
     match sort, df.it.stab, df.it.dec.it with
@@ -2672,32 +2704,14 @@ and check_stab env sort exp_opt scope dec_fields =
   in
   let ids = List.concat idss in
   check_ids env "actor type" "stable variable" ids;
-  begin
-    if not (dom_tfs = []) then
-      (* check for collisions in induced pre signature *)
-      let dom_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) dom_tfs in
-      let pre_ids =
-        dom_ids @
-          (List.filter_map
-            (fun id ->
-            if List.exists (fun dom_id -> dom_id.it = id.it) dom_ids then None else Some id)
-            ids)
-    in
-    check_ids env "pre actor type" "stable variable" pre_ids
-  end;
-  let ids = List.map (fun id -> id.it) ids in
-  List.iter (fun T.{lab;typ;src} ->
-      match typ with
-      | T.Typ c -> ()
-      | _ ->
-         if List.mem lab ids then () else
-         local_error env (Option.get exp_opt).at "M0096" (*TODO: custom error*)
-           "migration expression produces unexpected field `%s` of type %a\n%s"
-           lab
-           display_typ_expand typ
-           (Suggest.suggest_id "field" lab ids))
-    rng_tfs
-
+  List.sort T.compare_field
+    (List.map
+      (fun id ->
+         let typ, _, _ = T.Env.find id.it scope.Scope.val_env in
+         T.{ lab = id.it;
+             typ;
+             src = { depr = None; region = id.at }})
+      ids)
 
 (* Blocks and Declarations *)
 
@@ -2760,12 +2774,11 @@ and infer_dec env dec : T.typ =
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | ClassD (shared_pat, exp_opt, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
-     (*TODO exp_opt *)
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let _t_opt = infer_migration (adjoin_vals env ve0) exp_opt in
+      let _typ_opt = infer_migration (adjoin_vals env ve0) exp_opt in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let in_actor = obj_sort.it = T.Actor in
@@ -3093,7 +3106,6 @@ and infer_dec_valdecs env dec : Scope.t =
       con_env = T.ConSet.singleton c;
     }
   | ClassD (_shared_pat, _exp_opt, id, typ_binds, pat, _, obj_sort, _, _) ->
-     (* TODO exp_opt *)
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
@@ -3203,7 +3215,6 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               end;
               typ
             | ActorClassU  (sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
-               (* TODO exp_opt *)
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in
