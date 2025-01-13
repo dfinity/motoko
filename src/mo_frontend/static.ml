@@ -22,7 +22,7 @@ let err m at =
        at
        "M0014"
        "type"
-       "non-static expression in library or module")
+       "non-static expression in library, module or migration expression")
 
 let pat_err m at =
   let open Diag in

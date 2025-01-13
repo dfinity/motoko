@@ -6,11 +6,14 @@ migration-bad.mo:9.8-9.25: type error [M0202], expected object type, but migrati
   ()
 migration-bad.mo:12.8-12.25: type error [M0202], expected object type, but migration expression produces non-object type
   ()
-migration-bad.mo:16.8-16.33: type error [M0202], expected object type, but migration expression produces non-object type
+migration-bad.mo:15.8-15.33: type error [M0202], expected object type, but migration expression produces non-object type
   ()
-migration-bad.mo:16.8-16.33: type error [M0201], expected stable type, but migration expression consumes non-stable type
+migration-bad.mo:15.8-15.33: type error [M0201], expected stable type, but migration expression consumes non-stable type
   {f : () -> ()}
-migration-bad.mo:19.8-19.46: type error [M0201], expected stable type, but migration expression produces non-stable type
+migration-bad.mo:18.8-18.46: type error [M0201], expected stable type, but migration expression produces non-stable type
   {f : () -> ()}
-migration-bad.mo:19.8-19.46: type error [M0202], expected object type, but migration expression consumes non-object type
+migration-bad.mo:18.8-18.46: type error [M0202], expected object type, but migration expression consumes non-object type
   ()
+migration-bad.mo:23.30-23.32: type error [M0136], empty block cannot produce expected type
+  {} -> {}
+migration-bad.mo:23.8-23.36: type error [M0014], non-static expression in library, module or migration expression

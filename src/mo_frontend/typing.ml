@@ -2599,6 +2599,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
   match exp_opt with
   | None -> ()
   | Some exp ->
+    Static.exp env.msgs exp; (* preclude side effects *)
     let check_fields desc typ =
       match typ with
       | T.Obj(T.Object, tfs) ->
