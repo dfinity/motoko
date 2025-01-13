@@ -2191,8 +2191,7 @@ module Tagged = struct
         E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
-          compile_unboxed_const ptr_unskew ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add))
+          compile_add_const ptr_unskew
         else G.nop))
     else G.nop)
 
@@ -4145,6 +4144,30 @@ module Object = struct
     (* Return the pointer to the object *)
     get_ri ^^
     Tagged.allocation_barrier env
+
+  (* Invoke supplied code for each runtime hash, with object on stack *)
+  let iterate_hashes env code =
+    let set_x, get_x = new_local env "obj/count" in
+    let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
+
+    set_x ^^ get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+    get_x ^^ Tagged.load_field env (hash_ptr_field env) ^^
+
+    compile_add_const ptr_unskew ^^ set_h_ptr ^^
+    get_x ^^ Tagged.load_field env (size_field env) ^^ set_x ^^ (* now count *)
+    (* Linearly scan through the hashes *)
+    G.loop0 (
+      get_x ^^
+      G.if0
+        begin
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          code ^^
+          get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+          get_x ^^ compile_sub_const 1l ^^ set_x ^^
+          G.i (Br (nr 1l))
+        end
+        G.nop
+    )
 
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
