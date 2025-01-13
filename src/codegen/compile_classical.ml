@@ -4150,7 +4150,7 @@ module Object = struct
     let set_x, get_x = new_local env "obj/count" in
     let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
-    set_x ^^ get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+    Tagged.load_forwarding_pointer env ^^ set_x ^^
     get_x ^^ Tagged.load_field env (hash_ptr_field env) ^^
 
     compile_add_const ptr_unskew ^^ set_h_ptr ^^
