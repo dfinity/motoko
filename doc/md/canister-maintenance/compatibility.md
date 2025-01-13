@@ -59,7 +59,7 @@ For example, `v1`'s stable types:
 ``` motoko no-repl file=../examples/count-v1.most
 ```
 
-An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](../base/Int.md) as an [`Int`](../base/Nat.md), which is valid because `Int <: Nat`.
+An upgrade from `v1` to `v2`'s stable types consumes a [`Nat`](../base/Int.md) as an [`Int`](../base/Nat.md), which is valid because `Nat <: Int`, that is,  `Nat` is a subtype of `Int`.
 
 ``` motoko no-repl file=../examples/count-v2.most
 ```
@@ -113,27 +113,30 @@ Version `v3` with Candid interface `v3.did` and stable type interface `v3.most`:
 
 ## Incompatible upgrade
 
-Let's take a look at another example where the counter's type is again changed, this time from [`Int`](../base/Int.md) to [`Nat`](../base/Float.md):
+Let's take a look at another example where the counter's type is again changed, this time from [`Int`](../base/Int.md) to [`Float`](../base/Float.md):
 
 ``` motoko no-repl file=../examples/count-v4.mo
 ```
 
-This version is neither compatible to the Candid interface nor to the stable type declarations.
-- Since `Float </: Int`, the new type of `state` is not compatible to the old type.
-- The return type change of `read` is also not valid.
+This version is neither compatible to stable type declarations, nor to the Candid interface.
+- Since `Int </: Float`, the old type of `state`, `Int`, is not compatible with the new type, `Float`.
+  This means that old value of `state`, an integer, cannot be used to initialize the `state` field, a float, of the upgraded actor.
+- The change in the return type of `read` is also not safe. Existing clients of the `read` method, that expect to receive integers, would suddenly start receiving incompatible floats.
 
-Motoko rejects upgrades with incompatible state changes with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md).
+Motoko rejects upgrades that require type-incompatible state changes with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md).
 This is to guarantee that the stable state is always kept safe.
 
 ```
 Error from Canister ...: Canister called `ic0.trap` with message: RTS error: Memory-incompatible program upgrade.
 ```
 
-In addition to Motoko's check, `dfx` raises a warning message for these incompatible changes, including the breaking Candid change.
+In addition to Motoko's runtime check, `dfx` raises a warning message for these incompatible changes, including the breaking Candid change.
 
 :::danger
 Versions of Motoko using [classical orthogonal persistence](orthogonal-persistence/classical.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
 :::
+
+Motoko tolerates Candid interface changes, since these are more likely to be intentional, breaking changes.
 
 ## Explicit migration
 
