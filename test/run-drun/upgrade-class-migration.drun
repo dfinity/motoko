@@ -1,0 +1,9 @@
+# SKIP ic-ref-run
+install $ID upgrade-class-migration/version0.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID upgrade-class-migration/version1.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID upgrade-class-migration/version2.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID upgrade-class-migration/version2.mo ""
+ingress $ID check "DIDL\x00\x00"
