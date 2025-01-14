@@ -140,6 +140,7 @@ Motoko tolerates Candid interface changes, since these are more likely to be int
 
 ## Explicit migration
 
+### Explicit migration using several upgrades
 There is always a migration path to change structure of stable state, even if a direct type change is not compatible.
 
 For this purpose, a user-instructed migration can be done in three steps:
@@ -160,6 +161,73 @@ For this purpose, a user-instructed migration can be done in three steps:
     ```
 
 Alternatively, the type of `state` can be changed to `Any`, also implying that this variable is no longer used.
+
+### Explicit migration using a migration function
+
+The previous approach of using several upgrades to migrate data is both tedious and
+obscure, mingling production with migration code.
+
+To ease data migration, Motoko now supports explicit migration using a separate data migration function.
+The code for the migration function is self-contained and can be placed in its own file.
+
+The migration function takes a record of stable fields as input and produces a record of stable fields as output.
+
+The input fields extend or override the types of any stable fields in the actor's
+stable signature.
+The output fields must be declared in the actors stable signature, and have types that can be consumed by the corresponding declaration in the stable signature.
+
+* All values for the input fields must
+be present and of compatible type in the old actor, otherwise the
+upgrade traps and rolls back.
+* The fields output by the migration
+function determine the values of the corresponding stable variables in the
+new actor.
+* All other stable variables of the actor, i.e. those neither consumed nor
+produced by the migration function are initialized in the usual way,
+either by transfer from the upgraded actor, if declared in that actor, or, if newly declared,
+by running the initialization expression in the field's
+declaration.
+* The migration function is only executed on an upgrade and ignored on a fresh installation of the actor in an empty canister.
+
+The migration function, when required, is declared within square brackets following the `actor` keyword in an actor or actor class
+declaration, for example:
+
+``` motoko no-repl file=../examples/count-v7.mo
+```
+
+Employing a migration function offers another advantage: it lets re-use the name of an
+existing field, even when its type has changed:
+
+``` motoko no-repl file=../examples/count-v8.mo
+```
+
+Here, we've put the migration code in a separate library:
+
+``` motoko no-repl file=../examples/Migration.mo
+```
+
+The migration function can be selective and only consume or produce a subset of the old and new stable variables. Other stable variables can be declared as usual.
+
+For example, here, with the same migration function, we also add declare a new stable variable, `lastModified` that records the time of the last update,
+without having to mention that field in the migration function:
+
+``` motoko no-repl file=../examples/count-v9.mo
+```
+
+The stable signature of an actor with a migration function now consists of two ordinary stable signatures, the pre-signature (before the upgrade), and the post-signature (after the upgrade).
+
+
+For example, this is the combined signature of the previous example:
+
+``` motoko no-repl file=../examples/count-v9.most
+```
+
+The second signature is determined solely by the actor's stable variable declarations.
+The first signature contains the field declarations from the migration function's input, together with any distinctly named stable variables declared in the actor.
+
+For compatibility, when performing an upgrade, the (post) signature of the old code must be compatible with the (pre) signature of the new code.
+
+The migration function can be deleted or adjusted on the next upgrade.
 
 ## Upgrade tooling
 
@@ -241,9 +309,11 @@ Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced
 
 Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
-### Solution
+To resolve this issue, some form of  [explicit data migration](#explicit-migration) is needed.
 
-To resolve this issue, an [explicit](#explicit-migration) is needed:
+We present two solutions, the first using a sequence of simple upgrades, and the second, recommended solution, using a single upgrade with a migration function.
+
+### Solution 1 using two plain upgrades
 
 1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
@@ -281,7 +351,7 @@ persistent actor {
 };
 ```
 
-`dfx` will issue a warning that `map` will be dropped. 
+`dfx` will issue a warning that `map` will be dropped.
 
 Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
 
@@ -291,5 +361,78 @@ Stable interface compatibility check issued a WARNING for canister ...
   var [(Nat32, OldCard)]
  will be discarded. This may cause data loss. Are you sure?
 ```
+
+### Solution 2 using a migration function and single upgrade
+
+Instead of the previous two step solution, we can upgrade in one step using a migration function.
+
+1. Define a migration module and function that transform the old stable variable, at its current type, into the new stable variable at its new type.
+
+
+``` motoko no-repl
+// CardMigration.mo
+import Array "mo:base/Array";
+
+module CardMigration {
+  type OldCard = {
+    title : Text;
+  };
+
+  type NewCard = {
+    title : Text;
+    description : Text;
+  };
+
+  // our migration function
+  public func migrate( old : {
+      var map : [(Nat32, OldCard)] // old type
+    } } :
+    {
+      var map : [(Nat32, NewCard)] // new type
+    } {
+    { var map : [(Nat32, NewCard)] =
+        Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
+          old.map,
+          func(key, { title }) { (key, { title; description = "<empty>" }) }
+  );
+
+};
+```
+
+2. Specify the migration function as the migration expression of your actor declaration:
+
+``` motoko no-repl
+import CardMigration "CardMigration";
+
+persistent actor
+  [ CardMigration.migrate ] // Declare the migration function
+  {
+  type Card = {
+    title : Text;
+    description : Text;
+  };
+
+  var map : [(Nat32, Card)] = []; // Initialized by migration on upgrade
+
+};
+```
+
+
+**After** we have successfully upgraded to this new version, we can also upgrade once more to a version that drops the migration code.
+
+``` motoko no-repl
+persistent actor {
+  type Card = {
+    title : Text;
+    description : Text;
+  };
+
+  var map : [(Nat32, Card)] = [];
+};
+```
+
+However, removing or adjusting the migration code can also be delayed to the next, proper upgrade that fixes bugs or extends functionality.
+
+Note that with this solution, there is no need to rename `map` to `newMap` and the migration code is nicely isolated from the main code.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
