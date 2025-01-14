@@ -13,3 +13,4 @@ val check_actors : ?viper_mode:bool -> ?check_actors:bool -> scope -> Syntax.pro
 val check_stab_sig : scope -> Syntax.stab_sig -> (field list) Diag.result
 
 val heartbeat_type : typ
+val global_timer_set_type : typ
