@@ -678,7 +678,7 @@ func @cancelTimer(id : Nat) {
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
 func @check_timer_send() {
-  if not @call_succeeded() {
+  if (not @call_succeeded()) {
     // i.e. self-call queue full: expire soon and retry
     ignore (prim "global_timer_set" : Nat64 -> Nat64) 1;
   }
