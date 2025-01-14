@@ -377,7 +377,7 @@ The syntax of a **library** that can be referenced in an import is as follows:
 ``` bnf
 <lib> ::=                                               Library
   <imp>;* module <id>? (: <typ>)? =? <obj-body>           Module
-  <imp>;* <shared-pat>? actor class                       Actor class
+  <imp>;* <shared-pat>? actor <migration>? class          Actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
 ```
 
@@ -417,9 +417,12 @@ The syntax of a declaration is as follows:
   <obj-body>              Object body
 
 <sort> ::=
-   persistent? actor
+   persistent? actor <migration>?
    module
    object
+
+<migration> ::=          Migration expression
+   [ <exp> ]
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -1326,7 +1329,8 @@ The declaration field has type `T` provided:
 
 Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
 
-Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
+
+In the absence of any migration expression, sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
   - During an upgrade only, the value of a `stable` declaration is obtained as follows:
 
@@ -1340,6 +1344,53 @@ Sequences of declaration fields are evaluated in order by evaluating their const
 
 This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
 Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+
+#### Migration expressions
+
+Actors and actor classes may specify a migration expression `[ <exp> ]` to apply to the stable variables of an upgraded actor, before initializing any stable fields of the declared actor.
+
+The expression `<exp>` must satisfy the following conditions:
+
+* The expression must be static, that is, have no immediate side effects.
+* The expression must have a non-shared function type whose domain and codomain are both record types.
+* The domain and the codomain must both be stable.
+* Any field in the codomain must be declared as a stable field in the actor body.
+* The content type of the codomain field must be a subtype of the content type of the actor's stable field.
+
+The migration expression only affects upgrades of the actor and is otherwise ignored during fresh installation of the actor.
+
+On upgrade, the domain of the migration function is used to construct a record of values containing the current contents of the corresponding stable fields
+of the retired actor. If one of the fields is absent, the upgrade traps and is aborted.
+
+Otherwise, we obtain an input record of stable values of the appropriate type.
+
+The migration function is applied to the input record. If the application traps, the upgrade is aborted.
+
+Otherwise, the application produces an output record of stable values whose type is the codomain.
+
+The actor's declarations are evaluated in order by evaluating each declaration as usual except that
+the value of a `stable` declaration is obtained as follows:
+
+- If the stable declaration is present in the codomain, its initial value is obtained from the output record.
+
+- Otherwise, if the stable declaration is not present in the domain and is declared stable in the retired actor,
+  then its initial value is obtained from the retired actor.
+
+- Otherwise, its value is obtained by evaluating the declaration's initalizer.
+
+Thus a stable variable's initializer is run if the variable is not produced by the migration function and either
+consumed by the migration function (by appearing in its domain) or absent in the retired actor.
+
+For the upgrade to be safe:
+
+- Every stable identifier declared with type `U` in the domain of the migration function
+  must be declared stable for some type `T` in the retired actor, with `T <: U`.
+
+- Every stable identifier declared with type `T` in the retired actor, not present in the domain or codomain,
+  and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
+
+This condition ensures that every stable variable is either discarded or fresh, requiring initialization,
+or that its value can be safely consumed from the output of migration or the retired actor.
 
 #### System fields
 
@@ -1659,7 +1710,7 @@ A similar looking definition that recursively instantiates `Seq` with a larger t
 
 Declaration `<sort> <id>? (: <typ>)? =? <obj-body>`, where `<obj-body>` is of the form `{ <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `<sort>` (one of `persistent? actor`, `module` or `object`) specifies the `<typ-sort>` of the object’s type (`actor`, `module` or `object`, respectively).
+The qualifier `<sort>` (one of `persistent? actor <migration>?`, `module` or `object`) specifies the `<typ-sort>` of the object’s type (`actor`, `module` or `object`, respectively).
 The sort imposes restrictions on the types of the public object fields.
 
 Let `T = <typ-sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type of the object. Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`. The object declaration has type `T` provided that:
