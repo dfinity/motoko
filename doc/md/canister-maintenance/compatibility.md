@@ -119,11 +119,13 @@ Let's take a look at another example where the counter's type is again changed, 
 ```
 
 This version is neither compatible to stable type declarations, nor to the Candid interface.
-- Since `Int </: Float`, the old type of `state`, `Int`, is not compatible with the new type, `Float`.
-  This means that old value of `state`, an integer, cannot be used to initialize the `state` field, a float, of the upgraded actor.
-- The change in the return type of `read` is also not safe. Existing clients of the `read` method, that expect to receive integers, would suddenly start receiving incompatible floats.
+- Since `Int </: Float`, that is, `Int` is not a subtype of `Float`, the old type of `state`, `Int`, is not compatible with the new type, `Float`.
+  This means that the old value of `state`, an integer, cannot be used to initialize the new `state` field that now requires a float.
+- The change in the return type of `read` is also not safe.
+  If the change were accepted, then existing clients of the `read` method, that still expect to receive integers, would suddenly start receiving incompatible floats.
 
-Motoko rejects upgrades that require type-incompatible state changes with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md).
+With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko actively rejects any upgrades that require type-incompatible state changes.
+
 This is to guarantee that the stable state is always kept safe.
 
 ```
@@ -132,11 +134,15 @@ Error from Canister ...: Canister called `ic0.trap` with message: RTS error: Mem
 
 In addition to Motoko's runtime check, `dfx` raises a warning message for these incompatible changes, including the breaking Candid change.
 
+Motoko tolerates Candid interface changes, since these are more likely to be intentional, breaking changes.
+
 :::danger
 Versions of Motoko using [classical orthogonal persistence](orthogonal-persistence/classical.md) will drop the state and reinitialize the counter with `0.0`, if the `dfx` warning is ignored.
+
+For this reason, users should always heed any compatibility warnings issued by `dfx`.
 :::
 
-Motoko tolerates Candid interface changes, since these are more likely to be intentional, breaking changes.
+
 
 ## Explicit migration
 
@@ -195,7 +201,7 @@ declaration, for example:
 ``` motoko no-repl file=../examples/count-v7.mo
 ```
 
-Employing a migration function offers another advantage: it lets re-use the name of an
+Employing a migration function offers another advantage: it lets you re-use the name of an
 existing field, even when its type has changed:
 
 ``` motoko no-repl file=../examples/count-v8.mo
@@ -311,7 +317,7 @@ Adding a new record field to the type of existing stable variable is not support
 
 To resolve this issue, some form of  [explicit data migration](#explicit-migration) is needed.
 
-We present two solutions, the first using a sequence of simple upgrades, and the second, recommended solution, using a single upgrade with a migration function.
+We present two solutions, the first using a sequence of simple upgrades, and a second, recommended solution, that uses a single upgrade with a migration function.
 
 ### Solution 1 using two plain upgrades
 
