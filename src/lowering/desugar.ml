@@ -369,7 +369,7 @@ and call_system_func_opt name es obj_typ =
                [ expD T.(callE (varE (var id.it note)) [Any]
                    (varE (var "@set_global_timer" Mo_frontend.Typing.global_timer_set_type))) ]
                T.(callE
-                    (varE (var "@check_timer_send" (Func (Local, Returns, [], [], [])))) [Any]
+                    (varE (var "@check_timer_send" (Func (Local, Returns, [], [], [])))) []
                     (unitE())) in
            { timer with at }
         | "heartbeat" ->
@@ -609,7 +609,7 @@ and build_actor at ts self_id es obj_typ =
             blockE
               [ expD T.(callE (varE (var "@timer_helper" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
               T.(callE
-                   (varE (var "@check_timer_send" (Func (Local, Returns, [], [], [])))) [Any]
+                   (varE (var "@check_timer_send" (Func (Local, Returns, [], [], [])))) []
                    (unitE()))
           | None -> tupE []);
        inspect =
