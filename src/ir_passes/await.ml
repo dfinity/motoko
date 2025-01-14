@@ -181,7 +181,7 @@ and t_exp' context exp =
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.singleton Return Label in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, t) ->
     ActorE (t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -189,6 +189,7 @@ and t_exp' context exp =
         heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
+        low_memory = t_ignore_throw LabelEnv.empty low_memory;
         stable_record = t_exp LabelEnv.empty stable_record;
         stable_type;
       },
@@ -647,7 +648,7 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, t) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -655,6 +656,7 @@ and t_comp_unit context = function
         heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
+        low_memory = t_ignore_throw LabelEnv.empty low_memory;
         stable_record = t_exp LabelEnv.empty stable_record;
         stable_type;
       },

@@ -394,12 +394,16 @@ let timer_type =
     [Func (Local, Returns, [], [Prim Nat64], [])],
     [Async (Fut, Var (default_scope_var, 0), unit)]))
 
+let low_memory_type =
+  T.(Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
+    
 let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
     T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
     T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
+    ("onLowMemory", low_memory_type);
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
