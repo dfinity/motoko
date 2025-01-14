@@ -12454,19 +12454,36 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let set_c, get_c = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
+
+    (* this can be the body of a local async function or an `async` block
+       - the former receives the optional parenthetical via `ICCyclesPrim`
+       - the latter either NullLit (legacy) or the parenthetical object (typed)
+     *)
+
+
     let add_cycles = match par.it with
       | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
+
+
+
+
+
+
+
+
+
+
       | _ when Type.(sub par.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
         Internals.pass_cycles env ae (compile_exp_vanilla env ae par (*FIXME: effects?!*))
       | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
-    let add_timeout = match par.note.Note.typ with
+(*    let add_timeout = match par.note.Note.typ with
       | Type.Opt typ when Type.(sub typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) ->
         compile_exp_vanilla env ae par (*FIXME: effects?!*) ^^
         (* this is a naked option, thus no need to check is_some *)
         Object.load_idx env typ "timeout" ^^
         BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
         IC.system_call env "call_with_best_effort_response"
-      | _ -> G.nop in
+      | _ -> G.nop in *)
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^

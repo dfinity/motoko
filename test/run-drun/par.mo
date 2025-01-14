@@ -1,3 +1,4 @@
+//MOC-FLAG -dl
 import { call_raw; debugPrint; principalOfActor; replyDeadline } = "mo:⛔";
 import Cycles = "cycles/cycles";
 
