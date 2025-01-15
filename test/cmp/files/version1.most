@@ -1,0 +1,10 @@
+// Version: 2.0.0
+actor ({
+  stable var one : [var Nat];
+  stable var three : [var (Nat, Text)];
+  stable var two : [var Text];
+  stable var zero : Nat
+}, {
+  stable var three : [var (Nat, Text)];
+  stable var zero : Nat
+}) ;
