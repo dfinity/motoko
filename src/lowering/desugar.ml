@@ -569,11 +569,12 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
           (dom_fields @
             (List.filter_map
               (fun tf ->
-                match T.lookup_val_field_opt tf.T.lab dom_fields with
-                | Some t ->
-                  (* ignore overriden *)
+                match T.lookup_val_field_opt tf.T.lab dom_fields,
+                      T.lookup_val_field_opt tf.T.lab rng_fields with
+                | Some _, _    (* ignore consumed (overriden) *)
+                | _, Some _ -> (* ignore produced (provided) *)
                   None
-                | None ->
+                | None, None ->
                   (* retain others *)
                   Some tf)
               stab_fields))

@@ -2645,9 +2645,13 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       dom_tfs @
         (List.filter_map
            (fun tf ->
-             match T.lookup_val_field_opt tf.T.lab dom_tfs with
-             | Some _ -> None
-             | None -> Some tf)
+             match T.lookup_val_field_opt tf.T.lab dom_tfs, T.lookup_val_field_opt tf.T.lab rng_tfs with
+             | _, Some _  (* ignore consumed (overriden) *)
+             | Some _, _ -> (* ignore produced (provided) *)
+               None
+             | None, None ->
+               (* retain others *)
+               Some tf)
            stab_tfs)
    in
    (* Check for duplicates and hash collisions in pre-signature *)
