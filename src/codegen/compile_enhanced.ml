@@ -12268,11 +12268,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableRead ty, [] ->
     SR.Vanilla,
-    (*    IC.compile_static_print env ("ICStableRead" ^ Type.string_of_typ ty) ^^ *)
     Persistence.load env ty
   | ICStableWrite ty, [] ->
     SR.unit,
-    (*    IC.compile_static_print env ("ICStableWrite" ^ Type.string_of_typ ty) ^^ *)
     Persistence.save env ty
 
   (* Cycles *)
