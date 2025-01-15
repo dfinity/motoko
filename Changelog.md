@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.13.6 (tbd)
+
+* motoko (`moc`)
+
+  * Support low Wasm memory hook: `system func onLowMemory() : async () { ... }`.
+
 ## 0.13.5 (2024-12-06)
 
 * motoko (`moc`)
