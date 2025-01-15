@@ -684,7 +684,8 @@ and t_ignore_throw context exp = t_on_throw context exp (tupE[])
 (* if self-call queue full: expire global timer soon and retry *)
 and t_timer_throw context exp =
   t_on_throw context exp
-    (blockE [expD (primE
+    (blockE
+       [expD (primE
                 (OtherPrim "global_timer_set")
                 [Mo_values.Numerics.Nat64.of_int 1 |> nat64E])]
        (tupE[]))

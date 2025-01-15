@@ -386,20 +386,10 @@ let infer_mut mut : T.typ -> T.typ =
 
 (* System method types *)
 
-let heartbeat_type =
-  T.(Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
-
-let global_timer_set_type = T.(Func (Local, Returns, [], [Prim Nat64], []))
-
-let timer_type =
-  T.(Func (Local, Returns, [scope_bind],
-    [global_timer_set_type],
-    [Async (Fut, Var (default_scope_var, 0), unit)]))
-
 let system_funcs tfs =
   [
-    ("heartbeat", heartbeat_type);
-    ("timer", timer_type);
+    ("heartbeat", T.heartbeat_type);
+    ("timer", T.timer_type);
     T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
     T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
     ("inspect",
