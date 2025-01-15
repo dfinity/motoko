@@ -571,7 +571,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
               (fun tf ->
                 match T.lookup_val_field_opt tf.T.lab dom_fields,
                       T.lookup_val_field_opt tf.T.lab rng_fields with
-                | Some _, _    (* ignore consumed (overriden) *)
+                | Some _, _    (* ignore consumed (overridden) *)
                 | _, Some _ -> (* ignore produced (provided) *)
                   None
                 | None, None ->
