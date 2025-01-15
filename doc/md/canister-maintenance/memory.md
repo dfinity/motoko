@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# Memory management
+# Memory diagnostics
 
 ## Low memory hook
 

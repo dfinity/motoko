@@ -37,20 +37,17 @@ actor Self {
     
     let threshold1 = maxMemory - (await lowMemoryActor.memorySize()) - mb : Nat;
     await setMemoryThreshold(lowMemoryActor, threshold1);
-    Prim.debugPrint("Memory threshold set " # debug_show(threshold1));
     await lowMemoryActor.allocateMemory();
 
     // Not yet implemented on IC: Should retrigger when lowering threshold.
     // let threshold2 = maxMemory - (await lowMemoryActor.memorySize()) - mb : Nat;
     // await lowMemoryActor.allocateMemory();
     // await setMemoryThreshold(lowMemoryActor, threshold2);
-    // Prim.debugPrint("Memory threshold set " # debug_show(threshold2));
     
     // Not yet implemented on IC: Should retrigger when shrinking memory by reinstallation.
     // let lowMemoryActor2 = await (system LowMemoryActor.LowMemoryActor)(#reinstall lowMemoryActor)(lowMemoryCallback);
     // let threshold3 = maxMemory - (await lowMemoryActor2.memorySize()) - mb : Nat;
     // await setMemoryThreshold(lowMemoryActor2, threshold3);
-    // Prim.debugPrint("Memory threshold set " # debug_show(threshold3));
     // await lowMemoryActor2.allocateMemory();
   };
 };
