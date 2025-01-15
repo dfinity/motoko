@@ -20,8 +20,6 @@ want to recognize for better user experience.
 let id_of_full_path (fp : string) : string =
   "file$" ^ fp
 
-let check_timer_send_type = T.(Func (Local, Returns, [], [], []))
-
 (* Combinators used in the desugaring *)
 
 let apply_sign op l = Syntax.(match op, l with
@@ -370,9 +368,7 @@ and call_system_func_opt name es obj_typ =
              blockE
                [ expD T.(callE (varE (var id.it note)) [Any]
                    (varE (var "@set_global_timer" Mo_frontend.Typing.global_timer_set_type))) ]
-               (callE
-                  (varE (var "@check_timer_send" check_timer_send_type)) []
-                  (unitE())) in
+               (unitE()) in
            { timer with at }
         | "heartbeat" ->
           blockE
@@ -610,9 +606,7 @@ and build_actor at ts self_id es obj_typ =
           | None when !Mo_config.Flags.global_timer ->
             blockE
               [ expD T.(callE (varE (var "@timer_helper" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
-              (callE
-                 (varE (var "@check_timer_send" check_timer_send_type)) []
-                 (unitE()))
+              (unitE())
           | None -> tupE []);
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with

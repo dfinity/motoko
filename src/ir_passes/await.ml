@@ -681,12 +681,13 @@ and t_on_throw context exp t_exp =
 
 and t_ignore_throw context exp = t_on_throw context exp (tupE[])
 
+(* if self-call queue full: expire global timer soon and retry *)
 and t_timer_throw context exp =
-  let check_timer_send_type = T.(Func (Local, Returns, [], [], [])) in
   t_on_throw context exp
-    (callE
-       (varE (var "@check_timer_send" check_timer_send_type)) []
-       (unitE()))
+    (blockE [expD (primE
+                (OtherPrim "global_timer_set")
+                [Mo_values.Numerics.Nat64.of_int 1 |> nat64E])]
+       (tupE[]))
 
 and t_prog (prog, flavor) =
   (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })

@@ -676,12 +676,3 @@ func @cancelTimer(id : Nat) {
 };
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
-
-// Function called by backend to check if self-send worked.
-// DO NOT RENAME without modifying compilation.
-func @check_timer_send() {
-  if ((prim "call_perform_status" : () -> Nat32) () != 0) {
-    // i.e. self-call queue full: expire soon and retry
-    ignore (prim "global_timer_set" : Nat64 -> Nat64) 1;
-  }
-};
