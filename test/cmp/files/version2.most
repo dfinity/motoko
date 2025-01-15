@@ -1,6 +1,5 @@
 // Version: 2.0.0
 actor ({
-  stable var four : [var (Nat, Text)];
   stable var three : [var (Nat, Text)];
   stable var zero : Nat
 }, {
