@@ -876,7 +876,10 @@ pub(crate) unsafe fn memory_compatible(
                     advance = false; // reconsider this field in next round
                     continue;
                 };
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                if (tag1 == tag2)
+                    && !memory_compatible(
+                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    )
                 {
                     return false;
                 }
