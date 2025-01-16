@@ -858,7 +858,7 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode(&mut tb1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        // Do not skip fields during invariance check.
+                        // Do not skip any subtype fields during invariance check.
                         if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
@@ -867,8 +867,8 @@ pub(crate) unsafe fn memory_compatible(
                 if tag1 > tag2 {
                     return false;
                 };
-                if (tag1 == tag2) &&
-                    !memory_compatible(
+                if (tag1 == tag2)
+                    && !memory_compatible(
                         rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                     )
                 {
@@ -879,7 +879,7 @@ pub(crate) unsafe fn memory_compatible(
             variance != TypeVariance::Invariance || n1 == 0
         }
         (IDL_CON_record, IDL_CON_record) if main_actor => {
-            assert! (variance == TypeVariance::Covariance)
+            assert!(variance == TypeVariance::Covariance);
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
             let mut tag1 = 0;
@@ -889,7 +889,7 @@ pub(crate) unsafe fn memory_compatible(
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Additional fields are allowed
+                    // additional, trailing fields in supertype are allowed
                     continue;
                 };
                 if advance {
@@ -897,16 +897,18 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode(&mut tb1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
+                        // additional, leading fields in suptype are allowed
                         if !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
                     }
                 };
                 if tag1 > tag2 {
-                    // Additional fields are allowed
+                    // missing fields in subtype are allowed
                     advance = false; // reconsider this field in next round
                     continue;
                 };
+                // equal fields must be related by subtyping
                 if (tag1 == tag2)
                     && !memory_compatible(
                         rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
