@@ -877,37 +877,44 @@ pub(crate) unsafe fn memory_compatible(
             assert!(variance == TypeVariance::Covariance);
             let mut n1 = leb128_decode(&mut tb1);
             let mut n2 = leb128_decode(&mut tb2);
-            if n1 == 0 || n2 == 0 {
-                return true;
-            }
-            let mut tag1 = leb128_decode(&mut tb1);
-            let mut t11 = sleb128_decode(&mut tb1);
-            let mut tag2 = leb128_decode(&mut tb2);
-            let mut t21 = sleb128_decode(&mut tb2);
-            n1 -= 1;
-            n2 -= 1;
+            let mut tag1: u32;
+            let mut t11: i32;
+            let mut tag2: u32;
+            let mut t21: i32;
             loop {
-                if tag1 < tag2 {
-                    if n1 > 0 {
-                        tag1 = leb128_decode(&mut tb1);
-                        t11 = sleb128_decode(&mut tb1);
-                        n1 -= 1;
-                        continue;
-                    };
+                if n1 == 0 || n2 == 0 {
                     return true;
-                };
-                if tag1 > tag2 {
-                    if n2 > 0 {
-                        tag2 = leb128_decode(&mut tb2);
-                        t21 = sleb128_decode(&mut tb2);
-                        n2 -= 1;
-                        continue;
+                }
+                tag1 = leb128_decode(&mut tb1);
+                t11 = sleb128_decode(&mut tb1);
+                tag2 = leb128_decode(&mut tb2);
+                t21 = sleb128_decode(&mut tb2);
+                n1 -= 1;
+                n2 -= 1;
+                loop {
+                    if tag1 < tag2 {
+                        if n1 > 0 {
+                            tag1 = leb128_decode(&mut tb1);
+                            t11 = sleb128_decode(&mut tb1);
+                            n1 -= 1;
+                            continue;
+                        };
+                        return true;
                     };
-                    return true;
-                };
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
-                    return false;
+                    if tag1 > tag2 {
+                        if n2 > 0 {
+                            tag2 = leb128_decode(&mut tb2);
+                            t21 = sleb128_decode(&mut tb2);
+                            n2 -= 1;
+                            continue;
+                        };
+                        return true;
+                    };
+                    if !memory_compatible(
+                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    ) {
+                        return false;
+                    }
                 }
             }
         }
