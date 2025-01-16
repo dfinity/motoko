@@ -612,9 +612,16 @@ func @timer_helper() : async () {
   ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
   if (exp == 0) @timers := null;
 
+  var failed : Nat64 = 0;
+  func reinsert(job : () -> async ()) {
+    if (failed == 0) @timers := @prune @timers;
+    failed += 1;
+    @timers := ?{ expire = [var failed]; id = 0; delay = null; job; pre = null; post = @timers }
+  };
+
   for (o in thunks.vals()) {
     switch o {
-      case (?thunk) ignore thunk();
+      case (?thunk) try ignore thunk() catch _ reinsert thunk;
       case _ return
     }
   }
