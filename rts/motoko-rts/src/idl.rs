@@ -891,7 +891,7 @@ pub(crate) unsafe fn memory_compatible(
                 t21 = sleb128_decode(&mut tb2);
                 n1 -= 1;
                 n2 -= 1;
-                loop {
+                while tag1 != tag2 {
                     if tag1 < tag2 {
                         if n1 > 0 {
                             tag1 = leb128_decode(&mut tb1);
@@ -910,11 +910,10 @@ pub(crate) unsafe fn memory_compatible(
                         };
                         return true;
                     };
-                    if !memory_compatible(
-                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
-                    ) {
-                        return false;
-                    }
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
                 }
             }
         }
