@@ -842,83 +842,74 @@ pub(crate) unsafe fn memory_compatible(
             true
         }
         (IDL_CON_record, IDL_CON_record) if !main_actor => {
+            // plain object/record subtyping
+            // symmetric to variant case
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
-            let mut tag1 = 0;
-            let mut t11 = 0;
-            let mut advance = true;
             for _ in 0..n2 {
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
                     return false;
                 };
-                if advance {
-                    loop {
-                        tag1 = leb128_decode(&mut tb1);
-                        t11 = sleb128_decode(&mut tb1);
-                        n1 -= 1;
-                        // Do not skip any subtype fields during invariance check.
-                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
-                            break;
-                        }
+                let mut tag1: u32;
+                let mut t11: i32;
+                loop {
+                    tag1 = leb128_decode(&mut tb1);
+                    t11 = sleb128_decode(&mut tb1);
+                    n1 -= 1;
+                    if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
+                        break;
                     }
-                };
-                if tag1 > tag2 {
+                }
+                if tag1 != tag2 {
                     return false;
                 };
-                if (tag1 == tag2)
-                    && !memory_compatible(
-                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
-                    )
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
                     return false;
                 }
-                advance = true;
             }
             variance != TypeVariance::Invariance || n1 == 0
         }
         (IDL_CON_record, IDL_CON_record) if main_actor => {
+            // memory compatibility
             assert!(variance == TypeVariance::Covariance);
             let mut n1 = leb128_decode(&mut tb1);
-            let n2 = leb128_decode(&mut tb2);
-            let mut tag1 = 0;
-            let mut t11 = 0;
-            let mut advance = true;
-            for _ in 0..n2 {
-                let tag2 = leb128_decode(&mut tb2);
-                let t21 = sleb128_decode(&mut tb2);
-                if n1 == 0 {
-                    // additional, trailing fields in supertype are allowed
-                    continue;
-                };
-                if advance {
-                    loop {
+            let mut n2 = leb128_decode(&mut tb2);
+            if n1 == 0 || n2 == 0 {
+                return true;
+            }
+            let mut tag1 = leb128_decode(&mut tb1);
+            let mut t11 = sleb128_decode(&mut tb1);
+            let mut tag2 = leb128_decode(&mut tb2);
+            let mut t21 = sleb128_decode(&mut tb2);
+            n1 -= 1;
+            n2 -= 1;
+            loop {
+                if tag1 < tag2 {
+                    if n1 > 0 {
                         tag1 = leb128_decode(&mut tb1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        // additional, leading fields in suptype are allowed
-                        if !(tag1 < tag2 && n1 > 0) {
-                            break;
-                        }
-                    }
+                        continue;
+                    };
+                    return true;
                 };
                 if tag1 > tag2 {
-                    // missing fields in subtype are allowed
-                    advance = false; // reconsider this field in next round
-                    continue;
+                    if n2 > 0 {
+                        tag2 = leb128_decode(&mut tb2);
+                        t21 = sleb128_decode(&mut tb2);
+                        n2 -= 1;
+                        continue;
+                    };
+                    return true;
                 };
-                // equal fields must be related by subtyping
-                if (tag1 == tag2)
-                    && !memory_compatible(
-                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
-                    )
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
                     return false;
                 }
-                advance = true;
             }
-            return true;
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
