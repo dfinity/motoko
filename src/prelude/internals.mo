@@ -544,7 +544,7 @@ func @prune(n : ?@Node) : ?@Node = switch n {
     if (n.expire[0] == 0) {
       @prune(n.post) // by corollary
     } else {
-      ?{ n with pre = @prune(n.pre); post = @prune(n.post) }
+      ?{ n with pre = @prune(n.pre) }
     }
   }
 };
