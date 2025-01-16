@@ -841,7 +841,53 @@ pub(crate) unsafe fn memory_compatible(
             }
             true
         }
-        (IDL_CON_record, IDL_CON_record) => {
+        (IDL_CON_record, IDL_CON_record) if !main_actor => {
+            let mut n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            let mut tag1 = 0;
+            let mut t11 = 0;
+            let mut advance = true;
+            for _ in 0..n2 {
+                let tag2 = leb128_decode(&mut tb2);
+                let t21 = sleb128_decode(&mut tb2);
+                if n1 == 0 {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
+                        return false;
+                    }
+                    continue;
+                };
+                if advance {
+                    loop {
+                        tag1 = leb128_decode(&mut tb1);
+                        t11 = sleb128_decode(&mut tb1);
+                        n1 -= 1;
+                        // Do not skip fields during invariance check.
+                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
+                            break;
+                        }
+                    }
+                };
+                if tag1 > tag2 {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
+                        return false;
+                    }
+                    advance = false; // reconsider this field in next round
+                    continue;
+                };
+                if (tag1 == tag2)
+                    && !memory_compatible(
+                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    )
+                {
+                    return false;
+                }
+                advance = true;
+            }
+            variance != TypeVariance::Invariance || n1 == 0
+        }
+        (IDL_CON_record, IDL_CON_record) if main_actor => {
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
             let mut tag1 = 0;
