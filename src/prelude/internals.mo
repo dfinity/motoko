@@ -616,7 +616,12 @@ func @timer_helper() : async () {
   func reinsert(job : () -> async ()) {
     if (failed == 0) @timers := @prune @timers;
     failed += 1;
-    @timers := ?{ expire = [var failed]; id = 0; delay = null; job; pre = null; post = @timers }
+    switch @timers {
+      case (?{ id = 0; pre; post; job = j; expire })
+        @timers := ?{ expire = [var failed]; id = 0; delay = null; job; post
+                    ; pre = ?{ id = 0; expire; pre; post = null; delay = null; job = j} };
+      case _ @timers := ?{ expire = [var failed]; id = 0; delay = null; job; pre = null; post = @timers }
+    }
   };
 
   for (o in thunks.vals()) {
