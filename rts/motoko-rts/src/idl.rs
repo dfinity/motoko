@@ -881,10 +881,7 @@ pub(crate) unsafe fn memory_compatible(
             let mut t11: i32;
             let mut tag2: u32;
             let mut t21: i32;
-            loop {
-                if n1 == 0 || n2 == 0 {
-                    return true;
-                }
+            while n1 > 0 && n2 > 0 {
                 tag1 = leb128_decode(&mut tb1);
                 t11 = sleb128_decode(&mut tb1);
                 tag2 = leb128_decode(&mut tb2);
@@ -916,6 +913,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
+            return true;
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
