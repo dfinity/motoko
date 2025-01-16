@@ -851,11 +851,7 @@ pub(crate) unsafe fn memory_compatible(
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    continue;
+                    return false;
                 };
                 if advance {
                     loop {
@@ -869,15 +865,10 @@ pub(crate) unsafe fn memory_compatible(
                     }
                 };
                 if tag1 > tag2 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    advance = false; // reconsider this field in next round
-                    continue;
+                    return false;
                 };
-                if (tag1 == tag2)
-                    && !memory_compatible(
+                if (tag1 == tag2) &&
+                    !memory_compatible(
                         rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
                     )
                 {
@@ -888,6 +879,7 @@ pub(crate) unsafe fn memory_compatible(
             variance != TypeVariance::Invariance || n1 == 0
         }
         (IDL_CON_record, IDL_CON_record) if main_actor => {
+            assert! (variance == TypeVariance::Covariance)
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
             let mut tag1 = 0;
@@ -897,10 +889,7 @@ pub(crate) unsafe fn memory_compatible(
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
+                    // Additional fields are allowed
                     continue;
                 };
                 if advance {
@@ -908,17 +897,13 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode(&mut tb1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        // Do not skip fields during invariance check.
-                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
+                        if !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
                     }
                 };
                 if tag1 > tag2 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
+                    // Additional fields are allowed
                     advance = false; // reconsider this field in next round
                     continue;
                 };
@@ -931,7 +916,7 @@ pub(crate) unsafe fn memory_compatible(
                 }
                 advance = true;
             }
-            variance != TypeVariance::Invariance || n1 == 0
+            return true;
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
