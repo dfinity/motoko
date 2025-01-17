@@ -31,7 +31,7 @@ actor installer {
          switch testCanister {
             case null Prim.trap("null canister");
             case (?canister) {
-                ignore await (system TestCanister.TestCanister)(#upgrade_with_persistence { wasm_memory_persistence =  #Keep; canister })();
+                ignore await (system TestCanister.TestCanister)(#upgrade_with_persistence { wasm_memory_persistence =  #keep; canister })();
                 Prim.debugPrint("Upgraded (keep main memory)");
             }
          }
@@ -41,7 +41,7 @@ actor installer {
          switch testCanister {
             case null Prim.trap("null canister");
             case (?canister) {
-                ignore await (system TestCanister.TestCanister)(#upgrade_with_persistence { wasm_memory_persistence = #Replace; canister })();
+                ignore await (system TestCanister.TestCanister)(#upgrade_with_persistence { wasm_memory_persistence = #replace; canister })();
                 Prim.debugPrint("Upgraded (replace main memory)");
             }
          }
