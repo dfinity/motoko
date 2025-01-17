@@ -3,15 +3,17 @@
 //! Persistent metadata table, located at 6MB, in the static partition space.
 
 pub mod compatibility;
+pub mod stable_functions;
 
+use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;
+use stable_functions::{register_stable_functions, StableFunctionState};
 
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
     gc::incremental::{partitioned_heap::allocate_initial_memory, State},
     memory::Memory,
-    persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
@@ -19,7 +21,7 @@ use crate::{
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
-    types::{Bytes, Value, TAG_BLOB_B},
+    types::{Bytes, Value, NULL_POINTER, TAG_BLOB_B},
 };
 
 use self::compatibility::TypeDescriptor;
@@ -53,6 +55,8 @@ struct PersistentMetadata {
     incremental_gc_state: State,
     /// Upgrade performance statistics: Total number of instructions consumed by the last upgrade.
     upgrade_instructions: u64,
+    /// Support for stable local functions.
+    stable_function_state: StableFunctionState,
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
@@ -77,6 +81,7 @@ impl PersistentMetadata {
                 || (*self).fingerprint == ['\0'; 32]
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
+                    && (*self).stable_function_state.is_default()
         );
         initialized
     }
@@ -99,6 +104,7 @@ impl PersistentMetadata {
         (*self).stable_type = TypeDescriptor::default();
         (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
+        (*self).stable_function_state = StableFunctionState::default();
     }
 }
 
@@ -185,7 +191,23 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Register the stable actor type on canister initialization and upgrade.
+/// Called on EOP upgrade: Garbage collect the stable functions on pre-upgrade.
+/// For graph copy, this is initiated on incremental stabilization start.
+#[ic_mem_fn]
+pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M) {
+    let metadata = PersistentMetadata::get();
+    if metadata.is_initialized() {
+        let old_actor = (*metadata).stable_actor;
+        if old_actor != DEFAULT_VALUE {
+            assert_ne!(old_actor, NULL_POINTER);
+            stable_functions::collect_stable_functions(mem, old_actor);
+        }
+    }
+}
+
+/// Register the stable actor type on canister initialization and upgrade, for EOP and graph copy.
+/// Before this call, the garbage collector of stable functions must have run.
+/// This is either on EOP upgrade or on stabilization start of graph copy.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.
@@ -194,16 +216,27 @@ pub unsafe fn register_stable_type<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
+    stable_functions_map: Value,
 ) {
     assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
     assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
-    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
+    assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
+    let new_type = &mut TypeDescriptor::new(new_candid_data, new_type_offsets);
     let metadata = PersistentMetadata::get();
     let old_type = &mut (*metadata).stable_type;
-    if !old_type.is_default() && !memory_compatible(mem, old_type, &mut new_type) {
+    let type_test = if old_type.is_default() {
+        None
+    } else {
+        Some(MemoryCompatibilityTest::new(mem, old_type, new_type))
+    };
+    if type_test
+        .as_ref()
+        .is_some_and(|test| !test.compatible_stable_actor())
+    {
         rts_trap_with("Memory-incompatible program upgrade");
     }
     (*metadata).stable_type.assign(mem, &new_type);
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
@@ -226,6 +259,16 @@ pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
 pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions = instructions;
+}
+
+pub(crate) unsafe fn stable_function_state() -> &'static mut StableFunctionState {
+    let metadata = PersistentMetadata::get();
+    &mut (*metadata).stable_function_state
+}
+
+pub(crate) unsafe fn restore_stable_type<M: Memory>(mem: &mut M, type_descriptor: &TypeDescriptor) {
+    let metadata = PersistentMetadata::get();
+    (*metadata).stable_type.assign(mem, type_descriptor);
 }
 
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.

@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 actor {
 
    var c = 0;

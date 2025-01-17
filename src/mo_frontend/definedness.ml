@@ -88,7 +88,7 @@ let rec exp msgs e : f = match e.it with
   | RetE e
   | ThrowE e            -> eagerify (exp msgs e)
   (* Uses are delayed by function expressions *)
-  | FuncE (_, sp, tp, p, t, _, e) ->
+  | FuncE (_, sp, tp, p, t, _, _, e) ->
     delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
   | ObjBlockE (s, (self_id_opt, _), dfs) ->
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))
@@ -159,7 +159,7 @@ and pat_fields msgs pfs = union_binders (fun (pf : pat_field) -> pat msgs pf.it.
 
 and shared_pat msgs shared_pat =
   match shared_pat.it with
-  | Type.Local ->
+  | Type.Local _ ->
     (M.empty, S.empty)
   | Type.Shared (_, p1) ->
     pat msgs p1
@@ -177,7 +177,7 @@ and dec msgs d = match d.it with
   | LetD (p, e, Some f) -> pat msgs p +++ exp msgs e +++ exp msgs f
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', dfs) ->
+  | ClassD (csp, i, tp, p, t, s, i', dfs, _) ->
     (M.empty, S.singleton i.it) +++ delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )

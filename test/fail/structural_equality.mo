@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 (func (x : Nat) : Nat = x) == (func (x : Nat) : Nat = x);
 
 { var x = 10 } == { var x = 10 };

@@ -69,7 +69,7 @@ let from_module =
                   (mk_xref (Xref.XValue id.it), None)
                   acc.values;
             }
-        | Syntax.ClassD (_, id, _, _, _, _, _, _) ->
+        | Syntax.ClassD (_, id, _, _, _, _, _, _, _) ->
             {
               acc with
               types = StringMap.add id.it (mk_xref (Xref.XType id.it)) acc.types;

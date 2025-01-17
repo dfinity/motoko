@@ -39,7 +39,7 @@ let non_productive cs =
           | Def (tbs, t) ->
             assert (n < List.length tbs); (* assume types are arity-correct *)
             rhs cs (List.nth ts n)
-          | Abs (tbs, t) ->
+          | Abs (tbs, t, _) ->
             (* we could assert here since Defs should be closed *)
             Productive
           end

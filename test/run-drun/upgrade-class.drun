@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID upgrade-class/version0.mo ""
+upgrade $ID upgrade-class/version1.mo ""

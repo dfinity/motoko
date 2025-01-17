@@ -17,7 +17,7 @@ static mut STATIC_VARIABLES: Value = crate::types::NULL_POINTER;
 static mut INITIALIZED_VARIABLES: usize = 0;
 
 /// GC root set.
-pub type Roots = [*mut Value; 6];
+pub type Roots = [*mut Value; 8];
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     roots: Roots,
@@ -35,7 +35,7 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
 pub unsafe fn root_set() -> Roots {
     use crate::{
         continuation_table::continuation_table_loc,
-        persistence::{stable_actor_location, stable_type_descriptor},
+        persistence::{stable_actor_location, stable_function_state, stable_type_descriptor},
         region::region0_get_ptr_loc,
     };
     [
@@ -45,6 +45,8 @@ pub unsafe fn root_set() -> Roots {
         stable_type_descriptor().candid_data_location(),
         stable_type_descriptor().type_offsets_location(),
         region0_get_ptr_loc(),
+        stable_function_state().virtual_table_location(),
+        stable_function_state().literal_table_location(),
     ]
 }
 

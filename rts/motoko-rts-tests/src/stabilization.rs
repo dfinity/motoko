@@ -175,7 +175,8 @@ fn serialize(old_stable_root: Value, stable_start: u64) -> u64 {
 }
 
 fn deserialize<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Value {
-    let mut deserialization = Deserialization::start(mem, stable_start, stable_size);
+    let mut deserialization = Deserialization::new(mem, stable_start, stable_size);
+    deserialization.initiate(mem);
     deserialization.copy_increment(mem);
     assert!(deserialization.is_completed());
     deserialization.get_stable_root()

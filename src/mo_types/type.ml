@@ -13,9 +13,10 @@ type obj_sort =
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
+type stable_sort = Flexible | Stable
 type async_sort = Fut | Cmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local of stable_sort | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -68,7 +69,7 @@ and field = {lab : lab; typ : typ; src : src}
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
-  | Abs of bind list * typ
+  | Abs of bind list * typ * int option
 
 let empty_src = {depr = None; region = Source.no_region}
 
@@ -95,10 +96,11 @@ let tag_prim = function
   | Region -> 18
 
 let tag_func_sort = function
-  | Local -> 0
-  | Shared Write -> 1
-  | Shared Query -> 2
-  | Shared Composite -> 3
+  | Local Flexible -> 0
+  | Local Stable -> 1
+  | Shared Write -> 2
+  | Shared Query -> 3
+  | Shared Composite -> 4
 
 let tag_obj_sort = function
   | Object -> 0
@@ -283,13 +285,16 @@ end
 
 (* Function sorts *)
 
-let is_shared_sort sort = sort <> Local
+let is_shared_sort sort =
+  match sort with
+  | Shared _ -> true
+  | Local _ -> false
 
 (* Constructors *)
 
 let set_kind c k =
   match Cons.kind c with
-  | Abs (_, Pre) -> Cons.unsafe_set_kind c k
+  | Abs (_, Pre, _) -> Cons.unsafe_set_kind c k
   | _ -> raise (Invalid_argument "set_kind")
 
 module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
@@ -388,7 +393,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
+    [{lab = "next"; typ = Func (Local Flexible, Returns, [], [], [Opt t]); src = empty_src}])
 
 
 (* Shifting *)
@@ -489,10 +494,9 @@ let close cs t =
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
-let close_binds cs tbs =
+let close_binds cs tbs is_stable =
   if cs = [] then tbs else
-  List.map (fun tb -> { tb with bound = close cs tb.bound })  tbs
-
+  List.map (fun tb -> { tb with bound = close cs tb.bound }) tbs
 
 let rec open' i ts t =
   match t with
@@ -537,9 +541,9 @@ let open_ ts t =
 
 let open_binds tbs =
   if tbs = [] then [] else
-  let cs = List.map (fun {var; _} -> Cons.fresh var (Abs ([], Pre))) tbs in
+  let cs = List.map (fun {var; _} -> Cons.fresh var (Abs ([], Pre, None))) tbs in
   let ts = List.map (fun c -> Con (c, [])) cs in
-  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound)) tbs in
+  let ks = List.map (fun {bound; _} -> Abs ([], open_ ts bound, None)) tbs in
   List.iter2 set_kind cs ks;
   ts
 
@@ -561,7 +565,7 @@ let rec normalize = function
 
 let rec promote = function
   | Con (con, ts) ->
-    let Def (tbs, t) | Abs (tbs, t) = Cons.kind con
+    let Def (tbs, t) | Abs (tbs, t, _) = Cons.kind con
     in promote (reduce tbs t ts)
   | t -> t
 
@@ -768,7 +772,7 @@ and cons_field inTyp {lab; typ; src} cs =
 and cons_kind' inTyp k cs =
   match k with
   | Def (tbs, t)
-  | Abs (tbs, t) ->
+  | Abs (tbs, t, _) ->
     cons' inTyp t (List.fold_right (cons_bind inTyp) tbs cs)
 
 let cons t = cons' true t ConSet.empty
@@ -811,7 +815,7 @@ let concrete t =
   in go t
 
 (* stable or shared *)
-let serializable allow_mut t =
+let serializable allow_mut allow_stable_functions t =
   let seen = ref S.empty in
   let rec go t =
     S.mem t !seen ||
@@ -826,7 +830,8 @@ let serializable allow_mut t =
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
-        | Abs _ -> false
+        | Abs (bind_list, _, _) ->
+          allow_stable_functions
         | Def (_, t) -> go (open_ ts t) (* TBR this may fail to terminate *)
         )
       | Array t | Opt t -> go t
@@ -834,10 +839,11 @@ let serializable allow_mut t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module -> allow_stable_functions (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
-      | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
+      | Func (s, c, tbs, ts1, ts2) ->
+        is_shared_sort s || allow_stable_functions && s = Local Stable
     end
   in go t
 
@@ -883,7 +889,7 @@ let is_shared_func typ =
 let is_local_async_func typ =
   match promote typ with
   | Func
-      (Local, Returns,
+      (Local _, Returns,
        { sort = Scope; _ }::_,
        _,
        [Async (Fut, Var (_ ,0), _)]) ->
@@ -891,8 +897,9 @@ let is_local_async_func typ =
   | _ ->
     false
 
-let shared t = serializable false t
-let stable t = serializable true t
+let shared t = serializable false false t
+let stable t = serializable true true t
+let old_stable t = serializable true false t
 
 
 (* Forward declare
@@ -945,7 +952,7 @@ let rec rel_typ d rel eq t1 t2 =
       rel_typ d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
       rel_list d eq_typ rel eq ts1 ts2
-    | Abs (tbs, t), _ when rel != eq ->
+    | Abs (tbs, t, _), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ ->
       false
@@ -954,7 +961,7 @@ let rec rel_typ d rel eq t1 t2 =
     (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ d rel eq (open_ ts1 t) t2
-    | Abs (tbs, t), _ when rel != eq ->
+    | Abs (tbs, t, _), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ -> false
     )
@@ -982,7 +989,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    s1 = s2 && c1 = c2 &&
+    rel_sort s1 s2 && c1 = c2 &&
     (match rel_binds d eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -995,6 +1002,11 @@ let rec rel_typ d rel eq t1 t2 =
     rel_typ d rel eq t12 t22
   | _, _ -> false
   end
+
+and rel_sort s1 s2 =
+  match s1, s2 with
+  | Local Stable, Local Flexible -> true (* stable function can be assigned to flexible function *)
+  | _, _ -> s1 = s2
 
 and rel_fields d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -1056,7 +1068,7 @@ and eq_binds tbs1 tbs2 =
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
-  | Abs (tbs1, t1), Abs (tbs2, t2) ->
+  | Abs (tbs1, t1, _), Abs (tbs2, t2, _) ->
     (match rel_binds 0 eq eq tbs1 tbs2 with
     | Some ts -> eq_typ 0 eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
@@ -1069,8 +1081,8 @@ and eq_con d eq c1 c2 =
     eq_kind' eq k1 k2
   | Abs _, Abs _ ->
     Cons.eq c1 c2
-  | Def (tbs1, t1), Abs (tbs2, t2)
-  | Abs (tbs2, t2), Def (tbs1, t1) ->
+  | Def (tbs1, t1), Abs (tbs2, t2, _)
+  | Abs (tbs2, t2, _), Def (tbs1, t1) ->
     (match rel_binds d eq eq tbs1 tbs2 with
     | Some ts -> eq_typ d eq eq (open_ ts t1) (Con (c2, ts))
     | None -> false
@@ -1174,7 +1186,7 @@ let rec inhabited_typ co t =
     match Cons.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
-    | Abs (tbs, t') ->
+    | Abs (tbs, t', _) ->
       inhabited_typ co t'
   end
 
@@ -1279,7 +1291,7 @@ let rec combine rel lubs glbs t1 t2 =
         let op, expand =
           if rel == lubs then "lub", promote else "glb", normalize in
         let name = op ^ "<" ^ !str t1 ^ ", " ^ !str t2 ^ ">" in
-        let c = Cons.fresh name (Abs ([], Pre)) in
+        let c = Cons.fresh name (Abs ([], Pre, None)) in
         let t = Con (c, []) in
         rel := M.add (t2, t1) t (M.add (t1, t2) t !rel);
         let t' =
@@ -1333,6 +1345,13 @@ let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
 (* Environments *)
 
 module Env = Env.Make(String)
+
+(* Stable function support *)
+
+type stable_closure = {
+  function_path: string list; (* fully qualified function name *)
+  captured_variables: typ Env.t; (* captured mutable variables *)
+}
 
 (* Scopes *)
 
@@ -1402,7 +1421,7 @@ let decode_msg_typ tfs =
        | Func(Shared (Write | Query), _, tbs, ts1, ts2) ->
          Some { tf with
            typ =
-             Func(Local, Returns, [], [],
+             Func(Local Flexible, Returns, [], [],
                List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
            src = empty_src }
        | _ -> None)
@@ -1440,9 +1459,9 @@ let install_arg_typ =
   ]
 
 let install_typ ts actor_typ =
-  Func(Local, Returns, [],
+  Func(Local Flexible, Returns, [],
     [ install_arg_typ ],
-    [ Func(Local, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
+    [ Func(Local Flexible, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
 
 (* Pretty printing *)
@@ -1479,7 +1498,8 @@ let string_of_obj_sort = function
   | Memory -> "memory "
 
 let string_of_func_sort = function
-  | Local -> ""
+  | Local Flexible -> ""
+  | Local Stable -> "stable "
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
@@ -1731,7 +1751,7 @@ and pps_of_kind' vs k =
   let op, tbs, t =
     match k with
     | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
+    | Abs (tbs, t, _) -> "<:", tbs, t
   in
   let vs' = vars_of_binds vs tbs in
   let vs'vs = vs'@vs in

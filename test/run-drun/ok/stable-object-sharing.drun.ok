@@ -1,0 +1,7 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Stable function 1
+debug.print: Stable function 2
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Stable function 1 upgraded
+debug.print: Stable function 2 upgraded
+ingress Completed: Reply: 0x4449444c0000
