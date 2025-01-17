@@ -23,4 +23,4 @@ The following properties apply to the low memory hook:
 * The execution of `lowmemory` happens with a certain delay, as it is scheduled as a separate asynchronous message that runs after the message in which the threshold was crossed.
 * Once executed, `lowmemory` is only triggered again when the main memory free space first exceeds and then falls below the threshold.
 * Traps or unhandled errors in `lowmemory` are ignored. Traps only revert the changes done in `lowmemory`.
-* Due to its `async` return type, the `lowmemory` function may send further messages and await results.
+* Due to its `async*` return type, the `lowmemory` function may send further messages and `await` results.
