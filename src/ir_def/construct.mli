@@ -66,6 +66,7 @@ val let_else_switch : pat -> exp -> exp -> exp
 val natE : Mo_values.Numerics.Nat.t -> exp
 val intE : Mo_values.Numerics.Int.t -> exp
 val nat32E : Mo_values.Numerics.Nat32.t -> exp
+val nat64E : Mo_values.Numerics.Nat64.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp

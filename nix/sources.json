@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/adjust-drun",
+        "branch": "luc/lower-case-persistence-modes",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "bebe89514a6abd26e940b295323823169911a965",
-        "sha256": "1g68fyi5acbcgs2kjribk97fj8ki5g6pd99nwl5azz1rw1b0xycx",
+        "rev": "48ba595fb1a6bc828e7e9dae976db42b5526a5b6",
+        "sha256": "0136hxidak4qsk0nhjdy2nmciwb0lprm07vs117xdw3cp4m6py2z",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/bebe89514a6abd26e940b295323823169911a965.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/48ba595fb1a6bc828e7e9dae976db42b5526a5b6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "bf3b522b3e2dab992c9d2544cb438e10ef2fac1a",
-        "sha256": "0pyqwv7af6ccd3imwbnww64959k56vl8r9dsr2g25spmnfsnrl7a",
+        "rev": "010611b42d67b39aee1ec61b3c1f004771994359",
+        "sha256": "1gzlg84d28pnd68li735l3bk3hnc3anj985yy8fm62rf9h8p2jdx",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/bf3b522b3e2dab992c9d2544cb438e10ef2fac1a.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/010611b42d67b39aee1ec61b3c1f004771994359.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
