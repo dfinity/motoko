@@ -1434,8 +1434,8 @@ let canister_settings_typ =
 
 let wasm_memory_persistence_typ =
   sum [
-    ("Keep", unit);
-    ("Replace", unit);
+    ("keep", unit);
+    ("replace", unit);
   ]
 
 let upgrade_with_persistence_option_typ =

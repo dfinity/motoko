@@ -401,8 +401,8 @@ module @ManagementCanister = {
 };
 
 type @WasmMemoryPersistence = {
-  #Keep;
-  #Replace;
+  #keep;
+  #replace;
 };
 
 type @UpgradeOptions = {
@@ -460,7 +460,7 @@ func @install_actor_helper(
       };
       case (#upgrade actor2) {
         let wasm_memory_persistence = if enhanced_orthogonal_persistence {
-          ?(#Keep)
+          ?(#keep)
         } else {
           null
         };
