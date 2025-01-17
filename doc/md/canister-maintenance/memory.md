@@ -22,5 +22,5 @@ actor {
 The following properties apply to the low memory hook:
 * The execution of `onLowMemory` happens with a certain delay, as it is scheduled as a separate asynchronous message that runs after the message in which the threshold was crossed.
 * Once executed, `onLowMemory` is only triggered again when the main memory free space went above the threshold (e.g. by lowering the threshold or shrinking the main memory through canister reinstallation) and when the free space again fell below the threshold.
-* Traps or unhandled errors in `onLowMemory` are ignored. They only revert the changes done in `onLowMemory`.
+* Traps or unhandled errors in `onLowMemory` are ignored. Traps only revert the changes done in `onLowMemory`.
 * Due to its `async` return type, the `onLowMemory` function may send further messages and await results.
