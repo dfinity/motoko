@@ -367,8 +367,8 @@ and call_system_func_opt name es obj_typ =
            let timer =
              blockE
                [ expD T.(callE (varE (var id.it note)) [Any]
-                   (varE (var "@set_global_timer" (Func (Local, Returns, [], [Prim Nat64], []))))) ]
-               (unitE ()) in
+                   (varE (var "@set_global_timer" T.global_timer_set_type))) ]
+               (unitE()) in
            { timer with at }
         | "heartbeat" ->
           blockE
@@ -605,8 +605,8 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None when !Mo_config.Flags.global_timer ->
             blockE
-              [ expD T.(callE (varE (var "@timer_helper" Mo_frontend.Typing.heartbeat_type)) [unit] (unitE())) ]
-              (unitE ())
+              [ expD T.(callE (varE (var "@timer_helper" T.heartbeat_type)) [unit] (unitE())) ]
+              (unitE())
           | None -> tupE []);
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with
