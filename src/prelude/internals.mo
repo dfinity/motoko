@@ -614,7 +614,10 @@ func @timer_helper() : async () {
 
   var failed : Nat64 = 0;
   func reinsert(job : () -> async ()) {
-    if (failed == 0) @timers := @prune @timers;
+    if (failed == 0) {
+      @timers := @prune @timers;
+      ignore (prim "global_timer_set" : Nat64 -> Nat64) 1
+    };
     failed += 1;
     @timers := ?(switch @timers {
       case (?{ id = 0; pre; post; job = j; expire; delay })
