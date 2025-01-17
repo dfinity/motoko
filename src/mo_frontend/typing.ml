@@ -395,7 +395,7 @@ let timer_type =
     [Async (Fut, Var (default_scope_var, 0), unit)]))
 
 let low_memory_type =
-  T.(Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)]))
+  T.(Func (Local, Returns, [scope_bind], [], [Async (Cmp, Var (default_scope_var, 0), unit)]))
     
 let system_funcs tfs =
   [

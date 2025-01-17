@@ -828,7 +828,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
-    check_exp env'' low_memory;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     check_exp env'' stable_record;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
@@ -1181,7 +1182,8 @@ let check_comp_unit env = function
     check_exp env'' timer;
     check_exp env'' inspect;
     check_exp env'' stable_record;
-    check_exp env'' low_memory;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;

@@ -1,15 +1,15 @@
 import Prim "mo:⛔";
 
-actor class LowMemoryActor(callback: shared () -> async ()) {
-  system func lowmemory() : async() {
+actor class LowMemoryActor(callback : shared () -> async ()) {
+  system func lowmemory() : async* () {
     Prim.debugPrint("Low memory!");
     await callback();
     Prim.debugPrint("Low memory callback done");
   };
 
   type Node = {
-    array: [var Nat];
-    next: ?Node;
+    array : [var Nat];
+    next : ?Node;
   };
 
   var root : ?Node = null;
@@ -23,5 +23,5 @@ actor class LowMemoryActor(callback: shared () -> async ()) {
   public func memorySize() : async Nat {
     await async {}; // Allocate GC reserve (because of `--force-gc` flag during drun testing).
     Prim.rts_memory_size();
-  }
+  };
 };

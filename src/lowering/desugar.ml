@@ -425,9 +425,8 @@ and call_system_func_opt name es obj_typ =
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
         | "lowmemory" ->
-          blockE
-            [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
-            (unitE ())
+          awaitE T.Cmp 
+            (callE (varE (var id.it note)) [T.scope_bound] (unitE()))
         | name ->
            let inst = match name with
              | "preupgrade" | "postupgrade" -> [T.scope_bound]

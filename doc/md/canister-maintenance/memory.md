@@ -13,7 +13,7 @@ For this purpose, a Motoko actor or actor class instance can implement the syste
 Example of using the low memory hook:
 ```
 actor {
-    system func lowmemory() : async () {
+    system func lowmemory() : async* () {
         Debug.print("Low memory!");
     }
 }

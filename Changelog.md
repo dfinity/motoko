@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Support low Wasm memory hook: `system func lowmemory() : async () { ... }`.
+  * Support low Wasm memory hook: `system func lowmemory() : async* () { ... }`.
 
 ## 0.13.5 (2024-12-06)
 
