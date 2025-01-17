@@ -42,7 +42,7 @@ and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memor
       "Heartbeat" $$ [exp heartbeat];
       "Timer" $$ [exp timer];
       "Inspect" $$ [exp inspect];
-      "OnLowMemory" $$ [exp low_memory];
+      "LowMemory" $$ [exp low_memory];
       "StableRecord" $$ [exp stable_record];
       "StableType" $$ [typ stable_type]
     ]

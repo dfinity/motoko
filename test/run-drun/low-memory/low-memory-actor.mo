@@ -1,7 +1,7 @@
 import Prim "mo:⛔";
 
 actor class LowMemoryActor(callback: shared () -> async ()) {
-  system func onLowMemory() : async() {
+  system func lowmemory() : async() {
     Prim.debugPrint("Low memory!");
     await callback();
     Prim.debugPrint("Low memory callback done");

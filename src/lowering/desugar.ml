@@ -424,7 +424,7 @@ and call_system_func_opt name es obj_typ =
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
-        | "onLowMemory" ->
+        | "lowmemory" ->
           blockE
             [ expD (callE (varE (var id.it note)) [T.Any] (unitE())) ]
             (unitE ())
@@ -617,7 +617,7 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None -> tupE []);
        low_memory =
-         (match call_system_func_opt "onLowMemory" es obj_typ with
+         (match call_system_func_opt "lowmemory" es obj_typ with
           | Some call -> call
           | None -> tupE []);
        stable_record = with_stable_vars (fun e -> e);

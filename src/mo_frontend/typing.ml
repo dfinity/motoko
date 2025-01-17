@@ -403,7 +403,7 @@ let system_funcs tfs =
     ("timer", timer_type);
     T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
     T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
-    ("onLowMemory", low_memory_type);
+    ("lowmemory", low_memory_type);
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =

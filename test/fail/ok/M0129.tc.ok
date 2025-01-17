@@ -1,1 +1,1 @@
-M0129.mo:2.15-2.21: type error [M0129], unexpected system method named foobar, expected heartbeat or timer or preupgrade or postupgrade or onLowMemory or inspect
+M0129.mo:2.15-2.21: type error [M0129], unexpected system method named foobar, expected heartbeat or timer or preupgrade or postupgrade or lowmemory or inspect
