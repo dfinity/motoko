@@ -654,7 +654,7 @@ and t_comp_unit context = function
         preupgrade = t_exp LabelEnv.empty preupgrade;
         postupgrade = t_exp LabelEnv.empty postupgrade;
         heartbeat = t_ignore_throw LabelEnv.empty heartbeat;
-        timer = t_ignore_throw LabelEnv.empty timer;
+        timer = t_timer_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
         low_memory = t_ignore_throw LabelEnv.empty low_memory;
         stable_record = t_exp LabelEnv.empty stable_record;
@@ -662,7 +662,7 @@ and t_comp_unit context = function
       },
       t)
 
-and t_ignore_throw context exp =
+and t_on_throw context exp t_exp =
   match exp.it with
   | Ir.PrimE (Ir.TupPrim, []) ->
      exp
@@ -673,7 +673,7 @@ and t_ignore_throw context exp =
          (LabelEnv.add Throw (Cont throw) context) in
      let e = fresh_var "e" T.catch in
      { (blockE [
-          funcD throw e (tupE[]);
+          funcD throw e t_exp;
         ]
         (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,
@@ -681,6 +681,16 @@ and t_ignore_throw context exp =
        with at = exp.at
      }
 
+and t_ignore_throw context exp = t_on_throw context exp (tupE[])
+
+(* if self-call queue full: expire global timer soon and retry *)
+and t_timer_throw context exp =
+  t_on_throw context exp
+    (blockE
+       [expD (primE
+                (OtherPrim "global_timer_set")
+                [Mo_values.Numerics.Nat64.of_int 1 |> nat64E])]
+       (tupE[]))
 
 and t_prog (prog, flavor) =
   (t_comp_unit LabelEnv.empty prog, { flavor with has_await = false })
