@@ -274,25 +274,12 @@ A common, real-world example of an incompatible upgrade can be found [on the for
 
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
-``` motoko no-repl
-persistent actor {
-  type Card = {
-    title : Text;
-  };
-  var map : [(Nat32, Card)] = [(0, { title = "TEST"})];
-};
+``` motoko no-repl file=../examples/Card-v0.mo
 ```
 
 to *incompatible* stable type interface:
 
-``` motoko no-repl
-persistent actor {
-  type Card = {
-    title : Text;
-    description : Text;
-  };
-  var map : [(Nat32, Card)] = [];
-};
+``` motoko no-repl file=../examples/Card-v1.mo
 ```
 
 ### Problem
@@ -325,37 +312,15 @@ We present two solutions, the first using a sequence of simple upgrades, and a s
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
 3. Then, upgrade to this new version.
 
-``` motoko no-repl
-import Array "mo:base/Array";
-
-persistent actor {
-  type OldCard = {
-    title : Text;
-  };
-  type NewCard = {
-    title : Text;
-    description : Text;
-  };
-
-  var map : [(Nat32, OldCard)] = [];
-  var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
-    map,
-    func(key, { title }) { (key, { title; description = "<empty>" }) },
-  );
-};
+``` motoko no-repl file=../examples/Card-v1a.mo
 ```
 
 4. **After** we have successfully upgraded to this new version, we can upgrade once more to a version, that drops the old `map`.
 
-``` motoko no-repl
-persistent actor {
-  type Card = {
-    title : Text;
-    description : Text;
-  };
-  var newMap : [(Nat32, Card)] = [];
-};
+
+``` motoko no-repl file=../examples/Card-v1b.mo
 ```
+
 
 `dfx` will issue a warning that `map` will be dropped.
 
@@ -375,66 +340,19 @@ Instead of the previous two step solution, we can upgrade in one step using a mi
 1. Define a migration module and function that transform the old stable variable, at its current type, into the new stable variable at its new type.
 
 
-``` motoko no-repl
-// CardMigration.mo
-import Array "mo:base/Array";
-
-module CardMigration {
-  type OldCard = {
-    title : Text;
-  };
-
-  type NewCard = {
-    title : Text;
-    description : Text;
-  };
-
-  // our migration function
-  public func migrate( old : {
-      var map : [(Nat32, OldCard)] // old type
-    } } :
-    {
-      var map : [(Nat32, NewCard)] // new type
-    } {
-    { var map : [(Nat32, NewCard)] =
-        Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
-          old.map,
-          func(key, { title }) { (key, { title; description = "<empty>" }) }
-  );
-
-};
+``` motoko no-repl file=../examples/CardMigration.mo
 ```
 
 2. Specify the migration function as the migration expression of your actor declaration:
 
-``` motoko no-repl
-import CardMigration "CardMigration";
 
-persistent actor
-  [ CardMigration.migrate ] // Declare the migration function
-  {
-  type Card = {
-    title : Text;
-    description : Text;
-  };
-
-  var map : [(Nat32, Card)] = []; // Initialized by migration on upgrade
-
-};
+``` motoko no-repl file=../examples/Card-v1c.mo
 ```
-
 
 **After** we have successfully upgraded to this new version, we can also upgrade once more to a version that drops the migration code.
 
-``` motoko no-repl
-persistent actor {
-  type Card = {
-    title : Text;
-    description : Text;
-  };
 
-  var map : [(Nat32, Card)] = [];
-};
+``` motoko no-repl file=../examples/Card-v1d.mo
 ```
 
 However, removing or adjusting the migration code can also be delayed to the next, proper upgrade that fixes bugs or extends functionality.
