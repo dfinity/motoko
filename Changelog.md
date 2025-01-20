@@ -4,10 +4,12 @@
 
 * motoko (`moc`)
 
+  * Bugfix: Some valid upgrades deleting a stable variable could fail the --enhanced-orthogonal-persistence stable compatibility check due to a bug (#4855).
+    
   * Breaking change (minor):
 
     * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
-      `keep` and `replace` and instead of `Keep` and `Replace`:
+      `keep` and `replace` and instead of `Keep` and `Replace` (#4854):
 
       If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
       Otherwise, no action is needed.
