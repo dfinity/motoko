@@ -184,7 +184,7 @@ This is automatically supported when the new program version is stable-compatibl
 
 More precisely, the following changes can be implicitly migrated:
 * Adding or removing actor fields.
-* Changing mutability of the actor field.
+* Changing the mutability of an actor field.
 * Removing record fields.
 * Adding variant fields.
 * Changing `Nat` to `Int`.
@@ -193,14 +193,23 @@ More precisely, the following changes can be implicitly migrated:
 
 ### Explicit migration
 
-Any more complex migration is possible by user-defined functionality.
+More complex migration patterns that require non-trivial data transformations are possible, but require additional coding and care by the user.
+
+One way to replace some stable variables by a new set with different types is to use a sequence of upgrades to transform the state as desired:
 
 For this purpose, a three step approach is taken:
 1. Introduce new variables of the desired types, while keeping the old declarations.
 2. Write logic to copy the state from the old variables to the new variables on upgrade.
 3. Drop the old declarations once all data has been migrated.
 
-For more information, see the [example of explicit migration](compatibility.md#explicit-migration).
+A cleaner, more maintainable solution is to declare an explicit migration expression that is used
+to transform a subset of existing stable variables into a subset of replacement stable variables.
+
+Both of these data migration paths are supported by static and dynamic checks that prevent data loss or corruption.
+Of course, a user may still lose data due to coding errors so should tread carefully.
+
+For more information, see the [example of explicit migration](compatibility.md#explicit-migration) and the
+reference material on [migration expressions](../reference/language-manual#migration-expressions).
 
 ## Legacy features
 
