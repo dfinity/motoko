@@ -4,6 +4,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
+    
   * Breaking change (minor):
 
     * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
