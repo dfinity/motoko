@@ -389,6 +389,9 @@ let prim trap =
   | "canister_version" ->
       fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
+  | "canister_subnet" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
   (* fake *)
   | "setCandidLimits" ->
       fun _ v k -> k unit

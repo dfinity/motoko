@@ -326,6 +326,7 @@ func principalOfBlob(act : Blob) : Principal {
 func principalOfActor(act : actor {}) : Principal = (prim "principalOfActor" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
+func canisterSubnet() : Principal = (prim "canister_subnet" : () -> Principal)();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;

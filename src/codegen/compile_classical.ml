@@ -5065,6 +5065,8 @@ module IC = struct
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
       E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
+      E.add_func_import env "ic0" "subnet_self_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "subnet_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -5336,6 +5338,18 @@ module IC = struct
       )
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
+
+  let get_subnet_reference env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "canister_subnet" [I32Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size")
+          (fun env -> system_call env "subnet_self_copy")
+          (fun env -> compile_unboxed_const 0l)
+      )
+    | _ ->
+      E.trap_with env "cannot get actor-subnet-reference when running locally"
 
   let get_system_time env =
     match E.mode env with
@@ -12015,7 +12029,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_self_reference env ^^
     IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
-  (* Other prims, binary*)
+  | OtherPrim "canister_subnet", [] ->
+    SR.Vanilla, IC.get_subnet_reference env
+
+  (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
