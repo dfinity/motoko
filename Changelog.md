@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Bugfix: Some valid upgrades deleting a stable variable could fail the --enhanced-orthogonal-persistence stable compatibility check due to a bug (#4855).
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
     
   * Breaking change (minor):
 
