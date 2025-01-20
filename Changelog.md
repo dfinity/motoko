@@ -14,7 +14,7 @@
       If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
       Otherwise, no action is needed.
 
-  * bugfix: checks and mitigations that timer servicing work (#4846).
+  * bugfix: checks and mitigations that timer servicing works (#4846).
 
   * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
 
