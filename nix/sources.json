@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/lower-case-persistence-modes",
+        "branch": "luc/latest-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "48ba595fb1a6bc828e7e9dae976db42b5526a5b6",
-        "sha256": "0136hxidak4qsk0nhjdy2nmciwb0lprm07vs117xdw3cp4m6py2z",
+        "rev": "01c8dfda47126bb5f688302e0161f17c2c0cfe6f",
+        "sha256": "16h037xagxwf00k13y3h0gvfs7f3c45z2ml0j1pgvzg2fx5pzahy",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/48ba595fb1a6bc828e7e9dae976db42b5526a5b6.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/01c8dfda47126bb5f688302e0161f17c2c0cfe6f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {

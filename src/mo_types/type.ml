@@ -1354,6 +1354,8 @@ let timer_type =
         [global_timer_set_type],
         [Async (Fut, Var (default_scope_var, 0), unit)])
 
+let low_memory_type =
+  Func (Local, Returns, [scope_bind], [], [Async (Cmp, Var (default_scope_var, 0), unit)])
 
 (* Well-known fields *)
 

@@ -100,6 +100,7 @@ val region : typ
 val heartbeat_type : typ
 val timer_type : typ
 val global_timer_set_type : typ
+val low_memory_type : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
