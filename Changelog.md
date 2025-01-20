@@ -1,10 +1,10 @@
 # Motoko compiler changelog
 
-## 0.13.6 (tbd)
+## 0.13.6 (2025-01-21)
 
 * motoko (`moc`)
 
-  * Support low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
+  * Support the low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
 
   * Breaking change (minor) (#4854):
 
@@ -14,8 +14,10 @@
       If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
       Otherwise, no action is needed.
 
+  * bugfix: Checks and mitigations that timer servicing works (#4846).
+
   * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
-    
+
 ## 0.13.5 (2024-12-06)
 
 * motoko (`moc`)
