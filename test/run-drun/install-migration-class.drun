@@ -1,0 +1,4 @@
+# SKIP ic-ref-run
+install $ID install-migration-class/class.mo ""
+reinstall $ID install-migration-class/class.mo ""
+
