@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Stable memory
 
-## Overview
+
 
 The [`Region` library](stable-regions.md) can be used to interact with stable memory on ICP.
 

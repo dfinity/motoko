@@ -82,3 +82,13 @@ let c1 = IC.performanceCounter(1);
 work();
 let diff : Nat64 = IC.performanceCounter(1) - c1;
 ```
+
+## Function `replyDeadline`
+``` motoko no-repl
+func replyDeadline() : Nat
+```
+
+Returns the time (in nanoseconds from the epoch start) by when the update message should
+reply to the best effort message so that it can be received by the requesting canister.
+Queries and non-best-effort update messages return zero.
+

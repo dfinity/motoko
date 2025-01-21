@@ -5277,6 +5277,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_low_memory env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_on_low_wasm_memory"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "low_memory_exp"))) ^^
+        GC.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "canister_on_low_wasm_memory";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -13021,6 +13033,15 @@ and main_actor as_opt mod_env ds fs up =
        Func.define_built_in env "inspect_exp" [] [] (fun env ->
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
+    end;
+
+    (* Export low memory hook (but only when required) *)
+    begin match up.low_memory.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "low_memory_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.low_memory);
+       IC.export_low_memory env;
     end;
 
     (* Helper function to build the stable actor wrapper *)

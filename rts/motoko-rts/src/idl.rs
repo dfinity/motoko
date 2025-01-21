@@ -841,48 +841,79 @@ pub(crate) unsafe fn memory_compatible(
             }
             true
         }
-        (IDL_CON_record, IDL_CON_record) => {
+        (IDL_CON_record, IDL_CON_record) if !main_actor => {
+            // plain object/record subtyping
+            // symmetric to variant case
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
-            let mut tag1 = 0;
-            let mut t11 = 0;
-            let mut advance = true;
             for _ in 0..n2 {
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    continue;
+                    return false;
                 };
-                if advance {
-                    loop {
-                        tag1 = leb128_decode(&mut tb1);
-                        t11 = sleb128_decode(&mut tb1);
-                        n1 -= 1;
-                        // Do not skip fields during invariance check.
-                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
-                            break;
-                        }
+                let mut tag1: u32;
+                let mut t11: i32;
+                loop {
+                    tag1 = leb128_decode(&mut tb1);
+                    t11 = sleb128_decode(&mut tb1);
+                    n1 -= 1;
+                    if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
+                        break;
                     }
-                };
-                if tag1 > tag2 {
-                    // Additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance || !main_actor {
-                        return false;
-                    }
-                    advance = false; // reconsider this field in next round
-                    continue;
+                }
+                if tag1 != tag2 {
+                    return false;
                 };
                 if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
                     return false;
                 }
-                advance = true;
             }
             variance != TypeVariance::Invariance || n1 == 0
+        }
+        (IDL_CON_record, IDL_CON_record) if main_actor => {
+            // memory compatibility
+            assert!(variance == TypeVariance::Covariance);
+            let mut n1 = leb128_decode(&mut tb1);
+            let mut n2 = leb128_decode(&mut tb2);
+            let mut tag1: u32;
+            let mut t11: i32;
+            let mut tag2: u32;
+            let mut t21: i32;
+            while n1 > 0 && n2 > 0 {
+                tag1 = leb128_decode(&mut tb1);
+                t11 = sleb128_decode(&mut tb1);
+                tag2 = leb128_decode(&mut tb2);
+                t21 = sleb128_decode(&mut tb2);
+                n1 -= 1;
+                n2 -= 1;
+                while tag1 != tag2 {
+                    if tag1 < tag2 {
+                        if n1 > 0 {
+                            tag1 = leb128_decode(&mut tb1);
+                            t11 = sleb128_decode(&mut tb1);
+                            n1 -= 1;
+                            continue;
+                        };
+                        return true;
+                    };
+                    if tag1 > tag2 {
+                        if n2 > 0 {
+                            tag2 = leb128_decode(&mut tb2);
+                            t21 = sleb128_decode(&mut tb2);
+                            n2 -= 1;
+                            continue;
+                        };
+                        return true;
+                    };
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
