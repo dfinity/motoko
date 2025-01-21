@@ -2604,7 +2604,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          tfs
       | _ ->
          local_error env exp.at "M0202"
-           "expected object type, but migration expression %s non-object type%a"
+           "expected object type, but migration expression %s has non-object type%a"
            desc
            display_typ_expand typ;
          []
