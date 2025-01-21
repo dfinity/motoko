@@ -2598,7 +2598,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       | T.Obj(T.Object, tfs) ->
          if not (T.stable typ) then
            local_error env exp.at "M0201"
-             "expected stable type, but migration expression %s has non-stable type%a"
+             "expected stable type, but migration expression %s non-stable type%a"
              desc
              display_typ_expand typ;
          tfs
