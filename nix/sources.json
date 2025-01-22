@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "d5a5127543accbf526a1469231d1824709f15d57",
-        "sha256": "0ypx547hbzj7y1nh6hc53sf9vxwc7y7dnxpqmp7x721dnawrmgh1",
+        "rev": "c871ecd5bd7f1cf0ee98717ad47346472fed7ab9",
+        "sha256": "1vp2jj82jk2s0sxr9ialwpxvsl4dq7a7da7xniw3lj3vifqrf810",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/d5a5127543accbf526a1469231d1824709f15d57.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/c871ecd5bd7f1cf0ee98717ad47346472fed7ab9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
