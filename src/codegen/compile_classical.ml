@@ -12484,10 +12484,10 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
                  set_sel ^^ get_sel ^^
                  compile_eq_const (E.hash env "timeout") ^^
                  G.if0
-                   (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.nat32 "timeout") ^^ set_tim)
+                   (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}])) "timeout") ^^ set_tim)
                    (get_sel ^^ compile_eq_const (E.hash env "cycles") ^^
                     (G.if0
-                       (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.nat "cycles") ^^ set_cyc)
+                       (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])) "cycles") ^^ set_cyc)
                        G.nop))
                end ^^
                get_tim ^^ Opt.is_some env ^^
