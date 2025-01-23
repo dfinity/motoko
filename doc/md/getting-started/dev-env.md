@@ -20,13 +20,13 @@ Here are some starter projects for online Motoko canister development:
 * [ICP Hello World Motoko](https://github.com/dfinity/icp-hello-world-motoko#readme)
 * [Vite + React + Motoko](https://github.com/rvanasa/vite-react-motoko#readme)
 
-Learn more about [Gitpod](/docs/current/developer-docs/developer-tools/ide/gitpod) and [GitHub Codespaces](/docs/current/developer-docs/developer-tools/ide/codespaces) for Motoko development.
+Learn more about [Gitpod](https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/gitpod) and [GitHub Codespaces](https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/codespaces) for Motoko development.
 
 ## Container environments
 
 Developers may want to setup a containerized environment for Motoko and other ICP-related development. Container environments are especially useful for Windows-based systems, since `dfx` is not natively supported on Windows.
 
-Learn more about [developer containers](/docs/current/developer-docs/developer-tools/ide/dev-containers) and [Docker containers](/docs/current/developer-docs/developer-tools/ide/dev-containers#using-docker-directly) for Motoko development.
+Learn more about [developer containers](https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/dev-containers) and [Docker containers](https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/dev-containers#using-docker-directly) for Motoko development.
 
 ## Motoko playground
 
@@ -34,7 +34,7 @@ Learn more about [developer containers](/docs/current/developer-docs/developer-t
 
 Canisters deployed to the Motoko playground use borrowed resources from a canister pool and are limited to a deployment length of 20 minutes. Therefore, the playground is not recommended for long-term development.
 
-Learn more about the [Motoko playground](/docs/current/developer-docs/developer-tools/ide/playground).
+Learn more about the [Motoko playground](https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/playground).
 
 ## Local developer environment
 
@@ -44,7 +44,7 @@ Before you start developing Motoko, verify the following:
 
 - [x] You have a command line interface (CLI) window open. This window is also referred to as the 'terminal' window.
 
-- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](/docs/current/developer-docs/getting-started/install) page.
+- [x] You have downloaded and installed the IC SDK package as described in the [installing the IC SDK](https://internetcomputer.org/docs/current/developer-docs/getting-started/install) page.
 
 - [x] You have a code editor installed. The [VS Code IDE](https://code.visualstudio.com/download) (with the [Motoko extension](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko)) is a popular choice.
 
@@ -116,7 +116,7 @@ mops add base@0.9.0
 
 ### Specifying a custom version of `dfx`
 
-To specify a custom version of `dfx`, you can use the [`dfxvm` tool](/docs/current/developer-docs/developer-tools/cli-tools/dfxvm/docs/cli-reference/dfxvm/dfxvm-default). To set a default `dfx` version to be used in your project, run the command:
+To specify a custom version of `dfx`, you can use the [`dfxvm` tool](https://internetcomputer.org/docs/current/developer-docs/developer-tools/cli-tools/dfxvm/docs/cli-reference/dfxvm/dfxvm-default). To set a default `dfx` version to be used in your project, run the command:
 
 ```
 $ dfxvm default 0.7.2

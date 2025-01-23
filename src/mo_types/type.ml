@@ -307,7 +307,7 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
 
-(* Short-hands *)
+(* Shorthands *)
 
 let unit = Tup []
 let bool = Prim Bool
@@ -321,6 +321,7 @@ let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
 let region = Prim Region
+
 
 let fields flds =
   List.sort compare_field
@@ -1344,6 +1345,21 @@ let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 
+(* Shorthands for replica callbacks *)
+
+let heartbeat_type =
+  Func (Local, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)])
+
+let global_timer_set_type = Func (Local, Returns, [], [Prim Nat64], [])
+
+let timer_type =
+  Func (Local, Returns, [scope_bind],
+        [global_timer_set_type],
+        [Async (Fut, Var (default_scope_var, 0), unit)])
+
+let low_memory_type =
+  Func (Local, Returns, [scope_bind], [], [Async (Cmp, Var (default_scope_var, 0), unit)])
+
 (* Well-known fields *)
 
 let motoko_async_helper_fld =
@@ -1423,8 +1439,8 @@ let canister_settings_typ =
 
 let wasm_memory_persistence_typ =
   sum [
-    ("Keep", unit);
-    ("Replace", unit);
+    ("keep", unit);
+    ("replace", unit);
   ]
 
 let upgrade_with_persistence_option_typ =

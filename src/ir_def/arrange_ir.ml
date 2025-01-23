@@ -36,13 +36,14 @@ let rec exp e = match e.it with
   | TryE (e, cs, None) -> "TryE" $$ [exp e] @ List.map case cs
   | TryE (e, cs, Some (i, _)) -> "TryE" $$ [exp e] @ List.map case cs @ Atom ";" :: [id i]
 
-and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type} = (* TODO: show meta? *)
+and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type} = (* TODO: show meta? *)
   "System" $$ [
       "Pre" $$ [exp preupgrade];
       "Post" $$ [exp postupgrade];
       "Heartbeat" $$ [exp heartbeat];
       "Timer" $$ [exp timer];
       "Inspect" $$ [exp inspect];
+      "LowMemory" $$ [exp low_memory];
       "StableRecord" $$ [exp stable_record];
       "StableType" $$ [typ stable_type]
     ]

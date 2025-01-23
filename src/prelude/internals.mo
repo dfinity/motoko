@@ -422,8 +422,8 @@ module @ManagementCanister = {
 };
 
 type @WasmMemoryPersistence = {
-  #Keep;
-  #Replace;
+  #keep;
+  #replace;
 };
 
 type @UpgradeOptions = {
@@ -481,7 +481,7 @@ func @install_actor_helper(
       };
       case (#upgrade actor2) {
         let wasm_memory_persistence = if enhanced_orthogonal_persistence {
-          ?(#Keep)
+          ?(#keep)
         } else {
           null
         };
@@ -565,7 +565,7 @@ func @prune(n : ?@Node) : ?@Node = switch n {
     if (n.expire[0] == 0) {
       @prune(n.post) // by corollary
     } else {
-      ?{ n with pre = @prune(n.pre); post = @prune(n.post) }
+      ?{ n with pre = @prune(n.pre) }
     }
   }
 };
@@ -633,9 +633,25 @@ func @timer_helper() : async () {
   ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
   if (exp == 0) @timers := null;
 
+  var failed : Nat64 = 0;
+  func reinsert(job : () -> async ()) {
+    if (failed == 0) {
+      @timers := @prune @timers;
+      ignore (prim "global_timer_set" : Nat64 -> Nat64) 1
+    };
+    failed += 1;
+    @timers := ?(switch @timers {
+      case (?{ id = 0; pre; post; job = j; expire; delay })
+        // push top node's contents into pre
+        ({ expire = [var failed]; id = 0; delay; job; post
+         ; pre = ?{ id = 0; expire; pre; post = null; delay; job = j } });
+      case _ ({ expire = [var failed]; id = 0; delay = null; job; pre = null; post = @timers })
+    })
+  };
+
   for (o in thunks.vals()) {
     switch o {
-      case (?thunk) ignore thunk();
+      case (?thunk) try ignore thunk() catch _ reinsert thunk;
       case _ return
     }
   }
@@ -695,6 +711,5 @@ func @cancelTimer(id : Nat) {
     @timers := null
   }
 };
-
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
