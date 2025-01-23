@@ -257,6 +257,7 @@ persistent actor {
     title : Text;
     description : Text;
   };
+<<<<<<< HEAD:doc/old-docs/canister-maintenance/compatibility.md
 <<<<<<< HEAD
 
   stable var map : [(Nat32, OldCard)] = [];
@@ -265,6 +266,10 @@ persistent actor {
   var map : [(Nat32, OldCard)] = [];
   var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
 >>>>>>> 5f39141e6294cc73474dccfafe42ae38313f79af
+=======
+  var map : [(Nat32, OldCard)] = [];
+  var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
+>>>>>>> 5f39141e6294cc73474dccfafe42ae38313f79af:doc/md/canister-maintenance/compatibility.md
     map,
     func(key, { title }) { (key, { title; description = "<empty>" }) },
   );
