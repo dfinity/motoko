@@ -84,7 +84,7 @@ end
 val is_shared_sort : 'a shared -> bool
 
 
-(* Short-hands *)
+(* Shorthands *)
 
 val unit : typ
 val bool : typ
@@ -97,6 +97,10 @@ val error : typ
 val char : typ
 val principal : typ
 val region : typ
+val heartbeat_type : typ
+val timer_type : typ
+val global_timer_set_type : typ
+val low_memory_type : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
@@ -221,7 +225,10 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
+
 (* Equivalence and Subtyping *)
+
+exception Undecided (* raised if termination depth exceeded  *)
 
 val eq : typ -> typ -> bool
 val eq_kind : kind -> kind -> bool

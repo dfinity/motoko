@@ -1,6 +1,6 @@
-//MOC-FLAG --package lib lib
-import _Unused1 "mo:lib/unused1"; // don't report package imports usage warning
-import _Unused2 "./lib/unused2"; // do report relative imports usage warning
+//MOC-FLAG --package pkg pkg
+import _Unused1 "mo:pkg/unused1"; // don't report package imports usage warning
+import _Unused2 "./pkg/unused2"; // do report relative imports usage warning
 
 func rec1() { rec1() }; // accepted, but reject as unused?
 

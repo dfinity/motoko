@@ -1,5 +1,95 @@
 # Motoko compiler changelog
 
+## 0.13.6 (2025-01-21)
+
+* motoko (`moc`)
+
+  * Support the low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
+
+  * Breaking change (minor) (#4854):
+
+    * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
+      `keep` and `replace` and instead of `Keep` and `Replace`:
+
+      If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
+      Otherwise, no action is needed.
+
+  * bugfix: Checks and mitigations that timer servicing works (#4846).
+
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
+
+## 0.13.5 (2024-12-06)
+
+* motoko (`moc`)
+
+  * Breaking change (minor) (#4786):
+
+    * Add new keyword `transient` with exactly the same meaning as the old keyword `flexible` (but a more familiar reading).
+
+    * Add keyword `persistent`.
+
+      When used to modify the `actor` keyword in an actor or actor class definition, the keyword declares that the default stability of a
+      `let` or `var` declaration is `stable` (not `flexible` or `transient`).
+
+      For example, a stateful counter can now be declared as:
+      ``` motoko
+      persistent actor {
+        // counts increments since last upgrade
+        transient var invocations = 0;
+
+        // counts increments since first installation
+        var value = 0; 	// implicitly `stable`
+
+        public func inc() : async () {
+          value += 1;
+          invocations += 1;
+        }
+      }
+      ```
+      On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
+
+      Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.
+
+  * Added new primitive `replyDeadline : () -> Nat64` to obtain when a response for a best-effort message is due (#4795).
+
+  * bugfix: fail-fast by limiting subtyping depth to avoid reliance on unpredictable stack overflow (#3057, #4798).
+
+* motoko-base
+
+  * Added `Text.fromList` and `Text.toList` functions (dfinity/motoko-base#676).
+
+  * Added `Text.fromArray/fromVarArray` functions (dfinity/motoko-base#674).
+
+  * Added `replyDeadline` to `ExperimentalInternetComputer` (dfinity/motoko-base⁠#677).
+
+## 0.13.4 (2024-11-29)
+
+* motoko (`moc`)
+
+  * refactoring: Updating and simplifying the runtime system dependencies (#4677).
+
+* motoko-base
+
+  * Breaking change (minor): `Float.format(#hex)` is no longer supported.
+    This is because newer versions of Motoko (such as with enhanced orthogonal persistence)
+    rely on the Rust-native formatter that does not offer this functionality.
+    It is expected that this formatter is very rarely used in practice (dfinity/motoko-base⁠#589).
+
+  * Formatter change (minor): The text formatting of `NaN`, positive or negative,
+    will be `NaN` in newer Motoko versions, while it was `nan` or `-nan` in older versions (dfinity/motoko-base⁠#589).
+
+## 0.13.3 (2024-11-13)
+
+* motoko (`moc`)
+
+  * typing: suggest conversions between primitive types from imported libraries
+    and, with `--ai-errors`, all available package libraries (#4747).
+
+* motoko-base
+
+  * Add modules `OrderedMap` and `OrderedSet` to replace `RBTree` with improved functionality, performance
+    and ergonomics avoiding the need for preupgrade hooks (thanks to Serokell) (dfinity/motoko-base⁠#662).
+
 ## 0.13.2 (2024-10-18)
 
 * motoko (`moc`)
@@ -44,7 +134,7 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
-    
+
     To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
 
     ```

@@ -142,7 +142,8 @@ let resolve_flags () =
   ResolveImport.{
     package_urls = !Flags.package_urls;
     actor_aliases = !Flags.actor_aliases;
-    actor_idl_path = !Flags.actor_idl_path
+    actor_idl_path = !Flags.actor_idl_path;
+    include_all_libs = !Flags.ai_errors;
   }
 
 let resolve_prog (prog, base) : resolve_result =

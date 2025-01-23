@@ -20,6 +20,8 @@ pkgs:
         outputHashes = {
           "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
           "cloudflare-0.12.0" = "sha256-FxCAK7gUKp/63fdvzI5Ufsy4aur74fO4R/K3YFiUw0Y=";
+          "ic-bn-lib-0.1.0" = "sha256-wqWfF70B+YQWg63yiEvIxOq+LN1AasrNXcyPkDM4/jw=";
+          "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
           "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
           "jsonrpc-0.12.1" = "sha256-3FtdZlt2PqVDkE5iKWYIp1eiIELsaYlUPRSP2Xp8ejM=";
           "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
@@ -42,19 +44,6 @@ pkgs:
 EOF
         cd -
 
-        # static linking of libunwind fails under nix Linux
-        patch rs/monitoring/backtrace/build.rs << EOF
-@@ -1,8 +1,2 @@
- fn main() {
--    if std::env::var("TARGET").unwrap() == "x86_64-unknown-linux-gnu" {
--        println!("cargo:rustc-link-lib=static=unwind");
--        println!("cargo:rustc-link-lib=static=unwind-ptrace");
--        println!("cargo:rustc-link-lib=static=unwind-x86_64");
--        println!("cargo:rustc-link-lib=dylib=lzma");
--    }
- }
-EOF
-
         mkdir -p .cargo
         cat > .cargo/config.toml << EOF
 [target.x86_64-apple-darwin]
@@ -72,8 +61,8 @@ EOF
 
       buildInputs = with pkgs; [
         openssl
-        llvm_13
-        llvmPackages_13.libclang
+        llvm_18
+        llvmPackages_18.libclang
         lmdb
         libunwind
         libiconv
@@ -81,8 +70,8 @@ EOF
         pkgs.darwin.apple_sdk.frameworks.Security;
 
       # needed for bindgen
-      LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
-      CLANG_PATH = "${pkgs.llvmPackages_13.clang}/bin/clang";
+      LIBCLANG_PATH = "${pkgs.llvmPackages_18.libclang.lib}/lib";
+      CLANG_PATH = "${pkgs.llvmPackages_18.clang}/bin/clang";
 
       # needed for ic-protobuf
       PROTOC="${pkgs.protobuf}/bin/protoc";
