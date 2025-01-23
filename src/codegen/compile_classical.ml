@@ -809,7 +809,7 @@ end
 
 
 (* General code generation functions:
-   Rule of thumb: Here goes stuff that independent of the Motoko AST.
+   Rule of thumb: Here goes stuff that is independent of the Motoko AST.
 *)
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
@@ -12461,21 +12461,54 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
      *)
 
 
-    let add_cycles = match par.it with
+    let add_meta = match par.it with
       | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
 
 
 
 
-
-
-
-
-
-
+      | _ ->
+         let set_sel, get_sel = new_local env "sel" in
+         let set_cyc, get_cyc = new_local env "cyc" in
+         let set_tim, get_tim = new_local env "tim" in
+         let set_meta, get_meta = new_local env "meta" in
+         Opt.null_lit env ^^ set_cyc ^^ get_cyc ^^ set_tim ^^
+         compile_exp_vanilla env ae par ^^
+         set_meta ^^ get_meta ^^ Opt.is_some env ^^
+         G.if0
+           begin
+             get_meta ^^
+             (* this is a naked option, thus no need to unpack *)
+             Object.iterate_hashes env
+               begin
+                 set_sel ^^ get_sel ^^
+                 compile_eq_const (E.hash env "timeout") ^^
+                 G.if0
+                   (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.nat32 "timeout") ^^ set_tim)
+                   (get_sel ^^ compile_eq_const (E.hash env "cycles") ^^
+                    (G.if0
+                       (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.nat "cycles") ^^ set_cyc)
+                       G.nop))
+               end ^^
+               get_tim ^^ Opt.is_some env ^^
+               G.if0
+                 begin
+                   get_tim ^^ BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
+                   IC.system_call env "call_with_best_effort_response"
+                 end
+                 G.nop ^^
+               get_cyc ^^ Opt.is_some env ^^
+               G.if0
+                 (Internals.pass_cycles env ae get_meta)
+                 G.nop
+           end
+           (Internals.add_cycles env ae) (* legacy *)
+    in
+(*
       | _ when Type.(sub par.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
         Internals.pass_cycles env ae (compile_exp_vanilla env ae par (*FIXME: effects?!*))
       | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
+ *)
 (*    let add_timeout = match par.note.Note.typ with
       | Type.Opt typ when Type.(sub typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) ->
         compile_exp_vanilla env ae par (*FIXME: effects?!*) ^^
@@ -12499,7 +12532,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       get_c
-      (add_cycles ^^ add_timeout)
+      add_meta
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
