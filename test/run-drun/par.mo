@@ -5,7 +5,7 @@ import Cycles = "cycles/cycles";
 actor A {
 
     func foo(next : () -> async ()) : async () {
-        assert 0 : Nat64 == replyDeadline();
+        assert 0 : Nat64 != replyDeadline();
         debugPrint ("foo: " # debug_show(Cycles.available()));
         await (with cycles = 3000) next()
     };
