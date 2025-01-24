@@ -115,7 +115,7 @@ let primE prim es =
     | SystemCyclesBurnPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
-    | ICCyclesPrim -> T.(Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
+    | ICCyclesPrim -> T.(Opt (Obj (Object, [])))
     | OtherPrim "trap" -> T.Non
     | OtherPrim "global_timer_set" -> T.nat64
     | OtherPrim "call_perform_status" -> T.nat32
