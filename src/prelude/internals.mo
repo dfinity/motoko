@@ -528,6 +528,11 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
 
 // raw calls
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  let cycles = (prim "cyclesAvailable" : () -> Nat)();
+  if (cycles != 0) {
+    ignore (prim "cyclesAccept" : Nat -> Nat) cycles;
+    @cycles := cycles;
+  };
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
 
