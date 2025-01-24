@@ -2,4 +2,4 @@
 sidebar_position: 5
 ---
 
-# Mutability
+# Stable memory / regions
