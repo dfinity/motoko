@@ -366,9 +366,7 @@ let transform prog =
           let_eta exp1' (fun v1 ->
           let_eta exp2' (fun v2 ->
           let_eta exp3' (fun v3 ->
-            [expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject) (varE clean)) ]
-            )
-          ))
+            [expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject) (varE clean))])))
          )
          (varE nary_async))
         .it

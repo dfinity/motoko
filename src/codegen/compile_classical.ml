@@ -12492,10 +12492,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
                end ^^
                get_tim ^^ Opt.is_some env ^^
                G.if0
-                 begin
-                   get_tim ^^ BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
-                   IC.system_call env "call_with_best_effort_response"
-                 end
+                 (get_tim ^^ BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^ IC.system_call env "call_with_best_effort_response")
                  G.nop ^^
                get_cyc ^^ Opt.is_some env ^^
                G.if0
