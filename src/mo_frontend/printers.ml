@@ -152,6 +152,8 @@ let string_of_symbol = function
   | X (N N_dec_field) -> "<dec_field>"
   | X (N N_dec_nonvar) -> "<dec_nonvar>"
   | X (N N_dec_var) -> "<dec_var>"
+  | X (N N_parenthetical) -> "<parenthetical>"
+  | X (N N_option_parenthetical_) -> "<parenthetical>?"
   | X (N N_exp_bl_) -> "<exp(bl)>"
   | X (N N_exp_ob_) -> "<exp(ob)>"
   | X (N N_exp_bin_bl_) -> "<exp_bin(bl)>"

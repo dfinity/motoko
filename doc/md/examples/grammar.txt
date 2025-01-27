@@ -158,6 +158,9 @@
     '<>>='
     '@='
 
+<parenthetical> ::= 
+    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')'
+
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
@@ -185,6 +188,7 @@
 
 <exp_un> ::= 
     <exp_post>
+    <parenthetical> <exp_post> <inst> <exp_nullary>
     '#' <id>
     '#' <id> <exp_nullary>
     '?' <exp_un>
@@ -210,7 +214,7 @@
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
     'return' <exp>?
-    'async' <exp_nest>
+    <parenthetical>? 'async' <exp_nest>
     'async*' <exp_nest>
     'await' <exp_nest>
     'await*' <exp_nest>
@@ -219,7 +223,6 @@
     'break' <id> <exp_nullary>?
     'continue' <id>
     'debug' <exp_nest>
-    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')' <exp_nest>
     'if' <exp_nullary> <exp_nest>
     'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
     'try' <exp_nest> <catch>

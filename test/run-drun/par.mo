@@ -61,7 +61,7 @@ actor A {
     public func test2() : async () {
         debugPrint "test2()";
         await (with cycles = 1042) async { assert Cycles.available() == 1042 };
-        await (with cycles = 3042) (with cycles = 4042) async { assert Cycles.available() == 3042/*FIXME: WHY?*/ };
+        //await (with cycles = 3042) (with cycles = 4042) async { assert Cycles.available() == 3042/*FIXME: WHY?*/ };
     };
 
     public func test3() : async () {
