@@ -1,4 +1,5 @@
 syntax4.mo:1.1-1.2: syntax error [M0001], unexpected token '*', expected one of token or <phrase> sequence:
   <eof>
+  async <exp_nest>
   seplist(<dec>,<semicolon>) <eof>
   seplist(<imp>,<semicolon>) seplist(<dec>,<semicolon>) <eof>

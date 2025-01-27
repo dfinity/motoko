@@ -6,9 +6,9 @@ cycle-type.mo:5.39-5.46: type error [M0050], literal of type
   Text
 does not have expected type
   Nat
-cycle-type.mo:7.23-7.32: warning [M0202], unexpected parenthetical note on a non-send call
-cycle-type.mo:7.23-7.32: warning [M0203], redundant empty parenthetical note
-cycle-type.mo:9.19-9.29: warning [M0203], redundant empty parenthetical note
+cycle-type.mo:7.16-7.22: warning [M0202], unexpected parenthetical note on a non-send call
+cycle-type.mo:7.16-7.22: warning [M0203], redundant empty parenthetical note
+cycle-type.mo:9.9-9.18: warning [M0203], redundant empty parenthetical note
 cycle-type.mo:10.31-10.34: type error [M0050], literal of type
   Char
 does not have expected type
