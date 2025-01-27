@@ -25,8 +25,11 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec prim rho =
-  Ir.map_prim Fun.id (id rho) (exp rho) (* rename BreakPrim id etc *)
+let rec prim rho = function
+  | CallPrim (typ, par) -> CallPrim (typ, exp rho par)
+  | ICCallPrim par_opt -> ICCallPrim (Option.map (exp rho) par_opt)
+  | CPSAsync (sort, typ, par) -> CPSAsync (sort, typ, exp rho par)
+  | p -> Ir.map_prim Fun.id (id rho) (exp rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function
