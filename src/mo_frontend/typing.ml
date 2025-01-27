@@ -2561,6 +2561,7 @@ and infer_obj env s dec_fields at : T.typ =
 and validate_parenthetical env typ_opt = function
   | None -> ()
   | Some par ->
+     let env = { env with async = C.NullCap } in
      begin match typ_opt with
      | Some fun_ty when T.is_func fun_ty ->
        let s, _, _, _, ts2 = T.as_func fun_ty in
@@ -2581,16 +2582,6 @@ and validate_parenthetical env typ_opt = function
      if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
      if unrecognised <> [] then warn env par.at "M0204" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
-     (*let cyc = List.(filter (fun {T.lab; _} -> lab = "cycles") attrs_flds) in
-     if cyc <> [] && not T.(sub (List.hd cyc).typ nat) then
-       local_error env par.at "M0201"
-         "expected Nat type for attribute cycles, but it has type%a"
-         display_typ_expand (List.hd cyc).T.typ;
-     let timeout = List.(filter (fun {T.lab; _} -> lab = "timeout") attrs_flds) in
-     if timeout <> [] && not T.(sub (List.hd timeout).typ nat32) then
-       local_error env par.at "M0205"
-         "expected Nat32 type for attribute timeout, but it has type%a"
-         display_typ_expand (List.hd timeout).T.typ*)
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
