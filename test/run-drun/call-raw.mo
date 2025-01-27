@@ -1,4 +1,5 @@
 import P "mo:⛔";
+import Cycles = "cycles/cycles";
 
 actor self {
 
@@ -41,6 +42,10 @@ actor self {
     P.trap("ohoh");
   };
 
+  public shared func cycles() : async () {
+    assert P.cyclesAvailable() == 424242
+  };
+
   public shared func supercalifragilisticexpialidocious() : async () {
     P.debugPrint("supercalifragilisticexpialidocious");
   };
@@ -50,38 +55,38 @@ actor self {
 
     do {
       let arg : Blob = "DIDL\00\00";
-      let res = await P.call_raw(p,"unit", arg);
-      assert (res == arg);
+      let res = await P.call_raw(p, "unit", arg);
+      assert res == arg;
     };
 
     do {
       let arg : Blob = "DIDL\00\01\7c\01";
-      let res = await P.call_raw(p,"int", arg);
-      assert (res == arg);
+      let res = await P.call_raw(p, "int", arg);
+      assert res == arg;
      };
 
     do {
       let arg : Blob = "DIDL\00\01\7c\02";
-      let res = await P.call_raw(p,"int", arg);
-      assert (res == arg);
+      let res = await P.call_raw(p, "int", arg);
+      assert res == arg;
     };
 
     do {
       let arg : Blob = "DIDL\00\01\71\05\68\65\6c\6c\6f";
-      let res = await P.call_raw(p,"text", arg);
-      assert (res == arg);
+      let res = await P.call_raw(p, "text", arg);
+      assert res == arg;
     };
 
     do {
       let arg : Blob = "DIDL\00\03\7d\7e\79\01\01\61\00\00\00";
-      let res = await P.call_raw(p,"tuple", arg);
-      assert (res == arg);
+      let res = await P.call_raw(p, "tuple", arg);
+      assert res == arg;
     };
 
     do {
       let arg : Blob = "DIDL\00\01\7c\01";
       try {
-        let res = await P.call_raw(p,"trapInt", arg);
+        let res = await P.call_raw(p, "trapInt", arg);
         assert false;
       }
       catch e {
@@ -93,9 +98,15 @@ actor self {
       let m = "super"#"cali"#"fragilisticexpialidocious";
       let arg : Blob = "DIDL\00\00";
       let res = await P.call_raw(p, m, arg);
-      assert (res == arg);
+      assert res == arg;
     };
 
+    do {
+      let arg : Blob = "DIDL\00\00";
+      Cycles.add<system> 424242;
+      let res = await P.call_raw(p, "cycles", arg);
+      assert res == arg;
+    }
   }
 };
 
