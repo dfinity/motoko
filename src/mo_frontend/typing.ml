@@ -2568,7 +2568,7 @@ and validate_parenthetical env typ_opt = function
        begin match ts2 with
        | _ when T.is_shared_sort s -> ()
        | [cod] when T.is_async cod -> ()
-       | _ -> warn env par.at "M0202" "unexpected parenthetical note on a non-send call"
+       | _ -> warn env par.at "M0206" "unexpected parenthetical note on a non-send call"
        end
      | _ -> ()
      end;
@@ -2579,9 +2579,9 @@ and validate_parenthetical env typ_opt = function
        infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
-     if attrs_flds = [] then warn env par.at "M0203" "redundant empty parenthetical note";
+     if attrs_flds = [] then warn env par.at "M0207" "redundant empty parenthetical note";
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
-     if unrecognised <> [] then warn env par.at "M0204" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
+     if unrecognised <> [] then warn env par.at "M0208" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
