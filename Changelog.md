@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.13.7 (FUTURE)
+
+* motoko (`moc`)
+
+  * Support passing cycles in primitive `call_raw` (resp. `ExperimentalInternetComputer.call`) (#4868).
+
 ## 0.13.6 (2025-01-21)
 
 * motoko (`moc`)
