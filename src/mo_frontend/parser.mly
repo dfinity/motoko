@@ -585,6 +585,10 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
+parenthetical :
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
+    { ObjE (Option.(to_list base), fs) @? at $sloc }
+
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE ([], efs) @? at $sloc }
@@ -633,6 +637,8 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
+    { CallE(Some par, e1, inst, e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -691,8 +697,8 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp_nest
-    { AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | par=parenthetical? ASYNC e=exp_nest
+    { AsyncE(par, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
     { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
@@ -720,14 +726,6 @@ exp_un(B) :
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
-  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
-    { match e.it with
-      | CallE (base0_opt, f, is, args) ->
-        { e with it = CallE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), f, is, args) }
-      | AsyncE (base0_opt, Type.Fut, binds, exp) ->
-        { e with it = AsyncE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), Type.Fut, binds, exp) }
-      | _ -> e (* FIXME: meh, can we emit a warning? *)
-    }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
