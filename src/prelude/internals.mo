@@ -17,7 +17,7 @@ func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
   if (cycles != 0) {
-    (prim "cyclesAdd" : Nat -> ()) (cycles);
+    (prim "cyclesAdd" : Nat -> ()) cycles;
   }
 };
 
@@ -507,6 +507,10 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
 
 // raw calls
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  let available = (prim "cyclesAvailable" : () -> Nat) ();
+  if (available != 0) {
+    @cycles := (prim "cyclesAccept" : Nat -> Nat) (available);
+  };
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
 
