@@ -51,7 +51,6 @@ actor a {
       };
     };
 
-/* Skip this test while drun crashing
     try {
       await invalid.request();
     }
@@ -60,8 +59,7 @@ actor a {
         case (#destination_invalid, m) { P.debugPrint("destination_invalid:" # m)};
         case _ { assert false; }
       }
-    };
-*/
+    }
   }
 };
 
