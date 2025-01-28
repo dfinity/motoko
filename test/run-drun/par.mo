@@ -4,7 +4,7 @@ import Cycles = "cycles/cycles";
 actor A {
 
     func foo(next : () -> async ()) : async () {
-        assert 0 : Nat64 != replyDeadline();
+        assert 0 != replyDeadline();
         debugPrint ("foo: " # debug_show(Cycles.available()));
         await (with cycles = 3000) next()
     };
@@ -80,12 +80,12 @@ actor A {
     public func test5() : async () {
         await (with timeout = 3) async {
             debugPrint "test5()";
-            assert 0 : Nat64 != replyDeadline();
+            assert 0 != replyDeadline();
         }
     };
 
     public func ext() : async () {
-        assert 0 : Nat64 != replyDeadline();
+        assert 0 != replyDeadline();
         debugPrint ("ext: " # debug_show(Cycles.available()));
     };
 
@@ -94,14 +94,14 @@ actor A {
     };
 
     public func test7() : async () {
+        debugPrint "test7()";
         try
-        await (with timeout = 1) async {
-            debugPrint "test7()";
-            assert 0 : Nat64 != replyDeadline();
-            // busy loop
-            loop ignore await (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand();
-            ()
-        }
+          await (with timeout = 1) async {
+              assert 0 != replyDeadline();
+              // busy loop
+              loop ignore await (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand();
+              ()
+          }
         catch e {
             debugPrint("CAUGHT: " # debug_show errorCode e # " " # debug_show errorMessage e)
         }
