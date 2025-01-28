@@ -558,7 +558,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt (T.seq ots) <: t
 
 
-    | ICCyclesPrim, [] -> () (* FIXME *)
+    | ICCallAttrsPrim, [] -> () (* FIXME *)
 
 
     | CPSAwait (s, cont_typ), [a; krb] ->

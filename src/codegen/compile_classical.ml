@@ -12250,7 +12250,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
-  | ICCyclesPrim, [] ->
+  | ICCallAttrsPrim, [] ->
     SR.Vanilla,
     G.i (LocalGet (nr 0l)) ^^ (* closed-over bindings *)
     G.if1 I32Type
@@ -12456,7 +12456,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let captured = Freevars.captured exp_f in
 
     (* this can be the body of a local async function or an `async` block
-       - the former receives the optional parenthetical via `ICCyclesPrim`
+       - the former receives the optional parenthetical via `ICCallAttrsPrim`
        - the latter either NullLit (legacy) or the parenthetical object (typed)
      *)
 

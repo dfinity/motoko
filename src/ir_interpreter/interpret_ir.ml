@@ -460,7 +460,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) v2 k
-      | ICCyclesPrim, [] ->
+      | ICCallAttrsPrim, [] ->
         k V.Null
       | ICCallerPrim, [] ->
         k env.caller

@@ -405,7 +405,7 @@ let transform prog =
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
               let t0, cps = match exp.it with
-                | PrimE (CPSAsync (Fut, t0, {it = PrimE (ICCyclesPrim, []); _}), [cps]) -> t_typ t0, cps
+                | PrimE (CPSAsync (Fut, t0, {it = PrimE (ICCallAttrsPrim, []); _}), [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func (_, _,
@@ -435,7 +435,7 @@ let transform prog =
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
               let t0, cps = match exp.it with
-                | PrimE (CPSAsync (Fut, t0, {it = PrimE (ICCyclesPrim, []); _}), [cps]) -> t_typ t0, cps (* TBR *)
+                | PrimE (CPSAsync (Fut, t0, {it = PrimE (ICCallAttrsPrim, []); _}), [cps]) -> t_typ t0, cps (* TBR *)
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func (_, _,

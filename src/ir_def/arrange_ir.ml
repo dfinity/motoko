@@ -106,7 +106,7 @@ and prim = function
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | SystemCyclesBurnPrim -> Atom "SystemCyclesBurnPrim"
-  | ICCyclesPrim      -> Atom "ICCyclesPrim"
+  | ICCallAttrsPrim      -> Atom "ICCallAttrsPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s

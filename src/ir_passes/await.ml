@@ -101,7 +101,7 @@ let rec t_async context exp =
    in
      cps_asyncE s typ1 (match par_opt with
                         | Some par -> assert false(*FIXME:; optE par*)
-                        | None -> primE ICCyclesPrim []) (typ exp1)
+                        | None -> primE ICCallAttrsPrim []) (typ exp1)
        (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret))))
  |  _ -> assert false
