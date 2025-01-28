@@ -345,6 +345,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "system_transient"; typ = unit; src = empty_src};
     { lab = "destination_invalid"; typ = unit; src = empty_src};
     { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "system_unknown"; typ = unit; src = empty_src};
     { lab = "future"; typ = Prim Nat32; src = empty_src};
     { lab = "call_error"; typ = call_error; src = empty_src};
   ])
