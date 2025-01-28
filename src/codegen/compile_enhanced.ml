@@ -1132,6 +1132,7 @@ module RTS = struct
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
     E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "has_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -8690,8 +8691,11 @@ end
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
+
+  let has_stable_actor env = E.call_import env "rts" "has_stable_actor"
+
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
-    
+
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
@@ -11700,11 +11704,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_in_install", [] -> (* EOP specific *)
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
-    EnhancedOrthogonalPersistence.load_stable_actor env ^^
-    compile_test I64Op.Eqz ^^
-    E.if1 I64Type
-      (Bool.lit true)
-      (Bool.lit false)
+    EnhancedOrthogonalPersistence.has_stable_actor env ^^
+    Bool.neg
 
   (* Regions *)
 
