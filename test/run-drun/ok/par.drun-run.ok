@@ -23,3 +23,6 @@ debug.print: test5()
 ingress Completed: Reply: 0x4449444c0000
 debug.print: ext: 6_543
 ingress Completed: Reply: 0x4449444c0000
+debug.print: test7()
+debug.print: CAUGHT: #system_unknown "Call deadline has expired."
+ingress Completed: Reply: 0x4449444c0000

@@ -1,4 +1,4 @@
-import { call_raw; debugPrint; principalOfActor; replyDeadline } = "mo:⛔";
+import { call_raw; debugPrint; principalOfActor; replyDeadline; errorMessage; errorCode } = "mo:⛔";
 import Cycles = "cycles/cycles";
 
 actor A {
@@ -91,6 +91,20 @@ actor A {
 
     public func test6() : async () {
         await (with timeout = 3; cycles = 6543) A.ext()
+    };
+
+    public func test7() : async () {
+        try
+        await (with timeout = 1) async {
+            debugPrint "test7()";
+            assert 0 : Nat64 != replyDeadline();
+            // busy loop
+            loop ignore await (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand();
+            ()
+        }
+        catch e {
+            debugPrint("CAUGHT: " # debug_show errorCode e # " " # debug_show errorMessage e)
+        }
     }
 }
 
@@ -105,3 +119,4 @@ actor A {
 //CALL ingress test4 "DIDL\x00\x00"
 //CALL ingress test5 "DIDL\x00\x00"
 //CALL ingress test6 "DIDL\x00\x00"
+//CALL ingress test7 "DIDL\x00\x00"
