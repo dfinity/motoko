@@ -5451,7 +5451,8 @@ module IC = struct
          "system_transient", 2l;
          "destination_invalid", 3l;
          "canister_reject", 4l;
-         "canister_error", 5l]
+         "canister_error", 5l;
+         "system_unknown", 6l]
         (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env Type.Nat32)))
 
   let error_message env =
