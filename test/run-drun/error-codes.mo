@@ -2,6 +2,7 @@ import P = "mo:⛔";
 
 // TODO: test #system_fatal, #system_transient and #future somehow
 // (I don't know how to trigger the first two; and the third needs a future error code)
+// #system_unknown is tested in run-drun/par.mo
 
 actor a {
 
@@ -39,13 +40,14 @@ actor a {
       // nuthin
     catch e {
       switch (P.errorCode(e)) {
-        case (#system_fatal) { assert false};
-        case (#system_transient) { assert false};
-        case (#destination_invalid) {assert false};
-        case (#canister_error) { assert false};
-        case (#canister_reject) { assert false};
-        case (#future (n : Nat32)) {assert false};
-        case (#call_error {err_code : Nat32}) {assert false};
+        case (#system_fatal) { assert false };
+        case (#system_transient) { assert false };
+        case (#system_unknown) { assert false };
+        case (#destination_invalid) { assert false };
+        case (#canister_error) { assert false };
+        case (#canister_reject) { assert false };
+        case (#future (n : Nat32)) { assert false };
+        case (#call_error {err_code : Nat32}) { assert false };
       };
     };
 
