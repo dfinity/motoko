@@ -33,27 +33,14 @@ actor A {
         func closB() : async Nat = async {
             message.size()
         };
-/*
-         // this is ruled out
-        func closC() : async Nat =
-          if (1 == 2) async {
-            message.size()
-          } else async {
-            message.size() + 1
-          };
-*/
-
-/*      //Rule this out?
-        func closD() : async Nat = (with cycles = 765) async {
-            message.size()
-        };    
-*/
 
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
-        await (with yeah = 8; timeout = 55; cycles = 1000)
-        foo(func() : async () = async { assert message == "Hi!" });
+        let c : async () =
+          (with yeah = 8; timeout = 55; cycles = 1000)
+          foo(func() : async () = async { assert message == "Hi!" });
+        await c;
         await (with cycles = 5000)
         bar(func() : async () = async { assert message == "Hi!" });
     };
