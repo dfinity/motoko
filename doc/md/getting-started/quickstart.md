@@ -73,8 +73,8 @@ actor {
 ## Starting the deployment environment
 
 Start the Internet Computer for local development or check your connection to the Internet Computer for network deployment:
-- [Local deployment](/docs/current/developer-docs/getting-started/deploy-and-manage).
-- [Mainnet deployment](/docs/current/developer-docs/getting-started/deploy-and-manage).
+- [Local deployment](https://internetcomputer.org/docs/current/developer-docs/getting-started/deploy-and-manage).
+- [Mainnet deployment](https://internetcomputer.org/docs/current/developer-docs/getting-started/deploy-and-manage).
 
 ## Register, build, and deploy locally or on the mainnet
 
