@@ -45,7 +45,7 @@
 * [Stack](Stack.md) Class `Stack<X>` provides a Minimal LIFO stack of elements of type `X`.
 * [Text](Text.md) Utility functions for `Text` values.
 * [Time](Time.md) System time
-* [Timer](Timer.md) Timers for one-off or periodic tasks.
+* [Timer](Timer.md) Timers for one-off or periodic tasks. Applicable as part of the default mechanism.
 * [Trie](Trie.md) Functional key-value hash maps.
 * [TrieMap](TrieMap.md) Class `TrieMap<K, V>` provides a map from keys of type `K` to values of type `V`.
 * [TrieSet](TrieSet.md) Functional set
