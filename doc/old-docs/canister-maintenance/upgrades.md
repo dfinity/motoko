@@ -92,7 +92,17 @@ For example, the stable type `TemperatureSeries` covers the persistent data, whi
 ``` motoko no-repl file=../examples/WeatherActor.mo
 ```
 
+<<<<<<< HEAD:doc/old-docs/canister-maintenance/upgrades.md
+<<<<<<< HEAD
+3. __Not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades.
+The downside of this approach is that it is error-prone and does not scale for large data.
+Conceptually, it also does not align well with the idea of orthogonal persistence.
+=======
 3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
+>>>>>>> 5f39141e6294cc73474dccfafe42ae38313f79af
+=======
+3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
+>>>>>>> 5f39141e6294cc73474dccfafe42ae38313f79af:doc/md/canister-maintenance/upgrades.md
 
 ## Stable type signatures
 
