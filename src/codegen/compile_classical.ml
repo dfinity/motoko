@@ -11633,9 +11633,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.stable64_size env ^^
     G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-    G.if1 I32Type
-      (Bool.lit false)
-      (Bool.lit true)
+    Bool.neg
 
   (* Regions *)
 
