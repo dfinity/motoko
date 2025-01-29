@@ -2583,10 +2583,10 @@ and stable_pat pat =
   | _ -> false
 
 and infer_migration env exp_opt =
-  match exp_opt with
-  | Some exp ->
-    Some (infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
-  | None -> None
+  Option.map
+    (fun exp ->
+      infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
+    exp_opt
 
 and check_migration env (stab_tfs : T.field list) exp_opt =
   match exp_opt with
@@ -2610,17 +2610,17 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          []
    in
    let typ = exp.note.note_typ in
-   let (dom_tfs, rng_tfs) =
+   let dom_tfs, rng_tfs =
      try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
-      (check_fields "consumes" (T.normalize t_dom),
-       check_fields "produces" (T.promote t_rng))
+      check_fields "consumes" (T.normalize t_dom),
+      check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->
        local_error env exp.at "M0203"
          "expected non-generic, local function type, but migration expression produces type%a"
          display_typ_expand typ;
-       ([], [])
+       [], []
    in
    List.iter
      (fun tf ->
