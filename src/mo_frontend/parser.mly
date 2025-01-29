@@ -1001,8 +1001,7 @@ parse_stab_sig :
       fun filename -> {
           it = (ds, {it = sigs; at = at $sloc; note = ()});
           at = at $sloc;
-          note =
-          { filename; trivia }}
+          note = { filename; trivia } }
     }
   | start ds=seplist(typ_dec, semicolon)
        ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
