@@ -11701,11 +11701,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
-  | OtherPrim "rts_in_install", [] -> (* EOP specific *)
+  | OtherPrim "rts_in_upgrade", [] -> (* EOP specific *)
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
-    EnhancedOrthogonalPersistence.has_stable_actor env ^^
-    Bool.neg
+    EnhancedOrthogonalPersistence.has_stable_actor env
 
   (* Regions *)
 

@@ -593,8 +593,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let v_rng = fresh_var "v_rng" rng in
       T.PrePost (stab_fields_pre, stab_fields),
       I.{pre = mem_ty_pre; post = mem_ty},
-      ifE (primE (I.OtherPrim "rts_in_install") [])
-        (primE (I.ICStableRead mem_ty) [])
+      ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+        (* in upgrade, apply migration *)
         (blockE [
             letD v (primE (I.ICStableRead mem_ty_pre) []);
             letD v_dom
@@ -629,6 +629,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                  | None -> dotE (varE v) i t)
               mem_fields)
             mem_fields))
+        (* not in upgrade, read record of nulls *)
+        (primE (I.ICStableRead mem_ty) [])
   in
   let ds =
     varD state (optE migration)
