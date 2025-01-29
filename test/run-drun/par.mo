@@ -78,10 +78,12 @@ actor A {
     };
 
     public func test5() : async () {
-        await (with timeout = 3) async {
+        let t : async () =
+          (with timeout = 3; moot = "M") async {
             debugPrint "test5()";
             assert 0 != replyDeadline();
-        }
+          };
+        await t
     };
 
     public func ext() : async () {
