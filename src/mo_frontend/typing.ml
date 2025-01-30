@@ -2665,7 +2665,25 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
             display_typ_expand typ
             (Suggest.suggest_id "field" lab stab_ids)
            "The actor should declare a corresponding `stable` field.")
-     rng_tfs
+     rng_tfs;
+   (* Warn about any field in domain, not in range, and declared stable in actor *)
+   (* This may indicate unintentional data loss. *)
+   List.iter (fun T.{lab;typ;src} ->
+     match typ with
+     | T.Typ c -> ()
+     | _ ->
+       match T.lookup_val_field_opt lab rng_tfs with
+       | Some _ -> ()
+       | None ->
+         warn env (Option.get exp_opt).at "M0206"
+           "migration expression consumes field `%s` of type %a\n but does not produce it.\n%s\n%s"
+            lab
+            display_typ_expand typ
+            "The declaration of this field in the actor will be re-initialized, discarding its persisted value."
+            "If re-initialization is unintended, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+     )
+     dom_tfs
+
 
 
 and check_stab env sort scope dec_fields =
