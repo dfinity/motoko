@@ -2675,12 +2675,13 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt lab rng_tfs with
        | Some _ -> ()
        | None ->
-         warn env (Option.get exp_opt).at "M0206"
-           "migration expression consumes field `%s` of type %a\nbut does not produce it.\n%s\n%s"
-            lab
-            display_typ_expand typ
-            "The declaration of this field in the actor will be re-initialized, discarding its persisted value."
-            "If re-initialization is unintended, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+         if List.mem lab stab_ids then
+           warn env (Option.get exp_opt).at "M0206"
+             "migration expression consumes field `%s` of type %a\nbut does not produce it.\n%s\n%s"
+             lab
+             display_typ_expand typ
+             "The declaration of this field in the actor will be re-initialized, discarding its persisted value."
+             "If re-initialization is unintended, either remove this field from the parameter of the migration function or add it to the result of the migration function."
      )
      dom_tfs
 
