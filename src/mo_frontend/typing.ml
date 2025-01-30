@@ -2676,7 +2676,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some _ -> ()
        | None ->
          warn env (Option.get exp_opt).at "M0206"
-           "migration expression consumes field `%s` of type %a\n but does not produce it.\n%s\n%s"
+           "migration expression consumes field `%s` of type %a\nbut does not produce it.\n%s\n%s"
             lab
             display_typ_expand typ
             "The declaration of this field in the actor will be re-initialized, discarding its persisted value."
