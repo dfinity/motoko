@@ -1,4 +1,7 @@
 # CLASSICAL-PERSISTENCE-ONLY
+# DEFAULT-GC-ONLY
+# SKIP ic-ref-run
+
 # classical to eop, with migration function
 # SKIP ic-ref-run
 install $ID cross-upgrade-migration/version0-classic.mo ""
