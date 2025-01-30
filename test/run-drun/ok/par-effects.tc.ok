@@ -1,4 +1,5 @@
-par-effects.mo:20.15-20.40: warning [M0208], unrecognised attribute moot in parenthetical note
-par-effects.mo:22.15-22.40: warning [M0208], unrecognised attribute moot in parenthetical note
-par-effects.mo:23.15-23.40: warning [M0208], unrecognised attribute moot in parenthetical note
-par-effects.mo:25.15-25.40: warning [M0208], unrecognised attribute moot in parenthetical note
+par-effects.mo:24.15-24.40: warning [M0208], unrecognised attribute moot in parenthetical note
+par-effects.mo:26.15-26.40: warning [M0208], unrecognised attribute moot in parenthetical note
+par-effects.mo:27.15-27.40: warning [M0208], unrecognised attribute moot in parenthetical note
+par-effects.mo:29.15-29.40: warning [M0208], unrecognised attribute moot in parenthetical note
+par-effects.mo:31.9-31.34: warning [M0208], unrecognised attribute moot in parenthetical note

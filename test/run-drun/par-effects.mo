@@ -13,6 +13,10 @@ actor A {
         debugPrint "selfcall-inside"
     };
 
+    public func onewaycall() {
+        debugPrint "onewaycall-inside"
+    };
+
     private func f() = debugPrint "effect";
 
     public func go() {
@@ -23,6 +27,8 @@ actor A {
         await (with cycles; moot = f()) outcall();
 
         await (with cycles; moot = f()) selfcall();
+
+        (with cycles; moot = f()) onewaycall();
     }
 };
 

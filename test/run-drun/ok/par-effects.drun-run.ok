@@ -8,4 +8,6 @@ debug.print: effect
 debug.print: outcall-inside
 debug.print: effect
 debug.print: selfcall-inside
+debug.print: effect
+debug.print: onewaycall-inside
 ingress Completed: Reply: 0x4449444c0000

@@ -4,3 +4,5 @@ outcall-inside
 outcall-inside
 effect
 selfcall-inside
+effect
+onewaycall-inside
