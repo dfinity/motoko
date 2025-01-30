@@ -1,5 +1,5 @@
 --- par-effects.run
-+++ par-effects.run-low
++++ par-effects.run-ir
 @@ -1,8 +1,5 @@
  effect
  async-inside
