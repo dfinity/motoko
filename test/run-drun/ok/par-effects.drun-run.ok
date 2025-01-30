@@ -2,4 +2,10 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 debug.print: effect
 debug.print: async-inside
+debug.print: effect
+debug.print: outcall-inside
+debug.print: effect
+debug.print: outcall-inside
+debug.print: effect
+debug.print: selfcall-inside
 ingress Completed: Reply: 0x4449444c0000
