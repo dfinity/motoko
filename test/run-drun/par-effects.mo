@@ -1,6 +1,5 @@
 import { debugPrint } = "mo:⛔";
 
-
 // test whether side-effects in parentheticals happen in the left-to-right manner
 
 actor A {

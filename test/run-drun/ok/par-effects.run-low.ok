@@ -1,6 +1,8 @@
 effect
 async-inside
+effect
 outcall-inside
+effect
 outcall-inside
 effect
 selfcall-inside
