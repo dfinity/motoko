@@ -13,6 +13,14 @@ actor A {
         await (with cycles = 4000) next()
     };
 
+    func quux() : async () = (with) async {
+        debugPrint ("quux: " # debug_show(Cycles.available()));
+    };
+
+    public func baz() : async () = (with) async {
+        debugPrint ("baz: " # debug_show(Cycles.available()));
+    };
+
     public func oneshot() {
         debugPrint ("oneshot deadline set: " # debug_show(0 != replyDeadline()));
         debugPrint ("oneshot cycles: " # debug_show(Cycles.available()));
@@ -94,6 +102,12 @@ actor A {
         catch e {
             debugPrint("CAUGHT: " # debug_show errorCode e # " " # debug_show errorMessage e)
         }
+    };
+
+    public func test8() : async () {
+        await (with cycles = 98765) quux();
+        await (with cycles = 87654) baz();
+        await (with cycles = 76543) A.baz()
     }
 }
 
@@ -109,3 +123,4 @@ actor A {
 //CALL ingress test5 "DIDL\x00\x00"
 //CALL ingress test6 "DIDL\x00\x00"
 //CALL ingress test7 "DIDL\x00\x00"
+//CALL ingress test8 "DIDL\x00\x00"

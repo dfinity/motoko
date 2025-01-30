@@ -406,7 +406,7 @@ let transform prog =
               let typbinds' = t_typ_binds typbinds in
               let t0, cps = match exp.it with
                 | PrimE (CPSAsync (Fut, t0, {it = PrimE (ICCallAttrsPrim, []); _}), [cps]) -> t_typ t0, cps
-                | _ -> assert false in
+                | _ -> assert false in (* FIXME: it = Opt NewObjE, see `public func baz` in par.mo *)
               let t1, contT = match typ cps with
                 | Func (_, _,
                     [tb],
