@@ -1,0 +1,7 @@
+--- par-effects.run
++++ par-effects.run-low
+@@ -1,4 +1,3 @@
+-effect
+ async-inside
+ outcall-inside
+ outcall-inside

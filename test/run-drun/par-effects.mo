@@ -24,6 +24,6 @@ actor A {
 
         await (with cycles; moot = f()) selfcall();
     }
-}
+};
 
-//OR-CALL ingress go "DIDL\x00\x00"
+A.go(); //OR-CALL ingress go "DIDL\x00\x00"
