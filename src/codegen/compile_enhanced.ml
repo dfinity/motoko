@@ -10134,6 +10134,24 @@ module Persistence = struct
       end) ^^
     StableMem.region_init env
 
+  let in_upgrade env =
+    use_enhanced_orthogonal_persistence env ^^
+    (E.if1 I64Type
+      (EnhancedOrthogonalPersistence.has_stable_actor env)
+      begin
+        use_graph_destabilization env ^^
+        E.if1 I64Type
+          begin
+            Bool.lit true
+          end
+          begin
+            use_candid_destabilization env ^^
+            E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            StableMem.stable64_size env ^^
+            Bool.from_int64
+          end
+      end)
+
   let save env actor_type =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
     E.if0
@@ -11704,7 +11722,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_in_upgrade", [] -> (* EOP specific *)
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
-    EnhancedOrthogonalPersistence.has_stable_actor env
+    Persistence.in_upgrade env
 
   (* Regions *)
 
