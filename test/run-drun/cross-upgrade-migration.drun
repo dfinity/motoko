@@ -1,0 +1,23 @@
+# CLASSICAL-PERSISTENCE-ONLY
+# classical to eop, with migration function
+# SKIP ic-ref-run
+install $ID cross-upgrade-migration/version0-classic.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID cross-upgrade-migration/version1-enhanced.mo ""
+ingress $ID check "DIDL\x00\x00"
+reinstall $ID cross-upgrade-migration/version1-classic.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID cross-upgrade-migration/version2-enhanced.mo ""
+ingress $ID check "DIDL\x00\x00"
+reinstall $ID cross-upgrade-migration/version2-classic.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID cross-upgrade-migration/version3-enhanced.mo ""
+ingress $ID check "DIDL\x00\x00"
+reinstall $ID cross-upgrade-migration/version3-classic.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID cross-upgrade-migration/version4-enhanced.mo ""
+ingress $ID check "DIDL\x00\x00"
+reinstall $ID cross-upgrade-migration/version4-classic.mo ""
+ingress $ID check "DIDL\x00\x00"
+upgrade $ID cross-upgrade-migration/version5-enhanced.mo ""
+ingress $ID check "DIDL\x00\x00"
