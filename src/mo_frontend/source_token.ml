@@ -137,8 +137,8 @@ let to_parser_token :
   | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
   | VAR -> Ok Parser.VAR
-  | RPAR -> Ok Parser.RPAR
   | LPAR -> Ok Parser.LPAR
+  | RPAR -> Ok Parser.RPAR
   | LBRACKET -> Ok Parser.LBRACKET
   | RBRACKET -> Ok Parser.RBRACKET
   | LCURLY -> Ok Parser.LCURLY
