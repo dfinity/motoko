@@ -1,11 +1,9 @@
-import Prim "mo:prim";
+import v "mo:prim";
 // compilation only test (correct lexical scoping)
-// migration expression can access pattern variables
+// migration expression can't access pattern variables
 // migration expression doesn't capture class parameters
-shared(v) actor
-  (with migration = func ({}) : {} { Prim.debugPrint (debug_show v); {} })
-  class
-  C(v : Bool) = {
+(with migration = func ({}) : {} { v.debugPrint("ok"); {} })
+shared(v) actor class C(v : Bool) = {
   assert v
 };
 

@@ -2,7 +2,8 @@ import Prim "mo:prim";
 import { migration } "Migration1";
 
 // test merging fields `one` and `two` into field `three`, dropping `one` and `two` and preserving `zero`, using the migration idiom
-actor (with migration) {
+(with migration)
+actor {
 
    Prim.debugPrint("Version 1");
 
