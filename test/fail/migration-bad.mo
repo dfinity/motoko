@@ -41,4 +41,12 @@ actor i { // reject, no migration field
 (with migration = ();
       extra = ()) // future: warn, unexpected field
 actor j {
-}
+};
+
+(with migration = func ({}) : {}{{}};) // error, unexpected module
+module k {
+};
+
+(with migration = func ({}) : {}{{}};) // error, unexpected object
+object l {
+};

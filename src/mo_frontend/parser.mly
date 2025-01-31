@@ -377,10 +377,8 @@ seplist1(X, SEP) :
   | MODULE { (false, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
-  | OBJECT CLASS { (false, Type.Object @@ at $sloc) }
-  | po=persistent ACTOR CLASS { (po, Type.Actor @@ at $sloc) }
-  | MODULE CLASS { (false, Type.Module @@ at $sloc) }
-  | CLASS { (false, Type.Object @@ no_region) }
+  | os=obj_sort { os }
+  | (* empty *) { (false, Type.Object @@ no_region) }
 
 %inline query:
   | QUERY { Type.Query }
@@ -900,7 +898,6 @@ dec_nonvar :
     { TypD(x, tps, t) @? at $sloc }
   | eo=parenthetical_opt ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (persistent, s) = ds in
-      (* TODO: syntax error on eo *)
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -925,10 +922,9 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | eo=parenthetical_opt sp=shared_pat_opt ds=obj_sort_opt xf=typ_id_opt
+  | eo=parenthetical_opt sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
     { let (persistent, s) = ds in
-      (* TODO: syntax error on eo *)
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then

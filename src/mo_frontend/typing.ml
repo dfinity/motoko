@@ -1352,7 +1352,7 @@ and infer_exp'' env exp : T.typ =
         display_typ_expand t1
     )
   | ObjBlockE (obj_sort, exp_opt, typ_opt, dec_fields) ->
-    let _typ_opt = infer_migration env exp_opt in
+    let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -2582,9 +2582,12 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
-and infer_migration env exp_opt =
+and infer_migration env obj_sort exp_opt =
   Option.map
     (fun exp ->
+      if obj_sort.it <> T.Actor then
+        local_error env exp.at "M0209"
+          "misplaced actor migration expression on module or object";
       infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
     exp_opt
 
@@ -2811,7 +2814,7 @@ and infer_dec env dec : T.typ =
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
-      let _typ_opt = infer_migration env exp_opt in
+      let _typ_opt = infer_migration env obj_sort exp_opt in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in

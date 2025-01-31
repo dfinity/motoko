@@ -17,12 +17,6 @@
     'persistent'? 'actor'
     'module'
 
-<obj_sort_opt> ::= 
-    'object' 'class'
-    'persistent'? 'actor' 'class'
-    'module' 'class'
-    'class'
-
 <query> ::= 
     'query'
     'composite' 'query'
@@ -321,7 +315,7 @@
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <parenthetical>? <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
-    <parenthetical>? <shared_pat_opt> <obj_sort_opt> <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <parenthetical>? <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
