@@ -220,7 +220,7 @@ and objblock s eo id ty dec_fields =
 %token EOF DISALLOWED
 
 %token LET VAR
-%token LBANANA RBANANA LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
+%token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
@@ -373,12 +373,12 @@ seplist1(X, SEP) :
 
 %inline obj_sort :
   | OBJECT { (false, Type.Object @@ at $sloc) }
-  | eo=parenthetical_opt po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
+  | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
   | MODULE { (false, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
   | OBJECT CLASS { (false, Type.Object @@ at $sloc) }
-  | eo=parenthetical_opt po=persistent ACTOR CLASS { (po, Type.Actor @@ at $sloc) }
+  | po=persistent ACTOR CLASS { (po, Type.Actor @@ at $sloc) }
   | MODULE CLASS { (false, Type.Module @@ at $sloc) }
   | CLASS { (false, Type.Object @@ no_region) }
 
@@ -587,9 +587,12 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
-%inline parenthetical_opt :
-  | LBANANA base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RBANANA
+%inline parenthetical:
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
     { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
+
+%inline parenthetical_opt :
+  | p=parenthetical { p }
   | (*empty*) { None }
 
 exp_obj :
@@ -640,6 +643,8 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
+  | parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
+    { CallE((* Some par,*) e1, inst, e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -698,7 +703,7 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | ASYNC e=exp_nest
+  | parenthetical_opt ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
     { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }

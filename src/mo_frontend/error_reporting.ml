@@ -34,7 +34,6 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_STABLE -> STABLE
       | T_SYSTEM -> SYSTEM
       | T_WITH -> WITH
-      | T_RBANANA -> RBANANA
       | T_RPAR -> RPAR
       | T_ROTROP -> ROTROP
       | T_ROTRASSIGN -> ROTRASSIGN
@@ -69,7 +68,6 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_MINUSASSIGN -> MINUSASSIGN
       | T_LTOP -> LTOP
       | T_LT -> LT
-      | T_LBANANA -> LBANANA
       | T_LPAR -> LPAR
       | T_LOOP -> LOOP
       | T_LET -> LET

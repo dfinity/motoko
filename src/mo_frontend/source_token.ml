@@ -139,8 +139,6 @@ let to_parser_token :
   | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
   | VAR -> Ok Parser.VAR
-  | LBANANA -> Ok Parser.LBANANA
-  | RBANANA -> Ok Parser.RBANANA
   | RPAR -> Ok Parser.RPAR
   | LPAR -> Ok Parser.LPAR
   | LBRACKET -> Ok Parser.LBRACKET
@@ -272,8 +270,6 @@ let string_of_parser_token = function
   | Parser.DISALLOWED -> "DISALLOWED"
   | Parser.LET -> "LET"
   | Parser.VAR -> "VAR"
-  | Parser.LBANANA -> "LBANANA"
-  | Parser.RBANANA -> "RBANANA"
   | Parser.LPAR -> "LPAR"
   | Parser.RPAR -> "RPAR"
   | Parser.LBRACKET -> "LBRACKET"
