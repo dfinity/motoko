@@ -900,6 +900,7 @@ dec_nonvar :
     { TypD(x, tps, t) @? at $sloc }
   | eo=parenthetical_opt ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let (persistent, s) = ds in
+      (* TODO: syntax error on eo *)
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
