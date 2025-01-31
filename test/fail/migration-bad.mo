@@ -25,3 +25,14 @@ actor (with migration = (func () : ({} -> {}) {}) ()) // reject, not static
   g = {
    stable let f : Any = ()
 };
+
+actor (with other = ()) h = { // reject, no migration field
+};
+
+actor ({} with other = ()) i = { // reject, no migration field
+};
+
+actor (with migration = ();
+             extra = ()) // future: warn, unexpected field
+  j = {
+}
