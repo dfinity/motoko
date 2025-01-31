@@ -5,8 +5,6 @@ type token =
   | DISALLOWED
   | LET
   | VAR
-  | LBANANA
-  | RBANANA
   | LPAR
   | RPAR
   | LBRACKET
