@@ -376,9 +376,12 @@ seplist1(X, SEP) :
   | po=persistent ACTOR eo=parenthetical? { (po, Type.Actor @@ at $sloc, eo) }
   | MODULE { (false, Type.Module @@ at $sloc, None) }
 
-%inline obj_sort_opt :
-  | (* empty *) { (false, Type.Object @@ no_region, None) }
-  | ds=obj_sort { ds }
+%inline class_sort :
+  | CLASS xf=typ_id_opt { (false, Type.Object @@ no_region, None, xf) }
+  | OBJECT CLASS xf=typ_id_opt { (false, Type.Object @@ at $sloc, None, xf) }
+  | po=persistent ACTOR CLASS eo=parenthetical? f=typ_id { (po, Type.Actor @@ at $sloc, eo, fun _ _ -> f) }
+  | MODULE CLASS xf=typ_id_opt { (false, Type.Module @@ at $sloc, None, xf) }
+
 
 %inline query:
   | QUERY { Type.Query }
@@ -916,9 +919,9 @@ dec_nonvar :
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
-  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
+  | sp=shared_pat_opt ds=class_sort (*xf=typ_id_opt*)
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
-    { let (persistent, s, eo) = ds in
+    { let (persistent, s, eo, xf) = ds in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
