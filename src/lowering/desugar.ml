@@ -1070,23 +1070,9 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
       (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
-  let eo, wrap_exp_opt =
-    match exp_opt with
-    | None ->
-      None,
-      fun e -> wrap e
-    | Some exp0 ->
-      let v = fresh_var "migration" exp0.note.S.note_typ in
-      Some (varE v),
-      fun e ->
-        mergeE
-        [letD v (exp exp0)]
-        (wrap e)
-  in
-
   let wrap_po e =
     match po with
-    | None -> wrap_exp_opt e
+    | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
       mergeE
@@ -1097,8 +1083,23 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
-        (wrap_exp_opt e)
+        (wrap e)
   in
+
+  let eo, wrap_exp_opt =
+    match exp_opt with
+    | None ->
+      None,
+      fun e -> wrap_po e
+    | Some exp0 ->
+      let v = fresh_var "migration" exp0.note.S.note_typ in
+      Some (varE v),
+      fun e ->
+        mergeE
+        [letD v (exp exp0)]
+        (wrap_po e)
+  in
+
 
   let wrap_under_async e =
     if T.is_shared_sort sort
@@ -1108,11 +1109,11 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
       | T.Returns, Ir.BlockE (
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
-      | _, Ir.ActorE _ -> wrap_po e
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_exp_opt e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
     else
-      wrap_po e
+      wrap_exp_opt e
   in
   args, eo, wrap_under_async, control, res_tys
 

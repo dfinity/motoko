@@ -2811,8 +2811,8 @@ and infer_dec env dec : T.typ =
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
+      let _typ_opt = infer_migration env exp_opt in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let _typ_opt = infer_migration (adjoin_vals env ve0) exp_opt in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let in_actor = obj_sort.it = T.Actor in
