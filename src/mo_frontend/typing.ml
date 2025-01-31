@@ -2676,15 +2676,23 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some _ -> ()
        | None ->
          if List.mem lab stab_ids then
+           (* re-initialized *)
            warn env (Option.get exp_opt).at "M0206"
-             "migration expression consumes field `%s` of type %a\nbut does not produce it.\n%s\n%s"
+             "migration expression consumes field `%s` of type %a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
-             "The declaration of this field in the actor will be re-initialized, discarding its persisted value."
-             "If re-initialization is unintended, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+             "The declaration in the actor will be reinitialized, discarding its consumed value."
+             "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+         else
+           (* dropped *)
+           warn env (Option.get exp_opt).at "M0207"
+             "migration expression consumes field `%s` of type %a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+             lab
+             display_typ_expand typ
+             "This field will be removed from the actor, discarding its consumed value."
+             "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
      )
      dom_tfs
-
 
 
 and check_stab env sort scope dec_fields =

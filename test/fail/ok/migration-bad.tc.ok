@@ -10,6 +10,11 @@ migration-bad.mo:15.8-15.33: type error [M0202], expected object type, but migra
   ()
 migration-bad.mo:15.8-15.33: type error [M0201], expected stable type, but migration expression consumes non-stable type
   {f : () -> ()}
+migration-bad.mo:15.8-15.33: warning [M0207], migration expression consumes field `f` of type 
+  () -> ()
+but does not produce it. The field is not declared in the actor.
+This field will be removed from the actor, discarding its consumed value.
+If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function.
 migration-bad.mo:18.8-18.46: type error [M0201], expected stable type, but migration expression produces non-stable type
   {f : () -> ()}
 migration-bad.mo:18.8-18.46: type error [M0202], expected object type, but migration expression consumes non-object type
