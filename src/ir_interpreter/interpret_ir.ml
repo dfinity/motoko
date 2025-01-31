@@ -457,7 +457,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | ICCallPrim par_opt, [v1; v2; kv; rv; cv] ->
          let par = Lib.Option.get par_opt (Construct.recordE []) in
          interpret_exp env par (fun v ->
-         V.as_unit v;
+         ignore (V.as_obj v);
          let v1 = match v1 with
            | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
            | _ -> v1 in
