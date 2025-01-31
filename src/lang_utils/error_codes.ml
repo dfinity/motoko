@@ -207,4 +207,5 @@ let error_codes : (string * string option) list =
     "M0206", None; (* parenthetical note must be applied to a message send *)
     "M0207", None; (* parenthetical note has no attributes *)
     "M0208", Some([%blob "lang_utils/error_codes/M0208.md"]); (* Unrecognised attribute in parenthetical note *)
+    "M0209", None; (* parenthetical note on public methods is disallowed *)
   ]
