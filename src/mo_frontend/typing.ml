@@ -1458,7 +1458,7 @@ and infer_exp'' env exp : T.typ =
     in
     begin match exp1.it with
     | AsyncE (Some par, _, _, _) when not env.pre && T.is_shared_sort shared_pat.it ->
-      local_error env par.at "M00*"
+      local_error env par.at "M0209"
         "parenthetical notes aren't allowed on public methods";
 
     | _ -> ()
