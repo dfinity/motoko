@@ -1,12 +1,12 @@
 // Warn about fields that are consumed, not produced and re-declared.
 // These fields will be re-initialized, not retained.
 // This may be intentional or a sign of data loss, hence just a warning.
-actor (with migration =
-  func({ data : Nat }) : { } {
+(with migration =
+  func({data : Nat}) : {} {
     ignore data;
-    {  }
+    {}
    })
-   A {
+actor A {
 
    stable var data = 0;
 
@@ -15,11 +15,11 @@ actor (with migration =
 };
 
 // fix 1: remove from domain
-actor (with migration =
-  func({ }) : { } {
-    {  }
-   })
-   B {
+(with migration =
+  func({}) : {} {
+    {}
+  })
+actor B {
 
    stable var data = 0;
 
@@ -28,12 +28,11 @@ actor (with migration =
 };
 
 // fix 2: add to range
-actor
-  (with migration =
-     func({ data : Nat }) : { data : Nat } {
-       { data }
-     })
-   C {
+(with migration =
+  func({data : Nat}) : {data : Nat} {
+    {data}
+  })
+actor C {
 
    stable var data = 0;
 

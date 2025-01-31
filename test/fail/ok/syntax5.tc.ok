@@ -18,3 +18,133 @@ syntax5.mo:3.1: syntax error [M0001], unexpected end of input, expected one of t
   <unop> <exp_bin(ob)>
   <inst> <exp_nullary(ob)>
   [ <exp(ob)> ]
+  with seplist(<exp_field>,<semicolon>) ) async <exp_nest>
+  with seplist(<exp_field>,<semicolon>) ) <exp_post(ob)> <inst> <exp_nullary(ob)>
+  with seplist(<exp_field>,<semicolon>) ) object <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) module <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) object <id> <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) object class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module <id> <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) module class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor <id> <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor <id> <annot_opt> =? <obj_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) object class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class <id> <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) query <pat_opt> persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) shared <query>? <pat_opt> persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+  with seplist(<exp_field>,<semicolon>) ) composite query <pat_opt> persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
