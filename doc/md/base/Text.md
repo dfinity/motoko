@@ -45,6 +45,34 @@ Converts the given `Char` to a `Text` value.
 let text = Text.fromChar('A'); // "A"
 ```
 
+## Function `fromArray`
+``` motoko no-repl
+func fromArray(a : [Char]) : Text
+```
+
+Converts the given `[Char]` to a `Text` value.
+
+```motoko include=import
+let text = Text.fromArray(['A', 'v', 'o', 'c', 'a', 'd', 'o']); // "Avocado"
+```
+
+Runtime: O(a.size())
+Space: O(a.size())
+
+## Function `fromVarArray`
+``` motoko no-repl
+func fromVarArray(a : [var Char]) : Text
+```
+
+Converts the given `[var Char]` to a `Text` value.
+
+```motoko include=import
+let text = Text.fromVarArray([var 'E', 'g', 'g', 'p', 'l', 'a', 'n', 't']); // "Eggplant"
+```
+
+Runtime: O(a.size())
+Space: O(a.size())
+
 ## Function `toIter`
 ``` motoko no-repl
 func toIter(t : Text) : Iter.Iter<Char>
@@ -104,6 +132,36 @@ Creates a `Text` value from a `Char` iterator.
 ```motoko include=import
 let text = Text.fromIter(['a', 'b', 'c'].vals()); // "abc"
 ```
+
+## Function `fromList`
+``` motoko no-repl
+func fromList(cs : List.List<Char>) : Text
+```
+
+Create a text from a character list.
+Example:
+```motoko include=initialize
+fromList(?('H', ?('e', ?('l', ?('l', ?('o', null))))));
+// => "Hello"
+```
+
+Runtime: O(size cs)
+Space: O(size cs)
+
+## Function `toList`
+``` motoko no-repl
+func toList(t : Text) : List.List<Char>
+```
+
+Create a character list from a text.
+Example:
+```motoko include=initialize
+toList("Hello");
+// => ?('H', ?('e', ?('l', ?('l', ?('o', null)))))
+```
+
+Runtime: O(t.size())
+Space: O(t.size())
 
 ## Function `size`
 ``` motoko no-repl

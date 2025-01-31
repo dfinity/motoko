@@ -4,7 +4,7 @@ sidebar_position: 29
 
 # Recursive types
 
-## Overview
+
 
 A recursive type is a type that contains the values of the same type. Recursive types enable you to create complex recursive data structures, such as linked lists or trees.
 
@@ -38,7 +38,7 @@ This generic function `last<T>` takes one argument `l` of type `List<T>`, which 
 
 In this switch statement, the `last<T>` function is used recursively, since it is called within itself with `t` as the argument. The function is called again each time the case statement is satisfied, and the function receives a list head that it can switch on until the last element is returned.
 
-:::info 
+:::info
 Note that you will need to use recursive functions to access all data in a recursive type.
 :::
 

@@ -4,7 +4,7 @@ sidebar_position: 17
 
 # Mutable state
 
-## Overview
+
 
 Each actor in Motoko may use, but may never directly share, internal mutable state.
 

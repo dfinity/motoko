@@ -817,7 +817,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_r <: T.(Construct.err_contT unit);
     typ exp_c <: Construct.clean_contT;
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_record; stable_type }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; low_memory; stable_record; stable_type }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -828,12 +828,15 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     check_exp env'' stable_record;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ low_memory <: T.unit;
     typ stable_record <: stable_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
@@ -1160,7 +1163,7 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_type; stable_record }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; low_memory; stable_type; stable_record }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1179,11 +1182,14 @@ let check_comp_unit env = function
     check_exp env'' timer;
     check_exp env'' inspect;
     check_exp env'' stable_record;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ low_memory <: T.unit;
     typ stable_record <: stable_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in

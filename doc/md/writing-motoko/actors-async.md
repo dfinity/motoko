@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Actors
 
-## Overview
+
 
 The programming model of the Internet Computer consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values. A canister processes its messages one-at-a-time, preventing race conditions. A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
 

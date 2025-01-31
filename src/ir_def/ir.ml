@@ -85,6 +85,7 @@ and system = {
   heartbeat : exp;
   timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
   inspect : exp;
+  low_memory : exp;
   stable_record: exp;
   stable_type: Type.typ;
 }

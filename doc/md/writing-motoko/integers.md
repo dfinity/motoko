@@ -5,7 +5,7 @@ sidebar_position: 11
 # Integers and numbers
 
 
-## Overview
+
 
 Motoko offers a variety types to represent integers and natural numbers, with the usual suite of arithmetic operators (`+`, `-`, `*`, '/' etc.) and comparison operators (`==`, `!=`,  `<`, `>`, `<=`, `>=`).
 

@@ -4,7 +4,7 @@ sidebar_position: 18
 
 # Object subtyping
 
-## Overview
+
 
 **Object subtyping** : In Motoko, objects have types that may relate by subtyping. Types with more fields are less general and are subtypes of types with fewer fields. Consider the following general types and subtypes:
 

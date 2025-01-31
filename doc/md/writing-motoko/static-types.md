@@ -4,7 +4,7 @@ sidebar_position: 24
 
 # Static types
 
-## Overview
+
 
 Like other modern programming languages, Motoko permits each variable to carry the value of a function, object, or a primitive datum such as a string, word, or integer. Other [types of values](../getting-started/basic-concepts.md#intro-values) exist as well, including records, tuples, and tagged data are called variants.
 

@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Motoko.js
 
-## Overview
+
 
 The Motoko.js package can be used to compile and run Motoko smart contracts in a web browser or Node.js.
 

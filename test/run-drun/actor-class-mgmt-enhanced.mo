@@ -123,7 +123,7 @@ actor a {
       assert (c5 == c4);
 
       let c6 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Keep ; canister = c5 })(6, null);
+        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #keep ; canister = c5 })(6, null);
       assert ({args = 6; upgrades = 3} == (await c6.observe()));
       assert (c6 == c5);
 
@@ -135,7 +135,7 @@ actor a {
 
       // no need to add cycles
       let c8 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Replace ; canister = c7 })(8, null);
+        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #replace ; canister = c7 })(8, null);
       assert ({args = 8; upgrades = 0} == (await c8.observe()));
       assert (c8 == c7);
 

@@ -4,7 +4,7 @@ sidebar_position: 21
 
 # Query functions
 
-## Overview
+
 
 In ICP terminology, **update** messages, also referred to as calls, can alter the state of the canister when called. Effecting a state change requires agreement amongst the distributed replicas before the network can commit the change and return a result. Reaching consensus is an expensive process with relatively high latency.
 

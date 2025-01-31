@@ -37,11 +37,15 @@ export RUST_MIN_STACK=$((10*1024*1024))
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
+# encoded `{ canister_id = $ID }`
+# this is useful for `ingress aaaaa-aa start/stop_canister $PRINCIPAL`
+PRINCIPAL=0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+
 if [ "${1: -5}" = ".drun" ]
 then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
-    LANG=C perl -npe 's,\$ID,'$ID',g' $1
+    LANG=C perl -npe 's,\$ID,'$ID',g; s,\$PRINCIPAL,'$PRINCIPAL',g' $1
   ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"

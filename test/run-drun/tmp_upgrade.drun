@@ -1,0 +1,3 @@
+# SKIP ic-ref-run
+install $ID tmp_upgrade/version0.mo ""
+upgrade $ID tmp_upgrade/version1.mo ""

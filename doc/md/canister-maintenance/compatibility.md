@@ -4,14 +4,14 @@ sidebar_position: 4
 
 # Verifying upgrade compatibility
 
-## Overview
+
 
 When upgrading a canister, it is important to verify that the upgrade can proceed without:
 
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-`dfx` checks these properties statically before attempting the upgrade. 
+`dfx` checks these properties statically before attempting the upgrade.
 Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
@@ -233,14 +233,14 @@ cannot be consumed at new type
 
 Do you want to proceed? yes/No
 ```
-It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md). 
+It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md).
 Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
 Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
 ### Solution
 
-To resolve this issue, an [explicit](#explicit-migration) is needed:
+To resolve this issue, an [explicit migration](#explicit-migration) is needed:
 
 1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
@@ -257,7 +257,6 @@ persistent actor {
     title : Text;
     description : Text;
   };
-
   var map : [(Nat32, OldCard)] = [];
   var newMap : [(Nat32, NewCard)] = Array.map<(Nat32, OldCard), (Nat32, NewCard)>(
     map,
@@ -278,7 +277,7 @@ persistent actor {
 };
 ```
 
-`dfx` will issue a warning that `map` will be dropped. 
+`dfx` will issue a warning that `map` will be dropped.
 
 Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
 

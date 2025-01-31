@@ -8,7 +8,7 @@ sidebar_position: 13
 TODO: Move examples into doc/modules/language-guide/examples
 -->
 
-## Overview
+
 In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.
 
 A simple object containing just fields of data is like a record in a database.
