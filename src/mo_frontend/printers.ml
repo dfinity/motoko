@@ -40,6 +40,7 @@ let string_of_symbol = function
   | X (T T_SEMICOLON) -> ";"
   | X (T T_SYSTEM) -> "system"
   | X (T T_WITH) -> "with"
+  | X (T T_RBANANA) -> "|)"
   | X (T T_RPAR) -> ")"
   | X (T T_ROTROP) -> binop "<>>"
   | X (T T_ROTRASSIGN) -> binassign "<>>="
@@ -82,6 +83,7 @@ let string_of_symbol = function
   | X (T T_MINUSASSIGN) -> unassign "-="
   | X (T T_LTOP) -> relop " < "
   | X (T T_LT) -> "<"
+  | X (T T_LBANANA) -> "(|"
   | X (T T_LPAR) -> "("
   | X (T T_LOOP) -> "loop"
   | X (T T_LET) -> "let"
@@ -152,8 +154,8 @@ let string_of_symbol = function
   | X (N N_dec_field) -> "<dec_field>"
   | X (N N_dec_nonvar) -> "<dec_nonvar>"
   | X (N N_dec_var) -> "<dec_var>"
-  | X (N N_parenthetical) -> "<parenthetical>"
-  | X (N N_option_parenthetical_) -> "<parenthetical>?"
+  (*  | X (N N_parenthetical) -> "<parenthetical>" *)
+  (*  | X (N N_option_parenthetical_) -> "<parenthetical>?" *)
   | X (N N_exp_bl_) -> "<exp(bl)>"
   | X (N N_exp_ob_) -> "<exp(ob)>"
   | X (N N_exp_bin_bl_) -> "<exp_bin(bl)>"

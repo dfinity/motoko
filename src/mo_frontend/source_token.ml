@@ -5,6 +5,8 @@ type token =
   | DISALLOWED
   | LET
   | VAR
+  | LBANANA
+  | RBANANA
   | LPAR
   | RPAR
   | LBRACKET
@@ -137,8 +139,10 @@ let to_parser_token :
   | DISALLOWED -> Ok Parser.DISALLOWED
   | LET -> Ok Parser.LET
   | VAR -> Ok Parser.VAR
-  | LPAR -> Ok Parser.LPAR
+  | LBANANA -> Ok Parser.LBANANA
+  | RBANANA -> Ok Parser.RBANANA
   | RPAR -> Ok Parser.RPAR
+  | LPAR -> Ok Parser.LPAR
   | LBRACKET -> Ok Parser.LBRACKET
   | RBRACKET -> Ok Parser.RBRACKET
   | LCURLY -> Ok Parser.LCURLY
@@ -268,6 +272,8 @@ let string_of_parser_token = function
   | Parser.DISALLOWED -> "DISALLOWED"
   | Parser.LET -> "LET"
   | Parser.VAR -> "VAR"
+  | Parser.LBANANA -> "LBANANA"
+  | Parser.RBANANA -> "RBANANA"
   | Parser.LPAR -> "LPAR"
   | Parser.RPAR -> "RPAR"
   | Parser.LBRACKET -> "LBRACKET"

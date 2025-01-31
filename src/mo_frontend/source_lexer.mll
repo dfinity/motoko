@@ -117,6 +117,8 @@ let privileged_id = "@" id
 let reserved = ([^'\"''('')'';'] # space)+  (* hack for table size *)
 
 rule token mode = parse
+  | "(|" { LBANANA }
+  | "|)" { RBANANA }
   | "(" { LPAR }
   | ")" { RPAR }
   | "[" { LBRACKET }
