@@ -14,7 +14,7 @@
 
 <obj_sort> ::= 
     'object'
-    'persistent'? 'actor' ('[' <exp> ']')?
+    'persistent'? 'actor' <parenthetical>?
     'module'
 
 <query> ::= 
@@ -157,6 +157,9 @@
     '<<>='
     '<>>='
     '@='
+
+<parenthetical> ::= 
+    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')'
 
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'

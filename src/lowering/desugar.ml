@@ -563,8 +563,11 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       I.{pre = mem_ty; post = mem_ty},
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
-      let e = exp0 in
-      let dom, rng = T.as_mono_func_sub (e.note.Note.typ) in
+      let typ = let _, tfs = T.as_obj_sub ["migration"] exp0.note.Note.typ in
+                T.lookup_val_field "migration" tfs
+      in
+      let e = dotE exp0 "migration" typ in
+      let dom, rng = T.as_mono_func_sub typ in
       let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
       let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
       let stab_fields_pre =

@@ -2609,7 +2609,16 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
            display_typ_expand typ;
          []
    in
-   let typ = exp.note.note_typ in
+   let typ =
+     try
+       let s, tfs = T.as_obj_sub ["migration"] exp.note.note_typ in
+       if s = T.Actor then raise (Invalid_argument "");
+       T.lookup_val_field "migration" tfs
+     with Invalid_argument _ ->
+       error env exp.at "M0208"
+         "expected expression with field `migration`, but expression has type%a"
+         display_typ_expand exp.note.note_typ
+   in
    let dom_tfs, rng_tfs =
      try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
@@ -2629,7 +2638,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some typ ->
          if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
            local_error env exp.at "M0204"
-             "migration expression produces field `%s` of type %a\n, not the expected type%a"
+             "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab
               display_typ_expand typ
               display_typ_expand tf.T.typ) stab_tfs;
@@ -2660,7 +2669,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some _ -> ()
        | None ->
          local_error env (Option.get exp_opt).at "M0205"
-           "migration expression produces unexpected field `%s` of type %a\n%s\n%s"
+           "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
             lab
             display_typ_expand typ
             (Suggest.suggest_id "field" lab stab_ids)
@@ -2678,7 +2687,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          if List.mem lab stab_ids then
            (* re-initialized *)
            warn env (Option.get exp_opt).at "M0206"
-             "migration expression consumes field `%s` of type %a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
              "The declaration in the actor will be reinitialized, discarding its consumed value."
@@ -2686,7 +2695,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          else
            (* dropped *)
            warn env (Option.get exp_opt).at "M0207"
-             "migration expression consumes field `%s` of type %a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
              "This field will be removed from the actor, discarding its consumed value."

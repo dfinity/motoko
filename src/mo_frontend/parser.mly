@@ -371,13 +371,9 @@ seplist1(X, SEP) :
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE {Type.Module @@ at $sloc }
 
-%inline migration :
-  | LBRACKET e=exp(ob) RBRACKET { Some e }
-  | (* empty *) { None }
-
 %inline obj_sort :
   | OBJECT { (false, Type.Object @@ at $sloc, None) }
-  | po=persistent ACTOR eo=migration { (po, Type.Actor @@ at $sloc, eo) }
+  | po=persistent ACTOR eo=parenthetical? { (po, Type.Actor @@ at $sloc, eo) }
   | MODULE { (false, Type.Module @@ at $sloc, None) }
 
 %inline obj_sort_opt :
@@ -588,6 +584,10 @@ lit :
 
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
+
+parenthetical :
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
+    { ObjE (Option.(to_list base), fs) @? at $sloc }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY

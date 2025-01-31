@@ -1,6 +1,7 @@
 import Prim "mo:prim";
 
-actor [ func({unstable1 : () -> () }) :
+actor (with migration =
+       func({unstable1 : () -> () }) :
          { unstable2 : () -> (); // not stable
            var three : Text; // wrong type, reject
            var versoin : (); // unrequired/mispelled, reject
@@ -10,7 +11,7 @@ actor [ func({unstable1 : () -> () }) :
              var versoin = ();
              unstable2 = func () {};
          }
-       }] {
+       }) {
 
    stable var version = 0;
 

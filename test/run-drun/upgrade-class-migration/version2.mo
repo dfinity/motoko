@@ -2,7 +2,7 @@ import Prim "mo:prim";
 import Migration "Migration2";
 
 // Rename stable field `three` to `four`
-actor [Migration.run] class C() {
+actor (with migration = Migration.run) class C() {
 
    Prim.debugPrint("Version 2");
 

@@ -2,7 +2,7 @@ import Prim "mo:prim";
 import Migration "Migration3";
 
 // Swap nested pairs in `four`, changing type
-actor [Migration.run] class C() {
+actor (with migration = Migration.run) class C() {
 
    Prim.debugPrint("Version 3");
 

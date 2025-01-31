@@ -1,4 +1,4 @@
-migration-warn.mo:5.3-8.5: warning [M0206], migration expression consumes field `data` of type 
+migration-warn.mo:4.7-8.6: warning [M0206], migration expression consumes field `data` of type 
   Nat
 but does not produce it, yet the field is declared in the actor.
 The declaration in the actor will be reinitialized, discarding its consumed value.

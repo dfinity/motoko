@@ -1,12 +1,12 @@
 import Prim "mo:prim";
 
 // migration should not run on fresh install
-actor 
-  [ func (_:{}) : {} {
+actor
+  (with migration = func (_:{}) : {} {
       Prim.debugPrint "unexpectedly migrating";
       assert false;
       {}
-    } ]
+    })
   class C()
 {
 
