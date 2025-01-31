@@ -1456,6 +1456,13 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
+    begin match exp1.it with
+    | AsyncE (Some par, _, _, _) when not env.pre && T.is_shared_sort shared_pat.it ->
+      local_error env par.at "M00*"
+        "parenthetical notes aren't allowed on public methods";
+
+    | _ -> ()
+    end;
     let sort, ve = check_shared_pat env shared_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in

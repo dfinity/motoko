@@ -1,0 +1,2 @@
+par-public.mo:2.34-2.40: type error [M00*], parenthetical notes aren't allowed on public methods
+par-public.mo:2.34-2.40: warning [M0207], redundant empty parenthetical note

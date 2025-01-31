@@ -17,9 +17,9 @@ actor A {
         debugPrint ("quux: " # debug_show(Cycles.available()));
     };
 
-    public func baz() : async () = (with) async {
+    /*public func baz() : async () = (with) async {
         debugPrint ("baz: " # debug_show(Cycles.available()));
-    };
+    };*/
 
     public func oneshot() {
         debugPrint ("oneshot deadline set: " # debug_show(0 != replyDeadline()));
@@ -106,8 +106,8 @@ actor A {
 
     public func test8() : async () {
         await (with cycles = 98765) quux();
-        await (with cycles = 87654) baz();
-        await (with cycles = 76543) A.baz()
+        //await (with cycles = 87654) baz(); NOT YET!
+        //await (with cycles = 76543) A.baz() NOT YET!
     }
 }
 
