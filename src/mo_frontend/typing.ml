@@ -2611,9 +2611,9 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let typ =
      try
-       let s, tfs = T.as_obj_sub ["migration"] exp.note.note_typ in
+       let s, tfs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
        if s = T.Actor then raise (Invalid_argument "");
-       T.lookup_val_field "migration" tfs
+       T.lookup_val_field T.migration_lab tfs
      with Invalid_argument _ ->
        error env exp.at "M0208"
          "expected expression with field `migration`, but expression has type%a"

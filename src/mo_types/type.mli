@@ -293,6 +293,7 @@ val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
 
+val migration_lab : lab
 
 (* Pretty printing *)
 
