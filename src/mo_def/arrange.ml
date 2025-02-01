@@ -69,10 +69,11 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, eo, nt, dfs) -> "ObjBlockE" $$ [obj_sort s;
+    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$ [
                                                 (match eo with
                                                 |  None -> Atom "_"
                                                 |  Some e -> exp e);
+                                                obj_sort s;
                                                 match nt with
                                                 | None, None -> Atom "_"
                                                 | None, Some t -> typ t
@@ -270,14 +271,15 @@ module Make (Cfg : Config) = struct
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-    | ClassD (sp, eo, x, tp, p, rt, s, i', dfs) ->
+    | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
        "ClassD" $$
-        shared_pat sp ::
         (match eo with None -> Atom "_" | Some e -> exp e) ::
+        shared_pat sp ::
+        obj_sort s ::
         id x :: List.map typ_bind tp @ [
         pat p;
         (match rt with None -> Atom "_" | Some t -> typ t);
-        obj_sort s; id i'
+        id i
       ] @ List.map dec_field dfs))
 
   and prog p = "Prog" $$ List.map dec p.it

@@ -125,6 +125,13 @@ let optimize : instr list -> instr list = fun is ->
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
         when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
       go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
+    (* Examining topmost bit *)
+    | {it = Binary (I32 I32Op.ShrU); _} as shift :: {it = Const {it = I32 31l; _}; _} :: l',
+      ({it = If (res,then_,else_); _} as if_) :: r' ->
+      go l' ({ shift with it = Unary (I32 I32Op.Clz) } :: { if_ with it = If (res,else_,then_) } :: r')
+    | {it = Binary (I32 I32Op.And); _} as and_ :: {it = Const {it = I32 2147483648l; _}; _} :: l',
+      ({it = If (res,then_,else_); _} as if_) :: r' ->
+      go l' ({ and_ with it = Unary (I32 I32Op.Clz) } :: { if_ with it = If (res,else_,then_) } :: r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'

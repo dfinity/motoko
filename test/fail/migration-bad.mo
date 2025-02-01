@@ -1,26 +1,52 @@
 // test migration function restrictions
 
-actor [()] a = { // reject, not a function
+(with migration = ()) // reject, not a function
+actor a {
 };
 
-actor [func <T>(x:T) : T {x}] b = { // reject, a generic function
+(with migration = func <T>(x:T) : T {x}) // reject, a generic function
+actor b {
 };
 
-actor [func () : {} {{}}] c = { // reject, domain is not a record
+(with migration = func () : {} {{}}) // reject, domain is not a record
+actor c {
 };
 
-actor [func ({}) : () {}] d = { // reject, co-domain is not a record
+(with migration = func ({}) : () {}) // reject, co-domain is not a record
+actor d {
 };
 
-actor [func ({f:()->()}) : () {}] e = { // reject domain is unstable
+(with migration = func ({f:()->()}) : () {}) // reject domain is unstable
+actor e {
 };
 
-actor [func () : {f:()->()}{ {f = func(){}} }]
-  f = { // reject, co-domain is unstable
+(with migration = func () : {f:()->()}{ {f = func(){}} }) // reject, co-domain is unstable
+actor f {
    stable let f : Any = ()
 };
 
-actor [(func () : ({} -> {}) {}) ()] // reject, not static
-  g = {
+(with migration = (func () : ({} -> {}) {}) ()) // reject, not static
+actor g {
    stable let f : Any = ()
+};
+
+(with other = ()) // reject, no migration field
+actor h {
+};
+
+({} with other = ())
+actor i { // reject, no migration field
+};
+
+(with migration = ();
+      extra = ()) // future: warn, unexpected field
+actor j {
+};
+
+(with migration = func ({}) : {}{{}};) // error, unexpected module
+module k {
+};
+
+(with migration = func ({}) : {}{{}};) // error, unexpected object
+object l {
 };

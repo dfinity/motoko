@@ -1,10 +1,28 @@
 # Motoko compiler changelog
 
+## 0.13.6 (2025-01-21)
+
+* motoko (`moc`)
+
+  * Support the low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
+
+  * Breaking change (minor) (#4854):
+
+    * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
+      `keep` and `replace` and instead of `Keep` and `Replace`:
+
+      If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
+      Otherwise, no action is needed.
+
+  * bugfix: Checks and mitigations that timer servicing works (#4846).
+
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
+
 ## 0.13.5 (2024-12-06)
 
 * motoko (`moc`)
 
-  * Breaking change (minor):
+  * Breaking change (minor) (#4786):
 
     * Add new keyword `transient` with exactly the same meaning as the old keyword `flexible` (but a more familiar reading).
 
@@ -14,10 +32,8 @@
       `let` or `var` declaration is `stable` (not `flexible` or `transient`).
 
       For example, a stateful counter can now be declared as:
-
       ``` motoko
       persistent actor {
-
         // counts increments since last upgrade
         transient var invocations = 0;
 
@@ -28,10 +44,8 @@
           value += 1;
           invocations += 1;
         }
-
       }
       ```
-
       On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
 
       Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.

@@ -12,7 +12,7 @@ module CardMigration {
   };
 
   // our migration function
-  public func migrate(old : {
+  public func migration(old : {
       var map : [(Nat32, OldCard)] // old type
     }) :
     {

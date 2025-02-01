@@ -1132,6 +1132,7 @@ module RTS = struct
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
     E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "has_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -4973,6 +4974,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_low_memory env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_on_low_wasm_memory"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "low_memory_exp"))) ^^
+        GC.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "canister_on_low_wasm_memory";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let initialize_main_actor_function_name = "@initialize_main_actor"
 
   let initialize_main_actor env =
@@ -8678,8 +8691,11 @@ end
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
+
+  let has_stable_actor env = E.call_import env "rts" "has_stable_actor"
+
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
-    
+
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
@@ -10117,6 +10133,24 @@ module Persistence = struct
           end
       end) ^^
     StableMem.region_init env
+
+  let in_upgrade env =
+    use_enhanced_orthogonal_persistence env ^^
+    (E.if1 I64Type
+      (EnhancedOrthogonalPersistence.has_stable_actor env)
+      begin
+        use_graph_destabilization env ^^
+        E.if1 I64Type
+          begin
+            Bool.lit true
+          end
+          begin
+            use_candid_destabilization env ^^
+            E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            StableMem.stable64_size env ^^
+            Bool.from_int64
+          end
+      end)
 
   let save env actor_type =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
@@ -11685,14 +11719,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
-  | OtherPrim "rts_in_install", [] -> (* EOP specific *)
+  | OtherPrim "rts_in_upgrade", [] -> (* EOP specific *)
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
-    EnhancedOrthogonalPersistence.load_stable_actor env ^^
-    compile_test I64Op.Eqz ^^
-    E.if1 I64Type
-      (Bool.lit true)
-      (Bool.lit false)
+    Persistence.in_upgrade env
 
   (* Regions *)
 
@@ -12268,11 +12298,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableRead ty, [] ->
     SR.Vanilla,
-    (*    IC.compile_static_print env ("ICStableRead" ^ Type.string_of_typ ty) ^^ *)
     Persistence.load env ty
   | ICStableWrite ty, [] ->
     SR.unit,
-    (*    IC.compile_static_print env ("ICStableWrite" ^ Type.string_of_typ ty) ^^ *)
     Persistence.save env ty
 
   (* Cycles *)
@@ -13122,6 +13150,15 @@ and main_actor as_opt mod_env ds fs up =
        Func.define_built_in env "inspect_exp" [] [] (fun env ->
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
+    end;
+
+    (* Export low memory hook (but only when required) *)
+    begin match up.low_memory.it with
+    | Ir.PrimE (Ir.TupPrim, []) -> ()
+    | _ ->
+      Func.define_built_in env "low_memory_exp" [] [] (fun env ->
+        compile_exp_as env ae2 SR.unit up.low_memory);
+      IC.export_low_memory env;
     end;
 
     (* Helper function to build the stable actor wrapper *)

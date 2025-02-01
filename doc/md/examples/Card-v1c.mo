@@ -1,7 +1,7 @@
-import CardMigration "CardMigration";
+import {migration} "CardMigration";
 
+(with migration) // Declare the migration function
 persistent actor
-  [ CardMigration.migrate ] // Declare the migration function
   {
   type Card = {
     title : Text;

@@ -4,14 +4,14 @@ sidebar_position: 4
 
 # Verifying upgrade compatibility
 
-## Overview
+
 
 When upgrading a canister, it is important to verify that the upgrade can proceed without:
 
 -   Introducing an incompatible change in stable declarations.
 -   Breaking clients due to a Candid interface change.
 
-`dfx` checks these properties statically before attempting the upgrade. 
+`dfx` checks these properties statically before attempting the upgrade.
 Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), Motoko rejects incompatible changes of stable declarations.
 
 ## Upgrade example
@@ -303,6 +303,7 @@ Adding a new record field to the type of existing stable variable is not support
 
 To resolve this issue, some form of  [explicit data migration](#explicit-migration) is needed.
 
+
 We present two solutions, the first using a sequence of simple upgrades, and a second, recommended solution, that uses a single upgrade with a migration function.
 
 ### Solution 1 using two plain upgrades
@@ -319,7 +320,6 @@ We present two solutions, the first using a sequence of simple upgrades, and a s
 
 ``` motoko no-repl file=../examples/Card-v1b.mo
 ```
-
 
 `dfx` will issue a warning that `map` will be dropped.
 

@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Motoko formatting tools
 
-## Overview
+
 
 The Motoko Prettier plugin can be used to format and validate Motoko source code files. It can be used through the [Prettier CLI](https://prettier.io/docs/en/cli.html) or through VS Code.
 

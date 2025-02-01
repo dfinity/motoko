@@ -1,9 +1,9 @@
 import Debug "mo:base/Debug";
 import Float "mo:base/Float";
-import Migration "Migration";
+import {migration} "Migration";
 
+(with migration) // declare the migration function
 persistent actor
-  [ Migration.migrate ]
   Counter_v8 {
 
   var state : Float = 0.0; // implicitly `stable`

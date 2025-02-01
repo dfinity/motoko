@@ -216,8 +216,8 @@ let prim trap =
                                in k (Text str)
   | "print" -> fun _ v k -> Printf.printf "%s\n%!" (as_text v); k unit
   | "trap" -> fun _ v k -> trap.trap ("explicit trap: " ^ (as_text v))
-  | "rts_in_install" ->
-    fun _ v k -> as_unit v; k (Bool true) (* no upgrades in interpreters *)
+  | "rts_in_upgrade" ->
+    fun _ v k -> as_unit v; k (Bool false) (* no upgrades in interpreters *)
   | "rts_version" -> fun _ v k -> as_unit v; k (Text "0.1")
   | (  "rts_memory_size"
      | "rts_heap_size"

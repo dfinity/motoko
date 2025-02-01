@@ -4,7 +4,7 @@ sidebar_position: 9
 
 # Error handling
 
-## Overview
+
 
 There are three primary ways to represent and handle errors values in Motoko:
 

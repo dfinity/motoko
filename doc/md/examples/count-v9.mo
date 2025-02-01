@@ -1,10 +1,10 @@
 import Debug "mo:base/Debug";
 import Float "mo:base/Float";
 import Time "mo:base/Time";
-import Migration "Migration";
+import {migration} "Migration";
 
+(with migration) // use the imported migration function
 persistent actor
-  [ Migration.migrate ]
   Counter_v9 {
 
   var state : Float = 0.0; // expicitly migrated

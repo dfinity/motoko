@@ -4,7 +4,7 @@ sidebar_position: 12
 
 # Inter-canister calls
 
-## Overview
+
 
 One of the most important features of ICP for developers is the ability to call functions in one canister from another canister. This capability to make calls between canisters, also sometimes referred to as **inter-canister calls**, enables you to reuse and share functionality in multiple dapps.
 

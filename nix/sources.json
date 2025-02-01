@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2",
-        "sha256": "1pf0yb8f876n6d14j55x5dwkywnx1fxbznrnz28545bm8nxjc6k0",
+        "rev": "d5a5127543accbf526a1469231d1824709f15d57",
+        "sha256": "0ypx547hbzj7y1nh6hc53sf9vxwc7y7dnxpqmp7x721dnawrmgh1",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/c2419ac6b7dfba4dd5e53f964b99bbdebc0308e2.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/d5a5127543accbf526a1469231d1824709f15d57.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/adjust-drun",
+        "branch": "luc/latest-drun",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "bebe89514a6abd26e940b295323823169911a965",
-        "sha256": "1g68fyi5acbcgs2kjribk97fj8ki5g6pd99nwl5azz1rw1b0xycx",
+        "rev": "01c8dfda47126bb5f688302e0161f17c2c0cfe6f",
+        "sha256": "16h037xagxwf00k13y3h0gvfs7f3c45z2ml0j1pgvzg2fx5pzahy",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/bebe89514a6abd26e940b295323823169911a965.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/01c8dfda47126bb5f688302e0161f17c2c0cfe6f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "4ace26675fc1222daefb24ac160e0d03000429d2",
-        "sha256": "0v05djp8ymwc5c9y8ms80cqzx8h2jb9fskfmw8l2mszdcwn8ahsw",
+        "rev": "08603e616fe1b99fdd353378cb968967f5b4ffb1",
+        "sha256": "0pf1ypg313djzc4kk2lmya1bm9lf217b8dw46s8548nhk67kxv86",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/4ace26675fc1222daefb24ac160e0d03000429d2.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/08603e616fe1b99fdd353378cb968967f5b4ffb1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {

@@ -209,4 +209,8 @@ let error_codes : (string * string option) list =
     "M0203", None; (* Migration expression is not a function *)
     "M0204", None; (* Migration produces field of wrong type *)
     "M0205", None; (* Migration produces unexpected field *)
+    "M0206", None; (* Migration consumes, but does not produce, a declared field *)
+    "M0207", None; (* Migration consumes, but does not produce, an un-declared field *)
+    "M0208", None; (* Missing field migration*)
+    "M0209", None; (* Misplaced migration expression on module/object *)
   ]

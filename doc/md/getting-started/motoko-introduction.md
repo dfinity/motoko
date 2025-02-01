@@ -2,13 +2,27 @@
 sidebar_position: 1
 ---
 
-# Introduction
+# Meet Motoko: The language shaping the future of Web3
 
-## Overview
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
 
 Motoko is a modern, general-purpose programming language you can use specifically to author ICP canister smart contracts. Although aimed primarily at ICP canister development, its design is general enough to support future compilation to other targets.
 
 Motoko is designed to be approachable for programmers who have some basic familiarity with object-oriented and/or functional programming idioms in either JavaScript, or another modern programming language, such as Rust, Swift, TypeScript, C#, or Java.
+
+
+```motoko
+// A simple Motoko smart contract.
+
+actor Main {
+  public query func hello() : async Text {
+    "Hello, world!"
+  };
+};
+
+await Main.hello();
+```
+
 
 Motoko provides:
 
@@ -47,7 +61,7 @@ Its core is a call-by-value, impure functional language with imperative and obje
 
 Motoko is strongly typed and offers option types, records, variants, generics and subtyping. The type system is structural so that types with different names but equivalent definition are interchangeable; subtyping allows values to be used at their precise type but also at any more general supertype.
 
-- Motoko is safety-oriented. 
+- Motoko is safety-oriented.
 - Memory management is automated using a garbage collector.
 - Implicit null values are avoided. Nulls must be handled explicitly using option types.
 - The type system cannot be circumvented using unsafe casts.
@@ -94,5 +108,3 @@ Once upgraded, the new interface is compatible with the previous one, meaning ex
 ## Getting started
 
 Get started with Motoko by [setting up your developer environment](dev-env.md) and creating a simple [Hello, world!](quickstart.md) program.
-
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

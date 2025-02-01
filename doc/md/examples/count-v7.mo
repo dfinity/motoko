@@ -1,12 +1,12 @@
 import Debug "mo:base/Debug";
 import Float "mo:base/Float";
 
-persistent actor
-  [
-    func (old: { var state : Int }) : { var newState : Float } {
-      { var newState = Float.fromInt(old.state) };
-    }
-  ] Counter_v7 {
+(with migration =
+  // An explicit migration function
+  func (old: { var state : Int }) : { var newState : Float } {
+    { var newState = Float.fromInt(old.state) };
+  })
+persistent actor Counter_v7 {
 
   var newState : Float = 0.0; // implicitly `stable`
 

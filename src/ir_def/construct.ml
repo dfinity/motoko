@@ -112,6 +112,7 @@ let primE prim es =
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
+    | OtherPrim "global_timer_set" -> T.nat64
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
     | OtherPrim "array_len"
@@ -129,7 +130,7 @@ let primE prim es =
     | OtherPrim "rts_max_stack_size" -> T.nat
     | OtherPrim "rts_callback_table_count" -> T.nat
     | OtherPrim "rts_callback_table_size" -> T.nat
-    | OtherPrim "rts_in_install" -> T.bool
+    | OtherPrim "rts_in_upgrade" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let eff = map_max_effs eff es in
@@ -268,6 +269,12 @@ let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
     note = Note.{ def with typ = T.(Prim Nat32) }
+  }
+
+let nat64E n =
+  { it = LitE (Nat64Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat64 }
   }
 
 let natE n =
