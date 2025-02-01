@@ -47,9 +47,9 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | [{it = ExpD e; _} ] when is_actor_def e ->
       let eo, fields, note, at = as_actor_def e in
       finish imports { it = ActorU (eo, None, fields); note; at }
-    | [{it = ClassD (sp, eo, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
+    | [{it = ClassD (eo, sp, {it = Type.Actor;_}, tid, tbs, p, typ_ann, self_id, fields); _} as d] ->
       assert (List.length tbs > 0);
-      finish imports { it = ActorClassU (sp, eo, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+      finish imports { it = ActorClassU (eo, sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE ({it = Type.Module; _}, _eo, _t, fields); _} as e), _); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
@@ -116,8 +116,8 @@ let decs_of_lib (cu : comp_unit) =
   match cub.it with
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
-  | ActorClassU (csp, eo, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (csp, eo, i, tbs, p, t,{ it = Type.Actor; at = no_region; note = ()}, i', efs);
+  | ActorClassU (eo, csp, i, tbs, p, t, i', efs) ->
+    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = ()}, i, tbs, p, t, i', efs);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

@@ -901,7 +901,7 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, exp_opt, id, tbs, p, _t_opt, s, self_id, dfs) ->
+  | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -1224,7 +1224,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (sp, exp_opt, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None

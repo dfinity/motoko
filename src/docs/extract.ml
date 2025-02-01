@@ -184,13 +184,13 @@ struct
         {
           it =
             Syntax.ClassD
-              ( shared_pat,
-                exp_opt,
+              ( exp_opt,
+                shared_pat,
+                obj_sort,
                 name,
                 type_args,
                 ctor,
                 _,
-                obj_sort,
                 _,
                 fields );
           _;

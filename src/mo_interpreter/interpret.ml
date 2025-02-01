@@ -947,7 +947,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (_, _eo, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -977,7 +977,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (shared_pat, _eo, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
+  | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then

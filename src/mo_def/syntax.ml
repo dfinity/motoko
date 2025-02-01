@@ -223,7 +223,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * exp option * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
+      exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 
 (* Program (pre unit detection) *)
@@ -252,7 +252,7 @@ and comp_unit_body' =
  | ActorU of exp option * id option * dec_field list      (* main IC actor *)
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * exp option * typ_id * typ_bind list * pat * typ option * id * dec_field list
+     exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
