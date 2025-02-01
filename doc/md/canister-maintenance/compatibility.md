@@ -213,7 +213,7 @@ Here, we've put the migration code in a separate library:
 
 The migration function can be selective and only consume or produce a subset of the old and new stable variables. Other stable variables can be declared as usual.
 
-For example, here, with the same migration function, we also add declare a new stable variable, `lastModified` that records the time of the last update,
+For example, here, with the same migration function, we also declare a new stable variable, `lastModified` that records the time of the last update,
 without having to mention that field in the migration function:
 
 ``` motoko no-repl file=../examples/count-v9.mo
