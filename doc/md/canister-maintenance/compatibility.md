@@ -180,7 +180,7 @@ The migration function takes a record of stable fields as input and produces a r
 
 The input fields extend or override the types of any stable fields in the actor's
 stable signature.
-The output fields must be declared in the actors stable signature, and have types that can be consumed by the corresponding declaration in the stable signature.
+The output fields must be declared in the actor's stable signature, and have types that can be consumed by the corresponding declaration in the stable signature.
 
 * All values for the input fields must
 be present and of compatible type in the old actor, otherwise the
