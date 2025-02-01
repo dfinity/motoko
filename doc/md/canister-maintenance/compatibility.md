@@ -194,11 +194,17 @@ either by transfer from the upgraded actor, if declared in that actor, or, if ne
 by running the initialization expression in the field's declaration.
 * The migration function is only executed on an upgrade and ignored on a fresh installation of the actor in an empty canister.
 
-The migration function, when required, is declared within square brackets following the `actor` keyword in an actor or actor class
-declaration, for example:
+The migration function, when required, is declared
+using a parenthetical expression immediately preceding the actor or actor class declaration, for example:
 
 ``` motoko no-repl file=../examples/count-v7.mo
 ```
+
+The syntax employs Motoko's new parenthetical expressions to modify ugrade behaviour.
+Other parenthetical expressions of similar form, but with different field names and types, are used to modify other aspects of Motoko's execution.
+
+You can read this as a directive to apply the indicated `migration` function
+just before upgrade.
 
 Employing a migration function offers another advantage: it lets you re-use the name of an
 existing field, even when its type has changed:

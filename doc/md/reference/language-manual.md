@@ -399,14 +399,14 @@ The syntax of a declaration is as follows:
 
 ``` bnf
 <dec> ::=                                                               Declaration
-  <exp>                                                                 Expression
-  let <pat> = <exp>                                                      Immutable, trap on match failure
-  let <pat> = <exp> else <block-or-exp>                                  Immutable, handle match failure
-  var <id> (: <typ>)? = <exp>                                            Mutable
-  <sort> <id>? (: <typ>)? =? <obj-body>                                  Object
-  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       Function
-  type <id> <type-typ-params>? = <typ>                                   Type
-  <shared-pat>? <sort>? class                                            Class
+  <exp>                                                                   Expression
+  let <pat> = <exp>                                                       Immutable, trap on match failure
+  let <pat> = <exp> else <block-or-exp>                                   Immutable, handle match failure
+  var <id> (: <typ>)? = <exp>                                             Mutable
+  <parenthetical>? <sort> <id>? (: <typ>)? =? <obj-body>                  Object
+  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>        Function
+  type <id> <type-typ-params>? = <typ>                                    Type
+  <parenthetical>? <shared-pat>? <sort>? class                            Class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
 <obj-body> ::=           Object body
@@ -417,12 +417,12 @@ The syntax of a declaration is as follows:
   <obj-body>              Object body
 
 <sort> ::=
-   persistent? actor <migration>?
+   persistent? actor
    module
    object
 
-<migration> ::=          Migration expression
-   [ <exp> ]
+<parenthetical> ::=       Parenthetical expression
+  ( <exp>? with <exp-field>;* )   Parenthetical combination/extension
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -1330,7 +1330,7 @@ The declaration field has type `T` provided:
 Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
 
 
-In the absence of any migration expression, sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
+In the absence of any `<parenthetical>?` migration expression, sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
   - During an upgrade only, the value of a `stable` declaration is obtained as follows:
 
@@ -1347,12 +1347,13 @@ Note that stable variables may be removed across upgrades, or may simply be depr
 
 #### Migration expressions
 
-Actors and actor classes may specify a migration expression `[ <exp> ]` to apply to the stable variables of an upgraded actor, before initializing any stable fields of the declared actor.
+Actors and actor class declaration may specify a migration expression, using an optional, leading `<parenthetical>` expression with a required field named `migration`.
+The value of this field, a function, is applied to the stable variables of an upgraded actor, before initializing any stable fields of the declared actor.
 
-The expression `<exp>` must satisfy the following conditions:
+The parenthetical expression must satisfy the following conditions:
 
-* The expression must be static, that is, have no immediate side effects.
-* The expression must have a non-shared function type whose domain and codomain are both record types.
+* It must be static, that is, have no immediate side effects.
+* Its `migration` field must be present and have a non-shared function type whose domain and codomain are both record types.
 * The domain and the codomain must both be stable.
 * Any field in the codomain must be declared as a stable field in the actor body.
 * The content type of the codomain field must be a subtype of the content type of the actor's stable field.
@@ -1391,6 +1392,9 @@ For the upgrade to be safe:
 
 This condition ensures that every stable variable is either discarded or fresh, requiring initialization,
 or that its value can be safely consumed from the output of migration or the retired actor.
+
+The compiler will issue a warning if a migration function appears to be discarding data by consuming a field and not producing it.
+The warnings should be carefully considered to verify any data loss is intentional and not accidental.
 
 #### System fields
 

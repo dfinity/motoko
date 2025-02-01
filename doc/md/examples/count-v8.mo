@@ -2,7 +2,7 @@ import Debug "mo:base/Debug";
 import Float "mo:base/Float";
 import {migration} "Migration";
 
-(with migration) // declare the migration function
+(with migration) // declare the migration function (using field punning)
 persistent actor
   Counter_v8 {
 

@@ -2,7 +2,7 @@ import Debug "mo:base/Debug";
 import Float "mo:base/Float";
 
 (with migration =
-  // An explicit migration function
+  // an explicit migration function
   func (old: { var state : Int }) : { var newState : Float } {
     { var newState = Float.fromInt(old.state) };
   })
