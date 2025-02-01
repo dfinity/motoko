@@ -206,7 +206,7 @@ A cleaner, more maintainable solution is to declare an explicit migration expres
 to transform a subset of existing stable variables into a subset of replacement stable variables.
 
 Both of these data migration paths are supported by static and dynamic checks that prevent data loss or corruption.
-Of course, a user may still lose data due to coding errors so should tread carefully.
+Of course, a user may still lose data due to coding errors, so should tread carefully.
 
 For more information, see the [example of explicit migration](compatibility.md#explicit-migration) and the
 reference material on [migration expressions](../reference/language-manual#migration-expressions).
