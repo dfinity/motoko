@@ -212,5 +212,5 @@ let error_codes : (string * string option) list =
     "M0206", None; (* Migration consumes, but does not produce, a declared field *)
     "M0207", None; (* Migration consumes, but does not produce, an un-declared field *)
     "M0208", None; (* Missing field migration*)
-    "M0209", None; (* Missing field migration*)
+    "M0209", None; (* Misplaced migration expression on module/object *)
   ]

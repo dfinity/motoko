@@ -641,8 +641,10 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
+(*
   | parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE((* Some par,*) e1, inst, e2) @? at $sloc }
+    { CallE(e1, inst, e2) @? at $sloc }
+*)
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -701,7 +703,7 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | parenthetical_opt ASYNC e=exp_nest
+  | (* parenthetical_opt *) ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
     { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
