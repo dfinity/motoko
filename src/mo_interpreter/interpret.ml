@@ -491,7 +491,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, _exp_opt, (self_id_opt, _), dec_fields) ->
+  | ObjBlockE (_exp_opt, obj_sort, (self_id_opt, _), dec_fields) ->
     (* NB: we ignore the migration expression _exp_opt *)
     interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->

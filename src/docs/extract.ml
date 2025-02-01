@@ -140,7 +140,7 @@ struct
           _;
         } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
@@ -155,7 +155,7 @@ struct
         )
     | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),

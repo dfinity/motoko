@@ -165,7 +165,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjBlockE of obj_sort * exp option * (id option * typ option) * dec_field list  (* object block *)
+  | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)

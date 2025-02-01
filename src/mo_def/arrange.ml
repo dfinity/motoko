@@ -69,10 +69,11 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, eo, nt, dfs) -> "ObjBlockE" $$ [obj_sort s;
+    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$ [
                                                 (match eo with
                                                 |  None -> Atom "_"
                                                 |  Some e -> exp e);
+                                                obj_sort s;
                                                 match nt with
                                                 | None, None -> Atom "_"
                                                 | None, Some t -> typ t

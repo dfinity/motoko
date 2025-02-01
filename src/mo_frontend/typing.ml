@@ -1351,7 +1351,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, exp_opt, typ_opt, dec_fields) ->
+  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) ->
     let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
@@ -2937,8 +2937,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, _, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
+      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -3025,8 +3025,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _exp_opt, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _exp_opt, _t, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt,({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -3112,8 +3112,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, _exp_opt, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _exp_opt, _t, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in

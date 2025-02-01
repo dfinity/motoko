@@ -108,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _, _, _) ->
+    | ObjBlockE (_, sort, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -207,13 +207,13 @@ let share_dec_field default_stab (df : dec_field) =
     }
 
 
-and objblock s eo id ty dec_fields =
+and objblock eo s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, _, _, id, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, eo, (id, ty), dec_fields)
+  ObjBlockE(eo, s, (id, ty), dec_fields)
 
 %}
 
@@ -909,9 +909,9 @@ dec_nonvar :
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s eo id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s eo None t efs @? at $sloc
+        else objblock eo s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt

@@ -90,7 +90,7 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, exp_opt, (self_id_opt, _), dfs) ->
+  | S.ObjBlockE (exp_opt, s, (self_id_opt, _), dfs) ->
     let eo = Option.map exp exp_opt in
     obj_block at s eo self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
