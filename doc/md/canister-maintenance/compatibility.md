@@ -336,7 +336,7 @@ Stable interface compatibility check issued a WARNING for canister ...
 
 Instead of the previous two step solution, we can upgrade in one step using a migration function.
 
-1. Define a migration module and function that transform the old stable variable, at its current type, into the new stable variable at its new type.
+1. Define a migration module and function that transforms the old stable variable, at its current type, into the new stable variable at its new type.
 
 
 ``` motoko no-repl file=../examples/CardMigration.mo
