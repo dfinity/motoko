@@ -191,8 +191,7 @@ new actor.
 * All other stable variables of the actor, i.e. those neither consumed nor
 produced by the migration function are initialized in the usual way,
 either by transfer from the upgraded actor, if declared in that actor, or, if newly declared,
-by running the initialization expression in the field's
-declaration.
+by running the initialization expression in the field's declaration.
 * The migration function is only executed on an upgrade and ignored on a fresh installation of the actor in an empty canister.
 
 The migration function, when required, is declared within square brackets following the `actor` keyword in an actor or actor class
