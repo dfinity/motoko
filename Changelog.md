@@ -1,5 +1,6 @@
 # Motoko compiler changelog
 
+## 0.14.0 (FUTURE)
 
 * motoko (`moc`)
 
@@ -8,7 +9,6 @@
   Additional static checks warn against possible data loss (#4812).
 
   As a very simple example:
-
   ```
   import Nat32 "mo:base/Nat32";
 
@@ -21,7 +21,6 @@
     var length : Nat = 0;
   }
   ```
-
   may be used during an upgrade to rename the stable field `size` to `length`,
   and change its type from `Nat32` to `Nat`.
 
