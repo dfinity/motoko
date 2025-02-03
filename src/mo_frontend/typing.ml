@@ -1035,7 +1035,7 @@ let rec is_explicit_exp e =
   | ObjE (bases, efs) ->
     List.(for_all is_explicit_exp bases
           && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
-  | ObjBlockE (_, _, dfs) ->
+  | ObjBlockE (_, _e_opt, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) ->
@@ -1052,7 +1052,7 @@ and is_explicit_dec d =
   match d.it with
   | ExpD e | LetD (_, e, _) | VarD (_, e) -> is_explicit_exp e
   | TypD _ -> true
-  | ClassD (_, _, _, p, _, _, _, dfs) ->
+  | ClassD (_, _, _, _, _, p, _, _, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
 
@@ -1351,7 +1351,8 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, typ_opt, dec_fields) ->
+  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) ->
+    let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -1360,7 +1361,7 @@ and infer_exp'' env exp : T.typ =
          error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0069"
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
-    end;
+      end;
     let env' =
       if obj_sort.it = T.Actor then
         { env with
@@ -1368,7 +1369,7 @@ and infer_exp'' env exp : T.typ =
           async = C.SystemCap C.top_cap }
       else env
     in
-    let t = infer_obj env' obj_sort.it dec_fields exp.at in
+    let t = infer_obj env' obj_sort.it exp_opt dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
@@ -2419,7 +2420,7 @@ and pub_dec src dec xs : visibility_env =
   | ExpD _ -> xs
   | LetD (pat, _, _) -> pub_pat src pat xs
   | VarD (id, _) -> pub_val_id src id xs
-  | ClassD (_, id, _, _, _, _, _, _) ->
+  | ClassD (_, _, _, id, _, _, _, _, _) ->
     pub_val_id src {id with note = ()} (pub_typ_id src id xs)
   | TypD (id, _, _) -> pub_typ_id src id xs
 
@@ -2487,7 +2488,7 @@ and is_typ_dec dec : bool = match dec.it with
   | TypD _ -> true
   | _ -> false
 
-and infer_obj env s dec_fields at : T.typ =
+and infer_obj env s exp_opt dec_fields at : T.typ =
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
@@ -2536,7 +2537,8 @@ and infer_obj env s dec_fields at : T.typ =
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
-    check_stab env s scope dec_fields;
+    let stab_tfs = check_stab env s scope dec_fields in
+    check_migration env stab_tfs exp_opt
   end;
   t
 
@@ -2580,6 +2582,131 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
+and infer_migration env obj_sort exp_opt =
+  Option.map
+    (fun exp ->
+      if obj_sort.it <> T.Actor then
+        local_error env exp.at "M0209"
+          "misplaced actor migration expression on module or object";
+      infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
+    exp_opt
+
+and check_migration env (stab_tfs : T.field list) exp_opt =
+  match exp_opt with
+  | None -> ()
+  | Some exp ->
+    Static.exp env.msgs exp; (* preclude side effects *)
+    let check_fields desc typ =
+      match typ with
+      | T.Obj(T.Object, tfs) ->
+         if not (T.stable typ) then
+           local_error env exp.at "M0201"
+             "expected stable type, but migration expression %s non-stable type%a"
+             desc
+             display_typ_expand typ;
+         tfs
+      | _ ->
+         local_error env exp.at "M0202"
+           "expected object type, but migration expression %s non-object type%a"
+           desc
+           display_typ_expand typ;
+         []
+   in
+   let typ =
+     try
+       let s, tfs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
+       if s = T.Actor then raise (Invalid_argument "");
+       T.lookup_val_field T.migration_lab tfs
+     with Invalid_argument _ ->
+       error env exp.at "M0208"
+         "expected expression with field `migration`, but expression has type%a"
+         display_typ_expand exp.note.note_typ
+   in
+   let dom_tfs, rng_tfs =
+     try
+      let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
+      if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
+      check_fields "consumes" (T.normalize t_dom),
+      check_fields "produces" (T.promote t_rng)
+     with Invalid_argument _ ->
+       local_error env exp.at "M0203"
+         "expected non-generic, local function type, but migration expression produces type%a"
+         display_typ_expand typ;
+       [], []
+   in
+   List.iter
+     (fun tf ->
+       match T.lookup_val_field_opt tf.T.lab rng_tfs with
+       | None -> ()
+       | Some typ ->
+         if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
+           local_error env exp.at "M0204"
+             "migration expression produces field `%s` of type%a\n, not the expected type%a"
+              tf.T.lab
+              display_typ_expand typ
+              display_typ_expand tf.T.typ) stab_tfs;
+   (* Construct the pre signature *)
+   let pre_tfs = List.sort T.compare_field
+      dom_tfs @
+        (List.filter_map
+           (fun tf ->
+             match T.lookup_val_field_opt tf.T.lab dom_tfs, T.lookup_val_field_opt tf.T.lab rng_tfs with
+             | _, Some _  (* ignore consumed (overridden) *)
+             | Some _, _ -> (* ignore produced (provided) *)
+               None
+             | None, None ->
+               (* retain others *)
+               Some tf)
+           stab_tfs)
+   in
+   (* Check for duplicates and hash collisions in pre-signature *)
+   let pre_ids = List.map (fun tf -> T.{it = tf.lab; at = tf.src.region; note = ()}) pre_tfs in
+   check_ids env "pre actor type" "stable variable" pre_ids;
+   (* Reject any fields in range not in post signature (unintended data loss) *)
+   let stab_ids = List.map (fun tf -> tf.T.lab) stab_tfs in
+   List.iter (fun T.{lab;typ;src} ->
+     match typ with
+     | T.Typ c -> ()
+     | _ ->
+       match T.lookup_val_field_opt lab stab_tfs with
+       | Some _ -> ()
+       | None ->
+         local_error env (Option.get exp_opt).at "M0205"
+           "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
+            lab
+            display_typ_expand typ
+            (Suggest.suggest_id "field" lab stab_ids)
+           "The actor should declare a corresponding `stable` field.")
+     rng_tfs;
+   (* Warn about any field in domain, not in range, and declared stable in actor *)
+   (* This may indicate unintentional data loss. *)
+   List.iter (fun T.{lab;typ;src} ->
+     match typ with
+     | T.Typ c -> ()
+     | _ ->
+       match T.lookup_val_field_opt lab rng_tfs with
+       | Some _ -> ()
+       | None ->
+         if List.mem lab stab_ids then
+           (* re-initialized *)
+           warn env (Option.get exp_opt).at "M0206"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
+             lab
+             display_typ_expand typ
+             "The declaration in the actor will be reinitialized, discarding its consumed value."
+             "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
+         else
+           (* dropped *)
+           warn env (Option.get exp_opt).at "M0207"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+             lab
+             display_typ_expand typ
+             "This field will be removed from the actor, discarding its consumed value."
+             "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
+     )
+     dom_tfs
+
+
 and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
@@ -2589,7 +2716,7 @@ and check_stab env sort scope dec_fields =
       if not (T.stable t1) then
         local_error env at "M0131"
           "variable %s is declared stable but has non-stable type%a" id
-          display_typ t1
+          display_typ t1;
   in
   let idss = List.map (fun df ->
     match sort, df.it.stab, df.it.dec.it with
@@ -2612,8 +2739,16 @@ and check_stab env sort scope dec_fields =
       []
     | _ -> []) dec_fields
   in
-  check_ids env "actor type" "stable variable" (List.concat idss)
-
+  let ids = List.concat idss in
+  check_ids env "actor type" "stable variable" ids;
+  List.sort T.compare_field
+    (List.map
+      (fun id ->
+         let typ, _, _ = T.Env.find id.it scope.Scope.val_env in
+         T.{ lab = id.it;
+             typ;
+             src = { depr = None; region = id.at }})
+      ids)
 
 (* Blocks and Declarations *)
 
@@ -2626,7 +2761,7 @@ and infer_block env decs at check_unused : T.typ * Scope.scope =
     | Flags.(ICMode | RefMode) ->
       List.fold_left (fun ve' dec ->
         match dec.it with
-        | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
+        | ClassD(_, _, { it = T.Actor; _}, id, _, _, _,  _, _) ->
           T.Env.mapi (fun id' (typ, at, kind, avl) ->
             (typ, at, kind, if id' = id.it then Unavailable else avl)) ve'
         | _ -> ve') env'.vals decs
@@ -2675,10 +2810,11 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
+      let _typ_opt = infer_migration env obj_sort exp_opt in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
@@ -2704,7 +2840,7 @@ and infer_dec env dec : T.typ =
         }
       in
       let initial_usage = enter_scope env''' in
-      let t' = infer_obj { env''' with check_unused = true } obj_sort.it dec_fields dec.at in
+      let t' = infer_obj { env''' with check_unused = true } obj_sort.it exp_opt dec_fields dec.at in
       leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
@@ -2801,8 +2937,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
+      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2820,7 +2956,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
-  | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
@@ -2889,8 +3025,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt,({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2922,7 +3058,8 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs env dec.at id c k;
     }
-  | ClassD (shared_pat, id, binds, pat, _typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, binds, pat, _typ_opt, self_id, dec_fields) ->
+     (*TODO exp_opt *)
     let c = T.Env.find id.it env.typs in
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
@@ -2938,7 +3075,7 @@ and infer_dec_typdecs env dec : Scope.t =
           async = async_cap;
           in_actor}
     in
-    let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
+    let t = infer_obj { env'' with check_unused = false } obj_sort.it exp_opt dec_fields dec.at in
     let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
@@ -2975,8 +3112,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -3005,7 +3142,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
+  | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
@@ -3059,7 +3196,7 @@ let is_actor_dec d =
   match d.it with
   | ExpD e
   | LetD (_, e, _) -> CompUnit.is_actor_def e
-  | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
     obj_sort.it = T.Actor
   | _ -> false
 
@@ -3114,7 +3251,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->
+            | ActorClassU  (sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in
@@ -3146,7 +3283,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
         ) lib
     )
 
-let check_stab_sig scope sig_ : (T.field list) Diag.result =
+let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
@@ -3154,25 +3291,31 @@ let check_stab_sig scope sig_ : (T.field list) Diag.result =
           let env = env_of_scope msgs scope in
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
-          check_ids env "object type" "field"
-            (List.filter_map (fun (field : typ_field) ->
-                 match field.it with ValF (id, _, _) -> Some id | _ -> None)
-               sfs);
-          check_ids env "object type" "type field"
-            (List.filter_map (fun (field : typ_field) ->
-                 match field.it with TypF (id, _, _) -> Some id | _ -> None)
-               sfs);
-          let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
-          let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
-          List.iter (fun (field : Syntax.typ_field) ->
-              match field.it with
-              | TypF _ -> ()
-              | ValF (id, typ, _) ->
-                if not (T.stable typ.note) then
-                   error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
-                   id.it
-                   display_typ typ.note)
-            sfs;
-          List.sort T.compare_field fs
+          let check_fields sfs =
+            check_ids env "object type" "field"
+              (List.filter_map (fun (field : typ_field) ->
+                   match field.it with ValF (id, _, _) -> Some id | _ -> None)
+                 sfs);
+            check_ids env "object type" "type field"
+              (List.filter_map (fun (field : typ_field) ->
+                   match field.it with TypF (id, _, _) -> Some id | _ -> None)
+                 sfs);
+            let _ = List.map (check_typ_field {env1 with pre = true} T.Object) sfs in
+            let fs = List.map (check_typ_field {env1 with pre = false} T.Object) sfs in
+            List.iter (fun (field : Syntax.typ_field) ->
+                match field.it with
+                | TypF _ -> ()
+                | ValF (id, typ, _) ->
+                  if not (T.stable typ.note) then
+                     error env id.at "M0131" "variable %s is declared stable but has non-stable type%a"
+                     id.it
+                     display_typ typ.note)
+              sfs;
+            List.sort T.compare_field fs
+          in
+          match sfs.it with
+          | Single sfs -> T.Single (check_fields sfs)
+          | PrePost (pre,post) ->
+             T.PrePost (check_fields pre, check_fields post)
         ) sig_.it
     )

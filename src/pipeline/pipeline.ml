@@ -284,7 +284,13 @@ let validate_stab_sig s : unit Diag.result =
   let* p2 = parse_stab_sig s name in
   let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
-  Stability.match_stab_sig s1 s2
+  Type.(match s1, s2 with
+  | Single s1, Single s2 ->
+    Stability.match_stab_sig (Single s1) (Single s2)
+  | PrePost (pre1, post1), PrePost (pre2, post2) ->
+    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in
+    Stability.match_stab_sig (Single post1) (Single post2)
+  | _, _ -> assert false)
 
 (* The prim module *)
 

@@ -136,7 +136,10 @@ let transform prog =
         inspect = t_exp inspect;
         low_memory = t_exp low_memory;
         stable_record = t_exp stable_record;
-        stable_type = t_typ stable_type;
+        stable_type = {
+            pre = t_typ stable_type.pre;
+            post = t_typ stable_type.post
+        }
        },
        t_typ typ)
 
@@ -222,7 +225,10 @@ let transform prog =
           inspect = t_exp inspect;
           low_memory = t_exp low_memory;
           stable_record = t_exp stable_record;
-          stable_type = t_typ stable_type;
+          stable_type = {
+            pre = t_typ stable_type.pre;
+            post = t_typ stable_type.post
+          }
         },
         t_typ t)
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ_field = false } )
