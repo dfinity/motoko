@@ -405,7 +405,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
-    | CallPrim (insts, _FIXMEpars), [exp1; exp2] ->
+    | CallPrim (insts, par), [exp1; exp2] ->
+      check_exp { env with async = None } par;
+      typ par <: T.(Obj (Object, []));
       begin match T.promote (typ exp1) with
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
           check_inst_bounds env tbs insts exp.at;
@@ -576,7 +578,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
        | _ -> error env exp.at "CPSAwait bad cont");
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-    | CPSAsync (s, t0, _FIXME), [exp] ->
+    | CPSAsync (s, t0, par), [exp] ->
+      check_exp { env with async = None } par;
+      typ par <: T.(Opt (Obj (Object, [])));
       (match typ exp with
        | T.Func (T.Local, T.Returns, [tb],
                  T.[Func (Local, Returns, [], ts1, []);
@@ -730,10 +734,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | SwitchE (exp1, cases) ->
     check_exp env exp1;
     let t1 = T.promote (typ exp1) in
-(*    if not env.pre then
-      if not (Coverage.check_cases env.cons cases t1) then
-        warn env exp.at "the cases in this switch do not cover all possible values";
- *)
     check_cases env t1 t cases
   | TryE (exp1, cases, vt) ->
     check env.flavor.has_await "try in non-await flavor";
@@ -752,7 +752,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | AsyncE (_FIXME, s, tb, exp1, t0) ->
+  | AsyncE (par, s, tb, exp1, t0) ->
+    Option.iter (check_exp { env with async = None }) par;
+    Option.iter (fun par -> typ par <: T.(Obj (Object, []))) par;
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;
     let c, tb, ce = check_open_typ_bind env tb in
