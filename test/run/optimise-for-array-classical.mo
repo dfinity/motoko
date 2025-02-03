@@ -113,8 +113,8 @@ for (check3 in (((["hello", "immutable", "world"].values())))) { Prim.debugPrint
 // FHECK-NEXT: unreachable
 // FHECK-NEXT: else
 // bottom iteration expression is treated fairly
-var c = 42;
-if (c == c + 1) {
+var c1 = 42;
+if (c1 == c1 + 1) {
     for (check4 in (loop {}).vals()) { Prim.debugPrint check4 }
 };
 
@@ -128,8 +128,8 @@ if (c == c + 1) {
 // FHECK-NEXT: unreachable
 // FHECK-NEXT: else
 // bottom iteration expression is treated fairly
-var c = 42;
-if (c == c + 1) {
+var c2 = 42;
+if (c2 == c2 + 1) {
     for (check4 in (loop {}).values()) { Prim.debugPrint check4 }
 };
 

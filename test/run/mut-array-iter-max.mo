@@ -8,7 +8,7 @@ for (v in a.vals()) {
 };
 var c2 = 0;
 for (v in a.values()) {
- assert v == 666; c += 1;
+ assert v == 666; c2 += 1;
 };
 assert c1 == c2;
 Prim.debugPrint(debug_show c1);
