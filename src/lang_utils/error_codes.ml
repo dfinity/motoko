@@ -204,8 +204,8 @@ let error_codes : (string * string option) list =
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
     "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Cannot determine subtyping or equality *)
-    "M0206", None; (* parenthetical note must be applied to a message send *)
-    "M0207", None; (* parenthetical note has no attributes *)
-    "M0208", Some([%blob "lang_utils/error_codes/M0208.md"]); (* Unrecognised attribute in parenthetical note *)
-    "M0209", None; (* parenthetical note on public methods is disallowed *)
+    "M0210", None; (* parenthetical note must be applied to a message send *)
+    "M0211", None; (* parenthetical note has no attributes *)
+    "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]); (* Unrecognised attribute in parenthetical note *)
+    "M0213", None; (* parenthetical note on public methods is disallowed *)
   ]
