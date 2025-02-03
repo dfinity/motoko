@@ -23,6 +23,8 @@ type ErrorCode = {
   #system_fatal;
   // Transient error.
   #system_transient;
+  // Response unknown due to missed deadline.
+  #system_unknown;
   // Destination invalid.
   #destination_invalid;
   // Explicit reject by canister code.
