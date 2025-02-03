@@ -142,7 +142,7 @@ if (c2 == c2 + 1) {
 // FHECK-NEXT: unreachable
 // FHECK-NEXT: else
 // typed bottom iteration expression is treated fairly
-if (c == c + 1) {
+if (c1 == c1 + 1) {
     for (check5 in ((loop {}) : [Text]).vals()) { Prim.debugPrint check5 }
 };
 
@@ -155,7 +155,7 @@ if (c == c + 1) {
 // FHECK-NEXT: unreachable
 // FHECK-NEXT: else
 // typed bottom iteration expression is treated fairly
-if (c == c + 1) {
+if (c2 == c2 + 1) {
     for (check5 in ((loop {}) : [Text]).values()) { Prim.debugPrint check5 }
 };
 
