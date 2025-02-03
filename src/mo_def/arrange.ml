@@ -9,12 +9,14 @@ module type Config = sig
   val include_sources : bool
   val include_types : bool
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
+  val include_migration : bool
   val main_file : string option
 end
 
 module Default = struct
   let include_sources = false
   let include_types = false
+  let include_migration = true
   let include_docs = None
   let main_file = None
 end
@@ -23,6 +25,7 @@ module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
 
 module Make (Cfg : Config) = struct
+
   let ($$) head inner = Node (head, inner)
 
   let pos p =
@@ -69,11 +72,9 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$ [
-                                                (match eo with
-                                                |  None -> Atom "_"
-                                                |  Some e -> exp e);
-                                                obj_sort s;
+    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$
+                                               migration eo
+                                               [obj_sort s;
                                                 match nt with
                                                 | None, None -> Atom "_"
                                                 | None, Some t -> typ t
@@ -186,6 +187,13 @@ module Make (Cfg : Config) = struct
 
   and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
 
+  (* conditionally include migration to avoid breaking lsp *)
+  and migration eo sexps =
+    if Cfg.include_migration then
+      (match eo with None -> Atom "_" | Some e -> exp e) ::
+      sexps
+    else sexps
+
   and obj_sort s = match s.it with
     | Type.Object -> Atom "Object"
     | Type.Actor -> Atom "Actor"
@@ -273,14 +281,15 @@ module Make (Cfg : Config) = struct
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
     | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
        "ClassD" $$
-        (match eo with None -> Atom "_" | Some e -> exp e) ::
+        migration eo
+        ((match eo with None -> Atom "_" | Some e -> exp e) ::
         shared_pat sp ::
-        obj_sort s ::
         id x :: List.map typ_bind tp @ [
         pat p;
+        obj_sort s;
         (match rt with None -> Atom "_" | Some t -> typ t);
         id i
-      ] @ List.map dec_field dfs))
+      ] @ List.map dec_field dfs)))
 
   and prog p = "Prog" $$ List.map dec p.it
 end
