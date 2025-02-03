@@ -62,8 +62,8 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 // FHECK-NEXT: call $print_text
 for (check1 in [var "hello", "mutable", "world"].values()) { Prim.debugPrint check1 };
 
-let array = [var "hello", "remutable", "world"];
-array[1] := "mutable";
+let array = [var "hello", "unexpected", "world"];
+array[1] := "remutable";
 // FHECK-NOT:   call $@immut_array_size
 // DON'TFHECK:  i32.load offset=(5 or 9)
 // FHECK:       i32.load offset=
@@ -74,7 +74,21 @@ array[1] := "mutable";
 // DON'T-FHECK: local.set $check2
 // `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
 // later when we have path compression for variables in the backend, we can bring this back
-for (check2 in array.values()) { Prim.debugPrint check2 };
+for (check2 in array.vals()) { Prim.debugPrint check2 };
+
+let arrayValues = [var "hello", "unexpected", "world"];
+arrayValues[1] := "remutable";
+// FHECK-NOT:   call $@immut_array_size
+// DON'TFHECK:  i32.load offset=(5 or 9)
+// FHECK:       i32.load offset=
+// FHECK:       i32.const 2
+// FHECK:       i32.shl
+// DON'T-FHECK: i32.lt_u
+// DON'T-FHECK: local.get $array
+// DON'T-FHECK: local.set $check2
+// `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
+// later when we have path compression for variables in the backend, we can bring this back
+for (check2 in arrayValues.values()) { Prim.debugPrint check2 };
 
 // FHECK-NOT:  call $@immut_array_size
 // DON'TFHECK: i32.load offset=(5 or 9)
