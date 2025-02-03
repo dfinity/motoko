@@ -452,7 +452,7 @@ let transform prog =
          inspect = t_exp inspect;
          low_memory = t_exp low_memory;
          stable_record = t_exp stable_record;
-         stable_type = t_typ stable_type;
+         stable_type = {pre = t_typ stable_type.pre; post = t_typ stable_type.post};
         },
         t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -534,7 +534,10 @@ let transform prog =
           inspect = t_exp inspect;
           low_memory = t_exp low_memory;
           stable_record = t_exp stable_record;
-          stable_type = t_typ stable_type;
+          stable_type = {
+            pre = t_typ stable_type.pre;
+            post = t_typ stable_type.post
+          }
         },
         t_typ t)
 

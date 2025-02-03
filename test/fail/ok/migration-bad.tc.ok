@@ -1,0 +1,32 @@
+migration-bad.mo:3.1-3.22: type error [M0203], expected non-generic, local function type, but migration expression produces type
+  ()
+migration-bad.mo:7.1-7.41: type error [M0203], expected non-generic, local function type, but migration expression produces type
+  <T>T -> T
+migration-bad.mo:11.1-11.37: type error [M0202], expected object type, but migration expression consumes non-object type
+  ()
+migration-bad.mo:15.1-15.37: type error [M0202], expected object type, but migration expression produces non-object type
+  ()
+migration-bad.mo:19.1-19.45: type error [M0202], expected object type, but migration expression produces non-object type
+  ()
+migration-bad.mo:19.1-19.45: type error [M0201], expected stable type, but migration expression consumes non-stable type
+  {f : () -> ()}
+migration-bad.mo:19.1-19.45: warning [M0207], migration expression consumes field `f` of type
+  () -> ()
+but does not produce it. The field is not declared in the actor.
+This field will be removed from the actor, discarding its consumed value.
+If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function.
+migration-bad.mo:23.1-23.58: type error [M0201], expected stable type, but migration expression produces non-stable type
+  {f : () -> ()}
+migration-bad.mo:23.1-23.58: type error [M0202], expected object type, but migration expression consumes non-object type
+  ()
+migration-bad.mo:28.41-28.43: type error [M0136], empty block cannot produce expected type
+  {} -> {}
+migration-bad.mo:28.19-28.47: type error [M0014], non-static expression in library, module or migration expression
+migration-bad.mo:33.1-33.18: type error [M0208], expected expression with field `migration`, but expression has type
+  {other : ()}
+migration-bad.mo:37.1-37.21: type error [M0208], expected expression with field `migration`, but expression has type
+  {other : ()}
+migration-bad.mo:41.1-42.18: type error [M0203], expected non-generic, local function type, but migration expression produces type
+  ()
+migration-bad.mo:46.1-46.39: type error [M0209], misplaced actor migration expression on module or object
+migration-bad.mo:50.1-50.39: type error [M0209], misplaced actor migration expression on module or object
