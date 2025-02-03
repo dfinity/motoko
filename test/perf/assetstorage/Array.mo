@@ -49,7 +49,7 @@ module {
   /// Output array contains each array-value if and only if the predicate is true; ordering retained.
   public func filter<A>(xs : [A], f : A -> Bool) : [A] {
     let ys : Buffer.Buffer<A> = Buffer.Buffer(xs.size());
-    for (x in xs.vals()) {
+    for (x in xs.values()) {
       if (f(x)) {
         ys.add(x);
       };
@@ -59,7 +59,7 @@ module {
   /// Output array contains each transformed optional value; ordering retained.
   public func mapFilter<A, B>(xs : [A], f : A -> ?B) : [B] {
     let ys : Buffer.Buffer<B> = Buffer.Buffer(xs.size());
-    for (x in xs.vals()) {
+    for (x in xs.values()) {
       switch (f(x)) {
         case null {};
         case (?y) { ys.add(y) };
@@ -91,7 +91,7 @@ module {
   };
   /// Returns optional first value for which predicate is true
   public func find<A>(xs : [A], f : A -> Bool) : ?A {
-    for (x in xs.vals()) {
+    for (x in xs.values()) {
       if (f(x)) {
         return ?x;
       }
@@ -163,9 +163,9 @@ module {
   public func make<A>(x: A) : [A] {
     [x];
   };
-  /// Returns `xs.vals()`.
-  public func vals<A>(xs : [A]) : I.Iter<A> {
-    xs.vals()
+  /// Returns `xs.values()`.
+  public func values<A>(xs : [A]) : I.Iter<A> {
+    xs.values()
   };
   /// Returns `xs.keys()`.
   public func keys<A>(xs : [A]) : I.Iter<Nat> {

@@ -56,6 +56,12 @@ assert (opt_eq(it2.next(), 2));
 assert (opt_eq(it2.next(), 42));
 switch (it2.next()) { case null {}; case _ {assert false} };
 
+var it3 = a.values();
+assert (opt_eq(it3.next(), 1));
+assert (opt_eq(it3.next(), 2));
+assert (opt_eq(it3.next(), 42));
+switch (it3.next()) { case null {}; case _ {assert false} };
+
 var i = 0;
 
 i := 0;
@@ -73,6 +79,13 @@ for (n in a.vals()) {
 assert(i == a.size());
 
 i := 0;
+for (n in a.values()) {
+  assert(n == a[i]);
+  i += 1;
+};
+assert(i == a.size());
+
+i := 0;
 for (j in b.keys()) {
   assert(j == i);
   i += 1;
@@ -81,6 +94,13 @@ assert(i == b.size());
 
 i := 0;
 for (n in b.vals()) {
+  assert(n == b[i]);
+  i += 1;
+};
+assert(i == b.size());
+
+i := 0;
+for (n in b.values()) {
   assert(n == b[i]);
   i += 1;
 };

@@ -60,7 +60,7 @@ module {
 
     /// Adds all elements in buffer `b` to this buffer.
     public func append(b : Buffer<X>) {
-      let i = b.vals();
+      let i = b.values();
       loop {
         switch (i.next()) {
           case null return;

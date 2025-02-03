@@ -15,7 +15,7 @@ actor a {
     if (Cycles.balance() == 0)
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
     Prim.debugPrint(debug_show({ balance = round(Cycles.balance()) }));
-    for (i in [1, 2, 3].vals()) {
+    for (i in [1, 2, 3].values()) {
       Prim.debugPrint(debug_show({ iteration = i }));
       Prim.debugPrint(debug_show({ balance = round(Cycles.balance()) }));
       let c = await {

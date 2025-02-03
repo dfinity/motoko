@@ -121,6 +121,15 @@ actor this {
       catch e {
         debugPrint(errorMessage(e));
       }
+    };
+    for (blob in blobs.values()) {
+      debugPrint (debug_show { function = m; hex = toHex blob});
+      try {
+        ignore await call_raw(p, m, blob);
+      }
+      catch e {
+        debugPrint(errorMessage(e));
+      }
     }
   };
 
