@@ -238,7 +238,7 @@ module {
     [x];
   };
   /// Returns `xs.values()`.
-  public func vals<A>(xs : [A]) : I.Iter<A> {
+  public func values<A>(xs : [A]) : I.Iter<A> {
     xs.values()
   };
   /// Returns `xs.keys()`.

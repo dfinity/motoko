@@ -90,7 +90,7 @@ module {
     };
 
     /// Returns an `Iter` over the elements of this buffer.
-    public func vals() : { next : () -> ?X } = object {
+    public func values() : { next : () -> ?X } = object {
       var pos = 0;
       public func next() : ?X {
         if (pos == count) { null } else {
