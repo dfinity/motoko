@@ -1132,7 +1132,7 @@ module RTS = struct
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
     E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
-    E.add_func_import env "rts" "has_stable_actor" [] [I64Type];
+    E.add_func_import env "rts" "has_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -10137,7 +10137,10 @@ module Persistence = struct
   let in_upgrade env =
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
-      (EnhancedOrthogonalPersistence.has_stable_actor env)
+      begin
+       EnhancedOrthogonalPersistence.has_stable_actor env ^^
+       Bool.from_rts_int32
+      end
       begin
         use_graph_destabilization env ^^
         E.if1 I64Type

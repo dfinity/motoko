@@ -129,13 +129,9 @@ unsafe fn use_enhanced_orthogonal_persistence() -> bool {
 
 /// Returns the availability of the stable actor record (false on (re-)install, true on upgrade)
 #[no_mangle]
-pub unsafe extern "C" fn has_stable_actor() -> Value {
+pub unsafe extern "C" fn has_stable_actor() -> bool {
     let metadata = PersistentMetadata::get();
-    if (*metadata).stable_actor.forward_if_possible() == DEFAULT_VALUE {
-        Value::from_scalar(0)
-    } else {
-        Value::from_scalar(1)
-    }
+    !((*metadata).stable_actor.forward_if_possible() == DEFAULT_VALUE)
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
