@@ -12471,16 +12471,9 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
     let add_meta = match par.it with
       | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
-
-
-
-
       | _ ->
-         let set_sel, get_sel = new_local env "sel" in
-         let set_cyc, get_cyc = new_local env "cyc" in
-         let set_tim, get_tim = new_local env "tim" in
+         let set_hash, get_hash = new_local env "sel" in
          let set_meta, get_meta = new_local env "meta" in
-         Opt.null_lit env ^^ set_cyc ^^ get_cyc ^^ set_tim ^^
          compile_exp_vanilla env ae par ^^
          set_meta ^^ get_meta ^^ Opt.is_some env ^^
          G.if0
@@ -12489,23 +12482,17 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
              (* this is a naked option, thus no need to unpack *)
              Object.iterate_hashes env
                begin
-                 set_sel ^^ get_sel ^^
+                 set_hash ^^ get_hash ^^
                  compile_eq_const (E.hash env "timeout") ^^
                  G.if0
-                   (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}])) "timeout") ^^ set_tim)
-                   (get_sel ^^ compile_eq_const (E.hash env "cycles") ^^
+                   (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}])) "timeout" ^^
+                    BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
+                    IC.system_call env "call_with_best_effort_response")
+                   (get_hash ^^ compile_eq_const (E.hash env "cycles") ^^
                     (G.if0
-                       (Opt.inject_simple env (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])) "cycles") ^^ set_cyc)
+                       (Internals.pass_cycles env ae get_meta)
                        G.nop))
-               end ^^
-               get_tim ^^ Opt.is_some env ^^
-               G.if0
-                 (get_tim ^^ BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^ IC.system_call env "call_with_best_effort_response")
-                 G.nop ^^
-               get_cyc ^^ Opt.is_some env ^^
-               G.if0
-                 (Internals.pass_cycles env ae get_meta)
-                 G.nop
+               end
            end
            (Internals.add_cycles env ae) (* legacy *)
     in
