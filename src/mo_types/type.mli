@@ -269,9 +269,16 @@ val scope_bind : bind
 
 (* Signatures *)
 
-val match_stab_sig : field list -> field list -> bool
+type stab_sig =
+  | Single of field list
+  | PrePost of field list * field list
 
-val string_of_stab_sig : field list -> string
+val pre : stab_sig -> field list
+val post : stab_sig -> field list
+
+val match_stab_sig : stab_sig -> stab_sig -> bool
+
+val string_of_stab_sig : stab_sig -> string
 
 val motoko_runtime_information_type : typ
 
@@ -289,6 +296,7 @@ val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
 
+val migration_lab : lab
 
 (* Pretty printing *)
 

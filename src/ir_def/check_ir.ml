@@ -241,7 +241,7 @@ let rec check_typ env typ : unit =
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
-    error env no_region "unexpected T.Mut"
+    error env no_region "unexpected T.Mut %s" (T.string_of_typ typ)
   | T.Typ c ->
     error env no_region "unexpected T.Typ"
 
@@ -845,7 +845,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ timer <: T.unit;
     typ inspect <: T.unit;
     typ low_memory <: T.unit;
-    typ stable_record <: stable_type;
+    typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -1198,7 +1198,7 @@ let check_comp_unit env = function
     typ timer <: T.unit;
     typ inspect <: T.unit;
     typ low_memory <: T.unit;
-    typ stable_record <: stable_type;
+    typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

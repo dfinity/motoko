@@ -108,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _, _) ->
+    | ObjBlockE (_, sort, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -207,13 +207,13 @@ let share_dec_field default_stab (df : dec_field) =
     }
 
 
-and objblock s id ty dec_fields =
+and objblock eo s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
-    | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
+    | Public _, ClassD (_, _, _, id, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, (id, ty), dec_fields)
+  ObjBlockE(eo, s, (id, ty), dec_fields)
 
 %}
 
@@ -377,8 +377,8 @@ seplist1(X, SEP) :
   | MODULE { (false, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
+  | os=obj_sort { os }
   | (* empty *) { (false, Type.Object @@ no_region) }
-  | ds=obj_sort { ds }
 
 %inline query:
   | QUERY { Type.Query }
@@ -585,9 +585,13 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
-parenthetical :
+%inline parenthetical:
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
-    { ObjE (Option.(to_list base), fs) @? at $sloc }
+    { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
+
+%inline parenthetical_opt :
+  | p=parenthetical { p }
+  | (*empty*) { None }
 
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
@@ -638,7 +642,7 @@ exp_un(B) :
   | e=exp_post(B)
     { e }
   | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(Some par, e1, inst, e2) @? at $sloc }
+    { CallE(par, e1, inst, e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -697,7 +701,7 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | par=parenthetical? ASYNC e=exp_nest
+  | par=parenthetical_opt ASYNC e=exp_nest
     { AsyncE(par, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
     { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
@@ -892,8 +896,20 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
+  | sp=shared_pat_opt FUNC xf=id_opt
+      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+    { (* This is a hack to support local func declarations that return a computed async.
+         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
+         around bodies declared as blocks *)
+      let named, x = xf "func" $sloc in
+      let is_sugar, e = desugar_func_body sp x t fb in
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
+  | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
+
+obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
-    { let (persistent, s) = ds in
+    { fun eo ->
+      let (persistent, s) = ds in
       let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -905,22 +921,15 @@ dec_nonvar :
           AwaitE
             (Type.Fut,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s None t efs @? at $sloc
+        else objblock eo s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
-    { (* This is a hack to support local func declarations that return a computed async.
-         These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
-         around bodies declared as blocks *)
-      let named, x = xf "func" $sloc in
-      let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
-    { let (persistent, s) = ds in
+    { fun eo ->
+      let (persistent, s) = ds in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
@@ -931,7 +940,7 @@ dec_nonvar :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+      ClassD(eo, sp, s, xf "class" $sloc, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
@@ -999,7 +1008,21 @@ stab_field :
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
-      fun filename -> { it = (ds, sfs); at = at $sloc; note = { filename; trivia }}
+      let sigs = Single sfs in
+      fun filename -> {
+          it = (ds, {it = sigs; at = at $sloc; note = ()});
+          at = at $sloc;
+          note = { filename; trivia } }
+    }
+  | start ds=seplist(typ_dec, semicolon)
+       ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
+             LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
+    { let trivia = !triv_table in
+      let sigs = PrePost(sfs_pre, sfs_post) in
+      fun filename ->
+        { it = (ds, {it = sigs; at = at $sloc; note = ()});
+          at = at $sloc;
+          note = { filename; trivia } }
     }
 
 %%

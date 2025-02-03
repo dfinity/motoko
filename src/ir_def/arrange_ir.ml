@@ -45,7 +45,7 @@ and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memor
       "Inspect" $$ [exp inspect];
       "LowMemory" $$ [exp low_memory];
       "StableRecord" $$ [exp stable_record];
-      "StableType" $$ [typ stable_type]
+      "StableType" $$ [typ stable_type.pre; typ stable_type.post]
     ]
 
 and lexp le = match le.it with
