@@ -1465,6 +1465,7 @@ let install_typ ts actor_typ =
     [ install_arg_typ ],
     [ Func(Local, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
+let migration_lab = "migration"
 
 (* Pretty printing *)
 

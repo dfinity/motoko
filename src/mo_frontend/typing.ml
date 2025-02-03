@@ -1052,7 +1052,7 @@ and is_explicit_dec d =
   match d.it with
   | ExpD e | LetD (_, e, _) | VarD (_, e) -> is_explicit_exp e
   | TypD _ -> true
-  | ClassD (_, _, _, _, p, _, _, _, dfs) ->
+  | ClassD (_, _, _, _, _, p, _, _, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
 
@@ -1351,8 +1351,8 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, exp_opt, typ_opt, dec_fields) ->
-    let _typ_opt = infer_migration env exp_opt in
+  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) ->
+    let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -2420,7 +2420,7 @@ and pub_dec src dec xs : visibility_env =
   | ExpD _ -> xs
   | LetD (pat, _, _) -> pub_pat src pat xs
   | VarD (id, _) -> pub_val_id src id xs
-  | ClassD (_, _, id, _, _, _, _, _, _) ->
+  | ClassD (_, _, _, id, _, _, _, _, _) ->
     pub_val_id src {id with note = ()} (pub_typ_id src id xs)
   | TypD (id, _, _) -> pub_typ_id src id xs
 
@@ -2582,9 +2582,12 @@ and stable_pat pat =
   | AnnotP (pat', _) -> stable_pat pat'
   | _ -> false
 
-and infer_migration env exp_opt =
+and infer_migration env obj_sort exp_opt =
   Option.map
     (fun exp ->
+      if obj_sort.it <> T.Actor then
+        local_error env exp.at "M0209"
+          "misplaced actor migration expression on module or object";
       infer_exp_promote { env with async = C.NullCap; rets = None; labs = T.Env.empty } exp)
     exp_opt
 
@@ -2609,7 +2612,16 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
            display_typ_expand typ;
          []
    in
-   let typ = exp.note.note_typ in
+   let typ =
+     try
+       let s, tfs = T.as_obj_sub [T.migration_lab] exp.note.note_typ in
+       if s = T.Actor then raise (Invalid_argument "");
+       T.lookup_val_field T.migration_lab tfs
+     with Invalid_argument _ ->
+       error env exp.at "M0208"
+         "expected expression with field `migration`, but expression has type%a"
+         display_typ_expand exp.note.note_typ
+   in
    let dom_tfs, rng_tfs =
      try
       let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
@@ -2629,7 +2641,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some typ ->
          if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
            local_error env exp.at "M0204"
-             "migration expression produces field `%s` of type %a\n, not the expected type%a"
+             "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab
               display_typ_expand typ
               display_typ_expand tf.T.typ) stab_tfs;
@@ -2660,7 +2672,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | Some _ -> ()
        | None ->
          local_error env (Option.get exp_opt).at "M0205"
-           "migration expression produces unexpected field `%s` of type %a\n%s\n%s"
+           "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
             lab
             display_typ_expand typ
             (Suggest.suggest_id "field" lab stab_ids)
@@ -2678,7 +2690,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          if List.mem lab stab_ids then
            (* re-initialized *)
            warn env (Option.get exp_opt).at "M0206"
-             "migration expression consumes field `%s` of type %a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
              "The declaration in the actor will be reinitialized, discarding its consumed value."
@@ -2686,7 +2698,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
          else
            (* dropped *)
            warn env (Option.get exp_opt).at "M0207"
-             "migration expression consumes field `%s` of type %a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+             "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
              "This field will be removed from the actor, discarding its consumed value."
@@ -2749,7 +2761,7 @@ and infer_block env decs at check_unused : T.typ * Scope.scope =
     | Flags.(ICMode | RefMode) ->
       List.fold_left (fun ve' dec ->
         match dec.it with
-        | ClassD(_, _, id, _, _, _, { it = T.Actor; _}, _, _) ->
+        | ClassD(_, _, { it = T.Actor; _}, id, _, _, _,  _, _) ->
           T.Env.mapi (fun id' (typ, at, kind, avl) ->
             (typ, at, kind, if id' = id.it then Unavailable else avl)) ve'
         | _ -> ve') env'.vals decs
@@ -2798,12 +2810,12 @@ and infer_dec env dec : T.typ =
   | VarD (_, exp) ->
     if not env.pre then ignore (infer_exp env exp);
     T.unit
-  | ClassD (shared_pat, exp_opt, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
     let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
+      let _typ_opt = infer_migration env obj_sort exp_opt in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let _typ_opt = infer_migration (adjoin_vals env ve0) exp_opt in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let in_actor = obj_sort.it = T.Actor in
@@ -2925,8 +2937,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, _, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
+      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2944,7 +2956,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
-  | TypD (id, binds, _) | ClassD (_, _, id, binds, _, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
@@ -3013,8 +3025,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _exp_opt, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _exp_opt, _t, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt,({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -3046,7 +3058,7 @@ and infer_dec_typdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = infer_id_typdecs env dec.at id c k;
     }
-  | ClassD (shared_pat, exp_opt, id, binds, pat, _typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, binds, pat, _typ_opt, self_id, dec_fields) ->
      (*TODO exp_opt *)
     let c = T.Env.find id.it env.typs in
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
@@ -3100,8 +3112,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, _exp_opt, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _exp_opt, _t, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -3130,7 +3142,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-  | ClassD (_shared_pat, _exp_opt, id, typ_binds, pat, _, obj_sort, _, _) ->
+  | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
@@ -3184,7 +3196,7 @@ let is_actor_dec d =
   match d.it with
   | ExpD e
   | LetD (_, e, _) -> CompUnit.is_actor_def e
-  | ClassD (shared_pat, exp_opt, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
+  | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
     obj_sort.it = T.Actor
   | _ -> false
 

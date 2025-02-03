@@ -90,7 +90,7 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, exp_opt, (self_id_opt, _), dfs) ->
+  | S.ObjBlockE (exp_opt, s, (self_id_opt, _), dfs) ->
     let eo = Option.map exp exp_opt in
     obj_block at s eo self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
@@ -563,8 +563,11 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       I.{pre = mem_ty; post = mem_ty},
       primE (I.ICStableRead mem_ty) [] (* as before *)
     | Some exp0 ->
-      let e = exp0 in
-      let dom, rng = T.as_mono_func_sub (e.note.Note.typ) in
+      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
+                T.lookup_val_field T.migration_lab tfs
+      in
+      let e = dotE exp0 T.migration_lab typ in
+      let dom, rng = T.as_mono_func_sub typ in
       let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
       let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
       let stab_fields_pre =
@@ -898,7 +901,7 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, exp_opt, id, tbs, p, _t_opt, s, self_id, dfs) ->
+  | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -1067,23 +1070,9 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
       (fun e -> mergeE [letP (pat p) (tupE (List.map varE vs))] e)
   in
 
-  let eo, wrap_exp_opt =
-    match exp_opt with
-    | None ->
-      None,
-      fun e -> wrap e
-    | Some exp0 ->
-      let v = fresh_var "migration" exp0.note.S.note_typ in
-      Some (varE v),
-      fun e ->
-        mergeE
-        [letD v (exp exp0)]
-        (wrap e)
-  in
-
   let wrap_po e =
     match po with
-    | None -> wrap_exp_opt e
+    | None -> wrap e
     | Some p ->
       let v = fresh_var "caller" T.caller in
       mergeE
@@ -1094,22 +1083,36 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
                  at = no_region;
                  note = T.caller }]
               T.ctxt)]
-        (wrap_exp_opt e)
+        (wrap e)
   in
+
+  let eo, wrap_exp_opt =
+    match exp_opt with
+    | None ->
+      None,
+      fun e -> wrap_po e
+    | Some exp0 ->
+      let v = fresh_var "migration" exp0.note.S.note_typ in
+      Some (varE v),
+      fun e ->
+        mergeE
+        [letD v (exp exp0)]
+        (wrap_po e)
+  in
+
 
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
       | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
+        { e with it = Ir.AsyncE (s, tb, wrap_exp_opt e', t) }
       | T.Returns, Ir.BlockE (
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
-      | _, Ir.ActorE _ -> wrap_po e
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb, wrap_exp_opt e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
-    else
-      wrap_po e
+    else wrap_exp_opt e
   in
   args, eo, wrap_under_async, control, res_tys
 
@@ -1221,7 +1224,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (sp, exp_opt, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None

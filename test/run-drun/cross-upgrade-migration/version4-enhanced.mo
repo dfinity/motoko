@@ -3,7 +3,8 @@ import Prim "mo:prim";
 import Migration "Migration4";
 
 // test adding a nested field, changing type
-actor [Migration.run] {
+(with migration = Migration.run)
+actor {
 
    Prim.debugPrint("Version 4");
 
