@@ -16,7 +16,7 @@ end
 module Default = struct
   let include_sources = false
   let include_types = false
-  let include_migration = true
+  let include_migration = true (* false for vscode *)
   let include_docs = None
   let main_file = None
 end
@@ -280,14 +280,12 @@ module Make (Cfg : Config) = struct
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
     | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
-       "ClassD" $$
+      "ClassD" $$
         migration eo
-        ((match eo with None -> Atom "_" | Some e -> exp e) ::
-        shared_pat sp ::
-        id x :: List.map typ_bind tp @ [
+        (shared_pat sp :: id x :: List.map typ_bind tp @ [
         pat p;
-        obj_sort s;
         (match rt with None -> Atom "_" | Some t -> typ t);
+        obj_sort s;
         id i
       ] @ List.map dec_field dfs)))
 
