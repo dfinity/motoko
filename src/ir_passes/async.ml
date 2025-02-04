@@ -336,17 +336,21 @@ let transform prog =
       let hasCycles = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
       let hasTimeout = Type.(sub pars.note.Note.typ (Obj(Object, [{ lab = "timeout"; typ = nat32; src = empty_src}]))) in
       let cyclesSetup = if hasCycles
-        then Some (thenE
-                     (natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles")
-                     (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]))
+        then Some (fun pars ->
+                 (thenE
+                    (natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles")
+                    (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat])))
         else None in
       let timeoutSetup = if hasTimeout
-        then Some (primE SystemTimeoutPrim [dotE pars "timeout" T.nat32])
+        then Some (fun pars -> primE SystemTimeoutPrim [dotE pars "timeout" T.nat32])
         else None in
       let setup = match cyclesSetup, timeoutSetup with
-        | Some c, Some t -> Some (thenE c t)
-        | None, t -> t
-        | c, _ -> c in
+        | Some c, Some t ->
+          let v = fresh_var "pars" (typ pars) in
+          Some (blockE [letP (varP v) pars] (thenE (varE v |> c) (varE v |> t)))
+        | None, Some t -> Some (t pars)
+        | Some c, _ -> Some (c pars)
+        | _ -> Some (blockE [letP wildP pars] (unitE())) in
 
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::

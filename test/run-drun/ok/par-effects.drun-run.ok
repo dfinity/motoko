@@ -7,11 +7,11 @@ debug.print: async-inside
 debug.print: effect
 debug.print: outcall-inside
 debug.print: effect
-debug.print: effect
 debug.print: outcall-inside
 debug.print: effect
 debug.print: outcall-inside
 debug.print: effect
+debug.print: outcall-inside
 debug.print: effect
 debug.print: outcall-inside
 debug.print: effect

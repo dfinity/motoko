@@ -27,6 +27,7 @@ actor A {
         await (with cycles; timeout = 1; moot = f()) A.outcall();
         await (with cycles; moot = f()) outcall();
         await (with cycles; timeout = 1; moot = f()) outcall();
+        await (with moot = f()) outcall();
 
         await (with cycles; moot = f()) selfcall();
         await (with cycles; timeout = 1; moot = f()) selfcall();
