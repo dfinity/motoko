@@ -124,7 +124,7 @@ let rec exp e : f = match e.it with
 and prim = function
   | CPSAsync (_, _, par)
   | CallPrim (_, par) -> exp par
-  | ICCallPrim par_opt -> exps Option.(to_list par_opt)
+  | ICCallPrim setup -> exp setup
   | _ -> M.empty
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)

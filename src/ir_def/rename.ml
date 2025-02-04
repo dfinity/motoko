@@ -27,7 +27,7 @@ let arg_bind rho a =
 
 let rec prim rho = function
   | CallPrim (typ, par) -> CallPrim (typ, exp rho par)
-  | ICCallPrim par_opt -> ICCallPrim (Option.map (exp rho) par_opt)
+  | ICCallPrim setup -> ICCallPrim (exp rho setup)
   | CPSAsync (sort, typ, par) -> CPSAsync (sort, typ, exp rho par)
   | p -> Ir.map_prim Fun.id (id rho) (exp rho) p (* rename BreakPrim id etc *)
 

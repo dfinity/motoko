@@ -177,7 +177,7 @@ and prim =
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
-  | ICCallPrim of exp option
+  | ICCallPrim of exp
   | ICCallRawPrim
   | ICMethodNamePrim
   | ICReplyDeadlinePrim
@@ -331,7 +331,7 @@ let map_prim t_typ t_id t_exp p =
   | ICCallRawPrim
   | ICMethodNamePrim
   | ICReplyDeadlinePrim -> p
-  | ICCallPrim setup -> ICCallPrim (Option.map t_exp setup)
+  | ICCallPrim setup -> ICCallPrim (t_exp setup)
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)

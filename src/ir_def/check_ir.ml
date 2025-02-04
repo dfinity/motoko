@@ -608,7 +608,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ICCallerPrim, [] ->
       T.caller <: t
     | ICCallPrim setup, [exp1; exp2; k; r; c] ->
-      Option.iter (fun e -> typ e <: T.unit) setup;
+      typ setup <: T.unit;
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->

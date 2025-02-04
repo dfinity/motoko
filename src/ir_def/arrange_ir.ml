@@ -120,7 +120,7 @@ and prim = function
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
-  | ICCallPrim e      -> "ICCallPrim" $$ Option.(map exp e |> to_list)
+  | ICCallPrim e      -> "ICCallPrim" $$ [exp e]
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"

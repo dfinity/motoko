@@ -454,9 +454,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim setup_opt, [v1; v2; kv; rv; cv] ->
-        let par = Lib.Option.get setup_opt (Construct.unitE ()) in
-        interpret_exp env par (fun v ->
+      | ICCallPrim setup, [v1; v2; kv; rv; cv] ->
+        interpret_exp env setup (fun v ->
         V.as_unit v;
         let v1 = match v1 with
           | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
