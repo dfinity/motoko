@@ -347,10 +347,11 @@ let transform prog =
       let setup = match cyclesSetup, timeoutSetup with
         | Some c, Some t ->
           let v = fresh_var "pars" (typ pars) in
-          Some (blockE [letP (varP v) pars] (thenE (varE v |> c) (varE v |> t)))
-        | None, Some t -> Some (t pars)
-        | Some c, _ -> Some (c pars)
-        | _ -> Some (blockE [letP wildP pars] (unitE())) in
+          blockE [letP (varP v) pars] (thenE (varE v |> c) (varE v |> t))
+        | None, Some t -> t pars
+        | Some c, _ -> c pars
+        | _ when snd (Type.as_obj pars.note.Note.typ) = [] -> unitE()
+        | _ -> blockE [letP wildP pars] (unitE()) in
 
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::

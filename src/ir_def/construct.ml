@@ -204,7 +204,7 @@ let ic_rejectE e =
 let ic_callE s f e k r c =
   let es = [f; e; k; r; c] in
   let eff = map_max_effs eff es in
-  { it = PrimE (ICCallPrim s, es);
+  { it = PrimE (ICCallPrim (Some s), es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }
