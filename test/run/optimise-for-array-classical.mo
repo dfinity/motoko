@@ -192,6 +192,13 @@ for (check6 in check6Values.values()) { ignore check6 };
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
+// DON'TFHECK: i32.load offset=(5 or 9)
+// FHECK:      i32.load offset=
+// FHECK:      i32.const 2
+// FHECK:      i32.shl
+// argument to vals can have an effect too, expect it
+for (check7 in [].values(Prim.debugPrint "want to see you")) { };
+
 // FHECK:      local.set $num8
 // FHECK-NOT:  call $@immut_array_size
 // DON'TFHECK: i32.load offset=(5 or 9)

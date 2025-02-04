@@ -61,8 +61,8 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 // CHECK:      i64.add
 for (check1 in [var "hello", "mutable", "world"].values()) { Prim.debugPrint check1 };
 
-let array = [var "hello", "remutable", "world"];
-array[1] := "mutable";
+let array = [var "hello", "mutable", "world"];
+array[1] := "remutable";
 // FIX-CHECK-NOT:   call $@immut_array_size
 // DON'TCHECK:  i64.load offset=17
 // FIX-CHECK:       i64.load offset=
@@ -75,8 +75,8 @@ array[1] := "mutable";
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
-let arrayValues = [var "hello", "remutable", "world"];
-arrayValues[1] := "mutable";
+let arrayValues = [var "hello", "mutable", "world"];
+arrayValues[1] := "remutable";
 // FIX-CHECK-NOT:   call $@immut_array_size
 // DON'TCHECK:  i64.load offset=17
 // FIX-CHECK:       i64.load offset=
