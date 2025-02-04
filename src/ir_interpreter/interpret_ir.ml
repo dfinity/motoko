@@ -471,6 +471,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k V.Null
       | ICCallerPrim, [] ->
         k env.caller
+      | SystemTimeoutPrim, [v1] ->
+        k V.(as_nat32 v1 |> ignore; unit)
       | ICReplyDeadlinePrim, [] ->
         k (V.Nat64 Numerics.Nat64.zero)
       | ICStableRead t, [] ->

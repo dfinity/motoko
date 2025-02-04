@@ -1,22 +1,15 @@
 --- par-effects.run
 +++ par-effects.run-low
-@@ -5,16 +5,7 @@
+@@ -5,10 +5,12 @@
  effect
  outcall-inside
  effect
--outcall-inside
--effect
--outcall-inside
--effect
--outcall-inside
--effect
--selfcall-inside
--effect
--selfcall-inside
--effect
++effect
+ outcall-inside
  effect
--onewaycall-inside
--onewaycall-inside
-+(unknown location): execution error, Unknown prim or wrong number of arguments (1 given):
-+  SystemTimeoutPrim
-+
+ outcall-inside
+ effect
++effect
+ outcall-inside
+ effect
+ selfcall-inside

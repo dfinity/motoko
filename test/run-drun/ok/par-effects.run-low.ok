@@ -6,6 +6,17 @@ effect
 outcall-inside
 effect
 effect
-(unknown location): execution error, Unknown prim or wrong number of arguments (1 given):
-  SystemTimeoutPrim
-
+outcall-inside
+effect
+outcall-inside
+effect
+effect
+outcall-inside
+effect
+selfcall-inside
+effect
+selfcall-inside
+effect
+effect
+onewaycall-inside
+onewaycall-inside
