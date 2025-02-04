@@ -12206,7 +12206,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let set_c, get_c = new_local env "c" in
     let add_cycles = match setup with
       | { it = PrimE (TupPrim, []); _ } -> Internals.add_cycles env ae (* legacy *)
-      | exp -> compile_exp_vanilla env ae exp ^^ G.i Drop in (* FIXME: SR tup []? *)
+      | exp -> compile_exp_unit env ae exp in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
