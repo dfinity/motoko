@@ -113,15 +113,6 @@ actor this {
 
   func test(m : Text, blobs : [Blob]) : async* () {
     let p = principalOfActor(this);
-    for (blob in blobs.vals()) {
-      debugPrint (debug_show { function = m; hex = toHex blob});
-      try {
-        ignore await call_raw(p, m, blob);
-      }
-      catch e {
-        debugPrint(errorMessage(e));
-      }
-    };
     for (blob in blobs.values()) {
       debugPrint (debug_show { function = m; hex = toHex blob});
       try {
