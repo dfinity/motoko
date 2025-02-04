@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * Add `.values()` as an alias to `.vals()` for Arrays and Blobs.
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
 
   * Support explicit, safe migration of persistent data allowing arbitrary
     transformations on a selected subset of stable variables.
