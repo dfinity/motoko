@@ -1,10 +1,11 @@
 effect
 async-inside
 effect
-outcall-inside
+async-inside
 effect
 outcall-inside
 effect
-selfcall-inside
 effect
-onewaycall-inside
+(unknown location): execution error, Unknown prim or wrong number of arguments (1 given):
+  SystemTimeoutPrim
+

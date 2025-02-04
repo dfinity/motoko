@@ -21,13 +21,18 @@ actor A {
     public func go() {
         let cycles = 888;
         await (with cycles; moot = f()) async debugPrint "async-inside";
+        await (with cycles; timeout = 1; moot = f()) async debugPrint "async-inside";
 
         await (with cycles; moot = f()) A.outcall();
+        await (with cycles; timeout = 1; moot = f()) A.outcall();
         await (with cycles; moot = f()) outcall();
+        await (with cycles; timeout = 1; moot = f()) outcall();
 
         await (with cycles; moot = f()) selfcall();
+        await (with cycles; timeout = 1; moot = f()) selfcall();
 
         (with cycles; moot = f()) onewaycall();
+        (with cycles; timeout = 1; moot = f()) onewaycall();
     }
 };
 
