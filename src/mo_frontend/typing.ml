@@ -2599,9 +2599,9 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
   | Some exp ->
     let focus = match exp.it with
       | ObjE(_, flds) ->
-         (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.migration_lab) flds with
-          | Some fld -> fld.at
-          | None -> exp.at)
+        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.migration_lab) flds with
+         | Some fld -> fld.at
+         | None -> exp.at)
       | _ -> exp.at in
     Static.exp env.msgs exp; (* preclude side effects *)
     let check_fields desc typ =
