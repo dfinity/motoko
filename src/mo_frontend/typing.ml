@@ -2673,7 +2673,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt lab stab_tfs with
        | Some _ -> ()
        | None ->
-         local_error env (Option.get exp_opt).at "M0205"
+         local_error env exp.at "M0205"
            "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
             lab
             display_typ_expand typ
@@ -2691,7 +2691,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | None ->
          if List.mem lab stab_ids then
            (* re-initialized *)
-           warn env (Option.get exp_opt).at "M0206"
+           warn env exp.at "M0206"
              "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
@@ -2699,7 +2699,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
              "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
          else
            (* dropped *)
-           warn env (Option.get exp_opt).at "M0207"
+           warn env exp.at "M0207"
              "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
