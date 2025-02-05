@@ -208,7 +208,7 @@ Both of these data migration paths are supported by static and dynamic checks th
 Of course, a user may still lose data due to coding errors, so should tread carefully.
 
 For more information, see the [example of explicit migration](compatibility.md#explicit-migration) and the
-reference material on [migration expressions](../reference/language-manual#migration-expressions).
+reference material on [migration expressions](../../reference/language-manual#migration-expressions).
 
 ## Legacy features
 
