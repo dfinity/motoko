@@ -809,7 +809,7 @@ end
 
 
 (* General code generation functions:
-   Rule of thumb: Here goes stuff that independent of the Motoko AST.
+   Rule of thumb: Here goes stuff that is independent of the Motoko AST.
 *)
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
@@ -2021,7 +2021,7 @@ module Tagged = struct
     | T (* (T,+) *)
     | S (* shared ... -> ... *)
   type blob_sort =
-    |  B (* Blob *)
+    | B (* Blob *)
     | T (* Text *)
     | P (* Principal *)
     | A (* actor { ... } *)
@@ -2191,8 +2191,7 @@ module Tagged = struct
         E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
-          compile_unboxed_const ptr_unskew ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add))
+          compile_add_const ptr_unskew
         else G.nop))
     else G.nop)
 
@@ -2411,12 +2410,13 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null,
+              Tagged.
+              [ Null,
                 (* NB: even ?null does not require allocation: We use a static
                   singleton for that: *)
                 compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Tagged.Some,
-                Tagged.obj env Tagged.Some [get_x]
+              ; Some,
+                obj env Some [get_x]
               ]
             )
         )
@@ -5520,7 +5520,7 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       system_call env "call_cycles_add128"
     | _ ->
-      E.trap_with env "cannot accept cycles when running locally"
+      E.trap_with env "cannot add cycles when running locally"
 
   let cycles_accept env =
     match E.mode env with
@@ -10896,8 +10896,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let call_as_prim = match fun_sr, sort with
       | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
          begin match n_args, e2.it with
-         | 0, _ -> true
-         | 1, _ -> true
+         | (0 | 1), _ -> true
          | n, PrimE (TupPrim, es) when List.length es = n -> true
          | _, _ -> false
          end
@@ -12149,6 +12148,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
