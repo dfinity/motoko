@@ -27,6 +27,7 @@ html:
 	for f in md/*/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
 
+# for building inside nix using a locally built interpreter
 preview:
 	make -C ../src moc_interpreter.js
 	cp -f ../src/moc_interpreter.js docusaurus/static
@@ -37,7 +38,6 @@ doc:
 
 	rm -f docusaurus/static/moc_interpreter.js
 	wget -O docusaurus/static/moc_interpreter.js https://github.com/dfinity/motoko/releases/download/$(RELEASE)/moc-interpreter-$(RELEASE).js
-	echo "ok"
 	cd docusaurus; npm install; npm run clear; npm start
 
 .PHONY: base
