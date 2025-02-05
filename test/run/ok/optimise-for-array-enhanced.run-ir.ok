@@ -1,15 +1,7 @@
 hello
 world
 hello
-world
-hello
 mutable
-world
-hello
-mutable
-world
-hello
-remutable
 world
 hello
 remutable
@@ -18,7 +10,4 @@ hello
 immutable
 world
 hello
-immutable
-world
-want to see you
 want to see you

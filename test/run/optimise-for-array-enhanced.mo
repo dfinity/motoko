@@ -15,36 +15,7 @@ import Prim "mo:⛔";
 // CHECK:      local.tee $check0
 // CHECK:      i64.const 4
 // CHECK:      i64.add
-for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
-
-// CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i64.load offset=17
-// CHECK:      i64.load offset= 
-// CHECK:      i64.const 2
-// CHECK:      i64.shr_s
-// CHECK-NEXT: i64.const 3
-// CHECK-NEXT: i64.shl
-// CHECK-NEXT: i64.add
-// CHECK:      local.tee $check0
-// CHECK:      i64.const 4
-// CHECK:      i64.add
 for (check0 in ["hello", "world"].values()) { Prim.debugPrint check0 };
-
-
-// CHECK-NOT:  call $@mut_array_size
-// DON'TCHECK: i64.load offset=17
-// FIX-CHECK:      i64.const 2
-// FIX-CHECK:      i64.shr_s
-// FIX-CHECK:      i64.const 3
-// FIX-CHECK:      i64.shl
-// FIX-CHECK:      i64.add
-// DON'TCHECK: i64.load offset=25
-// CHECK:      i64.load offset=
-// CHECK:      local.tee $check1
-// CHECK:      call $print_ptr
-// CHECK:      i64.const 4
-// CHECK:      i64.add
-for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 // CHECK-NOT:  call $@mut_array_size
 // DON'TCHECK: i64.load offset=17
@@ -73,33 +44,7 @@ array[1] := "remutable";
 // DON'T-CHECK: local.set $check2
 // `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
 // later when we have path compression for variables in the backend, we can bring this back
-for (check2 in array.vals()) { Prim.debugPrint check2 };
-
-let arrayValues = [var "hello", "mutable", "world"];
-arrayValues[1] := "remutable";
-// FIX-CHECK-NOT:   call $@immut_array_size
-// DON'TCHECK:  i64.load offset=17
-// FIX-CHECK:       i64.load offset=
-// FIX-CHECK:       i64.const 2
-// FIX-CHECK:       i64.shr_s
-// DON'T-CHECK: i64.lt_u
-// DON'T-CHECK: local.get $array
-// DON'T-CHECK: local.set $check2
-// `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
-// later when we have path compression for variables in the backend, we can bring this back
-for (check2 in arrayValues.values()) { Prim.debugPrint check2 };
-
-// FIX-CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i64.load offset=17
-// FIX-CHECK:      i64.load offset=
-// FIX-CHECK:      i64.const 2
-// FIX-CHECK-NEXT: i64.shr_s
-// FIX-CHECK:      i64.lt_u
-// FIX-CHECK:      i64.add
-// DON'TCHECK: i64.load offset=25
-// FIX-CHECK:      local.tee $check3
-// interfering parentheses don't disturb us
-for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
+for (check2 in array.values()) { Prim.debugPrint check2 };
 
 // FIX-CHECK-NOT:  call $@immut_array_size
 // DON'TCHECK: i64.load offset=17
@@ -178,20 +123,7 @@ let check6 = [var "hello", "immutable", "world"];
 check6[1] := "mutable";
 // `check6` being a `VarE` already and iteration variable is named identically
 // this passes the IR type check, which demonstrates that no name capture happens
-for (check6 in check6.vals()) { ignore check6 };
-
-let check6Values = [var "hello", "immutable", "world"];
-check6Values[1] := "mutable";
-// `check6` being a `VarE` already and iteration variable is named identically
-// this passes the IR type check, which demonstrates that no name capture happens
-for (check6 in check6Values.values()) { ignore check6 };
-
-// DON'TCHECK: i64.load offset=17
-// FIX-CHECK:      i64.load offset=
-// FIX-CHECK:      i64.const 3
-// FIX-CHECK:      i64.shl
-// argument to vals can have an effect too, expect it
-for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
+for (check6 in check6.values()) { ignore check6 };
 
 // DON'TCHECK: i64.load offset=17
 // FIX-CHECK:      i64.load offset=
@@ -224,10 +156,5 @@ func _f9<A>(array : [A]) {
 
 // make sure that one-byte-sized elements still work
 var sum10 : Nat8 = 0;
-for (check10 in ([3, 5, 7, 11] : [Nat8]).vals()) { sum10 += check10 };
-assert sum10 == 26;
-
-// make sure that one-byte-sized elements still work
-sum10 := 0;
 for (check10 in ([3, 5, 7, 11] : [Nat8]).values()) { sum10 += check10 };
-assert sum10 == 26
+assert sum10 == 26;
