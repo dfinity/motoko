@@ -10937,7 +10937,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          Closure.prepare_closure_call env ^^ (* FIXME: move to front elsewhere too *)
-         set_clos ^^
+         set_clos ^^ get_clos ^^
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
