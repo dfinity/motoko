@@ -234,7 +234,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, e1); _}, e2)
-      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
+      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "values" || proj.it = "keys")
     -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -279,7 +279,7 @@ and lexp' = function
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and transform_for_to_while p arr_exp proj e1 e2 =
-  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
+  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals", "values"}
      ~~>
      let arr = arr_exp ;
      let last = arr.size(e1) : Int - 1 ;
@@ -299,7 +299,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   let arrv = fresh_var "arr" arr_typ in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
-    | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
+    | "vals" | "values" -> primE I.DerefArrayOffset [varE arrv; varE indx]
     | "keys" -> varE indx
     | _ -> assert false in
   let last = fresh_var "last" T.int in
@@ -837,8 +837,8 @@ and array_dotE array_ty proj e =
     | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
     | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
     | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
-    | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
-    | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
+    | true,  ("vals" | "values") -> call "@mut_array_vals"   [] [T.iter_obj varA]
+    | false, ("vals" | "values") -> call "@immut_array_vals" [] [T.iter_obj varA]
     | _, _ -> assert false
 
 and blob_dotE proj e =
@@ -848,7 +848,7 @@ and blob_dotE proj e =
     callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
-    | "vals" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
+    | "vals" | "values" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
 and text_dotE proj e =

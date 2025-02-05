@@ -91,7 +91,7 @@ persistent actor This {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";
-      for (t in ts.vals()) { r #= t };
+      for (t in ts.values()) { r #= t };
       r
    };
 
