@@ -41,7 +41,7 @@ persistent actor {
 
   public func location_pretty(cities : [Text]) : async Text {
     var str = "Hello from ";
-    for (city in cities.vals()) {
+    for (city in cities.values()) {
         str := str # city # ", ";
     };
     return str # "bon voyage!";

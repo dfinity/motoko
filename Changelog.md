@@ -1,30 +1,31 @@
 # Motoko compiler changelog
 
-## 0.14.0 (FUTURE)
+## 0.14.0 (2025-02-05)
 
 * motoko (`moc`)
 
-* Support explicit, safe migration of persistent data allowing arbitrary
-  transformations on a selected subset of stable variables.
-  Additional static checks warn against possible data loss (#4812).
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
 
-  As a very simple example:
-  ```
-  import Nat32 "mo:base/Nat32";
+  * Support explicit, safe migration of persistent data allowing arbitrary
+    transformations on a selected subset of stable variables.
+    Additional static checks warn against possible data loss (#4812).
 
-  (with migration =
-    func (old : { var size : Nat32 }) : { var length : Nat } {
-      { var length = Nat32.toNat(old.size) }
+    As a very simple example:
+    ```
+    import Nat32 "mo:base/Nat32";
+
+    (with migration =
+      func (old : { var size : Nat32 }) : { var length : Nat } =
+        { var length = Nat32.toNat(old.size) }
+    )
+    persistent actor {
+      var length : Nat = 0;
     }
-  )
-  persistent actor {
-    var length : Nat = 0;
-  }
-  ```
-  may be used during an upgrade to rename the stable field `size` to `length`,
-  and change its type from `Nat32` to `Nat`.
+    ```
+    may be used during an upgrade to rename the stable field `size` to `length`,
+    and change its type from `Nat32` to `Nat`.
 
-  See the documentation for full details.
+    See the documentation for full details.
 
 ## 0.13.7 (2025-02-03)
 

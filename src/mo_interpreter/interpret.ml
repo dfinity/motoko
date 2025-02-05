@@ -526,7 +526,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "get" -> array_get
           | "put" -> array_put
           | "keys" -> array_keys
-          | "vals" -> array_vals
+          | "vals" | "values" -> array_vals
           | s -> assert false
         in k (f vs exp.at)
       | V.Text s ->
@@ -538,7 +538,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
-          | "vals" -> blob_vals
+          | "vals" | "values" -> blob_vals
           | s -> assert false
         in k (f b exp.at)
       | _ -> assert false

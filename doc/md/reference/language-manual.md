@@ -716,7 +716,7 @@ The corresponding module in the base library provides conversion functions:
 
 ### Type [`Blob`](../base/Blob.md)
 
-The type [`Blob`](../base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size` returns the number of characters in [`Blob`](../base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.vals` as in `for (v : Nat8 in b.vals()) { …​ v …​ }`.
+The type [`Blob`](../base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size()` returns the number of characters in [`Blob`](../base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.values()` as in `for (v : Nat8 in b.values()) { …​ v …​ }`.
 
 ### Type [`Principal`](../base/Principal.md)
 
@@ -2417,7 +2417,7 @@ In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon
 
 :::note
 
-Although general purpose, `for` loops are commonly used to consume iterators produced by [special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array, `a`.
+Although general purpose, `for` loops are commonly used to consume iterators produced by [special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.values()`) of some array, `a`.
 
 :::
 
