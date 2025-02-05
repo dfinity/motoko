@@ -2180,8 +2180,7 @@ module Tagged = struct
         let set_object = G.setter_for get_object in
         (if unskewed then
           get_object ^^
-          compile_unboxed_const ptr_skew ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          compile_add_const ptr_skew ^^
           set_object
         else G.nop) ^^
         get_object ^^
