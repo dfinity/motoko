@@ -327,31 +327,12 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
-let recordE' = ref (fun _ -> nullE ()) (* gets correctly filled below *)
-
 let asyncE s typ_bind e typ1 =
   { it = AsyncE (None, s, typ_bind, e, typ1);
     at = no_region;
     note =
       Note.{ def with typ = T.Async (s, typ1, typ e);
                       eff = T.(if s = Fut then Await else Triv) }
-  }
-
-let callE exp1 typs exp2 =
-  let typ = match T.promote (typ exp1) with
-    | T.Func (_sort, control, _, _, ret_tys) ->
-      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
-    | T.Non -> T.Non
-    | _ -> raise (Invalid_argument "callE expect a function")
-  in
-  let p = CallPrim (typs, !recordE' []) in
-  let es = [exp1; exp2] in
-  { it = PrimE (p, es);
-    at = no_region;
-    note = Note.{ def with
-     typ;
-     eff = Ir_effect.infer_effect_prim p es
-    }
   }
 
 let parenthetical par = function
@@ -379,13 +360,6 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 (trueE ()) e2
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
-let oldE : Ir.exp -> Ir.exp = fun e ->
-  { it = (primE (CallPrim ([typ e], !recordE' [])) [e]).it;
-    at = no_region;
-    note = Note.{ def with
-      typ = typ e;
-    }
-  }
 
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()
@@ -719,6 +693,56 @@ let named displ e =
   | _ -> assert false
 
 
+(* object *)
+let objE sort typ_flds flds =
+  let rec go ds fields fld_tys = function
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+           (T.obj sort
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
+               @ fld_tys)))
+    | (lab, exp)::flds ->
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
+        | _ ->
+          let v = fresh_var lab (typ exp) in
+          v, letD v exp :: ds in
+      let field = {
+        it = {name = lab; var = id_of_var v};
+        at = no_region;
+        note = typ exp
+      } in
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
+  in
+  go [] [] [] flds
+
+let recordE = objE T.Object []
+
+let oldE : Ir.exp -> Ir.exp = fun e ->
+  { it = (primE (CallPrim ([typ e], recordE [])) [e]).it;
+    at = no_region;
+    note = Note.{ def with typ = typ e }
+  }
+
+let callE exp1 typs exp2 =
+  let typ = match T.promote (typ exp1) with
+    | T.Func (_sort, control, _, _, ret_tys) ->
+      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
+    | T.Non -> T.Non
+    | _ -> raise (Invalid_argument "callE expect a function")
+  in
+  let p = CallPrim (typs, recordE []) in
+  let es = [exp1; exp2] in
+  { it = PrimE (p, es);
+    at = no_region;
+    note = Note.{ def with
+     typ;
+     eff = Ir_effect.infer_effect_prim p es
+    }
+  }
+
 (* Lambda application (monomorphic) *)
 
 let ( -*- ) exp1 exp2 = callE exp1 [] exp2
@@ -787,35 +811,6 @@ let forE pat exp1 exp2 =
 let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
-
-let objE sort typ_flds flds =
-  let rec go ds fields fld_tys = function
-    | [] ->
-      blockE
-        (List.rev ds)
-        (newObjE sort fields
-           (T.obj sort
-              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
-               @ fld_tys)))
-    | (lab, exp)::flds ->
-      let v, ds = match exp.it with
-        | VarE (Const, v) -> var v (typ exp), ds
-        | _ ->
-          let v = fresh_var lab (typ exp) in
-          v, letD v exp :: ds in
-      let field = {
-        it = {name = lab; var = id_of_var v};
-        at = no_region;
-        note = typ exp
-      } in
-      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
-  in
-  go [] [] [] flds
-
-
-let recordE flds = objE T.Object [] flds
-
-let _ = recordE' := recordE
 
 let objectE sort flds (tfs : T.field list) =
   let rec go ds fields = function
