@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.14.0 (FUTURE)
+## 0.14.0 (2025-02-05)
 
 * motoko (`moc`)
 
@@ -15,9 +15,8 @@
     import Nat32 "mo:base/Nat32";
 
     (with migration =
-      func (old : { var size : Nat32 }) : { var length : Nat } {
+      func (old : { var size : Nat32 }) : { var length : Nat } =
         { var length = Nat32.toNat(old.size) }
-      }
     )
     persistent actor {
       var length : Nat = 0;
