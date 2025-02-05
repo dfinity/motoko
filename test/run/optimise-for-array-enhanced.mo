@@ -55,11 +55,11 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 // FIX-CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
 // CHECK:      i64.load offset=
-// CHECK:      local.tee $check1
+// CHECK:      local.tee $check1Values
 // CHECK:      call $print_ptr
 // CHECK:      i64.const 4
 // CHECK:      i64.add
-for (check1 in [var "hello", "mutable", "world"].values()) { Prim.debugPrint check1 };
+for (check1Values in [var "hello", "mutable", "world"].values()) { Prim.debugPrint check1Values };
 
 let array = [var "hello", "mutable", "world"];
 array[1] := "remutable";
