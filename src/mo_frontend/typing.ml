@@ -2597,18 +2597,24 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
   match exp_opt with
   | None -> ()
   | Some exp ->
+    let focus = match exp.it with
+      | ObjE(_, flds) ->
+        (match List.find_opt (fun ({it = {id; _}; _} : exp_field) -> id.it = T.migration_lab) flds with
+         | Some fld -> fld.at
+         | None -> exp.at)
+      | _ -> exp.at in
     Static.exp env.msgs exp; (* preclude side effects *)
     let check_fields desc typ =
       match typ with
       | T.Obj(T.Object, tfs) ->
          if not (T.stable typ) then
-           local_error env exp.at "M0201"
+           local_error env focus "M0201"
              "expected stable type, but migration expression %s non-stable type%a"
              desc
              display_typ_expand typ;
          tfs
       | _ ->
-         local_error env exp.at "M0202"
+         local_error env focus "M0202"
            "expected object type, but migration expression %s non-object type%a"
            desc
            display_typ_expand typ;
@@ -2620,7 +2626,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        if s = T.Actor then raise (Invalid_argument "");
        T.lookup_val_field T.migration_lab tfs
      with Invalid_argument _ ->
-       error env exp.at "M0208"
+       error env focus "M0208"
          "expected expression with field `migration`, but expression has type%a"
          display_typ_expand exp.note.note_typ
    in
@@ -2631,7 +2637,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
       check_fields "consumes" (T.normalize t_dom),
       check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->
-       local_error env exp.at "M0203"
+       local_error env focus "M0203"
          "expected non-generic, local function type, but migration expression produces type%a"
          display_typ_expand typ;
        [], []
@@ -2642,7 +2648,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | None -> ()
        | Some typ ->
          if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
-           local_error env exp.at "M0204"
+           local_error env focus "M0204"
              "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab
               display_typ_expand typ
@@ -2673,7 +2679,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt lab stab_tfs with
        | Some _ -> ()
        | None ->
-         local_error env (Option.get exp_opt).at "M0205"
+         local_error env focus "M0205"
            "migration expression produces unexpected field `%s` of type%a\n%s\n%s"
             lab
             display_typ_expand typ
@@ -2691,7 +2697,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | None ->
          if List.mem lab stab_ids then
            (* re-initialized *)
-           warn env (Option.get exp_opt).at "M0206"
+           warn env focus "M0206"
              "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
@@ -2699,7 +2705,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
              "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
          else
            (* dropped *)
-           warn env (Option.get exp_opt).at "M0207"
+           warn env focus "M0207"
              "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
              lab
              display_typ_expand typ
