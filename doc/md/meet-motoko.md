@@ -43,10 +43,10 @@ While you can use any IDE for Motoko development, **Visual Studio Code (VS Code)
 
 If you are using VS Code, you can enhance your development experience by installing the official Motoko extension:  
 
-- Open VS Code  
-- Go to Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`)  
-- Search for **"Motoko"**  
-- Install the official Motoko extension  
+1. Open VS Code.
+2. Go to "Extensions" (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+3. Search for **"Motoko"**
+4. Install the official Motoko extension.
 
 ## Explore Motoko use cases
 
