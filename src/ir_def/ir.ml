@@ -163,7 +163,7 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  | ICCallAttrsPrim                      (* cycles to send by parenthetical *)
+  | ICCallAttrsPrim                   (* cycles/timeout to send by parenthetical (callee side) *)
   | SystemTimeoutPrim
   | SetCertifiedData
   | GetCertificate
