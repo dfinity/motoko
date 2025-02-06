@@ -105,9 +105,25 @@ actor A {
     };
 
     public func test8() : async () {
+        debugPrint "test8()";
         await (with cycles = 98765) quux();
         //await (with cycles = 87654) baz(); NOT YET!
         //await (with cycles = 76543) A.baz() NOT YET!
+    };
+
+    func localOuter() : async () { debugPrint ("localOuter: " # debug_show(Cycles.available())) };
+    public func test9() : async () {
+        debugPrint "test9()";
+        var env = 42;
+        func local() : async () { debugPrint ("local: " # debug_show(env + Cycles.available())) };
+
+        // give a (dynamically) bogus base
+        object base { public func cycles() : Text = "bogus" };
+        //let check : { cycles : Nat } = base;
+        await (with cycles = 876) localOuter();
+        await (base with) localOuter(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
+        await (with cycles = 876) local();
+        await (base with) local(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
     }
 }
 
@@ -124,3 +140,4 @@ actor A {
 //CALL ingress test6 "DIDL\x00\x00"
 //CALL ingress test7 "DIDL\x00\x00"
 //CALL ingress test8 "DIDL\x00\x00"
+//CALL ingress test9 "DIDL\x00\x00"
