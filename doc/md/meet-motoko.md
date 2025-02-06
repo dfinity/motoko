@@ -60,7 +60,7 @@ Motoko makes it easy to build scalable backend services for web applications.
 
 2. [Expand your application by calling external APIs from a Motoko canister.](https://github.com/dfinity/examples/tree/master/motoko/send_http_get)
 
-3. [Explore a Reversi game built in motoko.](https://github.com/ninegua/reversi)  
+3. [Explore a Reversi game built in Motoko.](https://github.com/ninegua/reversi)  
 
 </TabItem>
 
