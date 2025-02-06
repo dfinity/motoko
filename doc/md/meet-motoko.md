@@ -70,7 +70,7 @@ Build decentralized finance (DeFi) applications using Motoko.
 
 1. [Set up an ICRC-1 canister.](https://github.com/sonicdex/icrc-1-public/)
 
-2. [Create a decentralized exchange (DEX)](https://github.com/dfinity/examples/tree/master/motoko/icrc2-swap)  
+2. [Create a decentralized exchange (DEX).](https://github.com/dfinity/examples/tree/master/motoko/icrc2-swap)  
 
 3. [Learn how to deploy NFTs on ICP.](https://github.com/noku-team/icrc7_motoko)
 
