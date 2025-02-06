@@ -80,7 +80,7 @@ Build decentralized finance (DeFi) applications using Motoko.
 
 Develop cross-chain applications and integrate with other blockchains.  
 
-1. [Explore Ethereum integration](https://github.com/dfinity/icp-eth-starter)
+1. [Explore the Ethereum integration.](https://github.com/dfinity/icp-eth-starter)
 
 2. [Build a Bitcoin POS application.](https://github.com/dfinity/examples/tree/master/motoko/ic-pos)
 
