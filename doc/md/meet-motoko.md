@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Meet Motoko: The language of the Internet Computer
+# Meet Motoko: The language shaping the future of Web3
 
 import { MarkdownChipRow } from "/src/components/Chip/MarkdownChipRow";
 
@@ -14,49 +14,53 @@ import TabItem from "@theme/TabItem";
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
 
-## Introduction
-
-Motoko is the native programming language of the Internet Computer. It’s a modern, **actor-based** language designed for safety, efficiency, and scalability. With native support for asynchronous messaging, WebAssembly (Wasm) interoperability, robust type safety, and data persistence, Motoko makes it easy to build secure and performant decentralized web applications.
+Motoko is a modern, **actor-based** language designed for safety, efficiency, and scalability. Motoko natively supports asynchronous messaging, Candid interoperability, robust type safety, automatic memory management, and the unique features of the Internet Computer.
 
 ## Install Motoko
 
 Follow these steps to set up your Motoko development environment:
 
-1. **Install the IC SDK (DFX)**
+### 1. **Install the IC SDK**  
 
-  ```bash
-  sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
-  ```
+To develop Motoko applications, you need a development environment that includes the Motoko compiler and base library. The Internet Computer Software Development Kit (IC SDK) provides these essential tools, along with utilities for managing and deploying canisters.  
 
-  Verify the installation with:
+```bash
+sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+```
 
-  ```bash
-  dfx --version
-  ```
+Verify the installation with:
 
-2. **Install Visual Studio Code**
-   - Download VSCode from [https://code.visualstudio.com](https://code.visualstudio.com)
-   - Follow the installation instructions for your operating system
+```bash
+dfx --version
+```
 
-3. **Install Motoko Extension**
-   - Open VSCode
-   - Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
-   - Search for "Motoko"
-   - Install the official Motoko extension
+### 2. **Choose an IDE**  
+
+While you can use any IDE for Motoko development, **Visual Studio Code (VS Code)** is recommended due to its convenient extension support. If you prefer to use VS Code, you can download it from:  
+[https://code.visualstudio.com](https://code.visualstudio.com)  
+
+### 3. **Install the Motoko Extension(Optional, Recommended for VS Code Users)**
+
+If you are using VS Code, you can enhance your development experience by installing the official Motoko extension:  
+
+- Open VS Code  
+- Go to Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`)  
+- Search for **"Motoko"**  
+- Install the official Motoko extension  
 
 ## Explore Motoko use cases
 
 <Tabs>
 
-<TabItem value="usecase1" label="Backend" default>
+<TabItem value="usecase1" label="Web applications" default>
 
 Motoko makes it easy to build scalable backend services for web applications.
 
-1. [Deploy your first Motoko canister.](https://internetcomputer.org/docs/current/tutorials/developer-journey/level-1/1.1-live-demo)
+1. [Deploy your first Motoko canister.](https://github.com/dfinity/examples/tree/master/motoko/counter)
 
-2. [Expand your application by calling external APIs from a Motoko canister.](https://internetcomputer.org/docs/current/developer-docs/backend/https-outcalls)
+2. [Expand your application by calling external APIs from a Motoko canister.](https://github.com/dfinity/examples/tree/master/motoko/send_http_get)
 
-3. [Connect your Motoko backend with a frontend canister.](https://internetcomputer.org/docs/current/references/samples/svelte/svelte-motoko-starter/)  
+3. [Explore a Reversi game built in motoko.](https://github.com/ninegua/reversi)  
 
 </TabItem>
 
@@ -64,9 +68,11 @@ Motoko makes it easy to build scalable backend services for web applications.
 
 Build decentralized finance (DeFi) applications using Motoko.
 
-1. [Set up an ICRC-1 canister.](https://internetcomputer.org/docs/current/tutorials/hackathon-prep-course/integrating-with-tokens/#deploying-an-icrc-1-ledger-locally)
+1. [Set up an ICRC-1 canister.](https://github.com/sonicdex/icrc-1-public/)
 
-2. [Create a decentralized exchange (DEX)](https://internetcomputer.org/docs/current/tutorials/developer-journey/level-5/5.3-token-swap-tutorial/)  
+2. [Create a decentralized exchange (DEX)](https://github.com/dfinity/examples/tree/master/motoko/icrc2-swap)  
+
+3. [Learn how to deploy NFTs on ICP](https://github.com/noku-team/icrc7_motoko)
 
 </TabItem>
 
@@ -74,34 +80,24 @@ Build decentralized finance (DeFi) applications using Motoko.
 
 Develop cross-chain applications and integrate with other blockchains.  
 
-1. [Explore Bitcoin integration (ckBTC).](https://internetcomputer.org/docs/current/developer-docs/multi-chain/bitcoin/overview)
-  
-2. [Explore Ethereum integration (ckETH).](https://internetcomputer.org/ethereum-integration/)
-  
-3. [Explore Chain-Key ERC-20 (ckERC-20) integrations.](https://internetcomputer.org/docs/current/developer-docs/multi-chain/chain-key-tokens/ckerc20/overview/)
+1. [Explore Ethereum integration](https://github.com/dfinity/icp-eth-starter)
 
-</TabItem>
-
-<TabItem value="usecase4" label="Digital assets" default>
-
-Manage digital assets on the Internet Computer.
-
-1. [Learn how to deploy NFTs on ICP](https://internetcomputer.org/docs/current/tutorials/developer-journey/level-5/5.4-NFT-tutorial)
+2. [Build a Bitcoin POS application.](https://github.com/dfinity/examples/tree/master/motoko/ic-pos)
 
 </TabItem>
 
 </Tabs>
 
-## Quick References  
+## Quick references  
 
 For developers looking for quick access to key resources, here are direct links to the base library and useful examples:
 
-- **[Motoko base library](https://internetcomputer.org/docs/current/motoko/main/base/)** – Browse core modules and functions.  
+- **[Motoko base library](https://internetcomputer.org/docs/current/motoko/main/base/)**
 
-- **[Examples:](https://internetcomputer.org/docs/current/motoko/main/getting-started/examples)**
+- **[Motoko example projects](https://github.com/dfinity/examples/tree/master/motoko)**
 
 ### Share your feedback
 
 Was this page helpful? [Yes] [No]
 
-If you have any questions or suggestions, join the [DFINITY Developer Forum](https://forum.dfinity.org/) to share your feedback. Connect with the community, collaborate with other developers, and stay up to date with the latest Motoko updates.
+If you have any questions or suggestions, join the [DFINITY developer forum](https://forum.dfinity.org/) to share your feedback. Connect with the community, collaborate with other developers, and stay up to date with the latest Motoko updates.
