@@ -31,4 +31,7 @@ debug.print: quux: 0
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test9()
 debug.print: localOuter: 876
-ingress Err: IC0504: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai is out of cycles
+debug.print: localOuter: 0
+debug.print: local: 1_029
+debug.print: local: 42
+ingress Completed: Reply: 0x4449444c0000

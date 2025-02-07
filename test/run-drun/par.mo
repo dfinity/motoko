@@ -120,11 +120,11 @@ actor A {
         func local() : async () { debugPrint ("local: " # debug_show(env + Cycles.available())) };
 
         // give a (dynamically) bogus base
-        object base { public func cycles() : Text = "bogus" };
+        object base { /*public*/ func cycles() : Text = "bogus" };
         //let check : { cycles : Nat } = base;
         await (with cycles = 876) localOuter();
         await (base with) localOuter(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
-        await (with cycles = 876) local();
+        await (with cycles = 987) local();
         await (base with) local(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
     }
 }
