@@ -9043,7 +9043,7 @@ module VarEnv = struct
   let add_local_with_heap_ind env (ae : t) name typ =
       let i = E.add_anon_local env I64Type in
       E.add_local_name env i name;
-      ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
+      ({ ae with vars = NameEnv.add name (HeapInd i, typ) ae.vars }, i)
 
   let add_static_variable (ae : t) name index typ =
       { ae with vars = NameEnv.add name ((Static index), typ) ae.vars }
@@ -9055,7 +9055,7 @@ module VarEnv = struct
       { ae with vars = NameEnv.add name ((Const cv : varloc), typ) ae.vars }
 
   let add_local_local env (ae : t) name sr i typ =
-      { ae with vars = NameEnv.add name ((Local (sr, i)), typ) ae.vars }
+      { ae with vars = NameEnv.add name (Local (sr, i), typ) ae.vars }
 
   let add_direct_local env (ae : t) name sr typ =
       let i = E.add_anon_local env (SR.to_var_type sr) in
@@ -9116,18 +9116,18 @@ module Var = struct
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
   let set_val env ae var : G.t * SR.t * G.t = match VarEnv.lookup ae var with
-    | Some ((Local (sr, i)), _) ->
+    | Some (Local (sr, i), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-    | Some ((HeapInd i), typ) when potential_pointer typ ->
+    | Some (HeapInd i, typ) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int64.mul MutBox.field Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | Some ((HeapInd i), typ) ->
+    | Some (HeapInd i, typ) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
@@ -9142,8 +9142,8 @@ module Var = struct
       Heap.get_static_variable env index,
       SR.Vanilla,
       MutBox.store_field env
-    | Some ((Const _), _) -> fatal "set_val: %s is const" var
-    | Some ((PublicMethod _), _) -> fatal "set_val: %s is PublicMethod" var
+    | Some (Const _, _) -> fatal "set_val: %s is const" var
+    | Some (PublicMethod _, _) -> fatal "set_val: %s is PublicMethod" var
     | None -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -9192,7 +9192,7 @@ module Var = struct
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup ae0 var with
-    | Some ((Local (sr, i)), typ) ->
+    | Some (Local (sr, i), typ) ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
@@ -9201,7 +9201,7 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some ((HeapInd i), typ) ->
+    | Some (HeapInd i, typ) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var typ in

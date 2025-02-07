@@ -9197,10 +9197,10 @@ module VarEnv = struct
   let add_local_with_heap_ind env (ae : t) name typ =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
+      ({ ae with vars = NameEnv.add name (HeapInd i, typ) ae.vars }, i)
 
   let add_local_heap_static (ae : t) name ptr typ =
-      { ae with vars = NameEnv.add name ((HeapStatic ptr), typ) ae.vars }
+      { ae with vars = NameEnv.add name (HeapStatic ptr, typ) ae.vars }
 
   let add_local_public_method (ae : t) name (fi, exported_name) typ =
       { ae with vars = NameEnv.add name ((PublicMethod (fi, exported_name) : varloc), typ) ae.vars }
@@ -9209,7 +9209,7 @@ module VarEnv = struct
       { ae with vars = NameEnv.add name ((Const cv : varloc), typ) ae.vars }
 
   let add_local_local env (ae : t) name sr i typ =
-      { ae with vars = NameEnv.add name ((Local (sr, i)), typ) ae.vars }
+      { ae with vars = NameEnv.add name (Local (sr, i), typ) ae.vars }
 
   let add_direct_local env (ae : t) name sr typ =
       let i = E.add_anon_local env (SR.to_var_type sr) in
@@ -9270,11 +9270,11 @@ module Var = struct
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
   let set_val env ae var : G.t * SR.t * G.t = match (VarEnv.lookup ae var, !Flags.gc_strategy) with
-    | (Some ((Local (sr, i)), _), _) ->
+    | (Some (Local (sr, i), _), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-    | (Some ((HeapInd i), typ), Flags.Generational) when potential_pointer typ ->
+    | (Some (HeapInd i, typ), Flags.Generational) when potential_pointer typ ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env ^^
@@ -9283,18 +9283,18 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
-    | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
+    | (Some (HeapInd i, typ), Flags.Incremental) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | (Some ((HeapInd i), typ), _) ->
+    | (Some (HeapInd i, typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
-    | (Some ((HeapStatic ptr), typ), Flags.Generational) when potential_pointer typ ->
+    | (Some (HeapStatic ptr, typ), Flags.Generational) when potential_pointer typ ->
       compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env ^^
@@ -9303,19 +9303,19 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
-    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
+    | (Some (HeapStatic ptr, typ), Flags.Incremental) when potential_pointer typ ->
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | (Some ((HeapStatic ptr), typ), _) ->
+    | (Some (HeapStatic ptr, typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env
-    | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
-    | (Some ((PublicMethod _), _), _) -> fatal "set_val: %s is PublicMethod" var
+    | (Some (Const _, _), _) -> fatal "set_val: %s is const" var
+    | (Some (PublicMethod _, _), _) -> fatal "set_val: %s is PublicMethod" var
     | (None, _)   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -9362,7 +9362,7 @@ module Var = struct
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     match VarEnv.lookup ae0 var with
-    | Some ((Local (sr, i)), typ) ->
+    | Some (Local (sr, i), typ) ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
@@ -9371,7 +9371,7 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some ((HeapInd i), typ) ->
+    | Some (HeapInd i, typ) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var typ in
