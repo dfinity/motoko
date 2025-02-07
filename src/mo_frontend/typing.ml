@@ -2762,7 +2762,11 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
              "This field will be removed from the actor, discarding its consumed value."
              "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
      )
-     dom_tfs
+     dom_tfs;
+   (* Warn the user about unrecognised attributes. *)
+   let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
+   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+   if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 
 and check_stab env sort scope dec_fields =
