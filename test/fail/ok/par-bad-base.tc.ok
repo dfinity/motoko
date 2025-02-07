@@ -1,8 +1,8 @@
-par-bad-base.mo:3.15-3.37: type error [M0127], system function cycles is declared with type
+par-bad-base.mo:3.15-3.37: type error [M0127], parenthetical field cycles is declared with type
   Int
 instead of expected type
   Nat
-par-bad-base.mo:4.15-4.37: type error [M0127], system function cycles is declared with type
+par-bad-base.mo:4.15-4.37: type error [M0127], parenthetical field cycles is declared with type
   Text
 instead of expected type
   Nat

@@ -2591,15 +2591,17 @@ and validate_parenthetical env typ_opt = function
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
      if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";
-     let check_lab {T.lab; typ } = match lab with
-       | "cycles" ->  if not (sub env par.at typ T.nat) then
-                        local_error env par.at "M0127"(*FIXME*) "parenthetical field %s is declared with type%a\ninstead of expected type%a" lab
-                          display_typ typ
-                          display_typ T.nat
-
-       | "timeout" -> () (*typ <: nat32*)
+     let check_lab { T.lab; typ; _ } =
+       let check want =
+         if not (sub env par.at typ want)
+         then local_error env par.at "M0127"(*FIXME*) "parenthetical field %s is declared with type%a\ninstead of expected type%a" lab
+                display_typ typ
+                display_typ want in
+       match lab with
+       | "cycles" -> check T.nat
+       | "timeout" -> check T.nat32
        | _ -> () in
-     List.(filter (fun {T.lab; _} -> lab = "cycles" || lab = "timeout") attrs_flds |> iter check_lab);
+     List.iter check_lab attrs_flds;
      let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
      if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
