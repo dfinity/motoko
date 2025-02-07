@@ -34,23 +34,25 @@ actor A {
         debugPrint "test()";
         let message = "Hi!";
 
-        func closA() : async Nat {
-            message.size()
+        func closA(i : Nat) : async Nat {
+            assert Cycles.available() == 101;
+            i + message.size()
         };
 
         func closB() : async Nat = async {
+            assert Cycles.available() == 102;
             message.size()
         };
 
-        assert 3 == (await (with cycles = 101) closA());
+        assert 42 == (await (with cycles = 101) closA(39));
         assert 3 == (await (with cycles = 102) closB());
 
         let c : async () =
           (with yeah = 8; timeout = 55; cycles = 1000)
-          foo(func() : async () = async { assert message == "Hi!" });
+          foo(func() : async () = async { assert message == "Hi!" and Cycles.available() == 3000 });
         await c;
         await (with cycles = 5000)
-        bar(func() : async () = async { assert message == "Hi!" });
+        bar(func() : async () = async { assert message == "Hi!" and Cycles.available() == 4000 });
     };
 
     public func test2() : async () {
