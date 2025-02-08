@@ -12280,17 +12280,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (LocalGet (nr 0l)) ^^ (* closed-over bindings *)
     G.if1 I32Type
       begin
+        let open Tagged in
         G.i (LocalGet (nr 0l)) ^^
-        Tagged.branch_with env [I32Type]
-          [ Tagged.Closure,
+        branch_with env [I32Type]
+          [ Closure,
             G.i Drop ^^
             Opt.null_lit env
-          ; Tagged.(Array T),
+          ; Array T,
             Opt.inject_simple env (Arr.load_field env 0l) ^^
             G.i (LocalGet (nr 0l)) ^^
             Arr.load_field env 1l ^^
             G.i (LocalSet (nr 0l))
-          ; Tagged.Object,
+          ; Object,
             Opt.inject_simple env G.nop
           ]
       end
@@ -12486,13 +12487,14 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
      *)
 
 
-    let add_meta = match par.it with
-      | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
+    let prep_meta, add_meta = match par.it with
+      | LitE NullLit -> G.nop, Internals.add_cycles env ae (* legacy *)
       | _ ->
-         let set_hash, get_hash = new_local env "sel" in
          let set_meta, get_meta = new_local env "meta" in
          compile_exp_vanilla env ae par ^^
-         set_meta ^^ get_meta ^^ Opt.is_some env ^^
+         set_meta,
+         let set_hash, get_hash = new_local env "sel" in
+         get_meta ^^ Opt.is_some env ^^
          G.if0
            begin
              get_meta ^^
@@ -12513,6 +12515,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
            end
            (Internals.add_cycles env ae) (* legacy *)
     in
+    prep_meta ^^
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^
