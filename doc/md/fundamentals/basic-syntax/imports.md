@@ -32,4 +32,4 @@ import { compare } "mo:base/Nat";
 
 ## Quick references
 
-- **[Modules and imports](https://internetcomputer.org/docs/current/motoko/main/writing-motoko/modules-and-imports/)**
+- [Modules and imports](https://internetcomputer.org/docs/current/motoko/main/writing-motoko/modules-and-imports/)
