@@ -72,7 +72,7 @@ Bitwise operators manipulate numbers **at the binary level**.
 
 Bounded integers **trap** on overflow, but **wrapping versions** allow overflow behavior:
 
-| Operator | Description | Examples |
+| Operator | Description | Example |
 |----------|------------|------------|
 | `+%`     | Addition with wrap-around | `a +% b` |
 | `-%`     | Subtraction with wrap-around | `a -% b` |
