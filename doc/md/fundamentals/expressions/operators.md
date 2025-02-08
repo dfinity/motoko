@@ -26,7 +26,7 @@ Motoko provides various operators for working with numbers, text, and boolean va
 
 Relational operators compare two values and return `true` or `false`:  
 
-| Operator | Description | Examples|
+| Operator | Description | Example|
 |----------|------------|-----------|
 | `==`     | Equals | `a == b` |
 | `!=`     | Not equals | `a != b`|
