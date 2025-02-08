@@ -9,3 +9,13 @@ Sequences of characters are handled using the `Text` type, which represents immu
 ```motoko
 let greeting: Text = "Hello, world!";
 ```
+
+Concatenating text
+
+```motoko
+"ICP" # "x" # "Motoko" //ICP x Motoko
+```
+
+## Quick references
+
+- [Base library Text](https://internetcomputer.org/docs/current/motoko/main/base/Text)
