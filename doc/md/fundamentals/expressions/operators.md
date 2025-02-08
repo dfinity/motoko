@@ -105,7 +105,7 @@ Operators follow precedence rules, meaning some operators are evaluated before o
 1. Unary operators (`-`, `!`, `^`)  
 2. Exponentiation (`**`, `**%`)  
 3. Multiplication & Division (`*`, `/`, `%`, `*%`)  
-4. Addition & Subtraction (`+`, `-`, `+%`, `-%`)  
+4. Addition & subtraction (`+`, `-`, `+%`, `-%`)  
 5. Bitwise operators (`&`, `|`, `^`)  
 6. Comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)  
 7. Assignment operators (`:=`, `+=`, `-=`, etc.)  
