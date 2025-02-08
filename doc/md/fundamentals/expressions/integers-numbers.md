@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Integers and numbers
 
-This section focuses on integers `Int` and introduces **natural numbers `Nat`.
+This section focuses on integers `Int` and introduces natural numbers `Nat`.
 
 The `Int` type represents all integers, both positive and negative.
 
