@@ -39,7 +39,7 @@ Relational operators compare two values and return `true` or `false`:
 
 Binary operators combine two numbers to produce a result.
 
-| Operator | Description |  Examples|
+| Operator | Description |  Example|
 |----------|------------|------------|
 | `+`      | Addition | `a + b` |
 | `-`      | Subtraction | `a - b` |
