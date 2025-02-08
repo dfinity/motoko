@@ -6,7 +6,7 @@ sidebar_position: 2
 
 Package imports should be at the top of the source file. You can import from:
 
-Standard modules provided by the base library.  
+1. Standard modules provided by the base library:
 
   ```motoko
   import Text "mo:base/Text";
