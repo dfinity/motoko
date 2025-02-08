@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Getting Started
+# Getting started
 
 This section introduces the core concepts of Motoko, covering essential syntax, data types, and expressions. Before you begin writing canisters in Motoko, you should be familiar with a few of the basic concepts and terms specific to Motoko.
 
