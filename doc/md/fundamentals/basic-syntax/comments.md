@@ -35,3 +35,9 @@ Use `///` for function or module documentation.
     a + b
   }
   ```
+
+## Quick references
+
+- [Comment style guide](https://internetcomputer.org/docs/current/motoko/main/reference/style/#comments)
+
+- [Generating Motoko documentation](https://internetcomputer.org/docs/current/motoko/main/reference/generating-docs)

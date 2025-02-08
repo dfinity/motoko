@@ -6,36 +6,7 @@ sidebar_position: 1
 
 This section focuses on integers `Int` and introduces natural numbers `Nat`.
 
-The `Int` type represents all integers, both positive and negative.
-
-```motoko
-let a: Int = -42;
-let b: Int = 0;
-let c: Int = 12345;
-```
-
-## Unbounded integers
-
-By default, `Int` is unbounded, meaning it can grow as large (or as small) as needed without causing overflow:
-
-```motoko
-let bigNumber: Int = 999_999_999_999_999;
-```
-
-## Bounded integers
-
-For scenarios requiring fixed-size integers, Motoko offers bounded integer types with specific bit-widths:
-
-- `Int8`  (8-bit signed integer)
-- `Int16` (16-bit signed integer)
-- `Int32` (32-bit signed integer)
-- `Int64` (64-bit signed integer)
-
-Bounded integers can overflow if their limits are exceeded, resulting in a runtime error:
-
-```motoko
-// let overflowInt: Int8 = 128; // Error: literal out of range Int8
-```
+Motoko supports both unbounded and bounded [integers](../basic-syntax/integers.md)
 
 ## Natural numbers
 
