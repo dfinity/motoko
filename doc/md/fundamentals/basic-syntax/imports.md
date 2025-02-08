@@ -18,7 +18,7 @@ Package imports should be at the top of the source file. You can import from:
   import Package "mo:packagename";
   ```  
 
-Files within your own project.  
+3. Files within your own project:
 
   ```motoko
   import Utils "utils";
