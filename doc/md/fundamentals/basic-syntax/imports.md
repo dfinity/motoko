@@ -12,7 +12,7 @@ Package imports should be at the top of the source file. You can import from:
   import Text "mo:base/Text";
   ```  
 
-Third-party packages installed via the Mops package manager.  
+2. Third-party packages installed via the Mops package manager:
 
   ```motoko
   import Package "mo:packagename";
