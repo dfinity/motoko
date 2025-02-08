@@ -58,7 +58,7 @@ let result = Float.fromInt(10) / Float.fromInt(3);
 
 Bitwise operators manipulate numbers **at the binary level**.  
 
-| Operator | Description |Examples |
+| Operator | Description |Example |
 |----------|------------|----------|
 | `&`      | Bitwise AND |`a & b` |
 |  `|`    | Bitwise OR | `a | b` |
