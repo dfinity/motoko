@@ -96,8 +96,5 @@ For developers looking for quick access to key resources, here are direct links 
 
 - **[Motoko example projects](https://github.com/dfinity/examples/tree/master/motoko)**
 
-### Share your feedback
 
-Was this page helpful? [Yes] [No]
 
-If you have any questions or suggestions, join the [DFINITY developer forum](https://forum.dfinity.org/) to share your feedback. Connect with the community, collaborate with other developers, and stay up to date with the latest Motoko updates.
