@@ -17,6 +17,10 @@ actor Main {
 await Main.hello();
 ```
 
-A Motoko actor always presents its interface as a suite of named functions with defined argument types and return types. The Motoko compiler and IC SDK generates this interface in **Candid**, a language-neutral format that enables communication between different systems.
+A Motoko actor always presents its interface as a suite of named functions with defined argument types and return types. When Motoko code is compiled, this interface is automatically generated in **[Candid](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/candid/candid-concepts)**, an interface description language.
 
 Since actors in Motoko communicate asynchronously, `await` ensures the result is retrieved once the function completes.
+
+## Quick references
+
+- [Actors](https://internetcomputer.org/docs/current/motoko/main/writing-motoko/actors-async)

@@ -95,6 +95,3 @@ For developers looking for quick access to key resources, here are direct links 
 - **[Motoko base library](https://internetcomputer.org/docs/current/motoko/main/base/)**
 
 - **[Motoko example projects](https://github.com/dfinity/examples/tree/master/motoko)**
-
-
-
