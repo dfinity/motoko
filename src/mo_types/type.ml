@@ -589,7 +589,9 @@ let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
 let is_async_cmp = function Async (Cmp, _, _) -> true | _ -> false
-let is_async_fut = function Async (Fut, _, _) -> true | _ -> false
+let is_async_fut = function
+  | Async (Fut, _, _) -> true
+  | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false
@@ -1926,3 +1928,9 @@ let string_of_stab_sig stab_sig : string =
   | PrePost _ -> "// Version: 2.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig
 
+let is_low_async_fut = function
+  | Func (s, c, tbs, ts1, [t2]) when is_variant t2 ->
+    sub (sum [ ("suspend", unit)
+             ; ("schedule", Func(Local, Returns, [], [], []))])
+      t2
+  | _ -> false

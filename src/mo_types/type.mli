@@ -136,6 +136,7 @@ val is_func : typ -> bool
 val is_async : typ -> bool
 val is_async_cmp : typ -> bool
 val is_async_fut : typ -> bool
+val is_low_async_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool

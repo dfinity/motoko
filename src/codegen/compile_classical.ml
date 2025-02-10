@@ -11031,8 +11031,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
          set_clos ^^
          Type.(match as_obj par.note.Note.typ, ret_tys with
                | (Object, []), _ -> get_clos (* just the closure *)
-               | _, [ret] when is_async_fut ret -> Arr.lit env Tagged.T [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
-               | _ -> get_clos) ^^ (* just the closure *)
+               | _, [ret] when is_low_async_fut ret -> Arr.lit env Tagged.T [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
+               | (Object, tflds), [ret] -> if (tflds <> []) then
+                                         Printf.printf "Cannot do typ: %s\n   not fut: %s\n"
+                                           (Wasm.Sexpr.to_string 80 (Arrange_type.typ par.note.Note.typ))
+                                           (Wasm.Sexpr.to_string 80 (Arrange_type.typ ret))
+                                       ; get_clos
+
+
+               | _ -> get_clos
+
+) ^^ (* just the closure *)
+
+
+
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
@@ -12334,6 +12346,27 @@ and compile_prim_invocation (env : E.t) ae p es at =
             Opt.null_lit env
           ; Array T,
             Opt.inject_simple env (Arr.load_field env 0l) ^^
+
+              (*E.trap_with env "Tagged.(Array T)" ^^*)
+
+
+            G.i (LocalGet (nr 0l)) ^^
+            Arr.load_field env 0l ^^
+            load_tag env ^^
+            compile_unboxed_const (int_of_tag Object) ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            E.else_trap_with env "field 0 is not Object" ^^
+
+            G.i (LocalGet (nr 0l)) ^^
+            Arr.load_field env 1l ^^
+            load_tag env ^^
+            compile_unboxed_const (int_of_tag Closure) ^^
+            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+            E.else_trap_with env "field 1 is not Closure" ^^
+
+
+
+
             G.i (LocalGet (nr 0l)) ^^
             Arr.load_field env 1l ^^
             G.i (LocalSet (nr 0l))
@@ -12517,6 +12550,21 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
+
+
+
+
+    (* if the body is of form `BlockE [...; SelfCallE _; ...] b`,
+       then use a different form of closure restoration *)
+begin
+    match e.it with
+    | BlockE (_ :: { it = LetD (_, { it = SelfCallE _ }) } :: _, _) -> assert false;
+    | _ -> ()
+end;
+
+
+
+
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
   | SelfCallE (par, ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
