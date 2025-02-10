@@ -9301,14 +9301,11 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
-
     (* FIXME: Generational, Incremental *)
     | (Some (Captured (ci, true), _), _) ->
       G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I32.of_int_u ci),
       SR.Vanilla,
       MutBox.store_field env
-
-
     | (Some (HeapStatic ptr, typ), Flags.Generational) when potential_pointer typ ->
       compile_unboxed_const ptr,
       SR.Vanilla,
