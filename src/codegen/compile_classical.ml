@@ -9306,6 +9306,7 @@ module Var = struct
       G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I32.of_int_u ci),
       SR.Vanilla,
       MutBox.store_field env
+    | (Some (Captured (_, false), _), _) -> fatal "set_val: %s is immutably captured" var
     | (Some (HeapStatic ptr, typ), Flags.Generational) when potential_pointer typ ->
       compile_unboxed_const ptr,
       SR.Vanilla,
@@ -9328,7 +9329,7 @@ module Var = struct
       MutBox.store_field env
     | (Some (Const _, _), _) -> fatal "set_val: %s is const" var
     | (Some (PublicMethod _, _), _) -> fatal "set_val: %s is PublicMethod" var
-    | (None, _)   -> fatal "set_val: %s missing" var
+    | (None, _) -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
   let set_val_vanilla env ae var : G.t * G.t =

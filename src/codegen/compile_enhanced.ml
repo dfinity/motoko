@@ -9142,6 +9142,7 @@ module Var = struct
       G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I64.of_int_u ci),
       SR.Vanilla,
       MutBox.store_field env
+    | Some (Captured (_, false), _) -> fatal "set_val: %s is immutably captured" var
     | Some (Static index, typ) when potential_pointer typ ->
       Heap.get_static_variable env index ^^
       Tagged.load_forwarding_pointer env ^^
