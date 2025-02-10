@@ -8971,6 +8971,9 @@ module VarEnv = struct
        in the given stackrep (Vanilla, UnboxedWord64, …) so far
        Used for immutable and mutable, non-captured data *)
     | Local of SR.t * int32
+    (* An already captured binding from the caller's frame
+       Used for immutable and mutable, non-captured data *)
+    | Captured of (int * bool)
     (* A Wasm Local of the current function, that points to memory location,
        which is a MutBox.  Used for mutable captured data *)
     | HeapInd of int32
@@ -8984,6 +8987,7 @@ module VarEnv = struct
 
   let is_non_local : varloc -> bool = function
     | Local _
+    | Captured _
     | HeapInd _ -> false
     | Static _
     | PublicMethod _
@@ -9062,6 +9066,9 @@ module VarEnv = struct
       E.add_local_name env i name;
       (add_local_local env ae name sr i typ, i)
 
+  let add_closure_local env (ae : t) ci mut name typ =
+      { ae with vars = NameEnv.add name (Captured (ci, mut), typ) ae.vars }
+
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_arguments env (ae : t) as_local = function
     | [] -> ae
@@ -9131,6 +9138,10 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
+    | Some (Captured (ci, true), _) ->
+      G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I64.of_int_u ci),
+      SR.Vanilla,
+      MutBox.store_field env
     | Some (Static index, typ) when potential_pointer typ ->
       Heap.get_static_variable env index ^^
       Tagged.load_forwarding_pointer env ^^
@@ -9168,6 +9179,10 @@ module Var = struct
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
     | Some (Local (sr, i)) ->
       sr, G.i (LocalGet (nr i))
+    | Some (Captured (ci, false)) ->
+      SR.Vanilla, G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I64.of_int_u ci)
+    | Some (Captured (ci, true)) ->
+      SR.Vanilla, G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I64.of_int_u ci) ^^ MutBox.load_field env
     | Some (HeapInd i) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ MutBox.load_field env
     | Some (Static index) ->
@@ -9190,9 +9205,18 @@ module Var = struct
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
   *)
-  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
-    match VarEnv.lookup ae0 var with
-    | Some (Local (sr, i), typ) ->
+  let capture old_env ae0 var slot : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
+    match VarEnv.lookup ae0 var, slot with
+    | Some (Local (sr, i), typ), Some ci ->
+      ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
+      , fun new_env ae1 ->
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
+        let ae2 = VarEnv.add_closure_local new_env ae1 ci false var typ in
+        let restore_code = G.i Drop (* FIXME *)
+        in ae2, fun body -> restore_code ^^ body
+      )
+    | Some (Local (sr, i), typ), _ ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
@@ -9201,7 +9225,25 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some (HeapInd i, typ) ->
+    | Some (Captured (oci, mut), typ), Some ci ->
+      ( G.i (LocalGet (nr 0l)) ^^ Closure.load_data old_env (Wasm.I64.of_int_u oci)
+      , fun new_env ae1 ->
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
+        let ae2 = VarEnv.add_closure_local new_env ae1 ci mut var typ in
+        let restore_code = G.i Drop (* FIXME *)
+        in ae2, fun body -> restore_code ^^ body
+      )
+    | Some (HeapInd i, typ), Some ci ->
+      ( G.i (LocalGet (nr i))
+      , fun new_env ae1 ->
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
+        let ae2 = VarEnv.add_closure_local new_env ae1 ci true var typ in
+        let restore_code = G.i Drop (* FIXME *)
+        in ae2, fun body -> restore_code ^^ body
+      )
+    | Some (HeapInd i, typ), _ ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var typ in
@@ -9377,7 +9419,7 @@ module FuncDec = struct
           | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
               let store_rest, restore_rest = go (i + 1) vs in
-              let store_this, restore_this = Var.capture env ae v in
+              let store_this, restore_this = Var.capture env ae v (Some i) in
               let store_env =
                 get_clos ^^
                 store_this ^^
@@ -10362,6 +10404,7 @@ module AllocHow = struct
     M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.Static _       -> StoreStatic
+    | VarEnv.Captured _     -> StoreHeap (* LocalMut SR.Vanilla FIXME: correct? *)
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
@@ -11059,7 +11102,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
       | Type.Promises -> assert false in
-
     let fun_sr, code1 = compile_exp env ae e1 in
 
     (* we duplicate this pattern match to emulate pattern guards *)
