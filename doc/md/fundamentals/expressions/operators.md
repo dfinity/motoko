@@ -9,7 +9,7 @@ Motoko provides various operators for working with numbers, text, and boolean va
 | **Category**   | **Description**                          | **Examples**  |
 |---------------|----------------------------------|----------------------|
 | Arithmetic | Math operations on numbers      | `+`, `-`, `*`, `/`, `%`, `**` |
-| Bitwise    | Operations on individual bits   | `&`, `^`, `<<`, `>>`, `<<>`, `<>>` |
+| Bitwise    | Operations on individual bits   | `&`, `|`, ^`, `<<`, `>>`, `<<>`, `<>>` |
 | Text       | Text concatenation              | `#` |
 | Logical | Logical/Boolean operations       | `not`, `and`, `or` |
 | Ordered | Compare values                  | `==`, `!=`, `<`, `>` |
