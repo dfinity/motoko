@@ -124,7 +124,7 @@ let result = (10 + 5) * 2; // result = 30
 
 ## Pipes
 
-Pipes (`|>`) chain function calls in a readable way. Instead of nesting function calls, pipes pass the result of one expression as an argument to the next function.
+Pipes (`|>`) chain function calls in a readable way. Instead of nesting function calls, pipes pass the result of one expression as an argument to the next function. The value of the left hand side of the pipe is referenced on the right-hand-side using an underscore `_`.
 
 ```motoko
 func double(n: Int): Int { n * 2 };
