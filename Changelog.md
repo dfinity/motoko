@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
 ## 0.14.0 (2025-02-05)
 
 * motoko (`moc`)
