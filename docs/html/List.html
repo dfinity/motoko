@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/base/List.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/base/List.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#list" id="toc-list">List</a>
+<ul>
+<li><a href="#type-list" id="toc-type-list">Type
+<code>List</code></a></li>
+<li><a href="#function-nil" id="toc-function-nil">Function
+<code>nil</code></a></li>
+<li><a href="#function-isnil" id="toc-function-isnil">Function
+<code>isNil</code></a></li>
+<li><a href="#function-push" id="toc-function-push">Function
+<code>push</code></a></li>
+<li><a href="#function-last" id="toc-function-last">Function
+<code>last</code></a></li>
+<li><a href="#function-pop" id="toc-function-pop">Function
+<code>pop</code></a></li>
+<li><a href="#function-size" id="toc-function-size">Function
+<code>size</code></a></li>
+<li><a href="#function-get" id="toc-function-get">Function
+<code>get</code></a></li>
+<li><a href="#function-reverse" id="toc-function-reverse">Function
+<code>reverse</code></a></li>
+<li><a href="#function-iterate" id="toc-function-iterate">Function
+<code>iterate</code></a></li>
+<li><a href="#function-map" id="toc-function-map">Function
+<code>map</code></a></li>
+<li><a href="#function-filter" id="toc-function-filter">Function
+<code>filter</code></a></li>
+<li><a href="#function-partition" id="toc-function-partition">Function
+<code>partition</code></a></li>
+<li><a href="#function-mapfilter" id="toc-function-mapfilter">Function
+<code>mapFilter</code></a></li>
+<li><a href="#function-mapresult" id="toc-function-mapresult">Function
+<code>mapResult</code></a></li>
+<li><a href="#function-append" id="toc-function-append">Function
+<code>append</code></a></li>
+<li><a href="#function-flatten" id="toc-function-flatten">Function
+<code>flatten</code></a></li>
+<li><a href="#function-take" id="toc-function-take">Function
+<code>take</code></a></li>
+<li><a href="#function-drop" id="toc-function-drop">Function
+<code>drop</code></a></li>
+<li><a href="#function-foldleft" id="toc-function-foldleft">Function
+<code>foldLeft</code></a></li>
+<li><a href="#function-foldright" id="toc-function-foldright">Function
+<code>foldRight</code></a></li>
+<li><a href="#function-find" id="toc-function-find">Function
+<code>find</code></a></li>
+<li><a href="#function-some" id="toc-function-some">Function
+<code>some</code></a></li>
+<li><a href="#function-all" id="toc-function-all">Function
+<code>all</code></a></li>
+<li><a href="#function-merge" id="toc-function-merge">Function
+<code>merge</code></a></li>
+<li><a href="#function-compare" id="toc-function-compare">Function
+<code>compare</code></a></li>
+<li><a href="#function-equal" id="toc-function-equal">Function
+<code>equal</code></a></li>
+<li><a href="#function-tabulate" id="toc-function-tabulate">Function
+<code>tabulate</code></a></li>
+<li><a href="#function-make" id="toc-function-make">Function
+<code>make</code></a></li>
+<li><a href="#function-replicate" id="toc-function-replicate">Function
+<code>replicate</code></a></li>
+<li><a href="#function-zip" id="toc-function-zip">Function
+<code>zip</code></a></li>
+<li><a href="#function-zipwith" id="toc-function-zipwith">Function
+<code>zipWith</code></a></li>
+<li><a href="#function-split" id="toc-function-split">Function
+<code>split</code></a></li>
+<li><a href="#function-chunks" id="toc-function-chunks">Function
+<code>chunks</code></a></li>
+<li><a href="#function-fromarray" id="toc-function-fromarray">Function
+<code>fromArray</code></a></li>
+<li><a href="#function-fromvararray"
+id="toc-function-fromvararray">Function
+<code>fromVarArray</code></a></li>
+<li><a href="#function-toarray" id="toc-function-toarray">Function
+<code>toArray</code></a></li>
+<li><a href="#function-tovararray" id="toc-function-tovararray">Function
+<code>toVarArray</code></a></li>
+<li><a href="#function-toiter" id="toc-function-toiter">Function
+<code>toIter</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="list">List</h1>
+<p>Purely-functional, singly-linked lists. A list of type
+<code>List&lt;T&gt;</code> is either <code>null</code> or an optional
+pair of a value of type <code>T</code> and a tail, itself of type
+<code>List&lt;T&gt;</code>.</p>
+<p>To use this library, import it using:</p>
+<pre class="motoko"><code>import List &quot;mo:base/List&quot;;</code></pre>
+<h2 id="type-list">Type <code>List</code></h2>
+<pre class="motoko"><code>type List&lt;T&gt; = ?(T, List&lt;T&gt;)</code></pre>
+<h2 id="function-nil">Function <code>nil</code></h2>
+<pre class="motoko"><code>func nil&lt;T&gt;() : List&lt;T&gt;</code></pre>
+<p>Create an empty list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.nil&lt;Nat&gt;() // =&gt; null</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+<h2 id="function-isnil">Function <code>isNil</code></h2>
+<pre class="motoko"><code>func isNil&lt;T&gt;(l : List&lt;T&gt;) : Bool</code></pre>
+<p>Check whether a list is empty and return true if the list is
+empty.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.isNil&lt;Nat&gt;(null) // =&gt; true</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+<h2 id="function-push">Function <code>push</code></h2>
+<pre class="motoko"><code>func push&lt;T&gt;(x : T, l : List&lt;T&gt;) : List&lt;T&gt;</code></pre>
+<p>Add <code>x</code> to the head of <code>list</code>, and return the
+new list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.push&lt;Nat&gt;(0, null) // =&gt; ?(0, null);</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+<h2 id="function-last">Function <code>last</code></h2>
+<pre class="motoko"><code>func last&lt;T&gt;(l : List&lt;T&gt;) : ?T</code></pre>
+<p>Return the last element of the list, if present. Example:</p>
+<pre class="motoko"><code>List.last&lt;Nat&gt;(?(0, ?(1, null))) // =&gt; ?1</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(1)</p>
+<h2 id="function-pop">Function <code>pop</code></h2>
+<pre class="motoko"><code>func pop&lt;T&gt;(l : List&lt;T&gt;) : (?T, List&lt;T&gt;)</code></pre>
+<p>Remove the head of the list, returning the optioned head and the tail
+of the list in a pair. Returns <code>(null, null)</code> if the list is
+empty.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.pop&lt;Nat&gt;(?(0, ?(1, null))) // =&gt; (?0, ?(1, null))</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+<h2 id="function-size">Function <code>size</code></h2>
+<pre class="motoko"><code>func size&lt;T&gt;(l : List&lt;T&gt;) : Nat</code></pre>
+<p>Return the length of the list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.size&lt;Nat&gt;(?(0, ?(1, null))) // =&gt; 2</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(1)</p>
+<h2 id="function-get">Function <code>get</code></h2>
+<pre class="motoko"><code>func get&lt;T&gt;(l : List&lt;T&gt;, n : Nat) : ?T</code></pre>
+<p>Access any item in a list, zero-based.</p>
+<p>NOTE: Indexing into a list is a linear operation, and usually an
+indication that a list might not be the best data structure to use.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.get&lt;Nat&gt;(?(0, ?(1, null)), 1) // =&gt; ?1</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(1)</p>
+<h2 id="function-reverse">Function <code>reverse</code></h2>
+<pre class="motoko"><code>func reverse&lt;T&gt;(l : List&lt;T&gt;) : List&lt;T&gt;</code></pre>
+<p>Reverses the list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.reverse&lt;Nat&gt;(?(0, ?(1, ?(2, null)))) // =&gt; ?(2, ?(1, ?(0, null)))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-iterate">Function <code>iterate</code></h2>
+<pre class="motoko"><code>func iterate&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; ())</code></pre>
+<p>Call the given function for its side effect, with each list element
+in turn.</p>
+<p>Example:</p>
+<pre class="motoko"><code>var sum = 0;
+List.iterate&lt;Nat&gt;(?(0, ?(1, ?(2, null))), func n { sum += n });
+sum // =&gt; 3</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-map">Function <code>map</code></h2>
+<pre class="motoko"><code>func map&lt;T, U&gt;(l : List&lt;T&gt;, f : T -&gt; U) : List&lt;U&gt;</code></pre>
+<p>Call the given function <code>f</code> on each list element and
+collect the results in a new list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat = &quot;mo:base/Nat&quot;
+List.map&lt;Nat, Text&gt;(?(0, ?(1, ?(2, null))), Nat.toText) // =&gt; ?(&quot;0&quot;, ?(&quot;1&quot;, ?(&quot;2&quot;, null))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size) *Runtime and space assumes that <code>f</code> runs in
+O(1) time and space.</p>
+<h2 id="function-filter">Function <code>filter</code></h2>
+<pre class="motoko"><code>func filter&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; Bool) : List&lt;T&gt;</code></pre>
+<p>Create a new list with only those elements of the original list for
+which the given function (often called the <em>predicate</em>) returns
+true.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.filter&lt;Nat&gt;(?(0, ?(1, ?(2, null))), func n { n != 1 }) // =&gt; ?(0, ?(2, null))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-partition">Function <code>partition</code></h2>
+<pre class="motoko"><code>func partition&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; Bool) : (List&lt;T&gt;, List&lt;T&gt;)</code></pre>
+<p>Create two new lists from the results of a given function
+(<code>f</code>). The first list only includes the elements for which
+the given function <code>f</code> returns true and the second list only
+includes the elements for which the function returns false.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.partition&lt;Nat&gt;(?(0, ?(1, ?(2, null))), func n { n != 1 }) // =&gt; (?(0, ?(2, null)), ?(1, null))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-mapfilter">Function <code>mapFilter</code></h2>
+<pre class="motoko"><code>func mapFilter&lt;T, U&gt;(l : List&lt;T&gt;, f : T -&gt; ?U) : List&lt;U&gt;</code></pre>
+<p>Call the given function on each list element, and collect the
+non-null results in a new list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.mapFilter&lt;Nat, Nat&gt;(
+  ?(1, ?(2, ?(3, null))),
+  func n {
+    if (n &gt; 1) {
+      ?(n * 2);
+    } else {
+      null
+    }
+  }
+) // =&gt; ?(4, ?(6, null))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-mapresult">Function <code>mapResult</code></h2>
+<pre class="motoko"><code>func mapResult&lt;T, R, E&gt;(xs : List&lt;T&gt;, f : T -&gt; Result.Result&lt;R, E&gt;) : Result.Result&lt;List&lt;R&gt;, E&gt;</code></pre>
+<p>Maps a Result-returning function <code>f</code> over a List and
+returns either the first error or a list of successful values.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.mapResult&lt;Nat, Nat, Text&gt;(
+  ?(1, ?(2, ?(3, null))),
+  func n {
+    if (n &gt; 0) {
+      #ok(n * 2);
+    } else {
+      #err(&quot;Some element is zero&quot;)
+    }
+  }
+); // =&gt; #ok ?(2, ?(4, ?(6, null))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-append">Function <code>append</code></h2>
+<pre class="motoko"><code>func append&lt;T&gt;(l : List&lt;T&gt;, m : List&lt;T&gt;) : List&lt;T&gt;</code></pre>
+<p>Append the elements from one list to another list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.append&lt;Nat&gt;(
+  ?(0, ?(1, ?(2, null))),
+  ?(3, ?(4, ?(5, null)))
+) // =&gt; ?(0, ?(1, ?(2, ?(3, ?(4, ?(5, null))))))</code></pre>
+<p>Runtime: O(size(l))</p>
+<p>Space: O(size(l))</p>
+<h2 id="function-flatten">Function <code>flatten</code></h2>
+<pre class="motoko"><code>func flatten&lt;T&gt;(l : List&lt;List&lt;T&gt;&gt;) : List&lt;T&gt;</code></pre>
+<p>Flatten, or concatenate, a list of lists as a list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.flatten&lt;Nat&gt;(
+  ?(?(0, ?(1, ?(2, null))),
+    ?(?(3, ?(4, ?(5, null))),
+      null))
+); // =&gt; ?(0, ?(1, ?(2, ?(3, ?(4, ?(5, null))))))</code></pre>
+<p>Runtime: O(size*size)</p>
+<p>Space: O(size*size)</p>
+<h2 id="function-take">Function <code>take</code></h2>
+<pre class="motoko"><code>func take&lt;T&gt;(l : List&lt;T&gt;, n : Nat) : List&lt;T&gt;</code></pre>
+<p>Returns the first <code>n</code> elements of the given list. If the
+given list has fewer than <code>n</code> elements, this function returns
+a copy of the full input list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.take&lt;Nat&gt;(
+  ?(0, ?(1, ?(2, null))),
+  2
+); // =&gt; ?(0, ?(1, null))</code></pre>
+<p>Runtime: O(n)</p>
+<p>Space: O(n)</p>
+<h2 id="function-drop">Function <code>drop</code></h2>
+<pre class="motoko"><code>func drop&lt;T&gt;(l : List&lt;T&gt;, n : Nat) : List&lt;T&gt;</code></pre>
+<p>Drop the first <code>n</code> elements from the given list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.drop&lt;Nat&gt;(
+  ?(0, ?(1, ?(2, null))),
+  2
+); // =&gt; ?(2, null)</code></pre>
+<p>Runtime: O(n)</p>
+<p>Space: O(1)</p>
+<h2 id="function-foldleft">Function <code>foldLeft</code></h2>
+<pre class="motoko"><code>func foldLeft&lt;T, S&gt;(list : List&lt;T&gt;, base : S, combine : (S, T) -&gt; S) : S</code></pre>
+<p>Collapses the elements in <code>list</code> into a single value by
+starting with <code>base</code> and progessively combining elements into
+<code>base</code> with <code>combine</code>. Iteration runs left to
+right.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat &quot;mo:base/Nat&quot;;
+
+List.foldLeft&lt;Nat, Text&gt;(
+  ?(1, ?(2, ?(3, null))),
+  &quot;&quot;,
+  func (acc, x) { acc # Nat.toText(x)}
+) // =&gt; &quot;123&quot;</code></pre>
+<p>Runtime: O(size(list))</p>
+<p>Space: O(1) heap, O(1) stack</p>
+<p>*Runtime and space assumes that <code>combine</code> runs in O(1)
+time and space.</p>
+<h2 id="function-foldright">Function <code>foldRight</code></h2>
+<pre class="motoko"><code>func foldRight&lt;T, S&gt;(list : List&lt;T&gt;, base : S, combine : (T, S) -&gt; S) : S</code></pre>
+<p>Collapses the elements in <code>buffer</code> into a single value by
+starting with <code>base</code> and progessively combining elements into
+<code>base</code> with <code>combine</code>. Iteration runs right to
+left.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat &quot;mo:base/Nat&quot;;
+
+List.foldRight&lt;Nat, Text&gt;(
+  ?(1, ?(2, ?(3, null))),
+  &quot;&quot;,
+  func (x, acc) { Nat.toText(x) # acc}
+) // =&gt; &quot;123&quot;</code></pre>
+<p>Runtime: O(size(list))</p>
+<p>Space: O(1) heap, O(size(list)) stack</p>
+<p>*Runtime and space assumes that <code>combine</code> runs in O(1)
+time and space.</p>
+<h2 id="function-find">Function <code>find</code></h2>
+<pre class="motoko"><code>func find&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; Bool) : ?T</code></pre>
+<p>Return the first element for which the given predicate <code>f</code>
+is true, if such an element exists.</p>
+<p>Example:</p>
+<pre class="motoko"><code>
+List.find&lt;Nat&gt;(
+  ?(1, ?(2, ?(3, null))),
+  func n { n &gt; 1 }
+); // =&gt; ?2</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(1)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-some">Function <code>some</code></h2>
+<pre class="motoko"><code>func some&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; Bool) : Bool</code></pre>
+<p>Return true if there exists a list element for which the given
+predicate <code>f</code> is true.</p>
+<p>Example:</p>
+<pre class="motoko"><code>
+List.some&lt;Nat&gt;(
+  ?(1, ?(2, ?(3, null))),
+  func n { n &gt; 1 }
+) // =&gt; true</code></pre>
+<p>Runtime: O(size(list))</p>
+<p>Space: O(1)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-all">Function <code>all</code></h2>
+<pre class="motoko"><code>func all&lt;T&gt;(l : List&lt;T&gt;, f : T -&gt; Bool) : Bool</code></pre>
+<p>Return true if the given predicate <code>f</code> is true for all
+list elements.</p>
+<p>Example:</p>
+<pre class="motoko"><code>
+List.all&lt;Nat&gt;(
+  ?(1, ?(2, ?(3, null))),
+  func n { n &gt; 1 }
+); // =&gt; false</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(1)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-merge">Function <code>merge</code></h2>
+<pre class="motoko"><code>func merge&lt;T&gt;(l1 : List&lt;T&gt;, l2 : List&lt;T&gt;, lessThanOrEqual : (T, T) -&gt; Bool) : List&lt;T&gt;</code></pre>
+<p>Merge two ordered lists into a single ordered list. This function
+requires both list to be ordered as specified by the given relation
+<code>lessThanOrEqual</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>
+List.merge&lt;Nat&gt;(
+  ?(1, ?(2, ?(4, null))),
+  ?(2, ?(4, ?(6, null))),
+  func (n1, n2) { n1 &lt;= n2 }
+); // =&gt; ?(1, ?(2, ?(2, ?(4, ?(4, ?(6, null))))))),</code></pre>
+<p>Runtime: O(size(l1) + size(l2))</p>
+<p>Space: O(size(l1) + size(l2))</p>
+<p>*Runtime and space assumes that <code>lessThanOrEqual</code> runs in
+O(1) time and space.</p>
+<h2 id="function-compare">Function <code>compare</code></h2>
+<pre class="motoko"><code>func compare&lt;T&gt;(l1 : List&lt;T&gt;, l2 : List&lt;T&gt;, compare : (T, T) -&gt; Order.Order) : Order.Order</code></pre>
+<p>Compare two lists using lexicographic ordering specified by argument
+function <code>compare</code>.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat &quot;mo:base/Nat&quot;;
+
+List.compare&lt;Nat&gt;(
+  ?(1, ?(2, null)),
+  ?(3, ?(4, null)),
+  Nat.compare
+) // =&gt; #less</code></pre>
+<p>Runtime: O(size(l1))</p>
+<p>Space: O(1)</p>
+<p>*Runtime and space assumes that argument <code>compare</code> runs in
+O(1) time and space.</p>
+<h2 id="function-equal">Function <code>equal</code></h2>
+<pre class="motoko"><code>func equal&lt;T&gt;(l1 : List&lt;T&gt;, l2 : List&lt;T&gt;, equal : (T, T) -&gt; Bool) : Bool</code></pre>
+<p>Compare two lists for equality using the argument function
+<code>equal</code> to determine equality of their elements.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat &quot;mo:base/Nat&quot;;
+
+List.equal&lt;Nat&gt;(
+  ?(1, ?(2, null)),
+  ?(3, ?(4, null)),
+  Nat.equal
+); // =&gt; false</code></pre>
+<p>Runtime: O(size(l1))</p>
+<p>Space: O(1)</p>
+<p>*Runtime and space assumes that argument <code>equal</code> runs in
+O(1) time and space.</p>
+<h2 id="function-tabulate">Function <code>tabulate</code></h2>
+<pre class="motoko"><code>func tabulate&lt;T&gt;(n : Nat, f : Nat -&gt; T) : List&lt;T&gt;</code></pre>
+<p>Generate a list based on a length and a function that maps from a
+list index to a list element.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.tabulate&lt;Nat&gt;(
+  3,
+  func n { n * 2 }
+) // =&gt; ?(0, ?(2, (?4, null)))</code></pre>
+<p>Runtime: O(n)</p>
+<p>Space: O(n)</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-make">Function <code>make</code></h2>
+<pre class="motoko"><code>func make&lt;T&gt;(x : T) : List&lt;T&gt;</code></pre>
+<p>Create a list with exactly one element.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.make&lt;Nat&gt;(
+  0
+) // =&gt; ?(0, null)</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+<h2 id="function-replicate">Function <code>replicate</code></h2>
+<pre class="motoko"><code>func replicate&lt;T&gt;(n : Nat, x : T) : List&lt;T&gt;</code></pre>
+<p>Create a list of the given length with the same value in each
+position.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.replicate&lt;Nat&gt;(
+  3,
+  0
+) // =&gt; ?(0, ?(0, ?(0, null)))</code></pre>
+<p>Runtime: O(n)</p>
+<p>Space: O(n)</p>
+<h2 id="function-zip">Function <code>zip</code></h2>
+<pre class="motoko"><code>func zip&lt;T, U&gt;(xs : List&lt;T&gt;, ys : List&lt;U&gt;) : List&lt;(T, U)&gt;</code></pre>
+<p>Create a list of pairs from a pair of lists.</p>
+<p>If the given lists have different lengths, then the created list will
+have a length equal to the length of the smaller list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.zip&lt;Nat, Text&gt;(
+  ?(0, ?(1, ?(2, null))),
+  ?(&quot;0&quot;, ?(&quot;1&quot;, null)),
+) // =&gt; ?((0, &quot;0&quot;), ?((1, &quot;1&quot;), null))</code></pre>
+<p>Runtime: O(min(size(xs), size(ys)))</p>
+<p>Space: O(min(size(xs), size(ys)))</p>
+<h2 id="function-zipwith">Function <code>zipWith</code></h2>
+<pre class="motoko"><code>func zipWith&lt;T, U, V&gt;(xs : List&lt;T&gt;, ys : List&lt;U&gt;, f : (T, U) -&gt; V) : List&lt;V&gt;</code></pre>
+<p>Create a list in which elements are created by applying function
+<code>f</code> to each pair <code>(x, y)</code> of elements occuring at
+the same position in list <code>xs</code> and list <code>ys</code>.</p>
+<p>If the given lists have different lengths, then the created list will
+have a length equal to the length of the smaller list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Nat = &quot;mo:base/Nat&quot;;
+import Char = &quot;mo:base/Char&quot;;
+
+List.zipWith&lt;Nat, Char, Text&gt;(
+  ?(0, ?(1, ?(2, null))),
+  ?(&#39;a&#39;, ?(&#39;b&#39;, null)),
+  func (n, c) { Nat.toText(n) # Char.toText(c) }
+) // =&gt; ?(&quot;0a&quot;, ?(&quot;1b&quot;, null))</code></pre>
+<p>Runtime: O(min(size(xs), size(ys)))</p>
+<p>Space: O(min(size(xs), size(ys)))</p>
+<p>*Runtime and space assumes that <code>f</code> runs in O(1) time and
+space.</p>
+<h2 id="function-split">Function <code>split</code></h2>
+<pre class="motoko"><code>func split&lt;T&gt;(n : Nat, xs : List&lt;T&gt;) : (List&lt;T&gt;, List&lt;T&gt;)</code></pre>
+<p>Split the given list at the given zero-based index.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.split&lt;Nat&gt;(
+  2,
+  ?(0, ?(1, ?(2, null)))
+) // =&gt; (?(0, ?(1, null)), ?(2, null))</code></pre>
+<p>Runtime: O(n)</p>
+<p>Space: O(n)</p>
+<h2 id="function-chunks">Function <code>chunks</code></h2>
+<pre class="motoko"><code>func chunks&lt;T&gt;(n : Nat, xs : List&lt;T&gt;) : List&lt;List&lt;T&gt;&gt;</code></pre>
+<p>Split the given list into chunks of length <code>n</code>. The last
+chunk will be shorter if the length of the given list does not divide by
+<code>n</code> evenly.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.chunks&lt;Nat&gt;(
+  2,
+  ?(0, ?(1, ?(2, ?(3, ?(4, null)))))
+)
+/* =&gt; ?(?(0, ?(1, null)),
+        ?(?(2, ?(3, null)),
+          ?(?(4, null),
+            null)))
+*/</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-fromarray">Function <code>fromArray</code></h2>
+<pre class="motoko"><code>func fromArray&lt;T&gt;(xs : [T]) : List&lt;T&gt;</code></pre>
+<p>Convert an array into a list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.fromArray&lt;Nat&gt;([ 0, 1, 2, 3, 4])
+// =&gt;  ?(0, ?(1, ?(2, ?(3, ?(4, null)))))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-fromvararray">Function <code>fromVarArray</code></h2>
+<pre class="motoko"><code>func fromVarArray&lt;T&gt;(xs : [var T]) : List&lt;T&gt;</code></pre>
+<p>Convert a mutable array into a list.</p>
+<p>Example:</p>
+<pre class="motoko"><code>List.fromVarArray&lt;Nat&gt;([var 0, 1, 2, 3, 4])
+// =&gt;  ?(0, ?(1, ?(2, ?(3, ?(4, null)))))</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-toarray">Function <code>toArray</code></h2>
+<pre class="motoko"><code>func toArray&lt;T&gt;(xs : List&lt;T&gt;) : [T]</code></pre>
+<p>Create an array from a list. Example:</p>
+<pre class="motoko"><code>List.toArray&lt;Nat&gt;(?(0, ?(1, ?(2, ?(3, ?(4, null))))))
+// =&gt; [0, 1, 2, 3, 4]</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-tovararray">Function <code>toVarArray</code></h2>
+<pre class="motoko"><code>func toVarArray&lt;T&gt;(xs : List&lt;T&gt;) : [var T]</code></pre>
+<p>Create a mutable array from a list. Example:</p>
+<pre class="motoko"><code>List.toVarArray&lt;Nat&gt;(?(0, ?(1, ?(2, ?(3, ?(4, null))))))
+// =&gt; [var 0, 1, 2, 3, 4]</code></pre>
+<p>Runtime: O(size)</p>
+<p>Space: O(size)</p>
+<h2 id="function-toiter">Function <code>toIter</code></h2>
+<pre class="motoko"><code>func toIter&lt;T&gt;(xs : List&lt;T&gt;) : Iter.Iter&lt;T&gt;</code></pre>
+<p>Create an iterator from a list. Example:</p>
+<pre class="motoko"><code>var sum = 0;
+for (n in List.toIter&lt;Nat&gt;(?(0, ?(1, ?(2, ?(3, ?(4, null))))))) {
+  sum += n;
+};
+sum
+// =&gt; 10</code></pre>
+<p>Runtime: O(1)</p>
+<p>Space: O(1)</p>
+</body>
+</html>
