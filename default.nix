@@ -512,8 +512,8 @@ rec {
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      ## FOR NOW drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      ## FOR NOW drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];

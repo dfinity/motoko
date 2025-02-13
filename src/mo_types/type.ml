@@ -317,6 +317,7 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat32 = Prim Nat32
 let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
@@ -349,6 +350,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "system_transient"; typ = unit; src = empty_src};
     { lab = "destination_invalid"; typ = unit; src = empty_src};
     { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "system_unknown"; typ = unit; src = empty_src};
     { lab = "future"; typ = Prim Nat32; src = empty_src};
     { lab = "call_error"; typ = call_error; src = empty_src};
   ])
@@ -586,6 +588,10 @@ let is_unit = function Tup [] -> true | _ -> false
 let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
+let is_async_cmp = function Async (Cmp, _, _) -> true | _ -> false
+let is_async_fut = function
+  | Async (Fut, _, _) -> true
+  | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false
@@ -1922,3 +1928,9 @@ let string_of_stab_sig stab_sig : string =
   | PrePost _ -> "// Version: 2.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig
 
+let is_low_async_fut = function
+  | Func (s, c, tbs, ts1, [t2]) when is_variant t2 ->
+    sub (sum [ ("suspend", unit)
+             ; ("schedule", Func(Local, Returns, [], [], []))])
+      t2
+  | _ -> false

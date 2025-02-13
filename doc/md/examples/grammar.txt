@@ -188,6 +188,7 @@
 
 <exp_un> ::= 
     <exp_post>
+    <parenthetical> <exp_post> <inst> <exp_nullary>
     '#' <id>
     '#' <id> <exp_nullary>
     '?' <exp_un>
@@ -213,7 +214,7 @@
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
     'return' <exp>?
-    'async' <exp_nest>
+    <parenthetical>? 'async' <exp_nest>
     'async*' <exp_nest>
     'await' <exp_nest>
     'await*' <exp_nest>

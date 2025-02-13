@@ -8,7 +8,8 @@ suggest-short-ai.mo:4.1-4.5: type error [M0072], field s does not exist in type:
         #destination_invalid;
         #future : Nat32;
         #system_fatal;
-        #system_transient
+        #system_transient;
+        #system_unknown
       };
     Array_init : <T>(Nat, T) -> [var T];
     Array_tabulate : <T>(Nat, Nat -> T) -> [T];
