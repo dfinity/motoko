@@ -25,4 +25,4 @@ Since printing modifies output, it is considered an **impure function**, unlike 
 
 ## References
 
-- [Base library Debug](https://internetcomputer.org/docs/current/motoko/main/base/Debug)
+- [Debug](https://internetcomputer.org/docs/current/motoko/main/base/Debug)
