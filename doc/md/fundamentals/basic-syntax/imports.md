@@ -18,7 +18,7 @@ import Text "mo:base/Text";
 import Package "mo:packagename";
 ```  
 
-3. Files within your own project:
+3. Files within the current project:
 
 ```motoko
 import Utils "utils";
