@@ -21,6 +21,6 @@ A Motoko actor always presents its interface as a suite of named functions with 
 
 Since actors in Motoko communicate asynchronously, `await` ensures the result is retrieved once the function completes.
 
-## Quick references
+## References
 
 - [Actors](https://internetcomputer.org/docs/current/motoko/main/writing-motoko/actors-async)
