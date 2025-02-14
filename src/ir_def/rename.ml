@@ -25,11 +25,8 @@ let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
 
-let rec prim rho = function
-  | CallPrim (typ, par) -> CallPrim (typ, exp rho par)
-  | ICCallPrim setup -> ICCallPrim (exp rho setup)
-  | CPSAsync (sort, typ, par) -> CPSAsync (sort, typ, exp rho par)
-  | p -> Ir.map_prim Fun.id (id rho) (exp rho) p (* rename BreakPrim id etc *)
+let rec prim rho p =
+  Ir.map_prim Fun.id (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function
@@ -61,7 +58,7 @@ and exp' rho = function
   | LoopE e1            -> LoopE (exp rho e1)
   | LabelE (i, t, e)    -> let i',rho' = id_bind rho i in
                            LabelE(i', t, exp rho' e)
-  | AsyncE (par, s, tb, e, t) -> AsyncE (Option.map (exp rho) par, s, tb, exp rho e, t)
+  | AsyncE (s, tb, e, t) -> AsyncE (s, tb, exp rho e, t)
   | DeclareE (i, t, e)  -> let i',rho' = id_bind rho i in
                            DeclareE (i', t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
@@ -71,8 +68,8 @@ and exp' rho = function
      FuncE (x, s, c, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
   | TryE (e, cs, cl)    -> TryE (exp rho e, cases rho cs, Option.map (fun (v, t) -> id rho v, t) cl)
-  | SelfCallE (par, ts, e1, e2, e3, e4) ->
-    SelfCallE (exp rho par, ts, exp rho e1, exp rho e2, exp rho e3, exp rho e4)
+  | SelfCallE (ts, e1, e2, e3, e4) ->
+     SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3, exp rho e4)
 
 and lexp rho le = {le with it = lexp' rho le.it}
 and lexp' rho = function

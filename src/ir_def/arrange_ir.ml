@@ -22,15 +22,14 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | AsyncE (None, Type.Fut, tb, e, t) -> "AsyncE" $$ [typ_bind tb; exp e; typ t]
-  | AsyncE (Some par, Type.Fut, tb, e, t) -> "AsyncE()" $$ [exp par; typ_bind tb; exp e; typ t]
-  | AsyncE (_, Type.Cmp, tb, e, t) -> "AsyncE*" $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Fut, tb, e, t) -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Cmp, tb, e, t) -> "AsyncE*"  $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
-  | SelfCallE (par, ts, exp_f, exp_k, exp_r, exp_c) ->
-    "SelfCallE" $$ [exp par; typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r; exp exp_c]
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+    "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r; exp exp_c]
   | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs, None) -> "TryE" $$ [exp e] @ List.map case cs
@@ -62,8 +61,7 @@ and args = function
 and arg a = Atom a.it
 
 and prim = function
-  | CallPrim (ts, par) when empty par -> "CallPrim" $$ List.map typ ts
-  | CallPrim (ts, par) -> "CallPrim()" $$ [exp par] @ List.map typ ts
+  | CallPrim ts       -> "CallPrim" $$ List.map typ ts
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
   | RelPrim (t, ro)   -> "RelPrim"    $$ [typ t; Arrange_ops.relop ro]
@@ -97,40 +95,33 @@ and prim = function
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
-  | SelfRef t         -> "SelfRef" $$ [typ t]
+  | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
-  | SystemTimeoutPrim -> Atom "SystemTimeoutPrim"
   | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | SystemCyclesBurnPrim -> Atom "SystemCyclesBurnPrim"
-  | ICCallAttrsPrim      -> Atom "ICCallAttrsPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
   | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
   | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
-  | CPSAsync (Type.Fut, t, par) -> "CPSAsync" $$ [exp par] @ [typ t]
-  | CPSAsync (Type.Cmp, t, _) -> "CPSAsync*" $$ [typ t]
+  | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
+  | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"
   | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
-  | ICCallPrim e      -> "ICCallPrim" $$ [exp e]
+  | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
-
-and empty exp =
-  Type.(is_obj exp.note.Note.typ
-        && (let (s, fls) = as_obj exp.note.Note.typ in
-            s = Object && fls = []))
 
 and mut = function
   | Const -> Atom "Const"

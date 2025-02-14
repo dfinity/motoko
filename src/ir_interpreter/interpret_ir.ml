@@ -319,18 +319,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
-      | CallPrim (typs, par), [v1; v2] ->
-        interpret_exp env par
-          (fun v ->
-            ignore (V.as_obj v);
-            let v1 = match v1 with
-              | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
-              | _ -> v1 in
-            let call_conv, f = V.as_func v1 in
-            check_call_conv (List.hd es) call_conv;
-            check_call_conv_arg env exp v2 call_conv;
-            last_region := exp.at; (* in case the following throws *)
-            f (context env) v2 k)
+      | CallPrim typs, [v1; v2] ->
+        let v1 = match v1 with
+          | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
+          | _ -> v1 in
+        let call_conv, f = V.as_func v1 in
+        check_call_conv (List.hd es) call_conv;
+        check_call_conv_arg env exp v2 call_conv;
+        last_region := exp.at; (* in case the following throws *)
+        f (context env) v2 k
       | UnPrim (ot, op), [v1] ->
         k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
       | BinPrim (ot, op), [v1; v2] ->
@@ -413,7 +410,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
         end
-      | SystemCyclesAddPrim, [v] -> ignore (V.as_int v); k V.unit
       | OtherPrim s, vs ->
         let arg = match vs with [v] -> v | _ -> V.Tup vs in
         Prim.prim { Prim.trap = trap exp.at "%s" } s (context env) arg k
@@ -454,9 +450,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim setup, [v1; v2; kv; rv; cv] ->
-        interpret_exp env setup (fun v ->
-        V.as_unit v;
+      | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let v1 = match v1 with
           | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp.at aid id
           | _ -> v1 in
@@ -465,13 +459,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv; cv]) v2 k)
-      | ICCallAttrsPrim, [] ->
-        k V.Null
+        f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
-      | SystemTimeoutPrim, [v1] ->
-        k V.(as_nat32 v1 |> ignore; unit)
       | ICReplyDeadlinePrim, [] ->
         k (V.Nat64 Numerics.Nat64.zero)
       | ICStableRead t, [] ->
@@ -527,19 +517,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | AsyncE (par, Type.Fut, _, exp1, _) ->
+  | AsyncE (Type.Fut, _, exp1, _) ->
     assert env.flavor.has_await;
-    interpret_exp env (Lib.Option.get par (Construct.recordE []))
-      (fun v ->
-        ignore (V.as_obj v);
-        async env
-          exp.at
-          (fun k' r ->
-            let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
-            in interpret_exp env' exp1 k')
-          k)
-  | AsyncE (par, Type.Cmp, _, exp1, _) ->
-    assert (par = None);
+    async env
+      exp.at
+      (fun k' r ->
+        let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
+        in interpret_exp env' exp1 k')
+      k
+  | AsyncE (Type.Cmp, _, exp1, _) ->
     assert env.flavor.has_await;
     k (V.Comp (fun k' r ->
       let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
@@ -557,12 +543,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (par, ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
-    interpret_exp env par (fun v ->
-    V.(match v with Null -> () | _ -> ignore (as_opt v |> as_obj));
     (* see code for FuncE *)
-    let cc = T.{ sort = Shared Write; control = Replies; n_args = 0; n_res = List.length ts } in
+    let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
     let f = interpret_message env exp.at "anon" []
       (fun env' -> interpret_exp env' exp_f) in
     let v = make_message env "anon" cc f in
@@ -573,7 +557,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k))))
+        f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k)))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in

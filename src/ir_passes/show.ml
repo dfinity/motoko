@@ -282,15 +282,15 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | AsyncE (par, s, tb, e, typ) -> AsyncE (Option.map (t_exp env) par, s, tb, t_exp env e, typ)
+  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, t_exp env e, typ)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp env exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t)
-  | SelfCallE (cyc, ts, e1, e2, e3, e4) ->
-    SelfCallE (t_exp env cyc, ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
+  | SelfCallE (ts, e1, e2, e3, e4) ->
+    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
   | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)

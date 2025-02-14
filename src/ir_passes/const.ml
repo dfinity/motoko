@@ -136,11 +136,7 @@ let rec exp lvl (env : env) e : Lbool.t =
     | DeclareE (id, _, e1) ->
       exp_ lvl (M.add id no_info env) e1;
       surely_false
-    | LoopE e1 ->
-      exp_ NotTopLvl env e1;
-      surely_false
-    | AsyncE (par, _, _, e1, _) ->
-      Option.iter (exp_ NotTopLvl env) par;
+    | LoopE e1 | AsyncE (_, _, e1, _) ->
       exp_ NotTopLvl env e1;
       surely_false
     | AssignE (_, e1) | LabelE (_, _, e1) | DefineE (_, _, e1) ->
@@ -151,8 +147,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
-    | SelfCallE (par, _, e1, e2, e3, e4) ->
-      exp_ lvl env par;
+    | SelfCallE (_, e1, e2, e3, e4) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
       exp_ lvl env e3;

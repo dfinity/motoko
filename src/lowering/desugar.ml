@@ -211,7 +211,7 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (par_opt, e1, inst, e2) ->
-    I.PrimE (I.CallPrim (inst.note, Option.(value ~default:(recordE []) (map exp par_opt))), [exp e1; exp e2])
+    I.PrimE (I.CallPrim (inst.note(*, Option.(value ~default:(recordE []) (map exp par_opt))*)), [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -243,7 +243,7 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    I.AsyncE (Option.map exp par_opt, s, typ_bind tb, exp e,
+    I.AsyncE ((*Option.map exp par_opt,*) s, typ_bind tb, exp e,
       match note.Note.typ with
       | T.Async (_, t, _) -> t
       | _ -> assert false)
@@ -1103,12 +1103,12 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | (T.Promises, Ir.AsyncE (par, s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (par, s, tb, wrap_exp_opt e', t) }
+      | (T.Promises, Ir.AsyncE ((*par, *)s, tb, e', t)) ->
+        { e with it = Ir.AsyncE ((*par, *)s, tb, wrap_exp_opt e', t) }
       | T.Returns, Ir.BlockE (
-          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (par, T.Fut, tb,e',t); _} as exp)); _ }],
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE ((*par, *)T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (par, T.Fut, tb, wrap_exp_opt e',t)} ] unit
+        blockE [letP pat {exp with it = Ir.AsyncE ((*par, *)T.Fut, tb, wrap_exp_opt e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
     else wrap_exp_opt e

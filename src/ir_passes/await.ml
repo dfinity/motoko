@@ -88,20 +88,18 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 
 let rec t_async context exp =
   match exp.it with
-  | AsyncE (par_opt, s, tb, exp1, typ1) ->
+  | AsyncE (s, tb, exp1, typ1) ->
    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
    let k_fail = fresh_err_cont T.unit in
    let k_clean = fresh_bail_cont T.unit in
    let context' =
-     LabelEnv.(add Cleanup (Cont k_clean)
-                 (add Return (Cont k_ret)
-                    (singleton Throw (Cont k_fail))))
+     LabelEnv.add Cleanup (Cont k_clean)
+       (LabelEnv.add Return (Cont k_ret)
+          (LabelEnv.singleton Throw (Cont k_fail)))
    in
-     cps_asyncE s typ1 (match par_opt with
-                        | Some par -> optE par
-                        | None -> primE ICCallAttrsPrim []) (typ exp1)
+     cps_asyncE s typ1 (typ exp1)
        (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret))))
  |  _ -> assert false
@@ -146,9 +144,9 @@ and t_exp' context exp =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (_, T.Cmp, _, _, _) ->
+  | AsyncE (T.Cmp, _, _, _) ->
      (t_async context exp).it
-  | AsyncE (_, T.Fut, _, _, _) ->
+  | AsyncE (T.Fut, _, _, _) ->
      assert false  (* must have effect T.Await *)
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
@@ -436,30 +434,24 @@ and c_exp' context exp k =
       | Some (Cont k') -> c_exp context exp1 (ContVar k')
       | _ -> assert false
     end
-  | AsyncE (_, T.Cmp, tb, exp1, typ1) ->
+  | AsyncE (T.Cmp, tb, exp1, typ1) ->
     assert false (* must have effect T.Triv, handled by first case *)
-  | AsyncE (par_opt, T.Fut, tb, exp1, typ1) ->
+  | AsyncE (T.Fut, tb, exp1, typ1) ->
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
     let k_clean = fresh_bail_cont T.unit in
     let context' =
-      LabelEnv.(add Cleanup (Cont k_clean)
-                  (add Return (Cont k_ret)
-                     (singleton Throw (Cont k_fail))))
+      LabelEnv.add Cleanup (Cont k_clean)
+        (LabelEnv.add Return (Cont k_ret)
+           (LabelEnv.singleton Throw (Cont k_fail)))
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
       | _ -> assert false
     in
     let cps_async =
-      let has par lab ty = T.(sub (typ par) (Obj (Object, [{ lab; typ = ty; src = empty_src}]))) in
-      cps_asyncE T.Fut typ1 (match par_opt with
-                             | Some par when has par "cycles" T.nat || has par "timeout" T.nat32
-                               -> optE par
-                             | Some _
-                               -> optE (recordE ["cycles", natE Mo_values.Numerics.Nat.zero])
-                             | _ -> nullE ()) (typ exp1)
+      cps_asyncE T.Fut typ1 (typ exp1)
         (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
     let k' = meta (typ cps_async)
@@ -648,12 +640,12 @@ and t_comp_unit context = function
       | T.Await ->
         let throw = fresh_err_cont T.unit in
         let context' =
-          LabelEnv.(add Cleanup (Cont (var "@cleanup" bail_contT))
-                      (add Throw (Cont throw) context)) in
+          LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
+            (LabelEnv.add Throw (Cont throw) context) in
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
-          expD (c_block context' ds (tupE []) (meta T.unit (fun v1 -> tupE [])))
+          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
   | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, t) ->
@@ -677,13 +669,13 @@ and t_on_throw context exp t_exp =
   | _ ->
      let throw = fresh_err_cont T.unit in
      let context' =
-       LabelEnv.(add Cleanup (Cont (var "@cleanup" bail_contT))
-                   (add Throw (Cont throw) context)) in
+       LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
+         (LabelEnv.add Throw (Cont throw) context) in
      let e = fresh_var "e" T.catch in
      { (blockE [
           funcD throw e t_exp;
         ]
-        (c_exp context' exp (meta T.unit (fun v1 -> tupE []))))
+        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,
           or timer won't be initialized in compile.ml *)
        with at = exp.at

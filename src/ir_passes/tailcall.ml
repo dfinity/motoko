@@ -94,14 +94,14 @@ and assignEs vars exp : dec list =
 and exp' env e  : exp' = match e.it with
   | (VarE (_, _) | LitE _) as it -> it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
-  | PrimE (CallPrim (insts, pars), [e1; e2]) ->
+  | PrimE (CallPrim insts, [e1; e2])  ->
     begin match e1.it, env with
     | VarE (_, f1), { tail_pos = true;
                       info = Some { func; typ_binds; temps; label; tail_called } }
-         when f1 = func && are_generic_insts typ_binds insts ->
+         when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
-    | _,_-> PrimE (CallPrim (insts, exp env pars), [exp env e1; exp env e2])
+    | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
@@ -111,7 +111,7 @@ and exp' env e  : exp' = match e.it with
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
   | PrimE (RetPrim, [e])-> PrimE (RetPrim, [tailexp { env with tail_pos = true } e])
-  | AsyncE (par, s, tb, e, typ) -> AsyncE (Option.map (exp env) par, s, tb, exp { tail_pos = true; info = None } e, typ)
+  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, exp { tail_pos = true; info = None } e, typ)
   | DeclareE (i, t, e)  -> let env1 = bind env i None in
                            DeclareE (i, t, tailexp env1 e)
   | DefineE (i, m, e)   -> DefineE (i, m, exp env e)
@@ -120,14 +120,13 @@ and exp' env e  : exp' = match e.it with
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
     FuncE (x, s, c, tbs, as_, ret_tys, exp0')
-  | SelfCallE (par, ts, exp1, exp2, exp3, exp4) ->
-    let par' = exp env par in
-    let env1 = { tail_pos = true; info = None } in
+  | SelfCallE (ts, exp1, exp2, exp3, exp4) ->
+    let env1 = { tail_pos = true; info = None} in
     let exp1' = tailexp env1 exp1 in
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
     let exp4' = exp env exp4 in
-    SelfCallE (par', ts, exp1', exp2', exp3', exp4')
+    SelfCallE (ts, exp1', exp2', exp3', exp4')
   | ActorE (ds, fs, u, t) ->
     (* TODO: tco other upgrade fields? *)
     let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade; stable_record = exp env u.stable_record } in
@@ -139,7 +138,7 @@ and lexp env le : lexp = {le with it = lexp' env le}
 
 and lexp' env le : lexp' = match le.it with
   | VarLE i -> VarLE i
-  | DotLE (e, sn) -> DotLE (exp env e, sn)
+  | DotLE (e, sn)  -> DotLE (exp env e, sn)
   | IdxLE (e1, e2) -> IdxLE (exp env e1, exp env e2)
 
 and args env as_ =
@@ -259,7 +258,7 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (as_opt, ds, fs, u, t) ->
+  | ActorU (as_opt, ds, fs, u, t)  ->
     (* TODO: tco other fields of u? *)
     let u = { u with
               preupgrade = exp env u.preupgrade;
