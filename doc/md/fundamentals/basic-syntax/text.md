@@ -18,4 +18,4 @@ Concatenating text
 
 ## Quick references
 
-- [Base library Text](https://internetcomputer.org/docs/current/motoko/main/base/Text)
+- [Text](https://internetcomputer.org/docs/current/motoko/main/base/Text)
