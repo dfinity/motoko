@@ -13,4 +13,4 @@ let exp: Float = 2.71828;
 
 ## References
 
-- [Base library Float](https://internetcomputer.org/docs/current/motoko/main/base/Float)
+- [Float](https://internetcomputer.org/docs/current/motoko/main/base/Float)
