@@ -23,6 +23,6 @@ Since printing modifies output, it is considered an **impure function**, unlike 
 
 `Debug.print`("Hello, World!") is impure because it causes a side effect by printing to the console.
 
-## Quick references
+## References
 
 - [Base library Debug](https://internetcomputer.org/docs/current/motoko/main/base/Debug)
