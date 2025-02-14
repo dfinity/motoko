@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Imports  
 
-Package imports should be at the top of the source file. Imports allow you to reuse code from external libraries or modules, making your code easier to maintain and manage. You can import from:
+Package imports should be at the top of the source file. Imports allow you to reuse code from external libraries or modules, making code easier to maintain and manage. You can import from:
 
 1. Standard modules provided by the base library:
 
