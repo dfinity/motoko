@@ -37,7 +37,7 @@ Bounded integers can overflow if their limits are exceeded, resulting in a runti
 // let overflowInt: Int8 = 128; // Error: literal out of range Int8
 ```
 
-## Quick references
+## References
 
 - [Base library Int](https://internetcomputer.org/docs/current/motoko/main/base/Int)
 - [Base library Int8](https://internetcomputer.org/docs/current/motoko/main/base/Int8)
