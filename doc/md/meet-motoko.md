@@ -20,7 +20,7 @@ Motoko is a modern, **actor-based** language designed for safety, efficiency, an
 
 Follow these steps to set up your Motoko development environment:
 
-### 1. **Install the IC SDK**  
+### 1. Install the IC SDK
 
 To develop Motoko applications, you need a development environment that includes the Motoko compiler and base library. The Internet Computer Software Development Kit (IC SDK) provides these essential tools, along with utilities for managing and deploying canisters.  
 
