@@ -88,7 +88,7 @@ Develop cross-chain applications and integrate with other blockchains.
 
 </Tabs>
 
-## Quick references  
+## References  
 
 For developers looking for quick access to key resources, here are direct links to the base library and useful examples:
 
