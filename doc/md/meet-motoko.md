@@ -34,7 +34,7 @@ Verify the installation with:
 dfx --version
 ```
 
-### 2. **Choose an IDE**  
+### 2. Choose an IDE
 
 While you can use any IDE for Motoko development, **Visual Studio Code (VS Code)** is recommended due to its convenient extension support. If you prefer to use VS Code, you can download it from:  
 [https://code.visualstudio.com](https://code.visualstudio.com)  
