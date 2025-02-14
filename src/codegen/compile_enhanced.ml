@@ -12256,7 +12256,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim _FIXME, [f;e;k;r;c] ->
+  | ICCallPrim, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -12492,7 +12492,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (cyc_FIXME, ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in

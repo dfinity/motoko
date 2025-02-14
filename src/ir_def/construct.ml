@@ -62,8 +62,6 @@ let tupP pats =
     note = T.Tup (List.map (fun p -> p.note) pats);
     at = no_region }
 
-let tupVarsP vs = List.map varP vs |> tupP
-
 let seqP ps =
   match ps with
   | [p] -> p
@@ -92,12 +90,10 @@ let primE prim es =
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
-    | ICStableWrite _
-    | ICPerformGC
-    | SystemTimeoutPrim
-    | SystemCyclesAddPrim -> T.unit
+    | ICStableWrite _ -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
+    | ICPerformGC
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -115,10 +111,9 @@ let primE prim es =
     | SystemCyclesBurnPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
-    | ICCallAttrsPrim -> T.(Opt (Obj (Object, [])))
     | OtherPrim "trap" -> T.Non
     | OtherPrim "global_timer_set" -> T.nat64
-    | OtherPrim "call_perform_status" -> T.nat32
+    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
     | OtherPrim "array_len"
     | OtherPrim "blob_size"
@@ -158,6 +153,14 @@ let assertE e =
   }
 
 
+let asyncE s typ_bind e typ1 =
+  { it = AsyncE (s, typ_bind, e, typ1);
+    at = no_region;
+    note =
+      Note.{ def with typ = T.Async (s, typ1, typ e);
+                      eff = T.(if s = Fut then Await else Triv) }
+  }
+
 let awaitE s e =
   let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
   { it = PrimE (AwaitPrim s, [e]);
@@ -165,14 +168,8 @@ let awaitE s e =
     note = Note.{ def with typ; eff = T.Await }
   }
 
-let nullE () =
-  { it = LitE NullLit;
-    at = no_region;
-    note = Note.{ def with typ = T.(Prim Null) }
-  }
-
-let cps_asyncE s typ1 par typ2 e =
-  { it = PrimE (CPSAsync (s, typ1, if s = T.Fut then par else nullE ()), [e]);
+let cps_asyncE s typ1 typ2 e =
+  { it = PrimE (CPSAsync (s, typ1), [e]);
     at = no_region;
     note = Note.{ def with typ = T.Async (s, typ1, typ2); eff = eff e }
   }
@@ -201,10 +198,10 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE s f e k r c =
+let ic_callE f e k r c =
   let es = [f; e; k; r; c] in
   let eff = map_max_effs eff es in
-  { it = PrimE (ICCallPrim s, es);
+  { it = PrimE (ICCallPrim, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }
@@ -271,7 +268,7 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.nat32 }
+    note = Note.{ def with typ = T.(Prim Nat32) }
   }
 
 let nat64E n =
@@ -310,6 +307,12 @@ let boolE b =
     note = Note.{ def with typ = T.bool }
   }
 
+let nullE () =
+  { it = LitE NullLit;
+    at = no_region;
+    note = Note.{ def with typ = T.Prim T.Null }
+  }
+
 
 (* Functions *)
 
@@ -327,18 +330,23 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
-let asyncE s typ_bind e typ1 =
-  { it = AsyncE (None, s, typ_bind, e, typ1);
+let callE exp1 typs exp2 =
+  let typ = match T.promote (typ exp1) with
+    | T.Func (_sort, control, _, _, ret_tys) ->
+      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
+    | T.Non -> T.Non
+    | _ -> raise (Invalid_argument "callE expect a function")
+  in
+  let p = CallPrim typs in
+  let es = [exp1; exp2] in
+  { it = PrimE (p, es);
     at = no_region;
-    note =
-      Note.{ def with typ = T.Async (s, typ1, typ e);
-                      eff = T.(if s = Fut then Await else Triv) }
+    note = Note.{ def with
+     typ;
+     eff = Ir_effect.infer_effect_prim p es
+    }
   }
 
-let parenthetical par = function
-  | { it = PrimE (CallPrim (typs, _), es); _ } as e when true ->
-    { e with it = PrimE (CallPrim (typs, par), es) }
-  | e -> Printf.eprintf "PAR? %s\n" (Wasm.Sexpr.to_string 180 (Arrange_ir.exp e)); e
 
 let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
@@ -360,6 +368,13 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   ifE e1 (trueE ()) e2
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
+let oldE : Ir.exp -> Ir.exp = fun e ->
+  { it = (primE (CallPrim [typ e]) [e]).it;
+    at = no_region;
+    note = Note.{ def with
+      typ = typ e;
+    }
+  }
 
 let rec conjE : Ir.exp list -> Ir.exp = function
   | [] -> trueE ()
@@ -370,7 +385,7 @@ let dotE exp name typ =
   { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = Note.{ def with
-      typ;
+      typ = typ;
       eff = eff exp
     }
   }
@@ -476,9 +491,6 @@ let assignE v exp2 =
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
-
-let assignVarE v exp =
-  assignE (var v T.(Mut (typ exp |> as_immut))) exp
 
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);
@@ -693,56 +705,6 @@ let named displ e =
   | _ -> assert false
 
 
-(* object *)
-let objE sort typ_flds flds =
-  let rec go ds fields fld_tys = function
-    | [] ->
-      blockE
-        (List.rev ds)
-        (newObjE sort fields
-           (T.obj sort
-              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
-               @ fld_tys)))
-    | (lab, exp)::flds ->
-      let v, ds = match exp.it with
-        | VarE (Const, v) -> var v (typ exp), ds
-        | _ ->
-          let v = fresh_var lab (typ exp) in
-          v, letD v exp :: ds in
-      let field = {
-        it = {name = lab; var = id_of_var v};
-        at = no_region;
-        note = typ exp
-      } in
-      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
-  in
-  go [] [] [] flds
-
-let recordE = objE T.Object []
-
-let oldE : Ir.exp -> Ir.exp = fun e ->
-  { it = (primE (CallPrim ([typ e], recordE [])) [e]).it;
-    at = no_region;
-    note = Note.{ def with typ = typ e }
-  }
-
-let callE exp1 typs exp2 =
-  let typ = match T.promote (typ exp1) with
-    | T.Func (_sort, control, _, _, ret_tys) ->
-      T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
-    | T.Non -> T.Non
-    | _ -> raise (Invalid_argument "callE expect a function")
-  in
-  let p = CallPrim (typs, recordE []) in
-  let es = [exp1; exp2] in
-  { it = PrimE (p, es);
-    at = no_region;
-    note = Note.{ def with
-     typ;
-     eff = Ir_effect.infer_effect_prim p es
-    }
-  }
-
 (* Lambda application (monomorphic) *)
 
 let ( -*- ) exp1 exp2 = callE exp1 [] exp2
@@ -811,6 +773,33 @@ let forE pat exp1 exp2 =
 let unreachableE () =
   (* Do we want a dedicated UnreachableE in the AST? *)
   loopE (unitE ())
+
+let objE sort typ_flds flds =
+  let rec go ds fields fld_tys = function
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+           (T.obj sort
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
+               @ fld_tys)))
+    | (lab, exp)::flds ->
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
+        | _ ->
+          let v = fresh_var lab (typ exp) in
+          v, letD v exp :: ds in
+      let field = {
+        it = {name = lab; var = id_of_var v};
+        at = no_region;
+        note = typ exp
+      } in
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
+  in
+  go [] [] [] flds
+
+
+let recordE flds = objE T.Object [] flds
 
 let objectE sort flds (tfs : T.field list) =
   let rec go ds fields = function

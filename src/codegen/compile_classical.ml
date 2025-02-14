@@ -809,7 +809,7 @@ end
 
 
 (* General code generation functions:
-   Rule of thumb: Here goes stuff that is independent of the Motoko AST.
+   Rule of thumb: Here goes stuff that independent of the Motoko AST.
 *)
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
@@ -2021,7 +2021,7 @@ module Tagged = struct
     | T (* (T,+) *)
     | S (* shared ... -> ... *)
   type blob_sort =
-    | B (* Blob *)
+    |  B (* Blob *)
     | T (* Text *)
     | P (* Principal *)
     | A (* actor { ... } *)
@@ -2191,7 +2191,8 @@ module Tagged = struct
         E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
-          compile_add_const ptr_unskew
+          compile_unboxed_const ptr_unskew ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add))
         else G.nop))
     else G.nop)
 
@@ -2248,15 +2249,6 @@ module Tagged = struct
     load_tag env ^^
     set_tag ^^
     go cases
-
-  (* like branch_default_with but the tag is known statically *)
-  let branch_with env retty = function
-    | [] -> G.i Unreachable
-    | [_, code] -> code
-    | (_, code) :: cases ->
-       let (set_o, get_o) = new_local env "o" in
-       let prep (t, code) = (t, get_o ^^ code)
-       in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
 
   let allocation_barrier env =
     (if !Flags.gc_strategy = Flags.Incremental then
@@ -2419,13 +2411,12 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              Tagged.
-              [ Null,
+              [ Tagged.Null,
                 (* NB: even ?null does not require allocation: We use a static
                   singleton for that: *)
                 compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Some,
-                obj env Some [get_x]
+              ; Tagged.Some,
+                Tagged.obj env Tagged.Some [get_x]
               ]
             )
         )
@@ -2552,7 +2543,7 @@ module Closure = struct
       I32Type :: Lib.List.make n_args I32Type,
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
-    (*Tagged.load_forwarding_pointer env ^^ FIXME: NOT needed, accessing immut slots*)
+    Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (funptr_field env) ^^
     (* All done: Call! *)
     let table_index = 0l in
@@ -4148,30 +4139,6 @@ module Object = struct
     get_ri ^^
     Tagged.allocation_barrier env
 
-  (* Invoke supplied code for each runtime hash, with object on stack *)
-  let iterate_hashes env code =
-    let set_x, get_x = new_local env "obj/count" in
-    let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
-
-    Tagged.load_forwarding_pointer env ^^ set_x ^^
-    get_x ^^ Tagged.load_field env (hash_ptr_field env) ^^
-
-    compile_add_const ptr_unskew ^^ set_h_ptr ^^
-    get_x ^^ Tagged.load_field env (size_field env) ^^ set_x ^^ (* now count *)
-    (* Linearly scan through the hashes *)
-    G.loop0 (
-      get_x ^^
-      G.if0
-        begin
-          get_h_ptr ^^ load_unskewed_ptr ^^
-          code ^^
-          get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-          get_x ^^ compile_sub_const 1l ^^ set_x ^^
-          G.i (Br (nr 1l))
-        end
-        G.nop
-    )
-
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
@@ -5558,7 +5525,7 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       system_call env "call_cycles_add128"
     | _ ->
-      E.trap_with env "cannot add cycles when running locally"
+      E.trap_with env "cannot accept cycles when running locally"
 
   let cycles_accept env =
     match E.mode env with
@@ -9164,9 +9131,6 @@ module VarEnv = struct
        in the given stackrep (Vanilla, UnboxedWord32, …) so far
        Used for immutable and mutable, non-captured data *)
     | Local of SR.t * int32
-    (* An already captured binding from the caller's frame
-       Used for immutable and mutable, non-captured data *)
-    | Captured of (int * bool)
     (* A Wasm Local of the current function, that points to memory location,
        which is a MutBox.  Used for mutable captured data *)
     | HeapInd of int32
@@ -9180,7 +9144,6 @@ module VarEnv = struct
 
   let is_non_local : varloc -> bool = function
     | Local _
-    | Captured _
     | HeapInd _ -> false
     | HeapStatic _
     | PublicMethod _
@@ -9240,10 +9203,10 @@ module VarEnv = struct
   let add_local_with_heap_ind env (ae : t) name typ =
       let i = E.add_anon_local env I32Type in
       E.add_local_name env i name;
-      ({ ae with vars = NameEnv.add name (HeapInd i, typ) ae.vars }, i)
+      ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
 
   let add_local_heap_static (ae : t) name ptr typ =
-      { ae with vars = NameEnv.add name (HeapStatic ptr, typ) ae.vars }
+      { ae with vars = NameEnv.add name ((HeapStatic ptr), typ) ae.vars }
 
   let add_local_public_method (ae : t) name (fi, exported_name) typ =
       { ae with vars = NameEnv.add name ((PublicMethod (fi, exported_name) : varloc), typ) ae.vars }
@@ -9252,15 +9215,12 @@ module VarEnv = struct
       { ae with vars = NameEnv.add name ((Const cv : varloc), typ) ae.vars }
 
   let add_local_local env (ae : t) name sr i typ =
-      { ae with vars = NameEnv.add name (Local (sr, i), typ) ae.vars }
+      { ae with vars = NameEnv.add name ((Local (sr, i)), typ) ae.vars }
 
   let add_direct_local env (ae : t) name sr typ =
       let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
       (add_local_local env ae name sr i typ, i)
-
-  let add_closure_local env (ae : t) ci mut name typ =
-      { ae with vars = NameEnv.add name (Captured (ci, mut), typ) ae.vars }
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_arguments env (ae : t) as_local = function
@@ -9316,11 +9276,11 @@ module Var = struct
   (* Returns desired stack representation, preparation code and code to consume
      the value onto the stack *)
   let set_val env ae var : G.t * SR.t * G.t = match (VarEnv.lookup ae var, !Flags.gc_strategy) with
-    | (Some (Local (sr, i), _), _) ->
+    | (Some ((Local (sr, i)), _), _) ->
       G.nop,
       sr,
       G.i (LocalSet (nr i))
-    | (Some (HeapInd i, typ), Flags.Generational) when potential_pointer typ ->
+    | (Some ((HeapInd i), typ), Flags.Generational) when potential_pointer typ ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env ^^
@@ -9329,26 +9289,18 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
-    | (Some (HeapInd i, typ), Flags.Incremental) when potential_pointer typ ->
+    | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | (Some (HeapInd i, typ), _) ->
+    | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
-
-    (* FIXME: Generational, Incremental *)
-    | (Some (Captured (ci, true), _), _) ->
-      G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I32.of_int_u ci),
-      SR.Vanilla,
-      MutBox.store_field env
-
-
-    | (Some (HeapStatic ptr, typ), Flags.Generational) when potential_pointer typ ->
+    | (Some ((HeapStatic ptr), typ), Flags.Generational) when potential_pointer typ ->
       compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env ^^
@@ -9357,19 +9309,19 @@ module Var = struct
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
-    | (Some (HeapStatic ptr, typ), Flags.Incremental) when potential_pointer typ ->
+    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | (Some (HeapStatic ptr, typ), _) ->
+    | (Some ((HeapStatic ptr), typ), _) ->
       compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env
-    | (Some (Const _, _), _) -> fatal "set_val: %s is const" var
-    | (Some (PublicMethod _, _), _) -> fatal "set_val: %s is PublicMethod" var
+    | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
+    | (Some ((PublicMethod _), _), _) -> fatal "set_val: %s is PublicMethod" var
     | (None, _)   -> fatal "set_val: %s missing" var
 
   (* Stores the payload. Returns stack preparation code, and code that consumes the values from the stack *)
@@ -9394,10 +9346,6 @@ module Var = struct
   let get_val (env : E.t) (ae : VarEnv.t) var = match VarEnv.lookup_var ae var with
     | Some (Local (sr, i)) ->
       sr, G.i (LocalGet (nr i))
-    | Some (Captured (ci, false)) ->
-      SR.Vanilla, G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I32.of_int_u ci)
-    | Some (Captured (ci, true)) ->
-      SR.Vanilla, G.i (LocalGet (nr 0l)) ^^ Closure.load_data env (Wasm.I32.of_int_u ci) ^^ MutBox.load_field env
     | Some (HeapInd i) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ MutBox.load_field env
     | Some (HeapStatic i) ->
@@ -9418,18 +9366,9 @@ module Var = struct
   (* Returns the value to put in the closure,
      and code to restore it, including adding to the environment
   *)
-  let capture old_env ae0 var slot: G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
-    match VarEnv.lookup ae0 var, slot with
-    | Some (Local (sr, i), typ), Some ci ->
-      ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
-      , fun new_env ae1 ->
-        (* we use SR.Vanilla in the restored environment. We could use sr;
-           like for parameters hard to predict what’s better *)
-        let ae2 = VarEnv.add_closure_local new_env ae1 ci false var typ in
-        let restore_code = G.i Drop (* FIXME *)
-        in ae2, fun body -> restore_code ^^ body
-      )
-    | Some (Local (sr, i), typ), _ ->
+  let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
+    match VarEnv.lookup ae0 var with
+    | Some ((Local (sr, i)), typ) ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
@@ -9438,25 +9377,7 @@ module Var = struct
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
       )
-    | Some (Captured (oci, mut), typ), Some ci ->
-      ( G.i (LocalGet (nr 0l)) ^^ Closure.load_data old_env (Wasm.I32.of_int_u oci)
-      , fun new_env ae1 ->
-        (* we use SR.Vanilla in the restored environment. We could use sr;
-           like for parameters hard to predict what’s better *)
-        let ae2 = VarEnv.add_closure_local new_env ae1 ci mut var typ in
-        let restore_code = G.i Drop (* FIXME *)
-        in ae2, fun body -> restore_code ^^ body
-      )
-    | Some (HeapInd i, typ), Some ci ->
-      ( G.i (LocalGet (nr i))
-      , fun new_env ae1 ->
-        (* we use SR.Vanilla in the restored environment. We could use sr;
-           like for parameters hard to predict what’s better *)
-        let ae2 = VarEnv.add_closure_local new_env ae1 ci true var typ in
-        let restore_code = G.i Drop (* FIXME *)
-        in ae2, fun body -> restore_code ^^ body
-      )
-    | Some (HeapInd i, typ), _ ->
+    | Some ((HeapInd i), typ) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         let ae2, j = VarEnv.add_local_with_heap_ind new_env ae1 var typ in
@@ -9489,21 +9410,16 @@ end (* Var *)
    that requires top-level cps conversion;
    use new prims instead *)
 module Internals = struct
-  let call_prelude_function_with_args env ae var args =
+  let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
     | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
-       args ^^
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
-
-  let call_prelude_function env ae var =
-    call_prelude_function_with_args env ae var G.nop
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let pass_cycles env ae = call_prelude_function_with_args env ae "@pass_cycles"
 end
 
 (* This comes late because it also deals with messages *)
@@ -9627,7 +9543,7 @@ module FuncDec = struct
           | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
               let store_rest, restore_rest = go (i + 1) vs in
-              let store_this, restore_this = Var.capture env ae v (Some i) in
+              let store_this, restore_this = Var.capture env ae v in
               let store_env =
                 get_clos ^^
                 store_this ^^
@@ -10209,7 +10125,6 @@ module AllocHow = struct
     M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
-    | VarEnv.Captured _     -> StoreHeap (* LocalMut SR.Vanilla FIXME: correct? *)
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
@@ -10972,20 +10887,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   begin match p, es with
   (* Calls *)
-  | CallPrim (_, par), [e1; e2] ->
+  | CallPrim _, [e1; e2] ->
     let sort, control, _, arg_tys, ret_tys = Type.(as_func (promote e1.note.Note.typ)) in
     let n_args = List.length arg_tys in
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
       | Type.Promises -> assert false in
+
     let fun_sr, code1 = compile_exp env ae e1 in
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
       | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
          begin match n_args, e2.it with
-         | (0 | 1), _ -> true
+         | 0, _ -> true
+         | 1, _ -> true
          | n, PrimE (TupPrim, es) when List.length es = n -> true
          | _, _ -> false
          end
@@ -11016,35 +10933,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
          StackRep.of_arity return_arity,
 
          code1 ^^
-         Type.(match as_obj par.note.Note.typ with
-               | Object, [] -> compile_unboxed_zero (* a dummy closure *)
-               | _ -> compile_exp_vanilla env ae par) ^^ (* parenthetical *)
+         compile_unboxed_zero ^^ (* A dummy closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
       | _, Type.Local ->
-         let set_clos, get_clos = new_local env "clos" in
+         let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
-         Closure.prepare_closure_call env ^^ (* FIXME: move to front elsewhere too *)
          set_clos ^^
-         Type.(match as_obj par.note.Note.typ, ret_tys with
-               | (Object, []), _ -> get_clos (* just the closure *)
-               | _, [ret] when is_low_async_fut ret -> Arr.lit env Tagged.T [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
-               | (Object, tflds), [ret] -> if (tflds <> []) then
-                                         Printf.printf "Cannot do typ: %s\n   not fut: %s\n"
-                                           (Wasm.Sexpr.to_string 80 (Arrange_type.typ par.note.Note.typ))
-                                           (Wasm.Sexpr.to_string 80 (Arrange_type.typ ret))
-                                       ; get_clos
-
-
-               | _ -> get_clos
-
-) ^^ (* just the closure *)
-
-
-
+         get_clos ^^
+         Closure.prepare_closure_call env ^^
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
@@ -11055,33 +10955,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
          let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
          let (set_arg, get_arg) = new_local env "arg" in
          let _, _, _, ts, _ = Type.as_func e1.note.Note.typ in
-         let has attr attrs = None <> List.find_opt (fun Type.{lab; _} -> attr = lab) attrs in
-         let (set_par, get_par) = new_local env "par" in
-         let prep = Type.(match as_obj par.note.Note.typ with
-                          | Object, [] ->
-                            Internals.add_cycles env ae (* legacy *)
-                          | Object, attrs when has "cycles" attrs || has "timeout" attrs ->
-                            compile_exp_vanilla env ae par ^^ set_par
-                          | _ -> G.nop) in
-         let add_cycles = Type.(match as_obj par.note.Note.typ with
-                                | Object, attrs when has "cycles" attrs ->
-                                  get_par ^^
-                                  Object.load_idx env par.note.Note.typ "cycles" ^^
-                                  Cycles.add env (* parenthetical *)
-                                | _ -> G.nop) in
-         let add_timeout = Type.(match as_obj par.note.Note.typ with
-                                 | Object, attrs when has "timeout" attrs ->
-                                   get_par ^^
-                                   Object.load_idx env par.note.Note.typ "timeout" ^^
-                                   BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
-                                   IC.system_call env "call_with_best_effort_response" (* parenthetical *)
-                                 | _ -> G.nop) in
+         let add_cycles = Internals.add_cycles env ae in
+
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          set_meth_pair ^^
          compile_exp_vanilla env ae e2 ^^ set_arg ^^
 
-         FuncDec.ic_call_one_shot env ts get_meth_pair get_arg (prep ^^ add_cycles ^^ add_timeout)
+         FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
     end
 
   (* Operators *)
@@ -12255,19 +12136,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim setup, [f;e;k;r;c] ->
+  | ICCallPrim, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
     let _, _, _, ts2, _ = Type.as_func k.note.Note.typ in
-    let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
-    let set_arg, get_arg = new_local env "arg" in
-    let set_k, get_k = new_local env "k" in
-    let set_r, get_r = new_local env "r" in
-    let set_c, get_c = new_local env "c" in
-    let add_cycles = match setup with
-      | { it = PrimE (TupPrim, []); _ } -> Internals.add_cycles env ae (* legacy *)
-      | exp -> compile_exp_unit env ae exp in
+    let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
+    let (set_arg, get_arg) = new_local env "arg" in
+    let (set_k, get_k) = new_local env "k" in
+    let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
+    let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
@@ -12333,51 +12212,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
-  | ICCallAttrsPrim, [] ->
-    SR.Vanilla,
-    G.i (LocalGet (nr 0l)) ^^ (* closed-over bindings *)
-    G.if1 I32Type
-      begin
-        let open Tagged in
-        G.i (LocalGet (nr 0l)) ^^
-        branch_with env [I32Type]
-          [ Closure,
-            G.i Drop ^^
-            Opt.null_lit env
-          ; Array T,
-            Opt.inject_simple env (Arr.load_field env 0l) ^^
-
-              (*E.trap_with env "Tagged.(Array T)" ^^*)
-
-
-            G.i (LocalGet (nr 0l)) ^^
-            Arr.load_field env 0l ^^
-            load_tag env ^^
-            compile_unboxed_const (int_of_tag Object) ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-            E.else_trap_with env "field 0 is not Object" ^^
-
-            G.i (LocalGet (nr 0l)) ^^
-            Arr.load_field env 1l ^^
-            load_tag env ^^
-            compile_unboxed_const (int_of_tag Closure) ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-            E.else_trap_with env "field 1 is not Closure" ^^
-
-
-
-
-            G.i (LocalGet (nr 0l)) ^^
-            Arr.load_field env 1l ^^
-            G.i (LocalSet (nr 0l))
-          ; Object,
-            Opt.inject_simple env G.nop
-          ]
-      end
-      (Opt.null_lit env)
-
-  | SystemTimeoutPrim, [e1] ->
-    SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12550,66 +12384,16 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       | Type.Promises -> assert false in
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
-
-
-
-
-    (* if the body is of form `BlockE [...; SelfCallE _; ...] b`,
-       then use a different form of closure restoration *)
-begin
-    match e.it with
-    | BlockE (_ :: { it = LetD (_, { it = SelfCallE _ }) } :: _, _) -> assert false;
-    | _ -> ()
-end;
-
-
-
-
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (par, ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
-    let set_future, get_future = new_local env "future" in
-    let set_k, get_k = new_local env "k" in
-    let set_r, get_r = new_local env "r" in
-    let set_c, get_c = new_local env "c" in
+    let (set_future, get_future) = new_local env "future" in
+    let (set_k, get_k) = new_local env "k" in
+    let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-
-    (* this can be the body of a local async function or an `async` block
-       - the former receives the optional parenthetical via `ICCallAttrsPrim`
-       - the latter either NullLit (legacy) or the parenthetical object (typed)
-     *)
-
-
-    let prep_meta, add_meta = match par.it with
-      | LitE NullLit -> G.nop, Internals.add_cycles env ae (* legacy *)
-      | _ ->
-         let set_meta, get_meta = new_local env "meta" in
-         compile_exp_vanilla env ae par ^^
-         set_meta,
-         let set_hash, get_hash = new_local env "sel" in
-         get_meta ^^ Opt.is_some env ^^
-         G.if0
-           begin
-             get_meta ^^
-             (* this is a naked option, thus no need to unpack *)
-             Object.iterate_hashes env
-               begin
-                 set_hash ^^ get_hash ^^
-                 compile_eq_const (E.hash env "timeout") ^^
-                 G.if0
-                   (get_meta ^^ Object.load_idx env Type.(Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src}])) "timeout" ^^
-                    BitTagged.untag_i32 __LINE__ env Type.Nat32 ^^
-                    IC.system_call env "call_with_best_effort_response")
-                   (get_hash ^^ compile_eq_const (E.hash env "cycles") ^^
-                    (G.if0
-                       (Internals.pass_cycles env ae get_meta)
-                       G.nop))
-               end
-           end
-           (Internals.add_cycles env ae) (* legacy *)
-    in
-    prep_meta ^^
+    let add_cycles = Internals.add_cycles env ae in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^
@@ -12625,7 +12409,7 @@ end;
       get_k
       get_r
       get_c
-      add_meta
+      add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
