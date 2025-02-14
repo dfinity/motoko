@@ -12,7 +12,7 @@ An example without proper whitespace:
 actor Incrementer{public func inc(x:Int): async Int{return x+=1}} await Incrementer.inc(1);
 ```
 
-With Proper Whitespace
+An example of proper whitespace usage:
 
 ```motoko
 actor Incrementer {
