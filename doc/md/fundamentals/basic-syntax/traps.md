@@ -15,6 +15,6 @@ import Debug "mo:base/Debug";
 Debug.trap("oops!");
 ```
 
-## Quick references
+## References
 
 -[Traps](https://internetcomputer.org/docs/current/motoko/main/writing-motoko/actors-async/#traps)
