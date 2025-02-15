@@ -4,15 +4,7 @@ sidebar_position: 1
 
 # Meet Motoko: The language shaping the future of Web3
 
-import { MarkdownChipRow } from "/src/components/Chip/MarkdownChipRow";
-
-import Tabs from "@theme/Tabs";
-
-import TabItem from "@theme/TabItem";
-
-<MarkdownChipRow labels={["Beginner", "Getting started"]} />
-
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150"/>
 
 Motoko is a modern, **actor-based** language designed for safety, efficiency, and scalability. Motoko natively supports asynchronous messaging, Candid interoperability, robust type safety, automatic memory management, and the unique features of the Internet Computer.
 
