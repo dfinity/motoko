@@ -45,7 +45,7 @@ let overflowNat8: Nat8 = 256; // Error: literal out of range Nat8
 
 | Feature               | `Int`                      | `Nat`                    |
 |-----------------------|----------------------------|--------------------------|
-| Values supported      | Positive & Negative        | Only Non-negative        |
+| Values supported      | Positive & negative        | Only non-negative        |
 | Default behavior      | Unbounded                  | Unbounded                |
 | Bounded variants      | `Int8`, `Int16`, `Int32`...| `Nat8`, `Nat16`, `Nat32`...|
 | Overflow possibility  | Yes (for bounded types)    | Yes (for bounded types)  |

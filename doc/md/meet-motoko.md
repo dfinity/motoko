@@ -12,7 +12,7 @@ Motoko is a modern, **actor-based** language designed for safety, efficiency, an
 
 Follow these steps to set up your Motoko development environment:
 
-### 1. **Install the IC SDK**  
+### 1. Install the IC SDK
 
 To develop Motoko applications, you need a development environment that includes the Motoko compiler and base library. The Internet Computer Software Development Kit (IC SDK) provides these essential tools, along with utilities for managing and deploying canisters.  
 
@@ -26,12 +26,12 @@ Verify the installation with:
 dfx --version
 ```
 
-### 2. **Choose an IDE**  
+### 2. Choose an IDE
 
 While you can use any IDE for Motoko development, **Visual Studio Code (VS Code)** is recommended due to its convenient extension support. If you prefer to use VS Code, you can download it from:  
 [https://code.visualstudio.com](https://code.visualstudio.com)  
 
-### 3. **Install the Motoko VS Code extension (optional, recommended for VS Code Users)**
+### 3. Optional: Install the Motoko VS Code extension
 
 If you are using VS Code, you can enhance your development experience by installing the official Motoko extension:  
 
@@ -80,7 +80,7 @@ Develop cross-chain applications and integrate with other blockchains.
 
 </Tabs>
 
-## Quick references  
+## References  
 
 For developers looking for quick access to key resources, here are direct links to the base library and useful examples:
 

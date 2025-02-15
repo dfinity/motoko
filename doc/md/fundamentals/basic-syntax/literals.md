@@ -19,6 +19,6 @@ Numeric literal in expression
 100 + 50
 ```
 
-## Quick references
+## References
 
 - [Literals](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual/#literals)

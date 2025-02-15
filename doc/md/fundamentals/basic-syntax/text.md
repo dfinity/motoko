@@ -16,6 +16,6 @@ Concatenating text
 "ICP" # "x" # "Motoko" //ICP x Motoko
 ```
 
-## Quick references
+## References
 
-- [Base library Text](https://internetcomputer.org/docs/current/motoko/main/base/Text)
+- [Text](https://internetcomputer.org/docs/current/motoko/main/base/Text)
