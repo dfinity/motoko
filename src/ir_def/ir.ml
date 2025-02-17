@@ -67,12 +67,12 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | AsyncE of exp option * Type.async_sort * typ_bind * exp * Type.typ (* async/async* *)
+  | AsyncE of Type.async_sort * typ_bind * exp * Type.typ        (* async/async* *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
-  | SelfCallE of exp * Type.typ list * exp * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
+  | SelfCallE of Type.typ list * exp * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)
   | TryE of exp * case list * (id * Type.typ) option (* try/catch/cleanup *)
@@ -119,7 +119,7 @@ and lexp' =
 all call-by-value. Many passes can treat them uniformly, so they are unified
 using the PrimE node. *)
 and prim =
-  | CallPrim of Type.typ list * exp   (* function call *)
+  | CallPrim of Type.typ list         (* function call *)
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
@@ -163,8 +163,7 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  | ICCallAttrsPrim                   (* cycles/timeout to send by parenthetical (callee side) *)
-  | SystemTimeoutPrim
+  | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
 
@@ -172,12 +171,12 @@ and prim =
   (* backend stuff *)
   | CPSAwait of Type.async_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
-  | CPSAsync of Type.async_sort * Type.typ * exp
+  | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
-  | ICCallPrim of exp
+  | ICCallPrim
   | ICCallRawPrim
   | ICMethodNamePrim
   | ICReplyDeadlinePrim
@@ -273,9 +272,9 @@ let replace_obj_pat pfs pats =
 
 (* Helper for transforming prims, without missing embedded typs and ids *)
 
-let map_prim t_typ t_id t_exp p =
+let map_prim t_typ t_id p =
   match p with
-  | CallPrim (ts, par) -> CallPrim (List.map t_typ ts, t_exp par)
+  | CallPrim ts -> CallPrim (List.map t_typ ts)
   | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
   | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
   | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
@@ -316,22 +315,21 @@ let map_prim t_typ t_id t_exp p =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  | ICCallAttrsPrim
-  | SystemTimeoutPrim
+  | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
   | OtherPrim _ -> p
   | CPSAwait (s, t) -> CPSAwait (s, t_typ t)
-  | CPSAsync (s, t, par) -> CPSAsync (s, t_typ t, t_exp par)
+  | CPSAsync (s, t) -> CPSAsync (s, t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICArgDataPrim
   | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
+  | ICCallPrim
   | ICCallRawPrim
   | ICMethodNamePrim
   | ICReplyDeadlinePrim -> p
-  | ICCallPrim setup -> ICCallPrim (t_exp setup)
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)

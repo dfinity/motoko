@@ -105,27 +105,21 @@ let fields fs = unions (fun f ->
 let rec exp e : f = match e.it with
   | VarE (_, i)         -> id i
   | LitE l              -> M.empty
-  | PrimE (p, es)       -> prim p ++ exps es
+  | PrimE (_, es)       -> exps es
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
   | BlockE (ds, e1)     -> close (decs ds +++ exp e1)
   | IfE (e1, e2, e3)    -> exps [e1; e2; e3]
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | AsyncE (par, _, _, e, _) -> exps Option.(to_list par) ++ exp e
+  | AsyncE (_, _, e, _) -> exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some (v, _) -> id v | _ -> M.empty)
-  | SelfCallE (par, _, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [par; e2; e3; e4]
-
-and prim = function
-  | CPSAsync (_, _, par)
-  | CallPrim (_, par) -> exp par
-  | ICCallPrim setup -> exp setup
-  | _ -> M.empty
+  | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 

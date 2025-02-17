@@ -189,6 +189,8 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesBurn";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesBurnPrim, [exp e])
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "timeoutSet";_},_);_}, _, e) ->
+    I.PrimE (I.SystemTimeoutSetPrim, [exp e])
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
@@ -211,7 +213,8 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (par_opt, e1, inst, e2) ->
-    I.PrimE (I.CallPrim (inst.note, Option.(value ~default:(recordE []) (map exp par_opt))), [exp e1; exp e2])
+    let set_meta = distill_meta par_opt in
+    (blockE set_meta { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -243,10 +246,12 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    I.AsyncE (Option.map exp par_opt, s, typ_bind tb, exp e,
-      match note.Note.typ with
-      | T.Async (_, t, _) -> t
-      | _ -> assert false)
+    let set_meta = distill_meta par_opt in
+    let it = I.AsyncE (s, typ_bind tb, exp e,
+                       match note.Note.typ with
+                       | T.Async (_, t, _) -> t
+                       | _ -> assert false) in
+    (blockE set_meta { at; note; it }).it
   | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
@@ -257,6 +262,23 @@ and exp' at note = function
     I.BlockE ([
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
+
+and distill_meta = function
+  | None -> []
+  | Some par ->
+    let cycles, clean_cycles =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
+      then [fun parV -> dotE parV "cycles" T.nat |> assignVarE "@cycles" |> expD], []
+      else [], [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
+    let timeout, clean_timeout =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
+      then [fun parV -> dotE parV "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
+      else [], [nullE () |> assignE (var "@timeout" T.(Mut (Opt nat32))) |> expD] in
+    let meta, clean = cycles @ timeout, clean_cycles @ clean_timeout in
+    if meta <> [] then
+      let parV = fresh_var "par" par.note.note_typ in
+      letD parV (exp par) :: (List.map (fun f -> varE parV |> f) meta) @ clean
+    else expD (exp par) :: clean
 
 and url e at =
     (* Set position explicitly *)
@@ -1103,12 +1125,12 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | (T.Promises, Ir.AsyncE (par, s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (par, s, tb, wrap_exp_opt e', t) }
+      | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
+        { e with it = Ir.AsyncE (s, tb, wrap_exp_opt e', t) }
       | T.Returns, Ir.BlockE (
-          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (par, T.Fut, tb,e',t); _} as exp)); _ }],
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (par, T.Fut, tb, wrap_exp_opt e',t)} ] unit
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb, wrap_exp_opt e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
     else wrap_exp_opt e

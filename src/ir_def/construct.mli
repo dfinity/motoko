@@ -39,7 +39,6 @@ val typ_arg : con -> bind_sort -> typ -> typ_bind
 
 val varP : var -> pat
 val tupP :  pat list -> pat
-val tupVarsP : var list -> pat
 val wildP : pat
 
 val seqP : pat list -> pat
@@ -52,11 +51,11 @@ val selfRefE : typ -> exp
 val assertE : exp -> exp
 val asyncE : async_sort -> typ_bind -> exp -> typ -> exp
 val awaitE : async_sort -> exp -> exp
-val cps_asyncE : async_sort -> typ -> exp -> typ -> exp -> exp
+val cps_asyncE : async_sort -> typ -> typ -> exp -> exp
 val cps_awaitE : async_sort -> typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
-val ic_callE : exp -> exp -> exp -> exp -> exp -> exp -> exp
+val ic_callE : exp -> exp -> exp -> exp -> exp -> exp
 val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
@@ -145,7 +144,6 @@ val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val named : string -> exp -> exp (* renaming a function *)
 val (-*-) : exp -> exp -> exp (* application *)
-val parenthetical : exp -> exp -> exp
 
 (* Objects *)
 
