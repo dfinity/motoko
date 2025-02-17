@@ -20,6 +20,7 @@ func @pass_cycles(par : ?{ cycles : Nat }) {
 };
 
 var @cycles : Nat = 0;
+var @timeout : Nat32 = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.

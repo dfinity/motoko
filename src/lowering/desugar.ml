@@ -210,8 +210,19 @@ and exp' at note = function
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
-  | S.CallE (par_opt, e1, inst, e2) ->
-    I.PrimE (I.CallPrim (inst.note(*, Option.(value ~default:(recordE []) (map exp par_opt))*)), [exp e1; exp e2])
+  | S.CallE (None, e1, inst, e2) ->
+    I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
+  | S.CallE (Some par, e1, inst, e2) ->
+    let call = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) in
+    let cycles =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
+      then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
+      else [] in
+    let timeout =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
+      then [dotE (exp par) "timeout" T.nat32 |> assignVarE "@timeout" |> expD]
+      else [] in
+    (blockE (cycles @ timeout) { at; note; it = call }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
