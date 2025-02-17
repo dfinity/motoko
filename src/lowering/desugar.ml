@@ -280,12 +280,11 @@ and distill_meta = function
     let timeout, clean_timeout =
       if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
       then [fun parV -> dotE parV "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
-      else [], [(*nullE () |> assignVarE "@timeout" |> expD*)] in
+      else [], [nullE () |> assignE (var "@timeout" T.(Mut (Opt nat32))) |> expD] in
     let meta, clean = cycles @ timeout, clean_cycles @ clean_timeout in
-    if meta <> [] then begin
-        let parV = fresh_var "par" par.note.note_typ in
-        letD parV (exp par) :: (List.map (fun f -> varE parV |> f) meta) @ clean
-      end
+    if meta <> [] then
+      let parV = fresh_var "par" par.note.note_typ in
+      letD parV (exp par) :: (List.map (fun f -> varE parV |> f) meta) @ clean
     else expD (exp par) :: clean
 
 and url e at =
