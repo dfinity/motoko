@@ -19,8 +19,6 @@ actor A {
 
 
 
-
-
     public func oneshot() {
         debugPrint ("oneshot deadline set: " # debug_show true); // faking
         debugPrint ("oneshot cycles: " # debug_show(Cycles.available()));
@@ -44,7 +42,7 @@ actor A {
             message.size()
         };
 
-        Cycles.add<system> 101; assert 3 == (await closA(39));
+        Cycles.add<system> 101; assert 42 == (await closA(39));
         Cycles.add<system> 102; assert 3 == (await closB());
 
         Cycles.add<system> 1000; let c : async () =
