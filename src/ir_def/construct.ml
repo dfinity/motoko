@@ -268,7 +268,7 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.nat32) }
+    note = Note.{ def with typ = T.nat32 }
   }
 
 let nat64E n =

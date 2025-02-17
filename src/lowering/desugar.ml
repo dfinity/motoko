@@ -1125,12 +1125,12 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | (T.Promises, Ir.AsyncE ((*par, *)s, tb, e', t)) ->
-        { e with it = Ir.AsyncE ((*par, *)s, tb, wrap_exp_opt e', t) }
+      | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
+        { e with it = Ir.AsyncE (s, tb, wrap_exp_opt e', t) }
       | T.Returns, Ir.BlockE (
-          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE ((*par, *)T.Fut, tb,e',t); _} as exp)); _ }],
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE ((*par, *)T.Fut, tb, wrap_exp_opt e',t)} ] unit
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb, wrap_exp_opt e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
     else wrap_exp_opt e
