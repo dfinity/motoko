@@ -12327,7 +12327,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   | SystemTimeoutSetPrim, [e1] ->
-    SR.unit, compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
