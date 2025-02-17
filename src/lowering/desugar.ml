@@ -212,10 +212,8 @@ and exp' at note = function
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
-  | S.CallE (None, e1, inst, e2) ->
-    I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
-  | S.CallE (Some par, e1, inst, e2) ->
-    let set_meta = distill_meta (Some par) in
+  | S.CallE (par_opt, e1, inst, e2) ->
+    let set_meta = distill_meta par_opt in
     (blockE set_meta { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
@@ -247,14 +245,10 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE (None, s, tb, e) ->
-    I.AsyncE (s, typ_bind tb, exp e,
-      match note.Note.typ with
-      | T.Async (_, t, _) -> t
-      | _ -> assert false)
-  | S.AsyncE (Some par, s, tb, e) ->
-    let set_meta = distill_meta (Some par) in
-    (blockE set_meta { at; note
+  | S.AsyncE (par_opt, s, tb, e) ->
+    let set_meta = distill_meta par_opt in
+    (blockE set_meta { at
+                     ; note
                      ; it = I.AsyncE (s, typ_bind tb, exp e,
                                       match note.Note.typ with
                                       | T.Async (_, t, _) -> t
