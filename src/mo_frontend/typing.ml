@@ -2584,8 +2584,8 @@ and validate_parenthetical env typ_opt = function
      | _ -> ()
      end;
      let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
-       let checked = T.[ { lab = "cycles"; typ = nat; src = empty_src}
-                       ; { lab = "timeout"; typ = nat32; src = empty_src}
+       let checked = T.[ { lab = "cycles"; typ = nat; src = empty_src }
+                       ; { lab = "timeout"; typ = nat32; src = empty_src }
                        ] in
        infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
