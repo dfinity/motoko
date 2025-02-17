@@ -247,12 +247,11 @@ and exp' at note = function
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
     let set_meta = distill_meta par_opt in
-    (blockE set_meta { at
-                     ; note
-                     ; it = I.AsyncE (s, typ_bind tb, exp e,
-                                      match note.Note.typ with
-                                      | T.Async (_, t, _) -> t
-                                      | _ -> assert false) }).it
+    let it = I.AsyncE (s, typ_bind tb, exp e,
+                       match note.Note.typ with
+                       | T.Async (_, t, _) -> t
+                       | _ -> assert false) in
+    (blockE set_meta { at; note; it }).it
   | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
