@@ -274,7 +274,7 @@ and distill_meta par =
   let cycles =
     if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
     then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
-    else [] in
+    else [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
   let timeout =
     if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
     then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD]
