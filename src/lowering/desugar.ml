@@ -215,7 +215,7 @@ and exp' at note = function
   | S.CallE (None, e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.CallE (Some par, e1, inst, e2) ->
-    let set_meta = distill_meta par in
+    let set_meta = distill_meta (Some par) in
     (blockE set_meta { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
@@ -253,7 +253,7 @@ and exp' at note = function
       | T.Async (_, t, _) -> t
       | _ -> assert false)
   | S.AsyncE (Some par, s, tb, e) ->
-    let set_meta = distill_meta par in
+    let set_meta = distill_meta (Some par) in
     (blockE set_meta { at; note
                      ; it = I.AsyncE (s, typ_bind tb, exp e,
                                       match note.Note.typ with
@@ -270,16 +270,19 @@ and exp' at note = function
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
-and distill_meta par =
-  let cycles =
-    if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
-    then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
-    else [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
-  let timeout =
-    if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
-    then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD]
-    else [] in
-  cycles @ timeout
+and distill_meta = function
+  | None -> []
+  | Some par ->
+    let cycles, clean_cycles =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
+      then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD], []
+      else [], [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
+    let timeout, clean_timeout =
+      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
+      then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
+      else [], [nullE () |> assignVarE "@timeout" |> expD] in
+    let meta = cycles @ timeout in
+    meta
 
 and url e at =
     (* Set position explicitly *)
