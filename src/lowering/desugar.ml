@@ -215,15 +215,8 @@ and exp' at note = function
   | S.CallE (None, e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.CallE (Some par, e1, inst, e2) ->
-    let cycles =
-      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
-      then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
-      else [] in
-    let timeout =
-      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
-      then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD]
-      else [] in
-    (blockE (cycles @ timeout) { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
+    let set_meta = distill_meta par in
+    (blockE set_meta { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -254,11 +247,18 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE (par_opt, s, tb, e) ->
-    I.AsyncE ((*Option.map exp par_opt,*) s, typ_bind tb, exp e,
+  | S.AsyncE (None, s, tb, e) ->
+    I.AsyncE (s, typ_bind tb, exp e,
       match note.Note.typ with
       | T.Async (_, t, _) -> t
       | _ -> assert false)
+  | S.AsyncE (Some par, s, tb, e) ->
+    let set_meta = distill_meta par in
+    (blockE set_meta { at; note
+                     ; it = I.AsyncE (s, typ_bind tb, exp e,
+                                      match note.Note.typ with
+                                      | T.Async (_, t, _) -> t
+                                      | _ -> assert false) }).it
   | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
@@ -269,6 +269,17 @@ and exp' at note = function
     I.BlockE ([
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
+
+and distill_meta par =
+  let cycles =
+    if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
+    then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
+    else [] in
+  let timeout =
+    if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
+    then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD]
+    else [] in
+  cycles @ timeout
 
 and url e at =
     (* Set position explicitly *)

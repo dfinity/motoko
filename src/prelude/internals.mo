@@ -31,7 +31,7 @@ func @add_cycles<system>() {
     (prim "cyclesAdd" : Nat -> ()) cycles;
   };
   switch @timeout {
-    case (?timeout) (prim "timeoutSet" : Nat32 -> ()) timeout;
+    case (?timeout) { @timeout := null; (prim "timeoutSet" : Nat32 -> ()) timeout };
     case null ()
   }
 };
