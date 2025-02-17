@@ -9797,7 +9797,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9865,7 +9865,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         BoxedSmallWord.unbox env Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -11313,7 +11313,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int32.of_int num_bits) ^^
       compile_shrS_const (Int32.of_int num_bits) ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat32) ^^
+      compile_eq env Type.nat32 ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
@@ -12525,7 +12525,7 @@ and compile_lit_pat env l =
   | Nat32Lit _ ->
     BoxedSmallWord.unbox env Type.Nat32 ^^
     compile_lit_as env (SR.UnboxedWord32 Type.Nat32) l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^
