@@ -2311,10 +2311,13 @@ module Closure = struct
     Tagged.load_field env (Int64.add header_size i)
 
   let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
+    (if G.to_instr_list (Tagged.load_forwarding_pointer env) <> [] then
+       let set_closure_data, get_closure_data = new_local env "closure_data" in
+       set_closure_data ^^
+       Tagged.load_forwarding_pointer env ^^
+       get_closure_data
+     else
+       G.nop) ^^
     Tagged.store_field env (Int64.add header_size i)
 
   let prepare_closure_call env =
@@ -4716,6 +4719,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i64s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
@@ -5145,7 +5149,8 @@ module IC = struct
          "system_transient", 2L;
          "destination_invalid", 3L;
          "canister_reject", 4L;
-         "canister_error", 5L]
+         "canister_error", 5L;
+         "system_unknown", 6L]
         (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
@@ -12274,6 +12279,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12319,6 +12325,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit, compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
