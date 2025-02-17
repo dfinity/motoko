@@ -9,3 +9,5 @@ par-effects.mo:32.15-32.40: warning [M0212], unrecognised attribute moot in pare
 par-effects.mo:33.15-33.53: warning [M0212], unrecognised attribute moot in parenthetical note
 par-effects.mo:35.9-35.34: warning [M0212], unrecognised attribute moot in parenthetical note
 par-effects.mo:36.9-36.47: warning [M0212], unrecognised attribute moot in parenthetical note
+par-effects.mo:37.9-37.50: warning [M0212], unrecognised attribute moot in parenthetical note
+par-effects.mo:38.9-38.70: warning [M0212], unrecognised attribute moot in parenthetical note

@@ -34,6 +34,10 @@ actor A {
 
         (with cycles; moot = f()) onewaycall();
         (with cycles; timeout = 1; moot = f()) onewaycall();
+        ({ moot = f() } with cycles; timeout = 1) onewaycall();
+        ((object { public let moot = f() }) with cycles; timeout = 1) onewaycall();
+        (((object { public let moot = f() }) : {}) with cycles; timeout = 1) onewaycall();
+        ((object { private let _moot = f() }) with cycles; timeout = 1) onewaycall();
     }
 };
 
