@@ -35,3 +35,6 @@ debug.print: localOuter: 0
 debug.print: local: 1_029
 debug.print: local: 42
 ingress Completed: Reply: 0x4449444c0000
+debug.print: test10()
+debug.print: anon: 34_567
+ingress Completed: Reply: 0x4449444c0000

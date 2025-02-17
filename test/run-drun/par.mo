@@ -126,6 +126,12 @@ actor A {
         await (base with) localOuter(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
         await (with cycles = 987) local();
         await (base with) local(); // bogus dynamic attr `cycles` gets ignored as a type-driven fresh record is passed
+    };
+
+    public func test10() : async () {
+        debugPrint "test10()";
+
+        await (with cycles = 34567) (func(name : Text) : async () { debugPrint (name # ": " # debug_show(Cycles.available())) }) "anon";
     }
 }
 
@@ -143,3 +149,4 @@ actor A {
 //CALL ingress test7 "DIDL\x00\x00"
 //CALL ingress test8 "DIDL\x00\x00"
 //CALL ingress test9 "DIDL\x00\x00"
+//CALL ingress test10 "DIDL\x00\x00"
