@@ -8,3 +8,7 @@ By default, code follows **sequential execution**, running line by line. **Condi
 
 - [For loop](for_loop.md)
 - [While loop](while_loop.md)
+- [Controling program flow](control_flow_structs.md)
+- [If-else](if_else.md)
+- [Switch](switch.md)
+- [Unconditional loop](loop.md)

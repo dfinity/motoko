@@ -14,6 +14,8 @@ Motoko provides various operators for working with numbers, text, and boolean va
 | Logical | Logical/boolean operations       | `not`, `and`, `or` |
 | Ordered | Compare values                  | `==`, `!=`, `<`, `>` |
 
+⚠ **Note:**  Bitwise operators can only be used with bounded types.
+
 ## Unary operators
 
 | Operator | Description |
@@ -67,6 +69,8 @@ Bitwise operators manipulate numbers **at the binary level**.
 | `>>`     | Shift right (must be proceeded by whitespace) |`a >> b` |
 | `<<>`    | Rotate left (circular shift) | `a <<> b` |
 | `<>`     | Rotate right (circular shift)| `a <> b` |
+
+⚠ **Note:** Bitwise operators can only be used with bounded types.
 
 ## Wrapping operators
 
