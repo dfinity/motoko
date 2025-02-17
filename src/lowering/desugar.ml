@@ -189,6 +189,8 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesBurn";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesBurnPrim, [exp e])
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "timeoutSet";_},_);_}, _, e) ->
+    I.PrimE (I.SystemTimeoutSetPrim, [exp e])
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
@@ -213,16 +215,15 @@ and exp' at note = function
   | S.CallE (None, e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.CallE (Some par, e1, inst, e2) ->
-    let call = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) in
     let cycles =
       if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
       then [dotE (exp par) "cycles" T.nat |> assignVarE "@cycles" |> expD]
       else [] in
     let timeout =
       if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
-      then [dotE (exp par) "timeout" T.nat32 |> assignVarE "@timeout" |> expD]
+      then [dotE (exp par) "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD]
       else [] in
-    (blockE (cycles @ timeout) { at; note; it = call }).it
+    (blockE (cycles @ timeout) { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)

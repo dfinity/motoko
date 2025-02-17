@@ -12213,6 +12213,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
+
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
   | GetCertificate, [] ->
