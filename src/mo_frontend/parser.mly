@@ -630,7 +630,7 @@ exp_post(B) :
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
+    { CallE(None, e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -641,10 +641,8 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-(*
-  | parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
-*)
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
+    { CallE(par, e1, inst, e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -703,10 +701,10 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | (* parenthetical_opt *) ASYNC e=exp_nest
-    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | par=parenthetical_opt ASYNC e=exp_nest
+    { AsyncE(par, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
-    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
@@ -922,7 +920,7 @@ obj_or_class_dec :
           let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
-             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+             AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock eo s None t efs @? at $sloc

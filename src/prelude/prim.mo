@@ -292,6 +292,7 @@ type ErrorCode = {
   #destination_invalid;
   #canister_reject;
   #canister_error;
+  #system_unknown;
   #future : Nat32;
   #call_error : { err_code : Nat32 };
 };

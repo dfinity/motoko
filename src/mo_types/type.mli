@@ -89,6 +89,7 @@ val is_shared_sort : 'a shared -> bool
 val unit : typ
 val bool : typ
 val nat : typ
+val nat32 : typ
 val nat64 : typ
 val int : typ
 val text : typ
@@ -279,6 +280,12 @@ val string_of_stab_sig : stab_sig -> string
 
 val motoko_runtime_information_type : typ
 
+(* Well-known labels *)
+
+val cycles_lab : lab
+val migration_lab : lab
+val timeout_lab : lab
+
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
@@ -286,14 +293,15 @@ val motoko_stable_var_info_fld : field
 val motoko_gc_trigger_fld : field
 val motoko_runtime_information_fld : field
 
+val cycles_fld : field
+val timeout_fld : field
+
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
 
 val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
-
-val migration_lab : lab
 
 (* Pretty printing *)
 

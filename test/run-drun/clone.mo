@@ -8,8 +8,8 @@ actor Cloner {
    // passing itself as first argument, using available funds
    public shared func makeCloneable(init : Nat): async Lib.Cloneable {
       let accepted = Cycles.accept<system>(Cycles.available());
-      Cycles.add<system>(accepted);
-      await Lib.Cloneable(makeCloneable, init);
+      Prim.debugPrint(debug_show {accepted});
+      await (with cycles = accepted) Lib.Cloneable(makeCloneable, init);
    };
 
    public shared func test() : async () {
@@ -18,9 +18,8 @@ actor Cloner {
       await Cycles.provisional_top_up_actor(Cloner, 100_000_000_000_000);
 
       // create the original Cloneable object
-      Cycles.add<system>(10_000_000_000_000);
-      let c0 : Lib.Cloneable = await makeCloneable(0);
-      await c0.someMethod(); // prints 1
+      let c0 : Lib.Cloneable = await (with cycles = 10_000_000_000_000) makeCloneable(0);
+      await (with cycles = 42_000_000) c0.someMethod(); // prints 1
       Prim.debugPrint(debug_show(Prim.principalOfActor c0));
 
       // create some proper clones
