@@ -75,7 +75,6 @@ let un_prog prog =
       {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) decs
      in
      Ok (imports, decs)
-(*  | _ -> Error "Couldn't find a module expression" *)
 
 module PosTable = Trivia.PosHashtbl
 
