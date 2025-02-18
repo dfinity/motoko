@@ -70,11 +70,14 @@ let un_prog prog =
   | ModuleU (_, decs) -> Ok (imports, decs)
   | ActorU (_, _, decs) -> Ok (imports, decs)
   | ActorClassU (_, _, _, _, _, _, _, decs) ->
-     let _, decs = CompUnit.decs_of_lib comp_unit in
-     let decs = List.map (fun d ->
-      {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) decs
-     in
-     Ok (imports, decs)
+      let _, decs = CompUnit.decs_of_lib comp_unit in
+      let decs =
+        List.map
+          (fun d ->
+            { vis = Public None @@ no_region; dec = d; stab = None } @@ d.at)
+          decs
+      in
+      Ok (imports, decs)
 
 module PosTable = Trivia.PosHashtbl
 
