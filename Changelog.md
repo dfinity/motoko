@@ -20,6 +20,8 @@
     A common base for fields optionally goes before the `with` and can be customised with both fields
     after it. Please consult the documentation for more usage information.
 
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
 ## 0.14.1 (2025-02-13)
 
 * motoko (`moc`)
