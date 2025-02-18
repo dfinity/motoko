@@ -176,3 +176,4 @@ to update.
 Don't worry if you forget to update the `default.nix` file, the CI job
 `check-generated` checks if these files are in sync and fail with a diff if
 they aren't.
+
