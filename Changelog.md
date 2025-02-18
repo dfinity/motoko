@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
 ## 0.14.0 (2025-02-05)
 
 * motoko (`moc`)
