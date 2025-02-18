@@ -2584,9 +2584,7 @@ and validate_parenthetical env typ_opt = function
      | _ -> ()
      end;
      let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
-       let checked = T.[ cycles_fld
-                       ; timeout_fld
-                       ] in
+       let checked = T.[ cycles_fld; timeout_fld ] in
        infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
      let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
@@ -2594,7 +2592,7 @@ and validate_parenthetical env typ_opt = function
      let check_lab { T.lab; typ; _ } =
        let check want =
          if not (sub env par.at typ want)
-         then local_error env par.at "M0127"(*FIXME*) "parenthetical field %s is declared with type%a\ninstead of expected type%a" lab
+         then local_error env par.at "M0214" "field %s in parenthetical is declared with type%a\ninstead of expected type%a" lab
                 display_typ typ
                 display_typ want in
        match lab with
