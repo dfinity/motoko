@@ -267,12 +267,12 @@ and distill_meta = function
   | None -> []
   | Some par ->
     let cycles, clean_cycles =
-      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src }])))
-      then [fun parV -> dotE parV "cycles" T.nat |> assignVarE "@cycles" |> expD], []
+      if T.(sub par.note.note_typ (Obj (Object, [T.cycles_fld])))
+      then [fun parV -> dotE parV T.cycles_lab T.nat |> assignVarE "@cycles" |> expD], []
       else [], [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
     let timeout, clean_timeout =
-      if T.(sub par.note.note_typ (Obj (Object, [{ lab = "timeout"; typ = nat32; src = empty_src }])))
-      then [fun parV -> dotE parV "timeout" T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
+      if T.(sub par.note.note_typ (Obj (Object, [T.timeout_fld])))
+      then [fun parV -> dotE parV T.timeout_lab T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
       else [], [nullE () |> assignE (var "@timeout" T.(Mut (Opt nat32))) |> expD] in
     let meta, clean = cycles @ timeout, clean_cycles @ clean_timeout in
     if meta <> [] then

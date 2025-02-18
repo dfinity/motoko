@@ -2584,8 +2584,8 @@ and validate_parenthetical env typ_opt = function
      | _ -> ()
      end;
      let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
-       let checked = T.[ { lab = "cycles"; typ = nat; src = empty_src }
-                       ; { lab = "timeout"; typ = nat32; src = empty_src }
+       let checked = T.[ cycles_fld
+                       ; timeout_fld
                        ] in
        infer_check_bases_fields env checked par.at bases fields in
      let attrs = infer_exp_wrapper par_infer T.as_immut env par in
@@ -2598,11 +2598,11 @@ and validate_parenthetical env typ_opt = function
                 display_typ typ
                 display_typ want in
        match lab with
-       | "cycles" -> check T.nat
-       | "timeout" -> check T.nat32
+       | "cycles" -> check T.(cycles_fld.typ)
+       | "timeout" -> check T.(timeout_fld.typ)
        | _ -> () in
      List.iter check_lab attrs_flds;
-     let unrecognised = List.(filter (fun {T.lab; _} -> lab <> "cycles" && lab <> "timeout") attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     let unrecognised = List.(filter T.(fun {lab; _} -> lab <> cycles_lab && lab <> timeout_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
      if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 and check_system_fields env sort scope tfs dec_fields =
