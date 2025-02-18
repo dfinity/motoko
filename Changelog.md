@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * bugfix: `mo-doc` will now generate documentation for actors and actor classes (#TBC).
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
 
 
 ## 0.14.1 (2025-02-13)
