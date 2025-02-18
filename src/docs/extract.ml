@@ -66,8 +66,16 @@ let un_prog prog =
       imports
   in
   match body.it with
+  | ProgU decs -> Ok ([], []) (* treat all fields as private*)
   | ModuleU (_, decs) -> Ok (imports, decs)
-  | _ -> Error "Couldn't find a module expression"
+  | ActorU (_, _, decs) -> Ok (imports, decs)
+  | ActorClassU (_, _, _, _, _, _, _, decs) ->
+     let _, decs = CompUnit.decs_of_lib comp_unit in
+     let decs = List.map (fun d ->
+      {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) decs
+     in
+     Ok (imports, decs)
+(*  | _ -> Error "Couldn't find a module expression" *)
 
 module PosTable = Trivia.PosHashtbl
 
