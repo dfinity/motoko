@@ -1928,10 +1928,3 @@ let string_of_stab_sig stab_sig : string =
   | Single _ -> "// Version: 1.0.0\n"
   | PrePost _ -> "// Version: 2.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig
-
-let is_low_async_fut = function
-  | Func (s, c, tbs, ts1, [t2]) when is_variant t2 ->
-    sub (sum [ ("suspend", unit)
-             ; ("schedule", Func(Local, Returns, [], [], []))])
-      t2
-  | _ -> false
