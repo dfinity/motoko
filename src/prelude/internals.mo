@@ -325,16 +325,6 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-/*<<<<<<< gabor/parentheticals
-func @coerce_and_cont(a : @Async<()>) :
-  (k : () -> (), r : @Cont<Error>) -> {
-                          #suspend;
-                          #schedule : () -> ()
-                      } =
-  func(k, r) = a(func() = k(), r);
-
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
-=======*/
 // trivial cleanup action
 func @cleanup() {
 };
