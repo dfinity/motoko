@@ -1477,7 +1477,7 @@ and infer_exp'' env exp : T.typ =
         check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
-      error env exp1.at "M0072"
+      error env id.at "M0072"
         "field %s does not exist in %a%s"
         id.it
         display_obj (s, tfs)
