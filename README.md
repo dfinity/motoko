@@ -64,4 +64,4 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## Contributing
 
-See our [contribution guidelines](.github/CONTRIBUTING.md) and [code of conduct](.github/CODE_OF_CONDUCT.md) to get started.
+See our [contribution guidelines](.github/CONTRIBUTING.md), [code of conduct](.github/CODE_OF_CONDUCT.md) and [build instructions](BUILDING.md) to get started.
