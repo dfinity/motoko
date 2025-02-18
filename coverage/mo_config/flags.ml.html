@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>flags.ml &mdash; Coverage report</title>
+    <meta name="description" content="100.00% coverage in mo_config/flags.ml">
+    <link rel="stylesheet" href="../coverage.css"/>
+    <script src="../highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="../index.html">
+          <span class="dirname">mo_config/</span>flags.ml
+        </a>
+      </h1>
+      <h2>100.00%</h2>
+    </div>
+    <div id="navbar">
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span > </span>
+<a id="L9"></a><span > </span>
+<a id="L10"></a><span > </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span > </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span > </span>
+<a id="L16"></a><span > </span>
+<a id="L17"></a><span > </span>
+<a id="L18"></a><span > </span>
+<a id="L19"></a><span > </span>
+<a id="L20"></a><span > </span>
+<a id="L21"></a><span > </span>
+<a id="L22"></a><span > </span>
+<a id="L23"></a><span > </span>
+<a id="L24"></a><span > </span>
+<a id="L25"></a><span > </span>
+<a id="L26"></a><span > </span>
+<a id="L27"></a><span > </span>
+<a id="L28"></a><span > </span>
+<a id="L29"></a><span > </span>
+<a id="L30"></a><span > </span>
+<a id="L31"></a><span > </span>
+<a id="L32"></a><span > </span>
+<a id="L33"></a><span > </span>
+<a id="L34"></a><span > </span>
+<a id="L35"></a><span > </span>
+<a id="L36"></a><span > </span>
+<a id="L37"></a><span > </span>
+<a id="L38"></a><span > </span>
+<a id="L39"></a><span > </span>
+<a id="L40"></a><span > </span>
+<a id="L41"></a><span > </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span > </span>
+<a id="L44"></a><span > </span>
+<a id="L45"></a><span > </span>
+<a id="L46"></a><span > </span>
+<a id="L47"></a><span > </span>
+<a id="L48"></a><span > </span>
+<a id="L49"></a><span > </span>
+<a id="L50"></a><span > </span>
+<a id="L51"></a><span > </span>
+<a id="L52"></a><span > </span>
+<a id="L53"></a><span > </span>
+<a id="L54"></a><span > </span>
+<a id="L55"></a><span > </span>
+<a id="L56"></a><span > </span>
+<a id="L57"></a><span > </span>
+<a id="L58"></a><span > </span>
+<a id="L59"></a><span > </span>
+<a id="L60"></a><span > </span>
+<a id="L61"></a><span > </span>
+<a id="L62"></a><span > </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span > </span>
+<a id="L66"></a><span > </span>
+<a id="L67"></a><span > </span>
+<a id="L68"></a><span > </span>
+<a id="L69"></a><span > </span>
+<a id="L70"></a><span > </span>
+<a id="L71"></a><span > </span>
+<a id="L72"></a><span > </span>
+<a id="L73"></a><span > </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1"> 1</a>
+<a href="#L2"> 2</a>
+<a href="#L3"> 3</a>
+<a href="#L4"> 4</a>
+<a href="#L5"> 5</a>
+<a href="#L6"> 6</a>
+<a href="#L7"> 7</a>
+<a href="#L8"> 8</a>
+<a href="#L9"> 9</a>
+<a href="#L10">10</a>
+<a href="#L11">11</a>
+<a href="#L12">12</a>
+<a href="#L13">13</a>
+<a href="#L14">14</a>
+<a href="#L15">15</a>
+<a href="#L16">16</a>
+<a href="#L17">17</a>
+<a href="#L18">18</a>
+<a href="#L19">19</a>
+<a href="#L20">20</a>
+<a href="#L21">21</a>
+<a href="#L22">22</a>
+<a href="#L23">23</a>
+<a href="#L24">24</a>
+<a href="#L25">25</a>
+<a href="#L26">26</a>
+<a href="#L27">27</a>
+<a href="#L28">28</a>
+<a href="#L29">29</a>
+<a href="#L30">30</a>
+<a href="#L31">31</a>
+<a href="#L32">32</a>
+<a href="#L33">33</a>
+<a href="#L34">34</a>
+<a href="#L35">35</a>
+<a href="#L36">36</a>
+<a href="#L37">37</a>
+<a href="#L38">38</a>
+<a href="#L39">39</a>
+<a href="#L40">40</a>
+<a href="#L41">41</a>
+<a href="#L42">42</a>
+<a href="#L43">43</a>
+<a href="#L44">44</a>
+<a href="#L45">45</a>
+<a href="#L46">46</a>
+<a href="#L47">47</a>
+<a href="#L48">48</a>
+<a href="#L49">49</a>
+<a href="#L50">50</a>
+<a href="#L51">51</a>
+<a href="#L52">52</a>
+<a href="#L53">53</a>
+<a href="#L54">54</a>
+<a href="#L55">55</a>
+<a href="#L56">56</a>
+<a href="#L57">57</a>
+<a href="#L58">58</a>
+<a href="#L59">59</a>
+<a href="#L60">60</a>
+<a href="#L61">61</a>
+<a href="#L62">62</a>
+<a href="#L63">63</a>
+<a href="#L64">64</a>
+<a href="#L65">65</a>
+<a href="#L66">66</a>
+<a href="#L67">67</a>
+<a href="#L68">68</a>
+<a href="#L69">69</a>
+<a href="#L70">70</a>
+<a href="#L71">71</a>
+<a href="#L72">72</a>
+<a href="#L73">73</a>
+</pre>
+<pre><code class="ocaml">(* common flags for the moc compiler *)
+
+module M = Map.Make(String)
+
+type compile_mode = WasmMode | ICMode | RefMode | WASIMode
+
+type gc_strategy = Default | MarkCompact | Copying | Generational | Incremental
+
+type instruction_limits = {
+  upgrade: int;
+  update_call: int;
+}
+
+let ai_errors = ref false
+let trace = ref false
+let verbose = ref false
+let print_warnings = ref true
+let warnings_are_errors = ref false
+let print_source_on_error = ref false
+let print_depth = ref 2
+let release_mode = ref false
+let compile_mode = ref ICMode
+let debug_info = ref false
+let multi_value = ref false
+let await_lowering = ref true
+let async_lowering = ref true
+let dump_parse = ref false
+let dump_tc = ref false
+let dump_lowering = ref false
+let check_ir = ref true
+let package_urls : string M.t ref = ref M.empty
+let actor_aliases : string M.t ref = ref M.empty
+let actor_idl_path : string option ref = ref None
+let max_stable_pages_default = 65536
+let max_stable_pages : int ref = ref max_stable_pages_default
+let measure_rts_stack = ref false
+let pre_ref : string option ref = ref None
+let post_ref : string option ref = ref None
+let profile = ref false
+let profile_verbose = ref false
+let profile_file = ref "profiling-counters.csv"
+let profile_line_prefix = ref ""
+let profile_field_names : string list ref = ref []
+let public_metadata_names : string list ref = ref []
+let omit_metadata_names : string list ref = ref []
+let compiled = ref false
+let error_detail = ref 2
+let sanity = ref false
+let gc_strategy = ref Default
+let force_gc = ref false
+let global_timer = ref true
+let experimental_field_aliasing = ref false
+let ocaml_js = ref false
+let rts_stack_pages_default = 32 (* 2MB *)
+let rts_stack_pages : int option ref = ref None
+let rtti = ref false
+let trap_on_call_error = ref false
+let use_stable_regions = ref false
+let enhanced_orthogonal_persistence = ref false
+let share_code = ref false
+let stabilization_instruction_limit_default = {
+  upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)
+  update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
+}
+let stabilization_instruction_limit = ref stabilization_instruction_limit_default
+let stable_memory_access_limit_default = 
+  let gigabyte = 1024 * 1024 * 1024 in {
+  upgrade = 6 * gigabyte; (* 8 GB limit with 2 GB reserves *)
+  update_call = 1 * gigabyte; (* 2 GB limit with 1 GB reserve *)
+}
+let stable_memory_access_limit = ref stable_memory_access_limit_default
+let experimental_stable_memory_default = 0 (* _ &lt; 0: error; _ = 0: warn, _ &gt; 0: allow *)
+let experimental_stable_memory = ref experimental_stable_memory_default
+</code></pre>
+      </div>
+    </div>
+    <script src="../coverage.js"></script>
+  </body>
+</html>
