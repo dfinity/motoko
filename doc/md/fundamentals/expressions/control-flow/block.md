@@ -11,20 +11,19 @@ A block expression in Motoko is a sequence of statements enclosed in `{ ... }`. 
 Every function in Motoko contains a block expression that defines its behavior.
 
 ```motoko
+// The function body is a block expression: { let sum = x + y; sum }
 public func add(x: Nat, y: Nat) : Nat {
     let sum : Nat = x + y;
     sum // The last expression is returned as the function's result
 }
 ```
 
-- The function body is a block expression: `{ let sum = x + y; sum }`.
-- The function returns the last evaluated expression(`sum`).
-
 ### Blocks with control flow
 
 Block expressions support conditionals, loops, and other control structures.  
 
 ```motoko
+// The block contains an if-else structure.  
 public func classifyNumber(n: Int) : Text {
     if (n > 0) {
         "Positive"
@@ -36,8 +35,6 @@ public func classifyNumber(n: Int) : Text {
 }
 ```
 
-- The block contains an `if-else` structure.  
-- The last evaluated expression determines the function’s return value.  
 - The type of the values must match across possible expressions.
 
 ### Block assignments
@@ -45,15 +42,13 @@ public func classifyNumber(n: Int) : Text {
 Blocks are not limited to functions; they can be used anywhere an expression is expected.  
 
 ```motoko
+// The block is evaluated as an expression.
 let result : Nat = {
     let x : Nat = 10;
     let y : Nat = 5;
     x * y // This value is assigned to `result`
     };
 ```
-
-- The block is evaluated as an expression.
-- The last expression (`x * y`) determines the result.  
 
 ## Do block
 

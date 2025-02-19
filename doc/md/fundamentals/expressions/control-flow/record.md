@@ -89,13 +89,13 @@ The `with` keyword modifies, overrides, or adds fields when combining records.
 
 ```motoko
 let person = { name : Text = "Alice"; age : Nat =  25; };
+// age = 26; updates the existing age field.
 let updatedPerson = { person with age : Nat = 26; city : Text = "New York"; };
 
 Debug.print(debug_show (updatedPerson));
 ```
 
-- `age = 26;` updates the existing `age` field.  
-- `city = "New York";` adds a new field to the record.  
+- `city = "New York";` adds a new field to the record.
 
 ⚠ **Note:** If `person` contained a mutable (`var`) field, `with` must redefine it, preventing aliasing.
 
@@ -105,11 +105,11 @@ Debug.print(debug_show (updatedPerson));
 let person = {name : Text = "Alice"; age : Nat = 25};
 let contact = {email : Text = "alice@example.com"};
 
+
+// profile and contact merge with and since they have unique fields.
 let fullProfile = {person and contact with age = 26; location : Text = "New York"};
 Debug.print(debug_show (fullProfile));
 ```
 
-- `profile` and `contact` merge with `and` since they have unique fields.  
-- `age = 26;` updates the age field from `profile`.  
-- `location = "New York";` adds a new field.  
-  
+- `age = 26;` updates the age field from `profile`.
+- `location = "New York";` adds a new field.

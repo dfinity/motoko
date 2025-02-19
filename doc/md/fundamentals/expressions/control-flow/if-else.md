@@ -1,5 +1,12 @@
 # If-else statements and expressions
 
+| If-expression                                        | If-statement                              |
+|------------------------------------------------------|-------------------------------------------|
+| Type `T` (must be consistent across branches)              | `()` (does not return a value)           |
+| Produces a result that can be used or assigned | Executes a block of code but does not return a value |
+| Can be assigned to a variable                 | Executes for side effects only       |
+| Used when a decision determines a value       | Used when a decision triggers an action  |
+
 An if-else expression allows a program to make decisions based on a condition. It evaluates a boolean expression and selects one of two possible execution paths.
 
 ```motoko
@@ -35,10 +42,3 @@ if (x == 1) {
 
 - This executes a block of code but does not return a value.  
 - It cannot be assigned to a variable since its type is `()`.  
-
-| If-expression                                        | If-statement                              |
-|------------------------------------------------------|-------------------------------------------|
-| Type `T` (must be consistent across branches)              | `()` (does not return a value)           |
-| Produces a result that can be used or assigned | Executes a block of code but does not return a value |
-| Can be assigned to a variable                 | Executes for side effects only       |
-| Used when a decision determines a value       | Used when a decision triggers an action  |
