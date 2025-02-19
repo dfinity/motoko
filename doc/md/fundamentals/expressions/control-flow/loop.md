@@ -1,6 +1,6 @@
 # Unconditionl loops
 
-An unconditional loop is a loop that runs indefinitely unless explicitly stopped. Unlike `while` or `for` loops, which depend on a condition, unconditional loops continue execution without a predefined exit condition. These loops are useful when a process needs to run continuously, waiting for an external event or relying on an internal break condition.
+An unconditional loop is a loop that runs indefinitely unless explicitly stopped. Unlike `while` or `for` loops, which depend on a condition, unconditional loops continue execution without a predefined exit condition. These loops are useful when a process needs to run continuously, waiting for an external event, or relying on an internal break condition.
 
 ## Loop
 
