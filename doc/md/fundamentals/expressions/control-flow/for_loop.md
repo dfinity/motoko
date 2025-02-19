@@ -12,7 +12,7 @@ for (pattern in iterator) {
 2. The pattern must match the type `T` of the values produced by the iterator.
 3. The loop first evaluates the iterator:
    - If evaluating the iterator causes a trap, the loop stops immediately.  
-   - If `next()` returns null, the loop ends.  
+   - If `next()` returns `null`, the loop ends.  
    - If `next()` returns a value, it is assigned to the pattern, and the loop body executes.  
 4. The loop continues calling `next()` until it returns `null`, at which point the loop stops, and the final result is `()`.  
 
