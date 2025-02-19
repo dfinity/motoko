@@ -14,7 +14,7 @@ let person = {
 `person` is a record with two labeled fields:
 
 1. `name` of type `Text`.
-- `age` of type `Nat`
+2. `age` of type `Nat`.
 
 The values of the fields are `"Alice"` and `25`.
 
