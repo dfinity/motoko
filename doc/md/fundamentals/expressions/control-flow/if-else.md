@@ -14,7 +14,7 @@ var age : Nat = 21
     }
 ```
 
-## If-Expression
+## If-expression
 
 ```motoko
 let identity : Text = if (x == 1) "x is 1" else "x is not 1"; // Produces a value
