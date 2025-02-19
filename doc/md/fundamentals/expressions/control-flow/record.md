@@ -47,7 +47,7 @@ let person = {
 };
 ```
 
-- `var name` and `var age` allow the values to be updated later.  
+`var name` and `var age` allow the values to be updated later.  
 
 ```motoko
 let person = {
