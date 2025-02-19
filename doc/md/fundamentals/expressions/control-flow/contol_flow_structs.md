@@ -24,7 +24,7 @@ public func labelControlFlow() : async Int {
 
 ## Break
 
-A break statement stops execution inside a labeled block and returns a value immediately. However, break must always reference an identifier cannot be used on its own. A labeled block is required to define an exit point.
+A break statement stops execution inside a labeled block and returns a value immediately. However, a break must always reference an identifier. It cannot be used on its own. A labeled block is required to define an exit point.
 
 ```motoko
 public func breakControlFlow() : async Int {
