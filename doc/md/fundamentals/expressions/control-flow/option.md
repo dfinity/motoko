@@ -28,4 +28,9 @@ actor App {
 await App.getUsername();
 ```
 
-To unwrap an option (`?T`), both cases must be handled: when the value is present and when it is absent (`null`). If the value exists (`?value`), it can be accessed directly as its inner type (`T`) within the `case (?value)` branch. If the value is `null`, an alternative action or default value must be provided in the `case null` branch to ensure safe execution. This prevents runtime errors and ensures that optional values are handled explicitly.
+To unwrap an option (`?T`), both cases must be handled: 
+
+1. When the value is present.
+2. When it is absent (`null`). 
+
+If the value exists (`?value`), it can be accessed directly as its inner type (`T`) within the `case (?value)` branch. If the value is `null`, an alternative action or default value must be provided in the `case null` branch to ensure safe execution. This prevents runtime errors and ensures that optional values are handled explicitly.
