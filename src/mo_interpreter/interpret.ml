@@ -573,7 +573,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Local -> v
     in k v'
   | CallE (par, exp1, typs, exp2) ->
-    interpret_exp env (Lib.Option.get par {exp with it = ObjE ([], [])})
+    interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
         interpret_exp env exp1 (fun v1 ->
@@ -689,7 +689,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
   | AsyncE (par, T.Fut, _, exp1) ->
-    interpret_exp env (Lib.Option.get par {exp with it = ObjE ([], [])})
+    interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
         async env
@@ -720,6 +720,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
     interpret_exp env exp1 (fun _v -> k V.unit)
+
+and interpret_par env par k =
+  match par with
+  | Some exp -> interpret_exp env exp k
+  | None -> V.Obj V.Env.empty |> k
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with
