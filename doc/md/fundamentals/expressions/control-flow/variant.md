@@ -74,7 +74,7 @@ This contains two variants:
   - Two child trees (`left` and `right`).
 - `#leaf` represents an empty node.
 
-### Building a the tree
+### Building the tree
 
 The following example defines a tree with a single root node containing the value `10`. It has two child nodes, `5` and `15`, both of which do not have any children.
 
