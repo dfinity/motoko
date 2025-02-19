@@ -2311,13 +2311,10 @@ module Closure = struct
     Tagged.load_field env (Int64.add header_size i)
 
   let store_data env i =
-    (if G.to_instr_list (Tagged.load_forwarding_pointer env) <> [] then
-       let set_closure_data, get_closure_data = new_local env "closure_data" in
-       set_closure_data ^^
-       Tagged.load_forwarding_pointer env ^^
-       get_closure_data
-     else
-       G.nop) ^^
+    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
+    set_closure_data ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_closure_data ^^
     Tagged.store_field env (Int64.add header_size i)
 
   let prepare_closure_call env =
