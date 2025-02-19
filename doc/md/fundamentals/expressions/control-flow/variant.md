@@ -48,8 +48,7 @@ Debug.print(getStatusMessage(activeUser));
 Debug.print(getStatusMessage(bannedUser));
 ```
 
-- `switch` ensures every possible variant is handled safely.
-- The `#Banned` case extracts the `reason` stored inside.
+`switch` ensures every possible variant is handled safely. The `#Banned` case extracts the `reason` stored inside.
 
 ## Defining a binary tree type using variants
 
