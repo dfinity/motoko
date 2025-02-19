@@ -36,7 +36,7 @@ if (x == 1) {
 - This executes a block of code but does not return a value.  
 - It cannot be assigned to a variable since its type is `()`.  
 
-| If-Expression                                        | If-Statement                              |
+| If-expression                                        | If-statement                              |
 |------------------------------------------------------|-------------------------------------------|
 | Type `T` (must be consistent across branches)              | `()` (does not return a value)           |
 | Produces a result that can be used or assigned | Executes a block of code but does not return a value |
