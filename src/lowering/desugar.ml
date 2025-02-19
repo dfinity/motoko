@@ -213,8 +213,8 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (par_opt, e1, inst, e2) ->
-    let set_meta = distill_meta par_opt in
-    (blockE set_meta { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
+    let ds = parenthetical par_opt in
+    (blockE ds { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -246,12 +246,12 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    let set_meta = distill_meta par_opt in
+    let ds = parenthetical par_opt in
     let it = I.AsyncE (s, typ_bind tb, exp e,
                        match note.Note.typ with
                        | T.Async (_, t, _) -> t
                        | _ -> assert false) in
-    (blockE set_meta { at; note; it }).it
+    (blockE ds { at; note; it }).it
   | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
@@ -263,9 +263,10 @@ and exp' at note = function
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
-and distill_meta = function
+and parenthetical = function
   | None -> []
   | Some par ->
+    (* fishing for relevant attributes in the parenthetical based on its static type *)
     let cycles, clean_cycles =
       if T.(sub par.note.note_typ (Obj (Object, [T.cycles_fld])))
       then [fun parV -> dotE parV T.cycles_lab T.nat |> assignVarE "@cycles" |> expD], []
@@ -274,11 +275,15 @@ and distill_meta = function
       if T.(sub par.note.note_typ (Obj (Object, [T.timeout_fld])))
       then [fun parV -> dotE parV T.timeout_lab T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
       else [], [nullE () |> assignE (var "@timeout" T.(Mut (Opt nat32))) |> expD] in
-    let meta, clean = cycles @ timeout, clean_cycles @ clean_timeout in
-    if meta <> [] then
+    (* present attributes need to set variables, absent ones just clear out *)
+    let present, absent = cycles @ timeout, clean_cycles @ clean_timeout in
+    if present <> [] then
       let parV = fresh_var "par" par.note.note_typ in
-      letD parV (exp par) :: (List.map (fun f -> varE parV |> f) meta) @ clean
-    else expD (exp par) :: clean
+      (* for present attributes we evaluate the parenthetical record, and use the binding
+         to get the attributes' values from it, then set the backend variables *)
+      letD parV (exp par) :: List.map (fun attr -> attr (varE parV)) present @ absent
+    (* if all attributes are absent, we still have to evaluate the parenthetical for side-effects *)
+    else expD (exp par) :: absent
 
 and url e at =
     (* Set position explicitly *)
