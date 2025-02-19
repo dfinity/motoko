@@ -1,6 +1,6 @@
 # Contolling program flows
 
-In Motoko, code follows sequential execution, running one statement after another. However, certain constructs allow altering this flow—exiting a block early, skipping part of a loop, returning a value from a function or calling a function.
+In Motoko, code follows sequential execution, running one statement after another. However, certain constructs allow altering this flow, including exiting a block early, skipping part of a loop, returning a value from a function or calling a function.
 
 ## Labels
 
