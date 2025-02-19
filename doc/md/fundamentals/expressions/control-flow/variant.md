@@ -14,8 +14,7 @@ type Status = {
 };
 ```
 
-- `#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`.
-- `#Banned` carries a `Text` value, such as the reason for banning.
+`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a `Text` value, such as the reason for banning.
   
 ## Assigning variants
 
