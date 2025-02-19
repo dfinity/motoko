@@ -20,7 +20,7 @@ let person : (Text, Nat) = ("Alice", 25);
 
 ## Accessing elements
 
-Elements are accessed using `.n` where n is the index (0-based indexing).
+Elements are accessed using `.n` where `n` is the index (0-based indexing).
 
 ```motoko
 let person : (Text, Nat) = ("Alice", 25);
