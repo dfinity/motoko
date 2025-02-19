@@ -31,16 +31,18 @@ let error_sub s tf1 tf2 =
 
 (* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
    - Mutability of stable fields can be changed because they are never aliased.
-   - Stable fields can be dropped, however, with a warning of potential data loss. 
+   - Stable fields can be dropped, however, with a warning of potential data loss.
      For this, we give up the transitivity property of upgrades.
 
-   Upgrade transitivity means that an upgrade from a program A to B and then from B to C 
-   should have the same effect as directly upgrading from A to C. If B discards a field 
-   and C re-adds it, this transitivity is no longer maintained. However, rigorous upgrade 
+   Upgrade transitivity means that an upgrade from a program A to B and then from B to C
+   should have the same effect as directly upgrading from A to C. If B discards a field
+   and C re-adds it, this transitivity is no longer maintained. However, rigorous upgrade
    transitivity was also not guaranteed before, since B may contain initialization logic
    or pre-/post-upgrade hooks that alter the stable data.
 *)
-let match_stab_sig tfs1 tfs2 : unit Diag.result =
+let match_stab_sig sig1 sig2 : unit Diag.result =
+  let tfs1 = post sig1 in
+  let tfs2 = pre sig2 in
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
@@ -59,7 +61,7 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
          | -1 ->
            (* dropped field is allowed with warning, recurse on tfs1' *)
            warning_discard s tf1;
-           go tfs1' tfs2 
+           go tfs1' tfs2
          | _ ->
            go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
         )
@@ -68,8 +70,8 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
   (* cross check with simpler definition *)
   match res with
   | Ok _ ->
-    assert (Type.match_stab_sig tfs1 tfs2);
+    assert (Type.match_stab_sig sig1 sig2);
     res
   | Error _ ->
-    assert (not (Type.match_stab_sig tfs1 tfs2));
+    assert (not (Type.match_stab_sig sig1 sig2));
     res

@@ -66,8 +66,18 @@ let un_prog prog =
       imports
   in
   match body.it with
+  | ProgU decs -> Ok ([], []) (* treat all fields as private *)
   | ModuleU (_, decs) -> Ok (imports, decs)
-  | _ -> Error "Couldn't find a module expression"
+  | ActorU (_, _, decs) -> Ok (imports, decs)
+  | ActorClassU (_, _, _, _, _, _, _, decs) ->
+      let _, decs = CompUnit.decs_of_lib comp_unit in
+      let decs =
+        List.map
+          (fun d ->
+            { vis = Public None @@ no_region; dec = d; stab = None } @@ d.at)
+          decs
+      in
+      Ok (imports, decs)
 
 module PosTable = Trivia.PosHashtbl
 
@@ -140,7 +150,7 @@ struct
           _;
         } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
@@ -155,7 +165,7 @@ struct
         )
     | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
@@ -184,7 +194,15 @@ struct
         {
           it =
             Syntax.ClassD
-              (shared_pat, name, type_args, ctor, _, obj_sort, _, fields);
+              ( exp_opt,
+                shared_pat,
+                obj_sort,
+                name,
+                type_args,
+                ctor,
+                _,
+                _,
+                fields );
           _;
         } ->
         let mk_field_xref xref = mk_xref (Xref.XClass (name.it, xref)) in

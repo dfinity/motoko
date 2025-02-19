@@ -90,8 +90,9 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, (self_id_opt, _), dfs) ->
-    obj_block at s self_id_opt dfs note.Note.typ
+  | S.ObjBlockE (exp_opt, s, (self_id_opt, _), dfs) ->
+    let eo = Option.map exp exp_opt in
+    obj_block at s eo self_id_opt dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
@@ -117,7 +118,7 @@ and exp' at note = function
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
-    let args, wrap, control, res_tys = to_args note.Note.typ po p in
+    let args, _, wrap, control, res_tys = to_args note.Note.typ po None p in
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
@@ -233,7 +234,7 @@ and exp' at note = function
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
   | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, e1); _}, e2)
-      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
+      when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "values" || proj.it = "keys")
     -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
   | S.DebugE e -> if !Mo_config.Flags.release_mode then (unitE ()).it else (exp e).it
@@ -278,7 +279,7 @@ and lexp' = function
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
 and transform_for_to_while p arr_exp proj e1 e2 =
-  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
+  (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals", "values"}
      ~~>
      let arr = arr_exp ;
      let last = arr.size(e1) : Int - 1 ;
@@ -298,7 +299,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   let arrv = fresh_var "arr" arr_typ in
   let indx = fresh_var "indx" T.(Mut nat) in
   let indexing_exp = match proj.it with
-    | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
+    | "vals" | "values" -> primE I.DerefArrayOffset [varE arrv; varE indx]
     | "keys" -> varE indx
     | _ -> assert false in
   let last = fresh_var "last" T.int in
@@ -326,12 +327,12 @@ and mut m = match m.it with
   | S.Const -> Ir.Const
   | S.Var -> Ir.Var
 
-and obj_block at s self_id dfs obj_typ =
+and obj_block at s exp_opt self_id dfs obj_typ =
   match s.it with
   | T.Object | T.Module ->
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    build_actor at [] self_id dfs obj_typ
+    build_actor at [] exp_opt self_id dfs obj_typ
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
@@ -480,7 +481,7 @@ and export_runtime_information self_id =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let gc_strategy = 
+  let gc_strategy =
     let open Mo_config in
     let strategy = match !Flags.gc_strategy with
     | Flags.Default -> "default"
@@ -516,26 +517,26 @@ and export_runtime_information self_id =
            (asyncE T.Fut bind2
               (blockE ([
                   letD caller (primE I.ICCallerPrim []);
-                  expD (ifE (orE 
+                  expD (ifE (orE
                       (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
                       (primE (I.OtherPrim "is_controller") [varE caller]))
-                    (unitE()) 
+                    (unitE())
                     (primE (Ir.OtherPrim "trap")
                       [textE "Unauthorized call of __motoko_runtime_information"]))
                   ] @
-                  (List.map2 (fun field (_, load_info, _) -> 
+                  (List.map2 (fun field (_, load_info, _) ->
                     letD field load_info
                   ) fields information))
                 (newObjE T.Object
-                  (List.map2 (fun field (name, _, typ) -> 
-                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ }) 
+                  (List.map2 (fun field (name, _, typ) ->
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ })
                     fields information
                   ) ret_typ))
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and build_actor at ts self_id es obj_typ =
+and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -544,24 +545,105 @@ and build_actor at ts self_id es obj_typ =
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
-  let sig_ = List.sort T.compare_field
-    (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
+  let stab_fields = List.sort T.compare_field
+    (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src}) ids in
+  let mem_fields =
+    List.map
+      (fun tf -> {tf with T.typ = T.Opt (T.as_immut tf.T.typ) } )
+      stab_fields in
   let mk_ds = List.map snd pairs in
-  let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
-  let state = fresh_var "state" (T.Mut (T.Opt ty)) in
-  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [ty])) in
+  let mem_ty = T.Obj (T.Memory, mem_fields) in
+  let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
+  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let sig_, stable_type, migration = match exp_opt with
+    | None ->
+      T.Single stab_fields,
+      I.{pre = mem_ty; post = mem_ty},
+      primE (I.ICStableRead mem_ty) [] (* as before *)
+    | Some exp0 ->
+      let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
+                T.lookup_val_field T.migration_lab tfs
+      in
+      let e = dotE exp0 T.migration_lab typ in
+      let dom, rng = T.as_mono_func_sub typ in
+      let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
+      let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
+      let stab_fields_pre =
+        List.sort T.compare_field
+          (dom_fields @
+            (List.filter_map
+              (fun tf ->
+                match T.lookup_val_field_opt tf.T.lab dom_fields,
+                      T.lookup_val_field_opt tf.T.lab rng_fields with
+                | Some _, _    (* ignore consumed (overridden) *)
+                | _, Some _ -> (* ignore produced (provided) *)
+                  None
+                | None, None ->
+                  (* retain others *)
+                  Some tf)
+              stab_fields))
+      in
+      let mem_fields_pre =
+        List.map
+          (fun tf -> { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
+          stab_fields_pre
+      in
+      let mem_ty_pre = T.Obj (T.Memory, mem_fields_pre) in
+      let v = fresh_var "v" mem_ty_pre in
+      let v_dom = fresh_var "v_dom" dom in
+      let v_rng = fresh_var "v_rng" rng in
+      T.PrePost (stab_fields_pre, stab_fields),
+      I.{pre = mem_ty_pre; post = mem_ty},
+      ifE (primE (I.OtherPrim "rts_in_upgrade") [])
+        (* in upgrade, apply migration *)
+        (blockE [
+            letD v (primE (I.ICStableRead mem_ty_pre) []);
+            letD v_dom
+              (objectE T.Object
+                (List.map
+                  (fun T.{lab=i;typ=t;_} ->
+                    let vi = fresh_var ("v_"^i) (T.as_immut t) in
+                    (i,
+                     switch_optE (dotE (varE v) i (T.Opt (T.as_immut t)))
+                       (primE (Ir.OtherPrim "trap")
+                         [textE (Printf.sprintf
+                           "stable variable `%s` of type `%s` expected but not found"
+                           i (T.string_of_typ t))])
+                         (varP vi) (varE vi)
+                         (T.as_immut t)))
+                  dom_fields)
+                dom_fields);
+            letD v_rng (callE e [] (varE v_dom))
+          ]
+          (objectE T.Memory
+            (List.map
+              (fun T.{lab=i;typ=t;_} ->
+               i,
+               match T.lookup_val_field_opt i rng_fields with
+               | Some t -> (* produced by migration *)
+                 optE (dotE (varE v_rng) i (T.as_immut t)) (* wrap in ?_*)
+               | None -> (* not produced by migration *)
+                 match T.lookup_val_field_opt i dom_fields with
+                 | Some t ->
+                   (* consumed by migration (not produced) *)
+                   nullE() (* TBR: could also reuse if compatible *)
+                 | None -> dotE (varE v) i t)
+              mem_fields)
+            mem_fields))
+        (* not in upgrade, read record of nulls *)
+        (primE (I.ICStableRead mem_ty) [])
+  in
   let ds =
-    varD state (optE (primE (I.ICStableRead ty) []))
+    varD state (optE migration)
     ::
     nary_funcD get_state []
-      (let v = fresh_var "v" ty in
+      (let v = fresh_var "v" mem_ty in
        switch_optE (immuteE (varE state))
          (unreachableE ())
          (varP v) (varE v)
-         ty)
+         mem_ty)
     ::
     ds
     @
@@ -569,32 +651,32 @@ and build_actor at ts self_id es obj_typ =
   in
   let ds' = match self_id with
     | Some n ->
-       with_self n.it obj_typ ds
+      with_self n.it obj_typ ds
     | None -> ds in
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
   let with_stable_vars wrap =
-    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
+    let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) mem_fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
         | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
-            (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
+            (seqE (List.map (fun tf -> optE (varE (var tf.T.lab tf.T.typ))) stab_fields))])
       (wrap
          (newObjE T.Memory
             (List.map2 (fun f v ->
                  { it = I.{name = f.T.lab; var = id_of_var v};
                    at = no_region;
                    note = f.T.typ }
-               ) fields vs)
-            ty)) in
+               ) mem_fields vs)
+            mem_ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
   I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
-       preupgrade = (primE (I.ICStableWrite ty) []);
+       preupgrade = (primE (I.ICStableWrite mem_ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -620,7 +702,7 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None -> tupE []);
        stable_record = with_stable_vars (fun e -> e);
-       stable_type = ty;
+       stable_type = stable_type
      },
      obj_typ))
 
@@ -755,8 +837,8 @@ and array_dotE array_ty proj e =
     | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
     | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
     | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
-    | true,  "vals" -> call "@mut_array_vals"   [] [T.iter_obj varA]
-    | false, "vals" -> call "@immut_array_vals" [] [T.iter_obj varA]
+    | true,  ("vals" | "values") -> call "@mut_array_vals"   [] [T.iter_obj varA]
+    | false, ("vals" | "values") -> call "@immut_array_vals" [] [T.iter_obj varA]
     | _, _ -> assert false
 
 and blob_dotE proj e =
@@ -766,7 +848,7 @@ and blob_dotE proj e =
     callE (varE f) [] e in
   match proj with
     | "size"   -> call "@blob_size"   [] [T.nat]
-    | "vals" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
+    | "vals" | "values" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
     |  _ -> assert false
 
 and text_dotE proj e =
@@ -819,7 +901,7 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (sp, id, tbs, p, _t_opt, s, self_id, dfs) ->
+  | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
@@ -840,19 +922,19 @@ and dec' at n = function
       | _ -> assert false
     in
     let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
-    let args, wrap, control, _n_res = to_args n.S.note_typ op p in
+    let args, eo, wrap, control, _n_res = to_args n.S.note_typ op exp_opt p in
     let body = if s.it = T.Actor
       then
         let (_, _, obj_typ) = T.as_async rng_typ in
         let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
         asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
-          (wrap { it = obj_block at s (Some self_id) dfs (T.promote obj_typ);
+          (wrap { it = obj_block at s eo (Some self_id) dfs (T.promote obj_typ);
             at = at;
             note = Note.{def with typ = obj_typ } })
           (List.hd inst)
       else
        wrap
-        { it = obj_block at s (Some self_id) dfs rng_typ;
+        { it = obj_block at s eo (Some self_id) dfs rng_typ;
           at = at;
           note = Note.{ def with typ = rng_typ } }
     in
@@ -910,7 +992,7 @@ and pat_fields pfs = List.map pat_field pfs
 
 and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
 
-and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list =
+and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.control * T.typ list =
 
   let mergeE ds e =
     match e.it with
@@ -939,11 +1021,14 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _ -> p
   in
 
-  (* In source, the context pattern is outside the argument pattern,
-  but in the IR, parameters are bound first. So if there is a context pattern,
-  we _must_ create fresh names for the parameters and bind the actual parameters
-  inside the wrapper. *)
-  let must_wrap = po <> None in
+  (*
+     In source, the optional shared pattern and migration expression
+     are outside the argument pattern, but in the IR, parameters are
+     bound first. So if there is either a shared pattern or migration
+     expression, we _must_ create fresh names for the parameters and
+     bind the actual parameters inside the wrapper.
+  *)
+  let must_wrap = po <> None || exp_opt <> None in
 
   let to_arg p : (Ir.arg * (Ir.exp -> Ir.exp)) =
     match (pat_unannot p).it with
@@ -1001,21 +1086,35 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         (wrap e)
   in
 
+  let eo, wrap_exp_opt =
+    match exp_opt with
+    | None ->
+      None,
+      fun e -> wrap_po e
+    | Some exp0 ->
+      let v = fresh_var "migration" exp0.note.S.note_typ in
+      Some (varE v),
+      fun e ->
+        mergeE
+        [letD v (exp exp0)]
+        (wrap_po e)
+  in
+
+
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
       | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
+        { e with it = Ir.AsyncE (s, tb, wrap_exp_opt e', t) }
       | T.Returns, Ir.BlockE (
           [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
-      | _, Ir.ActorE _ -> wrap_po e
+        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb, wrap_exp_opt e',t)} ] unit
+      | _, Ir.ActorE _ -> wrap_exp_opt e
       | _ -> assert false
-    else
-      wrap_po e
+    else wrap_exp_opt e
   in
-  args, wrap_under_async, control, res_tys
+  args, eo, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list
 
@@ -1030,7 +1129,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
   let { body; _ } = lib.it in
   let id = match body.it with
-    | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+    | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
   let fun_typ = T.normalize body.note.S.note_typ in
@@ -1069,7 +1168,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
-              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence)); 
+              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence));
               varE wasm_blob;
               primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
@@ -1125,12 +1224,12 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (sp, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
       | T.Shared (_, p) -> Some p in
-    let args, wrap, control, _n_res = to_args fun_typ op p in
+    let args, eo, wrap, control, _n_res = to_args fun_typ op exp_opt p in
     let (ts, obj_typ) =
       match fun_typ with
       | T.Func(_s, _c, bds, ts1, [async_rng]) ->
@@ -1141,7 +1240,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
+    let actor_expression = build_actor u.at ts eo (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
@@ -1152,8 +1251,9 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
-  | S.ActorU (self_id, fields) ->
-    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
+  | S.ActorU (exp_opt, self_id, fields) ->
+    let eo = Option.map exp exp_opt in
+    let actor_expression = build_actor u.at [] eo self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
@@ -1189,7 +1289,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
     raise (Invalid_argument "Desugar: Cannot import actor")
   | I.ActorU (Some as_, ds, fs, up, actor_t) ->
     let id = match body.it with
-      | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
+      | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
       | _ -> assert false
     in
     let s, cntrl, tbs, ts1, ts2 = T.as_func t in

@@ -1,5 +1,49 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
+## 0.14.0 (2025-02-05)
+
+* motoko (`moc`)
+
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
+
+  * Support explicit, safe migration of persistent data allowing arbitrary
+    transformations on a selected subset of stable variables.
+    Additional static checks warn against possible data loss (#4812).
+
+    As a very simple example:
+    ```
+    import Nat32 "mo:base/Nat32";
+
+    (with migration =
+      func (old : { var size : Nat32 }) : { var length : Nat } =
+        { var length = Nat32.toNat(old.size) }
+    )
+    persistent actor {
+      var length : Nat = 0;
+    }
+    ```
+    may be used during an upgrade to rename the stable field `size` to `length`,
+    and change its type from `Nat32` to `Nat`.
+
+    See the documentation for full details.
+
+## 0.13.7 (2025-02-03)
+
+* motoko (`moc`)
+
+  * Support passing cycles in primitive `call_raw` (resp. `ExperimentalInternetComputer.call`) (#4868).
+
 ## 0.13.6 (2025-01-21)
 
 * motoko (`moc`)

@@ -17,7 +17,7 @@ func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
   if (cycles != 0) {
-    (prim "cyclesAdd" : Nat -> ()) (cycles);
+    (prim "cyclesAdd" : Nat -> ()) cycles;
   }
 };
 
@@ -198,7 +198,7 @@ func @text_of_Char(c : Char) : Text {
 
 func @text_of_Blob(blob : Blob) : Text {
   var t = "\"";
-  for (b in blob.vals()) {
+  for (b in blob.values()) {
     // Could do more clever escaping, e.g. leave ascii and utf8 in place
     t #= "\\" # @left_pad(2, "0", @text_of_num(@nat8ToNat b, 16, 0, @digits_hex));
   };
@@ -243,7 +243,7 @@ func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
 func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
   var text = "[";
   var first = true;
-  for (x in xs.vals()) {
+  for (x in xs.values()) {
     if first {
       first := false;
     } else {
@@ -257,7 +257,7 @@ func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
 func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   var text = "[var";
   var first = true;
-  for (x in xs.vals()) {
+  for (x in xs.values()) {
     if first {
       first := false;
       text #= " ";
@@ -445,7 +445,7 @@ func @install_actor_helper(
     switch install_arg {
       case (#new settings) {
         let available = (prim "cyclesAvailable" : () -> Nat) ();
-        let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+        let accepted = (prim "cyclesAccept" : Nat -> Nat) available;
         let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
         @cycles += accepted;
         let { canister_id } =
@@ -507,6 +507,10 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
 
 // raw calls
 func @call_raw(p : Principal, m : Text, a : Blob) : async Blob {
+  let available = (prim "cyclesAvailable" : () -> Nat) ();
+  if (available != 0) {
+    @cycles := (prim "cyclesAccept" : Nat -> Nat) available;
+  };
   await (prim "call_raw" : (Principal, Text, Blob) -> async Blob) (p, m, a);
 };
 
@@ -628,7 +632,7 @@ func @timer_helper() : async () {
     })
   };
 
-  for (o in thunks.vals()) {
+  for (o in thunks.values()) {
     switch o {
       case (?thunk) try ignore thunk() catch _ reinsert thunk;
       case _ return

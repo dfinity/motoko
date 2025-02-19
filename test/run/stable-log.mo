@@ -54,14 +54,14 @@ func populate() : () {
 
 func readAll() : () {
   let ts = readLast(count);
-  for (t in ts.vals()) {
+  for (t in ts.values()) {
     Prim.debugPrint(t);
   };
 };
 
 func readExtra() : () {
   let ts = readLast(2*count);
-  for (t in ts.vals()) {
+  for (t in ts.values()) {
     Prim.debugPrint(t);
   }
 };

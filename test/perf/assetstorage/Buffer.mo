@@ -67,7 +67,7 @@ public class Buffer<X> (initCapacity : Nat) {
 
   /// Adds all elements in buffer `b` to this buffer.
   public func append(b : Buffer<X>) {
-    let i = b.vals();
+    let i = b.values();
     loop {
       switch (i.next()) {
       case null return;
@@ -97,7 +97,7 @@ public class Buffer<X> (initCapacity : Nat) {
   };
 
   /// Returns an [Iter](Iter.html#type.Iter) over the elements of this buffer.
-  public func vals() : { next : () -> ?X } = object {
+  public func values() : { next : () -> ?X } = object {
     var pos = 0;
     public func next() : ?X {
       if (pos == count) { null } else {

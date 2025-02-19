@@ -491,7 +491,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, (self_id_opt, _), dec_fields) ->
+  | ObjBlockE (_exp_opt, obj_sort, (self_id_opt, _), dec_fields) ->
+    (* NB: we ignore the migration expression _exp_opt *)
     interpret_obj env obj_sort.it self_id_opt dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
@@ -525,7 +526,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | "get" -> array_get
           | "put" -> array_put
           | "keys" -> array_keys
-          | "vals" -> array_vals
+          | "vals" | "values" -> array_vals
           | s -> assert false
         in k (f vs exp.at)
       | V.Text s ->
@@ -537,7 +538,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
-          | "vals" -> blob_vals
+          | "vals" | "values" -> blob_vals
           | s -> assert false
         in k (f b exp.at)
       | _ -> assert false
@@ -946,7 +947,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -976,7 +977,8 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (shared_pat, id, _typbinds, pat, _typ_opt, obj_sort, id', dec_fields) ->
+  | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
+    (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then
         let env'' = adjoin_vals env' (declare_id id') in
@@ -1088,7 +1090,8 @@ let import_lib env lib =
   match cub.it with
   | Syntax.ModuleU _ ->
     Fun.id
-  | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+  | Syntax.ActorClassU (_sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+    (* NB: we ignore the migration expression _eo *)
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
         ("system",
