@@ -70,7 +70,7 @@ public func continueControlFlow() : async Int {
 
 ## Return
 
-The return statement immediately exits a function and provides a result. Unlike break or continue, which control flow within blocks or loops, return stops execution entirely and hands back a value to the caller.
+The return statement immediately exits a function and provides a result. Unlike break or continue, return stops execution entirely and returns a value to the caller.
 
 ```motoko
 public func returnControlFlow() : async Int {
