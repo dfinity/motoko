@@ -25,8 +25,6 @@ let activeUser: Status = #Active;
 let bannedUser: Status = #Banned("Violation of rules");
 ```
 
-- `activeUser` is assigned `#Active`.
-- `bannedUser` holds `#Banned("Violation of rules")`, carrying additional information.
 
 ## Accessing a variant's value
 
