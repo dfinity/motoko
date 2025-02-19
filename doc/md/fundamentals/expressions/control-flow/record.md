@@ -81,7 +81,7 @@ Debug.print(debug_show (profile));
 ```
 
 - `profile` combines `person` and `contact` because they have unique fields.  
-- If any field name overlaps, `and` alone is not allowed— use  the `with` keyword to resolve conflicts.
+- If any field name overlaps, `and` alone is not allowed. Use  the `with` keyword to resolve conflicts.
 
 ### Overriding and extending records using `with`
 
