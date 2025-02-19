@@ -1515,7 +1515,7 @@ and infer_exp'' env exp : T.typ =
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
     let t = infer_call env exp1 inst exp2 exp.at None in
-    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
+    if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
@@ -1647,7 +1647,7 @@ and infer_exp'' env exp : T.typ =
   | AsyncE (par_opt, s, typ_bind, exp1) ->
     error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
-    if not env.pre then validate_parenthetical env None par_opt;
+    if not env.pre then check_parenthetical env None par_opt;
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1937,7 +1937,7 @@ and check_exp' env0 t exp : T.typ =
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
     check_exp env' t' exp1;
-    if not env.pre then validate_parenthetical env None par;
+    if not env.pre then check_parenthetical env None par;
     t
   | BlockE decs, _ ->
     ignore (check_block env t decs exp.at);
@@ -1999,7 +1999,7 @@ and check_exp' env0 t exp : T.typ =
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    if not env.pre then validate_parenthetical env (Some exp1.note.note_typ) par_opt;
+    if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
@@ -2569,7 +2569,7 @@ and infer_obj env s exp_opt dec_fields at : T.typ =
   end;
   t
 
-and validate_parenthetical env typ_opt = function
+and check_parenthetical env typ_opt = function
   | None -> ()
   | Some par ->
      let env = { env with async = C.NullCap } in
