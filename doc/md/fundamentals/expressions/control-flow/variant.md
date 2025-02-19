@@ -70,7 +70,7 @@ type Tree = {
 This contains two variants:
 
 - `#node` contains:
-  - A value of type `Nat`
+  - A value of type `Nat`.
   - Two child trees (`left` and `right`).
 - `#leaf` represents an empty node.
 
