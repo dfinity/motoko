@@ -507,7 +507,7 @@ The syntax of an expression is as follows:
   [ var? <exp>,* ]                               Array
   <exp> [ <exp> ]                                Array indexing
   <shared-pat>? func <func_exp>                  Function expression
-  <exp> <typ-args>? <exp>                        Function call
+  <parenthetical>? <exp> <typ-args>? <exp>       Function call
   not <exp>                                      Negation
   <exp> and <exp>                                Conjunction
   <exp> or <exp>                                 Disjunction
@@ -520,7 +520,7 @@ The syntax of an expression is as follows:
   break <id> <exp>?                              Break
   continue <id>                                  Continue
   return <exp>?                                  Return
-  async <block-or-exp>                           Async expression
+  <parenthetical>? async <block-or-exp>          Async expression
   await <block-or-exp>                           Await future (only in async)
   async* <block-or-exp>                          Delay an asynchronous computation
   await* <block-or-exp>                          Await a delayed computation (only in async)
