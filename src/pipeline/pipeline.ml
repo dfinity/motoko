@@ -698,7 +698,8 @@ let load_as_rts () =
     | (false, true, Flags.Incremental) -> Rts.wasm_incremental_debug
     | _ -> assert false
   in
-  Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
+  let rts = Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts) in
+  Wasm_exts.CustomModule.{ rts with name = empty_name_section }
 
 type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
 
