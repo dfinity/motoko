@@ -161,7 +161,7 @@ You can check valid Candid subtyping between two services described in `.did` fi
 
 ## Upgrading a deployed actor or canister
 
-After you have deployed a Motoko actor with the appropriate `stable` variables, you can use the `dfx deploy` command to upgrade an already deployed version. For information about upgrading a deployed canister, see [upgrade a canister smart contract](/docs/current/developer-docs/smart-contracts/maintain/upgrade).
+After you have deployed a Motoko actor with the appropriate `stable` variables, you can use the `dfx deploy` command to upgrade an already deployed version. For information about upgrading a deployed canister, see [upgrade a canister smart contract](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/maintain/upgrade).
 
 `dfx deploy` checks that the interface is compatible, and if not, shows this message and asks if you want to continue:
 
