@@ -2190,7 +2190,7 @@ Otherwise,
 
 ### Function calls
 
-The function call expression `<exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
+The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
 
 -   The function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`.
 
@@ -2207,6 +2207,10 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](../base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+
+A `<parenthetical>`, when present, changes the modality of the message send (provided that the return type `T` is of form `async T₀`, i.e. a future). Attributes recognised are
+- `cycles : Nat` to attach cycles
+- `timeout : Nat32` to change to bounded-wait (or best-effort) message execution.
 
 :::note
 
@@ -2480,7 +2484,7 @@ The `return` expression exits the corresponding dynamic function invocation or c
 
 ### Async
 
-The async expression `async <block-or-exp>` has type `async T` provided:
+The async expression `<parenthetical>? async <block-or-exp>` has type `async T` provided:
 
 -   `<block-or-exp>` has type `T`.
 
@@ -2491,6 +2495,10 @@ Any control-flow label in scope for `async <block-or-exp>` is not in scope for `
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, implicit or explicit, to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+
+The presence of `<parenthetical>` changes the modality of the self-send to
+- attach cycles with attribute `cycles : Nat`
+- change to bounded-wait by specifying an attribute `timeout : Nat32`.
 
 :::note
 
