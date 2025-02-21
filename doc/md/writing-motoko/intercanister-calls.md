@@ -65,7 +65,7 @@ persistent actor Bar {
 };
 ```
 
-To try this inter-canister call, you can use the `dfx canister call` subcommand (after deploying the canisters with `dfx deploy`):
+To run this example, you can use the `dfx canister call` subcommand (after deploying the canisters with `dfx deploy`):
 
 ```bash
 dfx canister call foo main
