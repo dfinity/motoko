@@ -1,4 +1,8 @@
-# Functions  
+---
+sidebar_position: 2
+---
+
+# Functions declarations
 
 A function in Motoko is a reusable block of code that takes inputs, processes them, and returns a result. Functions can be named or anonymous and can optionally specify parameter types and return types.
 
