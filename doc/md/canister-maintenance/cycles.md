@@ -13,7 +13,8 @@ In Motoko programs deployed on ICP, each actor represents a canister and has an 
 
 Callees can accept all, some, or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller without loss.
 
-In near future, we shall transition Motoko to dedicated syntax and types to support safer programming with cycles. As a first step we employ parenthetical notes on message sends where the user attaches `(where cycles = <amount>)` as a prefix to message sends. This supplants the use of `ExperimentalCycles.add<system>` in below examples.
+Motoko is adopting dedicated syntax and types to support safer programming with cycles.  Users can now attach `(where cycles = <amount>)` as a prefix to a message sends and async expressions. 
+This new syntax will eventually obsolete the use of `ExperimentalCycles.add<system>(cycles)` in the examples that follow.
 
 For now (and until officially deprecating it), we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base/ExperimentalCycles.md) library in package `base`.
 
