@@ -2208,9 +2208,9 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](../base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
-A `<parenthetical>`, when present, changes the modality of the message send (provided that the return type `T` is of form `async T₀`, i.e. a future). Attributes recognised are
+A `<parenthetical>`, when present, modifies dynamic attributes of the message send (provided that the return type `T` is of form `async U`, i.e. a future). The recognized attributes are
 - `cycles : Nat` to attach cycles
-- `timeout : Nat32` to change to bounded-wait (or best-effort) message execution.
+- `timeout : Nat32` to introduce a timeout for best-effort message execution.
 
 :::note
 
@@ -2496,9 +2496,9 @@ The implicit return type in `<block-or-exp>` is `T`. That is, the return express
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
 
-The presence of `<parenthetical>` changes the modality of the self-send to
+The presence of `<parenthetical>` modifies the semantics of the async expression to
 - attach cycles with attribute `cycles : Nat`
-- change to bounded-wait by specifying an attribute `timeout : Nat32`.
+- impose a timeout (observed when awaiting the result) by specifying the attribute `timeout : Nat32`.
 
 :::note
 

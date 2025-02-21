@@ -72,19 +72,18 @@ Awaiting a future a second time will just produce the same result, including re-
 
 ## Using parentheticals to modify message send modalities
 
-In the above examples all messages sent to the `Counter` actor are of unbounded-wait kind and attach no cycles. Both of these
-aspects can be changed by syntactically adding a parenthetical and thus modifying the modality of the send.
+In the above examples all messages sent to the `Counter` actor do not transmit cycles and will never timeout when their results are awaited. Both of these
+aspects can be configured by syntactically adding a parenthetical and thus modifying the dynamic attributes of the message send.
 
 To add cycles to the send one would write
 ``` motoko no-repl
 let a = (with cycles = 42_000_000) Counter.bump();
 ```
-Similarly, one can specify a cutoff for potentially long-running messaging by providing a timeout, and thus delivering a bounded-wait
-message to the destination actor
+Similarly, one can specify an explicit timeout to apply when awaiting the result of the message. This is useful in applications that prefer best-effort over guaranteed response message delivery:
 ``` motoko no-repl
 let a = (with timeout = 25) Counter.bump();
 ```
-Both (or less) attributes can be placed in a default record and given as a base to the parenthetical
+Custom defaults for these attributes can be defined in a record that is used as the base expression of a parenthetical:
 ``` motoko no-repl
 let boundedWait = { timeout = 25 };
 let a = (boundedWait with cycles = 42_000_000) Counter.bump();
