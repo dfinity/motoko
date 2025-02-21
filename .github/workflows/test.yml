@@ -136,6 +136,7 @@ jobs:
     - name: nix-build
       run: |
         nix-build --arg officialRelease true -A moc
+        nix-build --arg officialRelease true -A mo-doc
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
     - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
