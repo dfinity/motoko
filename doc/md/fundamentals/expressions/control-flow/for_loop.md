@@ -1,6 +1,10 @@
-# For loop
+---
+sidebar_position: 4
+---
 
-A `for` loop in Motoko follows this structure:  
+# For loops
+
+A `for` loop in Motoko follows the structure:  
 
 ```motoko
 for (pattern in iterator) {

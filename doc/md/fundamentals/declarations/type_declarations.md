@@ -1,4 +1,8 @@
-# Type Declarations in Motoko
+---
+sidebar_position: 5
+---
+
+# Type declarations 
 
 A type declaration in Motoko allows defining custom types that improve readability, reusability, and structure in code. These can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed and valid types.
 
@@ -48,9 +52,11 @@ let alice: Person = {
 A type can also define variants, representing different possible states.
 
 ```motoko
+// allows only one of its variants at a time.
 type Status = {
     #Active;
     #Inactive;
+// carries an additional `Text` value.
     #Banned : Text;
 };
 
@@ -58,24 +64,21 @@ let userStatus: Status = #Active;
 let bannedUser: Status = #Banned("Violation of rules");
 ```
 
-- `Status` allows only one of its variants at a time.
-- `#Banned` carries an additional `Text` value.
 
 ## Parameterized (generic) types
 
 Type declarations can be parameterized to work with multiple types.
 
 ```motoko
+// `Box<T> is a generic type where T represents any type.
 type Box<T> = {
     value: T;
 };
-
+// numberBox stores a Nat and textBox stores a Text.
 let numberBox: Box<Nat> = { value = 42 };
 let textBox: Box<Text> = { value = "Hello" };
 ```
 
-- `Box<T>` is a generic type where `T` represents any type.
-- `numberBox` stores a `Nat`, and `textBox` stores a `Text`.
 
 This ensures flexibility while keeping type safety.
 
@@ -89,18 +92,15 @@ Motoko allows recursive type definitions, provided they are productive.
 type List<T> = ?(T, List<T>);
 ```
 
-- `List<T>` defines a linked list structure.  
-- Each list node contains a value (`T`) and another `List<T>` or `null` (end of the list).  
-- This type is non-expansive and accepted.
+`List<T>` defines a linked list structure. Each list node contains a value (`T`) and another `List<T>` or `null` (end of the list). This type is non-expansive and accepted.
 
-### Non-Productive recursive type
+### Non-productive recursive type
 
 ```motoko
 type C = C; // This definition infinitely refers to itself
 ```
 
-- This type will never resolve to a concrete type.
-- It is non-productive and rejected.
+This type will never resolve to a concrete type. It is non-productive and rejected.
 
 ## Expansiveness in type definitions
 
@@ -112,7 +112,7 @@ Motoko enforces non-expansiveness to prevent type definitions from expanding ind
 type List<T> = ?(T, List<T>);
 ```
 
-- Expands without introducing a larger type.
+Expands without introducing a larger type.
 
 ### Expansive
 
@@ -120,8 +120,7 @@ type List<T> = ?(T, List<T>);
 type Seq<T> = ?(T, Seq<[T]>);
 ```
 
-- Expands by wrapping `T` inside `[T]`, growing the type.
-- This is expansive and not allowed.
+Expands by wrapping `T` inside `[T]`, growing the type. This is expansive and not allowed.
 
 ## References
 

@@ -1,4 +1,8 @@
-# If-else statements and expressions
+---
+sidebar_position: 8
+---
+
+# Conditionals
 
 | If-expression                                        | If-statement                              |
 |------------------------------------------------------|-------------------------------------------|
@@ -21,7 +25,7 @@ var age : Nat = 21
     }
 ```
 
-## If-expression
+## If expression
 
 ```motoko
 let identity : Text = if (x == 1) "x is 1" else "x is not 1"; // Produces a value
@@ -30,7 +34,7 @@ let identity : Text = if (x == 1) "x is 1" else "x is not 1"; // Produces a valu
 - The result of the `if` block is assigned to `identity`.  
 - Both branches must return a matching type (`Text` in this case).  
 
-## If-Statement
+## If statement
 
 ```motoko
 if (x == 1) {
@@ -40,5 +44,4 @@ if (x == 1) {
 }
 ```
 
-- This executes a block of code but does not return a value.  
-- It cannot be assigned to a variable since its type is `()`.  
+This executes a block of code but does not return a value. It cannot be assigned to a variable since its type is `()`.  

@@ -1,4 +1,8 @@
-# Objects in Motoko
+---
+sidebar_position: 3
+---
+
+# Object declarations
 
 In Motoko, an object is a collection of named fields that can hold values or functions.
 
@@ -8,18 +12,17 @@ Objects are declared using the `object` keyword, followed by a block containing 
 
 ```motoko
 let alice = object {
+// name is an immutable public field of type Text.
     public let name = "Alice";
+// age is a mutable public field of type Int.
     public var age = 30;
-
+// greet is a public function that returns a greeting message.
     public func greet() : Text {
         "Hello, My name is " # name # "!"
     };
 };
 ```
 
-- `name` is an immutable public field of type `Text`.
-- `age` is a mutable public field of type `Int`.
-- `greet` is a public function that returns a greeting message.
 
 ## Accessing object fields
 
@@ -46,12 +49,12 @@ Debug.print(alice.birthday());
 
 | Feature | Record | Object |
 |---------|--------|--------|
-| Stores Data | Yes | Yes |
-| Stores Functions | No | Yes |
+| Stores data | Yes | Yes |
+| Stores functions | No | Yes |
 | Mutability | Supports `let` (immutable) and `var` (mutable) | Supports `let` (immutable) and `var` (mutable) |
-| Supports Field Visibility (`public`, `private`) | No | Yes |
+| Supports field visibility (`public`, `private`) | No | Yes |
 | Combination (`and`, `with`) | Yes | Yes |
-| Supports Async Behavior | No | Yes (supports `async` functions) |
+| Supports async behavior | No | Yes (supports `async` functions) |
 
 ### Record example
 
@@ -65,12 +68,10 @@ Debug.print(person.name); // "Alice"
 person.age += 1; // Updates age
 ```
 
-- Records store only data; they do not contain functions.
-- Fields are always accessible using dot notation (`person.name`).
-- Records do not support visibility modifiers (`public`, `private`).
-- They support `and` and `with` for combination and modification.
+Records store only data; they do not contain functions. Fields are always accessible using dot notation (`person.name`).
+Records do not support visibility modifiers (`public`, `private`). They support `and` and `with` for combination and modification.
 
-### Object Example
+### Object example
 
 ```motoko
 let alice = object {
@@ -85,6 +86,6 @@ let alice = object {
 Debug.print(alice.greet()); // "Hello, my name is Alice!"
 ```
 
-- Objects extend records by supporting functions.
-- Fields can have explicit visibility modifiers, such as `public` or `private`.
-- Objects support async functions and structured behavior.
+Objects extend records by supporting functions. Fields can have explicit visibility modifiers, such as `public` or `private`.
+
+Objects support async functions and structured behavior.

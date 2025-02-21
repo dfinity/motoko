@@ -1,3 +1,6 @@
+---
+sidebar_position: 9
+---
 # Block expressions
 
 A block expression in Motoko is a sequence of statements enclosed in `{ ... }`. It allows grouping multiple operations, defining local variables, and structuring code logically. Blocks are essential to functions, as they define the function body and determine the return value. They follow these guidelines:
@@ -35,7 +38,7 @@ public func classifyNumber(n: Int) : Text {
 }
 ```
 
-- The type of the values must match across possible expressions.
+The type of the values must match across possible expressions.
 
 ### Block assignments
 

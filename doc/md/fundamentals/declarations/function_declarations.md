@@ -17,7 +17,7 @@ func add(a: Int, b: Int) : Int {
 - `: Int` specifies the return type.
 - `return a + b;` exits the function and provides a result.
 
-## Calling a Function  
+## Calling a function  
 
 To execute a function, pass the required arguments:  
 
@@ -38,8 +38,7 @@ let multiply = func (x: Int, y: Int) : Int { x * y };
 multiply(4, 2);
 ```
 
-- The function is assigned to `multiply` instead of being named directly.
-- `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.
+The function is assigned to `multiply` instead of being named directly. `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.
 
 ## Functions as values  
 
@@ -52,12 +51,11 @@ let applyFunction = func (f: (Int) -> Int, value: Int) : Int { f(value) };
 applyFunction(double, 10);
 ```
 
-- `applyFunction` takes a function `f` and applies it to `value`.  
-- `double` is passed as an argument, demonstrating higher-order functions.  
+`applyFunction` takes a function `f` and applies it to `value`.  `double` is passed as an argument, demonstrating higher-order functions.  
 
 ## Recursive functions  
 
-A function can call itself, known as recursion.
+A function that can call itself is known as a recursive function.
 
 ```motoko
 func factorial(n: Nat) : Nat {
@@ -68,8 +66,7 @@ func factorial(n: Nat) : Nat {
 }
 ```
 
-- Calls itself with `factorial(n - 1)`, reducing `n` until reaching `0`.  
-- Recursion allows looping behavior without explicit loops.
+Recursion allows looping behavior without explicit loops.
 
 ## Shared functions in actors  
 
@@ -98,14 +95,14 @@ One key advantage of `shared` functions is that they can access the caller's `Pr
 
 ```motoko
 actor Example {
+// msg.caller retrieves the Principal of the caller.
     public shared(msg) func whoAmI() : async Principal {
         return msg.caller;
     }
 }
 ```
 
-- `msg.caller` retrieves the `Principal` of the caller.
-- This allows functions to enforce access control or record who invoked them.
+This allows functions to enforce access control or record who invoked them.
 
 | Keyword  | Function  |
 |-------------|--------------|

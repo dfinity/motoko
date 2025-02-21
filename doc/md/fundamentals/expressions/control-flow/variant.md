@@ -1,4 +1,8 @@
-# Variant
+---
+sidebar_position: 13
+---
+
+# Variants
 
 A variant is a type that can hold one of multiple possible values, each labeled with a distinct tag. Unlike records, which contain multiple fields at once, a variant only holds a single field at a time.
 
@@ -65,10 +69,10 @@ type Tree = {
 
 This contains two variants:
 
-- `#node` contains:
+`#node` contains:
   - A value of type `Nat`.
   - Two child trees (`left` and `right`).
-- `#leaf` represents an empty node.
+`#leaf` represents an empty node.
 
 ### Building the tree
 
