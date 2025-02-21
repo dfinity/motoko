@@ -139,7 +139,7 @@ let display_obj fmt (s, fs) =
 let display_vals fmt vals =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x (t, _, _, _) acc ->
-      if x = "Prim" || (String.length x >= 0 && x.[0] = '@')
+      if x = "Prim" || Syntax.is_privileged x
       then acc
       else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = t}::acc)
       vals []
@@ -163,7 +163,7 @@ let display_labs fmt labs =
 let display_typs fmt typs =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x c acc ->
-      if (String.length x >= 0 && (x.[0] = '@' || x.[0] = '$')) ||
+      if (Syntax.is_privileged x || Syntax.is_scope x) ||
         T.(match Cons.kind c with
           | Def ([], Prim _)
           | Def ([], Any)
@@ -271,11 +271,7 @@ let emit_unused_warnings env =
   List.iter emit list
 
 let ignore_warning_for_id id =
-  if String.length id > 0 then
-    let prefix = String.get id 0 in
-    prefix = '_' || prefix = '@'
-  else
-    false
+  Syntax.is_underscored id || Syntax.is_privileged id
 
 let detect_unused env inner_identifiers =
   if not env.pre && env.check_unused then
