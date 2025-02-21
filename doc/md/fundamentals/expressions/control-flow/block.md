@@ -1,6 +1,9 @@
 ---
 sidebar_position: 9
 ---
+---
+sidebar_position: 9
+---
 # Block expressions
 
 A block expression in Motoko is a sequence of statements enclosed in `{ ... }`. It allows grouping multiple operations, defining local variables, and structuring code logically. Blocks are essential to functions, as they define the function body and determine the return value. They follow these guidelines:

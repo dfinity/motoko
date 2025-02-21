@@ -2,6 +2,10 @@
 sidebar_position: 5
 ---
 
+---
+sidebar_position: 5
+---
+
 # While loop
 
 A `while` loop in Motoko follows this structure:  

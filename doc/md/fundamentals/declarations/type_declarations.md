@@ -53,9 +53,11 @@ A type can also define variants, representing different possible states.
 
 ```motoko
 // allows only one of its variants at a time.
+// allows only one of its variants at a time.
 type Status = {
     #Active;
     #Inactive;
+// carries an additional `Text` value.
 // carries an additional `Text` value.
     #Banned : Text;
 };
@@ -70,6 +72,7 @@ let bannedUser: Status = #Banned("Violation of rules");
 Type declarations can be parameterized to work with multiple types.
 
 ```motoko
+// `Box<T> is a generic type where T represents any type.
 // `Box<T> is a generic type where T represents any type.
 type Box<T> = {
     value: T;

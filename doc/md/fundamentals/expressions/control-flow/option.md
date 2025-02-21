@@ -2,6 +2,10 @@
 sidebar_position: 11
 ---
 
+---
+sidebar_position: 11
+---
+
 # Options
 
 An option expression in Motoko is used to represent a value that may or may not be present. It is useful when a value could be missing, and it allows the program to handle both cases (present or absent) safely. An option can either hold a value or be `null` (indicating the absence of a value).

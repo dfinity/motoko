@@ -35,7 +35,7 @@ add(3, 5);
 
 ## Anonymous functions
 
-Motoko supports anonymous functions (functions without names), often used in expressions or passed as arguments.
+Motoko supports anonymous functions (functions without names). They are often used in expressions or passed as arguments.
 
 ```motoko
 let multiply = func (x: Int, y: Int) : Int { x * y };
@@ -66,6 +66,7 @@ func factorial(n: Nat) : Nat {
     if (n == 0) {
         return 1;
     };
+// Calls itself with factorial(n - 1), reducing n until reaching 0.  
     return n * factorial(n - 1);
 }
 ```
@@ -99,6 +100,7 @@ One key advantage of `shared` functions is that they can access the caller's `Pr
 
 ```motoko
 actor Example {
+// msg.caller retrieves the Principal of the caller.
 // msg.caller retrieves the Principal of the caller.
     public shared(msg) func whoAmI() : async Principal {
         return msg.caller;

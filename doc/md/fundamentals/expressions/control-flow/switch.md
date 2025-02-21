@@ -2,6 +2,10 @@
 sidebar_position: 7
 ---
 
+---
+sidebar_position: 7
+---
+
 # Switch
 
 A switch expression is a selection control structure used for pattern matching, allowing a program to evaluate a value and execute a corresponding block of code based on the match. It simplifies multiple conditional checks, making the code more readable and efficient by selecting one of several possible execution paths.

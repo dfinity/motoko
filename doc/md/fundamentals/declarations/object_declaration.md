@@ -13,7 +13,9 @@ Objects are declared using the `object` keyword, followed by a block containing 
 ```motoko
 let alice = object {
 // name is an immutable public field of type Text.
+// name is an immutable public field of type Text.
     public let name = "Alice";
+// age is a mutable public field of type Int.
 // age is a mutable public field of type Int.
     public var age = 30;
 // greet is a public function that returns a greeting message.

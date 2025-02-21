@@ -1,4 +1,8 @@
-# Classes
+---
+sidebar_position: 4
+---
+
+# Class declarations
 
 A class in Motoko is a blueprint for creating objects. It encapsulates state (fields) and behavior (methods) while allowing instances to be created with specific data. Unlike records and objects, classes support constructors, enabling each instance to have unique values upon creation.
 

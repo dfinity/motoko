@@ -2,6 +2,10 @@
 sidebar_position: 1
 ---
 
+---
+sidebar_position: 1
+---
+
 # Variable declarations
 
 In Motoko, variables are declared using either `let` (immutable) or `var` (mutable). Understanding the difference between immutability and mutability is crucial when writing efficient and predictable code.

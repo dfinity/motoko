@@ -2,6 +2,10 @@
 sidebar_position: 10
 ---
 
+---
+sidebar_position: 10
+---
+
 # Tuples
 
 A tuple is a fixed-size, ordered collection of values, where each element can have a different type. Tuples provide a way to group multiple values together without defining a structured data type.

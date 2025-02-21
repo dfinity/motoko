@@ -2,6 +2,10 @@
 sidebar_position: 12
 ---
 
+---
+sidebar_position: 12
+---
+
 # Records
 
 A record is a collection of labeled fields, where each field has a name, type and a value. Records allow grouping related data into a structured format, making it easier to manage and access.
@@ -93,6 +97,7 @@ The `with` keyword modifies, overrides, or adds fields when combining records.
 ```motoko
 let person = { name : Text = "Alice"; age : Nat =  25; };
 // age = 26; updates the existing age field.
+// city = "New York" adds a new field to the record.
 // city = "New York" adds a new field to the record.
 let updatedPerson = { person with age : Nat = 26; city : Text = "New York"; };
 
