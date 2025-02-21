@@ -10,11 +10,9 @@ For example, you might want to create a dapp for professional networking, organi
 
 To address this social component, you might want to create a single canister for storing user relationships then write your professional networking, community organizing, or fundraising application to import and call functions that are defined in the canister for social connections. You could then build additional applications to use the social connections canister or extend the features provided by the social connections canister to make it useful to an even broader community of other developers.
 
-This example will showcase a simple way to configure inter-canister calls that can be used as the foundation for more elaborate projects and use-cases such as those mentioned above.
-
 ## Basic usage
 
-The recommended way to set up cross-canister calls is through your project's `dfx.json` file.
+A simple way to set up cross-canister calls is through your project's `dfx.json` file.
 
 For example, let's say that you want to build a canister named `foo` which calls the canister `bar`.
 Here is the `dfx.json` file:
