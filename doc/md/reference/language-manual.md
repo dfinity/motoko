@@ -2498,7 +2498,7 @@ Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp
 
 The presence of `<parenthetical>` modifies the semantics of the async expression to
 - attach cycles with attribute `cycles : Nat`
-- impose a timeout (observed when awaiting the result) by specifying the attribute `timeout : Nat32`.
+- impose a timeout (observed when awaiting the result) with attribute `timeout : Nat32`.
 
 :::note
 
