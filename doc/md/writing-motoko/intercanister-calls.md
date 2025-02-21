@@ -52,7 +52,7 @@ persistent actor Foo {
 };
 ```
 
-Below is the implementation for `bar` (`src/Bar.mo`):
+Below is an implementation for `bar` (`src/Bar.mo`):
 
 ```motoko
 import Debug "mo:base/Debug";
