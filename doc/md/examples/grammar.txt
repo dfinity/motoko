@@ -159,7 +159,8 @@
     '@='
 
 <parenthetical> ::= 
-    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')'
+    '(' 'with' <list1(<exp_field_plain>, ';')> ')'
+    '(' 'with' <exp_post> ')'
 
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
@@ -260,8 +261,14 @@
     'catch' <pat_nullary> <exp_nest>
 
 <exp_field> ::= 
-    'var'? <id> (':' <typ>)?
+    <exp_field_plain>
+    <exp_field_pun>
+
+<exp_field_plain> ::= 
     'var'? <id> (':' <typ>)? '=' <exp>
+
+<exp_field_pun> ::= 
+    'var'? <id> (':' <typ>)?
 
 <dec_field> ::= 
     <vis> <stab> <dec>

@@ -1,15 +1,15 @@
-cycle-type.mo:4.39-4.42: type error [M0050], literal of type
+cycle-type.mo:4.15-4.50: type error [M0214], field cycles in parenthetical is declared with type
   Char
-does not have expected type
+instead of expected type
   Nat
-cycle-type.mo:5.39-5.46: type error [M0050], literal of type
+cycle-type.mo:4.15-4.50: warning [M0212], unrecognised attribute moot in parenthetical
+cycle-type.mo:5.15-5.54: type error [M0214], field cycles in parenthetical is declared with type
   Text
-does not have expected type
+instead of expected type
   Nat
-cycle-type.mo:7.16-7.22: warning [M0210], misplaced parenthetical (this call does not send a message)
-cycle-type.mo:7.16-7.22: warning [M0211], redundant empty parenthetical note
-cycle-type.mo:9.9-9.18: warning [M0211], redundant empty parenthetical note
-cycle-type.mo:10.31-10.34: type error [M0050], literal of type
+cycle-type.mo:5.15-5.54: warning [M0212], unrecognised attribute moot in parenthetical
+cycle-type.mo:6.15-6.30: warning [M0212], unrecognised attribute moot in parenthetical
+cycle-type.mo:11.31-11.34: type error [M0050], literal of type
   Char
 does not have expected type
   Nat32

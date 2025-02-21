@@ -586,8 +586,11 @@ bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
 %inline parenthetical:
-  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
-    { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
+  | LPAR WITH fs=seplist1(exp_field_plain, semicolon) RPAR
+    { Some (ObjE ([], fs) @? at $sloc) }
+  | LPAR WITH base=exp_post(ob) RPAR
+    { Some (ObjE ([base], []) @? at $sloc) }
+
 
 %inline parenthetical_opt :
   | p=parenthetical { p }
@@ -793,11 +796,17 @@ catch :
     { {pat = p; exp = e} @@ at $sloc }
 
 exp_field :
+  | ef=exp_field_plain { ef }
+  | ef=exp_field_pun { ef }
+
+exp_field_plain :
+  | m=var_opt x=id t=annot_opt EQ e=exp(ob)
+    { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
+
+exp_field_pun :
   | m=var_opt x=id t=annot_opt
     { let e = VarE (x.it @~ x.at) @? x.at in
       { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
-  | m=var_opt x=id t=annot_opt EQ e=exp(ob)
-    { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
 
 dec_field :
   | v=vis s=stab d=dec
