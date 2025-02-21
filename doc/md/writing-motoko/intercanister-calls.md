@@ -141,12 +141,12 @@ persistent actor AdvancedCanister2 {
 };
 ```
 
-In some situations, it may be useful to reference a canister by name. This is possible with the following import syntax:
+In some situations, it may be useful to reference a canister by id. This is possible with the following import syntax:
 
 ```motoko
 import Canister "ic:7hfb6-caaaa-aaaar-qadga-cai";
 ```
 
-If you do this, double-check that the referenced canister is available in all intended runtime environments (usually the local replica and ICP mainnet).
+If you do this, double-check that the referenced canister is available and has the same canister id in all intended runtime environments (usually the local replica and ICP mainnet).
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
