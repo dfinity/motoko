@@ -44,7 +44,7 @@ persistent actor Foo {
 
   public func main() : async Nat {
     let value = await Bar.getValue(); // Call a method on the `bar` canister
-    return value;
+    value;
   };
 
 };
@@ -59,7 +59,7 @@ persistent actor Bar {
 
   public func getValue() : async Nat {
     Debug.print("Hello from the `bar` canister!");
-    return 123;
+    123;
   };
 
 };
@@ -87,7 +87,7 @@ persistent actor Foo {
       getValue: () -> async Nat; // Define the expected canister interface
     };
     let value = await Bar.getValue(); // Call the canister
-    return value;
+    value;
   };
 
 };
@@ -122,7 +122,7 @@ persistent actor AdvancedCanister1 {
 
     // Decode the return value
     let ?value : ?Nat = from_candid encodedValue else Debug.trap("Unexpected return value");
-    return value;
+    value;
   };
 
 }
