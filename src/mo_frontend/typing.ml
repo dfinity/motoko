@@ -2579,7 +2579,7 @@ and check_parenthetical env typ_opt = function
        begin match ts2 with
        | _ when T.is_shared_sort s -> ()
        | [cod] when T.is_async cod -> ()
-       | _ -> warn env par.at "M0210" "unexpected parenthetical note on a non-send call"
+       | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
        end
      | _ -> ()
      end;
@@ -2600,7 +2600,7 @@ and check_parenthetical env typ_opt = function
        | None -> () in
      List.iter check_lab attrs_flds;
      let unrecognised = List.(filter T.(fun {lab; _} -> lab <> cycles_lab && lab <> timeout_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
-     if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
+     if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical" (List.hd unrecognised);
 
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
