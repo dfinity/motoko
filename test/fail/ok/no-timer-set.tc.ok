@@ -8,7 +8,8 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
         #destination_invalid;
         #future : Nat32;
         #system_fatal;
-        #system_transient
+        #system_transient;
+        #system_unknown
       };
     Array_init : <T>(Nat, T) -> [var T];
     Array_tabulate : <T>(Nat, Nat -> T) -> [T];

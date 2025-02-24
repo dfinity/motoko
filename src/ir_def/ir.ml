@@ -163,6 +163,7 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
+  | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
 
@@ -314,6 +315,7 @@ let map_prim t_typ t_id p =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
+  | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
   | OtherPrim _ -> p

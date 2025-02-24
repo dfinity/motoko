@@ -14,6 +14,8 @@ Like several other languages, Motoko offers `async` and `await` to support conve
 In Motoko, executing an asynchronous expression, whether a call to a shared function, or just a local `async` expression, produces a future, an object of type `async T`, for some result type `T`.
 Instead of blocking the caller until the call has returned, the message is enqueued on the callee and the future representing that pending request is immediately returned to the caller. The future is a placeholder for the eventual result of the request that the caller can later query.
 
+Every operation resulting in a future (i.e. sends to other `actor`s/canisters or self sends with `async` or by function calls) can be prefixed by a _parenthetical_ of the form `(base with attr₁ = v₁; attr₂ = v₂; …)` where `base` is an optional record containing (e.g. default) attributes. Accepted attributes are currently `cycles : Nat`, specifying the amount of cycles to be sent along with the message, and `timeout : Nat32` to modify the deadline and restrict the time span while the receiver can reply.
+
 The syntax `await` synchronizes on a future, and suspends computation until the future is completed by its producer.
 
 Between issuing the request and deciding to wait for the result, the caller is free to do other work. Once the callee has processed the request, the future is completed and its result made available to the caller. If the caller is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
@@ -36,7 +38,6 @@ The `Counter` actor declares one field and three public, shared functions:
 -   Function `read()` asynchronously reads the counter value and returns a future of type `async Nat` containing its value.
 
 -   Function `bump()` asynchronously increments and reads the counter.
-
 
 The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
 
@@ -68,6 +69,25 @@ let n : Nat = await Counter.read();
 Unlike a local function call, which blocks the caller until the callee has returned a result, a shared function call immediately returns a future, `f`, without blocking. Instead of blocking, a later call to `await f` suspends the current computation until `f` is complete. Once the future is completed (by the producer), execution of `await p` resumes with its result. If the result is a value, `await f` returns that value. Otherwise the result is some error, and `await f` propagates the error to the consumer of `await f`.
 
 Awaiting a future a second time will just produce the same result, including re-throwing any error stored in the future. Suspension occurs even if the future is already complete; this ensures state changes and message sends prior to every `await` are committed.
+
+## Using parentheticals to modify message send modalities
+
+In the above examples all messages sent to the `Counter` actor do not transmit cycles and will never timeout when their results are awaited. Both of these
+aspects can be configured by syntactically adding a parenthetical and thus modifying the dynamic attributes of the message send.
+
+To add cycles to the send one would write
+``` motoko no-repl
+let a = (with cycles = 42_000_000) Counter.bump();
+```
+Similarly, one can specify an explicit timeout to apply when awaiting the result of the message. This is useful in applications that prefer best-effort over guaranteed response message delivery:
+``` motoko no-repl
+let a = (with timeout = 25) Counter.bump();
+```
+Custom defaults for these attributes can be defined in a record that is used as the base expression of a parenthetical:
+``` motoko no-repl
+let boundedWait = { timeout = 25 };
+let a = (boundedWait with cycles = 42_000_000) Counter.bump();
+```
 
 :::danger
 
