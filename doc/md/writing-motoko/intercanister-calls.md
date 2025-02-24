@@ -12,7 +12,7 @@ To address this social component, you might want to create a single canister for
 
 ## Basic usage
 
-A simple way to set up cross-canister calls is through your project's `dfx.json` file.
+A simple way to set up inter-canister calls is through your project's `dfx.json` file.
 
 For example, let's say that you want to build a canister named `foo` which calls the canister `bar`.
 Here is the `dfx.json` file:
@@ -78,7 +78,7 @@ The output should resemble the following:
 (123 : nat)
 ```
 
-You can also use a canister id to access a previously deployed canister as shown in this alternate implementation of `foo`:
+You can also use a canister ID to access a previously deployed canister as shown in this alternate implementation of `foo`:
 
 ```motoko
 persistent actor Foo {
@@ -93,7 +93,7 @@ persistent actor Foo {
 };
 ```
 
-Then, use the following call, replacing `canister-id` with the id of a previously deployed canister:
+Then, use the following call, replacing `canister-id` with the ID of a previously deployed canister:
 
 ```bash
 dfx canister call foo main "canister-id"
@@ -141,12 +141,14 @@ persistent actor AdvancedCanister2 {
 };
 ```
 
-In some situations, it may be useful to reference a canister by id. This is possible with the following import syntax:
+In some situations, it may be useful to reference a canister by ID. This is possible with the following import syntax:
 
 ```motoko
 import Canister "ic:7hfb6-caaaa-aaaar-qadga-cai";
 ```
 
-If you do this, double-check that the referenced canister is available and has the same canister id in all intended runtime environments (usually the local replica and ICP mainnet).
+If you do this, double check that the referenced canister is available and has the same canister ID in all intended runtime environments (usually the local replica and ICP mainnet).
+
+In addition, a corresponding `.did` file with name `7hfb6-caaaa-aaaar-qadga-cai.did`, containing the Candid interface of the imported canister, must be available on the `moc` compiler's `actor-idl` path.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
