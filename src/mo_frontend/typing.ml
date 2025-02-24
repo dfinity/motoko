@@ -163,7 +163,7 @@ let display_labs fmt labs =
 let display_typs fmt typs =
   if !Flags.ai_errors then
     let tfs = T.Env.fold (fun x c acc ->
-      if (Syntax.is_privileged x || Syntax.is_scope x) ||
+      if Syntax.(is_privileged x || is_scope x) ||
         T.(match Cons.kind c with
           | Def ([], Prim _)
           | Def ([], Any)
@@ -271,7 +271,7 @@ let emit_unused_warnings env =
   List.iter emit list
 
 let ignore_warning_for_id id =
-  Syntax.is_underscored id || Syntax.is_privileged id
+  Syntax.(is_underscored id || is_privileged id)
 
 let detect_unused env inner_identifiers =
   if not env.pre && env.check_unused then
