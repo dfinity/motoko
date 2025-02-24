@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/reference/error-codes.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/reference/error-codes.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#error-codes" id="toc-error-codes">Error codes</a></li>
+</ul>
+</nav>
+<h1 id="error-codes">Error codes</h1>
+<table>
+<thead>
+<tr class="header">
+<th>Error code</th>
+<th>Error description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>M0001</td>
+<td>Parsing errors</td>
+</tr>
+<tr class="even">
+<td>M0003</td>
+<td>Module tried to import itself</td>
+</tr>
+<tr class="odd">
+<td>M0009</td>
+<td>File not found for import</td>
+</tr>
+<tr class="even">
+<td>M0010</td>
+<td>Imported package was not defined</td>
+</tr>
+<tr class="odd">
+<td>M0014</td>
+<td>Non-static expression in library or module</td>
+</tr>
+<tr class="even">
+<td>M0029</td>
+<td>Unbound type</td>
+</tr>
+<tr class="odd">
+<td>M0030</td>
+<td>Type field does not exist in type</td>
+</tr>
+<tr class="even">
+<td>M0031</td>
+<td>Shared function has non-shared parameter type</td>
+</tr>
+<tr class="odd">
+<td>M0032</td>
+<td>Shared function has non-shared return type</td>
+</tr>
+<tr class="even">
+<td>M0033</td>
+<td>Async has non-shared content type</td>
+</tr>
+<tr class="odd">
+<td>M0036</td>
+<td>Invalid return type for shared query function</td>
+</tr>
+<tr class="even">
+<td>M0038</td>
+<td>Misplaced await</td>
+</tr>
+<tr class="odd">
+<td>M0045</td>
+<td>Wrong number of type arguments</td>
+</tr>
+<tr class="even">
+<td>M0047</td>
+<td>Send capability required</td>
+</tr>
+<tr class="odd">
+<td>M0050</td>
+<td>Literal does not have expected type</td>
+</tr>
+<tr class="even">
+<td>M0055</td>
+<td>Cannot infer type of forward variable</td>
+</tr>
+<tr class="odd">
+<td>M0057</td>
+<td>Unbound variable</td>
+</tr>
+<tr class="even">
+<td>M0060</td>
+<td>Operator is not defined for operand types</td>
+</tr>
+<tr class="odd">
+<td>M0064</td>
+<td>Misplaced '!' without enclosing do block</td>
+</tr>
+<tr class="even">
+<td>M0070</td>
+<td>Expected object type</td>
+</tr>
+<tr class="odd">
+<td>M0072</td>
+<td>Field does not exist in type</td>
+</tr>
+<tr class="even">
+<td>M0073</td>
+<td>Expected mutable assignment target</td>
+</tr>
+<tr class="odd">
+<td>M0082</td>
+<td>Expected iterable type</td>
+</tr>
+<tr class="even">
+<td>M0088</td>
+<td>Expected async type</td>
+</tr>
+<tr class="odd">
+<td>M0089</td>
+<td>Redundant ignore</td>
+</tr>
+<tr class="even">
+<td>M0090</td>
+<td>Actor reference must have an actor type</td>
+</tr>
+<tr class="odd">
+<td>M0096</td>
+<td>Expression can't produce expected type</td>
+</tr>
+<tr class="even">
+<td>M0097</td>
+<td>Expected function type</td>
+</tr>
+<tr class="odd">
+<td>M0098</td>
+<td>Cannot instantiate function type</td>
+</tr>
+<tr class="even">
+<td>M0112</td>
+<td>Tuple pattern cannot consume type</td>
+</tr>
+<tr class="odd">
+<td>M0116</td>
+<td>Variant pattern cannot consume type</td>
+</tr>
+<tr class="even">
+<td>M0126</td>
+<td>Shared function cannot be private</td>
+</tr>
+<tr class="odd">
+<td>M0137</td>
+<td>A type or class was declared that explicitly or implicitly
+references an outer type parameter.</td>
+</tr>
+<tr class="even">
+<td>M0139</td>
+<td>Inner actor classes are not supported</td>
+</tr>
+<tr class="odd">
+<td>M0141</td>
+<td>Forbidden declaration in program</td>
+</tr>
+<tr class="even">
+<td>M0145</td>
+<td>Pattern does not cover value</td>
+</tr>
+<tr class="odd">
+<td>M0149</td>
+<td>An immutable record field (declared without <code>var</code>) was
+supplied where a mutable record field (specified with <code>var</code>),
+was expected.</td>
+</tr>
+<tr class="even">
+<td>M0150</td>
+<td>A mutable record field (declared with <code>var</code>) was supplied
+where an immutable record field (specified without <code>var</code>) was
+expected.</td>
+</tr>
+<tr class="odd">
+<td>M0151</td>
+<td>A object literal is missing some fields.</td>
+</tr>
+<tr class="even">
+<td>M0153</td>
+<td>An imported Candid file (.did) mentions types that cannot be
+represented in Motoko.</td>
+</tr>
+<tr class="odd">
+<td>M0154</td>
+<td>Deprecation annotation</td>
+</tr>
+<tr class="even">
+<td>M0155</td>
+<td>Inferred type Nat for subtraction</td>
+</tr>
+<tr class="odd">
+<td>M0156</td>
+<td>A parameterized type definition, or set of type definitions, is too
+complicated for Motoko to accept.</td>
+</tr>
+<tr class="even">
+<td>M0157</td>
+<td>A type definition, or set of type definitions, is ill-defined.</td>
+</tr>
+<tr class="odd">
+<td>M0158</td>
+<td>A public class was declared without providing it with a name.</td>
+</tr>
+<tr class="even">
+<td>M0194</td>
+<td>An identifier was defined without referencing it later.</td>
+</tr>
+<tr class="odd">
+<td>M0195</td>
+<td>A function that demands elevated (system) capabilities was called
+without manifestly passing the capability.</td>
+</tr>
+<tr class="even">
+<td>M0197</td>
+<td>A function that requires (system) capabilities was called in a
+context that does not provide them.</td>
+</tr>
+<tr class="odd">
+<td>M0198</td>
+<td>A field identifier was specified in an object pattern without
+referencing this identifier later.</td>
+</tr>
+</tbody>
+</table>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>

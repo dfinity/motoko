@@ -1,0 +1,4005 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>trans.ml &mdash; Coverage report</title>
+    <meta name="description" content="35.85% coverage in viper/trans.ml">
+    <link rel="stylesheet" href="../coverage.css"/>
+    <script src="../highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="../index.html">
+          <span class="dirname">viper/</span>trans.ml
+        </a>
+      </h1>
+      <h2>35.85%</h2>
+    </div>
+    <div id="navbar">
+      <span class="unvisited" style="top:2.54%"></span>
+      <span class="unvisited" style="top:4.23%"></span>
+      <span class="unvisited" style="top:5.00%"></span>
+      <span class="unvisited" style="top:5.25%"></span>
+      <span class="unvisited" style="top:5.50%"></span>
+      <span class="unvisited" style="top:5.59%"></span>
+      <span class="unvisited" style="top:5.84%"></span>
+      <span class="unvisited" style="top:6.01%"></span>
+      <span class="unvisited" style="top:6.18%"></span>
+      <span class="unvisited" style="top:6.35%"></span>
+      <span class="unvisited" style="top:6.52%"></span>
+      <span class="unvisited" style="top:7.87%"></span>
+      <span class="unvisited" style="top:7.96%"></span>
+      <span class="unvisited" style="top:8.04%"></span>
+      <span class="unvisited" style="top:8.13%"></span>
+      <span class="unvisited" style="top:10.41%"></span>
+      <span class="unvisited" style="top:10.50%"></span>
+      <span class="unvisited" style="top:10.92%"></span>
+      <span class="unvisited" style="top:11.18%"></span>
+      <span class="unvisited" style="top:11.35%"></span>
+      <span class="unvisited" style="top:11.52%"></span>
+      <span class="unvisited" style="top:11.60%"></span>
+      <span class="unvisited" style="top:11.69%"></span>
+      <span class="unvisited" style="top:12.79%"></span>
+      <span class="unvisited" style="top:12.87%"></span>
+      <span class="unvisited" style="top:13.04%"></span>
+      <span class="unvisited" style="top:13.12%"></span>
+      <span class="unvisited" style="top:13.29%"></span>
+      <span class="unvisited" style="top:13.38%"></span>
+      <span class="unvisited" style="top:13.55%"></span>
+      <span class="unvisited" style="top:14.39%"></span>
+      <span class="unvisited" style="top:14.56%"></span>
+      <span class="unvisited" style="top:16.00%"></span>
+      <span class="unvisited" style="top:16.09%"></span>
+      <span class="unvisited" style="top:16.17%"></span>
+      <span class="unvisited" style="top:16.43%"></span>
+      <span class="unvisited" style="top:16.51%"></span>
+      <span class="unvisited" style="top:16.60%"></span>
+      <span class="unvisited" style="top:17.02%"></span>
+      <span class="unvisited" style="top:17.10%"></span>
+      <span class="unvisited" style="top:17.36%"></span>
+      <span class="unvisited" style="top:17.44%"></span>
+      <span class="unvisited" style="top:17.53%"></span>
+      <span class="unvisited" style="top:17.78%"></span>
+      <span class="unvisited" style="top:18.04%"></span>
+      <span class="unvisited" style="top:18.12%"></span>
+      <span class="unvisited" style="top:18.71%"></span>
+      <span class="unvisited" style="top:18.80%"></span>
+      <span class="unvisited" style="top:19.22%"></span>
+      <span class="unvisited" style="top:19.39%"></span>
+      <span class="unvisited" style="top:27.43%"></span>
+      <span class="unvisited" style="top:27.52%"></span>
+      <span class="unvisited" style="top:27.94%"></span>
+      <span class="unvisited" style="top:28.03%"></span>
+      <span class="unvisited" style="top:28.11%"></span>
+      <span class="unvisited" style="top:28.20%"></span>
+      <span class="unvisited" style="top:30.14%"></span>
+      <span class="unvisited" style="top:30.31%"></span>
+      <span class="unvisited" style="top:30.40%"></span>
+      <span class="unvisited" style="top:30.48%"></span>
+      <span class="unvisited" style="top:30.57%"></span>
+      <span class="unvisited" style="top:30.82%"></span>
+      <span class="unvisited" style="top:30.91%"></span>
+      <span class="unvisited" style="top:31.24%"></span>
+      <span class="unvisited" style="top:31.33%"></span>
+      <span class="unvisited" style="top:31.50%"></span>
+      <span class="unvisited" style="top:31.67%"></span>
+      <span class="unvisited" style="top:32.01%"></span>
+      <span class="unvisited" style="top:32.18%"></span>
+      <span class="unvisited" style="top:32.26%"></span>
+      <span class="unvisited" style="top:32.35%"></span>
+      <span class="unvisited" style="top:32.68%"></span>
+      <span class="unvisited" style="top:33.02%"></span>
+      <span class="some-visited" style="top:34.21%"></span>
+      <span class="some-visited" style="top:34.46%"></span>
+      <span class="some-visited" style="top:34.80%"></span>
+      <span class="some-visited" style="top:34.89%"></span>
+      <span class="unvisited" style="top:35.65%"></span>
+      <span class="unvisited" style="top:35.90%"></span>
+      <span class="unvisited" style="top:36.24%"></span>
+      <span class="unvisited" style="top:36.33%"></span>
+      <span class="unvisited" style="top:36.41%"></span>
+      <span class="unvisited" style="top:36.49%"></span>
+      <span class="unvisited" style="top:36.58%"></span>
+      <span class="unvisited" style="top:36.75%"></span>
+      <span class="unvisited" style="top:37.00%"></span>
+      <span class="unvisited" style="top:37.09%"></span>
+      <span class="unvisited" style="top:37.17%"></span>
+      <span class="unvisited" style="top:37.26%"></span>
+      <span class="unvisited" style="top:37.34%"></span>
+      <span class="unvisited" style="top:37.43%"></span>
+      <span class="unvisited" style="top:37.60%"></span>
+      <span class="unvisited" style="top:37.68%"></span>
+      <span class="unvisited" style="top:37.93%"></span>
+      <span class="unvisited" style="top:39.88%"></span>
+      <span class="unvisited" style="top:39.97%"></span>
+      <span class="unvisited" style="top:40.30%"></span>
+      <span class="unvisited" style="top:40.39%"></span>
+      <span class="unvisited" style="top:40.47%"></span>
+      <span class="unvisited" style="top:40.56%"></span>
+      <span class="unvisited" style="top:40.73%"></span>
+      <span class="unvisited" style="top:40.81%"></span>
+      <span class="unvisited" style="top:40.90%"></span>
+      <span class="unvisited" style="top:41.24%"></span>
+      <span class="some-visited" style="top:41.66%"></span>
+      <span class="unvisited" style="top:41.91%"></span>
+      <span class="unvisited" style="top:42.00%"></span>
+      <span class="unvisited" style="top:42.08%"></span>
+      <span class="some-visited" style="top:43.95%"></span>
+      <span class="unvisited" style="top:44.12%"></span>
+      <span class="unvisited" style="top:44.20%"></span>
+      <span class="unvisited" style="top:44.28%"></span>
+      <span class="unvisited" style="top:44.45%"></span>
+      <span class="unvisited" style="top:44.54%"></span>
+      <span class="unvisited" style="top:44.62%"></span>
+      <span class="unvisited" style="top:44.71%"></span>
+      <span class="unvisited" style="top:44.79%"></span>
+      <span class="unvisited" style="top:44.88%"></span>
+      <span class="unvisited" style="top:45.05%"></span>
+      <span class="unvisited" style="top:45.13%"></span>
+      <span class="unvisited" style="top:45.22%"></span>
+      <span class="unvisited" style="top:45.30%"></span>
+      <span class="unvisited" style="top:45.81%"></span>
+      <span class="unvisited" style="top:45.89%"></span>
+      <span class="unvisited" style="top:46.66%"></span>
+      <span class="unvisited" style="top:46.82%"></span>
+      <span class="unvisited" style="top:47.08%"></span>
+      <span class="unvisited" style="top:47.16%"></span>
+      <span class="unvisited" style="top:47.25%"></span>
+      <span class="unvisited" style="top:47.42%"></span>
+      <span class="unvisited" style="top:47.59%"></span>
+      <span class="unvisited" style="top:47.76%"></span>
+      <span class="unvisited" style="top:47.84%"></span>
+      <span class="unvisited" style="top:47.93%"></span>
+      <span class="unvisited" style="top:48.01%"></span>
+      <span class="unvisited" style="top:48.18%"></span>
+      <span class="unvisited" style="bottom:48.94%"></span>
+      <span class="unvisited" style="bottom:48.86%"></span>
+      <span class="unvisited" style="bottom:48.09%"></span>
+      <span class="unvisited" style="bottom:45.89%"></span>
+      <span class="unvisited" style="bottom:45.72%"></span>
+      <span class="unvisited" style="bottom:45.64%"></span>
+      <span class="unvisited" style="bottom:45.55%"></span>
+      <span class="unvisited" style="bottom:45.22%"></span>
+      <span class="unvisited" style="bottom:45.05%"></span>
+      <span class="unvisited" style="bottom:44.88%"></span>
+      <span class="unvisited" style="bottom:44.79%"></span>
+      <span class="unvisited" style="bottom:44.71%"></span>
+      <span class="unvisited" style="bottom:44.62%"></span>
+      <span class="unvisited" style="bottom:44.45%"></span>
+      <span class="unvisited" style="bottom:44.37%"></span>
+      <span class="unvisited" style="bottom:44.20%"></span>
+      <span class="unvisited" style="bottom:43.86%"></span>
+      <span class="unvisited" style="bottom:43.69%"></span>
+      <span class="unvisited" style="bottom:43.61%"></span>
+      <span class="unvisited" style="bottom:43.44%"></span>
+      <span class="unvisited" style="bottom:43.35%"></span>
+      <span class="unvisited" style="bottom:43.18%"></span>
+      <span class="unvisited" style="bottom:43.01%"></span>
+      <span class="unvisited" style="bottom:42.93%"></span>
+      <span class="unvisited" style="bottom:42.85%"></span>
+      <span class="unvisited" style="bottom:42.68%"></span>
+      <span class="unvisited" style="bottom:42.59%"></span>
+      <span class="unvisited" style="bottom:42.51%"></span>
+      <span class="unvisited" style="bottom:42.34%"></span>
+      <span class="unvisited" style="bottom:42.25%"></span>
+      <span class="unvisited" style="bottom:42.17%"></span>
+      <span class="unvisited" style="bottom:41.91%"></span>
+      <span class="unvisited" style="bottom:41.66%"></span>
+      <span class="unvisited" style="bottom:41.57%"></span>
+      <span class="unvisited" style="bottom:41.24%"></span>
+      <span class="unvisited" style="bottom:41.15%"></span>
+      <span class="unvisited" style="bottom:40.90%"></span>
+      <span class="unvisited" style="bottom:40.56%"></span>
+      <span class="unvisited" style="bottom:40.47%"></span>
+      <span class="unvisited" style="bottom:40.39%"></span>
+      <span class="unvisited" style="bottom:40.05%"></span>
+      <span class="unvisited" style="bottom:39.97%"></span>
+      <span class="unvisited" style="bottom:39.88%"></span>
+      <span class="unvisited" style="bottom:39.80%"></span>
+      <span class="unvisited" style="bottom:39.54%"></span>
+      <span class="unvisited" style="bottom:39.46%"></span>
+      <span class="unvisited" style="bottom:39.37%"></span>
+      <span class="unvisited" style="bottom:39.20%"></span>
+      <span class="unvisited" style="bottom:38.87%"></span>
+      <span class="unvisited" style="bottom:38.78%"></span>
+      <span class="unvisited" style="bottom:38.70%"></span>
+      <span class="unvisited" style="bottom:38.61%"></span>
+      <span class="unvisited" style="bottom:38.44%"></span>
+      <span class="unvisited" style="bottom:38.36%"></span>
+      <span class="unvisited" style="bottom:38.19%"></span>
+      <span class="unvisited" style="bottom:38.10%"></span>
+      <span class="unvisited" style="bottom:38.02%"></span>
+      <span class="unvisited" style="bottom:37.85%"></span>
+      <span class="unvisited" style="bottom:37.76%"></span>
+      <span class="unvisited" style="bottom:37.68%"></span>
+      <span class="unvisited" style="bottom:37.51%"></span>
+      <span class="unvisited" style="bottom:37.43%"></span>
+      <span class="unvisited" style="bottom:37.34%"></span>
+      <span class="unvisited" style="bottom:37.26%"></span>
+      <span class="unvisited" style="bottom:37.09%"></span>
+      <span class="unvisited" style="bottom:36.92%"></span>
+      <span class="unvisited" style="bottom:36.83%"></span>
+      <span class="unvisited" style="bottom:36.75%"></span>
+      <span class="unvisited" style="bottom:36.66%"></span>
+      <span class="unvisited" style="bottom:36.49%"></span>
+      <span class="unvisited" style="bottom:36.33%"></span>
+      <span class="unvisited" style="bottom:36.24%"></span>
+      <span class="unvisited" style="bottom:36.07%"></span>
+      <span class="unvisited" style="bottom:35.90%"></span>
+      <span class="unvisited" style="bottom:35.82%"></span>
+      <span class="unvisited" style="bottom:35.73%"></span>
+      <span class="unvisited" style="bottom:35.56%"></span>
+      <span class="unvisited" style="bottom:35.48%"></span>
+      <span class="unvisited" style="bottom:35.39%"></span>
+      <span class="unvisited" style="bottom:35.31%"></span>
+      <span class="unvisited" style="bottom:35.22%"></span>
+      <span class="unvisited" style="bottom:35.14%"></span>
+      <span class="unvisited" style="bottom:34.97%"></span>
+      <span class="unvisited" style="bottom:34.89%"></span>
+      <span class="unvisited" style="bottom:34.80%"></span>
+      <span class="unvisited" style="bottom:34.63%"></span>
+      <span class="unvisited" style="bottom:34.55%"></span>
+      <span class="unvisited" style="bottom:34.46%"></span>
+      <span class="unvisited" style="bottom:34.38%"></span>
+      <span class="unvisited" style="bottom:34.29%"></span>
+      <span class="unvisited" style="bottom:33.87%"></span>
+      <span class="unvisited" style="bottom:33.78%"></span>
+      <span class="unvisited" style="bottom:33.53%"></span>
+      <span class="unvisited" style="bottom:33.45%"></span>
+      <span class="unvisited" style="bottom:33.36%"></span>
+      <span class="unvisited" style="bottom:33.11%"></span>
+      <span class="unvisited" style="bottom:33.02%"></span>
+      <span class="unvisited" style="bottom:32.94%"></span>
+      <span class="unvisited" style="bottom:32.68%"></span>
+      <span class="unvisited" style="bottom:32.60%"></span>
+      <span class="unvisited" style="bottom:32.51%"></span>
+      <span class="unvisited" style="bottom:32.43%"></span>
+      <span class="unvisited" style="bottom:31.75%"></span>
+      <span class="unvisited" style="bottom:31.58%"></span>
+      <span class="unvisited" style="bottom:31.50%"></span>
+      <span class="unvisited" style="bottom:31.33%"></span>
+      <span class="unvisited" style="bottom:31.24%"></span>
+      <span class="unvisited" style="bottom:31.08%"></span>
+      <span class="unvisited" style="bottom:30.99%"></span>
+      <span class="unvisited" style="bottom:30.91%"></span>
+      <span class="unvisited" style="bottom:30.82%"></span>
+      <span class="unvisited" style="bottom:30.74%"></span>
+      <span class="unvisited" style="bottom:30.57%"></span>
+      <span class="unvisited" style="bottom:30.40%"></span>
+      <span class="unvisited" style="bottom:30.23%"></span>
+      <span class="unvisited" style="bottom:30.14%"></span>
+      <span class="unvisited" style="bottom:30.06%"></span>
+      <span class="unvisited" style="bottom:29.89%"></span>
+      <span class="unvisited" style="bottom:29.81%"></span>
+      <span class="unvisited" style="bottom:29.72%"></span>
+      <span class="unvisited" style="bottom:29.55%"></span>
+      <span class="unvisited" style="bottom:29.04%"></span>
+      <span class="unvisited" style="bottom:28.96%"></span>
+      <span class="unvisited" style="bottom:28.62%"></span>
+      <span class="unvisited" style="bottom:28.54%"></span>
+      <span class="unvisited" style="bottom:28.45%"></span>
+      <span class="unvisited" style="bottom:28.37%"></span>
+      <span class="unvisited" style="bottom:28.11%"></span>
+      <span class="unvisited" style="bottom:28.03%"></span>
+      <span class="unvisited" style="bottom:27.94%"></span>
+      <span class="unvisited" style="bottom:27.86%"></span>
+      <span class="unvisited" style="bottom:27.77%"></span>
+      <span class="unvisited" style="bottom:27.69%"></span>
+      <span class="unvisited" style="bottom:27.60%"></span>
+      <span class="unvisited" style="bottom:27.52%"></span>
+      <span class="unvisited" style="bottom:27.43%"></span>
+      <span class="unvisited" style="bottom:27.35%"></span>
+      <span class="unvisited" style="bottom:27.27%"></span>
+      <span class="unvisited" style="bottom:27.01%"></span>
+      <span class="unvisited" style="bottom:26.93%"></span>
+      <span class="unvisited" style="bottom:26.84%"></span>
+      <span class="unvisited" style="bottom:25.99%"></span>
+      <span class="unvisited" style="bottom:25.91%"></span>
+      <span class="unvisited" style="bottom:25.66%"></span>
+      <span class="unvisited" style="bottom:25.57%"></span>
+      <span class="unvisited" style="bottom:25.40%"></span>
+      <span class="unvisited" style="bottom:25.23%"></span>
+      <span class="unvisited" style="bottom:25.15%"></span>
+      <span class="unvisited" style="bottom:24.56%"></span>
+      <span class="unvisited" style="bottom:24.39%"></span>
+      <span class="unvisited" style="bottom:24.22%"></span>
+      <span class="unvisited" style="bottom:24.05%"></span>
+      <span class="unvisited" style="bottom:23.96%"></span>
+      <span class="unvisited" style="bottom:23.29%"></span>
+      <span class="unvisited" style="bottom:23.20%"></span>
+      <span class="unvisited" style="bottom:23.12%"></span>
+      <span class="unvisited" style="bottom:23.03%"></span>
+      <span class="unvisited" style="bottom:22.95%"></span>
+      <span class="unvisited" style="bottom:22.52%"></span>
+      <span class="unvisited" style="bottom:22.44%"></span>
+      <span class="unvisited" style="bottom:22.35%"></span>
+      <span class="unvisited" style="bottom:22.27%"></span>
+      <span class="unvisited" style="bottom:22.18%"></span>
+      <span class="unvisited" style="bottom:22.10%"></span>
+      <span class="unvisited" style="bottom:21.51%"></span>
+      <span class="unvisited" style="bottom:21.42%"></span>
+      <span class="unvisited" style="bottom:21.34%"></span>
+      <span class="unvisited" style="bottom:21.25%"></span>
+      <span class="unvisited" style="bottom:21.17%"></span>
+      <span class="unvisited" style="bottom:21.00%"></span>
+      <span class="unvisited" style="bottom:20.91%"></span>
+      <span class="unvisited" style="bottom:20.83%"></span>
+      <span class="unvisited" style="bottom:20.66%"></span>
+      <span class="unvisited" style="bottom:20.58%"></span>
+      <span class="unvisited" style="bottom:20.49%"></span>
+      <span class="unvisited" style="bottom:20.32%"></span>
+      <span class="unvisited" style="bottom:20.15%"></span>
+      <span class="unvisited" style="bottom:20.07%"></span>
+      <span class="unvisited" style="bottom:19.98%"></span>
+      <span class="unvisited" style="bottom:19.90%"></span>
+      <span class="unvisited" style="bottom:19.73%"></span>
+      <span class="unvisited" style="bottom:19.64%"></span>
+      <span class="unvisited" style="bottom:19.56%"></span>
+      <span class="unvisited" style="bottom:19.39%"></span>
+      <span class="unvisited" style="bottom:19.31%"></span>
+      <span class="unvisited" style="bottom:19.14%"></span>
+      <span class="unvisited" style="bottom:19.05%"></span>
+      <span class="unvisited" style="bottom:18.97%"></span>
+      <span class="unvisited" style="bottom:18.88%"></span>
+      <span class="unvisited" style="bottom:18.80%"></span>
+      <span class="unvisited" style="bottom:18.71%"></span>
+      <span class="unvisited" style="bottom:18.54%"></span>
+      <span class="unvisited" style="bottom:18.46%"></span>
+      <span class="unvisited" style="bottom:18.37%"></span>
+      <span class="unvisited" style="bottom:18.29%"></span>
+      <span class="unvisited" style="bottom:18.20%"></span>
+      <span class="unvisited" style="bottom:18.04%"></span>
+      <span class="unvisited" style="bottom:17.95%"></span>
+      <span class="unvisited" style="bottom:17.78%"></span>
+      <span class="unvisited" style="bottom:17.70%"></span>
+      <span class="unvisited" style="bottom:17.61%"></span>
+      <span class="unvisited" style="bottom:17.27%"></span>
+      <span class="unvisited" style="bottom:17.02%"></span>
+      <span class="unvisited" style="bottom:16.93%"></span>
+      <span class="unvisited" style="bottom:16.85%"></span>
+      <span class="unvisited" style="bottom:16.77%"></span>
+      <span class="unvisited" style="bottom:16.68%"></span>
+      <span class="unvisited" style="bottom:16.60%"></span>
+      <span class="unvisited" style="bottom:16.43%"></span>
+      <span class="unvisited" style="bottom:16.34%"></span>
+      <span class="unvisited" style="bottom:16.26%"></span>
+      <span class="unvisited" style="bottom:16.17%"></span>
+      <span class="unvisited" style="bottom:15.92%"></span>
+      <span class="unvisited" style="bottom:15.83%"></span>
+      <span class="unvisited" style="bottom:15.66%"></span>
+      <span class="unvisited" style="bottom:15.58%"></span>
+      <span class="unvisited" style="bottom:15.50%"></span>
+      <span class="some-visited" style="bottom:15.24%"></span>
+      <span class="unvisited" style="bottom:15.07%"></span>
+      <span class="unvisited" style="bottom:14.73%"></span>
+      <span class="unvisited" style="bottom:14.65%"></span>
+      <span class="unvisited" style="bottom:14.56%"></span>
+      <span class="unvisited" style="bottom:14.48%"></span>
+      <span class="unvisited" style="bottom:13.89%"></span>
+      <span class="unvisited" style="bottom:13.72%"></span>
+      <span class="unvisited" style="bottom:13.63%"></span>
+      <span class="unvisited" style="bottom:13.38%"></span>
+      <span class="unvisited" style="bottom:13.29%"></span>
+      <span class="unvisited" style="bottom:13.12%"></span>
+      <span class="unvisited" style="bottom:12.87%"></span>
+      <span class="unvisited" style="bottom:12.79%"></span>
+      <span class="unvisited" style="bottom:12.70%"></span>
+      <span class="unvisited" style="bottom:11.85%"></span>
+      <span class="unvisited" style="bottom:11.77%"></span>
+      <span class="unvisited" style="bottom:11.60%"></span>
+      <span class="unvisited" style="bottom:11.52%"></span>
+      <span class="unvisited" style="bottom:11.43%"></span>
+      <span class="unvisited" style="bottom:11.35%"></span>
+      <span class="unvisited" style="bottom:11.26%"></span>
+      <span class="unvisited" style="bottom:11.18%"></span>
+      <span class="unvisited" style="bottom:11.01%"></span>
+      <span class="unvisited" style="bottom:10.92%"></span>
+      <span class="unvisited" style="bottom:10.84%"></span>
+      <span class="unvisited" style="bottom:10.58%"></span>
+      <span class="unvisited" style="bottom:10.50%"></span>
+      <span class="unvisited" style="bottom:10.41%"></span>
+      <span class="unvisited" style="bottom:10.16%"></span>
+      <span class="unvisited" style="bottom:10.08%"></span>
+      <span class="unvisited" style="bottom:9.99%"></span>
+      <span class="unvisited" style="bottom:9.74%"></span>
+      <span class="unvisited" style="bottom:9.65%"></span>
+      <span class="unvisited" style="bottom:9.57%"></span>
+      <span class="unvisited" style="bottom:9.23%"></span>
+      <span class="unvisited" style="bottom:9.14%"></span>
+      <span class="unvisited" style="bottom:9.06%"></span>
+      <span class="unvisited" style="bottom:8.72%"></span>
+      <span class="unvisited" style="bottom:8.64%"></span>
+      <span class="unvisited" style="bottom:8.55%"></span>
+      <span class="unvisited" style="bottom:8.47%"></span>
+      <span class="unvisited" style="bottom:8.38%"></span>
+      <span class="unvisited" style="bottom:8.30%"></span>
+      <span class="unvisited" style="bottom:8.21%"></span>
+      <span class="unvisited" style="bottom:8.13%"></span>
+      <span class="unvisited" style="bottom:7.87%"></span>
+      <span class="unvisited" style="bottom:7.62%"></span>
+      <span class="unvisited" style="bottom:7.54%"></span>
+      <span class="unvisited" style="bottom:7.45%"></span>
+      <span class="unvisited" style="bottom:6.94%"></span>
+      <span class="unvisited" style="bottom:6.77%"></span>
+      <span class="unvisited" style="bottom:6.60%"></span>
+      <span class="unvisited" style="bottom:6.44%"></span>
+      <span class="unvisited" style="bottom:6.35%"></span>
+      <span class="unvisited" style="bottom:6.27%"></span>
+      <span class="unvisited" style="bottom:6.18%"></span>
+      <span class="unvisited" style="bottom:5.67%"></span>
+      <span class="unvisited" style="bottom:5.59%"></span>
+      <span class="unvisited" style="bottom:5.33%"></span>
+      <span class="unvisited" style="bottom:5.08%"></span>
+      <span class="unvisited" style="bottom:4.91%"></span>
+      <span class="unvisited" style="bottom:4.83%"></span>
+      <span class="unvisited" style="bottom:4.57%"></span>
+      <span class="unvisited" style="bottom:4.49%"></span>
+      <span class="unvisited" style="bottom:3.05%"></span>
+      <span class="unvisited" style="bottom:2.71%"></span>
+      <span class="unvisited" style="bottom:0.85%"></span>
+      <span class="unvisited" style="bottom:0.76%"></span>
+      <span class="unvisited" style="bottom:0.59%"></span>
+      <span class="unvisited" style="bottom:0.51%"></span>
+      <span class="unvisited" style="bottom:0.42%"></span>
+      <span class="unvisited" style="bottom:0.34%"></span>
+      <span class="unvisited" style="bottom:0.00%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span > </span>
+<a id="L9"></a><span > </span>
+<a id="L10"></a><span > </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span > </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span > </span>
+<a id="L16"></a><span > </span>
+<a id="L17"></a><span > </span>
+<a id="L18"></a><span > </span>
+<a id="L19"></a><span class="visited"> </span>
+<a id="L20"></a><span > </span>
+<a id="L21"></a><span > </span>
+<a id="L22"></a><span class="visited"> </span>
+<a id="L23"></a><span class="visited"> </span>
+<a id="L24"></a><span > </span>
+<a id="L25"></a><span > </span>
+<a id="L26"></a><span > </span>
+<a id="L27"></a><span class="visited"> </span>
+<a id="L28"></a><span class="visited"> </span>
+<a id="L29"></a><span class="visited"> </span>
+<a id="L30"></a><span class="unvisited"> </span>
+<a id="L31"></a><span > </span>
+<a id="L32"></a><span > </span>
+<a id="L33"></a><span > </span>
+<a id="L34"></a><span class="visited"> </span>
+<a id="L35"></a><span > </span>
+<a id="L36"></a><span class="visited"> </span>
+<a id="L37"></a><span > </span>
+<a id="L38"></a><span > </span>
+<a id="L39"></a><span > </span>
+<a id="L40"></a><span class="visited"> </span>
+<a id="L41"></a><span > </span>
+<a id="L42"></a><span class="visited"> </span>
+<a id="L43"></a><span class="visited"> </span>
+<a id="L44"></a><span > </span>
+<a id="L45"></a><span > </span>
+<a id="L46"></a><span class="visited"> </span>
+<a id="L47"></a><span > </span>
+<a id="L48"></a><span > </span>
+<a id="L49"></a><span class="visited"> </span>
+<a id="L50"></a><span class="unvisited"> </span>
+<a id="L51"></a><span class="visited"> </span>
+<a id="L52"></a><span class="visited"> </span>
+<a id="L53"></a><span > </span>
+<a id="L54"></a><span > </span>
+<a id="L55"></a><span class="visited"> </span>
+<a id="L56"></a><span class="visited"> </span>
+<a id="L57"></a><span > </span>
+<a id="L58"></a><span > </span>
+<a id="L59"></a><span class="unvisited"> </span>
+<a id="L60"></a><span > </span>
+<a id="L61"></a><span > </span>
+<a id="L62"></a><span class="unvisited"> </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span class="unvisited"> </span>
+<a id="L66"></a><span class="unvisited"> </span>
+<a id="L67"></a><span > </span>
+<a id="L68"></a><span > </span>
+<a id="L69"></a><span class="unvisited"> </span>
+<a id="L70"></a><span > </span>
+<a id="L71"></a><span class="unvisited"> </span>
+<a id="L72"></a><span > </span>
+<a id="L73"></a><span class="unvisited"> </span>
+<a id="L74"></a><span > </span>
+<a id="L75"></a><span class="unvisited"> </span>
+<a id="L76"></a><span > </span>
+<a id="L77"></a><span class="unvisited"> </span>
+<a id="L78"></a><span > </span>
+<a id="L79"></a><span > </span>
+<a id="L80"></a><span class="visited"> </span>
+<a id="L81"></a><span class="visited"> </span>
+<a id="L82"></a><span class="visited"> </span>
+<a id="L83"></a><span > </span>
+<a id="L84"></a><span > </span>
+<a id="L85"></a><span > </span>
+<a id="L86"></a><span > </span>
+<a id="L87"></a><span > </span>
+<a id="L88"></a><span > </span>
+<a id="L89"></a><span > </span>
+<a id="L90"></a><span > </span>
+<a id="L91"></a><span > </span>
+<a id="L92"></a><span > </span>
+<a id="L93"></a><span class="unvisited"> </span>
+<a id="L94"></a><span class="unvisited"> </span>
+<a id="L95"></a><span class="unvisited"> </span>
+<a id="L96"></a><span class="unvisited"> </span>
+<a id="L97"></a><span > </span>
+<a id="L98"></a><span > </span>
+<a id="L99"></a><span > </span>
+<a id="L100"></a><span > </span>
+<a id="L101"></a><span > </span>
+<a id="L102"></a><span > </span>
+<a id="L103"></a><span > </span>
+<a id="L104"></a><span > </span>
+<a id="L105"></a><span > </span>
+<a id="L106"></a><span > </span>
+<a id="L107"></a><span > </span>
+<a id="L108"></a><span > </span>
+<a id="L109"></a><span > </span>
+<a id="L110"></a><span > </span>
+<a id="L111"></a><span > </span>
+<a id="L112"></a><span > </span>
+<a id="L113"></a><span > </span>
+<a id="L114"></a><span > </span>
+<a id="L115"></a><span > </span>
+<a id="L116"></a><span > </span>
+<a id="L117"></a><span > </span>
+<a id="L118"></a><span > </span>
+<a id="L119"></a><span > </span>
+<a id="L120"></a><span class="visited"> </span>
+<a id="L121"></a><span > </span>
+<a id="L122"></a><span > </span>
+<a id="L123"></a><span class="unvisited"> </span>
+<a id="L124"></a><span class="unvisited"> </span>
+<a id="L125"></a><span > </span>
+<a id="L126"></a><span > </span>
+<a id="L127"></a><span class="visited"> </span>
+<a id="L128"></a><span class="visited"> </span>
+<a id="L129"></a><span class="unvisited"> </span>
+<a id="L130"></a><span > </span>
+<a id="L131"></a><span > </span>
+<a id="L132"></a><span class="unvisited"> </span>
+<a id="L133"></a><span > </span>
+<a id="L134"></a><span class="unvisited"> </span>
+<a id="L135"></a><span > </span>
+<a id="L136"></a><span class="unvisited"> </span>
+<a id="L137"></a><span class="unvisited"> </span>
+<a id="L138"></a><span class="unvisited"> </span>
+<a id="L139"></a><span > </span>
+<a id="L140"></a><span > </span>
+<a id="L141"></a><span > </span>
+<a id="L142"></a><span > </span>
+<a id="L143"></a><span class="visited"> </span>
+<a id="L144"></a><span class="visited"> </span>
+<a id="L145"></a><span > </span>
+<a id="L146"></a><span class="visited"> </span>
+<a id="L147"></a><span class="visited"> </span>
+<a id="L148"></a><span class="visited"> </span>
+<a id="L149"></a><span > </span>
+<a id="L150"></a><span > </span>
+<a id="L151"></a><span class="unvisited"> </span>
+<a id="L152"></a><span class="unvisited"> </span>
+<a id="L153"></a><span > </span>
+<a id="L154"></a><span class="unvisited"> </span>
+<a id="L155"></a><span class="unvisited"> </span>
+<a id="L156"></a><span > </span>
+<a id="L157"></a><span class="unvisited"> </span>
+<a id="L158"></a><span class="unvisited"> </span>
+<a id="L159"></a><span > </span>
+<a id="L160"></a><span class="unvisited"> </span>
+<a id="L161"></a><span > </span>
+<a id="L162"></a><span > </span>
+<a id="L163"></a><span class="visited"> </span>
+<a id="L164"></a><span > </span>
+<a id="L165"></a><span class="visited"> </span>
+<a id="L166"></a><span class="visited"> </span>
+<a id="L167"></a><span class="visited"> </span>
+<a id="L168"></a><span > </span>
+<a id="L169"></a><span class="visited"> </span>
+<a id="L170"></a><span class="unvisited"> </span>
+<a id="L171"></a><span > </span>
+<a id="L172"></a><span class="unvisited"> </span>
+<a id="L173"></a><span class="visited"> </span>
+<a id="L174"></a><span > </span>
+<a id="L175"></a><span class="visited"> </span>
+<a id="L176"></a><span class="visited"> </span>
+<a id="L177"></a><span class="visited"> </span>
+<a id="L178"></a><span > </span>
+<a id="L179"></a><span > </span>
+<a id="L180"></a><span class="visited"> </span>
+<a id="L181"></a><span class="visited"> </span>
+<a id="L182"></a><span > </span>
+<a id="L183"></a><span > </span>
+<a id="L184"></a><span > </span>
+<a id="L185"></a><span class="visited"> </span>
+<a id="L186"></a><span class="visited"> </span>
+<a id="L187"></a><span > </span>
+<a id="L188"></a><span > </span>
+<a id="L189"></a><span class="unvisited"> </span>
+<a id="L190"></a><span class="unvisited"> </span>
+<a id="L191"></a><span class="unvisited"> </span>
+<a id="L192"></a><span > </span>
+<a id="L193"></a><span > </span>
+<a id="L194"></a><span class="unvisited"> </span>
+<a id="L195"></a><span class="unvisited"> </span>
+<a id="L196"></a><span class="unvisited"> </span>
+<a id="L197"></a><span > </span>
+<a id="L198"></a><span > </span>
+<a id="L199"></a><span > </span>
+<a id="L200"></a><span > </span>
+<a id="L201"></a><span class="unvisited"> </span>
+<a id="L202"></a><span class="unvisited"> </span>
+<a id="L203"></a><span > </span>
+<a id="L204"></a><span > </span>
+<a id="L205"></a><span class="unvisited"> </span>
+<a id="L206"></a><span class="unvisited"> </span>
+<a id="L207"></a><span class="unvisited"> </span>
+<a id="L208"></a><span > </span>
+<a id="L209"></a><span > </span>
+<a id="L210"></a><span class="unvisited"> </span>
+<a id="L211"></a><span > </span>
+<a id="L212"></a><span > </span>
+<a id="L213"></a><span class="unvisited"> </span>
+<a id="L214"></a><span class="unvisited"> </span>
+<a id="L215"></a><span > </span>
+<a id="L216"></a><span > </span>
+<a id="L217"></a><span > </span>
+<a id="L218"></a><span class="visited"> </span>
+<a id="L219"></a><span > </span>
+<a id="L220"></a><span class="visited"> </span>
+<a id="L221"></a><span class="unvisited"> </span>
+<a id="L222"></a><span class="unvisited"> </span>
+<a id="L223"></a><span > </span>
+<a id="L224"></a><span > </span>
+<a id="L225"></a><span > </span>
+<a id="L226"></a><span > </span>
+<a id="L227"></a><span class="unvisited"> </span>
+<a id="L228"></a><span > </span>
+<a id="L229"></a><span class="unvisited"> </span>
+<a id="L230"></a><span > </span>
+<a id="L231"></a><span > </span>
+<a id="L232"></a><span > </span>
+<a id="L233"></a><span class="visited"> </span>
+<a id="L234"></a><span > </span>
+<a id="L235"></a><span class="visited"> </span>
+<a id="L236"></a><span > </span>
+<a id="L237"></a><span > </span>
+<a id="L238"></a><span > </span>
+<a id="L239"></a><span class="visited"> </span>
+<a id="L240"></a><span > </span>
+<a id="L241"></a><span > </span>
+<a id="L242"></a><span > </span>
+<a id="L243"></a><span > </span>
+<a id="L244"></a><span > </span>
+<a id="L245"></a><span > </span>
+<a id="L246"></a><span > </span>
+<a id="L247"></a><span > </span>
+<a id="L248"></a><span > </span>
+<a id="L249"></a><span > </span>
+<a id="L250"></a><span > </span>
+<a id="L251"></a><span class="visited"> </span>
+<a id="L252"></a><span > </span>
+<a id="L253"></a><span class="visited"> </span>
+<a id="L254"></a><span class="visited"> </span>
+<a id="L255"></a><span class="visited"> </span>
+<a id="L256"></a><span class="visited"> </span>
+<a id="L257"></a><span class="visited"> </span>
+<a id="L258"></a><span > </span>
+<a id="L259"></a><span > </span>
+<a id="L260"></a><span class="visited"> </span>
+<a id="L261"></a><span > </span>
+<a id="L262"></a><span class="visited"> </span>
+<a id="L263"></a><span class="visited"> </span>
+<a id="L264"></a><span > </span>
+<a id="L265"></a><span > </span>
+<a id="L266"></a><span > </span>
+<a id="L267"></a><span class="visited"> </span>
+<a id="L268"></a><span class="visited"> </span>
+<a id="L269"></a><span class="visited"> </span>
+<a id="L270"></a><span > </span>
+<a id="L271"></a><span class="visited"> </span>
+<a id="L272"></a><span > </span>
+<a id="L273"></a><span > </span>
+<a id="L274"></a><span class="visited"> </span>
+<a id="L275"></a><span > </span>
+<a id="L276"></a><span > </span>
+<a id="L277"></a><span class="visited"> </span>
+<a id="L278"></a><span > </span>
+<a id="L279"></a><span > </span>
+<a id="L280"></a><span > </span>
+<a id="L281"></a><span class="visited"> </span>
+<a id="L282"></a><span class="visited"> </span>
+<a id="L283"></a><span > </span>
+<a id="L284"></a><span > </span>
+<a id="L285"></a><span class="visited"> </span>
+<a id="L286"></a><span > </span>
+<a id="L287"></a><span class="visited"> </span>
+<a id="L288"></a><span class="visited"> </span>
+<a id="L289"></a><span class="visited"> </span>
+<a id="L290"></a><span > </span>
+<a id="L291"></a><span > </span>
+<a id="L292"></a><span > </span>
+<a id="L293"></a><span > </span>
+<a id="L294"></a><span > </span>
+<a id="L295"></a><span > </span>
+<a id="L296"></a><span > </span>
+<a id="L297"></a><span class="visited"> </span>
+<a id="L298"></a><span > </span>
+<a id="L299"></a><span > </span>
+<a id="L300"></a><span > </span>
+<a id="L301"></a><span class="visited"> </span>
+<a id="L302"></a><span > </span>
+<a id="L303"></a><span > </span>
+<a id="L304"></a><span > </span>
+<a id="L305"></a><span > </span>
+<a id="L306"></a><span > </span>
+<a id="L307"></a><span > </span>
+<a id="L308"></a><span class="visited"> </span>
+<a id="L309"></a><span class="visited"> </span>
+<a id="L310"></a><span > </span>
+<a id="L311"></a><span > </span>
+<a id="L312"></a><span > </span>
+<a id="L313"></a><span class="visited"> </span>
+<a id="L314"></a><span > </span>
+<a id="L315"></a><span class="visited"> </span>
+<a id="L316"></a><span class="visited"> </span>
+<a id="L317"></a><span class="visited"> </span>
+<a id="L318"></a><span class="visited"> </span>
+<a id="L319"></a><span > </span>
+<a id="L320"></a><span > </span>
+<a id="L321"></a><span > </span>
+<a id="L322"></a><span class="visited"> </span>
+<a id="L323"></a><span > </span>
+<a id="L324"></a><span class="unvisited"> </span>
+<a id="L325"></a><span class="unvisited"> </span>
+<a id="L326"></a><span > </span>
+<a id="L327"></a><span > </span>
+<a id="L328"></a><span > </span>
+<a id="L329"></a><span > </span>
+<a id="L330"></a><span class="unvisited"> </span>
+<a id="L331"></a><span class="unvisited"> </span>
+<a id="L332"></a><span class="unvisited"> </span>
+<a id="L333"></a><span class="unvisited"> </span>
+<a id="L334"></a><span > </span>
+<a id="L335"></a><span > </span>
+<a id="L336"></a><span class="visited"> </span>
+<a id="L337"></a><span class="visited"> </span>
+<a id="L338"></a><span > </span>
+<a id="L339"></a><span class="visited"> </span>
+<a id="L340"></a><span > </span>
+<a id="L341"></a><span class="visited"> </span>
+<a id="L342"></a><span class="visited"> </span>
+<a id="L343"></a><span > </span>
+<a id="L344"></a><span > </span>
+<a id="L345"></a><span class="visited"> </span>
+<a id="L346"></a><span class="visited"> </span>
+<a id="L347"></a><span > </span>
+<a id="L348"></a><span > </span>
+<a id="L349"></a><span > </span>
+<a id="L350"></a><span class="visited"> </span>
+<a id="L351"></a><span class="visited"> </span>
+<a id="L352"></a><span > </span>
+<a id="L353"></a><span > </span>
+<a id="L354"></a><span class="visited"> </span>
+<a id="L355"></a><span > </span>
+<a id="L356"></a><span class="unvisited"> </span>
+<a id="L357"></a><span > </span>
+<a id="L358"></a><span class="unvisited"> </span>
+<a id="L359"></a><span class="unvisited"> </span>
+<a id="L360"></a><span class="unvisited"> </span>
+<a id="L361"></a><span class="unvisited"> </span>
+<a id="L362"></a><span > </span>
+<a id="L363"></a><span > </span>
+<a id="L364"></a><span class="unvisited"> </span>
+<a id="L365"></a><span class="unvisited"> </span>
+<a id="L366"></a><span > </span>
+<a id="L367"></a><span > </span>
+<a id="L368"></a><span > </span>
+<a id="L369"></a><span class="unvisited"> </span>
+<a id="L370"></a><span class="unvisited"> </span>
+<a id="L371"></a><span > </span>
+<a id="L372"></a><span class="unvisited"> </span>
+<a id="L373"></a><span > </span>
+<a id="L374"></a><span class="unvisited"> </span>
+<a id="L375"></a><span > </span>
+<a id="L376"></a><span > </span>
+<a id="L377"></a><span > </span>
+<a id="L378"></a><span class="unvisited"> </span>
+<a id="L379"></a><span > </span>
+<a id="L380"></a><span class="unvisited"> </span>
+<a id="L381"></a><span class="unvisited"> </span>
+<a id="L382"></a><span class="unvisited"> </span>
+<a id="L383"></a><span > </span>
+<a id="L384"></a><span > </span>
+<a id="L385"></a><span > </span>
+<a id="L386"></a><span class="unvisited"> </span>
+<a id="L387"></a><span > </span>
+<a id="L388"></a><span > </span>
+<a id="L389"></a><span > </span>
+<a id="L390"></a><span class="unvisited"> </span>
+<a id="L391"></a><span > </span>
+<a id="L392"></a><span > </span>
+<a id="L393"></a><span > </span>
+<a id="L394"></a><span class="visited"> </span>
+<a id="L395"></a><span > </span>
+<a id="L396"></a><span > </span>
+<a id="L397"></a><span class="visited"> </span>
+<a id="L398"></a><span > </span>
+<a id="L399"></a><span > </span>
+<a id="L400"></a><span > </span>
+<a id="L401"></a><span class="visited"> </span>
+<a id="L402"></a><span class="visited"> </span>
+<a id="L403"></a><span class="visited"> </span>
+<a id="L404"></a><span class="some-visited"> </span>
+<a id="L405"></a><span class="visited"> </span>
+<a id="L406"></a><span > </span>
+<a id="L407"></a><span class="some-visited"> </span>
+<a id="L408"></a><span > </span>
+<a id="L409"></a><span > </span>
+<a id="L410"></a><span class="visited"> </span>
+<a id="L411"></a><span class="some-visited"> </span>
+<a id="L412"></a><span class="some-visited"> </span>
+<a id="L413"></a><span class="visited"> </span>
+<a id="L414"></a><span class="visited"> </span>
+<a id="L415"></a><span class="visited"> </span>
+<a id="L416"></a><span > </span>
+<a id="L417"></a><span class="visited"> </span>
+<a id="L418"></a><span class="visited"> </span>
+<a id="L419"></a><span > </span>
+<a id="L420"></a><span > </span>
+<a id="L421"></a><span class="unvisited"> </span>
+<a id="L422"></a><span > </span>
+<a id="L423"></a><span > </span>
+<a id="L424"></a><span class="unvisited"> </span>
+<a id="L425"></a><span > </span>
+<a id="L426"></a><span > </span>
+<a id="L427"></a><span > </span>
+<a id="L428"></a><span class="unvisited"> </span>
+<a id="L429"></a><span class="unvisited"> </span>
+<a id="L430"></a><span class="unvisited"> </span>
+<a id="L431"></a><span class="unvisited"> </span>
+<a id="L432"></a><span class="unvisited"> </span>
+<a id="L433"></a><span > </span>
+<a id="L434"></a><span class="unvisited"> </span>
+<a id="L435"></a><span > </span>
+<a id="L436"></a><span > </span>
+<a id="L437"></a><span class="unvisited"> </span>
+<a id="L438"></a><span class="unvisited"> </span>
+<a id="L439"></a><span class="unvisited"> </span>
+<a id="L440"></a><span class="unvisited"> </span>
+<a id="L441"></a><span class="unvisited"> </span>
+<a id="L442"></a><span class="unvisited"> </span>
+<a id="L443"></a><span > </span>
+<a id="L444"></a><span class="unvisited"> </span>
+<a id="L445"></a><span class="unvisited"> </span>
+<a id="L446"></a><span > </span>
+<a id="L447"></a><span > </span>
+<a id="L448"></a><span class="unvisited"> </span>
+<a id="L449"></a><span class="visited"> </span>
+<a id="L450"></a><span > </span>
+<a id="L451"></a><span class="visited"> </span>
+<a id="L452"></a><span class="visited"> </span>
+<a id="L453"></a><span > </span>
+<a id="L454"></a><span class="visited"> </span>
+<a id="L455"></a><span class="visited"> </span>
+<a id="L456"></a><span class="visited"> </span>
+<a id="L457"></a><span > </span>
+<a id="L458"></a><span > </span>
+<a id="L459"></a><span class="visited"> </span>
+<a id="L460"></a><span class="visited"> </span>
+<a id="L461"></a><span > </span>
+<a id="L462"></a><span class="visited"> </span>
+<a id="L463"></a><span > </span>
+<a id="L464"></a><span > </span>
+<a id="L465"></a><span class="visited"> </span>
+<a id="L466"></a><span > </span>
+<a id="L467"></a><span > </span>
+<a id="L468"></a><span > </span>
+<a id="L469"></a><span > </span>
+<a id="L470"></a><span class="visited"> </span>
+<a id="L471"></a><span class="unvisited"> </span>
+<a id="L472"></a><span class="unvisited"> </span>
+<a id="L473"></a><span > </span>
+<a id="L474"></a><span class="visited"> </span>
+<a id="L475"></a><span class="visited"> </span>
+<a id="L476"></a><span class="unvisited"> </span>
+<a id="L477"></a><span class="unvisited"> </span>
+<a id="L478"></a><span class="unvisited"> </span>
+<a id="L479"></a><span class="unvisited"> </span>
+<a id="L480"></a><span > </span>
+<a id="L481"></a><span class="unvisited"> </span>
+<a id="L482"></a><span class="unvisited"> </span>
+<a id="L483"></a><span class="unvisited"> </span>
+<a id="L484"></a><span > </span>
+<a id="L485"></a><span > </span>
+<a id="L486"></a><span class="visited"> </span>
+<a id="L487"></a><span class="unvisited"> </span>
+<a id="L488"></a><span class="visited"> </span>
+<a id="L489"></a><span > </span>
+<a id="L490"></a><span > </span>
+<a id="L491"></a><span > </span>
+<a id="L492"></a><span class="some-visited"> </span>
+<a id="L493"></a><span > </span>
+<a id="L494"></a><span class="visited"> </span>
+<a id="L495"></a><span class="unvisited"> </span>
+<a id="L496"></a><span class="unvisited"> </span>
+<a id="L497"></a><span class="unvisited"> </span>
+<a id="L498"></a><span class="visited"> </span>
+<a id="L499"></a><span > </span>
+<a id="L500"></a><span class="visited"> </span>
+<a id="L501"></a><span > </span>
+<a id="L502"></a><span > </span>
+<a id="L503"></a><span class="visited"> </span>
+<a id="L504"></a><span class="visited"> </span>
+<a id="L505"></a><span > </span>
+<a id="L506"></a><span > </span>
+<a id="L507"></a><span class="visited"> </span>
+<a id="L508"></a><span class="visited"> </span>
+<a id="L509"></a><span class="visited"> </span>
+<a id="L510"></a><span > </span>
+<a id="L511"></a><span class="visited"> </span>
+<a id="L512"></a><span class="visited"> </span>
+<a id="L513"></a><span > </span>
+<a id="L514"></a><span class="visited"> </span>
+<a id="L515"></a><span class="visited"> </span>
+<a id="L516"></a><span class="visited"> </span>
+<a id="L517"></a><span > </span>
+<a id="L518"></a><span > </span>
+<a id="L519"></a><span class="some-visited"> </span>
+<a id="L520"></a><span > </span>
+<a id="L521"></a><span class="unvisited"> </span>
+<a id="L522"></a><span class="unvisited"> </span>
+<a id="L523"></a><span class="unvisited"> </span>
+<a id="L524"></a><span > </span>
+<a id="L525"></a><span class="unvisited"> </span>
+<a id="L526"></a><span class="unvisited"> </span>
+<a id="L527"></a><span class="unvisited"> </span>
+<a id="L528"></a><span class="unvisited"> </span>
+<a id="L529"></a><span class="unvisited"> </span>
+<a id="L530"></a><span class="unvisited"> </span>
+<a id="L531"></a><span > </span>
+<a id="L532"></a><span class="unvisited"> </span>
+<a id="L533"></a><span class="unvisited"> </span>
+<a id="L534"></a><span class="unvisited"> </span>
+<a id="L535"></a><span class="unvisited"> </span>
+<a id="L536"></a><span class="visited"> </span>
+<a id="L537"></a><span > </span>
+<a id="L538"></a><span > </span>
+<a id="L539"></a><span class="visited"> </span>
+<a id="L540"></a><span class="visited"> </span>
+<a id="L541"></a><span class="unvisited"> </span>
+<a id="L542"></a><span class="unvisited"> </span>
+<a id="L543"></a><span > </span>
+<a id="L544"></a><span > </span>
+<a id="L545"></a><span > </span>
+<a id="L546"></a><span > </span>
+<a id="L547"></a><span > </span>
+<a id="L548"></a><span > </span>
+<a id="L549"></a><span > </span>
+<a id="L550"></a><span > </span>
+<a id="L551"></a><span class="unvisited"> </span>
+<a id="L552"></a><span > </span>
+<a id="L553"></a><span class="unvisited"> </span>
+<a id="L554"></a><span > </span>
+<a id="L555"></a><span > </span>
+<a id="L556"></a><span class="unvisited"> </span>
+<a id="L557"></a><span class="unvisited"> </span>
+<a id="L558"></a><span class="unvisited"> </span>
+<a id="L559"></a><span > </span>
+<a id="L560"></a><span class="unvisited"> </span>
+<a id="L561"></a><span > </span>
+<a id="L562"></a><span class="unvisited"> </span>
+<a id="L563"></a><span > </span>
+<a id="L564"></a><span class="unvisited"> </span>
+<a id="L565"></a><span class="unvisited"> </span>
+<a id="L566"></a><span class="unvisited"> </span>
+<a id="L567"></a><span class="unvisited"> </span>
+<a id="L568"></a><span > </span>
+<a id="L569"></a><span class="unvisited"> </span>
+<a id="L570"></a><span > </span>
+<a id="L571"></a><span > </span>
+<a id="L572"></a><span class="visited"> </span>
+<a id="L573"></a><span > </span>
+<a id="L574"></a><span class="visited"> </span>
+<a id="L575"></a><span > </span>
+<a id="L576"></a><span class="visited"> </span>
+<a id="L577"></a><span > </span>
+<a id="L578"></a><span class="visited"> </span>
+<a id="L579"></a><span > </span>
+<a id="L580"></a><span class="visited"> </span>
+<a id="L581"></a><span class="visited"> </span>
+<a id="L582"></a><span > </span>
+<a id="L583"></a><span class="visited"> </span>
+<a id="L584"></a><span class="visited"> </span>
+<a id="L585"></a><span > </span>
+<a id="L586"></a><span > </span>
+<a id="L587"></a><span class="visited"> </span>
+<a id="L588"></a><span > </span>
+<a id="L589"></a><span > </span>
+<a id="L590"></a><span class="visited"> </span>
+<a id="L591"></a><span class="visited"> </span>
+<a id="L592"></a><span class="visited"> </span>
+<a id="L593"></a><span > </span>
+<a id="L594"></a><span > </span>
+<a id="L595"></a><span > </span>
+<a id="L596"></a><span class="visited"> </span>
+<a id="L597"></a><span > </span>
+<a id="L598"></a><span > </span>
+<a id="L599"></a><span > </span>
+<a id="L600"></a><span > </span>
+<a id="L601"></a><span class="visited"> </span>
+<a id="L602"></a><span class="visited"> </span>
+<a id="L603"></a><span class="unvisited"> </span>
+<a id="L604"></a><span class="unvisited"> </span>
+<a id="L605"></a><span class="visited"> </span>
+<a id="L606"></a><span class="visited"> </span>
+<a id="L607"></a><span class="visited"> </span>
+<a id="L608"></a><span > </span>
+<a id="L609"></a><span class="visited"> </span>
+<a id="L610"></a><span class="visited"> </span>
+<a id="L611"></a><span class="visited"> </span>
+<a id="L612"></a><span class="visited"> </span>
+<a id="L613"></a><span class="unvisited"> </span>
+<a id="L614"></a><span > </span>
+<a id="L615"></a><span > </span>
+<a id="L616"></a><span class="visited"> </span>
+<a id="L617"></a><span class="visited"> </span>
+<a id="L618"></a><span class="visited"> </span>
+<a id="L619"></a><span class="visited"> </span>
+<a id="L620"></a><span class="visited"> </span>
+<a id="L621"></a><span class="visited"> </span>
+<a id="L622"></a><span class="visited"> </span>
+<a id="L623"></a><span class="visited"> </span>
+<a id="L624"></a><span > </span>
+<a id="L625"></a><span class="visited"> </span>
+<a id="L626"></a><span class="visited"> </span>
+<a id="L627"></a><span class="visited"> </span>
+<a id="L628"></a><span class="visited"> </span>
+<a id="L629"></a><span class="visited"> </span>
+<a id="L630"></a><span class="visited"> </span>
+<a id="L631"></a><span class="visited"> </span>
+<a id="L632"></a><span class="visited"> </span>
+<a id="L633"></a><span class="visited"> </span>
+<a id="L634"></a><span class="visited"> </span>
+<a id="L635"></a><span class="visited"> </span>
+<a id="L636"></a><span class="visited"> </span>
+<a id="L637"></a><span class="visited"> </span>
+<a id="L638"></a><span > </span>
+<a id="L639"></a><span class="unvisited"> </span>
+<a id="L640"></a><span > </span>
+<a id="L641"></a><span class="unvisited"> </span>
+<a id="L642"></a><span class="unvisited"> </span>
+<a id="L643"></a><span class="unvisited"> </span>
+<a id="L644"></a><span class="visited"> </span>
+<a id="L645"></a><span > </span>
+<a id="L646"></a><span class="visited"> </span>
+<a id="L647"></a><span class="unvisited"> </span>
+<a id="L648"></a><span class="visited"> </span>
+<a id="L649"></a><span class="unvisited"> </span>
+<a id="L650"></a><span class="visited"> </span>
+<a id="L651"></a><span class="unvisited"> </span>
+<a id="L652"></a><span class="unvisited"> </span>
+<a id="L653"></a><span class="unvisited"> </span>
+<a id="L654"></a><span class="unvisited"> </span>
+<a id="L655"></a><span > </span>
+<a id="L656"></a><span class="unvisited"> </span>
+<a id="L657"></a><span class="unvisited"> </span>
+<a id="L658"></a><span > </span>
+<a id="L659"></a><span class="unvisited"> </span>
+<a id="L660"></a><span class="visited"> </span>
+<a id="L661"></a><span > </span>
+<a id="L662"></a><span class="visited"> </span>
+<a id="L663"></a><span class="unvisited"> </span>
+<a id="L664"></a><span > </span>
+<a id="L665"></a><span class="unvisited"> </span>
+<a id="L666"></a><span class="unvisited"> </span>
+<a id="L667"></a><span > </span>
+<a id="L668"></a><span class="unvisited"> </span>
+<a id="L669"></a><span class="unvisited"> </span>
+<a id="L670"></a><span > </span>
+<a id="L671"></a><span class="unvisited"> </span>
+<a id="L672"></a><span > </span>
+<a id="L673"></a><span class="unvisited"> </span>
+<a id="L674"></a><span class="unvisited"> </span>
+<a id="L675"></a><span class="unvisited"> </span>
+<a id="L676"></a><span > </span>
+<a id="L677"></a><span class="unvisited"> </span>
+<a id="L678"></a><span class="unvisited"> </span>
+<a id="L679"></a><span class="unvisited"> </span>
+<a id="L680"></a><span > </span>
+<a id="L681"></a><span class="unvisited"> </span>
+<a id="L682"></a><span class="unvisited"> </span>
+<a id="L683"></a><span class="unvisited"> </span>
+<a id="L684"></a><span > </span>
+<a id="L685"></a><span > </span>
+<a id="L686"></a><span class="unvisited"> </span>
+<a id="L687"></a><span > </span>
+<a id="L688"></a><span > </span>
+<a id="L689"></a><span class="unvisited"> </span>
+<a id="L690"></a><span class="unvisited"> </span>
+<a id="L691"></a><span > </span>
+<a id="L692"></a><span > </span>
+<a id="L693"></a><span > </span>
+<a id="L694"></a><span class="unvisited"> </span>
+<a id="L695"></a><span class="unvisited"> </span>
+<a id="L696"></a><span > </span>
+<a id="L697"></a><span > </span>
+<a id="L698"></a><span class="unvisited"> </span>
+<a id="L699"></a><span > </span>
+<a id="L700"></a><span > </span>
+<a id="L701"></a><span > </span>
+<a id="L702"></a><span class="unvisited"> </span>
+<a id="L703"></a><span class="unvisited"> </span>
+<a id="L704"></a><span class="unvisited"> </span>
+<a id="L705"></a><span > </span>
+<a id="L706"></a><span > </span>
+<a id="L707"></a><span > </span>
+<a id="L708"></a><span class="unvisited"> </span>
+<a id="L709"></a><span class="unvisited"> </span>
+<a id="L710"></a><span class="unvisited"> </span>
+<a id="L711"></a><span class="unvisited"> </span>
+<a id="L712"></a><span > </span>
+<a id="L713"></a><span > </span>
+<a id="L714"></a><span class="unvisited"> </span>
+<a id="L715"></a><span class="unvisited"> </span>
+<a id="L716"></a><span class="unvisited"> </span>
+<a id="L717"></a><span > </span>
+<a id="L718"></a><span class="unvisited"> </span>
+<a id="L719"></a><span > </span>
+<a id="L720"></a><span > </span>
+<a id="L721"></a><span > </span>
+<a id="L722"></a><span class="unvisited"> </span>
+<a id="L723"></a><span class="unvisited"> </span>
+<a id="L724"></a><span class="unvisited"> </span>
+<a id="L725"></a><span class="unvisited"> </span>
+<a id="L726"></a><span > </span>
+<a id="L727"></a><span class="unvisited"> </span>
+<a id="L728"></a><span class="unvisited"> </span>
+<a id="L729"></a><span > </span>
+<a id="L730"></a><span class="unvisited"> </span>
+<a id="L731"></a><span class="unvisited"> </span>
+<a id="L732"></a><span class="unvisited"> </span>
+<a id="L733"></a><span > </span>
+<a id="L734"></a><span class="unvisited"> </span>
+<a id="L735"></a><span class="unvisited"> </span>
+<a id="L736"></a><span class="unvisited"> </span>
+<a id="L737"></a><span > </span>
+<a id="L738"></a><span class="unvisited"> </span>
+<a id="L739"></a><span class="unvisited"> </span>
+<a id="L740"></a><span class="unvisited"> </span>
+<a id="L741"></a><span class="unvisited"> </span>
+<a id="L742"></a><span > </span>
+<a id="L743"></a><span class="unvisited"> </span>
+<a id="L744"></a><span > </span>
+<a id="L745"></a><span class="unvisited"> </span>
+<a id="L746"></a><span class="unvisited"> </span>
+<a id="L747"></a><span class="unvisited"> </span>
+<a id="L748"></a><span class="unvisited"> </span>
+<a id="L749"></a><span > </span>
+<a id="L750"></a><span class="unvisited"> </span>
+<a id="L751"></a><span > </span>
+<a id="L752"></a><span class="unvisited"> </span>
+<a id="L753"></a><span class="unvisited"> </span>
+<a id="L754"></a><span > </span>
+<a id="L755"></a><span class="unvisited"> </span>
+<a id="L756"></a><span > </span>
+<a id="L757"></a><span class="unvisited"> </span>
+<a id="L758"></a><span class="unvisited"> </span>
+<a id="L759"></a><span class="unvisited"> </span>
+<a id="L760"></a><span > </span>
+<a id="L761"></a><span class="unvisited"> </span>
+<a id="L762"></a><span class="unvisited"> </span>
+<a id="L763"></a><span class="unvisited"> </span>
+<a id="L764"></a><span class="unvisited"> </span>
+<a id="L765"></a><span class="unvisited"> </span>
+<a id="L766"></a><span class="unvisited"> </span>
+<a id="L767"></a><span > </span>
+<a id="L768"></a><span class="unvisited"> </span>
+<a id="L769"></a><span class="unvisited"> </span>
+<a id="L770"></a><span class="unvisited"> </span>
+<a id="L771"></a><span > </span>
+<a id="L772"></a><span class="unvisited"> </span>
+<a id="L773"></a><span class="unvisited"> </span>
+<a id="L774"></a><span class="unvisited"> </span>
+<a id="L775"></a><span class="unvisited"> </span>
+<a id="L776"></a><span class="unvisited"> </span>
+<a id="L777"></a><span > </span>
+<a id="L778"></a><span > </span>
+<a id="L779"></a><span > </span>
+<a id="L780"></a><span > </span>
+<a id="L781"></a><span class="unvisited"> </span>
+<a id="L782"></a><span class="unvisited"> </span>
+<a id="L783"></a><span > </span>
+<a id="L784"></a><span > </span>
+<a id="L785"></a><span class="unvisited"> </span>
+<a id="L786"></a><span class="unvisited"> </span>
+<a id="L787"></a><span class="unvisited"> </span>
+<a id="L788"></a><span > </span>
+<a id="L789"></a><span > </span>
+<a id="L790"></a><span class="unvisited"> </span>
+<a id="L791"></a><span class="unvisited"> </span>
+<a id="L792"></a><span class="unvisited"> </span>
+<a id="L793"></a><span > </span>
+<a id="L794"></a><span > </span>
+<a id="L795"></a><span class="unvisited"> </span>
+<a id="L796"></a><span class="unvisited"> </span>
+<a id="L797"></a><span class="unvisited"> </span>
+<a id="L798"></a><span class="unvisited"> </span>
+<a id="L799"></a><span > </span>
+<a id="L800"></a><span > </span>
+<a id="L801"></a><span > </span>
+<a id="L802"></a><span > </span>
+<a id="L803"></a><span class="visited"> </span>
+<a id="L804"></a><span > </span>
+<a id="L805"></a><span > </span>
+<a id="L806"></a><span class="unvisited"> </span>
+<a id="L807"></a><span class="visited"> </span>
+<a id="L808"></a><span class="unvisited"> </span>
+<a id="L809"></a><span class="unvisited"> </span>
+<a id="L810"></a><span > </span>
+<a id="L811"></a><span class="unvisited"> </span>
+<a id="L812"></a><span class="unvisited"> </span>
+<a id="L813"></a><span > </span>
+<a id="L814"></a><span class="unvisited"> </span>
+<a id="L815"></a><span class="unvisited"> </span>
+<a id="L816"></a><span class="unvisited"> </span>
+<a id="L817"></a><span class="unvisited"> </span>
+<a id="L818"></a><span class="unvisited"> </span>
+<a id="L819"></a><span > </span>
+<a id="L820"></a><span class="unvisited"> </span>
+<a id="L821"></a><span > </span>
+<a id="L822"></a><span class="unvisited"> </span>
+<a id="L823"></a><span > </span>
+<a id="L824"></a><span class="unvisited"> </span>
+<a id="L825"></a><span class="unvisited"> </span>
+<a id="L826"></a><span class="unvisited"> </span>
+<a id="L827"></a><span > </span>
+<a id="L828"></a><span class="unvisited"> </span>
+<a id="L829"></a><span class="unvisited"> </span>
+<a id="L830"></a><span class="unvisited"> </span>
+<a id="L831"></a><span > </span>
+<a id="L832"></a><span class="unvisited"> </span>
+<a id="L833"></a><span class="visited"> </span>
+<a id="L834"></a><span class="visited"> </span>
+<a id="L835"></a><span > </span>
+<a id="L836"></a><span > </span>
+<a id="L837"></a><span class="visited"> </span>
+<a id="L838"></a><span class="unvisited"> </span>
+<a id="L839"></a><span class="unvisited"> </span>
+<a id="L840"></a><span class="visited"> </span>
+<a id="L841"></a><span > </span>
+<a id="L842"></a><span > </span>
+<a id="L843"></a><span class="unvisited"> </span>
+<a id="L844"></a><span class="unvisited"> </span>
+<a id="L845"></a><span class="unvisited"> </span>
+<a id="L846"></a><span class="unvisited"> </span>
+<a id="L847"></a><span > </span>
+<a id="L848"></a><span > </span>
+<a id="L849"></a><span class="unvisited"> </span>
+<a id="L850"></a><span class="unvisited"> </span>
+<a id="L851"></a><span class="unvisited"> </span>
+<a id="L852"></a><span class="unvisited"> </span>
+<a id="L853"></a><span class="unvisited"> </span>
+<a id="L854"></a><span class="unvisited"> </span>
+<a id="L855"></a><span class="unvisited"> </span>
+<a id="L856"></a><span class="unvisited"> </span>
+<a id="L857"></a><span class="unvisited"> </span>
+<a id="L858"></a><span class="unvisited"> </span>
+<a id="L859"></a><span class="unvisited"> </span>
+<a id="L860"></a><span > </span>
+<a id="L861"></a><span > </span>
+<a id="L862"></a><span class="unvisited"> </span>
+<a id="L863"></a><span class="unvisited"> </span>
+<a id="L864"></a><span class="unvisited"> </span>
+<a id="L865"></a><span > </span>
+<a id="L866"></a><span > </span>
+<a id="L867"></a><span class="visited"> </span>
+<a id="L868"></a><span class="visited"> </span>
+<a id="L869"></a><span > </span>
+<a id="L870"></a><span > </span>
+<a id="L871"></a><span class="visited"> </span>
+<a id="L872"></a><span > </span>
+<a id="L873"></a><span > </span>
+<a id="L874"></a><span class="unvisited"> </span>
+<a id="L875"></a><span class="unvisited"> </span>
+<a id="L876"></a><span class="visited"> </span>
+<a id="L877"></a><span class="visited"> </span>
+<a id="L878"></a><span class="unvisited"> </span>
+<a id="L879"></a><span class="unvisited"> </span>
+<a id="L880"></a><span > </span>
+<a id="L881"></a><span class="unvisited"> </span>
+<a id="L882"></a><span > </span>
+<a id="L883"></a><span class="unvisited"> </span>
+<a id="L884"></a><span class="unvisited"> </span>
+<a id="L885"></a><span class="visited"> </span>
+<a id="L886"></a><span > </span>
+<a id="L887"></a><span class="visited"> </span>
+<a id="L888"></a><span > </span>
+<a id="L889"></a><span class="visited"> </span>
+<a id="L890"></a><span > </span>
+<a id="L891"></a><span class="unvisited"> </span>
+<a id="L892"></a><span > </span>
+<a id="L893"></a><span class="unvisited"> </span>
+<a id="L894"></a><span > </span>
+<a id="L895"></a><span class="unvisited"> </span>
+<a id="L896"></a><span > </span>
+<a id="L897"></a><span class="unvisited"> </span>
+<a id="L898"></a><span class="unvisited"> </span>
+<a id="L899"></a><span > </span>
+<a id="L900"></a><span class="visited"> </span>
+<a id="L901"></a><span class="visited"> </span>
+<a id="L902"></a><span class="visited"> </span>
+<a id="L903"></a><span class="visited"> </span>
+<a id="L904"></a><span > </span>
+<a id="L905"></a><span class="visited"> </span>
+<a id="L906"></a><span class="unvisited"> </span>
+<a id="L907"></a><span class="unvisited"> </span>
+<a id="L908"></a><span class="unvisited"> </span>
+<a id="L909"></a><span class="unvisited"> </span>
+<a id="L910"></a><span class="unvisited"> </span>
+<a id="L911"></a><span class="visited"> </span>
+<a id="L912"></a><span class="visited"> </span>
+<a id="L913"></a><span > </span>
+<a id="L914"></a><span class="visited"> </span>
+<a id="L915"></a><span class="unvisited"> </span>
+<a id="L916"></a><span class="unvisited"> </span>
+<a id="L917"></a><span class="unvisited"> </span>
+<a id="L918"></a><span class="unvisited"> </span>
+<a id="L919"></a><span class="unvisited"> </span>
+<a id="L920"></a><span class="unvisited"> </span>
+<a id="L921"></a><span class="visited"> </span>
+<a id="L922"></a><span class="visited"> </span>
+<a id="L923"></a><span class="visited"> </span>
+<a id="L924"></a><span class="visited"> </span>
+<a id="L925"></a><span class="visited"> </span>
+<a id="L926"></a><span class="visited"> </span>
+<a id="L927"></a><span class="unvisited"> </span>
+<a id="L928"></a><span class="unvisited"> </span>
+<a id="L929"></a><span class="unvisited"> </span>
+<a id="L930"></a><span class="unvisited"> </span>
+<a id="L931"></a><span class="unvisited"> </span>
+<a id="L932"></a><span > </span>
+<a id="L933"></a><span class="unvisited"> </span>
+<a id="L934"></a><span class="unvisited"> </span>
+<a id="L935"></a><span class="unvisited"> </span>
+<a id="L936"></a><span > </span>
+<a id="L937"></a><span class="unvisited"> </span>
+<a id="L938"></a><span class="unvisited"> </span>
+<a id="L939"></a><span class="unvisited"> </span>
+<a id="L940"></a><span > </span>
+<a id="L941"></a><span class="unvisited"> </span>
+<a id="L942"></a><span > </span>
+<a id="L943"></a><span class="unvisited"> </span>
+<a id="L944"></a><span class="unvisited"> </span>
+<a id="L945"></a><span class="unvisited"> </span>
+<a id="L946"></a><span class="unvisited"> </span>
+<a id="L947"></a><span > </span>
+<a id="L948"></a><span class="unvisited"> </span>
+<a id="L949"></a><span class="unvisited"> </span>
+<a id="L950"></a><span class="unvisited"> </span>
+<a id="L951"></a><span > </span>
+<a id="L952"></a><span class="unvisited"> </span>
+<a id="L953"></a><span class="unvisited"> </span>
+<a id="L954"></a><span > </span>
+<a id="L955"></a><span class="unvisited"> </span>
+<a id="L956"></a><span class="unvisited"> </span>
+<a id="L957"></a><span class="unvisited"> </span>
+<a id="L958"></a><span class="unvisited"> </span>
+<a id="L959"></a><span class="unvisited"> </span>
+<a id="L960"></a><span class="unvisited"> </span>
+<a id="L961"></a><span > </span>
+<a id="L962"></a><span class="unvisited"> </span>
+<a id="L963"></a><span class="unvisited"> </span>
+<a id="L964"></a><span class="unvisited"> </span>
+<a id="L965"></a><span class="unvisited"> </span>
+<a id="L966"></a><span class="unvisited"> </span>
+<a id="L967"></a><span > </span>
+<a id="L968"></a><span class="unvisited"> </span>
+<a id="L969"></a><span class="unvisited"> </span>
+<a id="L970"></a><span > </span>
+<a id="L971"></a><span class="unvisited"> </span>
+<a id="L972"></a><span class="unvisited"> </span>
+<a id="L973"></a><span class="unvisited"> </span>
+<a id="L974"></a><span > </span>
+<a id="L975"></a><span > </span>
+<a id="L976"></a><span > </span>
+<a id="L977"></a><span class="unvisited"> </span>
+<a id="L978"></a><span > </span>
+<a id="L979"></a><span > </span>
+<a id="L980"></a><span class="unvisited"> </span>
+<a id="L981"></a><span class="unvisited"> </span>
+<a id="L982"></a><span class="unvisited"> </span>
+<a id="L983"></a><span class="unvisited"> </span>
+<a id="L984"></a><span class="unvisited"> </span>
+<a id="L985"></a><span class="unvisited"> </span>
+<a id="L986"></a><span > </span>
+<a id="L987"></a><span class="unvisited"> </span>
+<a id="L988"></a><span class="unvisited"> </span>
+<a id="L989"></a><span class="unvisited"> </span>
+<a id="L990"></a><span class="unvisited"> </span>
+<a id="L991"></a><span > </span>
+<a id="L992"></a><span > </span>
+<a id="L993"></a><span class="unvisited"> </span>
+<a id="L994"></a><span class="unvisited"> </span>
+<a id="L995"></a><span > </span>
+<a id="L996"></a><span class="unvisited"> </span>
+<a id="L997"></a><span class="unvisited"> </span>
+<a id="L998"></a><span class="unvisited"> </span>
+<a id="L999"></a><span > </span>
+<a id="L1000"></a><span > </span>
+<a id="L1001"></a><span class="some-visited"> </span>
+<a id="L1002"></a><span > </span>
+<a id="L1003"></a><span class="unvisited"> </span>
+<a id="L1004"></a><span class="visited"> </span>
+<a id="L1005"></a><span > </span>
+<a id="L1006"></a><span class="visited"> </span>
+<a id="L1007"></a><span class="unvisited"> </span>
+<a id="L1008"></a><span class="unvisited"> </span>
+<a id="L1009"></a><span class="unvisited"> </span>
+<a id="L1010"></a><span class="unvisited"> </span>
+<a id="L1011"></a><span > </span>
+<a id="L1012"></a><span > </span>
+<a id="L1013"></a><span class="visited"> </span>
+<a id="L1014"></a><span class="visited"> </span>
+<a id="L1015"></a><span > </span>
+<a id="L1016"></a><span > </span>
+<a id="L1017"></a><span class="unvisited"> </span>
+<a id="L1018"></a><span > </span>
+<a id="L1019"></a><span class="unvisited"> </span>
+<a id="L1020"></a><span class="unvisited"> </span>
+<a id="L1021"></a><span > </span>
+<a id="L1022"></a><span > </span>
+<a id="L1023"></a><span class="unvisited"> </span>
+<a id="L1024"></a><span class="unvisited"> </span>
+<a id="L1025"></a><span > </span>
+<a id="L1026"></a><span class="unvisited"> </span>
+<a id="L1027"></a><span > </span>
+<a id="L1028"></a><span > </span>
+<a id="L1029"></a><span class="unvisited"> </span>
+<a id="L1030"></a><span class="unvisited"> </span>
+<a id="L1031"></a><span class="unvisited"> </span>
+<a id="L1032"></a><span > </span>
+<a id="L1033"></a><span > </span>
+<a id="L1034"></a><span class="visited"> </span>
+<a id="L1035"></a><span > </span>
+<a id="L1036"></a><span > </span>
+<a id="L1037"></a><span > </span>
+<a id="L1038"></a><span class="visited"> </span>
+<a id="L1039"></a><span class="visited"> </span>
+<a id="L1040"></a><span class="visited"> </span>
+<a id="L1041"></a><span class="unvisited"> </span>
+<a id="L1042"></a><span class="unvisited"> </span>
+<a id="L1043"></a><span class="visited"> </span>
+<a id="L1044"></a><span class="unvisited"> </span>
+<a id="L1045"></a><span class="unvisited"> </span>
+<a id="L1046"></a><span class="unvisited"> </span>
+<a id="L1047"></a><span class="unvisited"> </span>
+<a id="L1048"></a><span class="unvisited"> </span>
+<a id="L1049"></a><span class="unvisited"> </span>
+<a id="L1050"></a><span > </span>
+<a id="L1051"></a><span class="unvisited"> </span>
+<a id="L1052"></a><span class="unvisited"> </span>
+<a id="L1053"></a><span class="unvisited"> </span>
+<a id="L1054"></a><span > </span>
+<a id="L1055"></a><span > </span>
+<a id="L1056"></a><span class="unvisited"> </span>
+<a id="L1057"></a><span class="unvisited"> </span>
+<a id="L1058"></a><span class="unvisited"> </span>
+<a id="L1059"></a><span > </span>
+<a id="L1060"></a><span > </span>
+<a id="L1061"></a><span class="unvisited"> </span>
+<a id="L1062"></a><span class="unvisited"> </span>
+<a id="L1063"></a><span class="unvisited"> </span>
+<a id="L1064"></a><span > </span>
+<a id="L1065"></a><span > </span>
+<a id="L1066"></a><span class="unvisited"> </span>
+<a id="L1067"></a><span class="unvisited"> </span>
+<a id="L1068"></a><span class="unvisited"> </span>
+<a id="L1069"></a><span > </span>
+<a id="L1070"></a><span > </span>
+<a id="L1071"></a><span > </span>
+<a id="L1072"></a><span class="unvisited"> </span>
+<a id="L1073"></a><span class="unvisited"> </span>
+<a id="L1074"></a><span class="unvisited"> </span>
+<a id="L1075"></a><span > </span>
+<a id="L1076"></a><span > </span>
+<a id="L1077"></a><span > </span>
+<a id="L1078"></a><span class="unvisited"> </span>
+<a id="L1079"></a><span class="unvisited"> </span>
+<a id="L1080"></a><span class="unvisited"> </span>
+<a id="L1081"></a><span class="unvisited"> </span>
+<a id="L1082"></a><span class="unvisited"> </span>
+<a id="L1083"></a><span class="unvisited"> </span>
+<a id="L1084"></a><span class="unvisited"> </span>
+<a id="L1085"></a><span class="unvisited"> </span>
+<a id="L1086"></a><span > </span>
+<a id="L1087"></a><span > </span>
+<a id="L1088"></a><span class="unvisited"> </span>
+<a id="L1089"></a><span > </span>
+<a id="L1090"></a><span > </span>
+<a id="L1091"></a><span class="unvisited"> </span>
+<a id="L1092"></a><span class="unvisited"> </span>
+<a id="L1093"></a><span class="unvisited"> </span>
+<a id="L1094"></a><span > </span>
+<a id="L1095"></a><span > </span>
+<a id="L1096"></a><span > </span>
+<a id="L1097"></a><span > </span>
+<a id="L1098"></a><span > </span>
+<a id="L1099"></a><span class="unvisited"> </span>
+<a id="L1100"></a><span > </span>
+<a id="L1101"></a><span class="unvisited"> </span>
+<a id="L1102"></a><span > </span>
+<a id="L1103"></a><span class="unvisited"> </span>
+<a id="L1104"></a><span > </span>
+<a id="L1105"></a><span class="unvisited"> </span>
+<a id="L1106"></a><span class="unvisited"> </span>
+<a id="L1107"></a><span class="unvisited"> </span>
+<a id="L1108"></a><span class="unvisited"> </span>
+<a id="L1109"></a><span > </span>
+<a id="L1110"></a><span > </span>
+<a id="L1111"></a><span > </span>
+<a id="L1112"></a><span > </span>
+<a id="L1113"></a><span > </span>
+<a id="L1114"></a><span class="unvisited"> </span>
+<a id="L1115"></a><span class="unvisited"> </span>
+<a id="L1116"></a><span > </span>
+<a id="L1117"></a><span > </span>
+<a id="L1118"></a><span class="unvisited"> </span>
+<a id="L1119"></a><span > </span>
+<a id="L1120"></a><span > </span>
+<a id="L1121"></a><span class="unvisited"> </span>
+<a id="L1122"></a><span > </span>
+<a id="L1123"></a><span class="unvisited"> </span>
+<a id="L1124"></a><span class="unvisited"> </span>
+<a id="L1125"></a><span > </span>
+<a id="L1126"></a><span > </span>
+<a id="L1127"></a><span class="unvisited"> </span>
+<a id="L1128"></a><span class="unvisited"> </span>
+<a id="L1129"></a><span > </span>
+<a id="L1130"></a><span > </span>
+<a id="L1131"></a><span > </span>
+<a id="L1132"></a><span > </span>
+<a id="L1133"></a><span > </span>
+<a id="L1134"></a><span > </span>
+<a id="L1135"></a><span > </span>
+<a id="L1136"></a><span > </span>
+<a id="L1137"></a><span > </span>
+<a id="L1138"></a><span > </span>
+<a id="L1139"></a><span > </span>
+<a id="L1140"></a><span > </span>
+<a id="L1141"></a><span > </span>
+<a id="L1142"></a><span > </span>
+<a id="L1143"></a><span > </span>
+<a id="L1144"></a><span > </span>
+<a id="L1145"></a><span class="unvisited"> </span>
+<a id="L1146"></a><span > </span>
+<a id="L1147"></a><span > </span>
+<a id="L1148"></a><span > </span>
+<a id="L1149"></a><span class="unvisited"> </span>
+<a id="L1150"></a><span > </span>
+<a id="L1151"></a><span > </span>
+<a id="L1152"></a><span > </span>
+<a id="L1153"></a><span > </span>
+<a id="L1154"></a><span > </span>
+<a id="L1155"></a><span > </span>
+<a id="L1156"></a><span > </span>
+<a id="L1157"></a><span > </span>
+<a id="L1158"></a><span > </span>
+<a id="L1159"></a><span > </span>
+<a id="L1160"></a><span > </span>
+<a id="L1161"></a><span > </span>
+<a id="L1162"></a><span > </span>
+<a id="L1163"></a><span > </span>
+<a id="L1164"></a><span > </span>
+<a id="L1165"></a><span > </span>
+<a id="L1166"></a><span > </span>
+<a id="L1167"></a><span > </span>
+<a id="L1168"></a><span > </span>
+<a id="L1169"></a><span > </span>
+<a id="L1170"></a><span > </span>
+<a id="L1171"></a><span class="unvisited"> </span>
+<a id="L1172"></a><span class="unvisited"> </span>
+<a id="L1173"></a><span > </span>
+<a id="L1174"></a><span class="unvisited"> </span>
+<a id="L1175"></a><span class="unvisited"> </span>
+<a id="L1176"></a><span class="unvisited"> </span>
+<a id="L1177"></a><span class="unvisited"> </span>
+<a id="L1178"></a><span > </span>
+<a id="L1179"></a><span > </span>
+<a id="L1180"></a><span > </span>
+<a id="L1181"></a><span class="unvisited"> </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1">   1</a>
+<a href="#L2">   2</a>
+<a href="#L3">   3</a>
+<a href="#L4">   4</a>
+<a href="#L5">   5</a>
+<a href="#L6">   6</a>
+<a href="#L7">   7</a>
+<a href="#L8">   8</a>
+<a href="#L9">   9</a>
+<a href="#L10">  10</a>
+<a href="#L11">  11</a>
+<a href="#L12">  12</a>
+<a href="#L13">  13</a>
+<a href="#L14">  14</a>
+<a href="#L15">  15</a>
+<a href="#L16">  16</a>
+<a href="#L17">  17</a>
+<a href="#L18">  18</a>
+<a href="#L19">  19</a>
+<a href="#L20">  20</a>
+<a href="#L21">  21</a>
+<a href="#L22">  22</a>
+<a href="#L23">  23</a>
+<a href="#L24">  24</a>
+<a href="#L25">  25</a>
+<a href="#L26">  26</a>
+<a href="#L27">  27</a>
+<a href="#L28">  28</a>
+<a href="#L29">  29</a>
+<a href="#L30">  30</a>
+<a href="#L31">  31</a>
+<a href="#L32">  32</a>
+<a href="#L33">  33</a>
+<a href="#L34">  34</a>
+<a href="#L35">  35</a>
+<a href="#L36">  36</a>
+<a href="#L37">  37</a>
+<a href="#L38">  38</a>
+<a href="#L39">  39</a>
+<a href="#L40">  40</a>
+<a href="#L41">  41</a>
+<a href="#L42">  42</a>
+<a href="#L43">  43</a>
+<a href="#L44">  44</a>
+<a href="#L45">  45</a>
+<a href="#L46">  46</a>
+<a href="#L47">  47</a>
+<a href="#L48">  48</a>
+<a href="#L49">  49</a>
+<a href="#L50">  50</a>
+<a href="#L51">  51</a>
+<a href="#L52">  52</a>
+<a href="#L53">  53</a>
+<a href="#L54">  54</a>
+<a href="#L55">  55</a>
+<a href="#L56">  56</a>
+<a href="#L57">  57</a>
+<a href="#L58">  58</a>
+<a href="#L59">  59</a>
+<a href="#L60">  60</a>
+<a href="#L61">  61</a>
+<a href="#L62">  62</a>
+<a href="#L63">  63</a>
+<a href="#L64">  64</a>
+<a href="#L65">  65</a>
+<a href="#L66">  66</a>
+<a href="#L67">  67</a>
+<a href="#L68">  68</a>
+<a href="#L69">  69</a>
+<a href="#L70">  70</a>
+<a href="#L71">  71</a>
+<a href="#L72">  72</a>
+<a href="#L73">  73</a>
+<a href="#L74">  74</a>
+<a href="#L75">  75</a>
+<a href="#L76">  76</a>
+<a href="#L77">  77</a>
+<a href="#L78">  78</a>
+<a href="#L79">  79</a>
+<a href="#L80">  80</a>
+<a href="#L81">  81</a>
+<a href="#L82">  82</a>
+<a href="#L83">  83</a>
+<a href="#L84">  84</a>
+<a href="#L85">  85</a>
+<a href="#L86">  86</a>
+<a href="#L87">  87</a>
+<a href="#L88">  88</a>
+<a href="#L89">  89</a>
+<a href="#L90">  90</a>
+<a href="#L91">  91</a>
+<a href="#L92">  92</a>
+<a href="#L93">  93</a>
+<a href="#L94">  94</a>
+<a href="#L95">  95</a>
+<a href="#L96">  96</a>
+<a href="#L97">  97</a>
+<a href="#L98">  98</a>
+<a href="#L99">  99</a>
+<a href="#L100"> 100</a>
+<a href="#L101"> 101</a>
+<a href="#L102"> 102</a>
+<a href="#L103"> 103</a>
+<a href="#L104"> 104</a>
+<a href="#L105"> 105</a>
+<a href="#L106"> 106</a>
+<a href="#L107"> 107</a>
+<a href="#L108"> 108</a>
+<a href="#L109"> 109</a>
+<a href="#L110"> 110</a>
+<a href="#L111"> 111</a>
+<a href="#L112"> 112</a>
+<a href="#L113"> 113</a>
+<a href="#L114"> 114</a>
+<a href="#L115"> 115</a>
+<a href="#L116"> 116</a>
+<a href="#L117"> 117</a>
+<a href="#L118"> 118</a>
+<a href="#L119"> 119</a>
+<a href="#L120"> 120</a>
+<a href="#L121"> 121</a>
+<a href="#L122"> 122</a>
+<a href="#L123"> 123</a>
+<a href="#L124"> 124</a>
+<a href="#L125"> 125</a>
+<a href="#L126"> 126</a>
+<a href="#L127"> 127</a>
+<a href="#L128"> 128</a>
+<a href="#L129"> 129</a>
+<a href="#L130"> 130</a>
+<a href="#L131"> 131</a>
+<a href="#L132"> 132</a>
+<a href="#L133"> 133</a>
+<a href="#L134"> 134</a>
+<a href="#L135"> 135</a>
+<a href="#L136"> 136</a>
+<a href="#L137"> 137</a>
+<a href="#L138"> 138</a>
+<a href="#L139"> 139</a>
+<a href="#L140"> 140</a>
+<a href="#L141"> 141</a>
+<a href="#L142"> 142</a>
+<a href="#L143"> 143</a>
+<a href="#L144"> 144</a>
+<a href="#L145"> 145</a>
+<a href="#L146"> 146</a>
+<a href="#L147"> 147</a>
+<a href="#L148"> 148</a>
+<a href="#L149"> 149</a>
+<a href="#L150"> 150</a>
+<a href="#L151"> 151</a>
+<a href="#L152"> 152</a>
+<a href="#L153"> 153</a>
+<a href="#L154"> 154</a>
+<a href="#L155"> 155</a>
+<a href="#L156"> 156</a>
+<a href="#L157"> 157</a>
+<a href="#L158"> 158</a>
+<a href="#L159"> 159</a>
+<a href="#L160"> 160</a>
+<a href="#L161"> 161</a>
+<a href="#L162"> 162</a>
+<a href="#L163"> 163</a>
+<a href="#L164"> 164</a>
+<a href="#L165"> 165</a>
+<a href="#L166"> 166</a>
+<a href="#L167"> 167</a>
+<a href="#L168"> 168</a>
+<a href="#L169"> 169</a>
+<a href="#L170"> 170</a>
+<a href="#L171"> 171</a>
+<a href="#L172"> 172</a>
+<a href="#L173"> 173</a>
+<a href="#L174"> 174</a>
+<a href="#L175"> 175</a>
+<a href="#L176"> 176</a>
+<a href="#L177"> 177</a>
+<a href="#L178"> 178</a>
+<a href="#L179"> 179</a>
+<a href="#L180"> 180</a>
+<a href="#L181"> 181</a>
+<a href="#L182"> 182</a>
+<a href="#L183"> 183</a>
+<a href="#L184"> 184</a>
+<a href="#L185"> 185</a>
+<a href="#L186"> 186</a>
+<a href="#L187"> 187</a>
+<a href="#L188"> 188</a>
+<a href="#L189"> 189</a>
+<a href="#L190"> 190</a>
+<a href="#L191"> 191</a>
+<a href="#L192"> 192</a>
+<a href="#L193"> 193</a>
+<a href="#L194"> 194</a>
+<a href="#L195"> 195</a>
+<a href="#L196"> 196</a>
+<a href="#L197"> 197</a>
+<a href="#L198"> 198</a>
+<a href="#L199"> 199</a>
+<a href="#L200"> 200</a>
+<a href="#L201"> 201</a>
+<a href="#L202"> 202</a>
+<a href="#L203"> 203</a>
+<a href="#L204"> 204</a>
+<a href="#L205"> 205</a>
+<a href="#L206"> 206</a>
+<a href="#L207"> 207</a>
+<a href="#L208"> 208</a>
+<a href="#L209"> 209</a>
+<a href="#L210"> 210</a>
+<a href="#L211"> 211</a>
+<a href="#L212"> 212</a>
+<a href="#L213"> 213</a>
+<a href="#L214"> 214</a>
+<a href="#L215"> 215</a>
+<a href="#L216"> 216</a>
+<a href="#L217"> 217</a>
+<a href="#L218"> 218</a>
+<a href="#L219"> 219</a>
+<a href="#L220"> 220</a>
+<a href="#L221"> 221</a>
+<a href="#L222"> 222</a>
+<a href="#L223"> 223</a>
+<a href="#L224"> 224</a>
+<a href="#L225"> 225</a>
+<a href="#L226"> 226</a>
+<a href="#L227"> 227</a>
+<a href="#L228"> 228</a>
+<a href="#L229"> 229</a>
+<a href="#L230"> 230</a>
+<a href="#L231"> 231</a>
+<a href="#L232"> 232</a>
+<a href="#L233"> 233</a>
+<a href="#L234"> 234</a>
+<a href="#L235"> 235</a>
+<a href="#L236"> 236</a>
+<a href="#L237"> 237</a>
+<a href="#L238"> 238</a>
+<a href="#L239"> 239</a>
+<a href="#L240"> 240</a>
+<a href="#L241"> 241</a>
+<a href="#L242"> 242</a>
+<a href="#L243"> 243</a>
+<a href="#L244"> 244</a>
+<a href="#L245"> 245</a>
+<a href="#L246"> 246</a>
+<a href="#L247"> 247</a>
+<a href="#L248"> 248</a>
+<a href="#L249"> 249</a>
+<a href="#L250"> 250</a>
+<a href="#L251"> 251</a>
+<a href="#L252"> 252</a>
+<a href="#L253"> 253</a>
+<a href="#L254"> 254</a>
+<a href="#L255"> 255</a>
+<a href="#L256"> 256</a>
+<a href="#L257"> 257</a>
+<a href="#L258"> 258</a>
+<a href="#L259"> 259</a>
+<a href="#L260"> 260</a>
+<a href="#L261"> 261</a>
+<a href="#L262"> 262</a>
+<a href="#L263"> 263</a>
+<a href="#L264"> 264</a>
+<a href="#L265"> 265</a>
+<a href="#L266"> 266</a>
+<a href="#L267"> 267</a>
+<a href="#L268"> 268</a>
+<a href="#L269"> 269</a>
+<a href="#L270"> 270</a>
+<a href="#L271"> 271</a>
+<a href="#L272"> 272</a>
+<a href="#L273"> 273</a>
+<a href="#L274"> 274</a>
+<a href="#L275"> 275</a>
+<a href="#L276"> 276</a>
+<a href="#L277"> 277</a>
+<a href="#L278"> 278</a>
+<a href="#L279"> 279</a>
+<a href="#L280"> 280</a>
+<a href="#L281"> 281</a>
+<a href="#L282"> 282</a>
+<a href="#L283"> 283</a>
+<a href="#L284"> 284</a>
+<a href="#L285"> 285</a>
+<a href="#L286"> 286</a>
+<a href="#L287"> 287</a>
+<a href="#L288"> 288</a>
+<a href="#L289"> 289</a>
+<a href="#L290"> 290</a>
+<a href="#L291"> 291</a>
+<a href="#L292"> 292</a>
+<a href="#L293"> 293</a>
+<a href="#L294"> 294</a>
+<a href="#L295"> 295</a>
+<a href="#L296"> 296</a>
+<a href="#L297"> 297</a>
+<a href="#L298"> 298</a>
+<a href="#L299"> 299</a>
+<a href="#L300"> 300</a>
+<a href="#L301"> 301</a>
+<a href="#L302"> 302</a>
+<a href="#L303"> 303</a>
+<a href="#L304"> 304</a>
+<a href="#L305"> 305</a>
+<a href="#L306"> 306</a>
+<a href="#L307"> 307</a>
+<a href="#L308"> 308</a>
+<a href="#L309"> 309</a>
+<a href="#L310"> 310</a>
+<a href="#L311"> 311</a>
+<a href="#L312"> 312</a>
+<a href="#L313"> 313</a>
+<a href="#L314"> 314</a>
+<a href="#L315"> 315</a>
+<a href="#L316"> 316</a>
+<a href="#L317"> 317</a>
+<a href="#L318"> 318</a>
+<a href="#L319"> 319</a>
+<a href="#L320"> 320</a>
+<a href="#L321"> 321</a>
+<a href="#L322"> 322</a>
+<a href="#L323"> 323</a>
+<a href="#L324"> 324</a>
+<a href="#L325"> 325</a>
+<a href="#L326"> 326</a>
+<a href="#L327"> 327</a>
+<a href="#L328"> 328</a>
+<a href="#L329"> 329</a>
+<a href="#L330"> 330</a>
+<a href="#L331"> 331</a>
+<a href="#L332"> 332</a>
+<a href="#L333"> 333</a>
+<a href="#L334"> 334</a>
+<a href="#L335"> 335</a>
+<a href="#L336"> 336</a>
+<a href="#L337"> 337</a>
+<a href="#L338"> 338</a>
+<a href="#L339"> 339</a>
+<a href="#L340"> 340</a>
+<a href="#L341"> 341</a>
+<a href="#L342"> 342</a>
+<a href="#L343"> 343</a>
+<a href="#L344"> 344</a>
+<a href="#L345"> 345</a>
+<a href="#L346"> 346</a>
+<a href="#L347"> 347</a>
+<a href="#L348"> 348</a>
+<a href="#L349"> 349</a>
+<a href="#L350"> 350</a>
+<a href="#L351"> 351</a>
+<a href="#L352"> 352</a>
+<a href="#L353"> 353</a>
+<a href="#L354"> 354</a>
+<a href="#L355"> 355</a>
+<a href="#L356"> 356</a>
+<a href="#L357"> 357</a>
+<a href="#L358"> 358</a>
+<a href="#L359"> 359</a>
+<a href="#L360"> 360</a>
+<a href="#L361"> 361</a>
+<a href="#L362"> 362</a>
+<a href="#L363"> 363</a>
+<a href="#L364"> 364</a>
+<a href="#L365"> 365</a>
+<a href="#L366"> 366</a>
+<a href="#L367"> 367</a>
+<a href="#L368"> 368</a>
+<a href="#L369"> 369</a>
+<a href="#L370"> 370</a>
+<a href="#L371"> 371</a>
+<a href="#L372"> 372</a>
+<a href="#L373"> 373</a>
+<a href="#L374"> 374</a>
+<a href="#L375"> 375</a>
+<a href="#L376"> 376</a>
+<a href="#L377"> 377</a>
+<a href="#L378"> 378</a>
+<a href="#L379"> 379</a>
+<a href="#L380"> 380</a>
+<a href="#L381"> 381</a>
+<a href="#L382"> 382</a>
+<a href="#L383"> 383</a>
+<a href="#L384"> 384</a>
+<a href="#L385"> 385</a>
+<a href="#L386"> 386</a>
+<a href="#L387"> 387</a>
+<a href="#L388"> 388</a>
+<a href="#L389"> 389</a>
+<a href="#L390"> 390</a>
+<a href="#L391"> 391</a>
+<a href="#L392"> 392</a>
+<a href="#L393"> 393</a>
+<a href="#L394"> 394</a>
+<a href="#L395"> 395</a>
+<a href="#L396"> 396</a>
+<a href="#L397"> 397</a>
+<a href="#L398"> 398</a>
+<a href="#L399"> 399</a>
+<a href="#L400"> 400</a>
+<a href="#L401"> 401</a>
+<a href="#L402"> 402</a>
+<a href="#L403"> 403</a>
+<a href="#L404"> 404</a>
+<a href="#L405"> 405</a>
+<a href="#L406"> 406</a>
+<a href="#L407"> 407</a>
+<a href="#L408"> 408</a>
+<a href="#L409"> 409</a>
+<a href="#L410"> 410</a>
+<a href="#L411"> 411</a>
+<a href="#L412"> 412</a>
+<a href="#L413"> 413</a>
+<a href="#L414"> 414</a>
+<a href="#L415"> 415</a>
+<a href="#L416"> 416</a>
+<a href="#L417"> 417</a>
+<a href="#L418"> 418</a>
+<a href="#L419"> 419</a>
+<a href="#L420"> 420</a>
+<a href="#L421"> 421</a>
+<a href="#L422"> 422</a>
+<a href="#L423"> 423</a>
+<a href="#L424"> 424</a>
+<a href="#L425"> 425</a>
+<a href="#L426"> 426</a>
+<a href="#L427"> 427</a>
+<a href="#L428"> 428</a>
+<a href="#L429"> 429</a>
+<a href="#L430"> 430</a>
+<a href="#L431"> 431</a>
+<a href="#L432"> 432</a>
+<a href="#L433"> 433</a>
+<a href="#L434"> 434</a>
+<a href="#L435"> 435</a>
+<a href="#L436"> 436</a>
+<a href="#L437"> 437</a>
+<a href="#L438"> 438</a>
+<a href="#L439"> 439</a>
+<a href="#L440"> 440</a>
+<a href="#L441"> 441</a>
+<a href="#L442"> 442</a>
+<a href="#L443"> 443</a>
+<a href="#L444"> 444</a>
+<a href="#L445"> 445</a>
+<a href="#L446"> 446</a>
+<a href="#L447"> 447</a>
+<a href="#L448"> 448</a>
+<a href="#L449"> 449</a>
+<a href="#L450"> 450</a>
+<a href="#L451"> 451</a>
+<a href="#L452"> 452</a>
+<a href="#L453"> 453</a>
+<a href="#L454"> 454</a>
+<a href="#L455"> 455</a>
+<a href="#L456"> 456</a>
+<a href="#L457"> 457</a>
+<a href="#L458"> 458</a>
+<a href="#L459"> 459</a>
+<a href="#L460"> 460</a>
+<a href="#L461"> 461</a>
+<a href="#L462"> 462</a>
+<a href="#L463"> 463</a>
+<a href="#L464"> 464</a>
+<a href="#L465"> 465</a>
+<a href="#L466"> 466</a>
+<a href="#L467"> 467</a>
+<a href="#L468"> 468</a>
+<a href="#L469"> 469</a>
+<a href="#L470"> 470</a>
+<a href="#L471"> 471</a>
+<a href="#L472"> 472</a>
+<a href="#L473"> 473</a>
+<a href="#L474"> 474</a>
+<a href="#L475"> 475</a>
+<a href="#L476"> 476</a>
+<a href="#L477"> 477</a>
+<a href="#L478"> 478</a>
+<a href="#L479"> 479</a>
+<a href="#L480"> 480</a>
+<a href="#L481"> 481</a>
+<a href="#L482"> 482</a>
+<a href="#L483"> 483</a>
+<a href="#L484"> 484</a>
+<a href="#L485"> 485</a>
+<a href="#L486"> 486</a>
+<a href="#L487"> 487</a>
+<a href="#L488"> 488</a>
+<a href="#L489"> 489</a>
+<a href="#L490"> 490</a>
+<a href="#L491"> 491</a>
+<a href="#L492"> 492</a>
+<a href="#L493"> 493</a>
+<a href="#L494"> 494</a>
+<a href="#L495"> 495</a>
+<a href="#L496"> 496</a>
+<a href="#L497"> 497</a>
+<a href="#L498"> 498</a>
+<a href="#L499"> 499</a>
+<a href="#L500"> 500</a>
+<a href="#L501"> 501</a>
+<a href="#L502"> 502</a>
+<a href="#L503"> 503</a>
+<a href="#L504"> 504</a>
+<a href="#L505"> 505</a>
+<a href="#L506"> 506</a>
+<a href="#L507"> 507</a>
+<a href="#L508"> 508</a>
+<a href="#L509"> 509</a>
+<a href="#L510"> 510</a>
+<a href="#L511"> 511</a>
+<a href="#L512"> 512</a>
+<a href="#L513"> 513</a>
+<a href="#L514"> 514</a>
+<a href="#L515"> 515</a>
+<a href="#L516"> 516</a>
+<a href="#L517"> 517</a>
+<a href="#L518"> 518</a>
+<a href="#L519"> 519</a>
+<a href="#L520"> 520</a>
+<a href="#L521"> 521</a>
+<a href="#L522"> 522</a>
+<a href="#L523"> 523</a>
+<a href="#L524"> 524</a>
+<a href="#L525"> 525</a>
+<a href="#L526"> 526</a>
+<a href="#L527"> 527</a>
+<a href="#L528"> 528</a>
+<a href="#L529"> 529</a>
+<a href="#L530"> 530</a>
+<a href="#L531"> 531</a>
+<a href="#L532"> 532</a>
+<a href="#L533"> 533</a>
+<a href="#L534"> 534</a>
+<a href="#L535"> 535</a>
+<a href="#L536"> 536</a>
+<a href="#L537"> 537</a>
+<a href="#L538"> 538</a>
+<a href="#L539"> 539</a>
+<a href="#L540"> 540</a>
+<a href="#L541"> 541</a>
+<a href="#L542"> 542</a>
+<a href="#L543"> 543</a>
+<a href="#L544"> 544</a>
+<a href="#L545"> 545</a>
+<a href="#L546"> 546</a>
+<a href="#L547"> 547</a>
+<a href="#L548"> 548</a>
+<a href="#L549"> 549</a>
+<a href="#L550"> 550</a>
+<a href="#L551"> 551</a>
+<a href="#L552"> 552</a>
+<a href="#L553"> 553</a>
+<a href="#L554"> 554</a>
+<a href="#L555"> 555</a>
+<a href="#L556"> 556</a>
+<a href="#L557"> 557</a>
+<a href="#L558"> 558</a>
+<a href="#L559"> 559</a>
+<a href="#L560"> 560</a>
+<a href="#L561"> 561</a>
+<a href="#L562"> 562</a>
+<a href="#L563"> 563</a>
+<a href="#L564"> 564</a>
+<a href="#L565"> 565</a>
+<a href="#L566"> 566</a>
+<a href="#L567"> 567</a>
+<a href="#L568"> 568</a>
+<a href="#L569"> 569</a>
+<a href="#L570"> 570</a>
+<a href="#L571"> 571</a>
+<a href="#L572"> 572</a>
+<a href="#L573"> 573</a>
+<a href="#L574"> 574</a>
+<a href="#L575"> 575</a>
+<a href="#L576"> 576</a>
+<a href="#L577"> 577</a>
+<a href="#L578"> 578</a>
+<a href="#L579"> 579</a>
+<a href="#L580"> 580</a>
+<a href="#L581"> 581</a>
+<a href="#L582"> 582</a>
+<a href="#L583"> 583</a>
+<a href="#L584"> 584</a>
+<a href="#L585"> 585</a>
+<a href="#L586"> 586</a>
+<a href="#L587"> 587</a>
+<a href="#L588"> 588</a>
+<a href="#L589"> 589</a>
+<a href="#L590"> 590</a>
+<a href="#L591"> 591</a>
+<a href="#L592"> 592</a>
+<a href="#L593"> 593</a>
+<a href="#L594"> 594</a>
+<a href="#L595"> 595</a>
+<a href="#L596"> 596</a>
+<a href="#L597"> 597</a>
+<a href="#L598"> 598</a>
+<a href="#L599"> 599</a>
+<a href="#L600"> 600</a>
+<a href="#L601"> 601</a>
+<a href="#L602"> 602</a>
+<a href="#L603"> 603</a>
+<a href="#L604"> 604</a>
+<a href="#L605"> 605</a>
+<a href="#L606"> 606</a>
+<a href="#L607"> 607</a>
+<a href="#L608"> 608</a>
+<a href="#L609"> 609</a>
+<a href="#L610"> 610</a>
+<a href="#L611"> 611</a>
+<a href="#L612"> 612</a>
+<a href="#L613"> 613</a>
+<a href="#L614"> 614</a>
+<a href="#L615"> 615</a>
+<a href="#L616"> 616</a>
+<a href="#L617"> 617</a>
+<a href="#L618"> 618</a>
+<a href="#L619"> 619</a>
+<a href="#L620"> 620</a>
+<a href="#L621"> 621</a>
+<a href="#L622"> 622</a>
+<a href="#L623"> 623</a>
+<a href="#L624"> 624</a>
+<a href="#L625"> 625</a>
+<a href="#L626"> 626</a>
+<a href="#L627"> 627</a>
+<a href="#L628"> 628</a>
+<a href="#L629"> 629</a>
+<a href="#L630"> 630</a>
+<a href="#L631"> 631</a>
+<a href="#L632"> 632</a>
+<a href="#L633"> 633</a>
+<a href="#L634"> 634</a>
+<a href="#L635"> 635</a>
+<a href="#L636"> 636</a>
+<a href="#L637"> 637</a>
+<a href="#L638"> 638</a>
+<a href="#L639"> 639</a>
+<a href="#L640"> 640</a>
+<a href="#L641"> 641</a>
+<a href="#L642"> 642</a>
+<a href="#L643"> 643</a>
+<a href="#L644"> 644</a>
+<a href="#L645"> 645</a>
+<a href="#L646"> 646</a>
+<a href="#L647"> 647</a>
+<a href="#L648"> 648</a>
+<a href="#L649"> 649</a>
+<a href="#L650"> 650</a>
+<a href="#L651"> 651</a>
+<a href="#L652"> 652</a>
+<a href="#L653"> 653</a>
+<a href="#L654"> 654</a>
+<a href="#L655"> 655</a>
+<a href="#L656"> 656</a>
+<a href="#L657"> 657</a>
+<a href="#L658"> 658</a>
+<a href="#L659"> 659</a>
+<a href="#L660"> 660</a>
+<a href="#L661"> 661</a>
+<a href="#L662"> 662</a>
+<a href="#L663"> 663</a>
+<a href="#L664"> 664</a>
+<a href="#L665"> 665</a>
+<a href="#L666"> 666</a>
+<a href="#L667"> 667</a>
+<a href="#L668"> 668</a>
+<a href="#L669"> 669</a>
+<a href="#L670"> 670</a>
+<a href="#L671"> 671</a>
+<a href="#L672"> 672</a>
+<a href="#L673"> 673</a>
+<a href="#L674"> 674</a>
+<a href="#L675"> 675</a>
+<a href="#L676"> 676</a>
+<a href="#L677"> 677</a>
+<a href="#L678"> 678</a>
+<a href="#L679"> 679</a>
+<a href="#L680"> 680</a>
+<a href="#L681"> 681</a>
+<a href="#L682"> 682</a>
+<a href="#L683"> 683</a>
+<a href="#L684"> 684</a>
+<a href="#L685"> 685</a>
+<a href="#L686"> 686</a>
+<a href="#L687"> 687</a>
+<a href="#L688"> 688</a>
+<a href="#L689"> 689</a>
+<a href="#L690"> 690</a>
+<a href="#L691"> 691</a>
+<a href="#L692"> 692</a>
+<a href="#L693"> 693</a>
+<a href="#L694"> 694</a>
+<a href="#L695"> 695</a>
+<a href="#L696"> 696</a>
+<a href="#L697"> 697</a>
+<a href="#L698"> 698</a>
+<a href="#L699"> 699</a>
+<a href="#L700"> 700</a>
+<a href="#L701"> 701</a>
+<a href="#L702"> 702</a>
+<a href="#L703"> 703</a>
+<a href="#L704"> 704</a>
+<a href="#L705"> 705</a>
+<a href="#L706"> 706</a>
+<a href="#L707"> 707</a>
+<a href="#L708"> 708</a>
+<a href="#L709"> 709</a>
+<a href="#L710"> 710</a>
+<a href="#L711"> 711</a>
+<a href="#L712"> 712</a>
+<a href="#L713"> 713</a>
+<a href="#L714"> 714</a>
+<a href="#L715"> 715</a>
+<a href="#L716"> 716</a>
+<a href="#L717"> 717</a>
+<a href="#L718"> 718</a>
+<a href="#L719"> 719</a>
+<a href="#L720"> 720</a>
+<a href="#L721"> 721</a>
+<a href="#L722"> 722</a>
+<a href="#L723"> 723</a>
+<a href="#L724"> 724</a>
+<a href="#L725"> 725</a>
+<a href="#L726"> 726</a>
+<a href="#L727"> 727</a>
+<a href="#L728"> 728</a>
+<a href="#L729"> 729</a>
+<a href="#L730"> 730</a>
+<a href="#L731"> 731</a>
+<a href="#L732"> 732</a>
+<a href="#L733"> 733</a>
+<a href="#L734"> 734</a>
+<a href="#L735"> 735</a>
+<a href="#L736"> 736</a>
+<a href="#L737"> 737</a>
+<a href="#L738"> 738</a>
+<a href="#L739"> 739</a>
+<a href="#L740"> 740</a>
+<a href="#L741"> 741</a>
+<a href="#L742"> 742</a>
+<a href="#L743"> 743</a>
+<a href="#L744"> 744</a>
+<a href="#L745"> 745</a>
+<a href="#L746"> 746</a>
+<a href="#L747"> 747</a>
+<a href="#L748"> 748</a>
+<a href="#L749"> 749</a>
+<a href="#L750"> 750</a>
+<a href="#L751"> 751</a>
+<a href="#L752"> 752</a>
+<a href="#L753"> 753</a>
+<a href="#L754"> 754</a>
+<a href="#L755"> 755</a>
+<a href="#L756"> 756</a>
+<a href="#L757"> 757</a>
+<a href="#L758"> 758</a>
+<a href="#L759"> 759</a>
+<a href="#L760"> 760</a>
+<a href="#L761"> 761</a>
+<a href="#L762"> 762</a>
+<a href="#L763"> 763</a>
+<a href="#L764"> 764</a>
+<a href="#L765"> 765</a>
+<a href="#L766"> 766</a>
+<a href="#L767"> 767</a>
+<a href="#L768"> 768</a>
+<a href="#L769"> 769</a>
+<a href="#L770"> 770</a>
+<a href="#L771"> 771</a>
+<a href="#L772"> 772</a>
+<a href="#L773"> 773</a>
+<a href="#L774"> 774</a>
+<a href="#L775"> 775</a>
+<a href="#L776"> 776</a>
+<a href="#L777"> 777</a>
+<a href="#L778"> 778</a>
+<a href="#L779"> 779</a>
+<a href="#L780"> 780</a>
+<a href="#L781"> 781</a>
+<a href="#L782"> 782</a>
+<a href="#L783"> 783</a>
+<a href="#L784"> 784</a>
+<a href="#L785"> 785</a>
+<a href="#L786"> 786</a>
+<a href="#L787"> 787</a>
+<a href="#L788"> 788</a>
+<a href="#L789"> 789</a>
+<a href="#L790"> 790</a>
+<a href="#L791"> 791</a>
+<a href="#L792"> 792</a>
+<a href="#L793"> 793</a>
+<a href="#L794"> 794</a>
+<a href="#L795"> 795</a>
+<a href="#L796"> 796</a>
+<a href="#L797"> 797</a>
+<a href="#L798"> 798</a>
+<a href="#L799"> 799</a>
+<a href="#L800"> 800</a>
+<a href="#L801"> 801</a>
+<a href="#L802"> 802</a>
+<a href="#L803"> 803</a>
+<a href="#L804"> 804</a>
+<a href="#L805"> 805</a>
+<a href="#L806"> 806</a>
+<a href="#L807"> 807</a>
+<a href="#L808"> 808</a>
+<a href="#L809"> 809</a>
+<a href="#L810"> 810</a>
+<a href="#L811"> 811</a>
+<a href="#L812"> 812</a>
+<a href="#L813"> 813</a>
+<a href="#L814"> 814</a>
+<a href="#L815"> 815</a>
+<a href="#L816"> 816</a>
+<a href="#L817"> 817</a>
+<a href="#L818"> 818</a>
+<a href="#L819"> 819</a>
+<a href="#L820"> 820</a>
+<a href="#L821"> 821</a>
+<a href="#L822"> 822</a>
+<a href="#L823"> 823</a>
+<a href="#L824"> 824</a>
+<a href="#L825"> 825</a>
+<a href="#L826"> 826</a>
+<a href="#L827"> 827</a>
+<a href="#L828"> 828</a>
+<a href="#L829"> 829</a>
+<a href="#L830"> 830</a>
+<a href="#L831"> 831</a>
+<a href="#L832"> 832</a>
+<a href="#L833"> 833</a>
+<a href="#L834"> 834</a>
+<a href="#L835"> 835</a>
+<a href="#L836"> 836</a>
+<a href="#L837"> 837</a>
+<a href="#L838"> 838</a>
+<a href="#L839"> 839</a>
+<a href="#L840"> 840</a>
+<a href="#L841"> 841</a>
+<a href="#L842"> 842</a>
+<a href="#L843"> 843</a>
+<a href="#L844"> 844</a>
+<a href="#L845"> 845</a>
+<a href="#L846"> 846</a>
+<a href="#L847"> 847</a>
+<a href="#L848"> 848</a>
+<a href="#L849"> 849</a>
+<a href="#L850"> 850</a>
+<a href="#L851"> 851</a>
+<a href="#L852"> 852</a>
+<a href="#L853"> 853</a>
+<a href="#L854"> 854</a>
+<a href="#L855"> 855</a>
+<a href="#L856"> 856</a>
+<a href="#L857"> 857</a>
+<a href="#L858"> 858</a>
+<a href="#L859"> 859</a>
+<a href="#L860"> 860</a>
+<a href="#L861"> 861</a>
+<a href="#L862"> 862</a>
+<a href="#L863"> 863</a>
+<a href="#L864"> 864</a>
+<a href="#L865"> 865</a>
+<a href="#L866"> 866</a>
+<a href="#L867"> 867</a>
+<a href="#L868"> 868</a>
+<a href="#L869"> 869</a>
+<a href="#L870"> 870</a>
+<a href="#L871"> 871</a>
+<a href="#L872"> 872</a>
+<a href="#L873"> 873</a>
+<a href="#L874"> 874</a>
+<a href="#L875"> 875</a>
+<a href="#L876"> 876</a>
+<a href="#L877"> 877</a>
+<a href="#L878"> 878</a>
+<a href="#L879"> 879</a>
+<a href="#L880"> 880</a>
+<a href="#L881"> 881</a>
+<a href="#L882"> 882</a>
+<a href="#L883"> 883</a>
+<a href="#L884"> 884</a>
+<a href="#L885"> 885</a>
+<a href="#L886"> 886</a>
+<a href="#L887"> 887</a>
+<a href="#L888"> 888</a>
+<a href="#L889"> 889</a>
+<a href="#L890"> 890</a>
+<a href="#L891"> 891</a>
+<a href="#L892"> 892</a>
+<a href="#L893"> 893</a>
+<a href="#L894"> 894</a>
+<a href="#L895"> 895</a>
+<a href="#L896"> 896</a>
+<a href="#L897"> 897</a>
+<a href="#L898"> 898</a>
+<a href="#L899"> 899</a>
+<a href="#L900"> 900</a>
+<a href="#L901"> 901</a>
+<a href="#L902"> 902</a>
+<a href="#L903"> 903</a>
+<a href="#L904"> 904</a>
+<a href="#L905"> 905</a>
+<a href="#L906"> 906</a>
+<a href="#L907"> 907</a>
+<a href="#L908"> 908</a>
+<a href="#L909"> 909</a>
+<a href="#L910"> 910</a>
+<a href="#L911"> 911</a>
+<a href="#L912"> 912</a>
+<a href="#L913"> 913</a>
+<a href="#L914"> 914</a>
+<a href="#L915"> 915</a>
+<a href="#L916"> 916</a>
+<a href="#L917"> 917</a>
+<a href="#L918"> 918</a>
+<a href="#L919"> 919</a>
+<a href="#L920"> 920</a>
+<a href="#L921"> 921</a>
+<a href="#L922"> 922</a>
+<a href="#L923"> 923</a>
+<a href="#L924"> 924</a>
+<a href="#L925"> 925</a>
+<a href="#L926"> 926</a>
+<a href="#L927"> 927</a>
+<a href="#L928"> 928</a>
+<a href="#L929"> 929</a>
+<a href="#L930"> 930</a>
+<a href="#L931"> 931</a>
+<a href="#L932"> 932</a>
+<a href="#L933"> 933</a>
+<a href="#L934"> 934</a>
+<a href="#L935"> 935</a>
+<a href="#L936"> 936</a>
+<a href="#L937"> 937</a>
+<a href="#L938"> 938</a>
+<a href="#L939"> 939</a>
+<a href="#L940"> 940</a>
+<a href="#L941"> 941</a>
+<a href="#L942"> 942</a>
+<a href="#L943"> 943</a>
+<a href="#L944"> 944</a>
+<a href="#L945"> 945</a>
+<a href="#L946"> 946</a>
+<a href="#L947"> 947</a>
+<a href="#L948"> 948</a>
+<a href="#L949"> 949</a>
+<a href="#L950"> 950</a>
+<a href="#L951"> 951</a>
+<a href="#L952"> 952</a>
+<a href="#L953"> 953</a>
+<a href="#L954"> 954</a>
+<a href="#L955"> 955</a>
+<a href="#L956"> 956</a>
+<a href="#L957"> 957</a>
+<a href="#L958"> 958</a>
+<a href="#L959"> 959</a>
+<a href="#L960"> 960</a>
+<a href="#L961"> 961</a>
+<a href="#L962"> 962</a>
+<a href="#L963"> 963</a>
+<a href="#L964"> 964</a>
+<a href="#L965"> 965</a>
+<a href="#L966"> 966</a>
+<a href="#L967"> 967</a>
+<a href="#L968"> 968</a>
+<a href="#L969"> 969</a>
+<a href="#L970"> 970</a>
+<a href="#L971"> 971</a>
+<a href="#L972"> 972</a>
+<a href="#L973"> 973</a>
+<a href="#L974"> 974</a>
+<a href="#L975"> 975</a>
+<a href="#L976"> 976</a>
+<a href="#L977"> 977</a>
+<a href="#L978"> 978</a>
+<a href="#L979"> 979</a>
+<a href="#L980"> 980</a>
+<a href="#L981"> 981</a>
+<a href="#L982"> 982</a>
+<a href="#L983"> 983</a>
+<a href="#L984"> 984</a>
+<a href="#L985"> 985</a>
+<a href="#L986"> 986</a>
+<a href="#L987"> 987</a>
+<a href="#L988"> 988</a>
+<a href="#L989"> 989</a>
+<a href="#L990"> 990</a>
+<a href="#L991"> 991</a>
+<a href="#L992"> 992</a>
+<a href="#L993"> 993</a>
+<a href="#L994"> 994</a>
+<a href="#L995"> 995</a>
+<a href="#L996"> 996</a>
+<a href="#L997"> 997</a>
+<a href="#L998"> 998</a>
+<a href="#L999"> 999</a>
+<a href="#L1000">1000</a>
+<a href="#L1001">1001</a>
+<a href="#L1002">1002</a>
+<a href="#L1003">1003</a>
+<a href="#L1004">1004</a>
+<a href="#L1005">1005</a>
+<a href="#L1006">1006</a>
+<a href="#L1007">1007</a>
+<a href="#L1008">1008</a>
+<a href="#L1009">1009</a>
+<a href="#L1010">1010</a>
+<a href="#L1011">1011</a>
+<a href="#L1012">1012</a>
+<a href="#L1013">1013</a>
+<a href="#L1014">1014</a>
+<a href="#L1015">1015</a>
+<a href="#L1016">1016</a>
+<a href="#L1017">1017</a>
+<a href="#L1018">1018</a>
+<a href="#L1019">1019</a>
+<a href="#L1020">1020</a>
+<a href="#L1021">1021</a>
+<a href="#L1022">1022</a>
+<a href="#L1023">1023</a>
+<a href="#L1024">1024</a>
+<a href="#L1025">1025</a>
+<a href="#L1026">1026</a>
+<a href="#L1027">1027</a>
+<a href="#L1028">1028</a>
+<a href="#L1029">1029</a>
+<a href="#L1030">1030</a>
+<a href="#L1031">1031</a>
+<a href="#L1032">1032</a>
+<a href="#L1033">1033</a>
+<a href="#L1034">1034</a>
+<a href="#L1035">1035</a>
+<a href="#L1036">1036</a>
+<a href="#L1037">1037</a>
+<a href="#L1038">1038</a>
+<a href="#L1039">1039</a>
+<a href="#L1040">1040</a>
+<a href="#L1041">1041</a>
+<a href="#L1042">1042</a>
+<a href="#L1043">1043</a>
+<a href="#L1044">1044</a>
+<a href="#L1045">1045</a>
+<a href="#L1046">1046</a>
+<a href="#L1047">1047</a>
+<a href="#L1048">1048</a>
+<a href="#L1049">1049</a>
+<a href="#L1050">1050</a>
+<a href="#L1051">1051</a>
+<a href="#L1052">1052</a>
+<a href="#L1053">1053</a>
+<a href="#L1054">1054</a>
+<a href="#L1055">1055</a>
+<a href="#L1056">1056</a>
+<a href="#L1057">1057</a>
+<a href="#L1058">1058</a>
+<a href="#L1059">1059</a>
+<a href="#L1060">1060</a>
+<a href="#L1061">1061</a>
+<a href="#L1062">1062</a>
+<a href="#L1063">1063</a>
+<a href="#L1064">1064</a>
+<a href="#L1065">1065</a>
+<a href="#L1066">1066</a>
+<a href="#L1067">1067</a>
+<a href="#L1068">1068</a>
+<a href="#L1069">1069</a>
+<a href="#L1070">1070</a>
+<a href="#L1071">1071</a>
+<a href="#L1072">1072</a>
+<a href="#L1073">1073</a>
+<a href="#L1074">1074</a>
+<a href="#L1075">1075</a>
+<a href="#L1076">1076</a>
+<a href="#L1077">1077</a>
+<a href="#L1078">1078</a>
+<a href="#L1079">1079</a>
+<a href="#L1080">1080</a>
+<a href="#L1081">1081</a>
+<a href="#L1082">1082</a>
+<a href="#L1083">1083</a>
+<a href="#L1084">1084</a>
+<a href="#L1085">1085</a>
+<a href="#L1086">1086</a>
+<a href="#L1087">1087</a>
+<a href="#L1088">1088</a>
+<a href="#L1089">1089</a>
+<a href="#L1090">1090</a>
+<a href="#L1091">1091</a>
+<a href="#L1092">1092</a>
+<a href="#L1093">1093</a>
+<a href="#L1094">1094</a>
+<a href="#L1095">1095</a>
+<a href="#L1096">1096</a>
+<a href="#L1097">1097</a>
+<a href="#L1098">1098</a>
+<a href="#L1099">1099</a>
+<a href="#L1100">1100</a>
+<a href="#L1101">1101</a>
+<a href="#L1102">1102</a>
+<a href="#L1103">1103</a>
+<a href="#L1104">1104</a>
+<a href="#L1105">1105</a>
+<a href="#L1106">1106</a>
+<a href="#L1107">1107</a>
+<a href="#L1108">1108</a>
+<a href="#L1109">1109</a>
+<a href="#L1110">1110</a>
+<a href="#L1111">1111</a>
+<a href="#L1112">1112</a>
+<a href="#L1113">1113</a>
+<a href="#L1114">1114</a>
+<a href="#L1115">1115</a>
+<a href="#L1116">1116</a>
+<a href="#L1117">1117</a>
+<a href="#L1118">1118</a>
+<a href="#L1119">1119</a>
+<a href="#L1120">1120</a>
+<a href="#L1121">1121</a>
+<a href="#L1122">1122</a>
+<a href="#L1123">1123</a>
+<a href="#L1124">1124</a>
+<a href="#L1125">1125</a>
+<a href="#L1126">1126</a>
+<a href="#L1127">1127</a>
+<a href="#L1128">1128</a>
+<a href="#L1129">1129</a>
+<a href="#L1130">1130</a>
+<a href="#L1131">1131</a>
+<a href="#L1132">1132</a>
+<a href="#L1133">1133</a>
+<a href="#L1134">1134</a>
+<a href="#L1135">1135</a>
+<a href="#L1136">1136</a>
+<a href="#L1137">1137</a>
+<a href="#L1138">1138</a>
+<a href="#L1139">1139</a>
+<a href="#L1140">1140</a>
+<a href="#L1141">1141</a>
+<a href="#L1142">1142</a>
+<a href="#L1143">1143</a>
+<a href="#L1144">1144</a>
+<a href="#L1145">1145</a>
+<a href="#L1146">1146</a>
+<a href="#L1147">1147</a>
+<a href="#L1148">1148</a>
+<a href="#L1149">1149</a>
+<a href="#L1150">1150</a>
+<a href="#L1151">1151</a>
+<a href="#L1152">1152</a>
+<a href="#L1153">1153</a>
+<a href="#L1154">1154</a>
+<a href="#L1155">1155</a>
+<a href="#L1156">1156</a>
+<a href="#L1157">1157</a>
+<a href="#L1158">1158</a>
+<a href="#L1159">1159</a>
+<a href="#L1160">1160</a>
+<a href="#L1161">1161</a>
+<a href="#L1162">1162</a>
+<a href="#L1163">1163</a>
+<a href="#L1164">1164</a>
+<a href="#L1165">1165</a>
+<a href="#L1166">1166</a>
+<a href="#L1167">1167</a>
+<a href="#L1168">1168</a>
+<a href="#L1169">1169</a>
+<a href="#L1170">1170</a>
+<a href="#L1171">1171</a>
+<a href="#L1172">1172</a>
+<a href="#L1173">1173</a>
+<a href="#L1174">1174</a>
+<a href="#L1175">1175</a>
+<a href="#L1176">1176</a>
+<a href="#L1177">1177</a>
+<a href="#L1178">1178</a>
+<a href="#L1179">1179</a>
+<a href="#L1180">1180</a>
+<a href="#L1181">1181</a>
+</pre>
+<pre><code class="ocaml">open Source
+
+open Common
+open Syntax
+
+module T = Mo_types.Type
+module M = Mo_def.Syntax
+module Arrange = Mo_def.Arrange
+
+module String_map = Env.Make(String)
+module Stamps = String_map
+
+module Type_map = Env.Make (T.Ord)
+
+(* symbol generation *)
+
+let stamps : int Stamps.t ref = ref Stamps.empty
+
+let reset_stamps () = <span data-count="1">s</span>tamps := Stamps.empty
+
+let fresh_stamp name =
+  <span data-count="1">l</span>et n = Lib.Option.get (Stamps.find_op<span data-count="1">t</span> name !stamps) 0 in
+  <span data-count="1">s</span>tamps := Stamps.ad<span data-count="1">d</span> name (n + 1) !stamps;
+  n
+
+let fresh_id name =
+  <span data-count="1">l</span>et n = fresh_stamp name in
+  <span data-count="1">i</span>f n = 0 then
+    <span data-count="1">n</span>ame
+  else <span data-count="0">P</span>rintf.sprintf "%s_%i" name (fresh_stam<span data-count="0">p</span> name)
+
+(* helpers for constructing annotated syntax *)
+
+let (^^^) at it note = <span data-count="282">{</span> it; at; note}
+
+let (!!!) at it = <span data-count="272">(</span>^^^) at it NoInfo
+
+
+let intLitE at i =
+  <span data-count="6">!</span>!<span data-count="6">!</span> at (IntLitE (Mo_values.Numerics.Int.of_in<span data-count="6">t</span> i))
+
+let accE at ?(perm=<span data-count="3">F</span>ullP) fldacc =
+  <span data-count="3">!</span>!<span data-count="3">!</span> at
+    (AccE(
+         fldacc,
+         !!<span data-count="6">!</span> at (PermE (!!<span data-count="6">!</span> at perm))))
+
+let rec conjoin es at =
+  <span data-count="4">m</span>atch es with
+  | <span data-count="0">[</span>] -&gt; !!<span data-count="0">!</span> at (BoolLitE true)
+  | <span data-count="3">e</span>::[] -&gt; e
+  | <span data-count="1">e</span>::es' -&gt; !!<span data-count="1">!</span> at (AndE(e, conjoi<span data-count="1">n</span> es' at))
+
+let rec adjoin ctxt e = function
+  | <span data-count="1">[</span>] -&gt; e
+  | <span data-count="1">f</span> :: fs -&gt; f ctxt (adjoi<span data-count="1">n</span> ctxt e fs)
+
+let locE at arr_e ix_e field_name =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (CallE ("$loc", [arr_e; ix_e])), !!<span data-count="0">!</span> at field_name
+
+let sizeE at lhs =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (CallE ("$size", [lhs]))
+
+let arrayAccE at lhs field_name perm =
+  <span data-count="0">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> at p in
+  !! (CallE ("$array_acc", [lhs; !<span data-count="0">!</span>(FldE field_name); !<span data-count="0">!</span>(PermE(!<span data-count="0">!</span> perm))]))
+
+let someE at x_e =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (CallE ("Some", [x_e]))
+let noneE at =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (CallE ("None", []))
+let isSomeE at opt_e =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (FldAcc (opt_e, !!<span data-count="0">!</span> at "isSome"))
+let isNoneE at opt_e =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (FldAcc (opt_e, !!<span data-count="0">!</span> at "isNone"))
+let fromSomeE at opt_e =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (FldAcc (opt_e, !!<span data-count="0">!</span> at "some$0"))
+
+let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
+  <span data-count="12">m</span>atch x_opt with
+  | <span data-count="8">N</span>one -&gt; xs
+  | <span data-count="4">S</span>ome(x) -&gt; x :: xs
+
+type sort = Field | Local | Method
+
+(* the LHS of an assignment *)
+type lvalue =
+  | LValueVar of id         (* a variable *)
+  | LValueUninitVar of id   (* an uninitialized variable *)
+  | LValueFld of fldacc     (* field access *)
+
+let lvalue_str (lval : lvalue) : string =
+  <span data-count="0">m</span>atch lval with
+  | <span data-count="0">L</span>ValueVar x -&gt; x.it
+  | <span data-count="0">L</span>ValueUninitVar x -&gt; x.it
+  | <span data-count="0">L</span>ValueFld fld -&gt; (sn<span data-count="0">d</span> fld).it
+
+type imported_module =
+  | IM_Prim         (* mo:⛔ *)
+  | IM_base_Array   (* mo:base/Array *)
+
+module Env = T.Env
+module Imports = Map.Make(String)
+
+type ctxt =
+  { self : string option;
+    imports : imported_module Imports.t;
+    ids : (sort * T.t) T.Env.t;
+    label_to_tmp_var : id String_map.t; (* Motoko label -&gt; associated tmp variable *)
+    label_to_vpr_label : string String_map.t; (* Motoko label -&gt; Viper label *)
+    reqs : reqs; (* requirements for the prelude *)
+    type_to_record_ctor : id Type_map.t;
+    ghost_items : (ctxt -&gt; item) list ref;
+    ghost_inits : (ctxt -&gt; seqn') list ref;
+    ghost_perms : (ctxt -&gt; Source.region -&gt; exp) list ref;
+    ghost_conc : (ctxt -&gt; exp -&gt; exp) list ref;
+  }
+
+(* All text literals are injectively mapped into int values *)
+let text_literals : (string, int) Hashtbl.t = Hashtbl.creat<span data-count="1915">e</span> 32
+
+let add_locals ctxt (locals : (id * T.typ) list) =
+  <span data-count="0">l</span>et add (x, t) = <span data-count="0">E</span>nv.add x.it (Local, t) in
+  { ctxt with ids = List.fold_righ<span data-count="0">t</span> add locals ctxt.ids }
+
+let self ctxt at =
+  <span data-count="43">m</span>atch ctxt.self with
+  | <span data-count="43">S</span>ome id -&gt; !!<span data-count="43">!</span> at (LocalVar (!!<span data-count="86">!</span> at id,!!<span data-count="86">!</span> at RefT))
+  | <span data-count="0">_</span> -&gt; failwith "no self"
+
+let tr_string_literal at str =
+  <span data-count="0">l</span>et str_id =
+    match Hashtbl.find_opt text_literals str with
+    | <span data-count="0">N</span>one -&gt;
+      let fresh_str_id = Hashtbl.length text_literals in
+      <span data-count="0">H</span>ashtbl.add text_literals str fresh_str_id;
+      <span data-count="0">f</span>resh_str_id
+    | <span data-count="0">S</span>ome id -&gt; id
+  in
+  intLitE at str_id
+
+let rec extract_invariants : item list -&gt; (par -&gt; invariants -&gt; invariants) = function
+  | <span data-count="1">[</span>] -&gt; fun _ x -&gt; <span data-count="1">x</span>
+  | <span data-count="2">{</span> it = InvariantI (s, e); at; _ } :: p -&gt;
+      fun self es -&gt;
+        <span data-count="2">!</span>!<span data-count="4">!</span> at (CallE(s, [ !!<span data-count="4">!</span> at (LocalVar (fs<span data-count="2">t</span> self, sn<span data-count="2">d</span> self)) ]))
+        :: extract_invariant<span data-count="2">s</span> p self es
+  | <span data-count="4">_</span> :: p -&gt; extract_invariants p
+
+let rec extract_loop_invariants (e : M.exp) : (M.exp list * M.exp) =
+  <span data-count="0">m</span>atch e with
+  | <span data-count="0">{</span> it = M.BlockE ds; _ } -&gt;
+    let (invs, ds') = extract_loop_invariants' ds [] in
+    <span data-count="0">(</span>invs, { e with it = M.BlockE ds' })
+  | <span data-count="0">_</span> -&gt; ([], e)
+and extract_loop_invariants' (ds : M.dec list) (acc : M.exp list) : (M.exp list * M.dec list) =
+  <span data-count="0">m</span>atch ds with
+  | <span data-count="0">M</span>.({ it = ExpD ({ it = AssertE (Loop_invariant, inv); at = assert_at; _ }); _ }) :: ds -&gt;
+      extract_loop_invariants' ds ({ inv with at = assert_at } :: acc)
+  | <span data-count="0">_</span> -&gt; (List.re<span data-count="0">v</span> acc, ds)
+
+let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
+  <span data-count="6">l</span>et open List in
+  let extr (concs, stmts) s : stmt' list * stmt list =
+    <span data-count="14">m</span>atch s.it with
+    | <span data-count="2">C</span>oncurrencyS _ -&gt; s.it :: concs, stmts
+    | <span data-count="2">S</span>eqnS seq -&gt;
+      let concs', seq = extract_concurrency seq in
+      <span data-count="2">r</span>ev_appen<span data-count="2">d</span> concs' concs, { s with it = SeqnS seq } :: stmts
+    | <span data-count="0">W</span>hileS (e, inv, seq) -&gt;
+      let concs', seq = extract_concurrency seq in
+      <span data-count="0">r</span>ev_appen<span data-count="0">d</span> concs' concs, { s with it = WhileS (e, inv, seq) } :: stmts
+    | <span data-count="1">I</span>fS (e, the, els) -&gt;
+      let the_concs, the = extract_concurrency the in
+      <span data-count="1">l</span>et els_concs, els = extract_concurrency els in
+      <span data-count="1">r</span>ev_appen<span data-count="1">d</span> els_concs (rev_appen<span data-count="1">d</span> the_concs concs), { s with it = IfS (e, the, els) } :: stmts
+    | <span data-count="9">_</span> -&gt; concs, s :: stmts in
+
+  let stmts = snd seq.it in
+  <span data-count="6">l</span>et conc, stmts = List.fold_left extr ([], []) stmts in
+  <span data-count="6">r</span>e<span data-count="6">v</span> conc, { seq with it = fs<span data-count="6">t</span> seq.it, re<span data-count="6">v</span> stmts }
+
+let concat_map_seqn' : ('a -&gt; seqn') -&gt; 'a list -&gt; seqn' =
+  fun f xs -&gt;
+    <span data-count="1">l</span>et ds, stmts = List.split (List.ma<span data-count="1">p</span> f xs) in
+    <span data-count="1">L</span>ist.conca<span data-count="1">t</span> ds, List.conca<span data-count="1">t</span> stmts
+
+let rec strip_par_p (p : M.pat) : M.pat =
+  <span data-count="0">m</span>atch p.it with
+  | <span data-count="0">M</span>.ParP p' -&gt; strip_par_p p'
+  | <span data-count="0">_</span>         -&gt; p
+
+let rec strip_mut_t (t : T.typ) : T.typ =
+  <span data-count="0">m</span>atch t with
+  | <span data-count="0">T</span>.Mut t' -&gt; strip_mut_t t'
+  | <span data-count="0">_</span>        -&gt; t
+
+let record_ctor_tag = "$RecordCtor_"
+
+let mk_record_ctor (typ_id : M.typ_id) : id =
+  <span data-count="0">l</span>et name = Format.asprintf "%s%s" record_ctor_tag typ_id.it in
+  <span data-count="0">!</span>!<span data-count="0">!</span> Source.no_region name
+
+let get_record_name ctxt (typ : T.typ) : string =
+  <span data-count="0">l</span>et tag_len = String.length record_ctor_tag in
+  <span data-count="0">l</span>et record_ctor_name = (Type_map.fin<span data-count="0">d</span> typ ctxt.type_to_record_ctor).it in
+  String.sub record_ctor_name tag_len (String.lengt<span data-count="0">h</span> record_ctor_name - tag_len)
+
+let mk_record_field ~record_name ~fld_name =
+  <span data-count="0">F</span>ormat.asprintf "$%s$%s" record_name fld_name
+
+let get_record_field ctxt (typ : T.typ) (fld : M.id) : M.id =
+  <span data-count="0">l</span>et record_name = get_record_name ctxt typ in
+  <span data-count="0">l</span>et fld_name = mk_record_field ~record_name ~fld_name:fld.it in
+  { fld with it = fld_name }
+
+let rec unit reqs (u : M.comp_unit) : prog Diag.result =
+  <span data-count="1">D</span>iag.(
+    reset_stamps();
+    <span data-count="1">t</span>ry retur<span data-count="1">n</span> (unit<span data-count="1">'</span> reqs u) with
+    | <span data-count="0">U</span>nsupported (at, desc) -&gt; error at "0" "viper" ("translation to viper failed:\n"^desc)
+    | <span data-count="0">e</span>xn -&gt;
+      error
+        u.it.M.body.at
+        "1"
+        "viper"
+        (Format.asprint<span data-count="0">f</span>
+          "translation to viper failed. Reason: %s"
+          (Printexc.to_strin<span data-count="0">g</span> exn))
+  )
+
+and unit' reqs (u : M.comp_unit) : prog =
+  <span data-count="1">l</span>et { M.imports; M.body } = u.it in
+  match body.it with
+  | <span data-count="1">M</span>.ActorU(eo_, id_opt, decs) -&gt;
+    (* TODO eo *)
+    let ctxt = {
+      self = None;
+      imports = tr_import<span data-count="1">s</span> imports;
+      ids = Env.empty;
+      label_to_tmp_var = String_map.empty;
+      label_to_vpr_label = String_map.empty;
+      reqs = reqs;
+      type_to_record_ctor = Type_map.empty;
+      ghost_items = ref [];
+      ghost_inits = ref [];
+      ghost_perms = ref [];
+      ghost_conc = ref []
+    } in
+    let ctxt', perms, inits, mk_is = dec_fields ctxt decs in
+    <span data-count="1">l</span>et is' = List.map (fun mk_i -&gt; <span data-count="5">m</span>k_i ctxt') mk_is in
+    (* given is', compute ghost_is *)
+    <span data-count="1">l</span>et ghost_is = List.map (fun mk_i -&gt; <span data-count="1">m</span>k_i ctxt') !(ctxt.ghost_items) in
+    <span data-count="1">l</span>et init_id = !!<span data-count="1">!</span> (Source.no_region) "__init__" in
+    <span data-count="1">l</span>et self_id = !!<span data-count="1">!</span> (Source.no_region) "$Self" in
+    <span data-count="1">l</span>et self_typ = !!<span data-count="1">!</span> (self_id.at) RefT in
+    <span data-count="1">l</span>et ctxt'' = { ctxt' with self = Some self_id.it } in
+    let perm =
+      fun (at : region) -&gt;
+       <span data-count="1">L</span>ist.fold_left
+         (fun pexp -&gt; fun p_fn -&gt;
+           <span data-count="3">!</span>!<span data-count="3">!</span> at (AndE(pexp, p_f<span data-count="3">n</span> ctxt'' at)))
+         (!!<span data-count="2">!</span> at (BoolLitE true))
+         (perms @ !(ctxt.ghost_perms))
+    in
+    (* Add initializer *)
+    let init_list = concat_map_seqn' (fun mk_s -&gt; <span data-count="3">m</span>k_s ctxt'') (inits @ !(ctxt.ghost_inits)) in
+    <span data-count="1">l</span>et init_body =
+      !!<span data-count="1">!</span> (body.at) init_list (* ATG: Is this the correct position? *)
+    in
+    <span data-count="1">l</span>et init_m =
+      (^^^) (body.at) (MethodI(init_id, [self_id, self_typ], [], [], [], Some init_body)) ActorInit
+    in
+    <span data-count="1">l</span>et is'' = init_m :: is' in
+    (* Add permissions *)
+    let is''' = List.map (function
+    | <span data-count="2">{</span>it = MethodI (id, ins, outs, pres, posts, body); at; note: info} -&gt;
+      (^^^)
+        at
+        (MethodI (id, ins, outs,
+          !!<span data-count="4">!</span> at (CallE("$Perm", [sel<span data-count="2">f</span> ctxt'' at]))::pres,
+          !!<span data-count="4">!</span> at (CallE("$Perm", [sel<span data-count="2">f</span> ctxt'' at]))::posts,
+          body))
+        note
+      | <span data-count="4">x</span> -&gt; x) is'' in
+    (* Add functional invariants to public functions *)
+    <span data-count="1">l</span>et invs = extract_invariants is''' (self_id, self_typ) [] in
+    <span data-count="1">l</span>et is4 = List.map (function
+      | <span data-count="1">{</span>
+        it = MethodI (id, ins, outs, pres, posts, body);
+        at;
+        note = ActorInit
+      } -&gt; ((^^^)
+        at
+        (MethodI(id, ins, outs,
+          pres,
+          posts @ [!!<span data-count="2">!</span> at (CallE("$Inv", [sel<span data-count="1">f</span> ctxt'' at]))],
+          body))
+        ActorInit
+      )
+      | <span data-count="1">{</span>
+        it = MethodI (id, ins, outs, pres, posts, body);
+        at;
+        note = PublicFunction x
+      } -&gt; ((^^^)
+        at
+        (MethodI(id, ins, outs,
+          pres @ [!!<span data-count="2">!</span> at (CallE("$Inv", [sel<span data-count="1">f</span> ctxt'' at]))],
+          posts @ [!!<span data-count="2">!</span> at (CallE("$Inv", [sel<span data-count="1">f</span> ctxt'' at]))],
+          body))
+        (PublicFunction x)
+      )
+      | <span data-count="4">x</span> -&gt; x
+    ) is''' in
+    <span data-count="1">l</span>et perm_def = !!<span data-count="1">!</span> (body.at) (InvariantI("$Perm", per<span data-count="1">m</span> body.at)) in
+    <span data-count="1">l</span>et inv_def = !!<span data-count="1">!</span> (body.at) (InvariantI("$Inv", adjoi<span data-count="1">n</span> ctxt'' (conjoi<span data-count="1">n</span> invs body.at) !(ctxt.ghost_conc))) in
+    <span data-count="1">l</span>et is = ghost_is @ (perm_def :: inv_def :: is4) in
+    !!<span data-count="1">!</span> (body.at) is
+  | _ -&gt; assert false
+
+and tr_imports (imps : M.import list) : imported_module Imports.t =
+  <span data-count="1">L</span>ist.fold_left
+    (fun acc imp -&gt;
+      <span data-count="0">l</span>et k, v = tr_import imp in
+      <span data-count="0">I</span>mports.add k v acc)
+    Imports.empty
+    imps
+
+and tr_import (imp : M.import) : (string * imported_module) =
+  <span data-count="0">m</span>atch imp.it with
+  | <span data-count="0">(</span>{it=M.VarP s;_}, "mo:⛔", _) -&gt; (s.it, IM_Prim)
+  | <span data-count="0">(</span>{it=M.VarP s;_}, "mo:base/Array", _) -&gt; (s.it, IM_base_Array)
+  | <span data-count="0">(</span>p, _, _) -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p)
+
+and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
+  <span data-count="6">m</span>atch ds with
+  | <span data-count="1">[</span>] -&gt;
+    (ctxt, [], [], [])
+  | <span data-count="5">d</span> :: ds -&gt;
+    let ctxt, perm, init, mk_i = dec_field ctxt d in
+    <span data-count="5">l</span>et ctxt, perms, inits, mk_is = dec_fields ctxt ds in
+    <span data-count="5">(</span>ctxt, perm |<span data-count="5">:</span> perms, init |<span data-count="5">:</span> inits, mk_i::mk_is)
+
+and dec_field ctxt d =
+  <span data-count="5">l</span>et ctxt, perm, init, mk_i = dec_field' ctxt d.it in
+   <span data-count="5">(</span>ctxt,
+    perm,
+    init,
+    fun ctxt' -&gt;
+      <span data-count="5">l</span>et (i, info) = mk_i ctxt' in
+      <span data-count="5">(</span>^^^) (d.at) i info)
+
+and dec_field' ctxt d =
+  <span data-count="5">m</span>atch d.M.dec.it with
+  (* type declarations*)
+  | <span data-count="0">M</span>.(TypD (typ_id, typ_binds, {note = T.Variant cons;_})) -&gt;
+    ctxt, None, None, fun ctxt -&gt;
+      <span data-count="0">l</span>et adt_param tb = <span data-count="0">i</span>d tb.it.M.var in
+      let adt_con con = <span data-count="0">b</span>egin
+        let con_name = !!<span data-count="0">!</span> Source.no_region con.T.lab in
+        <span data-count="0">l</span>et mk_field_name i = <span data-count="0">!</span>!<span data-count="0">!</span> Source.no_region (Format.asprint<span data-count="0">f</span> "%s$%i" con.T.lab i) in
+        { con_name;
+          con_fields = match con.T.typ with
+            | <span data-count="0">T</span>.Tup ts -&gt; List.map<span data-count="0">i</span> (fun i t -&gt; <span data-count="0">m</span>k_field_nam<span data-count="0">e</span> i, tr_ty<span data-count="0">p</span> ctxt t) ts
+            | <span data-count="0">t</span> -&gt; [mk_field_nam<span data-count="0">e</span> 0, tr_ty<span data-count="0">p</span> ctxt t]
+        }
+      end in
+      AdtI ({ typ_id with note = NoInfo },
+            List.ma<span data-count="0">p</span> adt_param typ_binds,
+            List.ma<span data-count="0">p</span> adt_con cons),
+      NoInfo
+  | <span data-count="0">M</span>.(TypD (typ_id, typ_binds, { note = T.Obj (T.Object, flds) as typ; _ })) -&gt;
+    let con_name = mk_record_ctor typ_id in
+    <span data-count="0">{</span> ctxt with type_to_record_ctor = Type_map.ad<span data-count="0">d</span> typ con_name ctxt.type_to_record_ctor },
+    None,
+    None,
+    fun ctxt -&gt;
+      <span data-count="0">l</span>et adt_param tb = <span data-count="0">i</span>d tb.it.M.var in
+      let adt_field field =
+        <span data-count="0">l</span>et field_name = !!<span data-count="0">!</span> Source.no_region (mk_record_field ~record_name:typ_id.it ~fld_name:field.T.lab) in
+        <span data-count="0">l</span>et field_typ = tr_typ ctxt field.T.typ in
+        <span data-count="0">f</span>ield_name, field_typ
+      in
+      let adt_con =
+        { con_name;
+          con_fields = List.ma<span data-count="0">p</span> adt_field flds
+        }
+      in
+      AdtI ({ typ_id with note = NoInfo },
+            List.ma<span data-count="0">p</span> adt_param typ_binds,
+            [ adt_con ]),
+      NoInfo
+  (* async functions *)
+  | <span data-count="1">M</span>.(LetD ({it=VarP f;note;_},
+             {it=FuncE(x, sp, tp, p, t_opt, sugar,
+             {it = AsyncE (T.Fut, _, e); _} );_}, None)) -&gt; (* ignore async *)
+      { ctxt with ids = Env.ad<span data-count="1">d</span> f.it (Method, note) ctxt.ids },
+      None, (* no perm *)
+      None, (* no init *)
+      fun ctxt -&gt;
+        <span data-count="1">l</span>et open Either in
+        let self_id = !!<span data-count="1">!</span> (Source.no_region) "$Self" in
+        <span data-count="1">l</span>et method_args = args p in
+        <span data-count="1">l</span>et method_args' = List.map (fun (id, t) -&gt; <span data-count="0">i</span>d, tr_ty<span data-count="0">p</span> ctxt t) method_args in
+        <span data-count="1">l</span>et ctxt = { ctxt
+          with self = Some self_id.it;
+               ids = List.fold_lef<span data-count="1">t</span> (fun env (id, t) -&gt; <span data-count="0">E</span>nv.add id.it (Local, t) env) ctxt.ids method_args }
+        in
+        let stmts = stmt ctxt e in
+        <span data-count="1">l</span>et _, stmts = extract_concurrency stmts in
+        <span data-count="1">l</span>et pres, stmts' = List.partition_map (function <span data-count="0">{</span> it = PreconditionS exp; at; _ } -&gt; Left { exp with at } | <span data-count="1">s</span> -&gt; Right s) (sn<span data-count="1">d</span> stmts.it) in
+        <span data-count="1">l</span>et posts, stmts' = List.partition_map (function <span data-count="0">{</span> it = PostconditionS exp; at; _ } -&gt; Left { exp with at } | <span data-count="1">s</span> -&gt; Right s) stmts' in
+        <span data-count="1">l</span>et arg_preds = local_access_preds ctxt in
+        <span data-count="1">l</span>et ret_preds, ret = rets ctxt t_opt in
+        <span data-count="1">l</span>et pres = arg_preds @ pres in
+        let posts = arg_preds @ ret_preds @ posts in
+        let stmts'' = stmts' @ [!!<span data-count="2">!</span> Source.no_region (LabelS(!!<span data-count="2">!</span> (Source.no_region) "$Ret"))] in
+        (MethodI(i<span data-count="1">d</span> f, (self_id, !!<span data-count="2">!</span> Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fs<span data-count="1">t</span> stmts.it, stmts'' } ),
+        PublicFunction f.it)
+  (* private sync functions *)
+  | <span data-count="0">M</span>.(LetD ({it=VarP f; note;_},
+             {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_},
+             None)) -&gt;
+      { ctxt with ids = Env.ad<span data-count="0">d</span> f.it (Method, note) ctxt.ids },
+      None, (* no perm *)
+      None, (* no init *)
+      fun ctxt -&gt;
+        <span data-count="0">l</span>et open Either in
+        let self_id = !!<span data-count="0">!</span> (Source.no_region) "$Self" in
+        <span data-count="0">l</span>et method_args = args p in
+        <span data-count="0">l</span>et method_args' = List.map (fun (id, t) -&gt; <span data-count="0">i</span>d, tr_ty<span data-count="0">p</span> ctxt t) method_args in
+        <span data-count="0">l</span>et ctxt = { ctxt
+          with self = Some self_id.it;
+               ids = List.fold_lef<span data-count="0">t</span> (fun env (id, t) -&gt; <span data-count="0">E</span>nv.add id.it (Local, t) env) ctxt.ids method_args }
+        in
+        let stmts = stmt ctxt e in
+        <span data-count="0">l</span>et _, stmts = extract_concurrency stmts in
+        <span data-count="0">l</span>et pres, stmts' = List.partition_map (function <span data-count="0">{</span> it = PreconditionS exp; at; _ } -&gt; Left { exp with at } | <span data-count="0">s</span> -&gt; Right s) (sn<span data-count="0">d</span> stmts.it) in
+        <span data-count="0">l</span>et posts, stmts' = List.partition_map (function <span data-count="0">{</span> it = PostconditionS exp; at; _ } -&gt; Left { exp with at } | <span data-count="0">s</span> -&gt; Right s) stmts' in
+        <span data-count="0">l</span>et arg_preds = local_access_preds ctxt in
+        <span data-count="0">l</span>et ret_preds, ret = rets ctxt t_opt in
+        <span data-count="0">l</span>et pres = arg_preds @ pres in
+        let posts = arg_preds @ ret_preds @ posts in
+        let stmts'' = stmts' @ [!!<span data-count="0">!</span> Source.no_region (LabelS(!!<span data-count="0">!</span> (Source.no_region) "$Ret"))] in
+        (MethodI(i<span data-count="0">d</span> f, (self_id, !!<span data-count="0">!</span> Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fs<span data-count="0">t</span> stmts.it, stmts'' } ),
+        PrivateFunction f.it)
+  (* fields *)
+  | <span data-count="0">M</span>.LetD ({it=M.VarP x;_}, e, None)
+  | <span data-count="2">M</span>.VarD (x, e) -&gt;
+      let t = e.note.M.note_typ in
+      let fldacc = fun ctxt' -&gt; <span data-count="4">(</span>sel<span data-count="4">f</span> ctxt' e.at, i<span data-count="4">d</span> x) in
+      let lhs = fun ctxt' -&gt; <span data-count="2">!</span>!<span data-count="2">!</span> Source.no_region (FldAcc (fldac<span data-count="2">c</span> ctxt')) in
+      let perms ctxt' at =
+            <span data-count="2">c</span>onjoin ([ acc<span data-count="2">E</span> at (sel<span data-count="2">f</span> ctxt' at, i<span data-count="2">d</span> x) ]
+                     @ (access_pre<span data-count="2">d</span> ctxt' (lh<span data-count="2">s</span> ctxt') t |<span data-count="2">:</span> [])) at in
+      { ctxt with ids = Env.ad<span data-count="2">d</span> x.it (Field, t) ctxt.ids },
+      Some perms, (* perm *)
+      Some (fun ctxt' -&gt; (* init *)
+          <span data-count="2">l</span>et at = span x.at e.at in
+          <span data-count="2">a</span>ssign_stmts ctxt' at (LValueFld (fldac<span data-count="2">c</span> ctxt')) e),
+      (fun ctxt -&gt;
+        <span data-count="2">(</span>FieldI(i<span data-count="2">d</span> x, tr_ty<span data-count="2">p</span> ctxt t),
+        NoInfo))
+  (* invariants *)
+  | <span data-count="2">M</span>.(ExpD { it = AssertE (Invariant, e); at; _ }) -&gt;
+      ctxt,
+      None, (* no perm *)
+      None, (* no init *)
+      fun ctxt -&gt;
+        <span data-count="2">(</span>InvariantI (Printf.sprint<span data-count="2">f</span> "invariant_%d" at.left.line, ex<span data-count="2">p</span> { ctxt with self = Some "$Self" }  e), NoInfo)
+  | <span data-count="0">_</span> -&gt;
+     unsupported d.M.dec.at (Arrange.de<span data-count="0">c</span> d.M.dec)
+
+and args p = <span data-count="1">m</span>atch p.it with
+  | <span data-count="1">M</span>.TupP ps -&gt; List.map arg ps
+  | <span data-count="0">M</span>.ParP p  -&gt; [ar<span data-count="0">g</span> p]
+  | <span data-count="0">_</span> -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p)
+and arg p = <span data-count="0">m</span>atch p.it with
+  | <span data-count="0">M</span>.AnnotP (p, t) -&gt;
+      (match p.it with
+        | <span data-count="0">M</span>.VarP x -&gt; (i<span data-count="0">d</span> x, t.note)
+        | <span data-count="0">_</span> -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p))
+  | <span data-count="0">_</span> -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p)
+
+and access_pred ctxt lhs t =
+  <span data-count="2">m</span>atch T.normalize t with
+  | <span data-count="0">T</span>.Array elem_t -&gt; Some (array_ac<span data-count="0">c</span> Source.no_region ctxt lhs elem_t)
+  | <span data-count="2">_</span> -&gt; None
+
+(* Get access predicates for all local variables in current scope *)
+and local_access_preds ctxt =
+  <span data-count="1">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> Source.no_region p in
+  let preds = Env.fold (fun id info preds -&gt;
+      <span data-count="3">m</span>atch info with
+      | <span data-count="0">(</span>Local, t) -&gt;
+        let pred = access_pred ctxt !<span data-count="0">!</span>(LocalVar (!<span data-count="0">!</span>id, tr_ty<span data-count="0">p</span> ctxt t)) t in
+        <span data-count="0">p</span>red |: preds
+      | <span data-count="3">_</span> -&gt; preds)
+    ctxt.ids []
+  in <span data-count="1">p</span>reds
+
+and block ctxt at ds =
+  <span data-count="4">l</span>et ctxt, mk_ss = decs ctxt ds in
+  <span data-count="4">!</span>!<span data-count="4">!</span> at (mk_s<span data-count="4">s</span> ctxt)
+
+and decs ctxt ds =
+  <span data-count="9">m</span>atch ds with
+  | <span data-count="4">[</span>] -&gt; (ctxt, fun ctxt' -&gt; <span data-count="4">(</span>[],[]))
+  | <span data-count="5">d</span>::ds' -&gt;
+    let (ctxt1, mk_s) = dec ctxt d in
+    <span data-count="5">l</span>et (ctxt2, mk_ss) = decs ctxt1 ds' in
+    <span data-count="5">(</span>ctxt2,
+     fun ctxt' -&gt;
+       <span data-count="5">l</span>et (l, s) = mk_s ctxt' in
+       <span data-count="5">l</span>et (ls, ss) = mk_ss ctxt' in
+       <span data-count="5">(</span>l @ ls, s @ ss))
+
+and dec ctxt d =
+  <span data-count="5">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> (d.at) p in
+  match d.it with
+  | <span data-count="0">M</span>.LetD ({it=M.VarP x;_}, e, None)
+  | <span data-count="0">M</span>.VarD (x, e) -&gt;
+    { ctxt with ids = Env.ad<span data-count="0">d</span> x.it (Local, e.note.M.note_typ) ctxt.ids },
+    fun ctxt' -&gt;
+      <span data-count="0">l</span>et lval = LValueUninitVar (i<span data-count="0">d</span> x) in
+      let d = !!(i<span data-count="0">d</span> x, tr_ty<span data-count="0">p</span> ctxt' e.note.M.note_typ) in
+      <span data-count="0">l</span>et ds, stmts = assign_stmts ctxt' d.at lval e in
+      <span data-count="0">(</span>d :: ds, stmts)
+  | <span data-count="0">M</span>.LetD ({it=M.TupP _;_} as p, scrut, None) -&gt;
+    add_local<span data-count="0">s</span> ctxt (unwrap_tup_vars_pa<span data-count="0">t</span> p),
+    fun ctxt' -&gt;
+      <span data-count="0">l</span>et conds, _, (ds, stmts) = pat_match ctxt' scrut p in
+      <span data-count="0">l</span>et irrefutable = (conds = []) in
+      if not irrefutable then <span data-count="0">f</span>ailwith "impossible: tuple patterns must be irrefutable" else
+      <span data-count="0">d</span>s, stmts
+  | <span data-count="5">M</span>.(ExpD e) -&gt; (* TODO: restrict to e of unit type? *)
+     (ctxt,
+      fun ctxt' -&gt;
+        <span data-count="5">l</span>et s = stmt ctxt' e in
+        <span data-count="5">s</span>.it)
+  | <span data-count="0">_</span> -&gt;
+     unsupported d.at (Arrange.de<span data-count="0">c</span> d)
+
+and compile_while
+  ctxt
+  ?(label_id : M.id option)
+  ~(at : region)
+  ~(pred : M.exp)
+  ~(body : M.exp)
+  () : seqn =
+  <span data-count="0">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> at p in
+  let (invs, body) = extract_loop_invariants body in
+  <span data-count="0">l</span>et invs = (* TODO: automatic adding invariant into loop require more pondering*)
+             (* [!!(AndE(!!(CallE("$Perm", [self ctxt at])), *)
+             (*          !!(CallE("$Inv",  [self ctxt at]))))] *)
+             [!<span data-count="0">!</span>(CallE("$Perm", [sel<span data-count="0">f</span> ctxt at]))]
+             @ local_access_pred<span data-count="0">s</span> ctxt
+             @ List.ma<span data-count="0">p</span> (ex<span data-count="0">p</span> ctxt) invs in
+  let pred = exp ctxt pred in
+  <span data-count="0">l</span>et body =
+    match label_id with
+    | <span data-count="0">S</span>ome label_id -&gt;
+      let label, ctxt = loop_label ctxt label_id in
+      <span data-count="0">l</span>et stmts = stmt ctxt body in
+      <span data-count="0">l</span>et decls, stmts = stmts.it in
+      !<span data-count="0">!</span>(decls, stmts @ [ !<span data-count="0">!</span>(LabelS label) ])
+    | <span data-count="0">N</span>one -&gt; stm<span data-count="0">t</span> ctxt body
+  in
+  !!([], [ !<span data-count="0">!</span>(WhileS(pred, invs, body)) ])
+
+and stmt ctxt (s : M.exp) : seqn =
+  <span data-count="9">l</span>et (!!) p = <span data-count="7">!</span>!<span data-count="7">!</span> (s.at) p in
+  match s.it with
+  | <span data-count="1">M</span>.TupE [] -&gt;
+     block ctxt s.at []
+  | <span data-count="3">M</span>.BlockE ds -&gt;
+     block ctxt s.at ds
+  | <span data-count="1">M</span>.IfE(e, s1, s2) -&gt;
+    !!([],
+       [ !<span data-count="1">!</span>(IfS(ex<span data-count="1">p</span> ctxt e, stm<span data-count="1">t</span> ctxt s1, stm<span data-count="1">t</span> ctxt s2))])
+  | <span data-count="1">M</span>.(AwaitE(T.Fut, { it = AsyncE (T.Fut, _, e); at; _ })) -&gt; (* gross hack *)
+     let id = fresh_id "$message_async" in
+     <span data-count="1">l</span>et (!!) p = <span data-count="14">!</span>!<span data-count="14">!</span> (s.at) p in
+     let (!@) p = <span data-count="24">!</span>!<span data-count="24">!</span> at p in
+     ctxt.ghost_items :=
+       (fun ctxt -&gt;
+         <span data-count="1">!</span>!(FieldI (!<span data-count="1">!</span>id, !<span data-count="1">!</span>IntT))) ::
+       !(ctxt.ghost_items);
+     let mk_s = fun ctxt -&gt;
+       <span data-count="1">[</span>],
+       [!<span data-count="1">@</span> (FieldAssignS ((sel<span data-count="1">f</span>  ctxt s.at, !<span data-count="1">!</span>id),
+            intLit<span data-count="1">E</span> (s.at) 0))]
+     in
+     ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
+     let mk_p = fun ctxt at -&gt;
+       <span data-count="1">a</span>ccE at (sel<span data-count="1">f</span> ctxt at, !!<span data-count="2">!</span> at id)
+     in
+     ctxt.ghost_perms := mk_p :: !(ctxt.ghost_perms);
+     let stmts = stmt ctxt e in
+     (* assume that each `async {...}` has an assertion *)
+     <span data-count="1">l</span>et conc, _ = extract_concurrency stmts in
+     <span data-count="1">l</span>et mk_c = match conc with
+       | <span data-count="0">[</span>] -&gt;
+         fun _ x -&gt; <span data-count="0">x</span>
+       | <span data-count="1">C</span>oncurrencyS ("1", _, cond) :: _ -&gt;
+         let (!?) p = <span data-count="13">!</span>!<span data-count="13">!</span> (cond.at) p in
+         let zero, one = intLit<span data-count="1">E</span> Source.no_region 0, intLit<span data-count="1">E</span> Source.no_region 1 in
+         fun ctxt x -&gt;
+           <span data-count="1">l</span>et ghost_fld () = <span data-count="3">!</span>?(FldAcc (sel<span data-count="3">f</span> ctxt cond.at, !<span data-count="3">?</span>id)) in
+           let between = !?(AndE (!<span data-count="1">?</span>(LeCmpE (zero, ghost_fl<span data-count="1">d</span> ())), !<span data-count="1">?</span>(LeCmpE (ghost_fl<span data-count="1">d</span> (), one)))) in
+           <span data-count="1">l</span>et is_one = !?(EqCmpE (ghost_fl<span data-count="1">d</span> (), one)) in
+           <span data-count="1">!</span>?(AndE (x, !<span data-count="1">?</span>(AndE (between, !<span data-count="1">?</span>(Implies (is_one, cond.i<span data-count="1">t</span> (ex<span data-count="1">p</span> ctxt)))))))
+       | <span data-count="0">_</span> -&gt; unsupporte<span data-count="0">d</span> e.at (Arrange.ex<span data-count="0">p</span> e) in
+     ctxt.ghost_conc := mk_c :: !(ctxt.ghost_conc);
+     !!([],
+        [ !<span data-count="1">!</span>(FieldAssignS(
+            (sel<span data-count="1">f</span> ctxt Source.no_region, !<span data-count="1">!</span>id),
+            (!<span data-count="1">!</span>(AddE(!<span data-count="1">!</span>(FldAcc (sel<span data-count="1">f</span> ctxt (s.at), !<span data-count="1">!</span>id)),
+                     intLit<span data-count="1">E</span> Source.no_region 1)))));
+          !<span data-count="1">@</span>(ExhaleS (!<span data-count="1">@</span>(AndE(!<span data-count="1">@</span>(CallE("$Perm", [sel<span data-count="1">f</span> ctxt at])),
+                              !<span data-count="1">@</span>(CallE("$Inv", [sel<span data-count="1">f</span> ctxt at]))))));
+          !<span data-count="1">@</span>(SeqnS (
+              !<span data-count="1">@</span>([],
+                 [
+                   !<span data-count="1">@</span>(InhaleS (!<span data-count="1">@</span>(AndE(!<span data-count="1">@</span>(CallE("$Perm", [sel<span data-count="1">f</span> ctxt at])),
+                                  !<span data-count="1">@</span>(AndE(!<span data-count="1">@</span>(CallE("$Inv", [sel<span data-count="1">f</span> ctxt at])),
+                                          !<span data-count="1">@</span>(GtCmpE(!<span data-count="1">@</span>(FldAcc (sel<span data-count="1">f</span> ctxt at, !<span data-count="1">@</span>id)),
+                                               intLit<span data-count="1">E</span> Source.no_region 0))))))));
+                   !<span data-count="1">@</span>(FieldAssignS(
+                          (sel<span data-count="1">f</span> ctxt at, !<span data-count="1">@</span>id),
+                          (!<span data-count="1">@</span>(SubE(!<span data-count="1">@</span>(FldAcc (sel<span data-count="1">f</span> ctxt at, !<span data-count="1">@</span>id)),
+                                   intLit<span data-count="1">E</span> at 1)))));
+                   !!<span data-count="2">!</span> (e.at) (SeqnS stmts);
+                   !<span data-count="1">@</span>(ExhaleS (!<span data-count="1">@</span>(AndE(!<span data-count="1">@</span>(CallE("$Perm", [sel<span data-count="1">f</span> ctxt at])),
+                                       !<span data-count="1">@</span>(CallE("$Inv", [sel<span data-count="1">f</span> ctxt at])))))) ])));
+          !<span data-count="1">!</span>(InhaleS (!<span data-count="1">!</span>(AndE(!<span data-count="1">!</span>(CallE("$Perm", [sel<span data-count="1">f</span> ctxt at])),
+                              !<span data-count="1">!</span>(CallE("$Inv", [sel<span data-count="1">f</span> ctxt at]))))));
+        ])
+  | <span data-count="0">M</span>.WhileE(e, { it = M.LabelE (cont_label_id, _typ, s1); _}) -&gt;
+      compile_while ~label_id:cont_label_id ~at:s.at ~pred:e ~body:s1 ctxt ()
+  | <span data-count="0">M</span>.WhileE(e, s1) -&gt; compile_while ~at:s.at ~pred:e ~body:s1 ctxt ()
+  | <span data-count="0">M</span>.(SwitchE(scrut, cs)) -&gt;
+      !!(switch_stmt<span data-count="0">s</span> ctxt s.at scrut cs)
+  | <span data-count="2">M</span>.(AssignE({it = VarE x; _}, e2)) -&gt;
+      let lval =
+        match fst (Env.fin<span data-count="2">d</span> x.it ctxt.ids) with
+        | <span data-count="0">L</span>ocal -&gt; LValueVar (!!<span data-count="0">!</span> (x.at) (x.it))
+        | <span data-count="2">F</span>ield -&gt; LValueFld (sel<span data-count="2">f</span> ctxt x.at, id_re<span data-count="2">f</span> x)
+        | <span data-count="0">_</span> -&gt; unsupporte<span data-count="0">d</span> s.at (Arrange.ex<span data-count="0">p</span> s)
+      in !!(assign_stmt<span data-count="2">s</span> ctxt s.at lval e2)
+  | <span data-count="0">M</span>.(AssignE({it = IdxE (e1, e2);_}, e3)) -&gt;
+      let lval = LValueFld (array_lo<span data-count="0">c</span> ctxt s.at e1 e2 e3.note.M.note_typ) in
+      !!(assign_stmt<span data-count="0">s</span> ctxt s.at lval e3)
+  | <span data-count="0">M</span>.AssertE (M.Precondition, e) -&gt;
+    !!( [],
+        [ !<span data-count="0">!</span>(PreconditionS (ex<span data-count="0">p</span> ctxt e)) ])
+  | <span data-count="0">M</span>.AssertE (M.Postcondition, e) -&gt;
+    !!([],
+       [ !<span data-count="0">!</span>(PostconditionS (ex<span data-count="0">p</span> ctxt e)) ])
+  | <span data-count="1">M</span>.AssertE (M.Concurrency n, e) -&gt;
+    !!([],
+       [ !<span data-count="1">!</span>(ConcurrencyS (n, ex<span data-count="1">p</span> ctxt e, !<span data-count="1">!</span> ((|&gt;<span data-count="1">)</span> e))) ])
+  | <span data-count="0">M</span>.AssertE (M.Static, e) -&gt;
+    !!([],
+       [ !<span data-count="0">!</span>(AssertS (ex<span data-count="0">p</span> ctxt e)) ])
+  | <span data-count="0">M</span>.AssertE (M.Runtime, e) -&gt;
+    !!([],
+       [ !<span data-count="0">!</span>(AssumeS (ex<span data-count="0">p</span> ctxt e)) ])
+  | <span data-count="0">M</span>.(CallE({it = VarE m; _}, inst, args)) -&gt;
+    !!([],
+       [ !<span data-count="0">!</span>(MethodCallS ([], id_re<span data-count="0">f</span> m,
+       let self_var = self ctxt m.at in
+       <span data-count="0">s</span>elf_var :: call_arg<span data-count="0">s</span> ctxt args))])
+  | <span data-count="0">M</span>.RetE e -&gt;
+      let lval = (LValueUninitVar (!!<span data-count="0">!</span> (Source.no_region) "$Res")) in
+      let ds, stmts = assign_stmts ctxt s.at lval e in
+      <span data-count="0">l</span>et stmt = !!(GotoS(!!<span data-count="0">!</span> (Source.no_region) "$Ret")) in
+      <span data-count="0">!</span>!(ds, stmts @ [stmt])
+  | <span data-count="0">M</span>.LabelE (label_id, typ, e) -&gt;
+      let label_id, ctxt = loop_label ctxt label_id in
+      <span data-count="0">l</span>et label = !!<span data-count="0">!</span> Source.no_region (LabelS label_id) in
+      <span data-count="0">l</span>et stmts = stmt ctxt e in
+      <span data-count="0">l</span>et decls, stmts = stmts.it in
+      let stmts = stmts @ [ label ] in
+      !!(decls, stmts)
+  | <span data-count="0">M</span>.BreakE (label_id, { it = M.TupE []; _ }) -&gt;
+    (* Loop case *)
+    let label_name = String_map.find label_id.it ctxt.label_to_vpr_label in
+    <span data-count="0">!</span>!([], [ !<span data-count="0">!</span>(GotoS !<span data-count="0">!</span>label_name) ])
+  | <span data-count="0">M</span>.BreakE (label_id, ret) -&gt;
+    (* Expression case *)
+    let stmts =
+      match String_map.find_opt label_id.it ctxt.label_to_tmp_var with
+      | <span data-count="0">N</span>one -&gt; stm<span data-count="0">t</span> ctxt ret
+      | <span data-count="0">S</span>ome x -&gt;
+        let lvalue = LValueVar x in
+        let stmts = assign_stmts ctxt ret.at lvalue ret in
+        <span data-count="0">!</span><span data-count="0">!</span>stmts
+    in
+    let decls, stmts = stmts.it in
+    let label_name = String_map.find label_id.it ctxt.label_to_vpr_label in
+    <span data-count="0">!</span>!(decls, stmts @ [ !<span data-count="0">!</span>(GotoS !<span data-count="0">!</span>label_name) ])
+  | <span data-count="0">_</span> -&gt;
+     unsupported s.at (Arrange.ex<span data-count="0">p</span> s)
+
+(* Translate switch(scrut){...}. *)
+and switch_stmts ctxt at (scrut : M.exp) (cases : M.case list) : seqn' =
+  <span data-count="0">m</span>atch cases with
+  | <span data-count="0">[</span>] -&gt; [], []
+  | <span data-count="0">c</span> :: cs -&gt; begin
+      let (!!) a = <span data-count="0">!</span>!<span data-count="0">!</span> (c.at) a in
+      let {M.pat = p; M.exp = e} = c.it in
+      let conds, p_scope, (p_ds, p_stmts) = pat_match ctxt scrut p in
+      <span data-count="0">l</span>et local_ctxt = add_locals ctxt p_scope in
+      <span data-count="0">l</span>et {it = (e_ds, e_stmts);_} = stmt local_ctxt e in
+      <span data-count="0">l</span>et the = (p_ds @ e_ds, p_stmts @ e_stmts) in
+      let els = switch_stmts ctxt at scrut cs in
+      <span data-count="0">[</span>], [!<span data-count="0">!</span>(IfS(conjoi<span data-count="0">n</span> conds at, !<span data-count="0">!</span>the, !<span data-count="0">!</span>els))]
+    end
+
+and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * seqn' =
+  <span data-count="0">l</span>et (!!) a = <span data-count="0">!</span>!<span data-count="0">!</span> (p.at) a in
+  match (strip_par_<span data-count="0">p</span> p).it with
+  | <span data-count="0">M</span>.AnnotP (p, _typ) -&gt; pat_match ctxt scrut p
+  | <span data-count="0">M</span>.LitP lit -&gt;
+    begin match !lit with
+    | <span data-count="0">M</span>.NullLit -&gt; [isNone<span data-count="0">E</span> (p.at) (ex<span data-count="0">p</span> ctxt scrut)], [], ([], [])
+    | <span data-count="0">M</span>.BoolLit b -&gt;
+      let e_scrut = exp ctxt scrut in
+      <span data-count="0">l</span>et rhs = !!(BoolLitE b) in
+      <span data-count="0">[</span> !<span data-count="0">!</span>(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | <span data-count="0">M</span>.NatLit n | <span data-count="0">M</span>.IntLit n -&gt;
+      let e_scrut = exp ctxt scrut in
+      <span data-count="0">l</span>et rhs = !!(IntLitE n) in
+      <span data-count="0">[</span> !<span data-count="0">!</span>(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | <span data-count="0">M</span>.TextLit str -&gt;
+      let e_scrut = exp ctxt scrut in
+      <span data-count="0">l</span>et rhs = tr_string_literal p.at str in
+      <span data-count="0">[</span> !<span data-count="0">!</span>(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | <span data-count="0">M</span>.PreLit _ -&gt; failwith "Expected PreLit to be eliminated after typing"
+    | <span data-count="0">_</span>          -&gt; unsupported (p.at) (Arrange.li<span data-count="0">t</span> !lit)
+    end
+  | <span data-count="0">M</span>.OptP p' -&gt;
+    let e_scrut = exp ctxt scrut in
+    <span data-count="0">l</span>et cond = isSomeE (p.at) e_scrut in
+    <span data-count="0">l</span>et x, t = unwrap_var_pat p' in
+    <span data-count="0">l</span>et ds = [!<span data-count="0">!</span>(x, tr_ty<span data-count="0">p</span> ctxt t)] in
+    let stmts = [!<span data-count="0">!</span>(assign_stm<span data-count="0">t</span> (LValueUninitVar x) (fromSome<span data-count="0">E</span> (scrut.at) e_scrut))] in
+    [cond], [(x, t)], (ds, stmts)
+  | <span data-count="0">M</span>.(TupP ps) -&gt;
+    let p_scope = unwrap_tup_vars_pat p in
+    <span data-count="0">l</span>et ds = List.map (fun (x, t) -&gt; <span data-count="0">!</span>!(x, tr_ty<span data-count="0">p</span> ctxt t)) p_scope in
+    <span data-count="0">l</span>et tup_prj_assign_stmt i lval t = <span data-count="0">b</span>egin
+      let rhs = prjE ctxt (p.at) scrut i in
+      <span data-count="0">!</span>!(assign_stm<span data-count="0">t</span> lval rhs)
+    end in
+    let stmts = List.mapi (fun i (x, t) -&gt; <span data-count="0">t</span>up_prj_assign_stmt i (LValueUninitVar x) t) p_scope in
+    <span data-count="0">[</span>], p_scope, (ds, stmts)
+  | <span data-count="0">M</span>.(TagP(l, p')) -&gt;
+    let e_scrut = exp ctxt scrut in
+    <span data-count="0">l</span>et cond = !!(FldAcc (e_scrut, !<span data-count="0">!</span>("is" ^ l.it))) in
+    <span data-count="0">l</span>et p_scope = unwrap_tup_vars_pat p' in
+    <span data-count="0">l</span>et ds = List.map (fun (x, t) -&gt; <span data-count="0">!</span>!(x, tr_ty<span data-count="0">p</span> ctxt t)) p_scope in
+    <span data-count="0">l</span>et fld_assign_stmt i lval = <span data-count="0">b</span>egin
+      let rhs = !!(FldAcc (e_scrut, !<span data-count="0">!</span>(l.it ^ "$" ^ string_of_in<span data-count="0">t</span> i))) in
+      <span data-count="0">!</span>!(assign_stm<span data-count="0">t</span> lval rhs)
+    end in
+    let stmts = List.mapi (fun i (x, t) -&gt; <span data-count="0">f</span>ld_assign_stmt i (LValueUninitVar x)) p_scope in
+    <span data-count="0">[</span>cond], p_scope, (ds, stmts)
+  | <span data-count="0">M</span>.ObjP pat_fields -&gt;
+    let e_scrut = exp ctxt scrut in
+    <span data-count="0">l</span>et p_scope = List.map (fun M.{ it = { id = _; pat }; _ } -&gt; <span data-count="0">u</span>nwrap_var_pat pat) pat_fields in
+    <span data-count="0">l</span>et ds = List.map (fun (x, t) -&gt; <span data-count="0">!</span>!(x, tr_ty<span data-count="0">p</span> ctxt t)) p_scope in
+    <span data-count="0">l</span>et fld_assign_stmt lval fld_name =
+      <span data-count="0">l</span>et rhs = !!(FldAcc (e_scrut, i<span data-count="0">d</span> fld_name)) in
+      <span data-count="0">!</span>!(assign_stm<span data-count="0">t</span> lval rhs)
+    in
+    let stmts =
+      List.map2
+        (fun M.{ it = { id = fld_name; pat = _ }; _ } (x, _) -&gt;
+          <span data-count="0">l</span>et fld_name = get_record_field ctxt (T.normaliz<span data-count="0">e</span> p.note) fld_name in
+          <span data-count="0">f</span>ld_assign_stmt (LValueUninitVar x) fld_name)
+        pat_fields p_scope
+    in
+    <span data-count="0">[</span>], p_scope, (ds, stmts)
+  | <span data-count="0">M</span>.WildP -&gt; [], [], ([], [])
+  | <span data-count="0">_</span> -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p)
+
+and unwrap_tup_vars_pat (p : M.pat) : (id * T.typ) list =
+  <span data-count="0">m</span>atch (strip_par_<span data-count="0">p</span> p).it with
+  | <span data-count="0">M</span>.TupP ps -&gt; List.map unwrap_var_pat ps
+  | <span data-count="0">_</span>         -&gt; [unwrap_var_pa<span data-count="0">t</span> p]
+
+and unwrap_var_pat (p : M.pat) : (id * T.typ) =
+  <span data-count="0">m</span>atch (strip_par_<span data-count="0">p</span> p).it with
+  | <span data-count="0">M</span>.VarP x         -&gt; i<span data-count="0">d</span> x, p.note
+  | <span data-count="0">M</span>.AnnotP (p', t) -&gt; fs<span data-count="0">t</span> (unwrap_var_pa<span data-count="0">t</span> p'), t.note
+  | <span data-count="0">_</span>                -&gt; unsupported p.at (Arrange.pa<span data-count="0">t</span> p)
+
+(* Translate assignment a:=b or initialization. May create temporary variables
+   if the LHS is a field or if the RHS is an array. *)
+and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
+  <span data-count="5">l</span>et (!!) p = <span data-count="4">!</span>!<span data-count="4">!</span> at p in
+  let t = e.note.M.note_typ in
+  match e with
+  | <span data-count="0">M</span>.({it=TupE [];_}) -&gt; [], []
+  | <span data-count="1">M</span>.({it=AnnotE (e, _);_}) -&gt; assign_stmts ctxt at lval e
+  | <span data-count="0">M</span>.({it=CallE ({it=M.DotE ({it=M.VarE(m);_}, {it="init";_});_}, _inst, args);_})
+      when Imports.find_op<span data-count="0">t</span> (m.it) ctxt.imports = Some(IM_base_Array)
+      -&gt;
+    <span data-count="0">b</span>egin match args with
+    | <span data-count="0">M</span>.({it=TupE([e1;e2]); _}) -&gt;
+      fld_via_tmp_var ctxt lval t (fun x -&gt;
+        <span data-count="0">l</span>et lhs = !!(LocalVar (x, tr_ty<span data-count="0">p</span> ctxt t)) in
+        <span data-count="0">[</span>], [ !<span data-count="0">!</span>(AssertS !<span data-count="0">!</span>(GeCmpE (ex<span data-count="0">p</span> ctxt e1, intLit<span data-count="0">E</span> at 0)))
+            ; !<span data-count="0">!</span>(InhaleS (array_ac<span data-count="0">c</span> at ctxt lhs (array_elem_<span data-count="0">t</span> t)))
+            ; !<span data-count="0">!</span>(InhaleS (array_size_in<span data-count="0">v</span> at lhs (ex<span data-count="0">p</span> ctxt e1)))
+            ; !<span data-count="0">!</span>(InhaleS (array_init_cons<span data-count="0">t</span> at ctxt lhs (array_elem_<span data-count="0">t</span> t) (ex<span data-count="0">p</span> ctxt e2))) ]
+      )
+    | <span data-count="0">_</span> -&gt; unsupported args.at (Arrange.ex<span data-count="0">p</span> args)
+    end
+  | <span data-count="0">M</span>.({it = CallE({it = VarE m; _}, inst, args); _}) -&gt;
+    fld_via_tmp_var ctxt lval t (fun x -&gt;
+      <span data-count="0">l</span>et self_var = self ctxt m.at in
+      <span data-count="0">[</span>], [ !<span data-count="0">!</span>(MethodCallS ([x], id_re<span data-count="0">f</span> m, self_var :: call_arg<span data-count="0">s</span> ctxt args)) ])
+  | <span data-count="0">M</span>.({it=ArrayE(mut, es); _}) -&gt;
+    via_tmp_var ctxt lval t (fun x -&gt;
+      <span data-count="0">l</span>et lhs = !!(LocalVar (x, tr_ty<span data-count="0">p</span> ctxt t)) in
+      <span data-count="0">[</span>], array_allo<span data-count="0">c</span> at ctxt lhs (array_elem_<span data-count="0">t</span> t) es)
+  | <span data-count="0">M</span>.{ it = LabelE (label_id, ret_typ, e); note; _ } -&gt;
+    via_tmp_var ctxt lval t (fun x -&gt;
+      <span data-count="0">l</span>abel_expr_alloc ~label_id ~label_type:ret_typ ~label_rhs:e ~label_note:note at ctxt x)
+  | <span data-count="4">_</span> -&gt;
+    [], [!<span data-count="4">!</span>(assign_stm<span data-count="4">t</span> lval (ex<span data-count="4">p</span> ctxt e))]
+
+and assign_stmt (lval : lvalue) (e : exp) : stmt' =
+  <span data-count="4">m</span>atch lval with
+    | <span data-count="0">L</span>ValueVar x       -&gt; VarAssignS(x, e)
+    | <span data-count="0">L</span>ValueUninitVar x -&gt; VarAssignS(x, e)
+    | <span data-count="4">L</span>ValueFld fld     -&gt; FieldAssignS(fld, e)
+
+and fld_via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -&gt; seqn') : seqn' =
+  <span data-count="0">m</span>atch lval with
+  | <span data-count="0">L</span>ValueVar x       -&gt; f x
+  | <span data-count="0">L</span>ValueUninitVar x -&gt; f x
+  | <span data-count="0">L</span>ValueFld _       -&gt; via_tmp_var ctxt lval t f
+
+and via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -&gt; seqn') : seqn' =
+  <span data-count="0">m</span>atch lval with
+  | <span data-count="0">L</span>ValueUninitVar x -&gt; f x  (* initialization never needs a tmp variable *)
+  | <span data-count="0">_</span> -&gt;
+    let (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> Source.no_region p in
+    let tmp_id = !! (fresh_i<span data-count="0">d</span> ("$t_" ^ lvalue_st<span data-count="0">r</span> lval)) in
+    <span data-count="0">l</span>et tmp_typ = tr_typ ctxt t in
+    <span data-count="0">l</span>et tmp_e = !! (LocalVar (tmp_id, tmp_typ)) in
+    <span data-count="0">l</span>et d = !! (tmp_id, tmp_typ) in
+    <span data-count="0">l</span>et ds, stmts = f tmp_id in
+    <span data-count="0">l</span>et stmt = !!(assign_stm<span data-count="0">t</span> lval tmp_e) in
+    <span data-count="0">d</span> :: ds, stmts @ [stmt]
+
+and call_args ctxt e =
+  <span data-count="0">m</span>atch e with
+  | <span data-count="0">{</span>it = M.TupE args; _} -&gt; List.map (fun arg -&gt; <span data-count="0">e</span>xp ctxt arg) args
+  | <span data-count="0">a</span>rg -&gt; [ex<span data-count="0">p</span> ctxt arg]
+
+and exp ctxt e =
+  <span data-count="31">l</span>et open Mo_values.Operator in
+  let (!!) p = <span data-count="31">!</span>!<span data-count="31">!</span> (e.at) p in
+  let e_t = e.note.M.note_typ in
+  match e.it with
+  | <span data-count="10">M</span>.VarE x -&gt;
+    begin
+     match Env.find x.it ctxt.ids with
+     | <span data-count="0">L</span>ocal, t -&gt;
+        !!(LocalVar (id_re<span data-count="0">f</span> x, tr_ty<span data-count="0">p</span> ctxt t))
+     | <span data-count="10">F</span>ield, _ -&gt;
+        !!(FldAcc (sel<span data-count="10">f</span> ctxt x.at, id_re<span data-count="10">f</span> x))
+     | <span data-count="0">_</span> -&gt;
+        unsupported e.at (Arrange.ex<span data-count="0">p</span> e)
+    end
+  | <span data-count="0">M</span>.AnnotE(a, b) -&gt;
+    exp ctxt a
+  | <span data-count="0">M</span>.CallE ({it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
+      -&gt; sizeE at (ex<span data-count="0">p</span> ctxt e1)
+  | <span data-count="9">M</span>.LitE r -&gt;
+    begin match !r with
+    | <span data-count="2">M</span>.BoolLit b -&gt;
+       !!(BoolLitE b)
+    | <span data-count="7">M</span>.IntLit i -&gt;
+       !!(IntLitE i)
+    | <span data-count="0">M</span>.NatLit i -&gt;
+       !!(IntLitE i)
+    | <span data-count="0">M</span>.NullLit -&gt;
+       noneE (e.at)
+    | <span data-count="0">M</span>.TextLit str -&gt;
+      tr_string_literal e.at str
+    | <span data-count="0">_</span> -&gt;
+       unsupported e.at (Arrange.ex<span data-count="0">p</span> e)
+    end
+  | <span data-count="2">M</span>.NotE e -&gt;
+     !!(NotE (ex<span data-count="2">p</span> ctxt e))
+  | <span data-count="5">M</span>.RelE (ot, e1, op, e2) -&gt;
+     let e1, e2 = ex<span data-count="5">p</span> ctxt e1, ex<span data-count="5">p</span> ctxt e2 in
+     !!(match op with
+      | <span data-count="5">E</span>qOp -&gt; EqCmpE (e1, e2)
+      | <span data-count="0">N</span>eqOp -&gt; NeCmpE (e1, e2)
+      | <span data-count="0">G</span>tOp -&gt; GtCmpE (e1, e2)
+      | <span data-count="0">G</span>eOp -&gt; GeCmpE (e1, e2)
+      | <span data-count="0">L</span>tOp -&gt; LtCmpE (e1, e2)
+      | <span data-count="0">L</span>eOp -&gt; LeCmpE (e1, e2))
+  | <span data-count="1">M</span>.BinE (ot, e1, op, e2) -&gt;
+     let e1, e2 = ex<span data-count="1">p</span> ctxt e1, ex<span data-count="1">p</span> ctxt e2 in
+     !!(match op with
+      | <span data-count="1">A</span>ddOp -&gt; AddE (e1, e2)
+      | <span data-count="0">S</span>ubOp -&gt; SubE (e1, e2)
+      | <span data-count="0">M</span>ulOp -&gt; MulE (e1, e2)
+      | <span data-count="0">D</span>ivOp -&gt; DivE (e1, e2)
+      | <span data-count="0">M</span>odOp -&gt; ModE (e1, e2)
+      | <span data-count="0">C</span>atOp -&gt; CallE ("$concat", [e1; e2])
+      | <span data-count="0">_</span> -&gt; unsupporte<span data-count="0">d</span> e.at (Arrange.ex<span data-count="0">p</span> e))
+  | <span data-count="1">M</span>.OrE (e1, e2) -&gt;
+     !!(OrE (ex<span data-count="1">p</span> ctxt e1, ex<span data-count="1">p</span> ctxt e2))
+  | <span data-count="2">M</span>.AndE (e1, e2) -&gt;
+     !!(AndE (ex<span data-count="2">p</span> ctxt e1, ex<span data-count="2">p</span> ctxt e2))
+  | <span data-count="1">M</span>.ImpliesE (e1, e2) -&gt;
+     !!(Implies (ex<span data-count="1">p</span> ctxt e1, ex<span data-count="1">p</span> ctxt e2))
+  | <span data-count="0">M</span>.OldE e -&gt;
+    !!(Old (ex<span data-count="0">p</span> ctxt e))
+  | <span data-count="0">M</span>.IdxE (e1, e2) -&gt;
+     !!(FldAcc (array_lo<span data-count="0">c</span> ctxt e.at e1 e2 e_t))
+  | <span data-count="0">M</span>.ProjE (e, i) -&gt;
+     prjE ctxt e.at e i
+  | <span data-count="0">M</span>.OptE e -&gt;
+     someE (e.at) (ex<span data-count="0">p</span> ctxt e)
+  | <span data-count="0">M</span>.TagE (tag, e) -&gt;
+     !!(match e.it with
+        | <span data-count="0">M</span>.TupE es -&gt; CallE (tag.it, List.ma<span data-count="0">p</span> (ex<span data-count="0">p</span> ctxt) es)
+        | <span data-count="0">_</span> -&gt; CallE (tag.it, [ex<span data-count="0">p</span> ctxt e]))
+  | <span data-count="0">M</span>.ObjE ([], flds) -&gt;
+    (match T.normalize e.note.M.note_typ with
+    | <span data-count="0">T</span>.Obj (T.Object, typ_flds) as t -&gt;
+      let record_ctor_name = Type_map.find t ctxt.type_to_record_ctor in
+      <span data-count="0">l</span>et flds = List.map (fun M.{ it = { mut; id; exp }; _} -&gt;
+        <span data-count="0">m</span>atch mut.it with
+        | <span data-count="0">M</span>.Const -&gt; id.it, exp
+        | <span data-count="0">M</span>.Var -&gt; unsupported mut.at (Arrange.ex<span data-count="0">p</span> e)) flds
+      in
+      <span data-count="0">l</span>et args = List.map (fun T.{ lab; _ } -&gt;
+        <span data-count="0">l</span>et rhs_exp = List.assoc lab flds in
+        <span data-count="0">e</span>xp ctxt rhs_exp) typ_flds
+      in
+      <span data-count="0">!</span>!(CallE (record_ctor_name.it, args))
+    | <span data-count="0">T</span>.Obj _ -&gt; unsupported e.at (Arrange.ex<span data-count="0">p</span> e)
+    | _ -&gt; assert false)
+  | <span data-count="0">M</span>.DotE (proj, fld) when Type_map.me<span data-count="0">m</span> (T.normaliz<span data-count="0">e</span> proj.note.M.note_typ) ctxt.type_to_record_ctor -&gt;
+    <span data-count="0">l</span>et proj_t = T.normalize proj.note.M.note_typ in
+    <span data-count="0">l</span>et proj = exp ctxt proj in
+    <span data-count="0">l</span>et fld = id (get_record_fiel<span data-count="0">d</span> ctxt proj_t fld) in
+    <span data-count="0">!</span>!(FldAcc (proj, fld))
+  | <span data-count="0">M</span>.TupE es -&gt;
+      let n = List.length es in
+      <span data-count="0">c</span>txt.reqs.tuple_arities := IntSet.ad<span data-count="0">d</span> n !(ctxt.reqs.tuple_arities);
+      !!(CallE (tup_con_nam<span data-count="0">e</span> n, List.ma<span data-count="0">p</span> (ex<span data-count="0">p</span> ctxt) es))
+  | <span data-count="0">M</span>.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
+    when Imports.find_op<span data-count="0">t</span> (m.it) ctxt.imports = Some(IM_Prim)
+      &amp;&amp; <span data-count="0">(</span>predicate_name = "forall<span data-count="0">"</span> || predicate_name = "exists<span data-count="0">"</span>)
+    -&gt;
+    <span data-count="0">l</span>et binders = extract_binders pattern in
+    <span data-count="0">l</span>et typs =
+      match M.(note.note_typ) with
+      | <span data-count="0">T</span>.Func (_, _, _, [ T.Tup args ], _) -&gt; args
+      | <span data-count="0">T</span>.Func (_, _, _, [ arg ], _) -&gt; [ arg ]
+      | <span data-count="0">_</span> -&gt; []
+    in
+    let typed_binders =
+      List.fold_left2
+        (fun acc b t -&gt; <span data-count="0">(</span>i<span data-count="0">d</span> b, t) :: acc)
+        [] binders typs
+    in
+    <span data-count="0">l</span>et ctxt = add_locals ctxt typed_binders in
+    <span data-count="0">l</span>et typed_binders = List.map (fun (b, t) -&gt; <span data-count="0">(</span>b, tr_ty<span data-count="0">p</span> ctxt t)) typed_binders in
+    <span data-count="0">l</span>et e = exp ctxt e in
+    <span data-count="0">(</span>match predicate_name with
+    | <span data-count="0">"</span>forall" -&gt; !!(ForallE (typed_binders, e))
+    | <span data-count="0">"</span>exists" -&gt; !!(ExistsE (typed_binders, e))
+    | _ -&gt; assert false)
+  | <span data-count="0">M</span>.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
+    when Imports.find_op<span data-count="0">t</span> (m.it) ctxt.imports = Some(IM_Prim) -&gt; <span data-count="0">!</span>!(FldE "$Res")
+  | <span data-count="0">_</span> -&gt;
+     unsupported e.at (Arrange.ex<span data-count="0">p</span> e)
+
+and extract_binders pattern =
+  <span data-count="0">m</span>atch pattern.it with
+  | <span data-count="0">M</span>.AnnotP ({ it = M.VarP binder; _ }, _) | <span data-count="0">M</span>.VarP binder -&gt;
+    [ binder ]
+  | <span data-count="0">M</span>.ParP pattern -&gt; extract_binders pattern
+  | <span data-count="0">M</span>.TupP pats -&gt; List.concat_map extract_binders pats
+  | <span data-count="0">_</span> -&gt; []
+
+and rets ctxt t_opt =
+  <span data-count="1">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> Source.no_region p in
+  match t_opt with
+  | <span data-count="0">N</span>one -&gt; [], []
+  | <span data-count="1">S</span>ome t -&gt;
+     (match t.note with
+     | <span data-count="1">T</span>.Tup [] -&gt; [], []
+     | <span data-count="0">T</span>.Async (T.Fut, _, _) -&gt; [], []
+     | <span data-count="0">t</span>yp -&gt;
+        let pred = access_pred ctxt !<span data-count="0">!</span>(LocalVar (!<span data-count="0">!</span>"$Res", tr_ty<span data-count="0">p</span> ctxt typ)) typ in
+        <span data-count="0">p</span>red |<span data-count="0">:</span> [], [(!<span data-count="0">!</span>"$Res", tr_ty<span data-count="0">p</span> ctxt typ)]
+    )
+
+and id id = <span data-count="9">S</span>ource.annotate NoInfo id.it id.at
+and id_ref id = <span data-count="12">S</span>ource.annotate NoInfo id.it id.at
+
+and loop_label ctxt loop_label =
+  <span data-count="0">l</span>et label_name =
+    match String.split_on_char ' ' loop_label.it with
+    | <span data-count="0">[</span>"continue"; name] -&gt; "continue$" ^ name
+    | <span data-count="0">_</span> -&gt; loop_label.it
+  in
+  let label_name = fresh_id ("$lbl$" ^ label_name) in
+  <span data-count="0">l</span>et ctxt =
+    { ctxt with label_to_vpr_label = String_map.ad<span data-count="0">d</span> loop_label.it label_name ctxt.label_to_vpr_label }
+  in
+  i<span data-count="0">d</span> { loop_label with it = label_name }, ctxt
+
+and prjE ctxt at e i =
+  <span data-count="0">l</span>et n = List.length (tuple_elem_t<span data-count="0">s</span> e.note.M.note_typ) in
+  <span data-count="0">c</span>txt.reqs.tuple_arities := IntSet.ad<span data-count="0">d</span> n !(ctxt.reqs.tuple_arities);
+  !!<span data-count="0">!</span> at (FldAcc (ex<span data-count="0">p</span> ctxt e, !!<span data-count="0">!</span> at (tup_prj_nam<span data-count="0">e</span> n i)))
+
+and tr_typ ctxt typ =
+  <span data-count="2">{</span> it = tr_typ<span data-count="2">'</span> ctxt typ;
+    at = Source.no_region;
+    note = NoInfo }
+and tr_typ' ctxt typ =
+  <span data-count="2">l</span>et norm_typ = T.normalize typ in
+  <span data-count="2">m</span>atch typ, norm_typ with
+  | <span data-count="1">_</span>, T.Prim T.Int -&gt; IntT
+  | <span data-count="0">_</span>, T.Prim T.Nat -&gt; IntT    (* Viper has no native support for Nat, so translate to Int *)
+  | <span data-count="0">_</span>, T.Prim T.Text -&gt; IntT   (* Viper has no native support for Text, so translate to uninterpreted Int values *)
+  | <span data-count="1">_</span>, T.Prim T.Bool -&gt; BoolT
+  | <span data-count="0">_</span>, T.Array _ -&gt; ArrayT     (* Viper arrays are not parameterised by element type *)
+  | <span data-count="0">_</span>, T.Opt   t -&gt; OptionT (tr_ty<span data-count="0">p</span> ctxt t)
+  | <span data-count="0">_</span>, T.Tup  ts -&gt;
+    ctxt.reqs.tuple_arities := IntSet.ad<span data-count="0">d</span> (List.lengt<span data-count="0">h</span> ts) !(ctxt.reqs.tuple_arities);
+    TupleT (List.ma<span data-count="0">p</span> (tr_ty<span data-count="0">p</span> ctxt) ts)
+  | <span data-count="0">_</span>, T.Obj (T.Object, flds) -&gt;
+    let record_name = get_record_name ctxt norm_typ in
+    <span data-count="0">C</span>onT (!!<span data-count="0">!</span> Source.no_region record_name, [])
+  | <span data-count="0">T</span>.Con (con, ts), _ -&gt; ConT (!!<span data-count="0">!</span> Source.no_region (Mo_types.Cons.nam<span data-count="0">e</span> con), List.ma<span data-count="0">p</span> (tr_ty<span data-count="0">p</span> ctxt) ts)
+  | <span data-count="0">_</span>, t -&gt; unsupported Source.no_region (Mo_types.Arrange_type.ty<span data-count="0">p</span> t)
+
+and is_mut t =
+  <span data-count="0">m</span>atch T.normalize t with
+  | <span data-count="0">T</span>.Mut _ -&gt; true
+  | <span data-count="0">_</span>       -&gt; false
+
+and array_elem_t t =
+  <span data-count="0">m</span>atch T.normalize t with
+  | <span data-count="0">T</span>.Array elem_t -&gt; elem_t
+  | <span data-count="0">t</span> -&gt; failwith "array_elem_t: expected array type"
+
+and tuple_elem_ts t =
+  <span data-count="0">m</span>atch T.normalize t with
+  | <span data-count="0">T</span>.Tup ts -&gt; ts
+  | <span data-count="0">t</span> -&gt; failwith "tuple_elem_ts: expected tuple type"
+
+(* name of field of typed reference *)
+and typed_field ctxt t =
+  <span data-count="0">l</span>et t' = tr_typ ctxt (strip_mut_<span data-count="0">t</span> t) in
+  <span data-count="0">l</span>et name = type_field_name t' in
+  <span data-count="0">c</span>txt.reqs.typed_fields := StrMap.ad<span data-count="0">d</span> name t' !(ctxt.reqs.typed_fields);
+  name
+
+and type_field_name t =
+  <span data-count="0">m</span>atch t.it with
+  | <span data-count="0">I</span>ntT  -&gt; "$int"
+  | <span data-count="0">B</span>oolT -&gt; "$bool"
+  | <span data-count="0">R</span>efT  -&gt; "$ref"
+  | <span data-count="0">A</span>rrayT -&gt; "$array"
+  | <span data-count="0">T</span>upleT ts  -&gt; "$tuple" ^ string_of_in<span data-count="0">t</span> (List.lengt<span data-count="0">h</span> ts) ^ String.conca<span data-count="0">t</span> "" (List.ma<span data-count="0">p</span> type_field_name ts)
+  | <span data-count="0">O</span>ptionT t' -&gt; "$option" ^ type_field_nam<span data-count="0">e</span> t'
+  | <span data-count="0">C</span>onT (con, ts) -&gt; "$c_" ^ con.it ^ String.conca<span data-count="0">t</span> "" (List.ma<span data-count="0">p</span> type_field_name ts)
+
+and array_size_inv at lhs n =
+  <span data-count="0">!</span>!<span data-count="0">!</span> at (EqCmpE (size<span data-count="0">E</span> at lhs, n))
+
+and array_acc at ctxt lhs t =
+  <span data-count="0">m</span>atch T.normalize t with
+  | <span data-count="0">T</span>.Mut _-&gt; arrayAccE at lhs (typed_fiel<span data-count="0">d</span> ctxt t) FullP
+  | <span data-count="0">_</span>      -&gt; arrayAccE at lhs (typed_fiel<span data-count="0">d</span> ctxt t) WildcardP
+
+(* Allocate array on the LHS expression.
+   Note: array_alloc assumes that the array is uninitialized. Assignment to
+   existing arrays must be done via a temporary variable. *)
+and array_alloc at ctxt lhs t es : stmt list =
+  <span data-count="0">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> at p in
+  let init_array = List.mapi (fun i e -&gt;
+    <span data-count="0">F</span>ieldAssignS (loc<span data-count="0">E</span> at lhs (intLit<span data-count="0">E</span> at i) (typed_fiel<span data-count="0">d</span> ctxt t), ex<span data-count="0">p</span> ctxt e)) es in
+  (* InhaleS (!! (FldAcc (locE at lhs (intLitE at i) (typed_field t))) === e)) es in *)
+  <span data-count="0">l</span>et reset_perm =
+    (match T.normalize t with
+     | <span data-count="0">T</span>.Mut _ -&gt; []
+     | <span data-count="0">_</span>       -&gt; [ExhaleS (array_ac<span data-count="0">c</span> at ctxt lhs t); InhaleS (array_ac<span data-count="0">c</span> at ctxt lhs t)])in
+  let stmts = [ InhaleS (array_ac<span data-count="0">c</span> at ctxt lhs (T.Mut t))
+              ; InhaleS (array_size_in<span data-count="0">v</span> at lhs (intLit<span data-count="0">E</span> at (List.lengt<span data-count="0">h</span> es)))]
+              @ init_array
+              @ reset_perm
+  in List.map (!!) stmts
+
+and array_init_const at ctxt lhs t x =
+  <span data-count="0">l</span>et (!!) p = <span data-count="0">!</span>!<span data-count="0">!</span> at p in
+  !! (CallE ("$array_init", [lhs; !<span data-count="0">!</span>(FldE (typed_fiel<span data-count="0">d</span> ctxt t)); x]))
+
+and array_loc ctxt at e1 e2 t =
+  <span data-count="0">l</span>ocE at (ex<span data-count="0">p</span> ctxt e1) (ex<span data-count="0">p</span> ctxt e2) (typed_fiel<span data-count="0">d</span> ctxt t)
+
+and label_expr_alloc ~label_id ~label_type ~label_rhs ~label_note at ctxt lhs : seqn' =
+  <span data-count="0">l</span>et ctxt =
+    match label_type.it with
+    | <span data-count="0">M</span>.TupT [] -&gt; ctxt
+    | <span data-count="0">_</span> -&gt; { ctxt with label_to_tmp_var = String_map.ad<span data-count="0">d</span> label_id.it lhs ctxt.label_to_tmp_var }
+  in
+  let wrap_break exp =
+    <span data-count="0">m</span>atch label_type.it, exp.it with
+    | <span data-count="0">M</span>.TupT [], _ | <span data-count="0">_</span>, M.BreakE _ -&gt;
+    (* Here is a hack: instead of assigning a unit expression
+       we'll just treat them as statements. The next Motoko's code
+
+       {[
+         let x = label unit_lbl : () { break unit_lbl(v := 42); unreachable_expr; };
+       ]}
+
+       would be translated to
+
+       {[
+         v := 42;
+         goto unit_lbl;
+         unreachable_expr;
+         label unit_lbl;
+       ]} *)
+      exp
+    | <span data-count="0">_</span> -&gt; { exp with it = M.BreakE (label_id, exp) }
+  in
+  let label_rhs =
+    match label_rhs.it with
+    | <span data-count="0">M</span>.BlockE decs -&gt;
+      (* In case of block expression we want to wrap the last one
+         with [break] if it's not wrapped yet.
+
+         {[
+          let x = label lbl : t {
+            stmt1;
+            stmt2;
+            ret_expr
+          }
+         ]}
+
+         Example above would be mapped to
+
+         {[
+          let x = label lbl : t {
+            stmt1;
+            stmt2;
+            break lbl(ret_expr);
+          }
+         ]} *)
+      let decs = map_last decs ~f:(fun dec -&gt;
+        <span data-count="0">m</span>atch dec.it with
+        | <span data-count="0">M</span>.ExpD exp -&gt;
+          let exp = wrap_break exp in
+          <span data-count="0">{</span> dec with it = M.ExpD exp }
+        | <span data-count="0">_</span> -&gt; dec) in
+      <span data-count="0">{</span> label_rhs with it = M.BlockE decs }
+    | <span data-count="0">_</span> -&gt; wrap_brea<span data-count="0">k</span> label_rhs
+  in
+  let label = M.{ it = LabelE (label_id, label_type, label_rhs); at; note = label_note } in
+  let label_tr = stmt ctxt label in
+  <span data-count="0">l</span>abel_tr.it
+</code></pre>
+      </div>
+    </div>
+    <script src="../coverage.js"></script>
+  </body>
+</html>
