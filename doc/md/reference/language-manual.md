@@ -360,7 +360,7 @@ The syntax of an **import** `<imp>` is as follows:
 <url> ::=
   "<filepath>"                      Import module from relative <filepath>.mo
   "mo:<package-name>/<filepath>"    Import module from package
-  "canister:<canisterid>"           Import external actor by <canisterid>
+  "ic:<canisterid>"                 Import external actor by <canisterid>
   "canister:<name>"                 Import external actor by <name>
 ```
 
