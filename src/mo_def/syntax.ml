@@ -305,6 +305,15 @@ open Source
 let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
 
+let is_privileged name =
+  String.length name > 0 && name.[0] = '@'
+
+let is_underscored name =
+  String.length name > 0 && name.[0] = '_'
+
+let is_scope name =
+  String.length name > 0 && name.[0] = '$'
+
 (* Types & Scopes *)
 
 let arity t =
