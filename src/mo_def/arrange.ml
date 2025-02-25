@@ -9,14 +9,14 @@ module type Config = sig
   val include_sources : bool
   val include_types : bool
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
-  val include_migration : bool
+  val include_parenthetical : bool
   val main_file : string option
 end
 
 module Default = struct
   let include_sources = false
   let include_types = false
-  let include_migration = true (* false for vscode *)
+  let include_parenthetical = true (* false for vscode *)
   let include_docs = None
   let main_file = None
 end
@@ -73,7 +73,7 @@ module Make (Cfg : Config) = struct
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
     | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$
-                                               migration eo
+                                               parenthetical eo
                                                [obj_sort s;
                                                 match nt with
                                                 | None, None -> Atom "_"
@@ -98,8 +98,7 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (None, e1, ts, e2)  -> "CallE"      $$ [exp e1] @ inst ts @ [exp e2]
-    | CallE (Some par, e1, ts, e2) -> "CallE()" $$ [exp par] @ [exp e1] @ inst ts @ [exp e2]
+    | CallE (par_opt, e1, ts, e2) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp e2])
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -116,8 +115,7 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | AsyncE (None, Type.Fut, tb, e) -> "AsyncE" $$ [typ_bind tb; exp e]
-    | AsyncE (Some par, Type.Fut, tb, e) -> "AsyncE()" $$ [exp par; typ_bind tb; exp e]
+    | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
     | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
     | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
@@ -190,9 +188,9 @@ module Make (Cfg : Config) = struct
 
   and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
 
-  (* conditionally include migration to avoid breaking lsp *)
-  and migration eo sexps =
-    if Cfg.include_migration then
+  (* conditionally include parenthetical to avoid breaking lsp *)
+  and parenthetical eo sexps =
+    if Cfg.include_parenthetical then
       (match eo with None -> Atom "_" | Some e -> exp e) ::
       sexps
     else sexps
@@ -284,7 +282,7 @@ module Make (Cfg : Config) = struct
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
     | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
       "ClassD" $$
-        migration eo
+        parenthetical eo
         (shared_pat sp :: id x :: List.map typ_bind tp @ [
         pat p;
         (match rt with None -> Atom "_" | Some t -> typ t);
