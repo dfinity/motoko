@@ -6,8 +6,7 @@
 
   * Added support for sending `cycles` and setting a `timeout` in parentheticals.
     This is an **experimental feature**, with new syntax, and now also allowing best-effort
-    message sends. The legacy call `Cycles.add<system>` is still supported, but the
-    two approaches cannot be mixed (#4608).
+    message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
 
     For example, if one wants to attach cycles to a message send, prefix it with a parenthetical
     ``` motoko

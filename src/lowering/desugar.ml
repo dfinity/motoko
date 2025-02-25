@@ -270,7 +270,7 @@ and parenthetical = function
     let cycles, clean_cycles =
       if T.(sub par.note.note_typ (Obj (Object, [T.cycles_fld])))
       then [fun parV -> dotE parV T.cycles_lab T.nat |> assignVarE "@cycles" |> expD], []
-      else [], [natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles" |> expD] in
+      else [], [] in
     let timeout, clean_timeout =
       if T.(sub par.note.note_typ (Obj (Object, [T.timeout_fld])))
       then [fun parV -> dotE parV T.timeout_lab T.nat32 |> optE |> assignVarE "@timeout" |> expD], []
