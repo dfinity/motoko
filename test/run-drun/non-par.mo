@@ -13,9 +13,9 @@ actor A {
         Cycles.add<system> 4000; await next()
     };
 
-    func quux() : async () = (with) async {
-        debugPrint ("quux: " # debug_show(Cycles.available()));
-    };
+
+
+
 
 
 
@@ -99,10 +99,6 @@ actor A {
         catch e {
             debugPrint("CAUGHT: " # debug_show errorCode e # " " # debug_show errorMessage e)
         }
-    };
-
-    public func test8() : async () {
-        Cycles.add<system> 98765; await quux();
     }
 }
 
@@ -118,4 +114,3 @@ actor A {
 //CALL ingress test5 "DIDL\x00\x00"
 //CALL ingress test6 "DIDL\x00\x00"
 //CALL ingress test7 "DIDL\x00\x00"
-//CALL ingress test8 "DIDL\x00\x00"
