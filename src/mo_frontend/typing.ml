@@ -1022,8 +1022,8 @@ let rec is_explicit_exp e =
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
-  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
-  | LabelE (_, _, e1) | AsyncE (_, _, e1) | AwaitE (_, e1) ->
+  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (_, e1, _, _)
+  | LabelE (_, _, e1) | AsyncE (_, _, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
@@ -1204,9 +1204,9 @@ and infer_exp_promote env exp : T.typ =
       display_typ_expand t;
   t'
 
-and infer_exp' f env exp : T.typ =
+and infer_exp_wrapper inf f env exp : T.typ =
   assert (exp.note.note_typ = T.Pre);
-  let t = infer_exp'' env exp in
+  let t = inf env exp in
   assert (t <> T.Pre);
   let t' = f t in
   if not env.pre then begin
@@ -1216,6 +1216,8 @@ and infer_exp' f env exp : T.typ =
     exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
+
+and infer_exp' f env exp : T.typ = infer_exp_wrapper infer_exp'' f env exp
 
 and infer_exp'' env exp : T.typ =
   let context = env.context in
@@ -1380,78 +1382,7 @@ and infer_exp'' env exp : T.typ =
     end;
     t
   | ObjE (exp_bases, exp_fields) ->
-    let open List in
-    check_ids env "object" "field"
-      (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
-    let fts = map (infer_exp_field env) exp_fields in
-    let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
-    let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
-
-    (* removing explicit fields from the bases *)
-    let strip (base_t, base) =
-      let s, base_fts =
-        try T.as_obj base_t with Invalid_argument _ ->
-          error env base.at "M0093"
-            "expected object type, but expression produces type%a"
-            display_typ_expand base_t in
-      (* forbid actors as bases *)
-      if s = T.Actor then
-        error env base.at "M0178"
-          "actors cannot serve as bases in record extensions";
-      T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
-    in
-    let stripped_bases = map strip bases in
-
-    let ambiguous_fields ft1 ft2 =
-      homonymous_fields ft1 ft2 &&
-      (* allow equivalent type fields *)
-      match ft1.T.typ, ft2.T.typ with
-         (* homonymous type fields are ambiguous when unequal *)
-         | T.Typ c1, T.Typ c2 ->  not (eq env exp.at ft1.T.typ ft2.T.typ)
-         (* homonymous value fields are always ambiguous *)
-         | _ -> true
-    in
-
-    (* field disjointness of stripped bases *)
-    let rec disjoint = function
-      | [] | [_] -> ()
-      | (h, h_exp) :: t ->
-        let avoid ft =
-          let avoid_fields b b_fts =
-            if exists (ambiguous_fields ft) b_fts then
-              begin
-                let frag_typ, frag_sug = match ft.T.typ with
-                  | T.Typ c -> "type ", ""
-                  | _ -> "", " (consider overwriting)" in
-                info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
-                error env b.at "M0177"
-                  "ambiguous %sfield in base%a"
-                  frag_typ
-                  display_lab ft.T.lab
-              end in
-          iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
-        iter avoid (T.as_obj h |> snd);
-        disjoint t in
-    disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
-
-    (* do not allow var fields for now (to avoid aliasing) *)
-    begin if not (!Flags.experimental_field_aliasing) then
-      let immutable_base b_typ b_exp =
-        let constant_field (ft : T.field) =
-          if T.(is_mut ft.typ) then
-            begin
-              info env b_exp.at "overwrite field to resolve error";
-              error env b_exp.at "M0179"
-                "base has non-aliasable var field%a"
-                display_lab ft.T.lab
-            end
-        in
-        iter constant_field (T.as_obj b_typ |> snd)
-      in
-      iter2 immutable_base stripped_bases exp_bases
-    end;
-    let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
-    T.(glb t_base (Obj (Object, sort T.compare_field fts)))
+    infer_check_bases_fields env [] exp.at exp_bases exp_fields
   | DotE (exp1, id) ->
     let t1 = infer_exp_promote env exp1 in
     let s, tfs =
@@ -1524,6 +1455,12 @@ and infer_exp'' env exp : T.typ =
       | Some typ -> typ
       | None -> {it = TupT []; at = no_region; note = T.Pre}
     in
+    begin match exp1.it with
+    | AsyncE (Some par, _, _, _) when not env.pre && T.is_shared_sort shared_pat.it ->
+      local_error env par.at "M0213"
+        "parenthetical notes aren't allowed on shared functions"
+    | _ -> ()
+    end;
     let sort, ve = check_shared_pat env shared_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
@@ -1572,8 +1509,10 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, inst, exp2) ->
-    infer_call env exp1 inst exp2 exp.at None
+  | CallE (par_opt, exp1, inst, exp2) ->
+    let t = infer_call env exp1 inst exp2 exp.at None in
+    if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
+    t
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
@@ -1701,9 +1640,10 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
-  | AsyncE (s, typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (par_opt, s, typ_bind, exp1) ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
+    if not env.pre then check_parenthetical env None par_opt;
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
@@ -1784,6 +1724,89 @@ and infer_exp_field env rf =
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
   T.{ lab = id.it; typ = t1; src = empty_src }
+
+and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
+  let open List in
+  check_ids env "object" "field"
+    (map (fun (ef : exp_field) -> ef.it.id) exp_fields);
+
+  let infer_or_check rf =
+    let { mut; id; exp } = rf.it in
+    match List.find_opt (fun ft -> ft.T.lab = id.it) check_fields with
+    | Some exp_field ->
+      check_exp_field env rf [exp_field];
+      exp_field
+    | _ -> infer_exp_field env rf in
+
+  let fts = map infer_or_check exp_fields in
+  let bases = map (fun b -> infer_exp_promote env b, b) exp_bases in
+  let homonymous_fields ft1 ft2 = T.compare_field ft1 ft2 = 0 in
+
+  (* removing explicit fields from the bases *)
+  let strip (base_t, base) =
+    let s, base_fts =
+      try T.as_obj base_t with Invalid_argument _ ->
+        error env base.at "M0093"
+          "expected object type, but expression produces type%a"
+          display_typ_expand base_t in
+    (* forbid actors as bases *)
+    if s = T.Actor then
+      error env base.at "M0178"
+        "actors cannot serve as bases in record extensions";
+    T.(Obj (Object, filter (fun ft -> not (exists (homonymous_fields ft) fts)) base_fts))
+  in
+  let stripped_bases = map strip bases in
+
+  let ambiguous_fields ft1 ft2 =
+    homonymous_fields ft1 ft2 &&
+    (* allow equivalent type fields *)
+    match ft1.T.typ, ft2.T.typ with
+    (* homonymous type fields are ambiguous when unequal *)
+    | T.Typ c1, T.Typ c2 ->  not (eq env exp_at ft1.T.typ ft2.T.typ)
+    (* homonymous value fields are always ambiguous *)
+    | _ -> true
+  in
+
+  (* field disjointness of stripped bases *)
+  let rec disjoint = function
+    | [] | [_] -> ()
+    | (h, h_exp) :: t ->
+       let avoid ft =
+         let avoid_fields b b_fts =
+           if exists (ambiguous_fields ft) b_fts then
+             begin
+               let frag_typ, frag_sug = match ft.T.typ with
+                 | T.Typ c -> "type ", ""
+                 | _ -> "", " (consider overwriting)" in
+               info env h_exp.at "%sfield also present in base, here%s" frag_typ frag_sug;
+               error env b.at "M0177"
+                 "ambiguous %sfield in base%a"
+                 frag_typ
+                 display_lab ft.T.lab
+             end in
+         iter (fun (b_t, b) -> avoid_fields b (T.as_obj b_t |> snd)) t in
+       iter avoid (T.as_obj h |> snd);
+       disjoint t in
+  disjoint (map2 (fun b_t b -> b_t, b) stripped_bases exp_bases);
+
+  (* do not allow var fields for now (to avoid aliasing) *)
+  begin if not (!Flags.experimental_field_aliasing) then
+          let immutable_base b_typ b_exp =
+            let constant_field (ft : T.field) =
+              if T.(is_mut ft.typ) then
+                begin
+                  info env b_exp.at "overwrite field to resolve error";
+                  error env b_exp.at "M0179"
+                    "base has non-aliasable var field%a"
+                    display_lab ft.T.lab
+                end
+            in
+            iter constant_field (T.as_obj b_typ |> snd)
+          in
+          iter2 immutable_base stripped_bases exp_bases
+  end;
+  let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
+  T.(glb t_base (Obj (Object, sort T.compare_field fts)))
 
 and check_exp_strong env t exp =
   check_exp {env with weak = false} t exp
@@ -1877,8 +1900,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (par, s1, tb, exp1), T.Async (s2, t1', t') ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
@@ -1910,6 +1933,7 @@ and check_exp' env0 t exp : T.typ =
         scopes = T.ConEnv.add c exp.at env.scopes;
       } in
     check_exp env' t' exp1;
+    if not env.pre then check_parenthetical env None par;
     t
   | BlockE decs, _ ->
     ignore (check_block env t decs exp.at);
@@ -1964,13 +1988,14 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE (exp1, inst, exp2), _ ->
+  | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (sub env exp1.at t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
+    if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
@@ -2540,6 +2565,39 @@ and infer_obj env s exp_opt dec_fields at : T.typ =
   end;
   t
 
+and check_parenthetical env typ_opt = function
+  | None -> ()
+  | Some par ->
+     let env = { env with async = C.NullCap } in
+     begin match typ_opt with
+     | Some fun_ty when T.is_func fun_ty ->
+       let s, _, _, _, ts2 = T.as_func fun_ty in
+       begin match ts2 with
+       | _ when T.is_shared_sort s -> ()
+       | [cod] when T.is_async cod -> ()
+       | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
+       end
+     | _ -> ()
+     end;
+     let checked = T.[ cycles_fld; timeout_fld ] in
+     let [@warning "-8"] par_infer env { it = ObjE (bases, fields); _ } =
+       infer_check_bases_fields env checked par.at bases fields in
+     let attrs = infer_exp_wrapper par_infer T.as_immut env par in
+     let [@warning "-8"] T.Object, attrs_flds = T.as_obj attrs in
+     if attrs_flds = [] then warn env par.at "M0211" "redundant empty parenthetical note";
+     let check_lab { T.lab; typ; _ } =
+       let check want =
+         if not (sub env par.at typ want)
+         then local_error env par.at "M0214" "field %s in parenthetical is declared with type%a\ninstead of expected type%a" lab
+                display_typ typ
+                display_typ want in
+       match List.find_opt (fun { T.lab = l; _} -> l = lab) checked with
+       | Some { T.typ; _} -> check typ
+       | None -> () in
+     List.iter check_lab attrs_flds;
+     let unrecognised = List.(filter T.(fun {lab; _} -> lab <> cycles_lab && lab <> timeout_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+     if unrecognised <> [] then warn env par.at "M0212" "unrecognised attribute %s in parenthetical" (List.hd unrecognised);
+
 and check_system_fields env sort scope tfs dec_fields =
   List.iter (fun df ->
     match sort, df.it.vis.it, df.it.dec.it with
@@ -2708,7 +2766,11 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
              "This field will be removed from the actor, discarding its consumed value."
              "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
      )
-     dom_tfs
+     dom_tfs;
+   (* Warn the user about unrecognised attributes. *)
+   let [@warning "-8"] T.Object, attrs_flds = T.as_obj exp.note.note_typ in
+   let unrecognised = List.(filter (fun {T.lab; _} -> lab <> T.migration_lab) attrs_flds |> map (fun {T.lab; _} -> lab)) in
+   if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 
 and check_stab env sort scope dec_fields =
@@ -2923,7 +2985,7 @@ and infer_val_path env exp : T.typ option =
        | _ -> None
     )
   | AnnotE (_, typ) ->
-    Some (check_typ {env with pre = true}  typ)
+    Some (check_typ {env with pre = true} typ)
   | _ -> None
 
 
@@ -2942,7 +3004,7 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (_, obj_sort, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -3030,7 +3092,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt,({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -3117,7 +3179,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (_exp_opt, obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _}) ; _ }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), _t, dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in

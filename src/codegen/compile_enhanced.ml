@@ -4716,6 +4716,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i64s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
@@ -5145,7 +5146,8 @@ module IC = struct
          "system_transient", 2L;
          "destination_invalid", 3L;
          "canister_reject", 4L;
-         "canister_error", 5L]
+         "canister_error", 5L;
+         "system_unknown", 6L]
         (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
@@ -9639,7 +9641,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         TaggedSmallWord.msb_adjust Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9708,7 +9710,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         TaggedSmallWord.lsb_adjust Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -12274,6 +12276,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12319,6 +12322,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12632,7 +12642,7 @@ and compile_lit_pat env l =
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     compile_lit_as env SR.Vanilla l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^

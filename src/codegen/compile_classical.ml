@@ -2519,10 +2519,13 @@ module Closure = struct
     Tagged.load_field env (Int32.add (header_size env) i)
 
   let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
+    (if !Flags.gc_strategy = Flags.Incremental then
+       let set_closure_data, get_closure_data = new_local env "closure_data" in
+       set_closure_data ^^
+       Tagged.load_forwarding_pointer env ^^
+       get_closure_data
+     else
+       G.nop) ^^
     Tagged.store_field env (Int32.add (header_size env) i)
 
   let prepare_closure_call env =
@@ -5056,6 +5059,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
@@ -5417,7 +5421,8 @@ module IC = struct
          "system_transient", 2l;
          "destination_invalid", 3l;
          "canister_reject", 4l;
-         "canister_error", 5l]
+         "canister_error", 5l;
+         "system_unknown", 6l]
         (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env Type.Nat32)))
 
   let error_message env =
@@ -9792,7 +9797,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9860,7 +9865,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         BoxedSmallWord.unbox env Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -11308,7 +11313,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int32.of_int num_bits) ^^
       compile_shrS_const (Int32.of_int num_bits) ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat32) ^^
+      compile_eq env Type.nat32 ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
@@ -12149,6 +12154,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12206,6 +12212,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12516,7 +12525,7 @@ and compile_lit_pat env l =
   | Nat32Lit _ ->
     BoxedSmallWord.unbox env Type.Nat32 ^^
     compile_lit_as env (SR.UnboxedWord32 Type.Nat32) l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^

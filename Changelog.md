@@ -1,9 +1,25 @@
 # Motoko compiler changelog
 
+## 0.14.2 (FUTURE)
+
 * motoko (`moc`)
 
-  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+  * Added support for sending `cycles` and setting a `timeout` in parentheticals.
+    This is an **experimental feature**, with new syntax, and now also allowing best-effort
+    message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
 
+    For example, if one wants to attach cycles to a message send, prefix it with a parenthetical
+    ``` motoko
+    (with cycles = 5_000) Coins.mine(forMe);
+    ```
+    Similarly a timeout for _best-effort_ execution (also called _bounded-wait_) can be specified like
+    ``` motoko
+    let worker = (with timeout = 15) async { /* worker loop */ };
+    ```
+    A common base for fields optionally goes before the `with` and can be customised with both fields
+    after it. Please consult the documentation for more usage information.
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
 
 ## 0.14.1 (2025-02-13)
 
@@ -22,7 +38,7 @@
     Additional static checks warn against possible data loss (#4812).
 
     As a very simple example:
-    ```
+    ``` motoko
     import Nat32 "mo:base/Nat32";
 
     (with migration =

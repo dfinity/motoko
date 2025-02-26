@@ -10,6 +10,7 @@ code, and cannot be shadowed.
 type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
+var @timeout : ?Nat32 = null;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
@@ -18,8 +19,13 @@ func @add_cycles<system>() {
   @reset_cycles();
   if (cycles != 0) {
     (prim "cyclesAdd" : Nat -> ()) cycles;
+  };
+  switch @timeout {
+    case (?timeout) { @timeout := null; (prim "timeoutSet" : Nat32 -> ()) timeout };
+    case null ()
   }
 };
+
 
 // Function called by backend to zero cycles on context switch.
 // DO NOT RENAME without modifying compilation.

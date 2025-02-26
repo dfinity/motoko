@@ -1,12 +1,16 @@
 import Prim "mo:⛔";
-actor class C(n : Nat, contr : ?Principal) = this {
-   stable var upgrades = 0;
+import Cycles = "../cycles/cycles";
+persistent actor class C(n : Nat, contr : ?Principal, cycleStats : Bool) = this {
+   var upgrades = 0;
    switch contr { case (?contr) assert Prim.isController contr; case _ () };
 
    system func preupgrade () {
      assert not Prim.isController(Prim.principalOfActor this);
      upgrades += 1;
+     if cycleStats Prim.debugPrint ("Balance(preupgrade): " # debug_show Cycles.balance());
    };
+
+   if cycleStats Prim.debugPrint ("Balance(init): " # debug_show Cycles.balance());
 
    public func observe () : async {args : Nat;  upgrades : Nat} {
      switch contr { case (?contr) assert Prim.isController contr; case _ () };

@@ -572,21 +572,22 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (exp1, typs, exp2) ->
-    interpret_exp env exp1 (fun v1 ->
-       let v1 = begin match v1 with
-         | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
-         | _ -> v1
-        end in
-      interpret_exp env exp2 (fun v2 ->
-        let call_conv, f = V.as_func v1 in
-        check_call_conv exp1 call_conv;
-        check_call_conv_arg env exp v2 call_conv;
-        last_region := exp.at; (* in case the following throws *)
-        let c = context env in
-        f c v2 k
-      )
-    )
+  | CallE (par, exp1, typs, exp2) ->
+    interpret_par env par
+      (fun v ->
+        ignore (V.as_obj v);
+        interpret_exp env exp1 (fun v1 ->
+            let v1 = begin match v1 with
+                     | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
+                     | _ -> v1
+                     end in
+            interpret_exp env exp2 (fun v2 ->
+                let call_conv, f = V.as_func v1 in
+                check_call_conv exp1 call_conv;
+                check_call_conv_arg env exp v2 call_conv;
+                last_region := exp.at; (* in case the following throws *)
+                let c = context env in
+                f c v2 k)))
   | BlockE decs ->
     let k' =
       if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)
@@ -687,14 +688,18 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (T.Fut, _, exp1) ->
-    async env
-      exp.at
-      (fun k' r ->
-        let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
-        in interpret_exp env' exp1 k')
-      k
-  | AsyncE (T.Cmp, _, exp1) ->
+  | AsyncE (par, T.Fut, _, exp1) ->
+    interpret_par env par
+      (fun v ->
+        ignore (V.as_obj v);
+        async env
+          exp.at
+          (fun k' r ->
+            let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
+            in interpret_exp env' exp1 k')
+          k)
+  | AsyncE (par, T.Cmp, _, exp1) ->
+    assert (par = None);
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
@@ -715,6 +720,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 k
   | IgnoreE exp1 ->
     interpret_exp env exp1 (fun _v -> k V.unit)
+
+and interpret_par env par k =
+  match par with
+  | Some exp -> interpret_exp env exp k
+  | None -> V.Obj V.Env.empty |> k
 
 and interpret_exps env exps vs (k : V.value list V.cont) =
   match exps with

@@ -317,6 +317,7 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat32 = Prim Nat32
 let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
@@ -349,6 +350,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "system_transient"; typ = unit; src = empty_src};
     { lab = "destination_invalid"; typ = unit; src = empty_src};
     { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "system_unknown"; typ = unit; src = empty_src};
     { lab = "future"; typ = Prim Nat32; src = empty_src};
     { lab = "call_error"; typ = call_error; src = empty_src};
   ])
@@ -1465,7 +1467,12 @@ let install_typ ts actor_typ =
     [ install_arg_typ ],
     [ Func(Local, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
+let cycles_lab = "cycles"
 let migration_lab = "migration"
+let timeout_lab = "timeout"
+
+let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
+let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
 
 (* Pretty printing *)
 
@@ -1921,4 +1928,3 @@ let string_of_stab_sig stab_sig : string =
   | Single _ -> "// Version: 1.0.0\n"
   | PrePost _ -> "// Version: 2.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig
-

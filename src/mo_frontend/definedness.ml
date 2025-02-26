@@ -82,7 +82,7 @@ let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
+  | CallE (par_opt, e1, _ts, e2) -> eagerify (Option.to_list par_opt @ [e1; e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (_, e)
   | RetE e
@@ -119,6 +119,7 @@ let rec exp msgs e : f = match e.it with
   | OrE (e1, e2)
   | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
+  | AsyncE (Some par, _, _, e) -> exps msgs [par; e]
   | UnE (_, _, e)
   | ShowE (_, e)
   | FromCandidE e
@@ -128,7 +129,7 @@ let rec exp msgs e : f = match e.it with
   | OldE e
   | LabelE (_, _, e)
   | DebugE e
-  | AsyncE (_, _, e)
+  | AsyncE (None, _, _, e)
   | AwaitE (_, e)
   | AssertE (_, e)
   | AnnotE (e, _)

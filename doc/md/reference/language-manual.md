@@ -507,7 +507,7 @@ The syntax of an expression is as follows:
   [ var? <exp>,* ]                               Array
   <exp> [ <exp> ]                                Array indexing
   <shared-pat>? func <func_exp>                  Function expression
-  <exp> <typ-args>? <exp>                        Function call
+  <parenthetical>? <exp> <typ-args>? <exp>       Function call
   not <exp>                                      Negation
   <exp> and <exp>                                Conjunction
   <exp> or <exp>                                 Disjunction
@@ -520,7 +520,7 @@ The syntax of an expression is as follows:
   break <id> <exp>?                              Break
   continue <id>                                  Continue
   return <exp>?                                  Return
-  async <block-or-exp>                           Async expression
+  <parenthetical>? async <block-or-exp>          Async expression
   await <block-or-exp>                           Await future (only in async)
   async* <block-or-exp>                          Delay an asynchronous computation
   await* <block-or-exp>                          Await a delayed computation (only in async)
@@ -746,6 +746,8 @@ type ErrorCode = {
   #system_fatal;
   // Transient error.
   #system_transient;
+  // Response unknown due to missed deadline.
+  #system_unknown;
   // Destination invalid.
   #destination_invalid;
   // Explicit reject by canister code.
@@ -2188,7 +2190,7 @@ Otherwise,
 
 ### Function calls
 
-The function call expression `<exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
+The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
 
 -   The function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`.
 
@@ -2205,6 +2207,10 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](../base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+
+A `<parenthetical>`, when present, modifies dynamic attributes of the message send (provided that the return type `T` is of form `async U`, i.e. a future). The recognized attributes are
+- `cycles : Nat` to attach cycles
+- `timeout : Nat32` to introduce a timeout for best-effort message execution.
 
 :::note
 
@@ -2478,7 +2484,7 @@ The `return` expression exits the corresponding dynamic function invocation or c
 
 ### Async
 
-The async expression `async <block-or-exp>` has type `async T` provided:
+The async expression `<parenthetical>? async <block-or-exp>` has type `async T` provided:
 
 -   `<block-or-exp>` has type `T`.
 
@@ -2489,6 +2495,10 @@ Any control-flow label in scope for `async <block-or-exp>` is not in scope for `
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, implicit or explicit, to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+
+The presence of `<parenthetical>` modifies the semantics of the async expression to
+- attach cycles with attribute `cycles : Nat`
+- impose a timeout (observed when awaiting the result) with attribute `timeout : Nat32`.
 
 :::note
 

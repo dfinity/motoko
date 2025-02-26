@@ -173,8 +173,8 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp * inst * exp                  (* function call *)
-  | BlockE of dec list                         (* block (with type after avoidance)*)
+  | CallE of exp option * exp * inst * exp     (* function call *)
+  | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -189,7 +189,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
+  | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
   | AwaitE of async_sort * exp                 (* await *)
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
@@ -333,11 +333,11 @@ let scopeT at =
 (* Expressions *)
 
 let asyncE sort tbs e =
-  AsyncE (sort, tbs, e) @? e.at
+  AsyncE (None, sort, tbs, e) @? e.at
 
 let ignore_asyncE tbs e =
   IgnoreE (
-    AnnotE (AsyncE (Type.Fut, tbs, e) @? e.at,
+    AnnotE (AsyncE (None, Type.Fut, tbs, e) @? e.at,
       AsyncT (Type.Fut, scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let is_asyncE e =
@@ -348,7 +348,7 @@ let is_asyncE e =
 let is_ignore_asyncE e =
   match e.it with
   | IgnoreE
-      {it = AnnotE ({it = AsyncE (Type.Fut, _, _); _},
+      {it = AnnotE ({it = AsyncE (None, Type.Fut, _, _); _},
         {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false
