@@ -2,10 +2,6 @@
 sidebar_position: 12
 ---
 
----
-sidebar_position: 12
----
-
 # Records
 
 A record is a collection of labeled fields, where each field has a name, type and a value. Records allow grouping related data into a structured format, making it easier to manage and access.
@@ -103,7 +99,6 @@ let updatedPerson = { person with age : Nat = 26; city : Text = "New York"; };
 
 Debug.print(debug_show (updatedPerson));
 ```
-
 
 ⚠ **Note:** If `person` contained a mutable (`var`) field, `with` must redefine it, preventing aliasing.
 
