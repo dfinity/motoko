@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.14.2 (FUTURE)
+## 0.14.2 (2025-02-26)
 
 * motoko (`moc`)
 
@@ -8,7 +8,7 @@
     This is an **experimental feature**, with new syntax, and now also allowing best-effort
     message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
 
-    For example, if one wants to attach cycles to a message send, prefix it with a parenthetical
+    For example, if one wants to attach cycles to a message send, one can prefix it with a parenthetical
     ``` motoko
     (with cycles = 5_000) Coins.mine(forMe);
     ```
@@ -20,6 +20,8 @@
     after it. Please consult the documentation for more usage information.
 
   * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+  * bugfix: Error messages now won't suggest privileged/internal names (#4916).
 
 ## 0.14.1 (2025-02-13)
 
