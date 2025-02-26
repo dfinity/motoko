@@ -4,15 +4,7 @@ sidebar_position: 1
 
 # Meet Motoko: The language shaping the future of Web3
 
-import { MarkdownChipRow } from "/src/components/Chip/MarkdownChipRow";
-
-import Tabs from "@theme/Tabs";
-
-import TabItem from "@theme/TabItem";
-
-<MarkdownChipRow labels={["Beginner", "Getting started"]} />
-
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150"/>
 
 Motoko is a modern, **actor-based** language designed for safety, efficiency, and scalability. Motoko natively supports asynchronous messaging, Candid interoperability, robust type safety, automatic memory management, and the unique features of the Internet Computer.
 
@@ -20,7 +12,7 @@ Motoko is a modern, **actor-based** language designed for safety, efficiency, an
 
 Follow these steps to set up your Motoko development environment:
 
-### 1. **Install the IC SDK**  
+### 1. Install the IC SDK
 
 To develop Motoko applications, you need a development environment that includes the Motoko compiler and base library. The Internet Computer Software Development Kit (IC SDK) provides these essential tools, along with utilities for managing and deploying canisters.  
 
@@ -34,12 +26,12 @@ Verify the installation with:
 dfx --version
 ```
 
-### 2. **Choose an IDE**  
+### 2. Choose an IDE
 
 While you can use any IDE for Motoko development, **Visual Studio Code (VS Code)** is recommended due to its convenient extension support. If you prefer to use VS Code, you can download it from:  
 [https://code.visualstudio.com](https://code.visualstudio.com)  
 
-### 3. **Install the Motoko VS Code extension (optional, recommended for VS Code Users)**
+### 3. Install the Motoko VS Code extension (optional, recommended for VS Code Users)
 
 If you are using VS Code, you can enhance your development experience by installing the official Motoko extension:  
 
@@ -88,16 +80,10 @@ Develop cross-chain applications and integrate with other blockchains.
 
 </Tabs>
 
-## Quick references  
+## References  
 
 For developers looking for quick access to key resources, here are direct links to the base library and useful examples:
 
 - **[Motoko base library](https://internetcomputer.org/docs/current/motoko/main/base/)**
 
 - **[Motoko example projects](https://github.com/dfinity/examples/tree/master/motoko)**
-
-### Share your feedback
-
-Was this page helpful? [Yes] [No]
-
-If you have any questions or suggestions, join the [DFINITY developer forum](https://forum.dfinity.org/) to share your feedback. Connect with the community, collaborate with other developers, and stay up to date with the latest Motoko updates.
