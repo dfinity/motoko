@@ -2,10 +2,6 @@
 sidebar_position: 6
 ---
 
----
-sidebar_position: 6
----
-
 # Expression declarations
 
 An expression declaration is a statement where an expression is evaluated only for its side effects without assigning it to a variable. It does not introduce any new bindings.

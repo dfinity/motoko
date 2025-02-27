@@ -19,7 +19,7 @@ type Status = {
 ```
 
 `#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a `Text` value, such as the reason for banning.
-  
+
 ## Assigning variants
 
 To assign a variant value, use one of the defined tags:
@@ -28,7 +28,6 @@ To assign a variant value, use one of the defined tags:
 let activeUser: Status = #Active;
 let bannedUser: Status = #Banned("Violation of rules");
 ```
-
 
 ## Accessing a variant's value
 
