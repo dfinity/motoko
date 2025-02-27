@@ -8,6 +8,15 @@ Shared types enable safe communication between canisters, frontends, and users. 
 
 A type must be immutable and Candid-compatible to be shared.
 
+## Importantance of shared types
+
+Shareability is essential for several reasons:
+
+- Shared types ensure data can be safely serialized and deserialized across network boundaries.
+- Restricting sharing to immutable data prevents synchronization issues between canisters.
+- Shared types map directly to Candid, enabling interaction between canisters written in different languages.
+- Web and mobile frontends communicate with canisters using shared types.
+
 ## Common shared types
 
 ### Primitive types
@@ -129,12 +138,3 @@ let complex = {
     contents = [var 1, 2, 3];  // Contains a mutable array
 };
 ```
-
-## Importantance of shared types
-
-Shareability is essential for several reasons:
-
-- Shared types ensure data can be safely serialized and deserialized across network boundaries.
-- Restricting sharing to immutable data prevents synchronization issues between canisters.
-- Shared types map directly to Candid, enabling interaction between canisters written in different languages.
-- Web and mobile frontends communicate with canisters using shared types.

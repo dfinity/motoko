@@ -85,7 +85,7 @@ actor Bank {
         return balance;
     };
 };
-await Bank.
+await Bank.getBalance();
 ```
 
 Example use case: Fetching data quickly without modifying the canister state.  

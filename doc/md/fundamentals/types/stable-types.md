@@ -8,6 +8,23 @@ Stable types are essential for preserving state across canister upgrades in Moto
 
 A type is stable if it can be safely stored and restored during an upgrade. This includes all shared types, as well as certain mutable structures that are designed for long-term storage.
 
+## Stable vs shared types
+
+While all shared types are stable, the reverse is not true. Some stable types, such as mutable structures, cannot be shared across canisters.
+
+| Type                            | Stable | Shared |
+|---------------------------------|--------|--------|
+| Primitive types (`Nat`, `Text`, `Bool`, etc.) | Yes | Yes |
+| Immutable arrays (`[T]`)     | Yes | Yes |
+| Mutable arrays (`[var T]`)   | Yes | No  |
+| Records with immutable fields | Yes | Yes |
+| Records with mutable fields   | Yes | No  |
+| Option types (`?T`)           | Yes | Yes |
+| Variants with shared types    | Yes | Yes |
+| Variants with stable types    | Yes | No (if non-shared types are included) |
+| Actor references              | Yes | Yes |
+| Error type (`Error`)          | No  | No  |
+
 ## Common stable types
 
 ### Primitive types
@@ -99,23 +116,6 @@ type LoggerActor = actor {
 
 stable var logger: ?LoggerActor = null;
 ```
-
-## Stable vs shared types
-
-While all shared types are stable, the reverse is not true. Some stable types, such as mutable structures, cannot be shared across canisters.
-
-| Type                            | Stable | Shared |
-|---------------------------------|--------|--------|
-| Primitive types (`Nat`, `Text`, `Bool`, etc.) | Yes | Yes |
-| Immutable arrays (`[T]`)     | Yes | Yes |
-| Mutable arrays (`[var T]`)   | Yes | No  |
-| Records with immutable fields | Yes | Yes |
-| Records with mutable fields   | Yes | No  |
-| Option types (`?T`)           | Yes | Yes |
-| Variants with shared types    | Yes | Yes |
-| Variants with stable types    | Yes | No (if non-shared types are included) |
-| Actor references              | Yes | Yes |
-| Error type (`Error`)          | No  | No  |
 
 ### Mutable arrays
 
