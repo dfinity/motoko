@@ -10,6 +10,8 @@ Variants allow defining values that can take on multiple possible forms, each la
 
 To demonstrate variants, consider the following example. 
 
+To demonstrate variants, consider the following example. 
+
 A traffic light cycles between three distinct states:
 
 - Red: Vehicles must stop.

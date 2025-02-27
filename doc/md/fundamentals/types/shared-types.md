@@ -37,7 +37,7 @@ let person: (Text, Nat) = ("Alice", 25);
 
 Objects with immutable fields containing shared types are shared:
 
-```motoko norepl
+```motoko no-repl
 // Records with immutable fields are shared
 let user = {
     id = "usr123";
@@ -50,7 +50,7 @@ let user = {
 
 Variant types are shared when their tags contain shared types:
 
-```motoko norepl
+```motoko no-repl
 // Variant types with shared tags are shared
 type Result = {
     #ok: Nat;
