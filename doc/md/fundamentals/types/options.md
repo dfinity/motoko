@@ -10,7 +10,7 @@ Options provide a structured way to represent values that may or may not be pres
 
 To determine if an option contains a value, `Option.isSome` returns `true` if it is not `null`.
 
-```motoko norepl
+```motoko no-repl
 import Option "mo:base/Option";
 
 let value: ?Nat = ?5;
@@ -25,7 +25,7 @@ By leveraging the `Option` module, handling optional values becomes more concise
 
 Instead of manually handling `null` cases with pattern matching, `Option.get` allows for cleaner fallback logic:
 
-```motoko norepl
+```motoko no-repl
 import Option "mo:base/Option";
 
 let username: ?Text = null;
@@ -38,7 +38,7 @@ This approach ensures that missing values are safely replaced with a default.
 
 Options can be used to catch expected failures instead of calling `trap`, making a function return `null` when it encounters an invalid input.
 
-```motoko norepl
+```motoko no-repl
 func safeDivide(a: Int, b: Int): ?Int {
     if (b == 0) null else ?(a / b);
 }
@@ -51,9 +51,9 @@ This prevents division errors from interrupting program execution.
 
 ## Applying transformations to options
 
-The `Option.map` function enables applying a transformation only if the value is present.
+The `Option.map` function applies a transformation only if the value is present.
 
-```motoko norepl
+```motoko no-repl
 import Option "mo:base/Option";
 
   let number: ?Nat = ?10;
@@ -64,9 +64,9 @@ If `number` is `null`, `map` ensures the result remains `null` instead of perfor
 
 ## Applying an optional function
 
-Sometimes, both the function and value are optional. `Option.apply` allows calling a function only if both are present.
+Sometimes, both the function and value are optional. `Option.apply` calls a function only if both are present.
 
-```motoko norepl
+```motoko no-repl
 import Option "mo:base/Option";
 
 let maybeIncrement: ?(Nat -> Nat) = ?(func x: Nat = x + 1);
@@ -81,9 +81,9 @@ This is useful when chaining optional operations that may return `null`.
 
 ## Combining multiple optional values
 
-When working with multiple optional values, using `Option.chain` allows safely processing them without unnecessary `switch` statements.
+When working with multiple optional values, using `Option.chain` processes them safely without unnecessary `switch` statements.
 
-```motoko norepl
+```motoko no-repl
 import Option "mo:base/Option";
 
 let firstName: ?Text = ?"Alice";

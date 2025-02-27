@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Functions  
 
-Motoko provides different types of functions based on where they execute and how they interact with the system. Understanding these distinctions is essential when designing efficient and scalable canister logic.
+Motoko provides different types of functions based on where in the program they execute and how they interact with the system. Understanding these distinctions is essential when designing efficient and scalable canister logic.
 
 ## Function comparison  
 
@@ -18,7 +18,7 @@ Motoko provides different types of functions based on where they execute and how
 
 ## Local functions  
 
-A local function runs within the same actor and does not require inter-canister messaging. It is fast and synchronous.
+Local functions run within the canister's actor. They does not make calls to other canisters. Local functions are processed fast and synchronously.
 
 ```motoko norepl
 func add(a: Nat, b: Nat): Nat {
@@ -28,11 +28,11 @@ func add(a: Nat, b: Nat): Nat {
 let sum: Nat = add(5, 3); // Synchronous execution
 ```
 
-Use case: Simple computations that do not require network calls.  
+Example use case: Simple computations that do not require network calls.  
 
 ## Generic functions
 
-A generic function allows type parameters, making it more flexible for different data types.
+Generic functions allow the use of type parameters, making them more flexible for using different data types.
 
 ```motoko
 func identity<T>(x: T): T {
@@ -43,11 +43,11 @@ let num: Nat = identity<Nat>(42);
 let text: Text = identity<Text>("Hello");
 ```
 
-Use case: Reusable logic for different types.  
+Example use case: Reusable logic for different types.  
 
 ## Shared functions  
 
-A shared function can be called from outside the canister (e.g., by users or other canisters). These are asynchronous because they involve network interactions.  
+Shared functions can be called from outside the canister (e.g., by users or other canisters). These are processed asynchronously because they require interacting with the network.
 
 ```motoko
 public shared func getBalance(): async Nat {
@@ -55,11 +55,11 @@ public shared func getBalance(): async Nat {
 };
 ```
 
-Use case: Exposing public endpoints for inter-canister or frontend interactions.
+Example use case: Exposing public endpoints for inter-canister or frontend interactions.
 
 ## Shared update functions
 
-A shared update function modifies the canister’s state and must persist data changes.  
+Shared update functions modify a canister’s state and must persist data changes.  
 
 ```motoko
 actor Bank {
@@ -71,11 +71,11 @@ actor Bank {
 };
 ```
 
-Use case: Transactions, user state updates, or anything that modifies persistent data.  
+Example use cases: Transactions, user state updates, or anything that modifies persistent data.  
 
 ## Shared query functions
 
-A shared query function allows fast, read-only access to the canister’s state. It is asynchronous but executes much faster than an update function because it does not modify the state and does not undergo concensus.
+Shared query functions allow fast, read-only access to the canister’s state. They are asynchronous but execute much faster than an update function because they do not modify the state and do not go through consensus.
 
 ```motoko
 actor Bank {
@@ -88,11 +88,11 @@ actor Bank {
 await Bank.
 ```
 
-Use case: Fetching data quickly without modifying the canister state.  
+Example use case: Fetching data quickly without modifying the canister state.  
 
 ## Shared composite query functions  
 
-A shared composite query is a query function that can call other query functions, allowing query chaining without converting into an update function.
+Shared composite queries are a query function that can call other query functions, allowing query chains without being converted into an update function.
 
 ```motoko
 actor Bank {
@@ -110,4 +110,4 @@ actor Bank {
 await Bank.doubleBalance();
 ```
 
-Use case: Efficiently combining multiple queries while avoiding inter-canister update calls.
+Example use case: Efficiently combining multiple queries while avoiding inter-canister update calls.

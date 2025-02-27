@@ -14,7 +14,7 @@ A type is stable if it can be safely stored and restored during an upgrade. This
 
 Most primitive types in Motoko are stable:
 
-```motoko norepl
+```motoko no-repl
 // Numbers, text, and booleans are stable
 stable var counter: Nat = 0;
 stable var greeting: Text = "Welcome";
@@ -25,7 +25,7 @@ stable var isActive: Bool = true;
 
 Both immutable and mutable collections of stable types are stable:  
 
-```motoko norepl
+```motoko no-repl
 // Immutable arrays are stable
 stable var usernames: [Text] = ["Alice", "Bob"];
 
@@ -37,7 +37,7 @@ stable var scores: [var Nat] = [var 100, 85, 92];
 
 Records that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.  
 
-```motoko norepl
+```motoko no-repl
 // Records with immutable fields are stable
 stable var config = {
     appName = "MyDApp";
@@ -56,7 +56,7 @@ stable var settings = {
 
 Variants are stable when their tags contain only stable types:  
 
-```motoko norepl
+```motoko no-repl
 // Variants with stable tags are stable
 type UserStatus = {
     #online;
@@ -72,7 +72,7 @@ stable var bobStatus: UserStatus = #busy("In a meeting");
 
 Option types are stable when they contain stable types:  
 
-```motoko norepl
+```motoko no-repl
 // Option types with stable inner types are stable
 stable var optionalDeadline: ?Nat = ?1640995200000;
 stable var optionalMessage: ?Text = null;
@@ -82,7 +82,7 @@ stable var optionalMessage: ?Text = null;
 
 The `Region` type, which provides low-level memory management, is stable:  
 
-```motoko norepl
+```motoko no-repl
 // Regions are stable
 stable var storage: Region = Region.new();
 ```
@@ -91,7 +91,7 @@ stable var storage: Region = Region.new();
 
 References to actors are stable, allowing stable canister-to-canister interactions:  
 
-```motoko norepl
+```motoko no-repl
 // Actor types are stable
 type LoggerActor = actor {
     log: shared (message: Text) -> async ();
@@ -119,14 +119,14 @@ While all shared types are stable, the reverse is not true. Some stable types, s
 
 ### Mutable arrays
 
-```motoko norepl
+```motoko no-repl
 // Mutable arrays are stable but NOT shared
 stable var counters: [var Nat] = [var 0, 0, 0];
 ```
 
 ### Objects with mutable fields
 
-```motoko norepl
+```motoko no-repl
 // Objects with mutable fields are stable but NOT shared
 stable var user = {
     var name = "Alice";
@@ -138,7 +138,7 @@ stable var user = {
 
 Declaring a variable as `stable` ensures its persistence across canister upgrades.  
 
-```motoko norepl
+```motoko no-repl
 actor Counter {
     // This value persists across upgrades
     stable var count: Nat = 0;

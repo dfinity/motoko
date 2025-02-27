@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Mutable arrays
 
-Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike immutable arrays, which require creating a new array to reflect changes, mutable arrays support in-place modifications, improving performance in certain use cases.
+Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike immutable arrays, which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in certain use cases.
 
 ## Immutable arrays vs mutable arrays  
 
@@ -18,25 +18,25 @@ Mutable arrays allow direct modification of elements, making them suitable for s
 | Conversion      | Can be converted to mutable with `Array.thaw` | Can be converted to immutable with `Array.freeze` |
 | Use case        | When data should remain unchanged       | When frequent modifications are needed |
 
-Motoko arrays both mutable and immutable are not designed to grow dynamically. Previously, `Array.append` allowed growth by creating a new array, but this method is now deprecated. If a dynamically growing contiguous data structure is required, `Buffer` should be used instead.
+Motoko arrays, both mutable and immutable, are not designed to grow dynamically. If a dynamically growing contiguous data structure is required, `Buffer` should be used instead.
 
 ## Defining a mutable array
 
-Mutable arrays use the `var` keyword inside the square brackets `[var T]`, allowing modifications. The type of the array is specified within the square brackets, e.g., `[var Nat]` declares an mutable array of natural numbers.
+Mutable arrays use the `var` keyword inside the square brackets `[var T]`. The type of the array is specified within the square brackets, e.g., `[var Nat]` declares an mutable array of natural numbers.
 
-```motoko norepl
+```motoko no-repl
 let mutableArray: [var Nat] = [var 1, 2, 3, 4, 5];
 
 mutableArray[0] := 10;  // Updates the first element to 10
 ```
 
-Mutable arrays allow element modification in place, unlike immutable arrays.
+Element modification in place is supported in mutable arrays.
 
 ## Accessing and modifying elements
 
-Mutable arrays allow elements to be read and modified using indexed access.  Attempting to access an index that does not exist will cause a trap.  
+Mutable arrays allow elements to be read and modified using indexed access. Attempting to access an index that does not exist will result in a trap.  
 
-```motoko norepl
+```motoko no-repl
 let numbers: [var Nat] = [var 10, 20, 30];
 
 numbers[0] := 100;  // updating first element
@@ -48,7 +48,7 @@ Debug.print(debug_show(numbers[0]));  // 100
 
 You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion.
 
-```motoko norepl
+```motoko no-repl
 import Array "mo:base/Array";
 
 let mutableArray: [var Nat] = [var 1, 2, 3];
@@ -65,12 +65,12 @@ Mutable arrays are beneficial when:
 - Frequent modifications are required without the overhead of creating a new array.
 - Dynamic algorithms need in-place operations, such as sorting or shuffling.
 
-```motoko norepl
+```motoko no-repl
 import Array "mo:base/Array";
 
 let rivers: [var Text] = ["Nile", "Rio Cobre", "Yangtze"];
 
-// creating a mutable array with an additional element
+// Creating a mutable array with an additional element
 let updatedRivers: [var Text] = Array.tabulateVar<Text>(4, func i =
     if (i < rivers.size()) rivers[i] else "Mississippi"
 );
@@ -83,9 +83,10 @@ Debug.print(debug_show(updatedRivers));
 
 ## Nested mutable arrays
 
-A Tic-Tac-Toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
+To demonstrate nested mutable arrays, consider the following: 
 
-## Tic-Tac-Toe
+A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
+
 
 `Array.tabulateVar` is used to create a mutable board initialized with `"_"` (empty space).
 
@@ -105,7 +106,7 @@ func createTicTacToeBoard() : [var [var Text]] {
     )
   };
 
-  // Create a mutable Tic-Tac-Toe board
+  // Create a mutable Tic-tac-toe board
   let board : [var [var Text]] = createTicTacToeBoard();
 
   // Function to make a move
@@ -136,7 +137,6 @@ func createTicTacToeBoard() : [var [var Text]] {
 
 Since both the outer and inner arrays are mutable, players can update the board in place. The array must be frozen before `foldLeft()` can be applied to the rows as `foldleft()` expects an immutable array as an argument.
 
-### Representing the board
 
 ```md
 X _ _

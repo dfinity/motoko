@@ -8,17 +8,19 @@ Variants allow defining values that can take on multiple possible forms, each la
 
 ## Modeling traffic lights with variants
 
+To demonstrate variants, consider the following example. 
+
 A traffic light cycles between three distinct states:
 
-- Red – Vehicles must stop.
-- Yellow – Vehicles should prepare to stop.
-- Green – Vehicles may proceed.
+- Red: Vehicles must stop.
+- Yellow: Vehicles should prepare to stop.
+- Green: Vehicles may proceed.
 
-Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. The traffic light cannot be in two states at the same time. There is no invalid state —every possible value is explicitly defined. The transitions are controlled and predictable.
+Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid state —every possible value is explicitly defined. The transitions are controlled and predictable.
 
 ### Defining the traffic light state
 
-```motoko norepl
+```motoko no-repl
 // Each tag #red, #yellow, #green represents one possible state of the traffic light.
 type TrafficLight = {
     #red;
@@ -31,7 +33,7 @@ type TrafficLight = {
 
 A function can define how the traffic light cycles from one state to the next.
 
-```motoko norepl
+```motoko no-repl
 func nextState(light: TrafficLight): TrafficLight {
     switch (light) {
         case (#red)    #green;
@@ -43,7 +45,7 @@ func nextState(light: TrafficLight): TrafficLight {
 
 ### Simulating traffic light changes
 
-```motoko norepl
+```motoko no-repl
  type TrafficLight = {
     #red;
     #yellow;
@@ -69,7 +71,7 @@ func nextState(light: TrafficLight): TrafficLight {
 
 #### Output
 
-``` md
+```bash
 #green
 #yellow
 #red
@@ -95,11 +97,10 @@ type Tree = {
 
 This contains two variants:
 
-`#node` contains:
-
-- A value of type `Nat`.
-- Two child trees (`left` and `right`).
-`#leaf` represents an empty node.
+1. `#node` contains:
+  - A value of type `Nat`.
+  - Two child trees (`left` and `right`).
+2. `#leaf` represents an empty node.
 
 ### Building the tree
 

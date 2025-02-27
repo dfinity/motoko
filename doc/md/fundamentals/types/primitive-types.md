@@ -14,39 +14,39 @@ Motoko supports both signed integers and unsigned naturals:
 
 The `Int` and `Nat` types prevent overflow and underflow since they dynamically expand or shrink as needed.
 
-While `Nat` can be implicitly converted to `Int`, the reverse is not always true. `Nat` is a subtype of `Int`. In other words, a `Nat` value can be used anywhere an `Int` is expected because `Nat` is always a valid `Int`. This is why implicit conversion from `Nat` to `Int` is allowed:
+While `Nat` can be implicitly converted to `Int`, the reverse is not always true. `Nat` is a subtype of `Int`. In other words, a `Nat` value can be used anywhere an `Int` is expected because `Nat` is always a valid `Int`. This is why implicit conversions from `Nat` to `Int` are allowed:
 
-```motoko norepl
+```motoko no-repl
 let x: Nat = 5;
 let y: Int = x; // Allowed
 ```
 
 However, an `Int` cannot be directly assigned to a `Nat` if it holds a negative value, as `Nat` only supports non-negative numbers:
 
-```motoko norepl
+```motoko no-repl
 let x: Int = -5;
 let y: Nat = x; // Error
 ```
 
 To convert a negative `Int` to a `Nat`, the absolute value must be taken explicitly:
 
-```motoko norepl
+```motoko no-repl
 let x: Int = -5;
 let y: Nat = Int.abs(x); // Allowed, y = 5
 ```
 
 Fixed-size numeric types (`Int8`, `Nat32`, etc.) support additional operations, including bitwise shifts:
 
-```motoko norepl
+```motoko no-repl
 let x: Nat32 = 0xA; // 10 in hexadecimal
 let y = Nat32.bitshiftLeft(x, 2); // 0x28 (40 in decimal)
 ```
 
-## Char and text
+## Char and Text
 
 `Char` represents a single Unicode scalar value, while `Text` represents a sequence of characters.
 
-```motoko norepl
+```motoko no-repl
 let letter: Char = 'A';
 let codePoint = Char.toNat32(letter); // 65
 
@@ -61,7 +61,7 @@ let words = Text.split("apple,banana,cherry", ","); // ["apple", "banana", "cher
 
 The `Bool` type represents boolean values, `true` or `false`, and supports logical operations.
 
-```motoko norepl
+```motoko no-repl
 let flag: Bool = Bool.logor(true, false); // true
 let opposite = Bool.lognot(flag); // false
 
@@ -73,7 +73,7 @@ let comparison = Bool.compare(true, false); // #greater
 
 `Float` is a 64-bit floating-point type that provides mathematical operations.
 
-```motoko norepl
+```motoko no-repl
 imoprt Float "mo:base/Float
 let pi = Float.pi;
 let radius: Float = 2.5;

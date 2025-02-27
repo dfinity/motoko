@@ -34,7 +34,7 @@ This structure maintains organization while ensuring type safety and clarity.
 
 Records can be destructured using `switch`, allowing selective extraction of fields.
 
-```motoko norepl
+```motoko no-repl
 type Address = {
     city: Text;
     street: Text;
@@ -60,9 +60,9 @@ This approach makes accessing deeply nested fields more explicit and readable.
 
 ## Using records in collections
 
-Records are commonly used in arrays and other collections for structured data storage.
+Records are commonly used in arrays and other collections for structured data storage, allowing efficient  data organization and retrieval.
 
-```motoko norepl
+```motoko no-repl
 type Product = {
     name: Text;
     price: Float;
@@ -77,13 +77,12 @@ let firstProduct: Product = inventory[0];
 let productName: Text = firstProduct.name;
 ```
 
-Storing structured data in collections allows for efficient organization and retrieval.
 
-## Updating records functionally
+## Updating records programatically
 
 Since records are immutable by default, updating a record requires creating a modified copy.
 
-```motoko norepl
+```motoko no-repl
 let person: Individual = {
     name = "Eve";
     address = { street = "5th Avenue"; city = "Chicago"; zip = 60601 };
@@ -108,7 +107,7 @@ Tuples and records both allow grouping values, but they have key differences in 
 
 ### Example of a record
 
-```motoko norepl
+```motoko no-repl
 type User = {
     name: Text;
     age: Nat;
@@ -121,7 +120,7 @@ let username: Text = user.name;
 
 ### Example of a tuple  
 
-```motoko norepl
+```motoko no-repl
 let user: (Text, Nat) = ("Alice", 25);
 
 let username: Text = switch (user) {

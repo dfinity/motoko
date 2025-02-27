@@ -4,21 +4,21 @@ sidebar_position: 6
 
 # Immutable arrays
 
-Immutable arrays in are fixed-size, read-only data structures that allow efficient storage of elements of the same type. Unlike mutable arrays, they cannot be modified after creation, ensuring data integrity and predictable behavior.
+Immutable arrays in are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike mutable arrays, they cannot be modified after creation, ensuring data integrity and predictable behavior.
 
 ## Defining an immutable array
 
-Immutable arrays are declared using square brackets `[T]` and cannot be modified after creation. The type of the array is specified within the square brackets, e.g., `[Nat]` declares an immutable array of natural numbers.
+Immutable arrays are declared using square brackets `[T]`. The type of the array is specified within the square brackets, e.g., `[Nat]` declares an immutable array of natural numbers.
 
-```motoko norepl
+```motoko no-repl
 let immutableArray: [Nat] = [1, 2, 3, 4, 5];
 ```
 
 ## Accessing and modifying elements
 
-Immutable arrays allow read-only access to elements.  Attempting to access an index that does not exist will cause a trap. Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
+Immutable arrays allow read-only access to elements. Attempting to access an array's index that does not exist will cause a trap. Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
-```motoko norepl
+```motoko no-repl
 let numbers: [Nat] = [10, 20, 30];
 
 let first: Nat = numbers[0];  // 10
@@ -30,13 +30,17 @@ Debug.print(debug_show(second));
 
 ## Iterating through an array  
 
-There are two primary ways to iterate through the elements in an array in Motoko: using `Array.vals`, which provides an iterator, or using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.  
+There are two primary ways to iterate through the elements in an array in Motoko: 
+
+1. Using `Array.vals`, which provides an iterator.
+
+2. Using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.  
 
 ### Using `Array.vals`  
 
-The `Array.vals` function returns an iterator over the array elements, allowing iteration without manually managing indices.  
+The `Array.vals` function returns an iterator that is used to iterate over the array's elements without manually managing indices.  
 
-```motoko norepl
+```motoko no-repl
 let arr = [1, 2, 3, 4, 5];
 
 for (val in arr.vals()) {
@@ -48,7 +52,7 @@ for (val in arr.vals()) {
 
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
 
-```motoko norepl
+```motoko no-repl
 for (i in Iter.range(0, arr.size() - 1)) {
     Debug.print(debug_show(arr[i]));
 }
@@ -58,9 +62,9 @@ Both methods achieve the same result, but `Array.vals` is often preferred for it
 
 ## Converting an immutable array to a mutable array
 
-You can convert an immutable array into a mutable array using `Array.thaw`, allowing element modifications.
+You can convert an immutable array into a mutable array using `Array.thaw:
 
-```motoko norepl
+```motoko no-repl
 let immutableArray: [Nat] = [1, 2, 3, 4, 5];
 
 let mutableCopy: [var Nat] = Array.thaw<Nat>(immutableArray);
@@ -80,12 +84,12 @@ Immutable arrays in Motoko are best used when:
 
 If the number of elements may change, collections like `List` or `Buffer` are a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
 
-```motoko norepl
+```motoko no-repl
 import Array "mo:base/Array";
 
 let rivers: [Text] = ["Nile", "Rio Cobre", "Yangtze"];
 
-// creating an immutable array with an additional element using `tabulate`
+// Create an immutable array with an additional element using `tabulate`
 let updatedRivers: [Text] = Array.tabulate<Text>(4, func i =
     if (i < rivers.size()) rivers[i] else "Mississippi"
 );
@@ -98,13 +102,15 @@ Immutable arrays do not allow in-place modifications, making them suitable when 
 
 ## Nested immutable arrays
 
-A chessboard is a fixed `8×8` grid. The starting state of a chessboard can be represented as follows:
 
-Using immutable arrays to represent the initial state ensures that the board setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board state.
+To demonstrate nested immutable arrays, consider the following:
+
+A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial state of the board ensures that the board setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board state.
+
 
 ## Chessboard
 
-```motoko norepl
+```motoko no-repl
  func generateChessboard() : [[Text]] {
     let size : Nat = 8;
 
@@ -134,9 +140,7 @@ Using immutable arrays to represent the initial state ensures that the board set
   }
 ```
 
-The function `Array.foldLeft` combines the squares in the row into a single text string, which can then be printed.
-
-### Representing the chessboard
+The function `Array.foldLeft` combines the squares in the row into a single text string, which can then be printed:
 
 ``` md
 ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
@@ -153,7 +157,7 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 
 Motoko supports passing an collections to a function. This approach ensures that all arguments are handled as a collection rather than individual parameters.
 
-```motoko norepl
+```motoko no-repl
 let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
     
 func printAllStrings(strings: [Text]) {
