@@ -157,25 +157,116 @@ let js_parse_motoko s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_typed paths =
-  let paths = paths |> Js.to_array |> Array.to_list in
-  let load_result = Mo_types.Cons.session (fun _ ->
-    Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env)
+let js_parse_motoko_with_deps s =
+  let main_file = "" in
+  let s = Js.to_string s in
+  let prog_and_deps_result =
+    let open Diag.Syntax in
+    let* prog, _ = Pipeline.parse_string main_file s in
+    let* deps =
+      Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog s
+    in
+    Diag.return (prog, deps)
   in
-  js_result load_result (fun (libs, progs, senv) ->
-  progs |> List.map (fun prog ->
+  js_result prog_and_deps_result (fun (prog, deps) ->
     let open Mo_def in
-    let module Arrange_sources_types = Arrange.Make (struct
+    let module Arrange = Arrange.Make (struct
       let include_sources = true
-      let include_types = true
+      let include_types = false
       let include_docs = Some prog.note.Syntax.trivia
       let include_parenthetical = false
-      let main_file = Some prog.at.left.file
-    end)
-    in object%js
-      val ast = js_of_sexpr (Arrange_sources_types.prog prog)
-      (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
-    end) |> Array.of_list |> Js.array |> Js.some)
+      let main_file = Some main_file
+    end) in
+    Js.some (
+      object%js
+        val ast = js_of_sexpr (Arrange.prog prog)
+        val immediateImports =
+          deps
+          |> List.map (fun dep -> Js.string (Pipeline.resolved_import_name dep))
+          |> Array.of_list
+          |> Js.array
+      end))
+
+module Map_conversion (Map : Map.S) = struct
+  let from_js
+    (type data)
+    (map : _ Js.t)
+    (from_key : 'k Js.t -> Map.key)
+    (from_data : 'd Js.t -> data)
+    : data Map.t
+  =
+  let result = ref Map.empty in
+  let callback =
+    (* [forEach] in JS gives value, key, and map, in this order. *)
+    Js.wrap_callback (fun v k _m ->
+      let k = from_key k in
+      let v = from_data v in
+      result := Map.add k v !result)
+  in
+  ignore (Js.Unsafe.meth_call map "forEach" [|Js.Unsafe.inject callback|]);
+  !result
+
+  let to_js
+    (type data)
+    (map : data Map.t)
+    (from_key : Map.key -> Js.Unsafe.top Js.t)
+    (from_data : data -> Js.Unsafe.top Js.t)
+    : _ Js.t
+  =
+  let js_map = Js.Unsafe.new_obj (Js.Unsafe.pure_js_expr "Map") [||] in
+  Map.iter
+    (fun k v ->
+      ignore (Js.Unsafe.meth_call js_map "set" [| from_key k; from_data v |]))
+    map;
+  js_map
+
+  let from_ocaml = to_js
+  let to_ocaml = from_js
+end
+
+let js_parse_motoko_typed paths scope_cache =
+  let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
+  let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
+  let scope_cache =
+    (* The data of the map has TypeScript [type Scope = unknown], and such
+       scopes are always produced by the compiler. The language server takes
+       scopes as outputs and gives them as inputs without touching them at all.
+       Hence, the use of [Obj.magic] is legitimate here. *)
+    String_map_conversion.from_js scope_cache Js.to_string Obj.magic
+  in
+  let load_result =
+    Mo_types.Cons.session (fun () ->
+      Pipeline.load_progs_cached
+        Pipeline.parse_file
+        paths
+        Pipeline.initial_stat_env
+        scope_cache)
+  in
+  js_result load_result (fun (_libs, progs, _senv, scope_cache) ->
+    let progs =
+      progs |> List.map (fun (prog, immediate_imports) ->
+        let open Mo_def in
+        let module Arrange_sources_types = Arrange.Make (struct
+          let include_sources = true
+          let include_types = true
+          let include_docs = Some prog.note.Syntax.trivia
+          let include_parenthetical = false
+          let main_file = Some prog.at.left.file
+        end)
+        in object%js
+          val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+          (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
+          val immediateImports =
+            immediate_imports |> List.map Js.string |> Array.of_list |> Js.array
+        end) |> Array.of_list |> Js.array
+    in
+    let scope_cache =
+      String_map_conversion.to_js
+        scope_cache
+        (fun k -> Js.Unsafe.inject (Js.string k))
+        Obj.magic (* See above the JS -> OCaml conversion. *)
+    in
+    Js.some (Js.array [| Js.Unsafe.inject progs; Js.Unsafe.inject scope_cache |]))
 
 let js_save_file filename content =
   let filename = Js.to_string filename in
