@@ -326,6 +326,7 @@ func principalOfBlob(act : Blob) : Principal {
 
 func principalOfActor(act : actor {}) : Principal = (prim "principalOfActor" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
+func isReplicatedExecution() : Bool = (prim "replicated_execution" : () -> Bool) ();
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 
 // Untyped dynamic actor creation from blobs
