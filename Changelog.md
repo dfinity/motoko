@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.14.3 (FUTURE)
+
+* motoko (`moc`)
+
+  * Added primitive predicate `isReplicatedExecution` (#4929).
+
 ## 0.14.2 (2025-02-26)
 
 * motoko (`moc`)
