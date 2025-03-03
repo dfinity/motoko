@@ -151,6 +151,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     intToNat64Wrap : Int -> Nat64;
     intToNat8Wrap : Int -> Nat8;
     isController : Principal -> Bool;
+    isReplicatedExecution : () -> Bool;
     log : Float -> Float;
     nat16ToInt16 : Nat16 -> Int16;
     nat16ToNat : Nat16 -> Nat;

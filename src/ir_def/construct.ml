@@ -118,7 +118,8 @@ let primE prim es =
     | OtherPrim "array_len"
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
-    | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "is_controller"
+    | OtherPrim "replicated_execution" -> T.bool
     | OtherPrim "rts_version" -> T.text
     | OtherPrim "rts_memory_size" -> T.nat
     | OtherPrim "rts_heap_size" -> T.nat
