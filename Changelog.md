@@ -14,6 +14,8 @@
     an optional return type (dfinity/motoko-base⁠#693).
     _Caveat_: Breaking change (minor).
 
+  * Added `isReplicated : () -> Bool` to `ExperimentalInternetComputer` (#694).
+
 ## 0.14.2 (2025-02-26)
 
 * motoko (`moc`)
