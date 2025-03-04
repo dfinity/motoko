@@ -18,7 +18,7 @@ Mutable arrays allow direct modification of elements, making them suitable for s
 | Conversion      | Can be converted to mutable with `Array.thaw` | Can be converted to immutable with `Array.freeze` |
 | Use case        | When data should remain unchanged       | When frequent modifications are needed |
 
-Motoko arrays, both mutable and immutable, are not designed to grow dynamically. If a dynamically growing contiguous data structure is required, `Buffer` should be used instead.
+Unlike other programming languages that support append methods for arrays, Motoko arrays, both mutable and immutable, are not designed to grow dynamically. Motoko arrays cannot be appended. If a dynamically growing contiguous data structure is required, `Buffer` should be used instead.
 
 ## Defining a mutable array
 
