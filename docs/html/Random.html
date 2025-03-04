@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/base/Random.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/base/Random.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#random" id="toc-random">Random</a>
+<ul>
+<li><a href="#value-blob" id="toc-value-blob">Value
+<code>blob</code></a></li>
+<li><a href="#class-finite" id="toc-class-finite">Class
+<code>Finite</code></a>
+<ul>
+<li><a href="#function-byte" id="toc-function-byte">Function
+<code>byte</code></a></li>
+<li><a href="#function-coin" id="toc-function-coin">Function
+<code>coin</code></a></li>
+<li><a href="#function-range" id="toc-function-range">Function
+<code>range</code></a></li>
+<li><a href="#function-binomial" id="toc-function-binomial">Function
+<code>binomial</code></a></li>
+</ul></li>
+<li><a href="#function-bytefrom" id="toc-function-bytefrom">Function
+<code>byteFrom</code></a></li>
+<li><a href="#function-coinfrom" id="toc-function-coinfrom">Function
+<code>coinFrom</code></a></li>
+<li><a href="#function-rangefrom" id="toc-function-rangefrom">Function
+<code>rangeFrom</code></a></li>
+<li><a href="#function-binomialfrom"
+id="toc-function-binomialfrom">Function
+<code>binomialFrom</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="random">Random</h1>
+<p>A module for obtaining randomness on the Internet Computer (IC).</p>
+<p>This module provides the fundamentals for user abstractions to build
+on.</p>
+<p>Dealing with randomness on a deterministic computing platform, such
+as the IC, is intricate. Some basic rules need to be followed by the
+user of this module to obtain (and maintain) the benefits of crypto-
+graphic randomness:</p>
+<ul>
+<li>cryptographic entropy (randomness source) is only obtainable
+asyncronously in discrete chunks of 256 bits (32-byte sized
+<code>Blob</code>s)</li>
+<li>all bets must be closed <em>before</em> entropy is being asked for
+in order to decide them</li>
+<li>this implies that the same entropy (i.e. <code>Blob</code>) - or
+surplus entropy not utilised yet - cannot be used for a new round of
+bets without losing the cryptographic guarantees.</li>
+</ul>
+<p>Concretely, the below class <code>Finite</code>, as well as the
+<code>*From</code> methods risk the carrying-over of state from previous
+rounds. These are provided for performance (and convenience) reasons,
+and need special care when used. Similar caveats apply for user-defined
+(pseudo) random number generators.</p>
+<p>Usage:</p>
+<pre class="motoko"><code>import Random &quot;mo:base/Random&quot;;</code></pre>
+<h2 id="value-blob">Value <code>blob</code></h2>
+<pre class="motoko"><code>let blob : shared () -&gt; async Blob</code></pre>
+<p>Obtains a full blob (32 bytes) worth of fresh entropy.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let random = Random.Finite(await Random.blob());</code></pre>
+<h2 id="class-finite">Class <code>Finite</code></h2>
+<pre class="motoko"><code>class Finite(entropy : Blob)</code></pre>
+<p>Drawing from a finite supply of entropy, <code>Finite</code> provides
+methods to obtain random values. When the entropy is used up,
+<code>null</code> is returned. Otherwise the outcomes' distributions are
+stated for each method. The uniformity of outcomes is guaranteed only
+when the supplied entropy is originally obtained by the
+<code>blob()</code> call, and is never reused.</p>
+<p>Example:</p>
+<pre class="motoko"><code>import Random &quot;mo:base/Random&quot;;
+
+let random = Random.Finite(await Random.blob());
+
+let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+let seedRandom = Random.Finite(seed);</code></pre>
+<h3 id="function-byte">Function <code>byte</code></h3>
+<pre class="motoko"><code>func byte() : ?Nat8</code></pre>
+<p>Uniformly distributes outcomes in the numeric range [0 .. 255].
+Consumes 1 byte of entropy.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+let random = Random.Finite(seed);
+random.byte() // =&gt; ?20</code></pre>
+<h3 id="function-coin">Function <code>coin</code></h3>
+<pre class="motoko"><code>func coin() : ?Bool</code></pre>
+<p>Simulates a coin toss. Both outcomes have equal probability. Consumes
+1 bit of entropy (amortised).</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+let random = Random.Finite(seed);
+random.coin() // =&gt; ?false</code></pre>
+<h3 id="function-range">Function <code>range</code></h3>
+<pre class="motoko"><code>func range(p : Nat8) : ?Nat</code></pre>
+<p>Uniformly distributes outcomes in the numeric range [0 .. 2^p - 1].
+Consumes ⌈p/8⌉ bytes of entropy.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+let random = Random.Finite(seed);
+random.range(32) // =&gt; ?348746249</code></pre>
+<h3 id="function-binomial">Function <code>binomial</code></h3>
+<pre class="motoko"><code>func binomial(n : Nat8) : ?Nat8</code></pre>
+<p>Counts the number of heads in <code>n</code> fair coin tosses.
+Consumes ⌈n/8⌉ bytes of entropy.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+let random = Random.Finite(seed);
+random.binomial(5) // =&gt; ?1</code></pre>
+<h2 id="function-bytefrom">Function <code>byteFrom</code></h2>
+<pre class="motoko"><code>func byteFrom(seed : Blob) : Nat8</code></pre>
+<p>Distributes outcomes in the numeric range [0 .. 255]. Seed blob must
+contain at least a byte.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+Random.byteFrom(seed) // =&gt; 20</code></pre>
+<h2 id="function-coinfrom">Function <code>coinFrom</code></h2>
+<pre class="motoko"><code>func coinFrom(seed : Blob) : Bool</code></pre>
+<p>Simulates a coin toss. Seed blob must contain at least a byte.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+Random.coinFrom(seed) // =&gt; false</code></pre>
+<h2 id="function-rangefrom">Function <code>rangeFrom</code></h2>
+<pre class="motoko"><code>func rangeFrom(p : Nat8, seed : Blob) : Nat</code></pre>
+<p>Distributes outcomes in the numeric range [0 .. 2^p - 1]. Seed blob
+must contain at least ((p+7) / 8) bytes.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+Random.rangeFrom(32, seed) // =&gt; 348746249</code></pre>
+<h2 id="function-binomialfrom">Function <code>binomialFrom</code></h2>
+<pre class="motoko"><code>func binomialFrom(n : Nat8, seed : Blob) : Nat8</code></pre>
+<p>Counts the number of heads in <code>n</code> coin tosses. Seed blob
+must contain at least ((n+7) / 8) bytes.</p>
+<p>Example:</p>
+<pre class="motoko"><code>let seed : Blob = &quot;\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF&quot;;
+Random.binomialFrom(5, seed) // =&gt; 1</code></pre>
+</body>
+</html>
