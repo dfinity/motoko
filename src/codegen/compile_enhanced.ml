@@ -4725,6 +4725,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
+      E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
       E.add_func_import env "ic0" "is_controller" (i64s 2) [I32Type];
       E.add_func_import env "ic0" "debug_print" (i64s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i64s 3) [];
@@ -4869,6 +4870,10 @@ module IC = struct
 
   let is_controller env =
     ic_system_call "is_controller" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
+  let replicated_execution env =
+    ic_system_call "in_replicated_execution" env ^^ 
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let canister_version env = ic_system_call "canister_version" env
@@ -11868,6 +11873,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     get_principal ^^
     Blob.len env ^^
     IC.is_controller env
+
+  | OtherPrim "replicated_execution", [] ->
+    SR.Vanilla,
+    IC.replicated_execution env
 
   | OtherPrim "canister_version", [] ->
     SR.UnboxedWord64 Type.Nat64,
