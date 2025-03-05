@@ -87,13 +87,13 @@ let lookup_module (project_root : string) (path : string) (index : t) :
   let make_absolute = Lib.FilePath.make_absolute project_root in
   match parse path with
   | Ok (Relative path) ->
-      let path = Pipeline.ResolveImport.append_extension Sys.file_exists path in
+      let path = Pipeline.ResolveImport.append_mo_extension Sys.file_exists path in
       let+ decls = Index.find_opt (make_absolute path) index.modules in
       (path, decls)
   | Ok (Package (pkg, path)) ->
       let* pkg_path = Flags.M.find_opt pkg index.package_map in
       let path =
-        Pipeline.ResolveImport.append_extension Sys.file_exists
+        Pipeline.ResolveImport.append_mo_extension Sys.file_exists
           (Filename.concat pkg_path path)
       in
       let+ decls = Index.find_opt (make_absolute path) index.modules in
