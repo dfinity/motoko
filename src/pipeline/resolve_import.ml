@@ -155,6 +155,25 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
   end else
     err_file_does_not_exist msgs at full_path
 
+let add_value_import msgs imported ri_ref at path =
+  let add_no_extension _file_exists f = f in
+  match resolve_lib_import at path add_no_extension with
+  | Ok full_path -> begin
+      let ri = ImportedValuePath full_path in
+      ri_ref := ri;
+      imported := RIM.add ri at !imported
+    end
+  | Error err ->
+     Diag.add_msg msgs err
+
+(*
+  if Sys.file_exists full_path
+  then begin
+    ri_ref := IDLPath (full_path, bytes);
+    imported := RIM.add (IDLPath (full_path, bytes)) at !imported
+  end else
+    err_file_does_not_exist msgs at full_path
+ *)
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
   imported := RIM.add PrimPath at !imported
@@ -194,10 +213,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | None -> err_alias_not_defined msgs at alias
     end
   | Ok (Url.FileValue path) ->
-    begin match M.find_opt path aliases with
-    | Some bytes -> resolve_ic bytes
-    | None -> err_alias_not_defined msgs at path
-    end
+    add_value_import msgs imported ri_ref at path
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->

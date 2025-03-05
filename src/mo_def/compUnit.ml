@@ -44,7 +44,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE (_eo, {it = Type.Module; _}, _t, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD e; _} ] when is_actor_def e ->
+    | [{it = ExpD e; _}] when is_actor_def e ->
       let eo, fields, note, at = as_actor_def e in
       finish imports { it = ActorU (eo, None, fields); note; at }
     | [{it = ClassD (eo, sp, {it = Type.Actor;_}, tid, tbs, p, typ_ann, self_id, fields); _} as d] ->
@@ -73,6 +73,14 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   in
   go [] prog.it
 
+(* Lib as a single value *)
+let comp_unit_of_value full_path : comp_unit =
+  let note = { empty_typ_note with note_typ = Type.Pre } in
+  let at = Source.no_region in
+  let exp : exp = { it = LitE (ref (PreLit ("blobbyblob", Type.Blob))); note; at } in
+  let expd : dec = { it = ExpD exp; note; at } in
+  let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
+  { it = { imports = []; body = { it = ProgU [expd]; note = prog_typ_note; at } }; note = { filename = full_path; trivia = Trivia.empty_triv_table}; at }
 
 (* Lib as decs *)
 let obj_decs obj_sort at note id_opt fields =
@@ -120,6 +128,7 @@ let decs_of_lib (cu : comp_unit) =
     [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = ()}, i, tbs, p, t, i', efs);
        at = cub.at;
        note = cub.note;}];
+  | ProgU [{ it = ExpD { it = LitE _; _ }; _}] -> []
   | ProgU _
   | ActorU _ ->
     assert false

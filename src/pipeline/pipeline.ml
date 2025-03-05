@@ -222,6 +222,9 @@ let lib_of_prog f prog : Syntax.lib  =
   let lib = CompUnit.comp_unit_of_prog true prog in
   { lib with Source.note = { lib.Source.note with Syntax.filename = f } }
 
+let lib_of_value full_path : Syntax.lib  =
+  let lib = CompUnit.comp_unit_of_value full_path in
+  { lib with Source.note = { lib.Source.note with Syntax.filename = full_path } }
 
 (* Prelude and internals *)
 
@@ -433,6 +436,13 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         pending := remove it !pending;
         Diag.return ()
       end
+    | Syntax.ImportedValuePath full_path ->
+      let lib = lib_of_value full_path in
+      libs := lib :: !libs; (* NB: Conceptually an append *)
+      let sscope = Scope.lib full_path Type.Pre in
+      senv := Scope.adjoin !senv sscope;
+      Diag.return ()
+
     | Syntax.IDLPath (f, _) ->
       (* TODO: [Idllib.Pipeline.check_file] will perform a similar pipeline,
          going recursively through imports of the IDL path to parse and
