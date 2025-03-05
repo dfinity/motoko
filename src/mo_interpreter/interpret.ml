@@ -282,6 +282,7 @@ let interpret_lit env lit : V.value =
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
   | BlobLit b -> V.Blob b
+  | PreLit (s, _) -> V.Text s (* FIXME: why not type-checked in ProgU? *)
   | PreLit _ -> assert false
 
 
@@ -434,6 +435,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (match !ri with
     | Unresolved -> assert false
     | LibPath {path; _} ->
+      k (find path env.libs)
+    | ImportedValuePath path ->
       k (find path env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
@@ -1094,7 +1097,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
@@ -1112,6 +1115,8 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
+  | Syntax.ProgU [{ it = ExpD { it = LitE lit; _ }; _}] ->
+    fun _ -> interpret_lit env lit
   | _ -> assert false
 
 

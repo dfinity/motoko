@@ -17,6 +17,7 @@ type resolved_import =
   | Unresolved
   | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
+  | ImportedValuePath of string
   | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
