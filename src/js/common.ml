@@ -157,14 +157,14 @@ let js_parse_motoko s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_with_deps s =
-  let main_file = "" in
+let js_parse_motoko_with_deps main_file s =
+  let main_file = Js.to_string main_file in
   let s = Js.to_string s in
   let prog_and_deps_result =
     let open Diag.Syntax in
     let* prog, _ = Pipeline.parse_string main_file s in
     let* deps =
-      Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog s
+      Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog main_file
     in
     Diag.return (prog, deps)
   in
