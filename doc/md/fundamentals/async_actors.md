@@ -117,6 +117,13 @@ let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 
 ## Try/finally
 
+The `try/finally` construct ensures that a block of code in the `finally` clause executes regardless of whether an exception occurs in the `try` block. This is particularly useful for cleanup operations, such as logging or finalizing an action, ensuring that necessary steps are taken even if an error interrupts execution.
+
+In the `placeOrder` function below:
+
+- The `try` block processes an order and appends it to the `orders` array.
+- The `finally` block logs that the order has been processed, ensuring that this message is always printed, whether the function succeeds or fails.
+
 ``` motoko norepl
 public shared func placeOrder(order : Text) : async Text {
     try {
