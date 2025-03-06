@@ -5,7 +5,7 @@ sidebar_position: 8
 
 ## Query functions
 
-Query functions are designed for retrieving data. Query functions cannot modify state. They execute faster than update functions because they do not require consensus.
+Query functions are designed for retrieving data. They cannot modify state and execute faster than update functions because they do not require consensus.
 
 ```motoko no-repl
 actor Counter {
@@ -18,7 +18,7 @@ actor Counter {
 
 ### Composite queries
 
-Composite queries chain multiple query calls within the same function.
+Composite queries chain multiple query calls together within the same function.
 
 ```motoko no-repl
 import Nat "mo:base/Nat";

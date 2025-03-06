@@ -6,8 +6,8 @@ sidebar_position: 9
 
 | Type    | Syntax                  | Purpose                          | When to use it                                   |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
-| Option  | `?T`                     | Represents a value that may be missing | When an operation might return **no result**  |
-| Result  | `Result.Result<T, E>`  where `T` is the success type and `E` is the error type  | Represents success or failure   | When an operation can either **succeed or fail** |
+| Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result** . |
+| Result  | `Result.Result<T, E>`  where `T` is the success type and `E` is the error type.  | Represents success or failure.   | When an operation can either **succeed or fail**. |
 
 ## Options
 
@@ -27,8 +27,8 @@ func findEven(n: Nat): ?Nat {
 
 The `Result` type can hold:
 
-- `#ok(value)` Success with a value.
-- `#err(errorMessage)` Failure with an error message.
+- `#ok(value)`: Success with a value.
+- `#err(errorMessage)`: Failure with an error message.
 
 ```motoko no-repl
 import Result "mo:base/Result";

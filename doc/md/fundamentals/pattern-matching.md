@@ -10,11 +10,11 @@ Motoko supports several types of patterns:
 
 | Pattern type | Description | Example |
 |-------------|-------------|---------|
-| Wildcard (`_`) | Matches any value without binding it to a variable | `switch (x) { case (_) { ... } }` |
-| Literal | Matches specific constant values | `switch (x) { case (0) { ... } case (1) { ... } }` |
-| Option (`?T`) | Matches optional values | `switch (opt) { case (?v) { ... } case (null) { ... } }` |
-| Object | Matches object fields | `switch (obj) { case ({field}) { ... } }` |
-| Variant | Matches tagged union types | `switch (variant) { case (#tag v) { ... } }` |
+| Wildcard (`_`) | Matches any value without binding it to a variable. | `switch (x) { case (_) { ... } }` |
+| Literal | Matches specific constant values. | `switch (x) { case (0) { ... } case (1) { ... } }` |
+| Option (`?T`) | Matches optional values. | `switch (opt) { case (?v) { ... } case (null) { ... } }` |
+| Object | Matches object fields. | `switch (obj) { case ({field}) { ... } }` |
+| Variant | Matches tagged union types. | `switch (variant) { case (#tag v) { ... } }` |
 
 ## Wildcard (`_`)
 
@@ -47,7 +47,7 @@ func describeBool(b: Bool): Text {
 
 Option patterns allow destructuring of `?T` values, matching either `null` or `?someValue`.
 
-```motoko norepl
+```motoko no-repl
 import Nat "mo:base/Nat";
 
 func getValue(opt: ?Nat): Text {

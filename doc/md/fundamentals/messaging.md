@@ -10,10 +10,10 @@ ICP enforces rules on when and how canisters communicate. These restrictions pre
 
 | Restriction | Reason |
 |-------------|--------|
-| A canister cannot send messages during installation | Prevents execution errors at deployment |
-| A query function cannot send messages | Query functions run locally and do not trigger updates |
-| Shared functions cannot be called in a synchronous context | Shared calls require `async` execution |
-| Only async contexts support error handling (`try/catch`) | Messaging errors only occur in async contexts |
+| A canister cannot send messages during installation. | Prevents execution errors at deployment. |
+| A query function cannot send messages. | Query functions run locally and do not trigger updates. |
+| Shared functions cannot be called in a synchronous context. | Shared calls require `async` execution |
+| Only async contexts support error handling (`try/catch`). | Messaging errors only occur in async contexts |
 
 In Motoko, an expression is in an async context if it appears in an `async` function. Query functions do not open an async context, so they cannot use `await` or send messages.  
 
@@ -73,15 +73,15 @@ The following methods can be used for inter-canister calls:
 
 | Method | Usage scenario | Example |
 |--------|--------------|---------|
-| Direct import | When the canister is part of the same project and explicitly imported | `import Subscriber "canister:subscriber";` |
-| Actor type annotation | When calling an external canister that is part of the project but deployed separately | `let sub = actor(canisterId) : actor { notify: (Text) -> async () };` |
-| Dynamic calls | When calling unknown functions or passing dynamic arguments | `await IC.call(canisterId, methodName, encodedArgs);` |
+| Direct import | When the canister is part of the same project and explicitly imported. | `import Subscriber "canister:subscriber";` |
+| Actor type annotation | When calling an external canister that is part of the project but deployed separately. | `let sub = actor(canisterId) : actor { notify: (Text) -> async () };` |
+| Dynamic calls | When calling unknown functions or passing dynamic arguments. | `await IC.call(canisterId, methodName, encodedArgs);` |
 
 ### Canister imports
 
 When a canister exists in the project directory, it can be imported using the `import` statement. This ensures strong typing and allows safe function calls.
 
-In this exammple A publisher canister maintains a list of subscribers and sends notifications when an event occurs. Each subscriber canister receives and processes notifications.
+In this example, a publisher canister maintains a list of subscribers and sends notifications when an event occurs. Each subscriber canister receives and processes notifications.
 
 #### Publisher
 
