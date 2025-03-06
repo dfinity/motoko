@@ -8,10 +8,10 @@ sidebar_position: 7
 
 | Feature         | Mutable state                  | Immutable state               |
 |----------------|--------------------------------|--------------------------------|
-| Accessibility  | Private to the actor that owns it | Can be shared between actors |
-| Modification   | Can be modified internally | Cannot be changed after creation |
-| Sharing        | Cannot be directly shared | Can be safely passed between actors |
-| Concurrency    | Prevents race conditions by keeping state local | Safe for remote calls |
+| Accessibility  | Private to the actor that owns it. | Can be shared between actors. |
+| Modification   | Can be modified internally. | Cannot be changed after creation. |
+| Sharing        | Cannot be directly shared. | Can be safely passed between actors. |
+| Concurrency    | Prevents race conditions by keeping state local. | Safe for remote calls. |
 
 Each actor in Motoko may use mutable state, but it cannot share it directly with other actors. This ensures that state modifications remain isolated, preventing race conditions and unintended side effects in concurrent execution.
 
@@ -23,7 +23,7 @@ A key design principle in Motoko is that mutable state is always private to the 
 
 The following actor maintains a private mutable counter that can only be modified through its own functions:
 
-```motoko norepl
+```motoko no-repl
 actor Counter {
     stable var count: Nat = 0; // Private mutable state
 
@@ -38,6 +38,6 @@ actor Counter {
 };
 ```
 
-Since `count` is mutable, it can be modified internally but cannot be accessed directly from outside. Instead, other actors must use the provided entry points to retrieve or update its value.
+Since `count` is mutable, it can be modified internally but cannot be accessed directly from outside the actor. Instead, other actors must use the provided entry points to retrieve or update its value.
 
 Motoko enforces strict control over mutable state, ensuring that concurrent execution remains predictable and error-free.

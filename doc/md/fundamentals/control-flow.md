@@ -14,7 +14,7 @@ sidebar_position: 14
 | `label/break` | Allows exiting loops early. |
 | `while` | Runs while a condition is `true`. |
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
-| `let-else` | Conditionally binds values|
+| `let-else` | Conditionally binds values. |
 
 ## `return`
 

@@ -4,22 +4,25 @@ sidebar_position: 9
 
 # Actors
 
-Concurrency is a fundamental challenge in software development, requiring efficient coordination of independent tasks. The actor model, introduced by Carl Hewitt in the 1970s, was designed to solve concurrency issues by encapsulating state and computation within independent units called actors.
+Concurrency is a fundamental challenge in software development, requiring efficient coordination of independent tasks. The actor model, introduced by Carl Hewitt in the 1970s, was designed to solve concurrency issues by encapsulating state and computation within independent units called **actors**.
 
-The Actor model is based on the following principles:
+The actor model is based on the following principles:
 
 - Actors are isolated from each other and communicate only by exchanging messages.
 - Actors can receive and process messages concurrently.
 - Actors are independent of each other and can fail independently.
 - Actors are location transparent, which means that an actor can be located on any machine in a distributed system.
 
-Motoko adopts the actor model to enable scalable, non-blocking execution on the Internet Computer (IC). Motoko actors run in a single-threaded environment but achieve high concurrency by handling requests asynchronously.
+Motoko adopts the actor model to enable scalable, non-blocking execution on the Internet Computer (ICP). Motoko actors run in a single-threaded environment but achieve high concurrency by handling requests asynchronously.
 
 ## Async actors
 
-At a restaurant customers place orders at the counter, but the chef can only make one pizza at a time. Orders are taken **asynchronously**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 
-```motoko norepl
+To demonstrate how asynchronous actors work, consider the following:
+
+- Customers place orders at a pizza restaraunt, but the chef can only make one pizza at a time. Orders are taken **asynchronously**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
+
+```motoko no-repl
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 
@@ -58,7 +61,7 @@ actor PizzaParlor {
 
 Actors use asynchronous functions to handle non-blocking operations. The `await` keyword suspends the execution of the current function until the asynchronous operation completes, allowing the actor to continue processing other messages.
 
-```motoko repl
+```motoko no-repl
 await PizzaParlor.placeOrder("BBQ"); // Order received: BBQ
 ```
 
@@ -66,9 +69,9 @@ This request is handled asynchronously, meaning other orders can be placed witho
 
 ## Async*/await*
 
-Customers can place multiple orders at the same time. However, when they ask for an update on their delivery status, responses must be generated sequentially based on the preparation time. Instead of constantly tracking delivery updates, we use `async*` to calculate the estimated delivery time only when requested.
+Customers can place multiple orders at the same time. However, when they ask for an update on their delivery status, responses must be generated sequentially based on the preparation time. Instead of constantly tracking delivery updates, `async*` can be used to calculate the estimated delivery time only when requested.
 
-```motoko norepl
+```motoko no-repl
 // async* function to calculate delivery time on demand
 func checkDelivery(order: Text): async* Text {
         let estimatedTime = 15 + (orders.size() * 5); // Base time + 5 mins per pending order
@@ -84,21 +87,21 @@ func checkDelivery(order: Text): async* Text {
 
 A customer places an order:
 
-```motoko norepl
+```motoko no-repl
 let response = await pizzaParlor.placeOrder("pepperoni");
 // "Order received: pepperoni"
 ```
 
 Another customer asks for a delivery update:
 
-```motoko norepl
+```motoko no-repl
 let status = await pizzaParlor.getDeliveryStatus("pepperoni");
 // "Your pepperoni will arrive in 20 minutes."
 ```
 
 Another customer asks immediately after:
 
-```motoko norepl
+```motoko no-repl
 let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 // "Your margherita will arrive in 25 minutes."
 ```
@@ -117,7 +120,7 @@ let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 
 ## Try/finally
 
-``` motoko norepl
+``` motoko no-repl
 public shared func placeOrder(order : Text) : async Text {
     try {
       Debug.print("Processing order: " # order);
