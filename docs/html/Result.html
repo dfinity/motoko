@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/base/Result.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/base/Result.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#result" id="toc-result">Result</a>
+<ul>
+<li><a href="#type-result" id="toc-type-result">Type
+<code>Result</code></a></li>
+<li><a href="#function-equal" id="toc-function-equal">Function
+<code>equal</code></a></li>
+<li><a href="#function-compare" id="toc-function-compare">Function
+<code>compare</code></a></li>
+<li><a href="#function-chain" id="toc-function-chain">Function
+<code>chain</code></a></li>
+<li><a href="#function-flatten" id="toc-function-flatten">Function
+<code>flatten</code></a></li>
+<li><a href="#function-mapok" id="toc-function-mapok">Function
+<code>mapOk</code></a></li>
+<li><a href="#function-maperr" id="toc-function-maperr">Function
+<code>mapErr</code></a></li>
+<li><a href="#function-fromoption" id="toc-function-fromoption">Function
+<code>fromOption</code></a></li>
+<li><a href="#function-tooption" id="toc-function-tooption">Function
+<code>toOption</code></a></li>
+<li><a href="#function-iterate" id="toc-function-iterate">Function
+<code>iterate</code></a></li>
+<li><a href="#function-isok" id="toc-function-isok">Function
+<code>isOk</code></a></li>
+<li><a href="#function-iserr" id="toc-function-iserr">Function
+<code>isErr</code></a></li>
+<li><a href="#function-assertok" id="toc-function-assertok">Function
+<code>assertOk</code></a></li>
+<li><a href="#function-asserterr" id="toc-function-asserterr">Function
+<code>assertErr</code></a></li>
+<li><a href="#function-fromupper" id="toc-function-fromupper">Function
+<code>fromUpper</code></a></li>
+<li><a href="#function-toupper" id="toc-function-toupper">Function
+<code>toUpper</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="result">Result</h1>
+<p>Error handling with the Result type.</p>
+<h2 id="type-result">Type <code>Result</code></h2>
+<pre class="motoko"><code>type Result&lt;Ok, Err&gt; = {#ok : Ok; #err : Err}</code></pre>
+<p><code>Result&lt;Ok, Err&gt;</code> is the type used for returning and
+propagating errors. It is a type with the variants,
+<code>#ok(Ok)</code>, representing success and containing a value, and
+<code>#err(Err)</code>, representing error and containing an error
+value.</p>
+<p>The simplest way of working with <code>Result</code>s is to pattern
+match on them:</p>
+<p>For example, given a function
+<code>createUser(user : User) : Result&lt;Id, String&gt;</code> where
+<code>String</code> is an error message we could use it like so:</p>
+<pre class="motoko"><code>switch(createUser(myUser)) {
+  case (#ok(id)) { Debug.print(&quot;Created new user with id: &quot; # id) };
+  case (#err(msg)) { Debug.print(&quot;Failed to create user with the error: &quot; # msg) };
+}</code></pre>
+<h2 id="function-equal">Function <code>equal</code></h2>
+<pre class="motoko"><code>func equal&lt;Ok, Err&gt;(eqOk : (Ok, Ok) -&gt; Bool, eqErr : (Err, Err) -&gt; Bool, r1 : Result&lt;Ok, Err&gt;, r2 : Result&lt;Ok, Err&gt;) : Bool</code></pre>
+<h2 id="function-compare">Function <code>compare</code></h2>
+<pre class="motoko"><code>func compare&lt;Ok, Err&gt;(compareOk : (Ok, Ok) -&gt; Order.Order, compareErr : (Err, Err) -&gt; Order.Order, r1 : Result&lt;Ok, Err&gt;, r2 : Result&lt;Ok, Err&gt;) : Order.Order</code></pre>
+<h2 id="function-chain">Function <code>chain</code></h2>
+<pre class="motoko"><code>func chain&lt;R1, R2, Error&gt;(x : Result&lt;R1, Error&gt;, y : R1 -&gt; Result&lt;R2, Error&gt;) : Result&lt;R2, Error&gt;</code></pre>
+<p>Allows sequencing of <code>Result</code> values and functions that
+return <code>Result</code>'s themselves.</p>
+<pre class="motoko"><code>import Result &quot;mo:base/Result&quot;;
+type Result&lt;T,E&gt; = Result.Result&lt;T, E&gt;;
+func largerThan10(x : Nat) : Result&lt;Nat, Text&gt; =
+  if (x &gt; 10) { #ok(x) } else { #err(&quot;Not larger than 10.&quot;) };
+
+func smallerThan20(x : Nat) : Result&lt;Nat, Text&gt; =
+  if (x &lt; 20) { #ok(x) } else { #err(&quot;Not smaller than 20.&quot;) };
+
+func between10And20(x : Nat) : Result&lt;Nat, Text&gt; =
+  Result.chain(largerThan10(x), smallerThan20);
+
+assert(between10And20(15) == #ok(15));
+assert(between10And20(9) == #err(&quot;Not larger than 10.&quot;));
+assert(between10And20(21) == #err(&quot;Not smaller than 20.&quot;));</code></pre>
+<h2 id="function-flatten">Function <code>flatten</code></h2>
+<pre class="motoko"><code>func flatten&lt;Ok, Error&gt;(result : Result&lt;Result&lt;Ok, Error&gt;, Error&gt;) : Result&lt;Ok, Error&gt;</code></pre>
+<p>Flattens a nested Result.</p>
+<pre class="motoko"><code>import Result &quot;mo:base/Result&quot;;
+assert(Result.flatten&lt;Nat, Text&gt;(#ok(#ok(10))) == #ok(10));
+assert(Result.flatten&lt;Nat, Text&gt;(#err(&quot;Wrong&quot;)) == #err(&quot;Wrong&quot;));
+assert(Result.flatten&lt;Nat, Text&gt;(#ok(#err(&quot;Wrong&quot;))) == #err(&quot;Wrong&quot;));</code></pre>
+<h2 id="function-mapok">Function <code>mapOk</code></h2>
+<pre class="motoko"><code>func mapOk&lt;Ok1, Ok2, Error&gt;(x : Result&lt;Ok1, Error&gt;, f : Ok1 -&gt; Ok2) : Result&lt;Ok2, Error&gt;</code></pre>
+<p>Maps the <code>Ok</code> type/value, leaving any <code>Error</code>
+type/value unchanged.</p>
+<h2 id="function-maperr">Function <code>mapErr</code></h2>
+<pre class="motoko"><code>func mapErr&lt;Ok, Error1, Error2&gt;(x : Result&lt;Ok, Error1&gt;, f : Error1 -&gt; Error2) : Result&lt;Ok, Error2&gt;</code></pre>
+<p>Maps the <code>Err</code> type/value, leaving any <code>Ok</code>
+type/value unchanged.</p>
+<h2 id="function-fromoption">Function <code>fromOption</code></h2>
+<pre class="motoko"><code>func fromOption&lt;R, E&gt;(x : ?R, err : E) : Result&lt;R, E&gt;</code></pre>
+<p>Create a result from an option, including an error value to handle
+the <code>null</code> case.</p>
+<pre class="motoko"><code>import Result &quot;mo:base/Result&quot;;
+assert(Result.fromOption(?42, &quot;err&quot;) == #ok(42));
+assert(Result.fromOption(null, &quot;err&quot;) == #err(&quot;err&quot;));</code></pre>
+<h2 id="function-tooption">Function <code>toOption</code></h2>
+<pre class="motoko"><code>func toOption&lt;R, E&gt;(r : Result&lt;R, E&gt;) : ?R</code></pre>
+<p>Create an option from a result, turning all #err into
+<code>null</code>.</p>
+<pre class="motoko"><code>import Result &quot;mo:base/Result&quot;;
+assert(Result.toOption(#ok(42)) == ?42);
+assert(Result.toOption(#err(&quot;err&quot;)) == null);</code></pre>
+<h2 id="function-iterate">Function <code>iterate</code></h2>
+<pre class="motoko"><code>func iterate&lt;Ok, Err&gt;(res : Result&lt;Ok, Err&gt;, f : Ok -&gt; ())</code></pre>
+<p>Applies a function to a successful value, but discards the result.
+Use <code>iterate</code> if you're only interested in the side effect
+<code>f</code> produces.</p>
+<pre class="motoko"><code>import Result &quot;mo:base/Result&quot;;
+var counter : Nat = 0;
+Result.iterate&lt;Nat, Text&gt;(#ok(5), func (x : Nat) { counter += x });
+assert(counter == 5);
+Result.iterate&lt;Nat, Text&gt;(#err(&quot;Wrong&quot;), func (x : Nat) { counter += x });
+assert(counter == 5);</code></pre>
+<h2 id="function-isok">Function <code>isOk</code></h2>
+<pre class="motoko"><code>func isOk(r : Result&lt;Any, Any&gt;) : Bool</code></pre>
+<h2 id="function-iserr">Function <code>isErr</code></h2>
+<pre class="motoko"><code>func isErr(r : Result&lt;Any, Any&gt;) : Bool</code></pre>
+<h2 id="function-assertok">Function <code>assertOk</code></h2>
+<pre class="motoko"><code>func assertOk(r : Result&lt;Any, Any&gt;)</code></pre>
+<p>Asserts that its argument is an <code>#ok</code> result, traps
+otherwise.</p>
+<h2 id="function-asserterr">Function <code>assertErr</code></h2>
+<pre class="motoko"><code>func assertErr(r : Result&lt;Any, Any&gt;)</code></pre>
+<p>Asserts that its argument is an <code>#err</code> result, traps
+otherwise.</p>
+<h2 id="function-fromupper">Function <code>fromUpper</code></h2>
+<pre class="motoko"><code>func fromUpper&lt;Ok, Err&gt;(result : {#Ok : Ok; #Err : Err}) : Result&lt;Ok, Err&gt;</code></pre>
+<p>Converts an upper cased <code>#Ok</code>, <code>#Err</code> result
+type into a lowercased <code>#ok</code>, <code>#err</code> result type.
+On the IC, a common convention is to use <code>#Ok</code> and
+<code>#Err</code> as the variants of a result type, but in Motoko, we
+use <code>#ok</code> and <code>#err</code> instead.</p>
+<h2 id="function-toupper">Function <code>toUpper</code></h2>
+<pre class="motoko"><code>func toUpper&lt;Ok, Err&gt;(result : Result&lt;Ok, Err&gt;) : {#Ok : Ok; #Err : Err}</code></pre>
+<p>Converts a lower cased <code>#ok</code>, <code>#err</code> result
+type into an upper cased <code>#Ok</code>, <code>#Err</code> result
+type. On the IC, a common convention is to use <code>#Ok</code> and
+<code>#Err</code> as the variants of a result type, but in Motoko, we
+use <code>#ok</code> and <code>#err</code> instead.</p>
+</body>
+</html>
