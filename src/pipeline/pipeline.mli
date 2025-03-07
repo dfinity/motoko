@@ -35,7 +35,30 @@ type compile_result =
 
 val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
-(* For use in the IDE server *)
+val resolve_flags : unit -> ResolveImport.flags
+val resolved_import_name : Syntax.resolved_import Source.phrase -> string
+
+(* For use in the language server *)
+
+type scope_cache = Scope.t Type.Env.t
+
+type load_result_cached =
+    ( Syntax.lib list
+    * (Syntax.prog * string list) list
+    * Scope.t
+    * scope_cache )
+  Diag.result
+
+val load_progs_cached
+  :  ?viper_mode:bool
+  -> ?check_actors:bool
+  -> parse_fn
+  -> string list
+  -> Scope.t
+  -> scope_cache
+  -> load_result_cached
+
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
+
 val load_progs : ?viper_mode:bool -> ?check_actors:bool -> parse_fn -> string list -> Scope.scope -> load_result
