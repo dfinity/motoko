@@ -157,8 +157,8 @@ let js_parse_motoko s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_with_deps main_file s =
-  let main_file = Js.to_string main_file in
+let js_parse_motoko_with_deps path s =
+  let main_file = Js.to_string path in
   let s = Js.to_string s in
   let prog_and_deps_result =
     let open Diag.Syntax in
