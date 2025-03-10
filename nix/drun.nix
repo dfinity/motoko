@@ -20,7 +20,7 @@ pkgs:
         outputHashes = {
           "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
           "cloudflare-0.12.0" = "sha256-FxCAK7gUKp/63fdvzI5Ufsy4aur74fO4R/K3YFiUw0Y=";
-          "ic-bn-lib-0.1.0" = "sha256-QTVRj/6j3g11DEX1NJfuPNu6ck80i7RI8HzCMyVii+M=";
+          "ic-bn-lib-0.1.0" = "sha256-wqWfF70B+YQWg63yiEvIxOq+LN1AasrNXcyPkDM4/jw=";
           "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
           "ic-cdk-0.18.0-alpha.1" = "sha256-MpLZVaLyNBT4qsy9m2eJwMeISTi5UfQH/BM1PxuwY6c=";
           "ic-gateway-0.1.0" = "sha256-TZv3n1lkCJjxJOy6HWZu11H0OXm2WH7u04vzqKlKVYA=";
