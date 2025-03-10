@@ -59,6 +59,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     btstNat8 : (Nat8, Nat8) -> Bool;
     call_raw : (Principal, Text, Blob) -> async Blob;
     cancelTimer : Nat -> ();
+    canisterSubnet : () -> Principal;
     canisterVersion : () -> Nat64;
     charIsAlphabetic : Char -> Bool;
     charIsLowercase : Char -> Bool;
