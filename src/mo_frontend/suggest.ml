@@ -1,5 +1,6 @@
 
 (* Suggestions *)
+open Mo_def
 open Mo_types
 open Mo_config
 open Type
@@ -9,6 +10,11 @@ let oneof sep lastsep ss =
   ((if rest <> [] then (String.concat sep rest) ^ lastsep else "") ^ last)
 
 let suggest_id desc id ids =
+  let ids =
+      List.filter (fun id ->
+        not (Syntax.is_privileged id))
+      ids
+  in
   if !Flags.ai_errors then
     Printf.sprintf
       "\nThe %s %s is not available. Try something else?"

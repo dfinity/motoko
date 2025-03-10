@@ -1,10 +1,90 @@
 # Motoko compiler changelog
 
-## 0.13.6 (tbd)
+## 0.14.3 (2025-03-04)
 
 * motoko (`moc`)
 
-  * Breaking change (minor):
+  * Added primitive predicate `isReplicatedExecution` (#4929).
+
+* motoko-base
+
+  * Added `isRetryPossible : Error -> Bool` to `Error` (dfinity/motoko-base⁠#692).
+
+  * Made `ExperimentalInternetComputer.replyDeadline` to return
+    an optional return type (dfinity/motoko-base⁠#693).
+    _Caveat_: Breaking change (minor).
+
+  * Added `isReplicated : () -> Bool` to `ExperimentalInternetComputer` (dfinity/motoko-base#694).
+
+## 0.14.2 (2025-02-26)
+
+* motoko (`moc`)
+
+  * Added support for sending `cycles` and setting a `timeout` in parentheticals.
+    This is an **experimental feature**, with new syntax, and now also allowing best-effort
+    message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
+
+    For example, if one wants to attach cycles to a message send, one can prefix it with a parenthetical
+    ``` motoko
+    (with cycles = 5_000) Coins.mine(forMe);
+    ```
+    Similarly a timeout for _best-effort_ execution (also called _bounded-wait_) can be specified like
+    ``` motoko
+    let worker = (with timeout = 15) async { /* worker loop */ };
+    ```
+    A common base for fields optionally goes before the `with` and can be customised with both fields
+    after it. Please consult the documentation for more usage information.
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+  * bugfix: Error messages now won't suggest privileged/internal names (#4916).
+
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
+## 0.14.0 (2025-02-05)
+
+* motoko (`moc`)
+
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
+
+  * Support explicit, safe migration of persistent data allowing arbitrary
+    transformations on a selected subset of stable variables.
+    Additional static checks warn against possible data loss (#4812).
+
+    As a very simple example:
+    ``` motoko
+    import Nat32 "mo:base/Nat32";
+
+    (with migration =
+      func (old : { var size : Nat32 }) : { var length : Nat } =
+        { var length = Nat32.toNat(old.size) }
+    )
+    persistent actor {
+      var length : Nat = 0;
+    }
+    ```
+    may be used during an upgrade to rename the stable field `size` to `length`,
+    and change its type from `Nat32` to `Nat`.
+
+    See the documentation for full details.
+
+## 0.13.7 (2025-02-03)
+
+* motoko (`moc`)
+
+  * Support passing cycles in primitive `call_raw` (resp. `ExperimentalInternetComputer.call`) (#4868).
+
+## 0.13.6 (2025-01-21)
+
+* motoko (`moc`)
+
+  * Support the low Wasm memory hook: `system func lowmemory() : async* () { ... }` (#4849).
+
+  * Breaking change (minor) (#4854):
 
     * For enhanced orthogonal persistence: The Wasm persistence modes used internally for canister upgrades have been changed to lower case names,
       `keep` and `replace` and instead of `Keep` and `Replace`:
@@ -12,11 +92,15 @@
       If using actor class instances with enhanced orthogonal persistence, you would need to recompile the program and upgrade with latest `moc` and `dfx`.
       Otherwise, no action is needed.
 
+  * bugfix: Checks and mitigations that timer servicing works (#4846).
+
+  * bugfix: Some valid upgrades deleting a stable variable could fail the `--enhanced-orthogonal-persistence` stable compatibility check due to a bug (#4855).
+
 ## 0.13.5 (2024-12-06)
 
 * motoko (`moc`)
 
-  * Breaking change (minor):
+  * Breaking change (minor) (#4786):
 
     * Add new keyword `transient` with exactly the same meaning as the old keyword `flexible` (but a more familiar reading).
 
@@ -26,10 +110,8 @@
       `let` or `var` declaration is `stable` (not `flexible` or `transient`).
 
       For example, a stateful counter can now be declared as:
-
       ``` motoko
       persistent actor {
-
         // counts increments since last upgrade
         transient var invocations = 0;
 
@@ -40,10 +122,8 @@
           value += 1;
           invocations += 1;
         }
-
       }
       ```
-
       On upgrade, the transient variable `invocations` will be reset to `0` and `value`, now implicitly `stable`, will retain its current value.
 
       Legacy actors and classes declared without the `persistent` keyword have the same semantics as before.

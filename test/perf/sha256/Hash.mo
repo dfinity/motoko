@@ -67,7 +67,7 @@ module {
   /// @deprecated This function may be removed or changed in future.
   public func hashNat8(key : [Hash]) : Hash {
     var hash : Nat32 = 0;
-    for (natOfKey in key.vals()) {
+    for (natOfKey in key.values()) {
       hash := hash +% natOfKey;
       hash := hash +% hash << 10;
       hash := hash ^ (hash >> 6);

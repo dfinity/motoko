@@ -30,18 +30,18 @@ let string_of_mono_goal (g : mono_goal) : string =
     | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)) g.mg_typs)
 
 let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
-  { visit_exp = (function
-    | {it = CallE({it = VarE v; at = v_at; note = v_note},inst,e); at; note} ->
-        let goal = { mg_id = v.it; mg_typs = inst.note } in
-        let _ = (if goal.mg_typs = [] then () else Stack.push goal stk) in
-        let s = string_of_mono_goal goal in
-        {it = CallE({it = VarE (s @~ v_at); at=v_at; note=v_note},
-                    {it = None; at=inst.at; note = []}, e); at; note}
-    | e -> e);
-    visit_typ = Fun.id;
+  { visit_typ = Fun.id;
     visit_pat = Fun.id;
     visit_dec = Fun.id;
     visit_inst = Fun.id;
+    visit_exp = function
+      | {it = CallE(_, {it = VarE v; at = v_at; note = v_note}, inst, e); _} as exp ->
+         let goal = { mg_id = v.it; mg_typs = inst.note } in
+         if goal.mg_typs <> [] then Stack.push goal stk;
+         let s = string_of_mono_goal goal in
+         {exp with it = CallE(None, {it = VarE (s @~ v_at); at=v_at; note=v_note},
+                              {it = None; at=inst.at; note = []}, e)}
+      | e -> e
   }
 
 let mono_calls_dec_field (df : dec_field) : (mono_goal list * dec_field) =
@@ -137,10 +137,11 @@ let mono_dec_fields (dfs : dec_field list) : dec_field list =
 let prep_unit (u : comp_unit) : comp_unit =
   let { imports; body } = u.it in
   match body.it with
-  | ActorU(id_opt, decs) ->
+  | ActorU(id_opt, exp_opt, decs) ->
+    (* TODO exp_opt (also below) *)
     let decs' = mono_dec_fields decs in
     (* let _ = List.map (fun g -> print_endline (string_of_mono_goal g)) goals in *)
-    let body' = ActorU(id_opt, decs') in
+    let body' = ActorU(id_opt, exp_opt, decs') in
     (* let _ = List.map (fun d -> print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec_field d))) decs' in *)
     { u with it = {imports; body = { body with it = body' } } }
   | _ -> u

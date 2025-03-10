@@ -38,7 +38,7 @@ module {
 
   public func apply<A, B>(fs : [A -> B], xs : [A]) : [B] {
     var ys : [B] = [];
-    for (f in fs.vals()) {
+    for (f in fs.values()) {
       ys := append<B>(ys, map<A, B>(f, xs));
     };
     ys;
@@ -60,7 +60,7 @@ module {
 
   public func filter<A>(f : A -> Bool, xs : [A]) : [A] {
     var ys : [A] = [];
-    for (x in xs.vals()) {
+    for (x in xs.values()) {
       if (f(x)) {
         ys := append<A>(ys, [x]);
       };
@@ -91,7 +91,7 @@ module {
   };
 
   public func find<A>(f : A -> Bool, xs : [A]) : ?A {
-    for (x in xs.vals()) {
+    for (x in xs.values()) {
       if (f(x)) {
         return ?x;
       }

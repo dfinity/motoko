@@ -1,0 +1,4 @@
+(unknown location): warning [M0169], stable variable four of previous type
+  var [var (Nat, Text)]
+ will be discarded. This may cause data loss. Are you sure?
+TRUE

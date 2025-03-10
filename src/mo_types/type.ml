@@ -72,6 +72,11 @@ and kind =
 
 let empty_src = {depr = None; region = Source.no_region}
 
+(* Stable signatures *)
+type stab_sig =
+  | Single of field list
+  | PrePost of field list * field list
+
 (* Efficient comparison *)
 let tag_prim = function
   | Null -> 0
@@ -312,6 +317,7 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat32 = Prim Nat32
 let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
@@ -344,6 +350,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "system_transient"; typ = unit; src = empty_src};
     { lab = "destination_invalid"; typ = unit; src = empty_src};
     { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "system_unknown"; typ = unit; src = empty_src};
     { lab = "future"; typ = Prim Nat32; src = empty_src};
     { lab = "call_error"; typ = call_error; src = empty_src};
   ])
@@ -1354,6 +1361,8 @@ let timer_type =
         [global_timer_set_type],
         [Async (Fut, Var (default_scope_var, 0), unit)])
 
+let low_memory_type =
+  Func (Local, Returns, [scope_bind], [], [Async (Cmp, Var (default_scope_var, 0), unit)])
 
 (* Well-known fields *)
 
@@ -1458,6 +1467,12 @@ let install_typ ts actor_typ =
     [ install_arg_typ ],
     [ Func(Local, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
+let cycles_lab = "cycles"
+let migration_lab = "migration"
+let timeout_lab = "timeout"
+
+let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
+let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
 
 (* Pretty printing *)
 
@@ -1768,11 +1783,15 @@ and pp_kind ppf k =
   pp_kind' vs ppf k
 
 and pp_stab_sig ppf sig_ =
+  let all_fields = match sig_ with
+    | Single tfs -> tfs
+    | PrePost (pre, post) -> pre @ post
+  in
   let cs = List.fold_right
     (cons_field false)
     (* false here ^ means ignore unreferenced Typ c components
        that would produce unreferenced bindings when unfolded *)
-    sig_ ConSet.empty in
+    all_fields ConSet.empty in
   let vs = vs_of_cs cs in
   let ds =
     let cs' = ConSet.filter (fun c ->
@@ -1790,15 +1809,22 @@ and pp_stab_sig ppf sig_ =
           typ = Typ c;
           src = empty_src }) ds)
   in
-  let pp_stab_fields ppf sig_ =
-    fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
-      (string_of_obj_sort Actor)
-      (pp_print_list ~pp_sep:semi (pp_stab_field vs)) sig_
+  let pp_stab_actor ppf sig_ =
+    match sig_ with
+    | Single tfs ->
+      fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
+    | PrePost (pre, post) ->
+      fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
   in
   fprintf ppf "@[<v 0>%a%a%a;@]"
-   (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-   (if fs = [] then fun ppf () -> () else semi) ()
-   pp_stab_fields sig_
+    (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+    (if fs = [] then fun ppf () -> () else semi) ()
+    pp_stab_actor sig_
 
 let rec pp_typ_expand' vs ppf t =
   match t with
@@ -1864,7 +1890,20 @@ let _ = str := string_of_typ
 
 (* Stable signatures *)
 
-let rec match_stab_sig tfs1 tfs2 =
+let pre = function
+  | Single tfs -> tfs
+  | PrePost (tfs, _) -> tfs
+
+let post = function
+  | Single tfs -> tfs
+  | PrePost (_, tfs) -> tfs
+
+let rec match_stab_sig sig1 sig2 =
+  let tfs1 = post sig1 in
+  let tfs2 = pre sig2 in
+  match_stab_fields tfs1 tfs2
+
+and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], _ | _, [] ->
@@ -1874,16 +1913,18 @@ let rec match_stab_sig tfs1 tfs2 =
     (match compare_field tf1 tf2 with
      | 0 ->
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_sig tfs1' tfs2'
+       match_stab_fields tfs1' tfs2'
      | -1 ->
        (* dropped field ok *)
-       match_stab_sig tfs1' tfs2
+       match_stab_fields tfs1' tfs2
      | _ ->
        (* new field ok *)
-       match_stab_sig tfs1 tfs2'
+       match_stab_fields tfs1 tfs2'
     )
 
-let string_of_stab_sig fields : string =
+let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
-  "// Version: 1.0.0\n" ^
-  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) fields
+  (match stab_sig with
+  | Single _ -> "// Version: 1.0.0\n"
+  | PrePost _ -> "// Version: 2.0.0\n") ^
+  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig

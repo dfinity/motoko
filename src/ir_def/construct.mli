@@ -91,6 +91,7 @@ val breakE: id -> exp -> exp
 val retE: exp -> exp
 val immuteE: exp -> exp
 val assignE : var -> exp -> exp
+val assignVarE : id -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
@@ -147,6 +148,8 @@ val (-*-) : exp -> exp -> exp (* application *)
 (* Objects *)
 
 val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
+val objectE : obj_sort -> (lab * exp) list -> field list -> exp
 
 (* Records *)
 
