@@ -58,6 +58,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     btstNat64 : (Nat64, Nat64) -> Bool;
     btstNat8 : (Nat8, Nat8) -> Bool;
     call_raw : (Principal, Text, Blob) -> async Blob;
+    canisterSubnet : () -> Principal;
     canisterVersion : () -> Nat64;
     charIsAlphabetic : Char -> Bool;
     charIsLowercase : Char -> Bool;
