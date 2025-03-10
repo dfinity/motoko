@@ -20,11 +20,13 @@ pkgs:
         outputHashes = {
           "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
           "cloudflare-0.12.0" = "sha256-FxCAK7gUKp/63fdvzI5Ufsy4aur74fO4R/K3YFiUw0Y=";
-          "ic-bn-lib-0.1.0" = "sha256-wqWfF70B+YQWg63yiEvIxOq+LN1AasrNXcyPkDM4/jw=";
+          "ic-bn-lib-0.1.0" = "sha256-QTVRj/6j3g11DEX1NJfuPNu6ck80i7RI8HzCMyVii+M=";
           "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
+          "ic-cdk-0.18.0-alpha.1" = "sha256-MpLZVaLyNBT4qsy9m2eJwMeISTi5UfQH/BM1PxuwY6c=";
+          "ic-gateway-0.1.0" = "sha256-TZv3n1lkCJjxJOy6HWZu11H0OXm2WH7u04vzqKlKVYA=";
           "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
-          "jsonrpc-0.12.1" = "sha256-3FtdZlt2PqVDkE5iKWYIp1eiIELsaYlUPRSP2Xp8ejM=";
           "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
+          "tower_governor-0.5.0" = "sha256-YugNEuG1IeK5MuD/falbtFPpNKXHJoo2j7IvT4Ey+nc=";
         };
       };
 
