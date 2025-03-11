@@ -571,12 +571,14 @@ let rec normalize = function
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
+  | Named (_, t) -> normalize t
   | t -> t
 
 let rec promote = function
   | Con (con, ts) ->
     let Def (tbs, t) | Abs (tbs, t) = Cons.kind con
     in promote (reduce tbs t ts)
+  | Named (_, t) -> promote t
   | t -> t
 
 

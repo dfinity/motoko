@@ -152,7 +152,9 @@ param_typs :
 
 param_typ :
   | t=data_typ { { name = None; typ = t} @@ at $sloc }
-  | n=name COLON t=data_typ { { name = Some n.it; typ = t} @@ at $sloc }
+  (* TBR *)
+  | n=ID COLON t=data_typ { { name = Some n; typ = t} @@ at $sloc }
+  | text COLON t=data_typ { { name = None; typ = t} @@ at $sloc }
 
 func_mode :
   | ONEWAY { Oneway @@ at $sloc }
