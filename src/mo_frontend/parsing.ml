@@ -70,39 +70,54 @@ let slice_lexeme lexbuf i1 i2 =
   then "<unknown>" (* Too rare to care *)
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
-let parse mode error_detail checkpoint lexer lexbuf =
-  Diag.with_message_store (fun m ->
-    try
-      (* Temporary hack! *)
-      Parser_lib.msg_store := Some m;
-      Parser_lib.mode := Some mode;
-      Some (E.entry checkpoint lexer)
-    with E.Error ((start, end_), explanations) ->
-      let at =
+let handle_error lexbuf error_detail message_store (start, end_) explanations =
+  let at =
         Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
-      in
-      let lexeme = slice_lexeme lexbuf start end_ in
-      let token =
-        if lexeme = "" then "end of input" else
-        "token '" ^ String.escaped lexeme ^ "'"
-      in
-      let msg =
-        match error_detail with
-        | 1 ->
-          Printf.sprintf
-            "unexpected %s, expected one of token or <phrase>:\n  %s"
-            token (abstract_symbols explanations)
-        | 2 ->
-          Printf.sprintf
-            "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
-            token (abstract_futures explanations)
-        | 3 ->
-          Printf.sprintf
-            "unexpected %s in position marked . of partially parsed item(s):\n%s"
-            token (abstract_items explanations)
-        | _ ->
-          Printf.sprintf "unexpected %s" token
-      in
-      Diag.add_msg m (Diag.error_message at "M0001" "syntax" msg);
-      None
+  in
+  let lexeme = slice_lexeme lexbuf start end_ in
+  let token =
+    if lexeme = "" then "end of input" else
+      "token '" ^ String.escaped lexeme ^ "'"
+  in
+  let msg =
+    match error_detail with
+    | 1 ->
+      Printf.sprintf
+        "unexpected %s, expected one of token or <phrase>:\n  %s"
+        token (abstract_symbols explanations)
+    | 2 ->
+      Printf.sprintf
+        "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
+        token (abstract_futures explanations)
+    | 3 ->
+      Printf.sprintf
+        "unexpected %s in position marked . of partially parsed item(s):\n%s"
+        token (abstract_items explanations)
+    | _ ->
+      Printf.sprintf "unexpected %s" token
+  in
+  Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
+
+module I = Parser.MenhirInterpreter
+
+let parse mode error_detail start lexer lexbuf =
+  Diag.with_message_store (fun m ->
+    Parser_lib.msg_store := Some m;
+    Parser_lib.mode := Some mode;
+    let fail (inputneeded : 'a I.checkpoint) (checkpoint : 'a I.checkpoint) =
+      (* The parser signals a syntax error. Note the position of the
+         problematic token, which is useful. Then, go back to the
+         last [InputNeeded] checkpoint and investigate. *)
+      match checkpoint with
+      | I.HandlingError env ->
+        let (startp, _) as positions = I.positions env in
+        let explanations = E.investigate startp inputneeded in
+        handle_error lexbuf error_detail m positions explanations;
+        None
+      | _ ->
+        assert false
+    in
+    let succ e =  Some e in
+    I.loop_handle_undo succ fail lexer start
   )
+
