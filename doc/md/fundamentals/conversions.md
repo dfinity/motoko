@@ -4,6 +4,8 @@ sidebar_position: 22
 
 # Conversions
 
+Conversions allow transforming values between different types to ensure compatibility and ease of manipulation. Common conversions include numeric transformation, such as converting `Float` or `Int` to `Nat`, and text manipulation, like converting `Text` to `Float` or encoding `Text` as a `Blob`. Arrays and tuples can be converted into structured types, such as records or hashmaps, for better organization. Additionally, time conversions enable transforming `Time.now()` (nanoseconds since 1970) into human-readable date formats, with optional timezone adjustments. These conversions provide flexibility when working with different data types.
+
 ## Converting types to `Nat`
 
 Motoko provides methods for converting both `Float` and `Int` to `Nat`. Since `Nat` only represents non-negative integers, the conversion must handle cases where the original value is negative or contains a decimal.
@@ -306,6 +308,10 @@ import Iter "mo:base/Iter";
 
 ### `Time.now()` to date
 
+On ICP, time is measured in nanoseconds since the Unix epoch (January 1, 1970, UTC). The `Time.now()` function returns the current system time in nanoseconds, which must be converted accordingly for date and time.
+
+This section demonstrates how to extract the year, month, day, hour, minute, and second from `Time.now()` by computing the number of days and seconds elapsed since 1970. It accounts for leap years when determining the month and day.  Additionally, a method for applying a timezone offset is provided, allowing adjustments such as converting UTC to Eastern Standard Time (EST) by subtracting 5 hours. The final output is formatted as `MM-DD-YYYY HH-MM-SS` for readability.
+
 ```motoko no-repl
 import Time "mo:base/Time";
 import Int "mo:base/Int";
@@ -394,7 +400,6 @@ actor {
     };
 };
 ```
-
 
 To account for the timezone difference, apply an offset. For example, adjust the time by subtracting 5 hours (assuming EST):
 

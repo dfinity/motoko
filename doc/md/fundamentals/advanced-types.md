@@ -77,6 +77,8 @@ This structure allows for dynamic growth while maintaining type safety.
 
 ### Manually reversing a linked list
 
+Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal and structural mutation without using the built-in `reverse` method.
+
 ``` motoko no-repl
 let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
@@ -131,6 +133,6 @@ Here, `T <: Int` constrains `T` to be a subtype of `Int`. Since `Int` is a concr
 
 - These constraints are enforced at compile time, meaning the compiler checks that the provided type satisfies the constraint. This guarantees that the necessary properties or operations are available when the function is used, eliminating certain classes of runtime errors.
 
-- Although the concept of type bounds is often associated with inheritance-based polymorphism in other languages, Motoko uses structural typing. This means that the subtype relationship is determined by the structure of the types rather than an explicit inheritance hierarchy. **Motoko does not support inheritance**.
+- Although the concept of type bounds is often associated with [inheritance-based polymorphism](https://www.codecademy.com/learn/learn-java/modules/learn-java-inheritance-and-polymorphism/cheatsheet) in other languages, Motoko uses structural typing. This means that the subtype relationship is determined by the structure of the types rather than an explicit inheritance hierarchy. **Motoko does not support inheritance**.
 
 This approach balances the flexibility of generic programming with the safety of compile-time checks, enabling the creation of generic functions that operate on a range of types while still enforcing specific structural or type constraints.
