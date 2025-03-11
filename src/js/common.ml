@@ -228,11 +228,15 @@ let js_parse_motoko_typed paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
-    (* The data of the map has TypeScript [type Scope = unknown], and such
-       scopes are always produced by the compiler. The language server takes
-       scopes as outputs and gives them as inputs without touching them at all.
-       Hence, the use of [Obj.magic] is legitimate here. *)
-    String_map_conversion.from_js scope_cache Js.to_string Obj.magic
+    Js.Opt.case
+      scope_cache
+      (fun () -> Mo_types.Type.Env.empty)
+      (fun scope_cache ->
+        (* The data of the map has TypeScript [type Scope = unknown], and such
+           scopes are always produced by the compiler. The language server takes
+           scopes as outputs and gives them as inputs without touching them at
+           all. Hence, the use of [Obj.magic] is legitimate here. *)
+        String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
   let load_result =
     Mo_types.Cons.session (fun () ->
