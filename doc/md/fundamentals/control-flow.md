@@ -63,7 +63,7 @@ func checkSign(n: Int): Text {
 
 ## `switch`
 
-Matches a value against multiple cases and executes the corresponding block of code.
+A `switch` matches a value against multiple cases and executes the corresponding block of code.
 
 ```motoko no-repl
 type HttpRequestStatus = {
@@ -81,7 +81,7 @@ func checkStatus(r: HttpRequestStatus): Text {
 
 ## `do ?`
 
-Attempts to unwrap an optional value inside a block; if any expression inside evaluates to `null`, the entire block returns `null`.
+The `do ?` syntax attempts to unwrap an optional value inside a block; if any expression inside evaluates to `null`, the entire block returns `null`.
 
 ```motoko no-repl
 func getUserAge(user: ?Nat): ?Nat {
@@ -112,7 +112,7 @@ label outer loop {
 
 ## `while`
 
-Repeatedly executes a block of code as long as a specified condition remains `true`.
+`while` repeatedly executes a block of code as long as a specified condition remains `true`.
 
 ```motoko no-repl
 var i = 0;
@@ -124,7 +124,7 @@ while (i < 5) {
 
 ## `for`
 
-Iterates over elements in a collection or range, executing a block of code for each element.
+A `for` loop iterates over elements in a collection or range, executing a block of code for each element.
 
 ``` motoko no-repl
 let numbers = [1, 2, 3, 4, 5];

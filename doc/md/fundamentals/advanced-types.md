@@ -4,7 +4,7 @@ sidebar_position: 21
 
 # Advanced types
 
-Motoko provides several advanced type features that enable more flexible and expressive type definitions. These include structural equality, generic types, subtyping, recursive types, and type bounds.
+Advanced type features enable more flexible and expressive type definitions, including structural equality, generic types, subtyping, recursive types, and type bounds.
 
 ## Structural equality
 
@@ -23,7 +23,7 @@ Even though `p1` and `p2` are distinct objects, they are considered equal becaus
 
 ## Generic types
 
-Motoko supports generic types, allowing the definition of type parameters that work with multiple data types. This is commonly used in functions, classes, and data structures.
+Generic types are used to define type parameters that work with multiple data types, commonly used in functions, classes, and data structures.
 
 A simple example of a generic function:
 
@@ -49,7 +49,7 @@ let textBox = Box<Text>("Hello");
 
 ## Subtyping
 
-Motoko supports subtyping, which allows a type to be used where a more general type is expected.  
+Subtyping allows a type to be used where a more general type is expected.  
 
 Records are covariant, meaning that a record with extra fields can be used where a smaller record is expected:  
 
@@ -100,7 +100,7 @@ reverse(numbers); // 3-> 2-> 1
 
 ## Type bounds
 
-Motoko supports constraining generic types by using subtype constraints. This mechanism ensures that any type used in a generic function meets specific structural or concrete type requirements, all checked at compile time.
+Generic types can be constrained by using subtype constraints, ensuring that any type used in a generic function meets specific structural or concrete type requirements that are checked during compilation.
 
 The following examples illustrate this behavior:
 

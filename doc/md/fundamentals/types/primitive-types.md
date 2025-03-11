@@ -7,7 +7,7 @@ Motoko provides several primitive types that form the foundation of all computat
 
 ## Numeric types
 
-Motoko supports both signed integers and unsigned naturals:
+Motoko supports both signed integers and unsigned naturals. Signed numbers can represent all numbers, positive and negative, while unsigned integers can only represent 0 and positive numbers. Natural numbers are unsigned integers.
 
 - Signed integers: `Int`, `Int8`, `Int16`, `Int32`, `Int64`
 - Unsigned naturals: `Nat`, `Nat8`, `Nat16`, `Nat32`, `Nat64`

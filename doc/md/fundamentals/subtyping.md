@@ -6,21 +6,21 @@ sidebar_position: 16
 
 Subtyping is a fundamental concept in type systems that allows a value of one type to be used where another (more general) type is expected. In Motoko, subtyping is used in various contexts to enable flexibility while ensuring type safety.
 
-| Variance type | Description | Relationship | Motoko Example |
+| Variance type | Description | Relationship | Motoko example |
 |---------------|-------------|--------------|----------------|
-| Covariant | Preserves the direction of subtyping | If `T1 <: T2`, then `F[T1] <: F[T2]` | If `Nat <: Int`, then `?Nat <: ?Int` You can use an optional natural number where an optional integer is expected |
-| Invariant | No subtyping relationship is preserved | If `T1 <: T2`, then `F[T1]` and `F[T2]` have no subtyping relation | If `Nat <: Int`, then `[var Nat]` and `[var Int]` are unrelated. You cannot use a mutable array of natural numbers where a mutable array of integers is expected |
-| Contravariant | Reverses the direction of subtyping | If `T1 <: T2`, then `F[T2] <: F[T1]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())` A function that can process any integer can be used where a natural number-specific function is expected |
+| Covariant | Preserves the direction of subtyping. | If `T1 <: T2`, then `F[T1] <: F[T2]` | If `Nat <: Int`, then `?Nat <: ?Int`. You can use an optional natural number where an optional integer is expected. |
+| Invariant | No subtyping relationship is preserved. | If `T1 <: T2`, then `F[T1]` and `F[T2]` have no subtyping relation. | If `Nat <: Int`, then `[var Nat]` and `[var Int]` are unrelated. You cannot use a mutable array of natural numbers where a mutable array of integers is expected. |
+| Contravariant | Reverses the direction of subtyping. | If `T1 <: T2`, then `F[T2] <: F[T1]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. A function that can process any integer can be used where a natural number-specific function is expected |
 
-- `T1` and `T2` are types
+- `T1` and `T2` are types.
 
-- `F[T]` represents a type constructor applied to type `T` (eg. `?T` for option type)
+- `F[T]` represents a type constructor applied to type `T` (e.g. `?T` for option type).
 
-- `<:` means "is a subtype of"
+- `<:` means "is a subtype of".
 
 ## Numeric (`Nat <: Int`)
 
-`Nat` is a subtype of `Int`** (`Nat <: Int`), meaning a `Nat` value can be used where an `Int` is expected. This works because every `Nat` is an `Int`, but not every `Int` is a `Nat` (negative numbers exist in `Int`).
+`Nat` is a subtype of `Int` (`Nat <: Int`), meaning a `Nat` value can be used where an `Int` is expected. This works because every `Nat` is an `Int`, but not every `Int` is a `Nat` (negative numbers exist in `Int`).
 
 ```motoko no-repl
 let x : Int = 10 : Nat;  // Allowed, since Nat is a subtype of Int
@@ -54,7 +54,7 @@ let b2 : B = a; // Not allowed because A lacks age.
 
 ## Variants
 
-Variants also support structural subtyping, but only if the variant contains at most the same cases as expected. A variant with fewer cases can be used where a variant with more cases is expected.
+Variants also support structural subtyping, but only if the variant contains, at most, the same cases as expected. A variant with fewer cases can be used where a variant with more cases is expected.
 
 ```motoko no-repl
 type A = { #Dog };
@@ -98,7 +98,7 @@ let f : (Nat) -> Int = parent;  // Allowed (contravariant param, covariant retur
 let g : (Int) -> Nat = child;   // Not allowed becase the return type must be covariant
 ```
 
-## Objects/Modules/Actors
+## Objects, modules & actors
 
 Objects are structurally subtyped, meaning an object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
 

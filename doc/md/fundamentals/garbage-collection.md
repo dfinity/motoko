@@ -17,9 +17,9 @@ Motoko’s default garbage collection method uses a copying approach, which depe
 }
 ```
 
-Both garbage collectors are limited by the instruction limit per message on the Internet Computer, preventing them from collecting the entire heap memory pool in a single execution. As a result, canisters cannot fully utilize the entire 4 GiB memory pool, as some free space must be reserved for the garbage collector to operate.
+Both garbage collectors are limited by the ICP instruction limit per message, preventing them from collecting the entire heap memory pool in a single execution. As a result, canisters cannot fully utilize the entire 4 GiB memory pool, as some free space must be reserved for the garbage collector to operate.
 
-A beta incremental garbage collection process is available, which distributes the workload across multiple messages when needed. This approach allows canisters to allocate up to three times more heap space after collection while consuming fewer cycles on average. With incremental garbage collection, canisters can take advantage of the entire 4 GiB heap memory pool, as it is capable of collecting the entire heap memory pool over multiple messages.
+A beta incremental garbage collection process is available, which distributes the workload across multiple messages as needed. This approach allows canisters to allocate up to three times more heap space after collection while consuming fewer cycles on average. With incremental garbage collection, canisters can take advantage of the entire 4 GiB heap memory pool.
 
 The incremental garbage collector can be enabled by specifying the `--incremental-gc` compiler flag in the project's `dfx.json` file:  
 

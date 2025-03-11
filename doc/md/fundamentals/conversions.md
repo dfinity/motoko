@@ -6,7 +6,7 @@ sidebar_position: 22
 
 ## Converting types to `Nat`
 
-Motoko provides methods for converting both `Float` and `Int` to `Nat`. Since `Nat` only represents non-negative integers, conversion must handle cases where the original value is negative or contains a decimal.
+Motoko provides methods for converting both `Float` and `Int` to `Nat`. Since `Nat` only represents non-negative integers, the conversion must handle cases where the original value is negative or contains a decimal.
 
 ### `Float` to `Nat`
 
@@ -46,7 +46,7 @@ let result4 = intToNat(-5);   // 5
 
 Motoko allows converting a `Nat8` value to a `Char`, where the `Nat8` value represents a **unicode scalar value** in the **ASCII range**.
 
-Since `Nat8` is a bounded type `(0–255)`, it must be explicitly widened to `Nat32` before conversion to `Char`.
+Since `Nat8` is a bounded type `(0–255)`, it must be explicitly widened to `Nat32` before being converted into `Char`.
 
 ```motoko no-repl
 import Char "mo:base/Char";
@@ -62,7 +62,7 @@ let charA = nat8ToChar(65);  // 'A'
 
 ### `Text` to lowercase
 
-Motoko provides a built-in function `Text.toLowercase`, which converts a string to lowercase.
+Motoko provides a built-in function `Text.toLowercase`, which converts all characters in a string to lowercase.
 
 ```motoko no-repl
 import Text "mo:base/Text";
@@ -76,9 +76,9 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 
 ### `Text` to an optional `Blob` for a ledger memo
 
-`Text` can be converted to a `Blob` using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
+`Text` can be converted into a `Blob` using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
 
-```motoko norepl
+```motoko no-repl
 import Text "mo:base/Text";
 
 func textToOptionalBlob(s: Text): ?Blob {
@@ -94,10 +94,10 @@ let memo1 = textToOptionalBlob("Payment Memo");  // ?Blob
 
 Motoko does not have a built-in `Text.toFloat` function, so parsing `Text` into `Float` requires handling:
 
-- Integer and decimal parts
-- Scientific notation (`e` or `E`)
-- Negative numbers
-- Edge cases (empty input, invalid characters, multiple decimal points, etc.)
+- Integer and decimal parts.
+- Scientific notation (`e` or `E`).
+- Negative numbers.
+- Edge cases (empty input, invalid characters, multiple decimal points, etc.).
 
 Below is a robust implementation:
 
@@ -395,11 +395,8 @@ actor {
 };
 ```
 
-To adjust based on timezone, use an offset:
 
-To account for the timezone difference, apply an offset:
-
-Adjust the time by subtracting 5 hours (assuming EST)
+To account for the timezone difference, apply an offset. For example, adjust the time by subtracting 5 hours (assuming EST):
 
 ```motoko no-repl
 let adjustedTime = system_time - (5 * 3600);

@@ -118,7 +118,7 @@ object class Account(initialBalance: Nat) {
 
 ### Module classes
 
-A module class can act as a factory, producing multiple modules with different configurations.
+A module class can be used to produce multiple modules with different configurations.
 
 ```motoko no-repl
 module class ExchangeRate(baseRate: Float) {
@@ -137,7 +137,7 @@ Debug.print(Float.toText(eurConverter.convert(100)));  // "90.0"
 
 ### Actor classes
 
-An actor class allows creating multiple independent actors. This allows dynamic creation of canisters.
+An actor class allows creating multiple independent actors and thus dynamic creation of canisters.
 
 ```motoko no-repl
 actor class BankAccount(initialBalance: Nat) {

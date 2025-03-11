@@ -6,19 +6,18 @@ sidebar_position: 17
 
 ## Stable declarations
 
-Stable declarations allow data persistence across canister upgrades. This ensures that important state variables are retained when upgrading a canister, preventing unintended data loss. Without marking a variable as stable, it is considered **transient** by default, meaning it will be **reset on upgrades**.
+Stable declarations enable data to persist across canister upgrades. This ensures that important state variables are retained, preventing unintended data loss. Without marking a variable as stable, it is considered **transient** by default, meaning it will be **reset on upgrades**.
 
-Each `let` or `var` declaration in an actor can be classified as **stable** or **transient**:
+The declarations `let` or `var` within an actor are classified as either **stable** or **transient**:
 
-1. `stable` declarations
-   - Values persist across canister upgrades.
-   - Automatically retained as long as they are directly or indirectly reachable from a stable variable.
-   - Used for core application state, such as counters, user balances, or configuration data.
+1. `stable` declarations:
+   - Persist their value across canister upgrades.
+   - Are automatically retained as long as they are directly or indirectly reachable from a stable variable.
+   - Should be used for core application state, such as counters, user balances, or configuration data.
 
-2. `transient` declarations
+2. `transient` declarations:
    - Reset to default on every upgrade.
-   - Used for temporary state or high-order types (e.g., function references) that should not persist.
-   - Previously, Motoko used the keyword `flexible` (deprecated since v0.13.4).
+   - Should be used for temporary state or high-order types (e.g., function references) that should not persist.
     <!----Not sure if flexible should be included considering its deprecated but it seems to still exist in the syntax--->
 
 The following example demonstrates a stable counter that retains its value across upgrades:
@@ -54,7 +53,7 @@ persistent actor Counter {
 
 ## Stable signatures
 
-The stable variables declared in an actor are represented in a stable signature, which records their names, types, and mutability. The stable signature resembles the internal structure of a Motoko actor type:
+Stable variables declared in an actor are represented in a stable signature, which records their names, types, and mutability. The stable signature resembles the internal structure of a Motoko actor type:
 
 ```motoko no-repl
 actor {
@@ -64,18 +63,18 @@ actor {
 };
 ```
 
-This representation captures all stable fields within an actor, providing a structured view of the stable storage layout. The `moc` compiler can generate the stable signature of an actor or actor class into a `.most` file using the `--stable-types` option. `.most` files are automatically generated and **should not** be manually created or modified.
+This representation captures all stable fields within an actor, providing a structured view of the stable storage layout. The `moc` compiler can generate the stable signature of an actor or actor class into a `.most` file using the `--stable-types` option. `.most` files **should not** be manually created or modified.
 
 ## Canister upgrades
 
-Upgrading a canister replaces its code while preserving stable variables, ensuring that essential data persists across versions. Non-stable variables are reset to their default values. Compatibility between stable signatures is required for a successful upgrade.
+Upgrading a canister replaces its code while preserving the values of stable variables, ensuring that essential data persists across versions. Non-stable variables are reset to their default values. Compatibility between stable signatures is required for a successful upgrade.
 
 ### Stable compatibility
 
 Ensuring compatibility between stable signatures is essential when upgrading an actor. A newer stable signature is considered stable-compatible with an older signature if, for each stable field in the old version, one of the following conditions holds:
 
 - The field no longer exists in the new version (indicating it has been safely removed).
-- The field exists in the new version with a type that is supertype of the old type (allowing previously stored values to remain valid).
+- The field exists in the new version with a supertype of the old type (allowing previously stored values to remain valid).
 
 Consider an actor with the following stable signature in the initial version:
 
@@ -111,7 +110,7 @@ actor {
 };
 ```
 
-In this case, `Nat` is not a subtype of `Bool`, meaning existing values of `x` from Version 1 cannot be safely stored in Version 2.
+In this case, `Nat` is not a subtype of `Bool`, meaning existing values of `x` from version 1 cannot be safely stored in version 2.
 
 ### Verifying stable compatibility
 
@@ -123,7 +122,6 @@ moc --stable-compatible v1.most v2.most
 
 Where `v1.most` contains the stable signature of the older version, and `v2.most` contains the stable signature of the newer version. This verification ensures that existing stable data remains valid after an upgrade.
 
-Where `file1.most` represents the stable signature of the older version, and `file2.most` represents the new version. This verification ensures that the upgraded actor remains compatible with its previous stable storage.
 
 ### Candid compatibility
 
@@ -135,7 +133,7 @@ To ensure canister upgrades do not break existing clients, the Candid interface 
 
 Breaking changes, such as renaming functions or altering parameter types incompatibly, may cause clients relying on the old interface to fail.
 
-To illustrate how Candid compatibility, consider an initial version of a canister with the following Motoko actor:
+To illustrate Candid compatibility, consider an initial version of a canister with the following Motoko actor:
 
 ```motoko no-repl
 actor Counter {
@@ -156,7 +154,7 @@ service Counter : {
 }
 ```
 
-Now, suppose the canister is upgraded, and the function `inc` is renamed to `increment`:
+Now, suppose the canister is upgraded and the function `inc` is renamed to `increment`:
 
 ```motoko no-repl
 actor Counter {
@@ -181,7 +179,7 @@ In this case, the upgrade breaks compatibility because the function `inc` is no 
 
 ## Migration
 
-Often, data representation changes with a new program version. For orthogonal persistence, it is important the language is able to allow flexible data migration to the new version.
+Data representation often changes with a new program version. It is important the program's language allows flexible data migration to the new version.
 
 Motoko supports two kinds of data migrations: Implicit migration and explicit migration.
 
@@ -199,7 +197,7 @@ The following changes are implicitly migrated:
 - Adjustments in shared function parameters and return types.
 - Any transformation allowed by Motoko’s subtyping rules.
 
-If a change falls within these categories, no manual migration is required—the system ensures that stable variables persist correctly across upgrades.
+If a change falls within these categories, no manual migration is required. The system ensures that stable variables persist correctly across upgrades.
 
 ### Explicit migration  
 
