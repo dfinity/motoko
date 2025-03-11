@@ -131,6 +131,9 @@ module MakeState() = struct
             | Write -> []),
            t1, args ts)
        | _ -> assert false)
+    | Named (n, t) ->
+      (* drop name *)
+      (typ t).it
     | Func _
     | Async _
     | Mut _

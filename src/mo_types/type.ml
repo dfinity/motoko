@@ -1,6 +1,7 @@
 (* Representation *)
 type lab = string
 type var = string
+type name = string
 
 type control =
   | Returns        (* regular local function or one-shot shared function *)
@@ -56,6 +57,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Named of name * typ                       (* named type *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -132,6 +134,7 @@ let tag = function
   | Non -> 12
   | Pre -> 13
   | Typ _ -> 14
+  | Named _ -> 15
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -420,6 +423,7 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -471,6 +475,7 @@ let rec subst sigma t =
                       type parameter cannot mention that parameter
                       (but can mention other (closed) type constructors).
                     *)
+  | Named (name, t) -> Named (name, subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -521,6 +526,7 @@ let rec open' i ts t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -730,6 +736,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+  | Named (_, t) -> span t
 
 
 (* Collecting type constructors *)
@@ -761,6 +768,9 @@ let rec cons' inTyp t cs =
     else
       (* don't add c unless mentioned in Cons.kind c *)
       cons_kind' inTyp (Cons.kind c) cs
+  | Named (_ , t) ->
+    cons' inTyp t cs
+
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -814,7 +824,8 @@ let concrete t =
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
       | Typ c -> (* assumes type defs are closed *)
-        true (* so we can transmit actors with typ fields *)
+         true (* so we can transmit actors with typ fields *)
+      | Named (_, t) -> go t
     end
   in go t
 
@@ -846,6 +857,7 @@ let serializable allow_mut t =
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -880,6 +892,7 @@ let find_unshared t =
         if is_shared_sort s
         then None
         else Some t
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -1134,6 +1147,8 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
+  | Named _, _ -> assert false
+  | _, Named _ -> assert false
   | _, _ ->
     false
   end
@@ -1179,11 +1194,12 @@ let rec inhabited_typ co t =
   | Variant tfs -> List.exists (inhabited_field co) tfs
   | Var _ -> true  (* TODO(rossberg): consider bound *)
   | Con (c, ts) ->
-    match Cons.kind c with
+    (match Cons.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t') ->
-      inhabited_typ co t'
+       inhabited_typ co t')
+  | Named _ -> assert false
   end
 
 and inhabited_field co tf = inhabited_typ co tf.typ
@@ -1207,6 +1223,7 @@ let rec singleton_typ co t =
   | Variant _ -> false
   | Var _ -> false
   | Con _ -> false
+  | Named _ -> assert false
   end
 
 and singleton_field co tf = singleton_typ co tf.typ
@@ -1302,6 +1319,14 @@ let rec combine rel lubs glbs t1 t2 =
         in
         set_kind c (Def ([], t'));
         t'
+    | Named (n1, t1'), Named (n2, t2') ->
+      if n1 = n2 then
+        Named (n1, combine rel lubs glbs t1' t2')
+      else
+        combine rel lubs glbs t1' t2'
+    | Named (_, t), t'
+    | t', Named (_, t) ->
+      combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
 
@@ -1586,6 +1611,7 @@ and can_omit n t =
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
+    | Named (n, t) -> go i t
   in go n t
 
 let rec pp_typ_obj vs ppf o =
