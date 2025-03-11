@@ -70,10 +70,14 @@ module Make
   (* We build lists of explanations. These explanations may originate in
      distinct LR(1) states. They may have different pasts, because  *)
 
-  exception Error of (Lexing.position * Lexing.position) * explanation list
+  (* TODO: remove me *)
+  (* exception Error of (Lexing.position * Lexing.position) * explanation list *)
 
   (* TEMPORARY *)
 
-  val entry: 'a I.checkpoint -> I.supplier -> 'a
+  (* TODO: remove me *)
+  (* val entry: 'a I.checkpoint -> I.supplier -> 'a *)
 
+  (* TODO: doc me  *)
+  val investigate: Lexing.position -> 'a checkpoint -> explanation list
 end
