@@ -224,8 +224,8 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
   | Named (n1, t1), Named (n2, t2) ->
-    (match compare n1 n2 with
-     | 0 -> String.compare n1 n2
+    (match String.compare n1 n2 with
+     | 0 -> compare_typ t1 t2
      | ord -> ord)
   | _ -> Int.compare (tag t1) (tag t2)
 
