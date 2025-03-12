@@ -345,8 +345,7 @@ type load_result_cached =
     ( Syntax.lib list
     * (Syntax.prog * string list) list
     * Scope.t
-    * scope_cache )
-  Diag.result
+    * scope_cache ) Diag.result
 
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result

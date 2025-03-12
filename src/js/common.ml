@@ -194,17 +194,17 @@ module Map_conversion (Map : Map.S) = struct
     (from_key : 'k Js.t -> Map.key)
     (from_data : 'd Js.t -> data)
     : data Map.t
-  =
-  let result = ref Map.empty in
-  let callback =
-    (* [forEach] in JS gives value, key, and map, in this order. *)
-    Js.wrap_callback (fun v k _m ->
-      let k = from_key k in
-      let v = from_data v in
-      result := Map.add k v !result)
-  in
-  ignore (Js.Unsafe.meth_call map "forEach" [|Js.Unsafe.inject callback|]);
-  !result
+    =
+    let result = ref Map.empty in
+    let callback =
+      (* [forEach] in JS gives value, key, and map, in this order. *)
+      Js.wrap_callback (fun v k _m ->
+          let k = from_key k in
+          let v = from_data v in
+          result := Map.add k v !result)
+    in
+    ignore (Js.Unsafe.meth_call map "forEach" [|Js.Unsafe.inject callback|]);
+    !result
 
   let to_js
     (type data)
@@ -212,13 +212,13 @@ module Map_conversion (Map : Map.S) = struct
     (from_key : Map.key -> Js.Unsafe.top Js.t)
     (from_data : data -> Js.Unsafe.top Js.t)
     : _ Js.t
-  =
-  let js_map = Js.Unsafe.new_obj (Js.Unsafe.pure_js_expr "Map") [||] in
-  Map.iter
-    (fun k v ->
-      ignore (Js.Unsafe.meth_call js_map "set" [| from_key k; from_data v |]))
-    map;
-  js_map
+    =
+    let js_map = Js.Unsafe.new_obj (Js.Unsafe.pure_js_expr "Map") [||] in
+    Map.iter
+      (fun k v ->
+         ignore (Js.Unsafe.meth_call js_map "set" [| from_key k; from_data v |]))
+      map;
+    js_map
 
   let from_ocaml = to_js
   let to_ocaml = from_js
