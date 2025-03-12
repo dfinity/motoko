@@ -164,7 +164,7 @@ module Make (Cfg : Config) = struct
     str ppf "(";
     List.iteri (fun i f ->
         (match f.it.name with
-          Some name -> (str ppf name; kwd ppf ":")
+          Some name -> (text ppf name; kwd ppf ":")
         | None -> ());
         pp_typ ppf f.it.typ;
         if i < n-1 then

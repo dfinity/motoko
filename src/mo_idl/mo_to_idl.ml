@@ -159,7 +159,12 @@ module MakeState() = struct
   and arg_typ t =
     match t with
     | Named (name, t) ->
-      I.{name= Some name; typ = typ t} @@ no_region
+       let open Idllib.Escape in
+       (match unescape name with
+       | Nat nat ->
+          I.{name= None; typ = typ t} @@ no_region
+       | Id id ->
+          I.{name= Some id; typ = typ t} @@ no_region)
     | t ->
       I.{name= None; typ = typ t} @@ no_region
   and meths fs =

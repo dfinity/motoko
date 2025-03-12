@@ -14,6 +14,6 @@ type ErrorCorrection =
    Q;
  };
 service : {
-  encode: (version: Version, level: ErrorCorrection, mode: Mode, text:
+  encode: (version: Version, level: ErrorCorrection, mode: Mode, "text":
    text) -> (text);
 }

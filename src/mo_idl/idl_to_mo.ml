@@ -90,7 +90,7 @@ and check_typs' env occs ts = List.map (check_typ' env occs) ts
 and check_arg_typ env occs (arg_typ : arg_typ) =
   match arg_typ.it.name with
   | Some name ->
-    M.Named (name, check_typ' env occs arg_typ.it.typ)
+    M.Named (Idllib.Escape.escape name, check_typ' env occs arg_typ.it.typ)
   | None -> check_typ' env occs arg_typ.it.typ
 and check_arg_typs env occs ats = List.map (check_arg_typ env occs) ats
 and check_field env occs f =
