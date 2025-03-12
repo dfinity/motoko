@@ -1,2 +1,2 @@
-import (f : Nat) = "file:CI.md";
+import (f : Nat) = "file:../index.html";
 
