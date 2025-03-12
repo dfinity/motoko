@@ -20,8 +20,7 @@ Motoko adopts the actor model to enable scalable, non-blocking execution on the 
 
 To demonstrate how asynchronous actors work, consider the following:
 
-- Customers place orders at a pizza restaraunt, but the chef can only make one pizza at a time. Orders are taken **asynchronously**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
-
+- Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **asynchronously**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 ```motoko no-repl
 import Array "mo:base/Array";
 import Text "mo:base/Text";
