@@ -75,12 +75,9 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
 
 (* Lib as a single value *)
 let comp_unit_of_value full_path : comp_unit =
-  let note = { empty_typ_note with note_typ = Type.Pre } in
   let at = Source.no_region in
-  let exp : exp = { it = LitE (ref (PreLit ("blobbyblob", Type.Blob))); note; at } in
-  let expd : dec = { it = ExpD exp; note; at } in
-  let prog_typ_note = { empty_typ_note with note_typ = Type.unit } in
-  { it = { imports = []; body = { it = ProgU [expd]; note = prog_typ_note; at } }; note = { filename = full_path; trivia = Trivia.empty_triv_table}; at }
+  let prog_typ_note = { empty_typ_note with note_typ = Type.blob } in
+  Source.{ it = { imports = []; body = { it = FileU "blobbyblob"; note = prog_typ_note; at } }; note = { filename = full_path; trivia = Trivia.empty_triv_table}; at }
 
 (* Lib as decs *)
 let obj_decs obj_sort at note id_opt fields =
@@ -110,15 +107,14 @@ let obj_decs obj_sort at note id_opt fields =
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs = List.map (fun { it = (pat, fp, ri); at; note} ->
+  let import_decs = List.map (fun {it = (pat, fp, ri); at; note} ->
+    let note = { empty_typ_note with note_typ = note } in
     { it = LetD (
-      pat,
-      { it = ImportE (fp, ri);
-        at;
-        note = { empty_typ_note with note_typ = note } },
-      None);
+               pat,
+               { it = ImportE (fp, ri); at; note },
+               None);
       at;
-      note = { empty_typ_note with note_typ = note } }) imports
+      note }) imports
   in
   import_decs,
   match cub.it with
@@ -128,7 +124,7 @@ let decs_of_lib (cu : comp_unit) =
     [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = ()}, i, tbs, p, t, i', efs);
        at = cub.at;
        note = cub.note;}];
-  | ProgU [{ it = ExpD { it = LitE _; _ }; _}] -> []
+  | FileU _ -> []
   | ProgU _
   | ActorU _ ->
     assert false

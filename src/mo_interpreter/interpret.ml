@@ -282,7 +282,7 @@ let interpret_lit env lit : V.value =
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
   | BlobLit b -> V.Blob b
-  | PreLit (s, _) -> V.Text s (* FIXME: why not type-checked in ProgU? *)
+  (* | PreLit (s, _) -> V.Text s FIXME: why not type-checked in ProgU? *)
   | PreLit _ -> assert false
 
 
@@ -1115,8 +1115,8 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
-  | Syntax.ProgU [{ it = ExpD { it = LitE lit; _ }; _}] ->
-    fun _ -> interpret_lit env lit
+  | Syntax.FileU str ->
+    fun _ -> interpret_lit env (ref (TextLit str))
   | _ -> assert false
 
 

@@ -174,7 +174,8 @@ let async_cap_of_prog prog =
   match (CompUnit.comp_unit_of_prog false prog).it.body.it with
   | ActorClassU _ -> Async_cap.NullCap
   | ActorU _ -> Async_cap.initial_cap()
-  | ModuleU _ -> assert false
+  | ModuleU _
+  | FileU _ -> assert false
   | ProgU _ ->
      if !Flags.compiled then
        Async_cap.NullCap
@@ -407,10 +408,9 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
     | Syntax.ImportedValuePath full_path ->
       let lib = lib_of_value full_path in
       libs := lib :: !libs; (* NB: Conceptually an append *)
-      let sscope = Scope.lib full_path Type.Pre in
+      let sscope = Scope.lib full_path Type.blob in
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
-
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
