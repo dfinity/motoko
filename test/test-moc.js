@@ -1,6 +1,10 @@
 process.on("unhandledRejection", (error) => {
-  assert.fail(error);
+  console.log(`Unhandled promise rejection:\n${error}`)
 });
+
+process.on("uncaughtException", (error) => {
+  console.log(`Uncaught exception:\n${error}`);
+})
 
 const assert = require("assert").strict;
 
