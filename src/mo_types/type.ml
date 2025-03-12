@@ -223,6 +223,10 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   | Non, Non
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
+  | Named (n1, t1), Named (n2, t2) ->
+    (match compare n1 n2 with
+     | 0 -> String.compare n1 n2
+     | ord -> ord)
   | _ -> Int.compare (tag t1) (tag t2)
 
 and compare_tb tb1 tb2 =
@@ -959,7 +963,11 @@ let rec rel_typ d rel eq t1 t2 =
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
-    true
+     true
+  | Named (_n, t1'), t2 ->
+    rel_typ d rel eq t1' t2
+  | t1, Named (_n, t2') ->
+    rel_typ d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
@@ -1633,11 +1641,19 @@ and pp_typ_variant vs ppf fs =
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
 
+and pp_typ_item vs ppf t =
+  match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
+  | typ -> pp_typ' vs ppf t
+
 and pp_typ_nullary vs ppf t =
   match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
+      (pp_print_list ~pp_sep:comma (pp_typ_item vs)) ts
       (if List.length ts = 1 then "," else "")
   | Pre -> pr ppf "???"
   | Any -> pr ppf "Any"

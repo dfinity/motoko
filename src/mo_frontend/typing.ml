@@ -523,8 +523,8 @@ let error_shared env t at code fmt =
 
 let as_domT t =
   match t.Source.it with
-  | TupT tis -> List.map snd tis
-  | _ -> [t]
+  | TupT tis -> tis
+  | _ -> [(None, t)]
 
 let as_codomT sort t =
   match sort, t.Source.it with
@@ -683,6 +683,11 @@ let rec check_typ env (typ : typ) : T.typ =
   typ.note <- t;
   t
 
+and check_typ_item env typ_item =
+  match typ_item with
+  | (None, typ) -> check_typ env typ
+  | (Some id, typ) -> T.Named (id.it, check_typ env typ)
+
 and check_typ' env typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
@@ -701,15 +706,15 @@ and check_typ' env typ : T.typ =
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
-  | TupT typs ->
-    T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
+  | TupT typ_items ->
+    T.Tup (List.map (check_typ_item env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
-    let ts1 = List.map (check_typ env') typs1 in
-    let ts2 = List.map (check_typ env') typs2 in
+    let ts1 = List.map (check_typ_item env') typs1 in
+    let ts2 = List.map (check_typ_item env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -788,8 +793,8 @@ and check_typ' env typ : T.typ =
     t
   | ParT typ ->
     check_typ env typ
-  | NamedT (_, typ) ->
-    check_typ env typ
+  | NamedT (name, typ) ->
+    T.Named (name.it, check_typ env typ)
 
 and check_typ_def env at (id, typ_binds, typ) : T.kind =
   let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
@@ -1468,7 +1473,7 @@ and infer_exp'' env exp : T.typ =
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let ts2 = List.map (check_typ env') ts2 in
+    let ts2 = List.map (check_typ_item env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -1863,8 +1868,8 @@ and check_exp' env0 t exp : T.typ =
     check_exp env (T.Prim T.Blob) exp1;
     t
   | FromCandidE _, t ->
-      error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
-        display_typ_expand t
+    error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
+      display_typ_expand t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
@@ -2205,6 +2210,9 @@ and infer_pat' env pat : T.typ * Scope.val_env =
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
+  | AnnotP ({it = VarP id; _} as pat1, typ) ->
+    let t = check_typ env typ in
+    T.Named (id.it, t),  check_pat env t pat1
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
