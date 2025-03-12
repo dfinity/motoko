@@ -1,7 +1,7 @@
 migration-bad.mo:3.7-3.21: type error [M0203], expected non-generic, local function type, but migration expression produces type
   ()
 migration-bad.mo:7.7-7.40: type error [M0203], expected non-generic, local function type, but migration expression produces type
-  <T>T -> T
+  <T>(x : T) -> T
 migration-bad.mo:11.7-11.36: type error [M0202], expected object type, but migration expression consumes non-object type
   ()
 migration-bad.mo:15.7-15.36: type error [M0202], expected object type, but migration expression produces non-object type
@@ -9,9 +9,9 @@ migration-bad.mo:15.7-15.36: type error [M0202], expected object type, but migra
 migration-bad.mo:19.7-19.44: type error [M0202], expected object type, but migration expression produces non-object type
   ()
 migration-bad.mo:19.7-19.44: type error [M0201], expected stable type, but migration expression consumes non-stable type
-  {f : () -> ()}
+  {f : (f : () -> ())}
 migration-bad.mo:19.7-19.44: warning [M0207], migration expression consumes field `f` of type
-  () -> ()
+  (f : () -> ())
 but does not produce it. The field is not declared in the actor.
 This field will be removed from the actor, discarding its consumed value.
 If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function.

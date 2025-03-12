@@ -1,1 +1,1 @@
-polyrec.mo:4.10-11.4: type error [M0200], cannot decide type constructor equality
+polyrec.mo:8.24-8.25: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
