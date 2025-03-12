@@ -421,17 +421,15 @@ let check_closed env id k at =
 (* Imports *)
 
 let check_import env at f ri =
-  let full_path =
-    match !ri with
+  let full_path = match !ri with
     | Unresolved -> error env at "M0020" "unresolved import %s" f
     | LibPath {path=fp; _}
     | ImportedValuePath fp
     | IDLPath (fp, _) -> fp
-    | PrimPath -> "@prim"
-  in
+    | PrimPath -> "@prim" in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
-    failwith "M0021"; error env at "M0021" "cannot infer type of forward import %s" f
+    error env at "M0021" "cannot infer type of forward import %s" f
   | Some t -> t
   | None -> error env at "M0022" "imported file %s not loaded" full_path
 
@@ -2014,6 +2012,8 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
     t
+  | ImportE (_, {contents = ImportedValuePath _}), (T.(Prim (Blob|Text)) as t) ->
+    t
   | ImportE _, t ->
     t
   | e, _ ->
@@ -3265,11 +3265,18 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
+
+
+
   | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when is_import dec ->
     let t = check_typ env typ in
     check_exp {env with pre = false; check_unused = false} t exp;
     let ve' = check_pat env t pat in
     Scope.{empty with val_env = ve'}
+
+
+
+
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
@@ -3379,7 +3386,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
+          let env = { (env_of_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
@@ -3388,9 +3395,9 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let imp_typ = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin
-                let r = Source.({
+                let r = Source.{
                   left = { no_pos with file = lib.note.filename };
-                  right = { no_pos with file = lib.note.filename }})
+                  right = { no_pos with file = lib.note.filename }}
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
@@ -3421,6 +3428,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
             | ProgU _ ->
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
+            | FileU _ -> assert false
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           Scope.lib lib.note.filename imp_typ
