@@ -830,7 +830,7 @@ let concrete t =
         List.for_all go (List.map (open_ ts) ts1) &&
         List.for_all go (List.map (open_ ts) ts2)
       | Typ c -> (* assumes type defs are closed *)
-         true (* so we can transmit actors with typ fields *)
+        true (* so we can transmit actors with typ fields *)
       | Named (_, t) -> go t
     end
   in go t
@@ -1335,7 +1335,7 @@ let rec combine rel lubs glbs t1 t2 =
       else
         combine rel lubs glbs t1' t2'
     | Named (_, t), t'
-    | t', Named (_, t) ->
+    | t, Named (_, t') ->
       combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non

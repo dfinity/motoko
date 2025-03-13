@@ -132,7 +132,7 @@ module MakeState() = struct
            t1, args ts)
        | _ -> assert false)
     | Named (n, t) ->
-      (* drop name *)
+      (* drop name, Candid only allows names on function argument and return types *)
       (typ t).it
     | Func _
     | Async _
