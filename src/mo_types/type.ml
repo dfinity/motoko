@@ -1335,7 +1335,7 @@ let rec combine rel lubs glbs t1 t2 =
       else
         combine rel lubs glbs t1' t2'
     | Named (_, t), t'
-    | t', Named (_, t) ->
+    | t, Named (_, t') ->
       combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
