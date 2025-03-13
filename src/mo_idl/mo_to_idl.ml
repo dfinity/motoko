@@ -164,7 +164,7 @@ module MakeState() = struct
        | Nat nat ->
           I.{name= None; typ = typ t} @@ no_region
        | Id id ->
-          I.{name= Some id; typ = typ t} @@ no_region)
+          I.{name= Some (id @@ no_region); typ = typ t} @@ no_region)
     | t ->
       I.{name= None; typ = typ t} @@ no_region
   and meths fs =

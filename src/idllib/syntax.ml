@@ -48,7 +48,7 @@ and typ' =
   | PreT   (* pre-type *)
 
 and arg_typ = arg_typ' Source.phrase
-and arg_typ' = { name : string option; typ : typ }
+and arg_typ' = { name : id option; typ : typ }
 and typ_field = typ_field' Source.phrase
 and typ_field' = { label: field_label; typ : typ }
 

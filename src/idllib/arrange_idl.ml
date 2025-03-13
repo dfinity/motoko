@@ -64,7 +64,7 @@ and typ t = match t.it with
 
 and arg_typ t =
   match t.it.name with
-  | Some name -> "Named" $$ [Atom name; typ t.it.typ]
+  | Some name -> "Named" $$ [Atom name.it; typ t.it.typ]
   | None ->  typ t.it.typ
 
 and dec d = match d.it with
@@ -164,7 +164,7 @@ module Make (Cfg : Config) = struct
     str ppf "(";
     List.iteri (fun i f ->
         (match f.it.name with
-          Some name -> (text ppf name; kwd ppf ":")
+          Some name -> (text ppf name.it; kwd ppf ":")
         | None -> ());
         pp_typ ppf f.it.typ;
         if i < n-1 then
