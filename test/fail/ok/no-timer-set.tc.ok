@@ -222,12 +222,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     rts_upgrade_instructions : () -> Nat;
     rts_version : () -> Text;
     setCandidLimits :
-      <system>{
-                bias : (bias : Nat32);
-                denominator : (denominator : Nat32);
-                numerator : (numerator : Nat32)
-              } ->
-        ();
+      <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
     setCertifiedData : (data : Blob) -> ();
     shiftLeft : (x : Nat, shift : Nat32) -> Nat;
     shiftRight : (x : Nat, shift : Nat32) -> Nat;

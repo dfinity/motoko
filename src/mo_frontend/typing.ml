@@ -2156,19 +2156,19 @@ and inconsistent t ts =
 (* Patterns *)
 
 and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
-  let t, ve = infer_pat env pat in
+  let t, ve = infer_pat true env pat in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   t, ve
 
-and infer_pat env pat : T.typ * Scope.val_env =
+and infer_pat name_types env pat : T.typ * Scope.val_env =
   assert (pat.note = T.Pre);
-  let t, ve = infer_pat' env pat in
+  let t, ve = infer_pat' name_types env pat in
   if not env.pre then
     pat.note <- T.normalize t;
   t, ve
 
-and infer_pat' env pat : T.typ * Scope.val_env =
+and infer_pat' name_types env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
     error env pat.at "M0102" "cannot infer type of wildcard"
@@ -2190,10 +2190,10 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
     T.Obj (s, tfs), ve
   | OptP pat1 ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve = infer_pat false env pat1 in
     T.Opt t1, ve
   | TagP (id, pat1) ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve = infer_pat false env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; src = empty_src}], ve
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
@@ -2210,20 +2210,20 @@ and infer_pat' env pat : T.typ * Scope.val_env =
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
-  | AnnotP ({it = VarP id; _} as pat1, typ) ->
+  | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
     T.Named (id.it, t),  check_pat env t pat1
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
   | ParP pat1 ->
-    infer_pat env pat1
+    infer_pat name_types env pat1
 
 and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   match pats with
   | [] -> List.rev ts, ve
   | pat::pats' ->
-    let t, ve1 = infer_pat env pat in
+    let t, ve1 = infer_pat true env pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
@@ -2231,7 +2231,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   match pfs with
   | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
-    let typ, ve1 = infer_pat env pf.it.pat in
+    let typ, ve1 = infer_pat false env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; src = empty_src }::ts) ve'
 
@@ -2270,7 +2270,7 @@ and check_pat env t pat : Scope.val_env =
 
 and check_pat_aux env t pat val_kind : Scope.val_env =
   assert (pat.note = T.Pre);
-  if t = T.Pre then snd (infer_pat env pat) else
+  if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
   let ve = check_pat_aux' env t' pat val_kind in
   if not env.pre then pat.note <- t';
@@ -3138,7 +3138,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
-    let _, ve = infer_pat env' pat in
+    let _, ve = infer_pat true env' pat in
     let in_actor = obj_sort.it = T.Actor in
     let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
@@ -3229,7 +3229,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
-    let t1, _ = infer_pat {env' with pre = true} pat in
+    let t1, _ = infer_pat true {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let class_tbs, _,  class_cs = infer_class_cap env obj_sort.it tbs cs in
     let obj_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in

@@ -223,12 +223,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     rts_upgrade_instructions : () -> Nat;
     rts_version : () -> Text;
     setCandidLimits :
-      <system>{
-                bias : (bias : Nat32);
-                denominator : (denominator : Nat32);
-                numerator : (numerator : Nat32)
-              } ->
-        ();
+      <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
     setCertifiedData : (data : Blob) -> ();
     setTimer :
       <system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) ->
