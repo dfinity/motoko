@@ -1,5 +1,21 @@
 # Motoko compiler changelog
 
+## 0.14.3 (2025-03-04)
+
+* motoko (`moc`)
+
+  * Added primitive predicate `isReplicatedExecution` (#4929).
+
+* motoko-base
+
+  * Added `isRetryPossible : Error -> Bool` to `Error` (dfinity/motoko-base⁠#692).
+
+  * Made `ExperimentalInternetComputer.replyDeadline` to return
+    an optional return type (dfinity/motoko-base⁠#693).
+    _Caveat_: Breaking change (minor).
+
+  * Added `isReplicated : () -> Bool` to `ExperimentalInternetComputer` (dfinity/motoko-base#694).
+
 ## 0.14.2 (2025-02-26)
 
 * motoko (`moc`)
