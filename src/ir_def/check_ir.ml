@@ -244,6 +244,11 @@ let rec check_typ env typ : unit =
     error env no_region "unexpected T.Mut %s" (T.string_of_typ typ)
   | T.Typ c ->
     error env no_region "unexpected T.Typ"
+  | T.Named (_, typ1) ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "named type field in non-typ_field flavor";
+    check_typ env typ1
+
 
 and check_mut_typ env = function
   | T.Mut t -> check_typ env t

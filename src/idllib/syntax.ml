@@ -34,7 +34,7 @@ type typ = typ' Source.phrase
 and typ' =
   | PrimT of prim                                (* primitive *)
   | VarT of id                                    (* type name *)
-  | FuncT of func_mode list * typ list * typ list   (* function *)
+  | FuncT of func_mode list * arg_typ list * arg_typ list   (* function *)
   | OptT of typ   (* option *)
   | VecT of typ   (* vector *)
   | BlobT (* vec nat8 *)
@@ -43,10 +43,12 @@ and typ' =
   | ServT of typ_meth list (* service reference *)
   (* ClassT can only appear in the main actor. *)
   (* This is guarded by the parser and type checker *)
-  | ClassT of typ list * typ (* service constructor *)
+  | ClassT of arg_typ list * typ (* service constructor *)
   | PrincipalT
   | PreT   (* pre-type *)
 
+and arg_typ = arg_typ' Source.phrase
+and arg_typ' = { name : id option; typ : typ }
 and typ_field = typ_field' Source.phrase
 and typ_field' = { label: field_label; typ : typ }
 
