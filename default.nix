@@ -832,6 +832,7 @@ EOF
           ocamlPackages.merlin
           ocamlPackages.utop
           ocamlformat
+          ocamlPackages.ocaml-lsp
           fswatch
           niv
           nix-update
