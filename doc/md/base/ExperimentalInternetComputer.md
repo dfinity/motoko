@@ -32,6 +32,13 @@ let output : ?OutputType = from_candid(rawReply); // { decimals = 8 }
 
 [Learn more about Candid serialization](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual#candid-serialization)
 
+## Value `isReplicated`
+``` motoko no-repl
+let isReplicated : () -> Bool
+```
+
+`isReplicated` is true for update messages and for queries that passed through consensus.
+
 ## Function `countInstructions`
 ``` motoko no-repl
 func countInstructions(comp : () -> ()) : Nat64
@@ -85,9 +92,9 @@ let diff : Nat64 = IC.performanceCounter(1) - c1;
 
 ## Function `replyDeadline`
 ``` motoko no-repl
-func replyDeadline() : Nat
+func replyDeadline() : ?Nat
 ```
 
 Returns the time (in nanoseconds from the epoch start) by when the update message should
 reply to the best effort message so that it can be received by the requesting canister.
-Queries and non-best-effort update messages return zero.
+Queries and unbounded-time update messages return null.
