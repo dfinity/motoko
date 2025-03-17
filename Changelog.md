@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.14.4 (FUTURE)
+
+* motoko (`moc`)
+
+  * Added `canisterSubnet` primitive (#4857).
+
 ## 0.14.3 (2025-03-04)
 
 * motoko (`moc`)
