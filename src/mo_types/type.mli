@@ -2,6 +2,7 @@
 
 type lab = string
 type var = string
+type name = string
 
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
@@ -49,6 +50,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Named of name * typ
   | Pre                                       (* pre-type *)
 
 and scope = typ

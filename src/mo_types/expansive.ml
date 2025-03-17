@@ -125,7 +125,9 @@ let edges_typ cs c (es : EdgeSet.t) t : EdgeSet.t =
         (List.map (fun f -> f.typ) fs)
     | Typ c ->
       (* Since constructors must be closed, no further edges possible *)
-      es
+       es
+    | Named (n, t1) ->
+       go_typ i exp non es t1 (* TBR *)
   in
   go_typ 0 VertexSet.empty VertexSet.empty es t
 

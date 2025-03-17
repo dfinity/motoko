@@ -1,0 +1,29 @@
+service : {
+  /// anon
+  anon: (nat, nat) -> (nat);
+  /// escape candid keywords
+  escape: ("int": int, "bool": bool, "service": service {
+                                                }) -> ("int": int, "bool":
+   bool, "service": service {
+                    });
+  /// function arg/ret
+  f: (named: func (x: nat, y: nat) -> (r: nat)) -> (unamed:
+   func (nat, nat) -> (nat));
+  /// actor arg/ret
+  g: (A:
+   service {
+     anon: (nat, nat) -> (nat);
+     named: (x: nat, y: nat) -> (r: nat);
+   }) ->
+   (service {
+      anon: (x: nat, y: nat) -> (r: nat);
+      named: (nat, nat) -> (nat);
+    });
+  /// named
+  named: (x: nat, y: nat) -> (r: nat);
+  /// record
+  "record": (record {
+               x: nat;
+               y: nat;
+             }) -> (record {r: nat;});
+}
