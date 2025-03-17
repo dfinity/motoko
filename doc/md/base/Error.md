@@ -78,8 +78,23 @@ Returns the message of an error.
 Example:
 ```motoko
 import Error "mo:base/Error";
-import Debug "mo:base/Debug";
 
 let error = Error.reject("Example error");
 Error.message(error) // "Example error"
+```
+
+## Function `isRetryPossible`
+``` motoko no-repl
+func isRetryPossible(error : Error) : Bool
+```
+
+Returns whether retrying to send a message may result in success.
+
+Example:
+```motoko
+import { message; isRetryPossible } "mo:base/Error";
+import { print } "mo:base/Debug";
+
+try await (with timeout = 3) Actor.call(arg)
+catch e { if (isRetryPossible e) print(message e) }
 ```
