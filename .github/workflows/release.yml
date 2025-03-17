@@ -11,6 +11,7 @@ on:
     - '*'
     branches:
     - 'master'
+    - 'gabor/Arm64'
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
