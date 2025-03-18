@@ -33,6 +33,8 @@ type prim =
   | Principal
   | Region
 
+module Region_set : Set.S with type elt = Source.region
+
 type t = typ
 
 and typ =
@@ -58,7 +60,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and src = {depr : string option; region : Source.region}
+and src = {depr : string option; region : Source.region; mutable srcs : Region_set.t}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
