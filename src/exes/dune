@@ -30,7 +30,6 @@
  (name didc)
  (modules didc)
  (libraries lib idllib source_id)
- (ocamlopt_flags -ccopt -static)
  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )
 (executable
