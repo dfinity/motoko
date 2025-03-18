@@ -558,7 +558,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-18_x
+          nixpkgs.nodejs_22
           nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
