@@ -132,6 +132,7 @@ let ocaml_exe = name: bin: rts:
         ls -l ${bin}
         cp --verbose --dereference ${bin} $out/bin
         ls -l $out/bin
+        cat /nix/store/8zjih2wa7zbr42zl08bpqpjx25xkajls-stdenv-linux/setup || echo stdenv-linux/setup missing
       '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
         # there are references to darwin system libraries
         # in the binaries. But curiously, we can remove them
