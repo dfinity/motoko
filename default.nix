@@ -130,8 +130,8 @@ let ocaml_exe = name: bin: rts:
       installPhase = ''
         mkdir -p $out/bin
         ls -l ${bin}
-        cp --link --verbose --dereference ${bin} $out/bin \
-        || cp --verbose --dereference ${bin} $out/bin
+        cp --verbose --dereference ${bin} $out/bin
+        ls -l $out/bin
       '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
         # there are references to darwin system libraries
         # in the binaries. But curiously, we can remove them
