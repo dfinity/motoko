@@ -43,6 +43,19 @@ let prim = function
 
 let con c = Atom (Type.string_of_con c)
 
+let pos p =
+  "Pos" $$
+    [ Atom p.Source.file
+    ; Atom (string_of_int p.Source.line)
+    ; Atom (string_of_int p.Source.column) ]
+
+let region at = "@@" $$ [pos at.Source.left; pos at.Source.right]
+
+let src {depr; region = r; srcs} =
+  Atom (Option.value ~default:"" depr)
+  :: region r
+  :: List.of_seq (Seq.map region (Region_set.to_seq srcs))
+
 let rec typ = function
   | Var (s, i)             -> "Var" $$ [Atom s; Atom (string_of_int i)]
   | Con (c, ts)            -> "Con" $$ (con c::List.map typ ts)
@@ -67,5 +80,5 @@ let rec typ = function
 and typ_bind (tb : Type.bind) =
   tb.var $$ [typ tb.bound]
 
-and typ_field (tf : Type.field) =
-  tf.lab $$ [typ tf.typ]
+and typ_field ({lab; typ = t; src = s} : Type.field) =
+  lab $$ typ t :: src s
