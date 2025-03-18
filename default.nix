@@ -150,6 +150,7 @@ let ocaml_exe = name: bin: rts:
           $out/bin/*
         # sanity check
         $out/bin/* --help >/dev/null
+        echo /installPhase
       '';
     };
 in
