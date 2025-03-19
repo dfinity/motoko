@@ -3,7 +3,12 @@
 set -e
 set -o pipefail
 
-obelisk -i $1 |
+# workaround until https://github.com/Lelio-Brun/Obelisk/issues/15
+TEMP_FILE="/tmp/$(basename $1)"
+cp $1 ${TEMP_FILE}
+sed -i 's/\[@recover\..*\]//' ${TEMP_FILE}
+
+obelisk -i ${TEMP_FILE} |
 # Insert new line after def
 sed -e 's/::= /&\n    /' |
 # Transform
