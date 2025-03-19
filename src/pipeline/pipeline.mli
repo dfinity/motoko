@@ -8,12 +8,12 @@ type no_region_parse_fn = string -> (Syntax.prog * string) Diag.result
 type parse_fn = Source.region -> no_region_parse_fn
 
 val parse_file: parse_fn
+val parse_file_with_recovery: parse_fn
 val parse_string: string -> no_region_parse_fn
 
 val print_deps: string -> unit
 
-val check_files  : string list -> unit Diag.result
-val check_files' : parse_fn -> string list -> unit Diag.result
+val check_files  : ?recovery_enabled:bool -> string list -> unit Diag.result
 
 val viper_files : string list -> (string * (Source.region -> Source.region option)) Diag.result
 

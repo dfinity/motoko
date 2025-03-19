@@ -321,6 +321,9 @@ and objblock eo s id ty dec_fields =
 %type<Mo_def.Syntax.typ_field list> seplist(stab_field,semicolon)
 %type<Mo_def.Syntax.typ_field> stab_field
 
+%[@recover.default_cost_of_symbol     1000]
+%[@recover.default_cost_of_production 1]
+
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
@@ -334,7 +337,7 @@ and objblock eo s id ty dec_fields =
 
 seplist(X, SEP) :
   | (* empty *) { [] }
-  | x=X { [x] }
+  | x=X { [x] } [@recover.cost inf]
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist1(X, SEP) :
