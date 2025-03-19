@@ -122,6 +122,9 @@ let handle_error lexbuf error_detail message_store (start, end_) explanations =
   in
   Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
 
+(* We drive the parser in the usual way, but records the last [InputNeeded]
+   checkpoint. If a syntax error is detected, we go back to this checkpoint
+   and analyze it in order to produce a meaningful diagnostic. *)
 
 let parse ?(recovery = false) mode error_detail start lexer lexbuf =
   Diag.with_message_store ~allow_errors:recovery (fun m ->
