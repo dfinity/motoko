@@ -143,6 +143,18 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
       message:
         "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
     },
+    {
+        source: 'bad.mo',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 2 },
+          end: { line: 0, character: 2 }
+        },
+        code: 'M0057',
+        category: 'type',
+        message: 'unbound variable _'
+      }
+
   ],
   code: null,
 });

@@ -33,8 +33,8 @@ let () =
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
       method parseCandid s = js_parse_candid s
-      method parseMotoko s = js_parse_motoko s
-      method parseMotokoWithDeps path s = js_parse_motoko_with_deps path s
-      method parseMotokoTyped paths scopeCache = js_parse_motoko_typed paths scopeCache
+      method parseMotoko enableRecovery s = js_parse_motoko enableRecovery s
+      method parseMotokoWithDeps enableRecovery path s = js_parse_motoko_with_deps enableRecovery path s
+      method parseMotokoTyped enableRecovery paths scopeCache = js_parse_motoko_typed enableRecovery paths scopeCache
       method printDeps file = print_deps file
      end);
