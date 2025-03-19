@@ -10,7 +10,7 @@
 
   * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
 
-  * Added `ExperimentalInternetComputer.subne` (dfinity/motoko-base#700).
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
 
 ## 0.14.3 (2025-03-04)
 
