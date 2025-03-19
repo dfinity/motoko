@@ -150,27 +150,6 @@ module Make
       ) []
     )
 
-  (* We drive the parser in the usual way, but records the last [InputNeeded]
-     checkpoint. If a syntax error is detected, we go back to this checkpoint
-     and analyze it in order to produce a meaningful diagnostic. *)
-
-  (* exception Error of (Lexing.position * Lexing.position) * explanation list *)
-
-  (* TODO: remove to give control of parsing outside *)
-  (* let entry (start : 'a I.checkpoint) lexer = *)
-  (*   let fail (inputneeded : 'a I.checkpoint) (checkpoint : 'a I.checkpoint) = *)
-  (*     (\* The parser signals a syntax error. Note the position of the *)
-  (*        problematic token, which is useful. Then, go back to the *)
-  (*        last [InputNeeded] checkpoint and investigate. *\) *)
-  (*     match checkpoint with *)
-  (*     | HandlingError env -> *)
-  (*         let (startp, _) as positions = positions env in *)
-  (*         raise (Error (positions, investigate startp inputneeded)) *)
-  (*     | _ -> *)
-  (*         assert false *)
-  (*   in *)
-  (*   I.loop_handle_undo Fun.id fail lexer start *)
-
   (* TEMPORARY could also publish a list of the terminal symbols that
      do not cause an error *)
 
