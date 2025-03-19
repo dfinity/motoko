@@ -59,7 +59,9 @@ let js_version = Js.string Source_id.id
 
 let js_check source =
   Mo_types.Cons.session (fun _ -> 
-    js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null))
+    js_result
+      (Pipeline.check_files ~recovery_enabled:true [Js.to_string source])
+      (fun _ -> Js.null))
 
 let js_set_run_step_limit limit =
   Mo_interpreter.Interpret.step_limit := limit

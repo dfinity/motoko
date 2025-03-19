@@ -70,6 +70,30 @@ let slice_lexeme lexbuf i1 i2 =
   then "<unknown>" (* Too rare to care *)
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
+module I = Parser.MenhirInterpreter
+
+(* For debug *)
+(* module RecoveryTracer = MenhirRecoveryLib.MakePrinter ( *)
+(*   struct *)
+(*     module I = Parser.MenhirInterpreter *)
+(*     let print s = Printf.eprintf "%s" s *)
+(*     let print_symbol s = print (Printers.string_of_symbol s) *)
+(*     let print_element = None *)
+(*     let print_token t = print (Source_token.string_of_parser_token t) *)
+(*   end) *)
+
+module RecoveryTracer = MenhirRecoveryLib.DummyPrinter (I)
+
+module RecoveryConfig = struct
+  include Recover_parser
+
+  let guide _ = false
+  let use_indentation_heuristic = false
+  let is_eof  = function Parser.EOF -> true | _ -> false
+end
+
+module R = MenhirRecoveryLib.Make (Parser.MenhirInterpreter) (RecoveryConfig) (RecoveryTracer)
+
 let handle_error lexbuf error_detail message_store (start, end_) explanations =
   let at =
         Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
@@ -98,26 +122,28 @@ let handle_error lexbuf error_detail message_store (start, end_) explanations =
   in
   Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
 
-module I = Parser.MenhirInterpreter
 
-let parse mode error_detail start lexer lexbuf =
-  Diag.with_message_store (fun m ->
+let parse ?(recovery = false) mode error_detail start lexer lexbuf =
+  Diag.with_message_store ~allow_errors:recovery (fun m ->
     Parser_lib.msg_store := Some m;
     Parser_lib.mode := Some mode;
-    let fail (inputneeded : 'a I.checkpoint) (checkpoint : 'a I.checkpoint) =
-      (* The parser signals a syntax error. Note the position of the
+    let save_error (inputneeded_cp : 'a I.checkpoint) (fail_cp : 'a I.checkpoint) : unit =
+    (* The parser signals a syntax error. Note the position of the
          problematic token, which is useful. Then, go back to the
          last [InputNeeded] checkpoint and investigate. *)
-      match checkpoint with
+      match fail_cp with
       | I.HandlingError env ->
         let (startp, _) as positions = I.positions env in
-        let explanations = E.investigate startp inputneeded in
-        handle_error lexbuf error_detail m positions explanations;
-        None
-      | _ ->
-        assert false
+        let explanations = E.investigate startp inputneeded_cp in
+        handle_error lexbuf error_detail m positions explanations
+      | _ -> assert false
     in
+    let fail cp = None in
+    let save_error_and_fail cp1 cp2 = save_error cp1 cp2; fail cp2 in
     let succ e =  Some e in
-    I.loop_handle_undo succ fail lexer start
+    if recovery then
+      R.loop_handle_recover succ fail save_error lexer start
+    else
+      I.loop_handle_undo succ save_error_and_fail lexer start
   )
 
