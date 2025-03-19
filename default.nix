@@ -150,8 +150,8 @@ let ocaml_exe = name: bin: rts:
         # sanity check
         ldd $out/bin/* || true
         file $out/bin/*
-        ls -l /lib/ld-linux-* || true
-        # $out/bin/* --help >/dev/null
+        #ls -l /lib/ld-linux-* || true
+        $out/bin/* --help >/dev/null
         echo /installPhase
       '';
     };
