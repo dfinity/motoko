@@ -112,7 +112,7 @@ let parse_string' ?(recovery=false) mode name s : parse_result =
   let open Diag.Syntax in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
-  let* prog = parse_with mode lexer parse name in
+  let* prog = parse_with ~recovery mode lexer parse name in
   Diag.return (prog, name)
 
 let parse_string = parse_string' Lexer.mode
