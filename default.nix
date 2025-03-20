@@ -155,9 +155,14 @@ let ocaml_exe = name: bin: rts:
         #ls -l /lib/ld-linux-* || true
         which patchelf
         which true
+        ls -l $out/bin/*
+        chmod +w $out/bin/*
         patchelf --set-interpreter $(which true) $out/bin/* || true
         ldd $out/bin/* || true
         file $out/bin/*
+        ls -l $out/bin/*
+        chmod a-w $out/bin/*
+        ls -l $out/bin/*
         $out/bin/* --help >/dev/null
         echo /installPhase
       '';
