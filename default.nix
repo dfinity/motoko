@@ -157,7 +157,7 @@ let ocaml_exe = name: bin: rts:
         which true
         ls -l $out/bin/*
         chmod +w $out/bin/*
-        patchelf --set-interpreter $(which true) $out/bin/* || true
+        patchelf --set-interpreter "" $out/bin/* || true
         ldd $out/bin/* || true
         file $out/bin/*
         ls -l $out/bin/*
