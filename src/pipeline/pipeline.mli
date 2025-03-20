@@ -15,7 +15,7 @@ val parse_string_with_recovery: string -> no_region_parse_fn
 
 val print_deps: string -> unit
 
-val check_files  : ?recovery_enabled:bool -> string list -> unit Diag.result
+val check_files  : ?enable_recovery:bool -> string list -> unit Diag.result
 
 val viper_files : string list -> (string * (Source.region -> Source.region option)) Diag.result
 

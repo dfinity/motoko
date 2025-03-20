@@ -60,7 +60,7 @@ let js_version = Js.string Source_id.id
 let js_check source =
   Mo_types.Cons.session (fun _ -> 
     js_result
-      (Pipeline.check_files ~recovery_enabled:true [Js.to_string source])
+      (Pipeline.check_files ~enable_recovery:true [Js.to_string source])
       (fun _ -> Js.null))
 
 let js_set_run_step_limit limit =
@@ -145,9 +145,9 @@ let js_parse_candid s =
   js_result parse_result (fun (prog, _) ->
     Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
 
-let js_parse_motoko recovery_enabled s =
+let js_parse_motoko enable_recovery s =
   let main_file = "" in
-  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
     then Pipeline.parse_string_with_recovery
     else Pipeline.parse_string
   in
@@ -163,10 +163,10 @@ let js_parse_motoko recovery_enabled s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_with_deps recovery_enabled path s =
+let js_parse_motoko_with_deps enable_recovery path s =
   let main_file = Js.to_string path in
   let s = Js.to_string s in
-  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
     then Pipeline.parse_string_with_recovery
     else Pipeline.parse_string
   in
@@ -234,7 +234,7 @@ module Map_conversion (Map : Map.S) = struct
   let to_ocaml = from_js
 end
 
-let js_parse_motoko_typed_with_scope_cache_impl recovery_enabled paths scope_cache =
+let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
@@ -248,7 +248,7 @@ let js_parse_motoko_typed_with_scope_cache_impl recovery_enabled paths scope_cac
            all. Hence, the use of [Obj.magic] is legitimate here. *)
         String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
-  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
     then Pipeline.parse_file_with_recovery
     else Pipeline.parse_file
   in
