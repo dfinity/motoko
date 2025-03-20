@@ -95,6 +95,7 @@ let commonBuildInputs = pkgs:
     pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
+    pkgs.patchelf
   ]; in
 
 let ocaml_exe = name: bin: rts:
