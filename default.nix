@@ -154,7 +154,8 @@ let ocaml_exe = name: bin: rts:
         file $out/bin/*
         #ls -l /lib/ld-linux-* || true
         which patchelf
-        lld $(which patchelf)
+        ldd $(which patchelf)
+        ldd patchelf || true
         which true
         ls -l $out/bin/*
         chmod +w $out/bin/*
