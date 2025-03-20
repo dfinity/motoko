@@ -171,7 +171,9 @@ assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
 const astFile = Motoko.readFile("ast.mo");
 for (const ast of [
   Motoko.parseMotoko(/*enable_recovery=*/false, astFile),
+  Motoko.parseMotoko(/*enable_recovery=*/true, astFile),
   Motoko.parseMotokoTyped(/*enable_recovery=*/false, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotokoTyped(/*enable_recovery=*/true, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
 ]) {
   const astString = JSON.stringify(ast);
 
