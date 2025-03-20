@@ -566,8 +566,8 @@ type check_result = unit Diag.result
 let check_files' parsefn files : check_result =
   Diag.map ignore (load_progs parsefn files initial_stat_env)
 
-let check_files ?(recovery_enabled=false) files : check_result =
-  let parsefn = if recovery_enabled
+let check_files ?(enable_recovery=false) files : check_result =
+  let parsefn = if enable_recovery
     then parse_file_with_recovery
     else parse_file
   in
