@@ -152,14 +152,11 @@ let ocaml_exe = name: bin: rts:
         # sanity check
         ldd $out/bin/* || true
         file $out/bin/*
-        #ls -l /lib/ld-linux-* || true
         which patchelf
         ldd $(which patchelf)
-        ldd patchelf || true
-        which true
         ls -l $out/bin/*
         chmod +w $out/bin/*
-        patchelf --set-interpreter "" $out/bin/* || true
+        patchelf --set-interpreter "/nix/store/034vzdhdia1f3dn6zv65xxishb1nnzff-musl-1.2.3/lib/ld-musl-aarch64.so.1" $out/bin/* || true
         ldd $out/bin/* || true
         file $out/bin/*
         ls -l $out/bin/*
