@@ -1898,12 +1898,17 @@ let post = function
   | Single tfs -> tfs
   | PrePost (_, tfs) -> tfs
 
+let is_migration = function
+  | Single _ -> false
+  | PrePost _ -> true
+
 let rec match_stab_sig sig1 sig2 =
   let tfs1 = post sig1 in
   let tfs2 = pre sig2 in
-  match_stab_fields tfs1 tfs2
+  let is_migration = is_migration sig2 in
+  match_stab_fields is_migration tfs1 tfs2
 
-and match_stab_fields tfs1 tfs2 =
+and match_stab_fields is_migration tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], _ | _, [] ->
@@ -1912,14 +1917,17 @@ and match_stab_fields tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_fields tfs1' tfs2'
+       (if is_migration then eq else sub) (as_immut tf1.typ) (as_immut tf2.typ) &&
+       match_stab_fields is_migration tfs1' tfs2'
      | -1 ->
-       (* dropped field ok *)
-       match_stab_fields tfs1' tfs2
+       (* dropped field *)
+       if is_migration
+       then false (* should be explicitly consumed *)
+       else (* legacy, ok to drop *)
+       match_stab_fields is_migration tfs1' tfs2
      | _ ->
        (* new field ok *)
-       match_stab_fields tfs1 tfs2'
+       match_stab_fields is_migration tfs1 tfs2'
     )
 
 let string_of_stab_sig stab_sig : string =

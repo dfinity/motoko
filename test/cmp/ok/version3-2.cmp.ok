@@ -1,4 +1,4 @@
-(unknown location): warning [M0169], stable variable four of previous type
+(unknown location): Compatibility error [M0215], stable variable four of previous type
   var [var (Text, Nat)]
- will be discarded. This may cause data loss. Are you sure?
-TRUE
+ implicitly discarded in migration.
+FALSE
