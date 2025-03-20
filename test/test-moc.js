@@ -246,3 +246,14 @@ assert.deepStrictEqual(Motoko.candid("ast.mo"), {
   ],
   code: candid,
 });
+
+// Check error recovery
+const badAstFile = Motoko.readFile("bad.mo");
+
+assert(Motoko.parseMotoko(/*enable_recovery=*/false, badAstFile).code == null);
+assert(Motoko.parseMotoko(/*enable_recovery=*/true, badAstFile).code != null);
+assert(Motoko.parseMotokoTyped(/*enable_recovery=*/false, ["bad.mo"], new Map()).code == null);
+
+// TODO: This requires avoid dropping 'code' field in all checks though all pipeline e.g. infer_prog
+// assert(Motoko.parseMotokoTyped(/*enable_recovery=*/true, ["bad.mo"], new Map()).code != null);
+
