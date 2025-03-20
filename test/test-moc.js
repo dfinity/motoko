@@ -170,8 +170,8 @@ assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
 // Check AST format
 const astFile = Motoko.readFile("ast.mo");
 for (const ast of [
-  Motoko.parseMotoko(astFile),
-  Motoko.parseMotokoTyped(["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotoko(/*enable_recovery=*/false, astFile),
+  Motoko.parseMotokoTyped(/*enable_recovery=*/false, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
 ]) {
   const astString = JSON.stringify(ast);
 

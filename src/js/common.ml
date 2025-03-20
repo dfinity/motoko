@@ -145,9 +145,13 @@ let js_parse_candid s =
   js_result parse_result (fun (prog, _) ->
     Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
 
-let js_parse_motoko s =
+let js_parse_motoko recovery_enabled s =
   let main_file = "" in
-  let parse_result = Pipeline.parse_string main_file (Js.to_string s) in
+  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+    then Pipeline.parse_string_with_recovery
+    else Pipeline.parse_string
+  in
+  let parse_result = parse_fn main_file (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     let open Mo_def in
     let module Arrange = Arrange.Make (struct
@@ -159,12 +163,16 @@ let js_parse_motoko s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_with_deps path s =
+let js_parse_motoko_with_deps recovery_enabled path s =
   let main_file = Js.to_string path in
   let s = Js.to_string s in
+  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+    then Pipeline.parse_string_with_recovery
+    else Pipeline.parse_string
+  in
   let prog_and_deps_result =
     let open Diag.Syntax in
-    let* prog, _ = Pipeline.parse_string main_file s in
+    let* prog, _ = parse_fn main_file s in
     let* deps =
       Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog main_file
     in
@@ -226,7 +234,7 @@ module Map_conversion (Map : Map.S) = struct
   let to_ocaml = from_js
 end
 
-let js_parse_motoko_typed paths scope_cache =
+let js_parse_motoko_typed recovery_enabled paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
@@ -240,13 +248,14 @@ let js_parse_motoko_typed paths scope_cache =
            all. Hence, the use of [Obj.magic] is legitimate here. *)
         String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
+  let parse_fn = if Js.Opt.get recovery_enabled (fun () -> false)
+    then Pipeline.parse_file_with_recovery
+    else Pipeline.parse_file
+  in
   let load_result =
     Mo_types.Cons.session (fun () ->
       Pipeline.load_progs_cached
-        Pipeline.parse_file
-        paths
-        Pipeline.initial_stat_env
-        scope_cache)
+        parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   js_result load_result (fun (_libs, progs, _senv, scope_cache) ->
     let progs =

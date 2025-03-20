@@ -108,7 +108,7 @@ let parse_with ?(recovery=false) mode lexer parser name : Syntax.prog Diag.resul
   dump_prog Flags.dump_parse prog;
   Diag.return prog
 
-let parse_string' mode name s : parse_result =
+let parse_string' ?(recovery=false) mode name s : parse_result =
   let open Diag.Syntax in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
@@ -116,6 +116,7 @@ let parse_string' mode name s : parse_result =
   Diag.return (prog, name)
 
 let parse_string = parse_string' Lexer.mode
+let parse_string_with_recovery = parse_string' ~recovery:true Lexer.mode
 
 let parse_file' ?(recovery=false) mode at filename : (Syntax.prog * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
