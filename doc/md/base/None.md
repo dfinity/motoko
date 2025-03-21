@@ -15,7 +15,7 @@ The empty type. A subtype of all types.
 
 ## Function `impossible`
 ``` motoko no-repl
-func impossible<A>() : A
+func impossible<A>(_ : None) : A
 ```
 
 Turns an absurd value into an arbitrary type.

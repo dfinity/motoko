@@ -81,7 +81,7 @@ actor {
 
 ## Function `accept`
 ``` motoko no-repl
-func accept() : (accepted : Nat)
+func accept(amount : Nat) : (accepted : Nat)
 ```
 
 Transfers up to `amount` from `available()` to `balance()`.
@@ -108,7 +108,7 @@ actor {
 
 ## Function `add`
 ``` motoko no-repl
-func add() : ()
+func add(amount : Nat) : ()
 ```
 
 Indicates additional `amount` of cycles to be transferred in
@@ -169,7 +169,7 @@ actor {
 
 ## Function `burn`
 ``` motoko no-repl
-func burn() : (burned : Nat)
+func burn(amount : Nat) : (burned : Nat)
 ```
 
 Attempts to burn `amount` of cycles, deducting `burned` from the canister's

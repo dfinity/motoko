@@ -70,7 +70,7 @@ let daily = recurringTimer(#seconds (24 * 60 * 60), checkAndWaterPlants);
 
 ## Function `cancelTimer`
 ``` motoko no-repl
-func cancelTimer() : ()
+func cancelTimer(_ : TimerId) : ()
 ```
 
 Cancels a still active timer with `(id : TimerId)`. For expired timers

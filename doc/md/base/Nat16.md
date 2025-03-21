@@ -29,7 +29,7 @@ Nat16.maximumValue; // => 65536 : Nat16
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat() : Nat
+func toNat(_ : Nat16) : Nat
 ```
 
 Converts a 16-bit unsigned integer to an unsigned integer with infinite precision.
@@ -41,7 +41,7 @@ Nat16.toNat(123); // => 123 : Nat
 
 ## Function `fromNat`
 ``` motoko no-repl
-func fromNat() : Nat16
+func fromNat(_ : Nat) : Nat16
 ```
 
 Converts an unsigned integer with infinite precision to a 16-bit unsigned integer.
@@ -107,7 +107,7 @@ Nat16.toNat32(123); // => 123 : Nat32
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Nat16
+func fromIntWrap(_ : Int) : Nat16
 ```
 
 Converts a signed integer with infinite precision to a 16-bit unsigned integer.
@@ -617,7 +617,7 @@ Nat16.bitflip(5, 2); // => 1
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Nat16
+func bitcountNonZero(x : Nat16) : Nat16
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -629,7 +629,7 @@ Nat16.bitcountNonZero(5); // => 2
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Nat16
+func bitcountLeadingZero(x : Nat16) : Nat16
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -641,7 +641,7 @@ Nat16.bitcountLeadingZero(5); // => 13
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Nat16
+func bitcountTrailingZero(x : Nat16) : Nat16
 ```
 
 Returns the count of trailing zero bits in `x`.

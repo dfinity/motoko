@@ -63,7 +63,7 @@ let count = IC.countInstructions(func() {
 
 ## Function `performanceCounter`
 ``` motoko no-repl
-func performanceCounter() : (value : Nat64)
+func performanceCounter(counter : Nat32) : (value : Nat64)
 ```
 
 Returns the current value of IC _performance counter_ `counter`.

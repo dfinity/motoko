@@ -74,7 +74,7 @@ assert Region.size(region) == 0;
 
 ## Function `id`
 ``` motoko no-repl
-func id() : Nat
+func id(_ : Region) : Nat
 ```
 
 Return a Nat identifying the given region.
@@ -92,7 +92,7 @@ assert Region.id(region) == 16;
 
 ## Function `size`
 ``` motoko no-repl
-func size() : (pages : Nat64)
+func size(region : Region) : (pages : Nat64)
 ```
 
 Current size of `region`, in pages.

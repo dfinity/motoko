@@ -41,7 +41,7 @@ type ErrorCode = {
 
 ## Function `reject`
 ``` motoko no-repl
-func reject() : Error
+func reject(message : Text) : Error
 ```
 
 Create an error from the message with the code `#canister_reject`.
@@ -55,7 +55,7 @@ Error.reject("Example error") // can be used as throw argument
 
 ## Function `code`
 ``` motoko no-repl
-func code() : ErrorCode
+func code(error : Error) : ErrorCode
 ```
 
 Returns the code of an error.
@@ -70,7 +70,7 @@ Error.code(error) // #canister_reject
 
 ## Function `message`
 ``` motoko no-repl
-func message() : Text
+func message(error : Error) : Text
 ```
 
 Returns the message of an error.

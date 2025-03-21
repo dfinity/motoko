@@ -41,7 +41,7 @@ Int8.maximumValue // => +127
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt() : Int
+func toInt(_ : Int8) : Int
 ```
 
 Converts an 8-bit signed integer to a signed integer with infinite precision.
@@ -53,7 +53,7 @@ Int8.toInt(123) // => 123 : Int
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt() : Int8
+func fromInt(_ : Int) : Int8
 ```
 
 Converts a signed integer with infinite precision to an 8-bit signed integer.
@@ -67,7 +67,7 @@ Int8.fromInt(123) // => +123 : Int8
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Int8
+func fromIntWrap(_ : Int) : Int8
 ```
 
 Converts a signed integer with infinite precision to an 8-bit signed integer.
@@ -81,7 +81,7 @@ Int8.fromIntWrap(-123) // => -123 : Int
 
 ## Function `fromInt16`
 ``` motoko no-repl
-func fromInt16() : Int8
+func fromInt16(_ : Int16) : Int8
 ```
 
 Converts a 16-bit signed integer to an 8-bit signed integer.
@@ -95,7 +95,7 @@ Int8.fromInt16(123) // => +123 : Int8
 
 ## Function `toInt16`
 ``` motoko no-repl
-func toInt16() : Int16
+func toInt16(_ : Int8) : Int16
 ```
 
 Converts an 8-bit signed integer to a 16-bit signed integer.
@@ -107,7 +107,7 @@ Int8.toInt16(123) // => +123 : Int16
 
 ## Function `fromNat8`
 ``` motoko no-repl
-func fromNat8() : Int8
+func fromNat8(_ : Nat8) : Int8
 ```
 
 Converts an unsigned 8-bit integer to a signed 8-bit integer.
@@ -121,7 +121,7 @@ Int8.fromNat8(123) // => +123 : Int8
 
 ## Function `toNat8`
 ``` motoko no-repl
-func toNat8() : Nat8
+func toNat8(_ : Int8) : Nat8
 ```
 
 Converts a signed 8-bit integer to an unsigned 8-bit integer.
@@ -687,7 +687,7 @@ Int8.bitflip(127, 6) // => +63
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Int8
+func bitcountNonZero(x : Int8) : Int8
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -699,7 +699,7 @@ Int8.bitcountNonZero(0x0f) // => +4
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Int8
+func bitcountLeadingZero(x : Int8) : Int8
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -711,7 +711,7 @@ Int8.bitcountLeadingZero(0x08) // => +4
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Int8
+func bitcountTrailingZero(x : Int8) : Int8
 ```
 
 Returns the count of trailing zero bits in `x`.

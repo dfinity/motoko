@@ -12,7 +12,7 @@ calls to your canister tamperproof.
 
 ## Function `set`
 ``` motoko no-repl
-func set() : ()
+func set(data : Blob) : ()
 ```
 
 Set the certified data.

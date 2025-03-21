@@ -64,7 +64,7 @@ afterSize - beforeSize // => 10
 
 ## Function `grow`
 ``` motoko no-repl
-func grow() : (oldPages : Nat64)
+func grow(newPages : Nat64) : (oldPages : Nat64)
 ```
 
 Grow current `size` of stable memory by the given number of pages.
@@ -115,7 +115,7 @@ actor {
 
 ## Function `loadNat32`
 ``` motoko no-repl
-func loadNat32() : Nat32
+func loadNat32(offset : Nat64) : Nat32
 ```
 
 Loads a `Nat32` value from stable memory at the given `offset`.
@@ -147,7 +147,7 @@ StableMemory.loadNat32(offset) // => 123
 
 ## Function `loadNat8`
 ``` motoko no-repl
-func loadNat8() : Nat8
+func loadNat8(offset : Nat64) : Nat8
 ```
 
 Loads a `Nat8` value from stable memory at the given `offset`.
@@ -179,7 +179,7 @@ StableMemory.loadNat8(offset) // => 123
 
 ## Function `loadNat16`
 ``` motoko no-repl
-func loadNat16() : Nat16
+func loadNat16(offset : Nat64) : Nat16
 ```
 
 Loads a `Nat16` value from stable memory at the given `offset`.
@@ -211,7 +211,7 @@ StableMemory.loadNat16(offset) // => 123
 
 ## Function `loadNat64`
 ``` motoko no-repl
-func loadNat64() : Nat64
+func loadNat64(offset : Nat64) : Nat64
 ```
 
 Loads a `Nat64` value from stable memory at the given `offset`.
@@ -243,7 +243,7 @@ StableMemory.loadNat64(offset) // => 123
 
 ## Function `loadInt32`
 ``` motoko no-repl
-func loadInt32() : Int32
+func loadInt32(offset : Nat64) : Int32
 ```
 
 Loads an `Int32` value from stable memory at the given `offset`.
@@ -275,7 +275,7 @@ StableMemory.loadInt32(offset) // => 123
 
 ## Function `loadInt8`
 ``` motoko no-repl
-func loadInt8() : Int8
+func loadInt8(offset : Nat64) : Int8
 ```
 
 Loads an `Int8` value from stable memory at the given `offset`.
@@ -307,7 +307,7 @@ StableMemory.loadInt8(offset) // => 123
 
 ## Function `loadInt16`
 ``` motoko no-repl
-func loadInt16() : Int16
+func loadInt16(offset : Nat64) : Int16
 ```
 
 Loads an `Int16` value from stable memory at the given `offset`.
@@ -339,7 +339,7 @@ StableMemory.loadInt16(offset) // => 123
 
 ## Function `loadInt64`
 ``` motoko no-repl
-func loadInt64() : Int64
+func loadInt64(offset : Nat64) : Int64
 ```
 
 Loads an `Int64` value from stable memory at the given `offset`.
@@ -371,7 +371,7 @@ StableMemory.loadInt64(offset) // => 123
 
 ## Function `loadFloat`
 ``` motoko no-repl
-func loadFloat() : Float
+func loadFloat(offset : Nat64) : Float
 ```
 
 Loads a `Float` value from stable memory at the given `offset`.

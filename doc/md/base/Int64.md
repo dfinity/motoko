@@ -41,7 +41,7 @@ Int64.maximumValue // => +9_223_372_036_854_775_807
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt() : Int
+func toInt(_ : Int64) : Int
 ```
 
 Converts a 64-bit signed integer to a signed integer with infinite precision.
@@ -53,7 +53,7 @@ Int64.toInt(123_456) // => 123_456 : Int
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt() : Int64
+func fromInt(_ : Int) : Int64
 ```
 
 Converts a signed integer with infinite precision to a 64-bit signed integer.
@@ -67,7 +67,7 @@ Int64.fromInt(123_456) // => +123_456 : Int64
 
 ## Function `fromInt32`
 ``` motoko no-repl
-func fromInt32() : Int64
+func fromInt32(_ : Int32) : Int64
 ```
 
 Converts a 32-bit signed integer to a 64-bit signed integer.
@@ -81,7 +81,7 @@ Int64.fromInt32(-123_456) // => -123_456 : Int64
 
 ## Function `toInt32`
 ``` motoko no-repl
-func toInt32() : Int32
+func toInt32(_ : Int64) : Int32
 ```
 
 Converts a 64-bit signed integer to a 32-bit signed integer.
@@ -95,7 +95,7 @@ Int64.toInt32(-123_456) // => -123_456 : Int32
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Int64
+func fromIntWrap(_ : Int) : Int64
 ```
 
 Converts a signed integer with infinite precision to a 64-bit signed integer.
@@ -109,7 +109,7 @@ Int64.fromIntWrap(-123_456) // => -123_456 : Int64
 
 ## Function `fromNat64`
 ``` motoko no-repl
-func fromNat64() : Int64
+func fromNat64(_ : Nat64) : Int64
 ```
 
 Converts an unsigned 64-bit integer to a signed 64-bit integer.
@@ -123,7 +123,7 @@ Int64.fromNat64(123_456) // => +123_456 : Int64
 
 ## Function `toNat64`
 ``` motoko no-repl
-func toNat64() : Nat64
+func toNat64(_ : Int64) : Nat64
 ```
 
 Converts a signed 64-bit integer to an unsigned 64-bit integer.
@@ -692,7 +692,7 @@ Int64.bitflip(255, 7) // => +127
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Int64
+func bitcountNonZero(x : Int64) : Int64
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -704,7 +704,7 @@ Int64.bitcountNonZero(0xffff) // => +16
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Int64
+func bitcountLeadingZero(x : Int64) : Int64
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -716,7 +716,7 @@ Int64.bitcountLeadingZero(0x8000_0000) // => +32
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Int64
+func bitcountTrailingZero(x : Int64) : Int64
 ```
 
 Returns the count of trailing zero bits in `x`.

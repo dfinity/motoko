@@ -718,7 +718,7 @@ Raise an error (for a stack trace) if invariants are violated.
 
 ## Function `Make`
 ``` motoko no-repl
-func Make<T>() : Operations<T>
+func Make<T>(compare : (T, T) -> O.Order) : Operations<T>
 ```
 
 Create `OrderedSet.Operations` object capturing element type `T` and `compare` function. 

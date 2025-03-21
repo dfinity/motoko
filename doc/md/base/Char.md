@@ -10,14 +10,14 @@ Characters represented as Unicode code points.
 
 ## Function `toNat32`
 ``` motoko no-repl
-func toNat32() : Nat32
+func toNat32(c : Char) : Nat32
 ```
 
 Convert character `c` to a word containing its Unicode scalar value.
 
 ## Function `fromNat32`
 ``` motoko no-repl
-func fromNat32() : Char
+func fromNat32(w : Nat32) : Char
 ```
 
 Convert `w` to a character.
@@ -26,7 +26,7 @@ Value `w` is valid if, and only if, `w < 0xD800 or (0xE000 <= w and w <= 0x10FFF
 
 ## Function `toText`
 ``` motoko no-repl
-func toText() : Text
+func toText(c : Char) : Text
 ```
 
 Convert character `c` to single character text.
@@ -40,28 +40,28 @@ Returns `true` when `c` is a decimal digit between `0` and `9`, otherwise `false
 
 ## Function `isWhitespace`
 ``` motoko no-repl
-func isWhitespace() : Bool
+func isWhitespace(c : Char) : Bool
 ```
 
 Returns the Unicode _White_Space_ property of `c`.
 
 ## Function `isLowercase`
 ``` motoko no-repl
-func isLowercase() : Bool
+func isLowercase(c : Char) : Bool
 ```
 
 Returns the Unicode _Lowercase_ property of `c`.
 
 ## Function `isUppercase`
 ``` motoko no-repl
-func isUppercase() : Bool
+func isUppercase(c : Char) : Bool
 ```
 
 Returns the Unicode _Uppercase_ property of `c`.
 
 ## Function `isAlphabetic`
 ``` motoko no-repl
-func isAlphabetic() : Bool
+func isAlphabetic(c : Char) : Bool
 ```
 
 Returns the Unicode _Alphabetic_ property of `c`.

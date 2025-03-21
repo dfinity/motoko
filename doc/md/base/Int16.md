@@ -41,7 +41,7 @@ Int16.maximumValue // => +32_767 : Int16
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt() : Int
+func toInt(_ : Int16) : Int
 ```
 
 Converts a 16-bit signed integer to a signed integer with infinite precision.
@@ -53,7 +53,7 @@ Int16.toInt(12_345) // => 12_345 : Int
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt() : Int16
+func fromInt(_ : Int) : Int16
 ```
 
 Converts a signed integer with infinite precision to a 16-bit signed integer.
@@ -67,7 +67,7 @@ Int16.fromInt(12_345) // => +12_345 : Int16
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Int16
+func fromIntWrap(_ : Int) : Int16
 ```
 
 Converts a signed integer with infinite precision to a 16-bit signed integer.
@@ -81,7 +81,7 @@ Int16.fromIntWrap(-12_345) // => -12_345 : Int
 
 ## Function `fromInt8`
 ``` motoko no-repl
-func fromInt8() : Int16
+func fromInt8(_ : Int8) : Int16
 ```
 
 Converts a 8-bit signed integer to a 16-bit signed integer.
@@ -93,7 +93,7 @@ Int16.fromInt8(-123) // => -123 : Int16
 
 ## Function `toInt8`
 ``` motoko no-repl
-func toInt8() : Int8
+func toInt8(_ : Int16) : Int8
 ```
 
 Converts a 16-bit signed integer to a 8-bit signed integer.
@@ -107,7 +107,7 @@ Int16.toInt8(-123) // => -123 : Int8
 
 ## Function `fromInt32`
 ``` motoko no-repl
-func fromInt32() : Int16
+func fromInt32(_ : Int32) : Int16
 ```
 
 Converts a 32-bit signed integer to a 16-bit signed integer.
@@ -121,7 +121,7 @@ Int16.fromInt32(-12_345) // => -12_345 : Int16
 
 ## Function `toInt32`
 ``` motoko no-repl
-func toInt32() : Int32
+func toInt32(_ : Int16) : Int32
 ```
 
 Converts a 16-bit signed integer to a 32-bit signed integer.
@@ -133,7 +133,7 @@ Int16.toInt32(-12_345) // => -12_345 : Int32
 
 ## Function `fromNat16`
 ``` motoko no-repl
-func fromNat16() : Int16
+func fromNat16(_ : Nat16) : Int16
 ```
 
 Converts an unsigned 16-bit integer to a signed 16-bit integer.
@@ -147,7 +147,7 @@ Int16.fromNat16(12_345) // => +12_345 : Int16
 
 ## Function `toNat16`
 ``` motoko no-repl
-func toNat16() : Nat16
+func toNat16(_ : Int16) : Nat16
 ```
 
 Converts a signed 16-bit integer to an unsigned 16-bit integer.
@@ -702,7 +702,7 @@ Int16.bitflip(255, 7) // => +127
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Int16
+func bitcountNonZero(x : Int16) : Int16
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -714,7 +714,7 @@ Int16.bitcountNonZero(0xff) // => +8
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Int16
+func bitcountLeadingZero(x : Int16) : Int16
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -726,7 +726,7 @@ Int16.bitcountLeadingZero(0x80) // => +8
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Int16
+func bitcountTrailingZero(x : Int16) : Int16
 ```
 
 Returns the count of trailing zero bits in `x`.

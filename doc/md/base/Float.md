@@ -86,7 +86,7 @@ Float.isNaN(0.0/0.0) // => true
 
 ## Function `abs`
 ``` motoko no-repl
-func abs() : Float
+func abs(x : Float) : Float
 ```
 
 Returns the absolute value of `x`.
@@ -108,7 +108,7 @@ Float.abs(-1.2) // => 1.2
 
 ## Function `sqrt`
 ``` motoko no-repl
-func sqrt() : Float
+func sqrt(x : Float) : Float
 ```
 
 Returns the square root of `x`.
@@ -130,7 +130,7 @@ Float.sqrt(6.25) // => 2.5
 
 ## Function `ceil`
 ``` motoko no-repl
-func ceil() : Float
+func ceil(x : Float) : Float
 ```
 
 Returns the smallest integral float greater than or equal to `x`.
@@ -153,7 +153,7 @@ Float.ceil(1.2) // => 2.0
 
 ## Function `floor`
 ``` motoko no-repl
-func floor() : Float
+func floor(x : Float) : Float
 ```
 
 Returns the largest integral float less than or equal to `x`.
@@ -176,7 +176,7 @@ Float.floor(1.2) // => 1.0
 
 ## Function `trunc`
 ``` motoko no-repl
-func trunc() : Float
+func trunc(x : Float) : Float
 ```
 
 Returns the nearest integral float not greater in magnitude than `x`.
@@ -200,7 +200,7 @@ Float.trunc(2.75) // => 2.0
 
 ## Function `nearest`
 ``` motoko no-repl
-func nearest() : Float
+func nearest(x : Float) : Float
 ```
 
 Returns the nearest integral float to `x`.
@@ -281,7 +281,7 @@ Float.max(1.2, -2.3) // => 1.2
 
 ## Function `sin`
 ``` motoko no-repl
-func sin() : Float
+func sin(x : Float) : Float
 ```
 
 Returns the sine of the radian angle `x`.
@@ -302,7 +302,7 @@ Float.sin(Float.pi / 2) // => 1.0
 
 ## Function `cos`
 ``` motoko no-repl
-func cos() : Float
+func cos(x : Float) : Float
 ```
 
 Returns the cosine of the radian angle `x`.
@@ -323,7 +323,7 @@ Float.cos(Float.pi / 2) // => 0.0 (with numerical imprecision)
 
 ## Function `tan`
 ``` motoko no-repl
-func tan() : Float
+func tan(x : Float) : Float
 ```
 
 Returns the tangent of the radian angle `x`.
@@ -344,7 +344,7 @@ Float.tan(Float.pi / 4) // => 1.0 (with numerical imprecision)
 
 ## Function `arcsin`
 ``` motoko no-repl
-func arcsin() : Float
+func arcsin(x : Float) : Float
 ```
 
 Returns the arc sine of `x` in radians.
@@ -365,7 +365,7 @@ Float.arcsin(1.0) // => Float.pi / 2
 
 ## Function `arccos`
 ``` motoko no-repl
-func arccos() : Float
+func arccos(x : Float) : Float
 ```
 
 Returns the arc cosine of `x` in radians.
@@ -386,7 +386,7 @@ Float.arccos(1.0) // => 0.0
 
 ## Function `arctan`
 ``` motoko no-repl
-func arctan() : Float
+func arctan(x : Float) : Float
 ```
 
 Returns the arc tangent of `x` in radians.
@@ -436,7 +436,7 @@ Float.arctan2(sqrt2over2, sqrt2over2) // => Float.pi / 4
 
 ## Function `exp`
 ``` motoko no-repl
-func exp() : Float
+func exp(x : Float) : Float
 ```
 
 Returns the value of `e` raised to the `x`-th power.
@@ -457,7 +457,7 @@ Float.exp(1.0) // => Float.e
 
 ## Function `log`
 ``` motoko no-repl
-func log() : Float
+func log(x : Float) : Float
 ```
 
 Returns the natural logarithm (base-`e`) of `x`.
@@ -508,7 +508,7 @@ Float.format(#exp 3, 123.0) // => "1.230e+02"
 
 ## Function `toText`
 ``` motoko no-repl
-func toText() : Text
+func toText(_ : Float) : Text
 ```
 
 Conversion to Text. Use `format(fmt, x)` for more detailed control.
@@ -527,7 +527,7 @@ Float.toText(0.12) // => "0.12"
 
 ## Function `toInt64`
 ``` motoko no-repl
-func toInt64() : Int64
+func toInt64(_ : Float) : Int64
 ```
 
 Conversion to Int64 by truncating Float, equivalent to `toInt64(trunc(f))`
@@ -544,7 +544,7 @@ Float.toInt64(-12.3) // => -12
 
 ## Function `fromInt64`
 ``` motoko no-repl
-func fromInt64() : Float
+func fromInt64(_ : Int64) : Float
 ```
 
 Conversion from Int64.
@@ -560,7 +560,7 @@ Float.fromInt64(-42) // => -42.0
 
 ## Function `toInt`
 ``` motoko no-repl
-func toInt() : Int
+func toInt(_ : Float) : Int
 ```
 
 Conversion to Int.
@@ -576,7 +576,7 @@ Float.toInt(1.2e6) // => +1_200_000
 
 ## Function `fromInt`
 ``` motoko no-repl
-func fromInt() : Float
+func fromInt(_ : Int) : Float
 ```
 
 Conversion from Int. May result in `Inf`.

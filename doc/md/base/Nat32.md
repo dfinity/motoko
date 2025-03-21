@@ -29,7 +29,7 @@ Nat32.maximumValue; // => 4294967295 : Nat32
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat() : Nat
+func toNat(_ : Nat32) : Nat
 ```
 
 Converts a 32-bit unsigned integer to an unsigned integer with infinite precision.
@@ -41,7 +41,7 @@ Nat32.toNat(123); // => 123 : Nat
 
 ## Function `fromNat`
 ``` motoko no-repl
-func fromNat() : Nat32
+func fromNat(_ : Nat) : Nat32
 ```
 
 Converts an unsigned integer with infinite precision to a 32-bit unsigned integer.
@@ -107,7 +107,7 @@ Nat32.toNat64(123); // => 123 : Nat64
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Nat32
+func fromIntWrap(_ : Int) : Nat32
 ```
 
 Converts a signed integer with infinite precision to a 32-bit unsigned integer.
@@ -626,7 +626,7 @@ Nat32.bitflip(5, 2); // => 1
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Nat32
+func bitcountNonZero(x : Nat32) : Nat32
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -638,7 +638,7 @@ Nat32.bitcountNonZero(5); // => 2
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Nat32
+func bitcountLeadingZero(x : Nat32) : Nat32
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -650,7 +650,7 @@ Nat32.bitcountLeadingZero(5); // => 29
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Nat32
+func bitcountTrailingZero(x : Nat32) : Nat32
 ```
 
 Returns the count of trailing zero bits in `x`.

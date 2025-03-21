@@ -29,7 +29,7 @@ Nat8.maximumValue; // => 255 : Nat8
 
 ## Function `toNat`
 ``` motoko no-repl
-func toNat() : Nat
+func toNat(_ : Nat8) : Nat
 ```
 
 Converts an 8-bit unsigned integer to an unsigned integer with infinite precision.
@@ -41,7 +41,7 @@ Nat8.toNat(123); // => 123 : Nat
 
 ## Function `fromNat`
 ``` motoko no-repl
-func fromNat() : Nat8
+func fromNat(_ : Nat) : Nat8
 ```
 
 Converts an unsigned integer with infinite precision to an 8-bit unsigned integer.
@@ -55,7 +55,7 @@ Nat8.fromNat(123); // => 123 : Nat8
 
 ## Function `fromNat16`
 ``` motoko no-repl
-func fromNat16() : Nat8
+func fromNat16(_ : Nat16) : Nat8
 ```
 
 Converts a 16-bit unsigned integer to a 8-bit unsigned integer.
@@ -69,7 +69,7 @@ Nat8.fromNat16(123); // => 123 : Nat8
 
 ## Function `toNat16`
 ``` motoko no-repl
-func toNat16() : Nat16
+func toNat16(_ : Nat8) : Nat16
 ```
 
 Converts an 8-bit unsigned integer to a 16-bit unsigned integer.
@@ -81,7 +81,7 @@ Nat8.toNat16(123); // => 123 : Nat16
 
 ## Function `fromIntWrap`
 ``` motoko no-repl
-func fromIntWrap() : Nat8
+func fromIntWrap(_ : Int) : Nat8
 ```
 
 Converts a signed integer with infinite precision to an 8-bit unsigned integer.
@@ -600,7 +600,7 @@ Nat8.bitflip(5, 2); // => 1
 
 ## Function `bitcountNonZero`
 ``` motoko no-repl
-func bitcountNonZero() : Nat8
+func bitcountNonZero(x : Nat8) : Nat8
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -612,7 +612,7 @@ Nat8.bitcountNonZero(5); // => 2
 
 ## Function `bitcountLeadingZero`
 ``` motoko no-repl
-func bitcountLeadingZero() : Nat8
+func bitcountLeadingZero(x : Nat8) : Nat8
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -624,7 +624,7 @@ Nat8.bitcountLeadingZero(5); // => 5
 
 ## Function `bitcountTrailingZero`
 ``` motoko no-repl
-func bitcountTrailingZero() : Nat8
+func bitcountTrailingZero(x : Nat8) : Nat8
 ```
 
 Returns the count of trailing zero bits in `x`.
