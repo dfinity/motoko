@@ -78,6 +78,23 @@ let
                 };
               };
 
+              ocaml-recovery-parser = super.ocamlPackages.buildDunePackage {
+                pname = "ocaml-recovery-parser";
+                version = "0.3.0";
+                src = self.fetchFromGitHub {
+                  owner = "serokell";
+                  repo = "ocaml-recovery-parser";
+                  rev = "b8207b0c919b84d5096486e59985d0137c0c4d82";
+                  sha256 = "1xp88i26vlwjsvnlzbfvk7zx31s18pfwq9w4g2fb2xq7bbnlhm24";
+                };
+                buildInputs = with super.ocamlPackages; [
+                  menhirSdk
+                  menhirLib
+                  fix
+                  base
+                ];
+              };
+
               # No testing of atdgen, as it pulls in python stuff, tricky on musl
               atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
             };

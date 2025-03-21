@@ -70,10 +70,8 @@ module Make
   (* We build lists of explanations. These explanations may originate in
      distinct LR(1) states. They may have different pasts, because  *)
 
-  exception Error of (Lexing.position * Lexing.position) * explanation list
+  (* [investigate pos checkpoint] returns explanations of the error happened
+     on position [pos] and with last [checkpoint] of type InputNeeded *)
 
-  (* TEMPORARY *)
-
-  val entry: 'a I.checkpoint -> I.supplier -> 'a
-
+  val investigate: Lexing.position -> 'a checkpoint -> explanation list
 end
