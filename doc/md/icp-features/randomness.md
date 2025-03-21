@@ -18,7 +18,7 @@ Motoko provides multiple methods for incorporating randomness into your code, ea
 
 3. For generating **unique identifiers**, the `idempotency-keys` package offers UUID v4 generation, ensuring globally unique values for transactions and distributed systems.
 
-Each of these approaches serves a distinct purpose, and selecting the right one depends on the security, performance, and reproducibility requirements of the application. Before using the `fuzz` or `idempotency-keys` modules, ensure that **Mops** is installed and initialised in your Motoko project. [Mops](https://mops.one/) is a package manager for Motoko that allows you to manage dependencies.
+The right method for your application depends on its security, performance, and reproducibility requirements.
 
 | Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|
