@@ -1,7 +1,7 @@
 import Prim = "mo:⛔";
 (with migration =
    func({
-     f: Int // accept
+     f : Int // accept
      }) :
    { } =
    { }
