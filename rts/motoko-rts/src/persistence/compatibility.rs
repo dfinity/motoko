@@ -149,6 +149,7 @@ pub unsafe fn memory_compatible<M: Memory>(
     mem: &mut M,
     old_type: &mut TypeDescriptor,
     new_type: &mut TypeDescriptor,
+    in_migration: bool,
 ) -> bool {
     let cache = create_type_check_cache(mem, old_type, new_type);
 
@@ -168,5 +169,6 @@ pub unsafe fn memory_compatible<M: Memory>(
         MAIN_ACTOR_TYPE_INDEX,
         MAIN_ACTOR_TYPE_INDEX,
         true,
+        in_migration,
     )
 }
