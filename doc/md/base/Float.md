@@ -225,7 +225,7 @@ Float.nearest(2.75) // => 3.0
 
 ## Function `copySign`
 ``` motoko no-repl
-func copySign(_ : Float, _ : Float) : Float
+func copySign(x : Float, y : Float) : Float
 ```
 
 Returns `x` if `x` and `y` have same sign, otherwise `x` with negated sign.
@@ -241,7 +241,7 @@ Float.copySign(1.2, -2.3) // => -1.2
 
 ## Function `min`
 ``` motoko no-repl
-func min(_ : Float, _ : Float) : Float
+func min(x : Float, y : Float) : Float
 ```
 
 Returns the smaller value of `x` and `y`.
@@ -261,7 +261,7 @@ Float.min(1.2, -2.3) // => -2.3 (with numerical imprecision)
 
 ## Function `max`
 ``` motoko no-repl
-func max(_ : Float, _ : Float) : Float
+func max(x : Float, y : Float) : Float
 ```
 
 Returns the larger value of `x` and `y`.
@@ -407,7 +407,7 @@ Float.arctan(1.0) // => Float.pi / 4
 
 ## Function `arctan2`
 ``` motoko no-repl
-func arctan2(_ : Float, _ : Float) : Float
+func arctan2(y : Float, x : Float) : Float
 ```
 
 Given `(y,x)`, returns the arc tangent in radians of `y/x` based on the signs of both values to determine the correct quadrant.

@@ -112,7 +112,7 @@ afterSize - beforeSize // => 10
 
 ## Function `grow`
 ``` motoko no-repl
-func grow(_ : Region, _ : Nat64) : (oldPages : Nat64)
+func grow(region : Region, newPages : Nat64) : (oldPages : Nat64)
 ```
 
 Grow current `size` of `region` by the given number of pages.
@@ -138,7 +138,7 @@ afterSize - beforeSize // => 10
 
 ## Function `loadNat8`
 ``` motoko no-repl
-func loadNat8(_ : Region, _ : Nat64) : Nat8
+func loadNat8(region : Region, offset : Nat64) : Nat8
 ```
 
 Within `region`, load a `Nat8` value from `offset`.
@@ -155,7 +155,7 @@ Region.loadNat8(region, offset) // => 123
 
 ## Function `storeNat8`
 ``` motoko no-repl
-func storeNat8(_ : Region, _ : Nat64, _ : Nat8) : ()
+func storeNat8(region : Region, offset : Nat64, value : Nat8) : ()
 ```
 
 Within `region`, store a `Nat8` value at `offset`.
@@ -172,7 +172,7 @@ Region.loadNat8(region, offset) // => 123
 
 ## Function `loadNat16`
 ``` motoko no-repl
-func loadNat16(_ : Region, _ : Nat64) : Nat16
+func loadNat16(region : Region, offset : Nat64) : Nat16
 ```
 
 Within `region`, load a `Nat16` value from `offset`.
@@ -189,7 +189,7 @@ Region.loadNat16(region, offset) // => 123
 
 ## Function `storeNat16`
 ``` motoko no-repl
-func storeNat16(_ : Region, _ : Nat64, _ : Nat16) : ()
+func storeNat16(region : Region, offset : Nat64, value : Nat16) : ()
 ```
 
 Within `region`, store a `Nat16` value at `offset`.
@@ -206,7 +206,7 @@ Region.loadNat16(region, offset) // => 123
 
 ## Function `loadNat32`
 ``` motoko no-repl
-func loadNat32(_ : Region, _ : Nat64) : Nat32
+func loadNat32(region : Region, offset : Nat64) : Nat32
 ```
 
 Within `region`, load a `Nat32` value from `offset`.
@@ -223,7 +223,7 @@ Region.loadNat32(region, offset) // => 123
 
 ## Function `storeNat32`
 ``` motoko no-repl
-func storeNat32(_ : Region, _ : Nat64, _ : Nat32) : ()
+func storeNat32(region : Region, offset : Nat64, value : Nat32) : ()
 ```
 
 Within `region`, store a `Nat32` value at `offset`.
@@ -240,7 +240,7 @@ Region.loadNat32(region, offset) // => 123
 
 ## Function `loadNat64`
 ``` motoko no-repl
-func loadNat64(_ : Region, _ : Nat64) : Nat64
+func loadNat64(region : Region, offset : Nat64) : Nat64
 ```
 
 Within `region`, load a `Nat64` value from `offset`.
@@ -257,7 +257,7 @@ Region.loadNat64(region, offset) // => 123
 
 ## Function `storeNat64`
 ``` motoko no-repl
-func storeNat64(_ : Region, _ : Nat64, _ : Nat64) : ()
+func storeNat64(region : Region, offset : Nat64, value : Nat64) : ()
 ```
 
 Within `region`, store a `Nat64` value at `offset`.
@@ -274,7 +274,7 @@ Region.loadNat64(region, offset) // => 123
 
 ## Function `loadInt8`
 ``` motoko no-repl
-func loadInt8(_ : Region, _ : Nat64) : Int8
+func loadInt8(region : Region, offset : Nat64) : Int8
 ```
 
 Within `region`, load a `Int8` value from `offset`.
@@ -291,7 +291,7 @@ Region.loadInt8(region, offset) // => 123
 
 ## Function `storeInt8`
 ``` motoko no-repl
-func storeInt8(_ : Region, _ : Nat64, _ : Int8) : ()
+func storeInt8(region : Region, offset : Nat64, value : Int8) : ()
 ```
 
 Within `region`, store a `Int8` value at `offset`.
@@ -308,7 +308,7 @@ Region.loadInt8(region, offset) // => 123
 
 ## Function `loadInt16`
 ``` motoko no-repl
-func loadInt16(_ : Region, _ : Nat64) : Int16
+func loadInt16(region : Region, offset : Nat64) : Int16
 ```
 
 Within `region`, load a `Int16` value from `offset`.
@@ -325,7 +325,7 @@ Region.loadInt16(region, offset) // => 123
 
 ## Function `storeInt16`
 ``` motoko no-repl
-func storeInt16(_ : Region, _ : Nat64, _ : Int16) : ()
+func storeInt16(region : Region, offset : Nat64, value : Int16) : ()
 ```
 
 Within `region`, store a `Int16` value at `offset`.
@@ -342,7 +342,7 @@ Region.loadInt16(region, offset) // => 123
 
 ## Function `loadInt32`
 ``` motoko no-repl
-func loadInt32(_ : Region, _ : Nat64) : Int32
+func loadInt32(region : Region, offset : Nat64) : Int32
 ```
 
 Within `region`, load a `Int32` value from `offset`.
@@ -359,7 +359,7 @@ Region.loadInt32(region, offset) // => 123
 
 ## Function `storeInt32`
 ``` motoko no-repl
-func storeInt32(_ : Region, _ : Nat64, _ : Int32) : ()
+func storeInt32(region : Region, offset : Nat64, value : Int32) : ()
 ```
 
 Within `region`, store a `Int32` value at `offset`.
@@ -376,7 +376,7 @@ Region.loadInt32(region, offset) // => 123
 
 ## Function `loadInt64`
 ``` motoko no-repl
-func loadInt64(_ : Region, _ : Nat64) : Int64
+func loadInt64(region : Region, offset : Nat64) : Int64
 ```
 
 Within `region`, load a `Int64` value from `offset`.
@@ -393,7 +393,7 @@ Region.loadInt64(region, offset) // => 123
 
 ## Function `storeInt64`
 ``` motoko no-repl
-func storeInt64(_ : Region, _ : Nat64, _ : Int64) : ()
+func storeInt64(region : Region, offset : Nat64, value : Int64) : ()
 ```
 
 Within `region`, store a `Int64` value at `offset`.
@@ -410,7 +410,7 @@ Region.loadInt64(region, offset) // => 123
 
 ## Function `loadFloat`
 ``` motoko no-repl
-func loadFloat(_ : Region, _ : Nat64) : Float
+func loadFloat(region : Region, offset : Nat64) : Float
 ```
 
 Within `region`, loads a `Float` value from the given `offset`.
@@ -427,7 +427,7 @@ Region.loadFloat(region, offset) // => 1.25
 
 ## Function `storeFloat`
 ``` motoko no-repl
-func storeFloat(_ : Region, _ : Nat64, _ : Float) : ()
+func storeFloat(region : Region, offset : Nat64, value : Float) : ()
 ```
 
 Within `region`, store float `value` at the given `offset`.
@@ -444,7 +444,7 @@ Region.loadFloat(region, offset) // => 1.25
 
 ## Function `loadBlob`
 ``` motoko no-repl
-func loadBlob(_ : Region, _ : Nat64, _ : Nat) : Blob
+func loadBlob(region : Region, offset : Nat64, size : Nat) : Blob
 ```
 
 Within `region,` load `size` bytes starting from `offset` as a `Blob`.
@@ -464,7 +464,7 @@ Blob.toArray(Region.loadBlob(region, offset, size)) // => [1, 2, 3]
 
 ## Function `storeBlob`
 ``` motoko no-repl
-func storeBlob(_ : Region, _ : Nat64, _ : Blob) : ()
+func storeBlob(region : Region, offset : Nat64, value : Blob) : ()
 ```
 
 Within `region, write `blob.size()` bytes of `blob` beginning at `offset`.

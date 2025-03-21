@@ -5,7 +5,7 @@ Low-level interface to the Internet Computer.
 
 ## Function `call`
 ``` motoko no-repl
-func call(_ : Principal, _ : Text, _ : Blob) : async (reply : Blob)
+func call(canister : Principal, name : Text, data : Blob) : async (reply : Blob)
 ```
 
 Calls ``canister``'s update or query function, `name`, with the binary contents of `data` as IC argument.

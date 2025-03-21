@@ -131,7 +131,7 @@ StableMemory.loadNat32(offset) // => 123
 
 ## Function `storeNat32`
 ``` motoko no-repl
-func storeNat32(_ : Nat64, _ : Nat32) : ()
+func storeNat32(offset : Nat64, value : Nat32) : ()
 ```
 
 Stores a `Nat32` value in stable memory at the given `offset`.
@@ -163,7 +163,7 @@ StableMemory.loadNat8(offset) // => 123
 
 ## Function `storeNat8`
 ``` motoko no-repl
-func storeNat8(_ : Nat64, _ : Nat8) : ()
+func storeNat8(offset : Nat64, value : Nat8) : ()
 ```
 
 Stores a `Nat8` value in stable memory at the given `offset`.
@@ -195,7 +195,7 @@ StableMemory.loadNat16(offset) // => 123
 
 ## Function `storeNat16`
 ``` motoko no-repl
-func storeNat16(_ : Nat64, _ : Nat16) : ()
+func storeNat16(offset : Nat64, value : Nat16) : ()
 ```
 
 Stores a `Nat16` value in stable memory at the given `offset`.
@@ -227,7 +227,7 @@ StableMemory.loadNat64(offset) // => 123
 
 ## Function `storeNat64`
 ``` motoko no-repl
-func storeNat64(_ : Nat64, _ : Nat64) : ()
+func storeNat64(offset : Nat64, value : Nat64) : ()
 ```
 
 Stores a `Nat64` value in stable memory at the given `offset`.
@@ -259,7 +259,7 @@ StableMemory.loadInt32(offset) // => 123
 
 ## Function `storeInt32`
 ``` motoko no-repl
-func storeInt32(_ : Nat64, _ : Int32) : ()
+func storeInt32(offset : Nat64, value : Int32) : ()
 ```
 
 Stores an `Int32` value in stable memory at the given `offset`.
@@ -291,7 +291,7 @@ StableMemory.loadInt8(offset) // => 123
 
 ## Function `storeInt8`
 ``` motoko no-repl
-func storeInt8(_ : Nat64, _ : Int8) : ()
+func storeInt8(offset : Nat64, value : Int8) : ()
 ```
 
 Stores an `Int8` value in stable memory at the given `offset`.
@@ -323,7 +323,7 @@ StableMemory.loadInt16(offset) // => 123
 
 ## Function `storeInt16`
 ``` motoko no-repl
-func storeInt16(_ : Nat64, _ : Int16) : ()
+func storeInt16(offset : Nat64, value : Int16) : ()
 ```
 
 Stores an `Int16` value in stable memory at the given `offset`.
@@ -355,7 +355,7 @@ StableMemory.loadInt64(offset) // => 123
 
 ## Function `storeInt64`
 ``` motoko no-repl
-func storeInt64(_ : Nat64, _ : Int64) : ()
+func storeInt64(offset : Nat64, value : Int64) : ()
 ```
 
 Stores an `Int64` value in stable memory at the given `offset`.
@@ -387,7 +387,7 @@ StableMemory.loadFloat(offset) // => 1.25
 
 ## Function `storeFloat`
 ``` motoko no-repl
-func storeFloat(_ : Nat64, _ : Float) : ()
+func storeFloat(offset : Nat64, value : Float) : ()
 ```
 
 Stores a `Float` value in stable memory at the given `offset`.
@@ -403,7 +403,7 @@ StableMemory.loadFloat(offset) // => 1.25
 
 ## Function `loadBlob`
 ``` motoko no-repl
-func loadBlob(_ : Nat64, _ : Nat) : Blob
+func loadBlob(offset : Nat64, size : Nat) : Blob
 ```
 
 Load `size` bytes starting from `offset` as a `Blob`.
@@ -422,7 +422,7 @@ Blob.toArray(StableMemory.loadBlob(offset, size)) // => [1, 2, 3]
 
 ## Function `storeBlob`
 ``` motoko no-repl
-func storeBlob(_ : Nat64, _ : Blob) : ()
+func storeBlob(offset : Nat64, value : Blob) : ()
 ```
 
 Write bytes of `blob` beginning at `offset`.

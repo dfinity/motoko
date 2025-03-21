@@ -130,7 +130,8 @@ struct
 
     let extract_ty_args = function
     | { it = Syntax.ParT arg; _ } -> [{ name = "_"; typ = Some arg; doc = None }]
-    | { it = Syntax.TupT args; _ } -> List.map (fun (id_opt, typ) -> { name = "_"; typ = Some typ; doc = None }) args
+    | { it = Syntax.TupT args; _ } -> List.map (fun (id_opt, typ) ->
+      { name = (match id_opt with Some id -> id.it | _ -> "_"); typ = Some typ; doc = None }) args
     | _ -> []
 
 
