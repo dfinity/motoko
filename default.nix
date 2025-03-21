@@ -322,7 +322,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs_22 ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
       [ filecheck wasmtime ];
 
 
