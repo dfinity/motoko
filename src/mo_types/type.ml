@@ -1911,9 +1911,15 @@ let rec match_stab_sig sig1 sig2 =
 and match_stab_fields is_migration tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
-  | [], _ | _, [] ->
-    (* same amount of fields, new fields, or dropped fields ok *)
-    true
+  | [], _ ->
+    (* some or new fields ok *)
+     true
+  | _, [] ->
+     (* dropped fields ok, unless in_migration *)
+    if is_migration then
+      tfs1 = []
+    else
+      true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->

@@ -587,8 +587,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let sig_, stable_type, migration = match exp_opt with
     | None ->
       T.Single stab_fields,
-      I.{pre = mem_ty; post = mem_ty},
-      primE (I.ICStableRead mem_ty) [] (* as before *)
+      I.{is_migration = false; pre = mem_ty; post = mem_ty},
+      primE (I.ICStableRead (false, mem_ty)) [] (* as before *)
     | Some exp0 ->
       let typ = let _, tfs = T.as_obj_sub [T.migration_lab] exp0.note.Note.typ in
                 T.lookup_val_field T.migration_lab tfs
@@ -622,11 +622,11 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let v_dom = fresh_var "v_dom" dom in
       let v_rng = fresh_var "v_rng" rng in
       T.PrePost (stab_fields_pre, stab_fields),
-      I.{pre = mem_ty_pre; post = mem_ty},
+      I.{is_migration = true; pre = mem_ty_pre; post = mem_ty},
       ifE (primE (I.OtherPrim "rts_in_upgrade") [])
         (* in upgrade, apply migration *)
         (blockE [
-            letD v (primE (I.ICStableRead mem_ty_pre) []);
+            letD v (primE (I.ICStableRead (true, mem_ty_pre)) []);
             letD v_dom
               (objectE T.Object
                 (List.map
@@ -660,7 +660,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
               mem_fields)
             mem_fields))
         (* not in upgrade, read record of nulls *)
-        (primE (I.ICStableRead mem_ty) [])
+        (primE (I.ICStableRead (false, mem_ty)) [])
   in
   let ds =
     varD state (optE migration)
