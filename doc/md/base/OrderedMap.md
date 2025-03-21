@@ -719,9 +719,9 @@ func validate<V>(m : Map<K, V>) : ()
 Debug helper that check internal invariants of the given map `m`. 
 Raise an error (for a stack trace) if invariants are violated.
 
-## Value `Make`
+## Function `Make`
 ``` motoko no-repl
-let Make : <K>(compare : (K, K) -> O.Order) -> Operations<K>
+func Make<K>() : Operations<K>
 ```
 
 Create `OrderedMap.Operations` object capturing key type `K` and `compare` function. 

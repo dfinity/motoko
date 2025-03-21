@@ -39,9 +39,9 @@ Example:
 Int32.maximumValue // => +2_147_483_647
 ```
 
-## Value `toInt`
+## Function `toInt`
 ``` motoko no-repl
-let toInt : Int32 -> Int
+func toInt() : Int
 ```
 
 Converts a 32-bit signed integer to a signed integer with infinite precision.
@@ -51,9 +51,9 @@ Example:
 Int32.toInt(123_456) // => 123_456 : Int
 ```
 
-## Value `fromInt`
+## Function `fromInt`
 ``` motoko no-repl
-let fromInt : Int -> Int32
+func fromInt() : Int32
 ```
 
 Converts a signed integer with infinite precision to a 32-bit signed integer.
@@ -65,9 +65,9 @@ Example:
 Int32.fromInt(123_456) // => +123_456 : Int32
 ```
 
-## Value `fromIntWrap`
+## Function `fromIntWrap`
 ``` motoko no-repl
-let fromIntWrap : Int -> Int32
+func fromIntWrap() : Int32
 ```
 
 Converts a signed integer with infinite precision to a 32-bit signed integer.
@@ -79,9 +79,9 @@ Example:
 Int32.fromIntWrap(-123_456) // => -123_456 : Int
 ```
 
-## Value `fromInt16`
+## Function `fromInt16`
 ``` motoko no-repl
-let fromInt16 : Int16 -> Int32
+func fromInt16() : Int32
 ```
 
 Converts a 16-bit signed integer to a 32-bit signed integer.
@@ -91,9 +91,9 @@ Example:
 Int32.fromInt16(-123) // => -123 : Int32
 ```
 
-## Value `toInt16`
+## Function `toInt16`
 ``` motoko no-repl
-let toInt16 : Int32 -> Int16
+func toInt16() : Int16
 ```
 
 Converts a 32-bit signed integer to a 16-bit signed integer.
@@ -105,9 +105,9 @@ Example:
 Int32.toInt16(-123) // => -123 : Int16
 ```
 
-## Value `fromInt64`
+## Function `fromInt64`
 ``` motoko no-repl
-let fromInt64 : Int64 -> Int32
+func fromInt64() : Int32
 ```
 
 Converts a 64-bit signed integer to a 32-bit signed integer.
@@ -119,9 +119,9 @@ Example:
 Int32.fromInt64(-123_456) // => -123_456 : Int32
 ```
 
-## Value `toInt64`
+## Function `toInt64`
 ``` motoko no-repl
-let toInt64 : Int32 -> Int64
+func toInt64() : Int64
 ```
 
 Converts a 32-bit signed integer to a 64-bit signed integer.
@@ -131,9 +131,9 @@ Example:
 Int32.toInt64(-123_456) // => -123_456 : Int64
 ```
 
-## Value `fromNat32`
+## Function `fromNat32`
 ``` motoko no-repl
-let fromNat32 : Nat32 -> Int32
+func fromNat32() : Int32
 ```
 
 Converts an unsigned 32-bit integer to a signed 32-bit integer.
@@ -145,9 +145,9 @@ Example:
 Int32.fromNat32(123_456) // => +123_456 : Int32
 ```
 
-## Value `toNat32`
+## Function `toNat32`
 ``` motoko no-repl
-let toNat32 : Int32 -> Nat32
+func toNat32() : Nat32
 ```
 
 Converts a signed 32-bit integer to an unsigned 32-bit integer.
@@ -712,9 +712,9 @@ Example:
 Int32.bitflip(255, 7) // => +127
 ```
 
-## Value `bitcountNonZero`
+## Function `bitcountNonZero`
 ``` motoko no-repl
-let bitcountNonZero : (x : Int32) -> Int32
+func bitcountNonZero() : Int32
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -724,9 +724,9 @@ Example:
 Int32.bitcountNonZero(0xffff) // => +16
 ```
 
-## Value `bitcountLeadingZero`
+## Function `bitcountLeadingZero`
 ``` motoko no-repl
-let bitcountLeadingZero : (x : Int32) -> Int32
+func bitcountLeadingZero() : Int32
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -736,9 +736,9 @@ Example:
 Int32.bitcountLeadingZero(0x8000) // => +16
 ```
 
-## Value `bitcountTrailingZero`
+## Function `bitcountTrailingZero`
 ``` motoko no-repl
-let bitcountTrailingZero : (x : Int32) -> Int32
+func bitcountTrailingZero() : Int32
 ```
 
 Returns the count of trailing zero bits in `x`.

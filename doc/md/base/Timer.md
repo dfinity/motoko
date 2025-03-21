@@ -68,9 +68,9 @@ func checkAndWaterPlants() : async () {
 let daily = recurringTimer(#seconds (24 * 60 * 60), checkAndWaterPlants);
 ```
 
-## Value `cancelTimer`
+## Function `cancelTimer`
 ``` motoko no-repl
-let cancelTimer : TimerId -> ()
+func cancelTimer() : ()
 ```
 
 Cancels a still active timer with `(id : TimerId)`. For expired timers

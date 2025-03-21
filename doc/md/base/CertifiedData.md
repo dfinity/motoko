@@ -10,9 +10,9 @@ users and library implementors. See the Internet Computer Functional
 Specification and corresponding documentation for how to use this to make query
 calls to your canister tamperproof.
 
-## Value `set`
+## Function `set`
 ``` motoko no-repl
-let set : (data : Blob) -> ()
+func set() : ()
 ```
 
 Set the certified data.
@@ -35,9 +35,9 @@ CertifiedData.set(blob);
 See a full example on how to use certified variables here: https://github.com/dfinity/examples/tree/master/motoko/cert-var
 
 
-## Value `getCertificate`
+## Function `getCertificate`
 ``` motoko no-repl
-let getCertificate : () -> ?Blob
+func getCertificate() : ?Blob
 ```
 
 Gets a certificate

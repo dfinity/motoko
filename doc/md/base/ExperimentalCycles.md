@@ -35,9 +35,9 @@ actor {
 }
 ```
 
-## Value `balance`
+## Function `balance`
 ``` motoko no-repl
-let balance : () -> (amount : Nat)
+func balance() : (amount : Nat)
 ```
 
 Returns the actor's current balance of cycles as `amount`.
@@ -55,9 +55,9 @@ actor {
 }
 ```
 
-## Value `available`
+## Function `available`
 ``` motoko no-repl
-let available : () -> (amount : Nat)
+func available() : (amount : Nat)
 ```
 
 Returns the currently available `amount` of cycles.
@@ -79,9 +79,9 @@ actor {
 }
 ```
 
-## Value `accept`
+## Function `accept`
 ``` motoko no-repl
-let accept : (amount : Nat) -> (accepted : Nat)
+func accept() : (accepted : Nat)
 ```
 
 Transfers up to `amount` from `available()` to `balance()`.
@@ -106,9 +106,9 @@ actor {
 }
 ```
 
-## Value `add`
+## Function `add`
 ``` motoko no-repl
-let add : (amount : Nat) -> ()
+func add() : ()
 ```
 
 Indicates additional `amount` of cycles to be transferred in
@@ -138,9 +138,9 @@ actor {
 }
 ```
 
-## Value `refunded`
+## Function `refunded`
 ``` motoko no-repl
-let refunded : () -> (amount : Nat)
+func refunded() : (amount : Nat)
 ```
 
 Reports `amount` of cycles refunded in the last `await` of the current
@@ -163,6 +163,28 @@ actor {
     Cycles.add<system>(15_000_000);
     await operation(); // accepts 10_000_000 cycles
     Debug.print("Refunded: " # debug_show(Cycles.refunded())); // 5_000_000
+  }
+}
+```
+
+## Function `burn`
+``` motoko no-repl
+func burn() : (burned : Nat)
+```
+
+Attempts to burn `amount` of cycles, deducting `burned` from the canister's
+cycle balance. The burned cycles are irrevocably lost and not available to any
+other principal either.
+
+Example for use on the IC:
+```motoko no-repl
+import Cycles "mo:base/ExperimentalCycles";
+import Debug "mo:base/Debug";
+
+actor {
+  public func main() : async() {
+    let burnt = Cycles.burn<system>(10_000_000);
+    Debug.print("Burned: " # debug_show burnt); // 10_000_000
   }
 }
 ```
