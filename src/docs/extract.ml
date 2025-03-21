@@ -128,20 +128,19 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
+  let extract_typ_item (id_opt, typ) =
+    {
+      name = (match id_opt with Some id -> id.it | _ -> "_");
+      typ = Some typ;
+      doc = None;
+    }
+
   let extract_ty_args = function
     | { it = Syntax.ParT arg; _ } ->
         [ { name = "_"; typ = Some arg; doc = None } ]
     | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
         [ { name; typ = Some arg; doc = None } ]
-    | { it = Syntax.TupT args; _ } ->
-        List.map
-          (fun (id_opt, typ) ->
-            {
-              name = (match id_opt with Some id -> id.it | _ -> "_");
-              typ = Some typ;
-              doc = None;
-            })
-          args
+    | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
     | typ -> [ { name = "_"; typ = Some typ; doc = None } ]
 
   let is_func_ty ty =
