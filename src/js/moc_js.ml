@@ -35,6 +35,7 @@ let () =
       method parseCandid s = js_parse_candid s
       method parseMotoko s = js_parse_motoko s
       method parseMotokoWithDeps path s = js_parse_motoko_with_deps path s
-      method parseMotokoTyped paths scopeCache = js_parse_motoko_typed paths scopeCache
+      method parseMotokoTyped paths = js_parse_motoko_typed paths
+      method parseMotokoTypedWithScopeCache paths scopeCache = js_parse_motoko_typed_with_scope_cache paths scopeCache
       method printDeps file = print_deps file
      end);

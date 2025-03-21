@@ -224,7 +224,27 @@ module Map_conversion (Map : Map.S) = struct
   let to_ocaml = from_js
 end
 
-let js_parse_motoko_typed paths scope_cache =
+let js_parse_motoko_typed paths =
+  let paths = paths |> Js.to_array |> Array.to_list in
+  let load_result = Mo_types.Cons.session (fun _ ->
+    Pipeline.load_progs Pipeline.parse_file (paths |> List.map Js.to_string) Pipeline.initial_stat_env)
+  in
+  js_result load_result (fun (libs, progs, senv) ->
+  progs |> List.map (fun prog ->
+    let open Mo_def in
+    let module Arrange_sources_types = Arrange.Make (struct
+      let include_sources = true
+      let include_types = true
+      let include_docs = Some prog.note.Syntax.trivia
+      let include_parenthetical = false
+      let main_file = Some prog.at.left.file
+    end)
+    in object%js
+      val ast = js_of_sexpr (Arrange_sources_types.prog prog)
+      (* val typ = js_of_sexpr (Arrange_sources_types.typ typ) *)
+    end) |> Array.of_list |> Js.array |> Js.some)
+
+let js_parse_motoko_typed_with_scope_cache paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
