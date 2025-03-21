@@ -38,37 +38,15 @@ let
 
         # Selecting the ocaml version
         # Also update ocaml-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_14; })
 
         (self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // rec {
 
-              # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
-              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs rec {
-                version = "5.0.1";
-                src = self.fetchurl {
-                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
-                  sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
-                };
-              };
-
-              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
-              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
-                pname = "js_of_ocaml";
-
-                inherit (js_of_ocaml-compiler) version src;
-                duneVersion = "3";
-
-                buildInputs = [ ppxlib ];
-                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
-
-                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
-              };
-
-              # downgrade wasm until we have support for 2.0.0
+              # downgrade wasm until we have support for 2.0.1
               # (https://github.com/dfinity/motoko/pull/3364)
-              wasm = super.ocamlPackages.wasm.overrideAttrs rec {
+              wasm_1 = super.ocamlPackages.wasm.overrideAttrs rec {
                 version = "1.1.1";
                 src = self.fetchFromGitHub {
                   owner = "WebAssembly";
@@ -76,6 +54,11 @@ let
                   rev = "opam-${version}";
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
+                patchPhase = ''
+                grep -r warn-error .
+                substituteInPlace ./interpreter/Makefile \
+                  --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
+                '';
               };
 
               # No testing of atdgen, as it pulls in python stuff, tricky on musl

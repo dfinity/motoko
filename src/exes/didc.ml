@@ -28,7 +28,7 @@ let argspec =
   "--check", Arg.Unit (set_mode Check), " type-check only";
   "--pp", Arg.Unit (set_mode PrettyPrint), " Pretty print did file";
   "-v", Arg.Set Flags.verbose, " verbose output";
-  "-dp", Arg.Set Flags.dump_parse, " dump parse";
+  "-dp", Arg.Set Flags.dump_parse, " dump parse XXXX undo-me";
   "-o", Arg.Set_string out_file, "<file>  output file";
   "--version",
     Arg.Unit (fun () -> printf "%s\n" banner; exit 0), " show version";

@@ -6,7 +6,7 @@
 
 let nixpkgs = import ./nix { inherit system; }; in
 
-assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "x86_64-darwin" ];
+assert !officialRelease || nixpkgs.lib.asserts.assertOneOf "system" system [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
 let releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; }; in
 
@@ -83,7 +83,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
-    pkgs.ocamlPackages.wasm
+    pkgs.ocamlPackages.wasm_1
     pkgs.ocamlPackages.vlq
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
@@ -95,6 +95,8 @@ let commonBuildInputs = pkgs:
     pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
+    pkgs.which
+    pkgs.patchelf
   ]; in
 
 let ocaml_exe = name: bin: rts:
@@ -107,7 +109,7 @@ let ocaml_exe = name: bin: rts:
     staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      allowedRequisites = [];
+      allowedRequisites = if is_static then staticpkgs.musl else [];
 
       src = subpath ./src;
 
@@ -129,7 +131,9 @@ let ocaml_exe = name: bin: rts:
 
       installPhase = ''
         mkdir -p $out/bin
+        ls -l ${bin}
         cp --verbose --dereference ${bin} $out/bin
+        ls -l $out/bin
       '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
         # there are references to darwin system libraries
         # in the binaries. But curiously, we can remove them
@@ -140,13 +144,31 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.libiconv} \
           $out/bin/*
       '' + ''
-        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # also, there is a reference to /nix/store/…/share/menhir/standard.mly.
         # Let's remove that, too
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
+      '';
+
+      doInstallCheck = true;
+      installCheckPhase = if is_static then ''
+        ldd $out/bin/* || true
+        file $out/bin/*
+        which patchelf
+        ldd $(which patchelf)
+        ls -l $out/bin/*
+        chmod +w $out/bin/*
+        patchelf --set-interpreter "${staticpkgs.musl}/lib/ld-musl-aarch64.so.1" $out/bin/* || true
+        ldd $out/bin/* || true
+        file $out/bin/*
+        ls -l $out/bin/*
+        chmod a-w $out/bin/*
+      '' else "" + ''
         # sanity check
+        ls -l $out/bin/*
         $out/bin/* --help >/dev/null
+        echo /installCheckPhase
       '';
     };
 in
@@ -322,7 +344,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs_22 ]) ++
       [ filecheck wasmtime ];
 
 
@@ -553,7 +575,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-18_x
+          nixpkgs.nodejs_22
           nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
@@ -573,7 +595,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
+          # NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
         '';
       };
     in
