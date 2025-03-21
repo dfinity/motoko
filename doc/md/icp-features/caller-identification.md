@@ -399,4 +399,4 @@ shared(msg) actor class PolicyBasedAccess() {
 ## References
 
 - [Principal](https://internetcomputer.org/docs/motoko/main/base/Principal)
-  
+- [Principal specification](https://internetcomputer.org/docs/references/ic-interface-spec/#principal)
