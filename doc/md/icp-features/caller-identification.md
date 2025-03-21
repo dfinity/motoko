@@ -4,9 +4,11 @@ sidebar_position: 3
 
 # Caller identification
 
-Principals serve as unique identifiers for users and canisters on the Internet Computer. Every user interacting with a canister is assigned a **principal**, which acts as their identity when making requests. Principals are **privacy-preserving** methods of **authentication**, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps. When a shared function is called, the system automatically provides the caller’s principal, allowing the canister to identify who initiated the request. This enables **access control**, where canisters can restrict or allow certain actions based on the caller’s identity. By verifying the caller’s principal, a canister can enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions. The following sections explore how to use caller identification to implement access control in Motoko.
+Principals serve as unique identifiers for users and canisters on ICP Every user interacting with a canister is assigned a **principal**, which acts as their identity when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps. 
 
-The `shared` keyword is used to declare a shared function. The shared function can also declare an optional parameter of type {caller : Principal}. This allows canisters to identify and verify request origins.
+When a shared function is called, the caller’s principal is automatically provided, allowing the canister to identify who initiated the request. This enables **access control** for canisters to restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions. The following sections explore how to use caller identification to implement access control in Motoko.
+
+The `shared` keyword is used to declare a shared function. A shared function can also declare an optional parameter of type `{caller : Principal}` to identify and verify request origins.
 
 ```motoko no-repl
 shared(msg) func inc() : async () {
@@ -24,7 +26,7 @@ shared(msg) persistent actor class Counter(init : Nat) {
 
 ## Basic access control
 
-A simple way to implement access control is by storing the caller’s principal at deployment and restricting modifications to the original deployer. The `update` function verifies that the caller matches the stored owner before modifying the message. This ensures that only the creator, or owner, can update critical data while others have read-only access. The following example defines a restricted message board where only the creator can update the message, while any user can read it:
+A simple way to implement access control is by storing the caller’s principal when the canister is first deployed, then only allowing that principal to make modifications. Then, an `update` function can verify that the caller of the function matches the stored principal before executing the message. This ensures that only the original deployer of the canister can update critical data while others have read-only access. The following example defines a restricted message board where only the principal that deployed the canister can update the message, while any user can read it:
 
 ```motoko no-repl
 import Error "mo:base/Error";
@@ -48,22 +50,22 @@ shared(msg) persistent actor class MessageBoard(initMessage : Text) {
 
 ## Access control models
 
-Caller identification provides built-in **authentication**, making **authorization** the primary mechanism for controlling access and modification of data. To demonstrate this, various access control models will be implemented, each showcasing a different approach to managing authorization dynamically. The selection prioritizes models that are well-suited for canisters and decentralized applications while ensuring a diverse range of implementations.
+Caller identification is used to authenticate and authorize data access and modification. Various access control models can be implemented, each showcasing a different approach to managing authorization dynamically. The selection shown here prioritizes models that are well-suited for canisters and decentralized applications while ensuring a diverse range of implementations.
 
 | Model | Method | Example use case |
 |------------|----------------|---------------------------|
 | Discretionary access control (DAC) | The owner manually grants and revokes access to specific users. | **User-managed whitelist**: Only users added by the owner can access a function. |
 | Role-based access control (RBAC) | Users are assigned roles (`admin`, `member`), and permissions are granted based on role. | **Admins manage members**: Members have restricted access to specific functions. |
-| Mandatory access Control (MAC) | Access is enforced by system-wide rules that users cannot modify. | **Immutable permissions**: Read-only vs. write-only users set at account creation. |
+| Mandatory access control (MAC) | Access is enforced by system-wide rules that users cannot modify. | **Immutable permissions**: Read-only vs. write-only users set at account creation. |
 | Access control list (ACL) | Different functions have separate whitelists, controlling access per action. | One list for `update`, another for `delete`, managed independently. |
 | Attribute-based access control (ABAC) | Users must meet certain conditions to gain access. | **Exclusive model**: Users must hold at least **X tokens** to access the canister. |
-| Policy-based Access Control (PBAC) | Policies dynamically restrict access based on conditions. | **Time-based access** : Users can only call functions during specific hours. |
+| Policy-based access control (PBAC) | Policies dynamically restrict access based on conditions. | **Time-based access** : Users can only call functions during specific hours. |
 
 <!---I will probably eliminate the use of any upgrade hooks in the second review as it's not recommended for now they are present--->
 
 ### Discretionary access control
 
-Discretionary Access Control (DAC) allows the **controller** of a canister to manage an allow list, granting or revoking access dynamically. This approach is useful for **whitelisting specific users or canisters** for privileged actions while maintaining flexibility in managing permissions. The following example implements a **canister-controlled whitelist**, where only authorized principals can execute restricted actions:
+Discretionary access control (DAC) allows the [controller](https://internetcomputer.org/docs/building-apps/canister-management/control) of a canister to manage an allow list, granting or revoking access dynamically. This approach is useful for whitelisting specific users or canisters for privileged actions while maintaining flexibility in managing permissions. The following example implements a canister-controlled whitelist, where only authorized principals can execute restricted actions:
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -73,7 +75,7 @@ import Error "mo:base/Error";
 shared(msg) persistent actor class WhitelistAccess() {
   let controller = msg.caller; // The canister's deployer is the controller
 
-  // Create OrderedMap operations instance for Principal keys
+  // Create an OrderedMap instance for Principal keys
   transient let principalMap = OrderedMap.Make<Principal>(Principal.compare);
   var whitelist : OrderedMap.Map<Principal, Bool> = principalMap.empty();
 
@@ -110,7 +112,7 @@ shared(msg) persistent actor class WhitelistAccess() {
 
 ### Role based access control
 
-Role-Based Access Control (RBAC) assigns permissions based on **roles** rather than individual users. This allows for structured authorization, where users can be grouped into predefined roles with different access levels. In this example, the canister assigns roles dynamically, allowing the controller to manage administrators and members, each with different permissions:
+Role-based access control (RBAC) assigns permissions based on roles rather than individual users. This allows for structured authorization, where users can be grouped into predefined roles with different access levels. In this example, the canister assigns roles dynamically, allowing its controller to manage administrators and members, each with different permissions:
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -169,7 +171,7 @@ shared(msg) persistent actor class RoleBasedAccess() {
 
 ### Mandatory access control
 
-Mandatory Access Control (MAC) enforces **strict, system-defined rules** that users cannot modify. Unlike **Discretionary Access Control (DAC)**, where the owner can grant and revoke permissions, MAC establishes fixed access policies that remain immutable after deployment. This model is useful for high-security applications, where access rules must be enforced without user intervention.
+Mandatory access control (MAC) enforces strict, system-defined rules that users cannot modify. Unlike discretionary access control (DAC), where the owner can grant and revoke permissions, MAC establishes fixed access policies that remain immutable after deployment. This model is useful for high-security applications, where access rules must be enforced without user intervention.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -181,7 +183,7 @@ shared(msg) persistent actor class MandatoryAccess() {
 
   type AccessLevel = { #ReadOnly; #WriteOnly; #ReadWrite };
 
-  // Create OrderedMap instance for storing fixed access rules
+  // Create an OrderedMap instance for storing fixed access rules
   transient let accessMap = OrderedMap.Make<Principal>(Principal.compare);
   stable var accessLevels : OrderedMap.Map<Principal, AccessLevel> = accessMap.empty();
 
@@ -220,7 +222,7 @@ shared(msg) persistent actor class MandatoryAccess() {
 
 ### Access control list
 
-An **Access Control List (ACL)** defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike **Role-Based Access Control (RBAC)**, which groups users into roles, ACLs require manual management of user access for each function. While ACLs provide flexibility, they can become difficult to scale in larger applications. The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users:
+An **access control list (ACL)** defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike role-based access control (RBAC) which groups users into roles, ACLs require manual management of user access for each function. ACLs are flexible but can become difficult to scale in larger applications. The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users:
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -297,7 +299,7 @@ shared(msg) persistent actor class ACLAccess() {
 
 ### Attribute-based access control
 
-**Attribute-Based Access Control (ABAC)** grants permissions based on **user attributes** rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include **token balances, reputation scores, or other on-chain data**, making ABAC ideal for Web3 environments. This example implements a **token-gated access model**, where users must hold a minimum number of tokens to **access restricted functions**.
+**Attribute-based access control (ABAC)** grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include token balances, reputation scores, or other onchain data, making ABAC ideal for Web3 environments. This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -340,7 +342,7 @@ shared(msg) persistent actor class AttributeBasedAccess(tokenThreshold : Nat) {
 
 ### Policy-based access control
 
-Policy-Based Access Control (PBAC) enforces access rules dynamically based on contextual conditions rather than predefined roles or attributes. Policies can include time-based restrictions, geographical constraints, or  multi-factor conditions. This model is useful for governance, scheduled access, and automated compliance rules. The following example implements a time-based policy, where access is only granted within a specific time window (9AM- 5PM UTC):
+Policy-based access control (PBAC) enforces access rules dynamically based on contextual conditions rather than predefined roles or attributes. Policies can include time-based restrictions, geographical constraints, or  multi-factor conditions. This model is useful for governance, scheduled access, and automated compliance rules. The following example implements a time-based policy, where access is only granted within a specific time window (9AM- 5PM UTC):
 
 ```motoko no-repl
 import Error "mo:base/Error";

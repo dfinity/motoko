@@ -2,21 +2,21 @@
 sidebar_position: 5
 ---
 
-# Stable memory and Regions
+# Stable memory and regions
 
 <!---The small code blocks in this these snippets build upon each other, it might be useful to have a single program run in the backend to eliminate unbound errors-->
 
 <!---This section could also benefit from illustrations but i'm not sure what md will allow-->
 
-When a canister is upgraded, all heap memory (i.e., variables and data structures in normal memory) is reset. Motoko provides stable memory as a mechanism for preserving data across canister upgrades. Stable regions extend this functionality by allowing more structured and flexible memory management.
+When a canister is upgraded, all [heap memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#heap-memory) is reset. Motoko utilizes [stable memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#stable-memory) through the [stable storage feature](https://internetcomputer.org/docs/building-apps/canister-management/storage#motoko-storage-handling) for preserving data across canister upgrades. Stable regions extend this functionality by allowing more structured and flexible memory management.
 
 ## What is a `Region`?
 
-A **region** is an **isolated chunk of stable (virtual) memory** that can be allocated, grown, and managed independently. It functions like a dedicated section of a storage system, ensuring that its contents remain separate and inaccessible to other parts of the program.
+A **region** is an isolated chunk of stable (virtual) memory that can be allocated, grown, and managed independently. It functions like a dedicated section of a storage system, ensuring that its contents remain separate and inaccessible to other parts of the program.
 
-## `Region` structure
+### `Region` structure
 
-A region in stable memory consists of a **contiguous block of memory** that is allocated and managed independently. Each region has a starting address, a current size, and a capacity that can grow dynamically. One could think of a region similarly to an array, where each position corresponds to an index and data is accessed through byte offsets. However, unlike a traditional array, memory management within a region is manual, requiring explicit tracking of space usage and current position to ensure accurate data access and storage.
+A region in stable memory consists of a contiguous block of memory that is allocated and managed independently. Each region has a starting address, a current size, and a capacity that can grow dynamically. One could think of a region similarly to an array, where each position corresponds to an index and data is accessed through byte offsets. However, unlike a traditional array, memory management within a region is manual, requiring explicit tracking of space usage and current position to ensure accurate data access and storage.
 
 ### Pages
 

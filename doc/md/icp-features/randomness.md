@@ -4,26 +4,36 @@ sidebar_position: 1
 
 # Randomness
 
-Randomness is a fundamental requirement in many applications, from generating unique identifiers to ensuring fairness in games and cryptographic protocols. However, achieving randomness on the Internet Computer (ICP) presents unique challenges due to its **deterministic execution model**. Unlike traditional systems that derive randomness from system entropy or external sources, all computations on the IC must be **verifiable and reproducible** across network replicas.
+Randomness is used within many applications, from generating unique identifiers to ensuring fairness in games and cryptographic protocols. On ICP, all computations, including randomness, must be **verifiable and reproducible** across the network's nodes.
 
-To address this, ICP provides a **verifiable random function (VRF)** through the management canister. This function produces random values that are **unpredictable yet verifiable**, ensuring fairness and security while maintaining network consensus. The VRF generates **256-bit random blobs** in each execution round, which can be accessed via the `raw_rand` function. This method guarantees cryptographic security, making it suitable for use cases such as cryptographic key generation, and secure randomness-dependent operations.
+To address this, ICP provides a **verifiable random function (VRF)** through the [management canister](https://internetcomputer.org/docs/references/system-canisters/management-canister). This function produces random values that are **unpredictable yet verifiable**, ensuring fairness and security while maintaining network consensus. The VRF generates 256-bit random blobs in each execution round, which can be accessed via the `raw_rand` function. This method guarantees cryptographic security, making it suitable for use cases such as cryptographic key generation.
 
 <!--PRNG to be mentioned here when the new base library is published? -->
 
-Motoko provides multiple ways to incorporate randomness, each suited for different scenarios. The `Random` module in the base library offers an interface to work with random values derived from `raw_rand`, including finite sources of randomness for efficient computations. For applications that do not require strong cryptographic guarantees, **time-based randomness** can be generated using the `fuzz` package, which provides a lightweight alternative without relying on network calls. Additionally, for generating **unique identifiers**, the `idempotency-keys` package offers **UUID v4** generation, ensuring globally unique values for transactions and distributed systems.
+Motoko provides multiple methods for incorporating randomness into your code, each suited for different scenarios:
+
+1.  The `Random` module in the base library offers an interface to work with random values derived from `raw_rand`, including finite sources of randomness for efficient computations. 
+
+2. For applications that do not require strong cryptographic guarantees, **time-based randomness** can be generated using the `fuzz` package, which provides a lightweight alternative without relying on network calls. 
+
+3. For generating **unique identifiers**, the `idempotency-keys` package offers UUID v4 generation, ensuring globally unique values for transactions and distributed systems.
 
 Each of these approaches serves a distinct purpose, and selecting the right one depends on the security, performance, and reproducibility requirements of the application. Before using the `fuzz` or `idempotency-keys` modules, ensure that **Mops** is installed and initialised in your Motoko project. [Mops](https://mops.one/) is a package manager for Motoko that allows you to manage dependencies.
 
-| Method              | Functionality     | Security level      | Exampl use cases        | Key features |
+| Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|
-| `raw_rand` function    | Returns 32 bytes of cryptographic randomness from the ICP’s VRF.   | Strong cryptographic guarantees, ensuring unpredictability.  | Secure key generation, fairness compliant applications, unpredictable randomness | Directly retrieves randomness from the IC’s consensus layer, 32-byte (256-bit) blobs, asynchronous, returns fresh entropy each call |
-| `Random` module   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted |
-| `fuzz` module     | Pseudo-random generator that can be seeded with time, blobs, or custom functions. | Security depends on the seed | Fuzz testing, procedural generation, simulations, dynamic randomness | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators |
-| `idempotency-keys` module  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy   | Unique transaction IDs, idempotency, database keys   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`|
-
+| `raw_rand` function    | Returns 32 bytes of cryptographic randomness from the ICP’s VRF.   | Strong cryptographic guarantees, ensuring unpredictability.  | Secure key generation, fairness compliant applications, unpredictable randomness. | Directly retrieves randomness from the network’s consensus layer, 32-byte (256-bit) blobs, asynchronous, returns fresh entropy each call. |
+| `Random` module   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
+| `fuzz` module     | Pseudo-random generator that can be seeded with time, blobs, or custom functions. | Security depends on the seed. | Fuzz testing, procedural generation, simulations, dynamic randomness. | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators. |
+| `idempotency-keys` module  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy.   | Unique transaction IDs, idempotency, database keys.   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`. |
+:::info
+Before using the `fuzz` or `idempotency-keys` modules, ensure that [Mops](https://mops.one/) is installed and initialized in your Motoko project. 
+:::
 ## `raw_rand`
 
-The `raw_rand` function is a system API provided by the Internet Computer’s management canister, allowing canisters to request cryptographic randomness. This randomness is derived from the network’s verifiable random function, ensuring that each request produces unpredictable and unbiased values. Unlike traditional pseudo-random number generators, `raw_rand` generates fresh entropy in every execution round, making it suitable for applications requiring high security such as key generation or lotteries where fairness is a legal requirement. Since `raw_rand` operates asynchronously, canisters must await its response before using the generated bytes. Each call returns a 32-byte (256-bit) random blob, which can then be processed as needed. Below is an example of how to call `raw_rand`:
+The `raw_rand` function is a system API provided by the ICP management canister for requesting cryptographic randomness derived from the network’s verifiable random function. `raw_rand` generates fresh entropy in every execution round, making it suitable for applications requiring high security such as key generation or lotteries where fairness is a legal requirement. 
+
+Since `raw_rand` operates asynchronously, canisters must await its response before using the generated bytes. Each call returns a 32-byte (256-bit) random blob. Below is an example of how to call `raw_rand`:
 
 ```motoko no-repl
 actor {
@@ -39,7 +49,7 @@ actor {
 
 ## `Random`
 
-The `Random` module in Motoko provides a higher-level interface for working with randomness by wrapping the `raw_rand` function. It allows canisters to generate random numbers, booleans, and finite pools of entropy while maintaining cryptographic security. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random blob must be fetched asynchronously. Below is an example demonstrating how to generate a random boolean using `Random.Finite`:
+The `Random` module provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random blob must be fetched asynchronously. Below is an example demonstrating how to generate a random boolean using `Random.Finite`:
 
 ```motoko no-repl
 import Random "mo:base/Random";
@@ -56,7 +66,7 @@ actor {
 
 ## `fuzz`
 
-The `fuzz` package is a random data generator designed primarily for testing but can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, blobs, and principals. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random blob for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies. The following example demonstrates initialization with the default seed and generating a random `Nat`:
+The `fuzz` package is a random data generator designed primarily for testing, but it can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, blobs, and principals. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random blob for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies. The following example demonstrates initialization with the default seed and generating a random `Nat`:
 
 ```motoko no-repl
 import Fuzz "mo:fuzz";
