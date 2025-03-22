@@ -3,9 +3,9 @@ Low-level interface to the Internet Computer.
 
 **WARNING:** This low-level API is **experimental** and likely to change or even disappear.
 
-## Value `call`
+## Function `call`
 ``` motoko no-repl
-let call : (canister : Principal, name : Text, data : Blob) -> async (reply : Blob)
+func call(canister : Principal, name : Text, data : Blob) : async (reply : Blob)
 ```
 
 Calls ``canister``'s update or query function, `name`, with the binary contents of `data` as IC argument.
@@ -32,9 +32,9 @@ let output : ?OutputType = from_candid(rawReply); // { decimals = 8 }
 
 [Learn more about Candid serialization](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual#candid-serialization)
 
-## Value `isReplicated`
+## Function `isReplicated`
 ``` motoko no-repl
-let isReplicated : () -> Bool
+func isReplicated() : Bool
 ```
 
 `isReplicated` is true for update messages and for queries that passed through consensus.
@@ -61,9 +61,9 @@ let count = IC.countInstructions(func() {
 });
 ```
 
-## Value `performanceCounter`
+## Function `performanceCounter`
 ``` motoko no-repl
-let performanceCounter : (counter : Nat32) -> (value : Nat64)
+func performanceCounter(counter : Nat32) : (value : Nat64)
 ```
 
 Returns the current value of IC _performance counter_ `counter`.
@@ -98,3 +98,18 @@ func replyDeadline() : ?Nat
 Returns the time (in nanoseconds from the epoch start) by when the update message should
 reply to the best effort message so that it can be received by the requesting canister.
 Queries and unbounded-time update messages return null.
+
+## Function `subnet`
+``` motoko no-repl
+func subnet() : Principal
+```
+
+Returns the subnet's principal for the running actor.
+Note: Due to canister migration the hosting subnet can vary with time.
+
+Example:
+```motoko no-repl
+import IC "mo:base/ExperimentalInternetComputer";
+
+let subnetPrincipal = IC.subnet();
+```

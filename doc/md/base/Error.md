@@ -39,9 +39,9 @@ type ErrorCode = {
 };
 ```
 
-## Value `reject`
+## Function `reject`
 ``` motoko no-repl
-let reject : (message : Text) -> Error
+func reject(message : Text) : Error
 ```
 
 Create an error from the message with the code `#canister_reject`.
@@ -53,9 +53,9 @@ import Error "mo:base/Error";
 Error.reject("Example error") // can be used as throw argument
 ```
 
-## Value `code`
+## Function `code`
 ``` motoko no-repl
-let code : (error : Error) -> ErrorCode
+func code(error : Error) : ErrorCode
 ```
 
 Returns the code of an error.
@@ -68,9 +68,9 @@ let error = Error.reject("Example error");
 Error.code(error) // #canister_reject
 ```
 
-## Value `message`
+## Function `message`
 ``` motoko no-repl
-let message : (error : Error) -> Text
+func message(error : Error) : Text
 ```
 
 Returns the message of an error.
