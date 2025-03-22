@@ -91,7 +91,7 @@ let primE prim es =
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
     | ICStableWrite _ -> T.unit
-    | ICStableRead t -> t
+    | ICStableRead (b, t) -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableSize _ -> T.nat64

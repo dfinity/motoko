@@ -1130,7 +1130,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I64Type; I64Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
-    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
     E.add_func_import env "rts" "has_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
@@ -1271,7 +1271,7 @@ module RTS = struct
     E.add_func_import env "rts" "is_graph_stabilization_started" [] [I32Type];
     E.add_func_import env "rts" "start_graph_stabilization" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_stabilization_increment" [] [I32Type];
-    E.add_func_import env "rts" "start_graph_destabilization" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "start_graph_destabilization" [I64Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
@@ -8728,8 +8728,9 @@ module EnhancedOrthogonalPersistence = struct
     Blob.lit env Tagged.B candid_type_desc ^^
     Blob.lit env Tagged.B serialized_offsets
 
-  let register_stable_type env actor_type =
+  let register_stable_type env in_migration actor_type =
     create_type_descriptor env actor_type ^^
+    Bool.lit_rts_int32 in_migration ^^
     E.call_import env "rts" "register_stable_type"
 
   let assign_stable_type env actor_type =
@@ -8781,8 +8782,8 @@ module EnhancedOrthogonalPersistence = struct
     NewStableMemory.backup env ^^
     UpgradeStatistics.set_instructions env
 
-  let load env actor_type =
-    register_stable_type env actor_type ^^
+  let load env in_migration actor_type =
+    register_stable_type env in_migration actor_type ^^
     load_stable_actor env ^^
     compile_test I64Op.Eqz ^^
     (E.if1 I64Type
@@ -8810,7 +8811,8 @@ module GraphCopyStabilization = struct
     E.call_import env "rts" "graph_stabilization_increment" ^^ Bool.from_rts_int32
 
   let start_graph_destabilization env actor_type =
-    EnhancedOrthogonalPersistence.create_type_descriptor env actor_type ^^
+    EnhancedOrthogonalPersistence.create_type_descriptor env actor_type.Ir.pre ^^
+    Bool.lit_rts_int32 actor_type.Ir.is_migration ^^
     E.call_import env "rts" "start_graph_destabilization"
 
   let graph_destabilization_increment env =
@@ -10025,7 +10027,7 @@ module IncrementalGraphStabilization = struct
   let partial_destabilization_on_upgrade env actor_type =
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type.Ir.pre ^^
+    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
@@ -10134,23 +10136,23 @@ module Persistence = struct
         Lifecycle.trans env Lifecycle.Idle
       end
 
-  let load env actor_type =
+  let load env in_migration actor_type =
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
-      (EnhancedOrthogonalPersistence.load env actor_type)
+      (EnhancedOrthogonalPersistence.load env in_migration actor_type)
       begin
         use_graph_destabilization env ^^
         E.if1 I64Type
           begin
             IncrementalGraphStabilization.load env ^^
             NewStableMemory.upgrade_version_from_graph_stabilization env ^^
-            EnhancedOrthogonalPersistence.initialize env actor_type 
+            EnhancedOrthogonalPersistence.initialize env in_migration actor_type
           end
           begin
             use_candid_destabilization env ^^
             E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
             OldStabilization.load env actor_type (NewStableMemory.upgrade_version_from_candid env) ^^
-            EnhancedOrthogonalPersistence.initialize env actor_type
+            EnhancedOrthogonalPersistence.initialize env in_migration actor_type
           end
       end) ^^
     StableMem.region_init env
@@ -12328,9 +12330,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICReplyDeadlinePrim, [] ->
     SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
-  | ICStableRead ty, [] ->
+  | ICStableRead (in_migration, ty), [] ->
     SR.Vanilla,
-    Persistence.load env ty
+    Persistence.load env in_migration ty
   | ICStableWrite ty, [] ->
     SR.unit,
     Persistence.save env ty

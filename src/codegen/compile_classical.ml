@@ -12203,7 +12203,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICReplyDeadlinePrim, [] ->
     SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
-  | ICStableRead ty, [] ->
+  | ICStableRead (_in_migration, ty), [] ->
     (*
       * On initial install:
         1. return record of nulls

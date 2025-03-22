@@ -274,6 +274,8 @@ type stab_sig =
 val pre : stab_sig -> field list
 val post : stab_sig -> field list
 
+val is_migration : stab_sig -> bool
+
 val match_stab_sig : stab_sig -> stab_sig -> bool
 
 val string_of_stab_sig : stab_sig -> string

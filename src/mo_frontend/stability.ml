@@ -21,10 +21,26 @@ let warning_discard s tf =
         tf.lab
         display_typ tf.typ))
 
-let error_sub s tf1 tf2 =
+let error_discard s tf =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0215" cat
+      (Format.asprintf "stable variable %s of previous type%a\n implicitly discarded in migration."
+        tf.lab
+        display_typ tf.typ))
+
+let error_non_sub s tf1 tf2 =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
       (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a"
+        tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ))
+
+
+let error_non_eq s tf1 tf2 =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0216" cat
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be migrated at non-equal type%a"
         tf1.lab
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
@@ -43,24 +59,30 @@ let error_sub s tf1 tf2 =
 let match_stab_sig sig1 sig2 : unit Diag.result =
   let tfs1 = post sig1 in
   let tfs2 = pre sig2 in
+  let is_migration = Type.is_migration sig2 in
+  let (rel, error_non_rel, report_discard) =
+    if is_migration then
+      (Type.eq, error_non_eq, error_discard)
+    else
+      (Type.sub, error_non_sub, warning_discard) in
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
         Some () (* no or additional fields ok *)
       | tf1 :: tfs1', [] ->
-        (* dropped field is allowed with warning, recurse on tfs1' *)
-        warning_discard s tf1;
+        (* dropped field, report, recurse on tfs1' *)
+        report_discard s tf1;
         go tfs1' []
       | tf1::tfs1', tf2::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-            if not (sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-              error_sub s tf1 tf2;
+            (if not (rel (as_immut tf1.typ) (as_immut tf2.typ)) then
+              error_non_rel s tf1 tf2);
             go tfs1' tfs2'
          | -1 ->
-           (* dropped field is allowed with warning, recurse on tfs1' *)
-           warning_discard s tf1;
+           (* dropped field, report and recurse on tfs1' *)
+           report_discard s tf1;
            go tfs1' tfs2
          | _ ->
            go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
