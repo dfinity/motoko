@@ -26,7 +26,7 @@ let suggest_id desc id ids =
     let distance = Lib.String.levenshtein_distance id in
     let weighted_ids = List.filter_map (fun id0 ->
       let d = distance id0 in
-      if Lib.String.starts_with id id0 || d <= limit then
+      if String.starts_with ~prefix:id id0 || d <= limit then
         Some (d, id0)
       else None) ids in
     List.sort compare weighted_ids |> List.map snd
@@ -48,8 +48,8 @@ let search_obj desc path ty ty1 ty2 =
       List.iter (fun {lab;typ;_} ->
         match normalize typ with
         | Func _ when
-          (Lib.String.starts_with "to" lab ||
-           Lib.String.starts_with "from" lab) &&
+          (String.starts_with ~prefix:"to" lab ||
+           String.starts_with ~prefix:"from" lab) &&
            sub typ (Func(Local, Returns,  [], [ty1], [ty2])) ->
           suggestions := Printf.sprintf "`%s.%s(_)`%s" path lab desc :: !suggestions
         | Obj(_, tfs) as ty1  ->
@@ -66,7 +66,7 @@ let suggest_conversion libs vals ty1 ty2 =
   | Prim p1, Prim p2 ->
     let suggestions = ref [] in
     Env.iter (fun filename ty ->
-      if Lib.String.starts_with "@" filename
+      if String.starts_with ~prefix:"@" filename
       then () (* skip prim etc *)
       else
       let imported_name =

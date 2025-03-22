@@ -128,6 +128,26 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
+  let extract_typ_item (id_opt, typ) =
+    {
+      name = (match id_opt with Some id -> id.it | _ -> "_");
+      typ = Some typ;
+      doc = None;
+    }
+
+  let extract_ty_args = function
+    | { it = Syntax.ParT arg; _ } ->
+        [ { name = "_"; typ = Some arg; doc = None } ]
+    | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
+        [ { name; typ = Some arg; doc = None } ]
+    | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
+    | typ -> [ { name = "_"; typ = Some typ; doc = None } ]
+
+  let is_func_ty ty =
+    match ty.it with
+    | Syntax.FuncT (_, ty_args, dom, cod) -> Some (ty_args, dom, cod)
+    | _ -> None
+
   let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
       =
    fun sort exp name ->
@@ -135,6 +155,12 @@ struct
     | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
+    | Syntax.AnnotE (e, ty) when is_func_ty ty <> None -> (
+        match is_func_ty ty with
+        | Some (type_args, args, res) ->
+            Function
+              { name; typ = Some res; type_args; args = extract_ty_args args }
+        | _ -> assert false)
     | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }
     | _ -> Value { sort; name; typ = None }
 

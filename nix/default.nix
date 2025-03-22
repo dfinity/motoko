@@ -38,7 +38,7 @@ let
 
         # Selecting the ocaml version
         # Also update ocaml-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_13; })
 
         (self: super: {
             # Additional ocaml package
@@ -66,9 +66,9 @@ let
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
-              # downgrade wasm until we have support for 2.0.0
+              # downgrade wasm until we have support for 2.0.1
               # (https://github.com/dfinity/motoko/pull/3364)
-              wasm = super.ocamlPackages.wasm.overrideAttrs rec {
+              wasm_1 = super.ocamlPackages.wasm.overrideAttrs rec {
                 version = "1.1.1";
                 src = self.fetchFromGitHub {
                   owner = "WebAssembly";
@@ -76,6 +76,10 @@ let
                   rev = "opam-${version}";
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
+                patchPhase = ''
+                  substituteInPlace ./interpreter/Makefile \
+                    --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
+                '';
               };
 
               # No testing of atdgen, as it pulls in python stuff, tricky on musl
