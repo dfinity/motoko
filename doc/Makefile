@@ -1,5 +1,6 @@
 all: overview-slides.html html
 
+RELEASE=0.14.0
 SHELL=bash
 OUT=md
 
@@ -26,14 +27,22 @@ html:
 	for f in md/*/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
 
+# for building inside nix using a locally built interpreter
 preview:
 	make -C ../src moc_interpreter.js
 	cp -f ../src/moc_interpreter.js docusaurus/static
-	cd docusaurus; npm install; npm start
+	cd docusaurus; npm install; npm run clear; npm start
 
+# for building outside nix using a downloaded interpreter
+doc:
+
+	rm -f docusaurus/static/moc_interpreter.js
+	wget -O docusaurus/static/moc_interpreter.js https://github.com/dfinity/motoko/releases/download/$(RELEASE)/moc-interpreter-$(RELEASE).js
+	cd docusaurus; npm install; npm run clear; npm start
 
 .PHONY: base
 .PHONY: md
 .PHONY: html
 .PHONY: preview
+.PHONY: doc
 

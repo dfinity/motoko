@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Stable memory
 
-## Overview
+
 
 The [`Region` library](stable-regions.md) can be used to interact with stable memory on ICP.
 
@@ -21,6 +21,8 @@ New applications should use the `Region` library: it offers additional isolation
 - [`memory-buffer`](https://mops.one/memory-buffer): Persistent buffer implementation.
 
 - [`memory-hashtable`](https://mops.one/memory-hashtable): A library for storing, updating, deleting, and retrieving a single blob-value per key.
+
+- [`StableTrie`](https://mops.one/stable-trie): A key-value map data structure that has its main data living permanently in stable memory using Regions.
 
 ## Samples
 

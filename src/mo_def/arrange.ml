@@ -9,12 +9,14 @@ module type Config = sig
   val include_sources : bool
   val include_types : bool
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
+  val include_parenthetical : bool
   val main_file : string option
 end
 
 module Default = struct
   let include_sources = false
   let include_types = false
+  let include_parenthetical = true (* false for vscode *)
   let include_docs = None
   let main_file = None
 end
@@ -23,6 +25,7 @@ module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
 
 module Make (Cfg : Config) = struct
+
   let ($$) head inner = Node (head, inner)
 
   let pos p =
@@ -69,7 +72,9 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, nt, dfs) -> "ObjBlockE" $$ [obj_sort s;
+    | ObjBlockE (eo, s, nt, dfs) -> "ObjBlockE" $$
+                                               parenthetical eo
+                                               [obj_sort s;
                                                 match nt with
                                                 | None, None -> Atom "_"
                                                 | None, Some t -> typ t
@@ -93,7 +98,7 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
+    | CallE (par_opt, e1, ts, e2) -> "CallE" $$ parenthetical par_opt ([exp e1] @ inst ts @ [exp e2])
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -110,8 +115,9 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
-    | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
+    | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
     | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
     | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
@@ -181,6 +187,13 @@ module Make (Cfg : Config) = struct
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
   and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+
+  (* conditionally include parenthetical to avoid breaking lsp *)
+  and parenthetical eo sexps =
+    if Cfg.include_parenthetical then
+      (match eo with None -> Atom "_" | Some e -> exp e) ::
+      sexps
+    else sexps
 
   and obj_sort s = match s.it with
     | Type.Object -> Atom "Object"
@@ -267,12 +280,15 @@ module Make (Cfg : Config) = struct
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-    | ClassD (sp, x, tp, p, rt, s, i', dfs) ->
-      "ClassD" $$ shared_pat sp :: id x :: List.map typ_bind tp @ [
+    | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
+      "ClassD" $$
+        parenthetical eo
+        (shared_pat sp :: id x :: List.map typ_bind tp @ [
         pat p;
         (match rt with None -> Atom "_" | Some t -> typ t);
-        obj_sort s; id i'
-      ] @ List.map dec_field dfs))
+        obj_sort s;
+        id i
+      ] @ List.map dec_field dfs)))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

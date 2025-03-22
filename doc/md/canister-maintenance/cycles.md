@@ -5,19 +5,22 @@ sidebar_position: 1
 
 # Cycles
 
-## Overview
 
-Usage of a canister's resources on ICP is measured and paid for in [cycles](/docs/current/developer-docs/defi/cycles/converting_icp_tokens_into_cycles).
+
+Usage of a canister's resources on ICP is measured and paid for in [cycles](https://internetcomputer.org/docs/current/developer-docs/defi/cycles/converting_icp_tokens_into_cycles).
 
 In Motoko programs deployed on ICP, each actor represents a canister and has an associated balance of cycles. The ownership of cycles can be transferred between actors. Cycles are selectively sent and received through shared function calls. A caller can choose to transfer cycles with a call, and a callee can choose to accept cycles that are made available by the caller. Unless explicitly instructed, no cycles are transferred by callers or accepted by callees.
 
 Callees can accept all, some, or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller without loss.
 
-In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base/ExperimentalCycles.md) library in package `base`.
+Motoko is adopting dedicated syntax and types to support safer programming with cycles. Users can now attach `(where cycles = <amount>)` as a prefix to message sends and async expressions.
+This new syntax will eventually obsolete the use of `ExperimentalCycles.add<system>(cycles)` in the examples that follow.
+
+For now (and until officially deprecating it), we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base/ExperimentalCycles.md) library in package `base`.
 
 :::note
 
-This library is subject to change and likely to be replaced by more high-level support for cycles in later versions of Motoko.
+This library is subject to change and likely to be replaced by more high-level support for cycles in later versions of Motoko. See [Async data](../writing-motoko/async-data.md) for further usage information about parentheticals (such as attaching cycles) on message sends.
 
 :::
 

@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Sample projects and resources
 
-## Overview
+
 
 Want to get started building with Motoko? Check out some of these sample projects and Motoko resources to help you get started.
 

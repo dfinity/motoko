@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Control flow
 
-## Overview
+
 
 There are two key categories of control flow:
 
@@ -133,7 +133,7 @@ let carsInStock = [
   ("Audi", 2020, 34.900)
 ];
 var inventory : { var value : Float } = { var value = 0.0 };
-for ((model, year, price) in carsInStock.vals()) {
+for ((model, year, price) in carsInStock.values()) {
   inventory.value += price;
 };
 inventory

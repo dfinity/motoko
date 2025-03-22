@@ -16,6 +16,7 @@ actor Composites {
    };
 
    public composite query func cq1() : async () {
+      assert 0 : Nat64 == Prim.replyDeadline();
    };
 
    public composite query func cq2() : async () {

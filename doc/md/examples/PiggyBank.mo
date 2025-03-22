@@ -1,11 +1,11 @@
 import Cycles "mo:base/ExperimentalCycles";
 
-shared(msg) actor class PiggyBank(
+shared(msg) persistent actor class PiggyBank(
   benefit : shared () -> async (),
   capacity: Nat
   ) {
 
-  let owner = msg.caller;
+  transient let owner = msg.caller;
 
   var savings = 0;
 
@@ -29,8 +29,7 @@ shared(msg) actor class PiggyBank(
     : async () {
     assert (msg.caller == owner);
     assert (amount <= savings);
-    Cycles.add<system>(amount);
-    await benefit();
+    await (with cyles = amount) benefit();
     let refund = Cycles.refunded();
     savings -= amount - refund;
   };

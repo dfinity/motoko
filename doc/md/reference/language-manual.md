@@ -31,7 +31,7 @@ sidebar_position: 1
 * [ ] Re-section so headings appear in content outline
 -->
 
-## Overview
+
 
 This reference page provides technical details of interest to the following audiences:
 
@@ -92,9 +92,9 @@ The following keywords are reserved and may not be used as identifiers:
 
 actor and assert async async* await await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in module not null object or label
+from_candid func if ignore import in module not null persistent object or label
 let loop private public query return shared stable switch system throw
-to_candid true try type var while with
+to_candid true transient try type var while with
 ```
 
 ### Identifiers
@@ -360,7 +360,7 @@ The syntax of an **import** `<imp>` is as follows:
 <url> ::=
   "<filepath>"                      Import module from relative <filepath>.mo
   "mo:<package-name>/<filepath>"    Import module from package
-  "canister:<canisterid>"           Import external actor by <canisterid>
+  "ic:<canisterid>"                 Import external actor by <canisterid>
   "canister:<name>"                 Import external actor by <name>
 ```
 
@@ -377,7 +377,7 @@ The syntax of a **library** that can be referenced in an import is as follows:
 ``` bnf
 <lib> ::=                                               Library
   <imp>;* module <id>? (: <typ>)? =? <obj-body>           Module
-  <imp>;* <shared-pat>? actor class                       Actor class
+  <imp>;* <shared-pat>? actor <migration>? class          Actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
 ```
 
@@ -399,14 +399,14 @@ The syntax of a declaration is as follows:
 
 ``` bnf
 <dec> ::=                                                               Declaration
-  <exp>                                                                 Expression
-  let <pat> = <exp>                                                      Immutable, trap on match failure
-  let <pat> = <exp> else <block-or-exp>                                  Immutable, handle match failure
-  var <id> (: <typ>)? = <exp>                                            Mutable
-  <sort> <id>? (: <typ>)? =? <obj-body>                                  Object
-  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       Function
-  type <id> <type-typ-params>? = <typ>                                   Type
-  <shared-pat>? <sort>? class                                            Class
+  <exp>                                                                   Expression
+  let <pat> = <exp>                                                       Immutable, trap on match failure
+  let <pat> = <exp> else <block-or-exp>                                   Immutable, handle match failure
+  var <id> (: <typ>)? = <exp>                                             Mutable
+  <parenthetical>? <sort> <id>? (: <typ>)? =? <obj-body>                  Object
+  <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>        Function
+  type <id> <type-typ-params>? = <typ>                                    Type
+  <parenthetical>? <shared-pat>? <sort>? class                            Class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
 <obj-body> ::=           Object body
@@ -415,6 +415,14 @@ The syntax of a declaration is as follows:
 <class-body> ::=         Class body
   = <id>? <obj-body>      Object body, optionally binding <id> to 'this' instance
   <obj-body>              Object body
+
+<sort> ::=
+   persistent? actor
+   module
+   object
+
+<parenthetical> ::=       Parenthetical expression
+  ( <exp>? with <exp-field>;* )   Parenthetical combination/extension
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -441,6 +449,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
 <stab> ::=                                     field stability (actor only)
   stable
   flexible
+  transient                                      (equivalent to flexible)
 ```
 
 The **visibility** qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
@@ -457,7 +466,10 @@ The **visibility** qualifier `<vis>?` determines the accessibility of every fiel
 
 The **stability** qualifier `<stab>` determines the **upgrade** behavior of actor fields:
 
--   A stability qualifier should appear on `let` and `var` declarations that are actor fields. An absent stability qualifier defaults to `flexible`.
+-   A stability qualifier should appear on `let` and `var` declarations that are actor fields.
+    Within a `persistent` actor or actor class, an absent stability qualifier defaults to `stable`.
+    Within a non-`persistent` actor or actor class, an absent stability qualifier defaults to `flexible` (or `transient`).
+    The keywords `transient` and `flexible` are interchangeable.
 
 -   `<stab>` qualifiers must not appear on fields of objects or modules.
 
@@ -495,7 +507,7 @@ The syntax of an expression is as follows:
   [ var? <exp>,* ]                               Array
   <exp> [ <exp> ]                                Array indexing
   <shared-pat>? func <func_exp>                  Function expression
-  <exp> <typ-args>? <exp>                        Function call
+  <parenthetical>? <exp> <typ-args>? <exp>       Function call
   not <exp>                                      Negation
   <exp> and <exp>                                Conjunction
   <exp> or <exp>                                 Disjunction
@@ -508,7 +520,7 @@ The syntax of an expression is as follows:
   break <id> <exp>?                              Break
   continue <id>                                  Continue
   return <exp>?                                  Return
-  async <block-or-exp>                           Async expression
+  <parenthetical>? async <block-or-exp>          Async expression
   await <block-or-exp>                           Await future (only in async)
   async* <block-or-exp>                          Delay an asynchronous computation
   await* <block-or-exp>                          Await a delayed computation (only in async)
@@ -567,7 +579,7 @@ Type expressions are used to specify the types of arguments, constraints on type
 ``` bnf
 <typ> ::=                                     Type expressions
   <path> <type-typ-args>?                       Constructor
-  <sort>? { <typ-field>;* }                     Object
+  <typ-sort>? { <typ-field>;* }                 Object
   { <typ-tag>;* }                               Variant
   { # }                                         Empty variant
   [ var? <typ> ]                                Array
@@ -584,7 +596,8 @@ Type expressions are used to specify the types of arguments, constraints on type
   Error                                         Errors/exceptions
   ( <typ> )                                     Parenthesized type
 
-<sort> ::= (actor | module | object)
+
+<typ-sort> ::= (actor | module | object)
 
 <shared> ::=                                 Shared function type qualifier
   shared <query>?
@@ -703,7 +716,7 @@ The corresponding module in the base library provides conversion functions:
 
 ### Type [`Blob`](../base/Blob.md)
 
-The type [`Blob`](../base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size` returns the number of characters in [`Blob`](../base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.vals` as in `for (v : Nat8 in b.vals()) { …​ v …​ }`.
+The type [`Blob`](../base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size()` returns the number of characters in [`Blob`](../base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.values()` as in `for (v : Nat8 in b.values()) { …​ v …​ }`.
 
 ### Type [`Principal`](../base/Principal.md)
 
@@ -733,6 +746,8 @@ type ErrorCode = {
   #system_fatal;
   // Transient error.
   #system_transient;
+  // Response unknown due to missed deadline.
+  #system_unknown;
   // Destination invalid.
   #destination_invalid;
   // Explicit reject by canister code.
@@ -785,13 +800,13 @@ Though typically a type identifier, more generally, `<path>` may be a `.`-separa
 
 ### Object types
 
-`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named **type fields**.
+`<typ-sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named **type fields**.
 
 Within an object type, the names of fields must be distinct both by name and hash value.
 
 Object types that differ only in the ordering of the fields are equivalent.
 
-When `<sort>?` is `actor`, all fields have `shared` function type for specifying messages.
+When `<typ-sort>?` is `actor`, all fields have `shared` function type for specifying messages.
 
 ### Variant types
 
@@ -1041,9 +1056,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 -   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `<sort0> { fts0 }`, `U` is an object type `<sort1> { fts1 }` and
+-   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
 
-    -   `<sort0>` == `<sort1>`, and, for all fields,
+    -   `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
 
     -   If field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
@@ -1303,15 +1318,21 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 
 An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
 
+In a `persistent` actor or actor class, all declarations are implicitly `stable` unless explicitly declared otherwise.
+In a non-`persistent` actor or actor class, all declarations are implicitly `transient` (equivalently `flexible`) unless explicitly declared otherwise.
+
 The declaration field has type `T` provided:
 
 -   `<dec>` has type `T`.
 
--   If `<stab>?` is `stable` then `T` must be a stable type (see [stability](#stability)).
+-   If `<stab>?` is `stable`  then `T` must be a stable type (see [stability](#stability)).
 
-Actor fields declared `flexible`, implicitly or explicitly, can have any type, but will not be preserved across upgrades.
+-   If `<stab>?` is absent and the actor or actor class is `persistent`, then `T` must be a stable type (see [stability](#stability)).
 
-Sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
+Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
+
+
+In the absence of any `<parenthetical>?` migration expression, sequences of declaration fields are evaluated in order by evaluating their constituent declarations, with the following exception:
 
   - During an upgrade only, the value of a `stable` declaration is obtained as follows:
 
@@ -1323,7 +1344,59 @@ Sequences of declaration fields are evaluated in order by evaluating their const
 
     - Every stable identifier declared with type `T` in the retired actor and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
 
-This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor. Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
+Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+
+#### Migration expressions
+
+Actors and actor class declaration may specify a migration expression, using an optional, leading `<parenthetical>` expression with a required field named `migration`.
+The value of this field, a function, is applied to the stable variables of an upgraded actor, before initializing any stable fields of the declared actor.
+
+The parenthetical expression must satisfy the following conditions:
+
+* It must be static, that is, have no immediate side effects.
+* Its `migration` field must be present and have a non-shared function type whose domain and codomain are both record types.
+* The domain and the codomain must both be stable.
+* Any field in the codomain must be declared as a stable field in the actor body.
+* The content type of the codomain field must be a subtype of the content type of the actor's stable field.
+
+The migration expression only affects upgrades of the actor and is otherwise ignored during fresh installation of the actor.
+
+On upgrade, the domain of the migration function is used to construct a record of values containing the current contents of the corresponding stable fields
+of the retired actor. If one of the fields is absent, the upgrade traps and is aborted.
+
+Otherwise, we obtain an input record of stable values of the appropriate type.
+
+The migration function is applied to the input record. If the application traps, the upgrade is aborted.
+
+Otherwise, the application produces an output record of stable values whose type is the codomain.
+
+The actor's declarations are evaluated in order by evaluating each declaration as usual except that
+the value of a `stable` declaration is obtained as follows:
+
+- If the stable declaration is present in the codomain, its initial value is obtained from the output record.
+
+- Otherwise, if the stable declaration is not present in the domain and is declared stable in the retired actor,
+  then its initial value is obtained from the retired actor.
+
+- Otherwise, its value is obtained by evaluating the declaration's initalizer.
+
+Thus a stable variable's initializer is run if the variable is not produced by the migration function and either
+consumed by the migration function (by appearing in its domain) or absent in the retired actor.
+
+For the upgrade to be safe:
+
+- Every stable identifier declared with type `U` in the domain of the migration function
+  must be declared stable for some type `T` in the retired actor, with `T <: U`.
+
+- Every stable identifier declared with type `T` in the retired actor, not present in the domain or codomain,
+  and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
+
+This condition ensures that every stable variable is either discarded or fresh, requiring initialization,
+or that its value can be safely consumed from the output of migration or the retired actor.
+
+The compiler will issue a warning if a migration function appears to be discarding data by consuming a field and not producing it.
+The warnings should be carefully considered to verify any data loss is intentional and not accidental.
 
 #### System fields
 
@@ -1349,8 +1422,11 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 -   `postupgrade`: When declared, is called during an upgrade, immediately after the replacement actor body has initialized its fields, inheriting values of the retired actors' stable variables, and before its first message is processed. Its `<system>` type parameter is implicitly assumed and need not be declared.
 
 :::danger
-Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable. In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded. 
+
+Using the pre- and post-upgrade system methods is discouraged. It is error-prone and can render a canister unusable.
+In particular, if a `preupgrade` method traps and cannot be prevented from trapping by other means, then your canister may be left in a state in which it can no longer be upgraded.
 Per best practices, using these methods should be avoided if possible.
+
 :::
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures, e.g. caches, that are better represented using non-stable types.
@@ -1454,7 +1530,7 @@ Object patterns support punning for concision. A punned field `<id>` is shorthan
 
 Pattern matching fails if one of the pattern fields fails to match the corresponding field value of the object value. Pattern matching succeeds if every pattern field matches the corresponding named field of the object value. The binding returned by a successful match is the union of the bindings returned by the field matches.
 
-The `<sort>` of the matched object type must be determined by an enclosing type annotation or other contextual type information.
+The `<typ-sort>` of the matched object type must be determined by an enclosing type annotation or other contextual type information.
 
 ### Variant pattern
 
@@ -1640,11 +1716,12 @@ A similar looking definition that recursively instantiates `Seq` with a larger t
 
 Declaration `<sort> <id>? (: <typ>)? =? <obj-body>`, where `<obj-body>` is of the form `{ <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
-The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object’s type. The sort imposes restrictions on the types of the public object fields.
+The qualifier `<sort>` (one of `persistent? actor <migration>?`, `module` or `object`) specifies the `<typ-sort>` of the object’s type (`actor`, `module` or `object`, respectively).
+The sort imposes restrictions on the types of the public object fields.
 
-Let `T = <sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type of the object. Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`. The object declaration has type `T` provided that:
+Let `T = <typ-sort> { [var0] id0 : T0, …​ , [varn] idn : T0 }` denote the type of the object. Let `<dec>;*` be the sequence of declarations embedded in `<dec-field>;*`. The object declaration has type `T` provided that:
 
-1.  Type `T` is well-formed for sort `sort`, and
+1.  Type `T` is well-formed for sort `<typ-sort>`, and
 
 2.  Under the assumption that `<id> : T`,
 
@@ -1662,7 +1739,7 @@ Note that the first requirement imposes further constraints on the field types o
 
 Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context, i.e. in the body of a non-`<query>` `shared` function, `async` expression or `async*` expression.
 
-Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>`, if present, to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
+Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>`, if present, to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == <typ-sort> { <id0> = v1, …​, <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
@@ -1769,7 +1846,7 @@ The class declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (: 
 
 where:
 
--   `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
+-   `<shared-pat>?`, when present, requires `<sort>` == `persistent? actor`, and provides access to the `caller` of an `actor` constructor, and
 
 -   `<typ-args>?` and `<type-typ-params>?` is the sequence of type identifiers bound by `<typ-params>?`, if any, and
 
@@ -1779,13 +1856,13 @@ where:
 
 -   `<id_this>?` is the optional **this** or **self** parameter of `<class-body>`.
 
--   `async?` is present, if only if, `<sort>` == `actor`.
+-   `async?` is present, if only if, `<sort>` == `persistent? actor`.
 
 Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a constructor, unlike a function, cannot be a `query` or `composite query`.
 
-An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
+An absent `<shared-pat>?` defaults to `shared` when `<sort>` = `persistent? actor`.
 
-If `sort` is `actor`, then:
+If `sort` is `persistent? actor`, then:
 
 -   `<typ-args>?` must be absent or empty, such that `actor` classes cannot have type parameters.
 
@@ -1793,7 +1870,7 @@ If `sort` is `actor`, then:
 
 -   `(: <typ>)?`, if present, must be of the form `: async T` for some actor type `T`. Actor instantiation is asynchronous.
 
-If `(: <typ>)` is present, then the type `<async?> <sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`. In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`.
+If `(: <typ>)` is present, then the type `<async?> <typ-sort> {  <typ_field>;* }` must be a subtype of the annotation `<typ>`. In particular, the annotation is used only to check, but not affect, the inferred type of function `<id>`. `<typ-sort>` is just `<sort>` erasing any `persistent?` modifier.
 
 The class declaration has the same type as function `<id>` and evaluates to the function value `<id>`.
 
@@ -2113,7 +2190,7 @@ Otherwise,
 
 ### Function calls
 
-The function call expression `<exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
+The function call expression `<parenthetical>? <exp1> <T0,…​,Tn>? <exp2>` has type `T` provided:
 
 -   The function `<exp1>` has function type `<shared>? < X0 <: V0, ..., Xn <: Vn > U1-> U2`.
 
@@ -2130,6 +2207,10 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
 Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](../base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+
+A `<parenthetical>`, when present, modifies dynamic attributes of the message send (provided that the return type `T` is of form `async U`, i.e. a future). The recognized attributes are
+- `cycles : Nat` to attach cycles
+- `timeout : Nat32` to introduce a timeout for best-effort message execution.
 
 :::note
 
@@ -2340,7 +2421,7 @@ In particular, the `for` loop will trap if evaluation of `<exp1>` traps; as soon
 
 :::note
 
-Although general purpose, `for` loops are commonly used to consume iterators produced by [special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.vals()`) of some array, `a`.
+Although general purpose, `for` loops are commonly used to consume iterators produced by [special member access](#special-member-access) to, for example, loop over the indices (`a.keys()`) or values (`a.values()`) of some array, `a`.
 
 :::
 
@@ -2396,14 +2477,14 @@ The expression `return <exp>` has type `None` provided:
 
    -  `T` is the return type of the nearest enclosing function with no intervening `async` expression.
 
-   -  `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration. 
+   -  `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration.
 
 
 The `return` expression exits the corresponding dynamic function invocation or completes the corresponding dynamic `async` or `async*` expression with the result of `<exp>`.
 
 ### Async
 
-The async expression `async <block-or-exp>` has type `async T` provided:
+The async expression `<parenthetical>? async <block-or-exp>` has type `async T` provided:
 
 -   `<block-or-exp>` has type `T`.
 
@@ -2414,6 +2495,10 @@ Any control-flow label in scope for `async <block-or-exp>` is not in scope for `
 The implicit return type in `<block-or-exp>` is `T`. That is, the return expression, `<exp0>`, implicit or explicit, to any enclosed `return <exp0>?` expression, must have type `T`.
 
 Evaluation of `async <block-or-exp>` queues a message to evaluate `<block-or-exp>` in the nearest enclosing or top-level actor. It immediately returns a future of type `async T` that can be used to `await` the result of the pending evaluation of `<exp>`.
+
+The presence of `<parenthetical>` modifies the semantics of the async expression to
+- attach cycles with attribute `cycles : Nat`
+- impose a timeout (observed when awaiting the result) with attribute `timeout : Nat32`.
 
 :::note
 

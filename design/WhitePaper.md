@@ -300,7 +300,7 @@ This extension is easy to implement for type definitions, but much more involved
 On the plus side, the same mechanism can then be used to express any abstractions over shared types. For example, it would be possible to use equality over generic types:
 ```
 func contained<shared A>(x : A, ys : [A]) : Bool {
-  for (y in ys.vals()) { if (x == y) return true };
+  for (y in ys.values()) { if (x == y) return true };
   return false;
 }
 ```

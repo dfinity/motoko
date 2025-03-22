@@ -83,7 +83,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
-    pkgs.ocamlPackages.wasm
+    pkgs.ocamlPackages.wasm_1
     pkgs.ocamlPackages.vlq
     pkgs.ocamlPackages.zarith
     pkgs.ocamlPackages.yojson
@@ -832,6 +832,7 @@ EOF
           ocamlPackages.merlin
           ocamlPackages.utop
           ocamlformat
+          ocamlPackages.ocaml-lsp
           fswatch
           niv
           nix-update

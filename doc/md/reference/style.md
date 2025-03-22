@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Motoko style guidelines
 
-## Overview
+
 
 To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
 
@@ -87,7 +87,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
     ``` motoko no-repl
     if (f()) A else B;
-    for (x in xs.vals()) { ... };
+    for (x in xs.values()) { ... };
     switch (compare(x, y)) {
       case (#less) { A };
       case (_) { B };
@@ -624,7 +624,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     ``` motoko no-repl
     func foreach<X>(xs : [X], f : X -> ()) {
-      for (x in xs.vals()) { f(x) }
+      for (x in xs.values()) { f(x) }
     }
     ```
 
@@ -792,7 +792,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     ``` motoko no-repl
     for (i in Iter.range(1, 10)) { ... };
-    for (x in array.vals()) { ... };
+    for (x in array.values()) { ... };
     ```
 
     Rationale: For loops are less error-prone and easier to read.

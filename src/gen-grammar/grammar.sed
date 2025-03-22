@@ -12,7 +12,7 @@ s/<id>/ID/g
 /^<parse_module_header> ::=/,+2d
 /^<stab_field> ::=/,+2d
 /^<typ_dec> ::=/,+2d
-/^<parse_stab_sig> ::=/,+2d
+/^<parse_stab_sig> ::=/,+5d
 /.*PRIM.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d
@@ -51,6 +51,7 @@ s/SHROP/\' >>\'/g
 s/SHRASSIGN/\'>>=\'/g
 s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
+s/TRANSIENT/\'transient\'/g
 s/TRY/\'try\'/g
 s/THROW/\'throw\'/g
 s/FINALLY/\'finally\'/g
@@ -74,6 +75,7 @@ s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
+s/PERSISTENT/\'persistent\'/g
 s/PIPE/\'|>\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g

@@ -112,12 +112,14 @@ let primE prim es =
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
-    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
+    | OtherPrim "global_timer_set" -> T.nat64
+    | OtherPrim "call_perform_status" -> T.nat32
     | OtherPrim "call_perform_message" -> T.text
     | OtherPrim "array_len"
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
-    | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "is_controller"
+    | OtherPrim "replicated_execution" -> T.bool
     | OtherPrim "rts_version" -> T.text
     | OtherPrim "rts_memory_size" -> T.nat
     | OtherPrim "rts_heap_size" -> T.nat
@@ -129,6 +131,7 @@ let primE prim es =
     | OtherPrim "rts_max_stack_size" -> T.nat
     | OtherPrim "rts_callback_table_count" -> T.nat
     | OtherPrim "rts_callback_table_size" -> T.nat
+    | OtherPrim "rts_in_upgrade" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let eff = map_max_effs eff es in
@@ -266,7 +269,13 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.(Prim Nat32) }
+    note = Note.{ def with typ = T.nat32 }
+  }
+
+let nat64E n =
+  { it = LitE (Nat64Lit n);
+    at = no_region;
+    note = Note.{ def with typ = T.nat64 }
   }
 
 let natE n =
@@ -483,6 +492,9 @@ let assignE v exp2 =
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
+
+let assignVarE v exp =
+  assignE (var v T.(Mut (typ exp |> as_immut))) exp
 
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);
@@ -790,7 +802,41 @@ let objE sort typ_flds flds =
   in
   go [] [] [] flds
 
+
 let recordE flds = objE T.Object [] flds
+
+let objectE sort flds (tfs : T.field list) =
+  let rec go ds fields = function
+    | [] ->
+      blockE
+        (List.rev ds)
+        (newObjE sort fields
+          (T.Obj (sort, List.sort T.compare_field tfs)))
+    | (lab, exp)::flds ->
+       let v, typ, ds =
+         match T.lookup_val_field_opt lab tfs with
+         | None -> assert false
+         | Some typ ->
+           if T.is_mut typ
+           then
+             let v = fresh_var lab typ in
+             v, typ, varD v exp :: ds
+           else
+             match exp.it with
+             | VarE (Const, v) ->
+                var v typ, typ, ds
+             | _ ->
+                let v = fresh_var lab typ in
+                v, typ, letD v exp :: ds
+       in
+       let field = {
+         it = {name = lab; var = id_of_var v};
+         at = no_region;
+         note = typ
+       } in
+      go ds (field::fields) flds
+  in
+  go [] [] flds
 
 let check_call_perform_status success mk_failure =
   ifE

@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Basic concepts and terms
 
-## Overview
+
 
 Motoko is designed for distributed programming with **actors**. When programming on ICP in Motoko, each actor represents an ICP canister smart contract with a Candid interface.
 Within Motoko, the term actor is used to refer to any canister authored in any language that deploys to ICP. The role of Motoko is to make these actors easy to author and use programmatically once deployed.

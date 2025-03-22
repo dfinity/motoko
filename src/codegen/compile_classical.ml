@@ -2519,10 +2519,13 @@ module Closure = struct
     Tagged.load_field env (Int32.add (header_size env) i)
 
   let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
+    (if !Flags.gc_strategy = Flags.Incremental then
+       let set_closure_data, get_closure_data = new_local env "closure_data" in
+       set_closure_data ^^
+       Tagged.load_forwarding_pointer env ^^
+       get_closure_data
+     else
+       G.nop) ^^
     Tagged.store_field env (Int32.add (header_size env) i)
 
   let prepare_closure_call env =
@@ -5056,6 +5059,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i32s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
@@ -5064,7 +5068,10 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
+      E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
       E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
+      E.add_func_import env "ic0" "subnet_self_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "subnet_self_size" [] [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
@@ -5086,6 +5093,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
+      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
       E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
       E.add_func_import env "ic0" "trap" (i32s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
@@ -5177,6 +5185,7 @@ module IC = struct
 
   let performance_counter = ic_system_call "performance_counter"
   let is_controller = ic_system_call "is_controller"
+  let replicated_execution = ic_system_call "in_replicated_execution"
   let canister_version = ic_system_call "canister_version"
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
@@ -5276,6 +5285,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_low_memory env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_on_low_wasm_memory"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "low_memory_exp"))) ^^
+        GC.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "canister_on_low_wasm_memory";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -5336,6 +5357,18 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
 
+  let get_subnet_reference env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "canister_subnet" [I32Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size")
+          (fun env -> system_call env "subnet_self_copy")
+          (fun env -> compile_unboxed_const 0l)
+      )
+    | _ ->
+      E.trap_with env "cannot get actor-subnet-reference when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5351,7 +5384,7 @@ module IC = struct
         (fun env -> system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get caller when running locally")
+      E.trap_with env "cannot get caller when running locally"
 
   let method_name env =
     match E.mode env with
@@ -5361,7 +5394,7 @@ module IC = struct
         (fun env -> system_call env "msg_method_name_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
+      E.trap_with env "cannot get method_name when running locally"
 
   let arg_data env =
     match E.mode env with
@@ -5371,7 +5404,14 @@ module IC = struct
         (fun env -> system_call env "msg_arg_data_copy")
         (fun env -> compile_unboxed_const 0l)
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
+      E.trap_with env "cannot get arg_data when running locally"
+
+  let deadline env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "msg_deadline"
+    | _ ->
+      E.trap_with env "cannot get deadline when running locally"
 
   let reject env arg_instrs =
     match E.mode env with
@@ -5381,7 +5421,7 @@ module IC = struct
       Blob.as_ptr_len env ^^
       system_call env "msg_reject"
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reject when running locally")
+      E.trap_with env "cannot reject when running locally"
 
   let error_code env =
      Func.share_code0 Func.Always env "error_code" [I32Type] (fun env ->
@@ -5397,7 +5437,8 @@ module IC = struct
          "system_transient", 2l;
          "destination_invalid", 3l;
          "canister_reject", 4l;
-         "canister_error", 5l]
+         "canister_error", 5l;
+         "system_unknown", 6l]
         (Variant.inject env "future" (get_code ^^ BoxedSmallWord.box env Type.Nat32)))
 
   let error_message env =
@@ -9772,7 +9813,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9840,7 +9881,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         BoxedSmallWord.unbox env Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -11288,7 +11329,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int32.of_int num_bits) ^^
       compile_shrS_const (Int32.of_int num_bits) ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat32) ^^
+      compile_eq env Type.nat32 ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
@@ -11608,6 +11649,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_upgrade", [] -> (* classical specific *)
+    assert (not !Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    StableMem.stable64_size env ^^
+    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+    Bool.neg
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -11739,6 +11787,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     get_principal ^^
     Blob.len env ^^
     IC.is_controller env
+
+  | OtherPrim "replicated_execution", [] ->
+    SR.Vanilla,
+    IC.replicated_execution env
 
   | OtherPrim "canister_version", [] ->
     SR.UnboxedWord64 Type.Nat64,
@@ -12007,7 +12059,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_self_reference env ^^
     IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
-  (* Other prims, binary*)
+  | OtherPrim "canister_subnet", [] ->
+    SR.Vanilla, IC.get_subnet_reference env
+
+  (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
@@ -12095,7 +12150,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       Serialization.serialize env ts ^^
       IC.reply_with_data env
     | _ ->
-      E.trap_with env (Printf.sprintf "cannot reply when running locally")
+      E.trap_with env "cannot reply when running locally"
     end
 
   | ICRejectPrim, [e] ->
@@ -12122,6 +12177,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12143,6 +12199,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICMethodNamePrim, [] ->
     SR.Vanilla, IC.method_name env
+
+  | ICReplyDeadlinePrim, [] ->
+    SR.UnboxedWord64 Type.Nat64, IC.deadline env
 
   | ICStableRead ty, [] ->
     (*
@@ -12176,6 +12235,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12486,7 +12548,7 @@ and compile_lit_pat env l =
   | Nat32Lit _ ->
     BoxedSmallWord.unbox env Type.Nat32 ^^
     compile_lit_as env (SR.UnboxedWord32 Type.Nat32) l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^
@@ -13001,6 +13063,15 @@ and main_actor as_opt mod_env ds fs up =
        Func.define_built_in env "inspect_exp" [] [] (fun env ->
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
+    end;
+
+    (* Export low memory hook (but only when required) *)
+    begin match up.low_memory.it with
+     | Ir.PrimE (Ir.TupPrim, []) -> ()
+     | _ ->
+       Func.define_built_in env "low_memory_exp" [] [] (fun env ->
+         compile_exp_as env ae2 SR.unit up.low_memory);
+       IC.export_low_memory env;
     end;
 
     (* Helper function to build the stable actor wrapper *)

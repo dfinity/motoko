@@ -152,6 +152,7 @@ let js_parse_motoko s =
       let include_sources = true
       let include_types = false
       let include_docs = Some prog.note.Syntax.trivia
+      let include_parenthetical = false
       let main_file = Some main_file
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
@@ -168,6 +169,7 @@ let js_parse_motoko_typed paths =
       let include_sources = true
       let include_types = true
       let include_docs = Some prog.note.Syntax.trivia
+      let include_parenthetical = false
       let main_file = Some prog.at.left.file
     end)
     in object%js

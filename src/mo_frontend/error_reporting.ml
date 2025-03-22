@@ -18,6 +18,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_UNDERSCORE -> UNDERSCORE
       | T_COMPOSITE -> COMPOSITE
       | T_TYPE -> TYPE
+      | T_TRANSIENT -> TRANSIENT
       | T_TRY -> TRY
       | T_THROW -> THROW
       | T_FINALLY -> FINALLY
@@ -45,6 +46,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
+      | T_PERSISTENT -> PERSISTENT
       | T_PRIVATE -> PRIVATE
       | T_PRIM -> PRIM
       | T_POWOP -> POWOP

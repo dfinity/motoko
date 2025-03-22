@@ -2,7 +2,7 @@ import Counters "Counters";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 
-actor CountToTen {
+persistent actor CountToTen {
   public func countToTen() : async () {
     let C : Counters.Counter = await Counters.Counter(1);
     while ((await C.read()) < 10) {

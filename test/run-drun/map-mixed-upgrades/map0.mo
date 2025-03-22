@@ -68,7 +68,7 @@ actor a {
          case null {};
          case (?n) {
            nodes[i] :=
-             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #Keep; canister = n })(i)); // upgrade!
+             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #keep; canister = n })(i)); // upgrade!
          }
        }
     }
@@ -80,7 +80,7 @@ actor a {
          case null {};
          case (?n) {
            nodes[i] :=
-             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #Replace; canister = n })(i)); // upgrade!
+             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #replace; canister = n })(i)); // upgrade!
          }
        }
     }
