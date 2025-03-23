@@ -1279,12 +1279,12 @@ and infer_exp'' env exp : T.typ =
         error_bin_op env exp.at t1 t2;
       if not (eq env exp1.at t t1 || eq env exp2.at t t2) && not (sub env exp1.at T.nat t1 && sub env exp2.at T.nat t2) then
         if eq env exp.at t1 t2 then
-          warn env exp.at "M0061"
+          error env exp.at "M0061"
             "comparing abstract type%a\nto itself at supertype%a"
             display_typ_expand t1
             display_typ_expand t
         else
-          warn env exp.at "M0062"
+          error env exp.at "M0062"
             "comparing incompatible types%a\nand%a\nat common supertype%a"
             display_typ_expand t1
             display_typ_expand t2
