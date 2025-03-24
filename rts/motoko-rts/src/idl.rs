@@ -738,9 +738,8 @@ pub(crate) unsafe fn memory_compatible(
             )
         }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
-        (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
-            variance != TypeVariance::Invariance
-        }
+        (_, IDL_PRIM_reserved) => false, // information loss, return false
+        (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
@@ -842,8 +841,8 @@ pub(crate) unsafe fn memory_compatible(
             true
         }
         (IDL_CON_record, IDL_CON_record) if !main_actor => {
-            // plain object/record subtyping
-            // symmetric to variant case
+            // field preserving object/record subtyping
+            // see stable_sub in type.ml
             let mut n1 = leb128_decode(&mut tb1);
             let n2 = leb128_decode(&mut tb2);
             for _ in 0..n2 {
@@ -858,7 +857,10 @@ pub(crate) unsafe fn memory_compatible(
                     tag1 = leb128_decode(&mut tb1);
                     t11 = sleb128_decode(&mut tb1);
                     n1 -= 1;
-                    if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
+                    if tag1 < tag2 {
+                        return false; // discarded field, return false
+                    }
+                    if variance == TypeVariance::Invariance || !(n1 > 0) {
                         break;
                     }
                 }
@@ -870,7 +872,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            variance != TypeVariance::Invariance || n1 == 0
+            return n1 == 0;
         }
         (IDL_CON_record, IDL_CON_record) if main_actor => {
             // memory compatibility
@@ -890,13 +892,7 @@ pub(crate) unsafe fn memory_compatible(
                 n2 -= 1;
                 while tag1 != tag2 {
                     if tag1 < tag2 {
-                        if n1 > 0 {
-                            tag1 = leb128_decode(&mut tb1);
-                            t11 = sleb128_decode(&mut tb1);
-                            n1 -= 1;
-                            continue;
-                        };
-                        return true;
+                        return false; // discarded field, return false
                     };
                     if tag1 > tag2 {
                         if n2 > 0 {
@@ -913,7 +909,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            return true;
+            return n1 == 0; // return false if any remaining fields discarded
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
