@@ -2701,7 +2701,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt tf.T.lab rng_tfs with
        | None -> ()
        | Some typ ->
-         if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
+         if not (T.stable_sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
            local_error env focus "M0204"
              "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab

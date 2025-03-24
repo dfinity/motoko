@@ -851,21 +851,14 @@ pub(crate) unsafe fn memory_compatible(
                 if n1 == 0 {
                     return false;
                 };
-                let mut tag1: u32;
-                let mut t11: i32;
-                loop {
-                    tag1 = leb128_decode(&mut tb1);
-                    t11 = sleb128_decode(&mut tb1);
-                    n1 -= 1;
-                    if tag1 < tag2 {
-                        return false; // discarded field, return false
-                    }
-                    if variance == TypeVariance::Invariance || !(n1 > 0) {
-                        break;
-                    }
+                let tag1 = leb128_decode(&mut tb1);
+                let t11 = sleb128_decode(&mut tb1);
+                n1 -= 1;
+                if tag1 < tag2 {
+                    return false; // discarded field, return false
                 }
-                if tag1 != tag2 {
-                    return false;
+                if tag1 > tag2 {
+                    return false; // new field, return false
                 };
                 if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
