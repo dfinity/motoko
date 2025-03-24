@@ -594,7 +594,7 @@ func @timer_helper() : async () {
           // not expunged yet
           thunks[gathered] := ?(n.job);
           switch (n.delay) {
-            case (null or ?0) ();
+            case (null or ?0) n.expire[0] := 0;
             case (?delay) {
               // re-add the node, skipping past expirations
               let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
@@ -611,7 +611,6 @@ func @timer_helper() : async () {
               @timers := ?reinsert(@prune(@timers));
             }
           };
-          n.expire[0] := 0;
           gathered += 1;
         };
         gatherExpired(n.post)
