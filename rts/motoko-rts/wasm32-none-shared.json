@@ -18,10 +18,10 @@
   "linker-flavor": "wasm-ld",
   "linker-is-gnu": false,
   "lld-flavor": "wasm",
-  "llvm-target": "wasm32-unknown-shared",
+  "llvm-target": "wasm32-none-shared",
   "max-atomic-width": 64,
   "only-cdylib": true,
-  "os": "unknown",
+  "os": "none",
   "panic-strategy": "abort",
   "pre-link-args": {
     "gcc": [
@@ -31,7 +31,7 @@
       "-Wl,--allow-undefined",
       "-Wl,--fatal-warnings",
       "-Wl,--no-demangle",
-      "--target=wasm32-unknown-shared",
+      "--target=wasm32-none-shared",
       "-Wl,--no-entry",
       "--shared",
       "--experimental-pic"
