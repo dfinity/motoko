@@ -916,14 +916,36 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-let max_depth = 10_000
+module RelArg :
+  sig
+    type arg
+    val default : arg (* ordinary subtyping, with loss of info *)
+    val loss_less : arg (* loss_less subtyping *)
+    val inc_depth : arg -> arg
+    val is_loss_less : arg -> bool
+    val exceeds_max_depth : arg -> bool
+end
+=
+struct
+  let max_depth = 10_000
+  type arg = int
+  let default = 0
+  let loss_less = 1
+  let inc_depth arg =
+    let drop_bit = Int.logand arg 1 in
+    let depth = Int.shift_right arg 1 in
+    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
+  let is_loss_less arg = Int.logand arg 1 = 1
+  let exceeds_max_depth d =
+    Int.shift_right d 1 > max_depth
+end
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ d rel eq t1 t2 =
-  let d = d + 1 in
-  if d > max_depth then raise Undecided else
+  let d = RelArg.inc_depth d in
+  if RelArg.exceeds_max_depth d then raise Undecided else
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
@@ -940,7 +962,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    true
+    not RelArgs.is_lossy d
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
@@ -1010,13 +1032,14 @@ and rel_fields d rel eq tfs1 tfs2 =
   | [], [] ->
     true
   | _, [] when rel != eq ->
-    true
+    not (RelArgs.is_loss_less d)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ d rel eq tf1.typ tf2.typ &&
       rel_fields d rel eq tfs1' tfs2'
     | -1 when rel != eq ->
+      not (RelArgs.is_loss_less d) &&
       rel_fields d rel eq tfs1' tfs2
     | _ -> false
     )
@@ -1053,20 +1076,20 @@ and rel_bind ts d rel eq tb1 tb2 =
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ 0 eq eq t1 t2
+  let eq = ref SS.empty in eq_typ RelArg.default eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ 0 (ref SS.empty) (ref SS.empty) t1 t2
+  rel_typ RelArg.default (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds 0 eq eq tbs1 tbs2 <> None
+  let eq = ref SS.empty in rel_binds RelArg.default eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    (match rel_binds 0 eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ 0 eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds RelArg.default eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ RelArg.default eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
