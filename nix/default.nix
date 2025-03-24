@@ -46,10 +46,10 @@ let
 
               # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs rec {
-                version = "5.2.0";
+                version = "5.1.0";
                 src = self.fetchurl {
                   url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
-                  sha256 = "sha256-ZQqwpP+mpQVxa3OtspNCj6e/1qApM0m/GGEjM4p/zrU=";
+                  sha256 = "sha256-wXrRUHct9D/E5jzhuUGfI8ZBaWlaTMQWDu3LyPTUwEc=";
                 };
               };
 
