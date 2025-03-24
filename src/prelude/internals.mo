@@ -588,7 +588,7 @@ func @timer_helper() : async () {
   func gatherExpired(n : ?@Node) = switch n {
     case null ();
     case (?n) {
-      gatherExpired(n.pre);
+      if (n.expire[0] > 0) gatherExpired(n.pre); // by corollary
       if (n.expire[0] <= now and gathered < thunks.size()) {
         if (n.expire[0] > 0) {
           // not expunged yet
