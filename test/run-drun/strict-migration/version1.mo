@@ -1,10 +1,10 @@
 import Prim = "mo:⛔";
 (with migration =
    func({
-     f : Int // reject - supertype
+     f : Any // reject - lossy supertype
      }) :
    { f : Int} =
-   { f = f }
+   { f = -1 }
 )
 persistent actor {
 

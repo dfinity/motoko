@@ -5,6 +5,6 @@
    { }
 )
 persistent actor {
-  var g : Int = 0; // reject, a supertype
+  var g : Any = 0; // reject, a lossy supertype
   assert false;
 }
