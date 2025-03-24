@@ -563,7 +563,7 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
   case null 0;
   case (?n) {
     let pivot = n.expire[0];
-    if (pivot == 0) { return @nextExpiration(n.post) };
+    if (pivot == 0) return @nextExpiration(n.post);
     let exp = @nextExpiration(n.pre);
     if (exp == 0) pivot else exp
   }
