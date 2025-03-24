@@ -1,0 +1,8 @@
+text.mo:9.8-9.19: warning [M0194], unused identifier concat_text (delete or rename to wildcard `_` or `_concat_text`)
+text.mo:17.8-17.18: warning [M0194], unused identifier array_text (delete or rename to wildcard `_` or `_array_text`)
+text.mo:25.8-25.18: warning [M0194], unused identifier tuple_text (delete or rename to wildcard `_` or `_tuple_text`)
+text.mo:36.8-36.17: warning [M0194], unused identifier call_text (delete or rename to wildcard `_` or `_call_text`)
+text.mo:41.8-41.20: warning [M0194], unused identifier change_field (delete or rename to wildcard `_` or `_change_field`)
+text.mo:42.9-42.10: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+text.mo:52.8-52.17: warning [M0194], unused identifier pass_text (delete or rename to wildcard `_` or `_pass_text`)
+text.mo:57.8-57.21: warning [M0194], unused identifier match_on_text (delete or rename to wildcard `_` or `_match_on_text`)

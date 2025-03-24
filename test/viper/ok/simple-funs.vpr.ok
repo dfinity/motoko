@@ -1,0 +1,157 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method getZero($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
+    }
+method getFalse($Self: Ref)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := false;
+      goto $Ret;
+      label $Ret; 
+    }
+method idInt($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
+    }
+method idBool($Self: Ref, b: Bool)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := b;
+      goto $Ret;
+      label $Ret; 
+    }
+method abs($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if ((n < 0))
+         { 
+           $Res := (0 - n);
+           goto $Ret; 
+         };
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
+    }
+method max($Self: Ref, n: Int, m: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if ((n >= m))
+         { 
+           $Res := n;
+           goto $Ret; 
+         };
+      $Res := m;
+      goto $Ret;
+      label $Ret; 
+    }
+method eq4($Self: Ref, n: Int, m: Int, p: Int, q: Int)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := (((n == m) && (m == p)) && (p == q));
+      goto $Ret;
+      label $Ret; 
+    }
+method factorial($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var prod: Int
+      var i: Int
+      prod := 1;
+      i := n;
+      while ((i > 0))
+         invariant $Perm($Self)
+         { 
+           prod := (prod * i);
+           i := (i - 1); 
+         };
+      $Res := prod;
+      goto $Ret;
+      label $Ret; 
+    }
+method bmul($Self: Ref, b: Bool, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if (b)
+         { 
+           $Res := n;
+           goto $Ret; 
+         };
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
+    }

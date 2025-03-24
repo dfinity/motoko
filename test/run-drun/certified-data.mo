@@ -1,5 +1,5 @@
 import Prim "mo:⛔";
-actor a {
+actor {
 
   public shared func set() : async () {
     Prim.setCertifiedData("Hello");

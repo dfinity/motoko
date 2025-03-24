@@ -24,7 +24,11 @@
                 "Nat64"
                 "Float"
                 "Char"
-                "Text"))
+                "Text"
+                "Blob"
+                "Error"
+                "Principal"
+                "Region"))
               (x-constants
                '("null"
                  "true"
@@ -47,6 +51,7 @@
                  "debug"
                  "debug_show"
                  "else"
+                 "finally"
                  "flexible"
                  "for"
                  "from_candid"
@@ -62,6 +67,7 @@
                  "label"
                  "let"
                  "loop"
+                 "persistent"
                  "private"
                  "public"
                  "query"
@@ -73,6 +79,7 @@
                  "try"
                  "throw"
                  "to_candid"
+                 "transient"
                  "with"
                  "type"
                  "var"

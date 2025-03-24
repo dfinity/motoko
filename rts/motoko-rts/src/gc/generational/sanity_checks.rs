@@ -10,14 +10,15 @@ use super::{Heap, Limits, Roots};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{classical::pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
-    let length = Bytes(heap.limits.free as u32);
-    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
+    let length = Bytes(heap.limits.free);
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
+    let blob = alloc_blob(heap.mem, TAG_BLOB_B, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
@@ -52,25 +53,27 @@ unsafe fn verify_heap(limits: &Limits) {
     assert!(SNAPSHOT.len().as_usize() <= limits.free);
     let mut pointer = limits.base;
     while pointer < SNAPSHOT.len().as_usize() {
-        let current = pointer as *mut Obj;
-        let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
-        assert!(current.tag() == previous.tag());
-        visit_pointer_fields(
-            &mut (),
-            current,
-            current.tag(),
-            0,
-            |_, current_field| {
-                if relevant_field(current_field, limits.last_free) {
-                    verify_field(current_field);
-                }
-            },
-            |_, slice_start, arr| {
-                assert!(slice_start == 0);
-                arr.len()
-            },
-        );
-        pointer += object_size(current as usize).to_bytes().as_usize();
+        if Value::from_ptr(pointer).is_obj() {
+            let current = pointer as *mut Obj;
+            let previous = (SNAPSHOT.payload_addr() as usize + pointer) as *mut Obj;
+            assert!(current.tag() == previous.tag());
+            visit_pointer_fields(
+                &mut (),
+                current,
+                current.tag(),
+                0,
+                |_, current_field| {
+                    if relevant_field(current_field, limits.last_free) {
+                        verify_field(current_field);
+                    }
+                },
+                |_, slice_start, arr| {
+                    assert!(slice_start == 0);
+                    arr.len()
+                },
+            );
+        }
+        pointer += block_size(pointer).to_bytes().as_usize();
     }
 }
 
@@ -86,12 +89,12 @@ unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
 unsafe fn verify_field(current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field && !recorded(current_field as u32) {
+    if *previous_field != *current_field && !recorded(current_field as usize) {
         panic!("Missing write barrier at {:#x}", current_field as usize);
     }
 }
 
-unsafe fn recorded(value: u32) -> bool {
+unsafe fn recorded(value: usize) -> bool {
     match &REMEMBERED_SET {
         None => panic!("No remembered set"),
         Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
@@ -160,11 +163,11 @@ impl<'a> MemoryChecker<'a> {
     unsafe fn check_heap(&self) {
         let mut pointer = self.limits.base;
         while pointer < self.limits.free {
-            let object = Value::from_ptr(pointer as usize);
-            if object.tag() != TAG_ONE_WORD_FILLER {
-                self.check_object(object);
+            let block = Value::from_ptr(pointer as usize);
+            if block.tag() != TAG_ONE_WORD_FILLER {
+                self.check_object(block);
             }
-            pointer += object_size(pointer as usize).to_bytes().as_usize();
+            pointer += block_size(pointer as usize).to_bytes().as_usize();
         }
     }
 }

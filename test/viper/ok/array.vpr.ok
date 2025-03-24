@@ -1,0 +1,224 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+field $bool: Bool
+field $int: Int
+/* END PRELUDE */
+
+define $Perm($Self) (((((true && (acc(($Self).immut_arr,write) && $array_acc(
+                                                                  ($Self).immut_arr,
+                                                                  $int,
+                                                                  wildcard))) && (
+  acc(($Self).arr,write) && $array_acc(($Self).arr, $int, write))) && 
+  acc(($Self).f,write)) && acc(($Self).count,write)))
+define $Inv($Self) (invariant_11($Self))
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_immut_arr: Array
+      var $t_arr_2: Array
+      inhale $array_acc($t_immut_arr, $int, write);
+      inhale ($size($t_immut_arr) == 1);
+      ($loc($t_immut_arr, 0)).$int := 42;
+      exhale $array_acc($t_immut_arr, $int, wildcard);
+      inhale $array_acc($t_immut_arr, $int, wildcard);
+      ($Self).immut_arr := $t_immut_arr;
+      inhale $array_acc($t_arr_2, $int, write);
+      inhale ($size($t_arr_2) == 2);
+      ($loc($t_arr_2, 0)).$int := 1;
+      ($loc($t_arr_2, 1)).$int := 2;
+      ($Self).arr := $t_arr_2;
+      ($Self).f := 2;
+      ($Self).count := 42; 
+    }
+field immut_arr: Array
+field arr: Array
+field f: Int
+field count: Int
+define invariant_11($Self) (($size(($Self).arr) == 2))
+method foo($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var vi_a: Array
+      var vm_a: Array
+      var li_a: Array
+      var lm_a: Array
+      var $t_vi_a: Array
+      var $t_vm_a: Array
+      inhale $array_acc(vi_a, $int, write);
+      inhale ($size(vi_a) == 1);
+      ($loc(vi_a, 0)).$int := 1;
+      exhale $array_acc(vi_a, $int, wildcard);
+      inhale $array_acc(vi_a, $int, wildcard);
+      inhale $array_acc(vm_a, $int, write);
+      inhale ($size(vm_a) == 2);
+      ($loc(vm_a, 0)).$int := 1;
+      ($loc(vm_a, 1)).$int := 2;
+      inhale $array_acc(li_a, $bool, write);
+      inhale ($size(li_a) == 1);
+      ($loc(li_a, 0)).$bool := false;
+      exhale $array_acc(li_a, $bool, wildcard);
+      inhale $array_acc(li_a, $bool, wildcard);
+      inhale $array_acc(lm_a, $bool, write);
+      inhale ($size(lm_a) == 1);
+      ($loc(lm_a, 0)).$bool := false;
+      assert (($loc(vi_a, 0)).$int == 1);
+      assert (($loc(vm_a, 0)).$int == 1);
+      assert (($loc(li_a, 0)).$bool == false);
+      assert (($loc(lm_a, 0)).$bool == false);
+      inhale $array_acc($t_vi_a, $int, write);
+      inhale ($size($t_vi_a) == 2);
+      ($loc($t_vi_a, 0)).$int := 1;
+      ($loc($t_vi_a, 1)).$int := 2;
+      exhale $array_acc($t_vi_a, $int, wildcard);
+      inhale $array_acc($t_vi_a, $int, wildcard);
+      vi_a := $t_vi_a;
+      inhale $array_acc($t_vm_a, $int, write);
+      inhale ($size($t_vm_a) == 1);
+      ($loc($t_vm_a, 0)).$int := 42;
+      vm_a := $t_vm_a;
+      assert (($loc(vi_a, 0)).$int != 0);
+      assert (($loc(vi_a, 0)).$int == 1);
+      assert (($loc(vm_a, 0)).$int != 1);
+      assert (($loc(vm_a, 0)).$int == 42);
+      $Res := 42;
+      goto $Ret;
+      label $Ret; 
+    }
+method baz1($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $array_acc($Res, $int, wildcard)
+    ensures $Inv($Self)
+    { var r: Array
+      inhale $array_acc(r, $int, write);
+      inhale ($size(r) == 2);
+      ($loc(r, 0)).$int := 1;
+      ($loc(r, 1)).$int := 2;
+      exhale $array_acc(r, $int, wildcard);
+      inhale $array_acc(r, $int, wildcard);
+      $Res := r;
+      goto $Ret;
+      label $Ret; 
+    }
+method baz2($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $array_acc($Res, $int, write)
+    { var r: Array
+      inhale $array_acc(r, $int, write);
+      inhale ($size(r) == 2);
+      ($loc(r, 0)).$int := 1;
+      ($loc(r, 1)).$int := 2;
+      $Res := r;
+      goto $Ret;
+      label $Ret; 
+    }
+method bar($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var x: Array
+      var y: Array
+      var z: Int
+      inhale $array_acc(x, $int, write);
+      inhale ($size(x) == 2);
+      ($loc(x, 0)).$int := 42;
+      ($loc(x, 1)).$int := 24;
+      exhale $array_acc(x, $int, wildcard);
+      inhale $array_acc(x, $int, wildcard);
+      inhale $array_acc(y, $bool, write);
+      inhale ($size(y) == 1);
+      ($loc(y, 0)).$bool := false;
+      ($loc(y, 0)).$bool := true;
+      z := (($loc(x, 0)).$int + ($loc(x, 1)).$int);
+      $Res := ($loc(x, 1)).$int;
+      goto $Ret;
+      label $Ret; 
+    }
+method bar2($Self: Ref, x: Array)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $array_acc(x, $int, wildcard)
+    requires ($size(x) == 2)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $array_acc(x, $int, wildcard)
+    ensures $Inv($Self)
+    { var y: Array
+      var z: Int
+      inhale $array_acc(y, $bool, write);
+      inhale ($size(y) == 1);
+      ($loc(y, 0)).$bool := false;
+      ($loc(y, 0)).$bool := true;
+      z := (($loc(x, 0)).$int + ($loc(x, 1)).$int);
+      $Res := ($loc(x, 1)).$int;
+      goto $Ret;
+      label $Ret; 
+    }
+method inc($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($loc(($Self).arr, 0)).$int := (($loc(($Self).arr, 0)).$int + 1);
+      $Res := ($loc(($Self).arr, 0)).$int;
+      goto $Ret;
+      label $Ret; 
+    }
+method len($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := $size(($Self).arr);
+      goto $Ret;
+      label $Ret; 
+    }
+method reset($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_arr: Array
+      inhale $array_acc($t_arr, $int, write);
+      inhale ($size($t_arr) == 2);
+      ($loc($t_arr, 0)).$int := 0;
+      ($loc($t_arr, 1)).$int := 0;
+      ($Self).arr := $t_arr;
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
+    }

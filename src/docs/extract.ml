@@ -12,6 +12,7 @@ and declaration_doc =
   | Value of value_doc
   | Type of type_doc
   | Class of class_doc
+  | Object of object_doc
   | Unknown of string
 
 and function_doc = {
@@ -27,7 +28,8 @@ and function_arg_doc = {
   doc : string option;
 }
 
-and value_doc = { name : string; typ : Syntax.typ option }
+and value_sort = Let | Var
+and value_doc = { sort : value_sort; name : string; typ : Syntax.typ option }
 
 and type_doc = {
   name : string;
@@ -49,6 +51,8 @@ and class_doc = {
   sort : Syntax.obj_sort;
 }
 
+and object_doc = { name : string; fields : doc list; sort : Syntax.obj_sort }
+
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
   let open Syntax in
@@ -62,8 +66,18 @@ let un_prog prog =
       imports
   in
   match body.it with
+  | ProgU decs -> Ok ([], []) (* treat all fields as private *)
   | ModuleU (_, decs) -> Ok (imports, decs)
-  | _ -> Error "Couldn't find a module expression"
+  | ActorU (_, _, decs) -> Ok (imports, decs)
+  | ActorClassU (_, _, _, _, _, _, _, decs) ->
+      let _, decs = CompUnit.decs_of_lib comp_unit in
+      let decs =
+        List.map
+          (fun d ->
+            { vis = Public None @@ no_region; dec = d; stab = None } @@ d.at)
+          decs
+      in
+      Ok (imports, decs)
 
 module PosTable = Trivia.PosHashtbl
 
@@ -114,14 +128,41 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
-  let extract_let_doc : Syntax.exp -> string -> declaration_doc =
-   fun exp name ->
+  let extract_typ_item (id_opt, typ) =
+    {
+      name = (match id_opt with Some id -> id.it | _ -> "_");
+      typ = Some typ;
+      doc = None;
+    }
+
+  let extract_ty_args = function
+    | { it = Syntax.ParT arg; _ } ->
+        [ { name = "_"; typ = Some arg; doc = None } ]
+    | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
+        [ { name; typ = Some arg; doc = None } ]
+    | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
+    | typ -> [ { name = "_"; typ = Some typ; doc = None } ]
+
+  let is_func_ty ty =
+    match ty.it with
+    | Syntax.FuncT (_, ty_args, dom, cod) -> Some (ty_args, dom, cod)
+    | _ -> None
+
+  let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
+      =
+   fun sort exp name ->
     match exp.it with
     | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
-    | Syntax.AnnotE (e, ty) -> Value { name; typ = Some ty }
-    | _ -> Value { name; typ = None }
+    | Syntax.AnnotE (e, ty) when is_func_ty ty <> None -> (
+        match is_func_ty ty with
+        | Some (type_args, args, res) ->
+            Function
+              { name; typ = Some res; type_args; args = extract_ty_args args }
+        | _ -> assert false)
+    | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }
+    | _ -> Value { sort; name; typ = None }
 
   let extract_obj_field_doc :
       Syntax.typ_field -> Syntax.typ_field * string option =
@@ -133,8 +174,36 @@ struct
         {
           it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs, _);
           _;
-        } ->
-        Some (mk_xref (Xref.XValue name), extract_let_doc rhs name)
+        } -> (
+        match rhs with
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
+            let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
+            Some
+              ( mk_xref (Xref.XType name),
+                Object
+                  {
+                    name;
+                    fields =
+                      List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
+                  } )
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Let rhs name)
+        )
+    | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
+        match rhs with
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
+            let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
+            Some
+              ( mk_xref (Xref.XType name),
+                Object
+                  {
+                    name;
+                    fields =
+                      List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
+                  } )
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Var rhs name)
+        )
     | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
         let doc_typ =
           match typ.it with
@@ -151,7 +220,15 @@ struct
         {
           it =
             Syntax.ClassD
-              (shared_pat, name, type_args, ctor, _, obj_sort, _, fields);
+              ( exp_opt,
+                shared_pat,
+                obj_sort,
+                name,
+                type_args,
+                ctor,
+                _,
+                _,
+                fields );
           _;
         } ->
         let mk_field_xref xref = mk_xref (Xref.XClass (name.it, xref)) in

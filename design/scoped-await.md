@@ -269,7 +269,7 @@ Assuming the following requests:
    for (i in os.keys()) {
      os[i] := ? (Ack());
    };
-   for (o in os.vals()) {
+   for (o in os.values()) {
      switch o {
       case (? a) await a;
       case null (assert false);
@@ -361,7 +361,7 @@ is rejected because, once annotated:
   }
 ```
 
-since `$1 <> $` and `$2` <> `$`.
+since `$1 <> $` and `$2` \<\> `$`.
 
 ### Imperative deadlock
 

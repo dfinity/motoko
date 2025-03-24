@@ -1,15 +1,8 @@
 # Trie
 Functional key-value hash maps.
 
-Functional maps (and sets) whose representation is "canonical", and
-independent of operation history (unlike other popular search trees).
-
-The representation we use here comes from Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
-
-## <a name="overview"></a>User's overview
-
-This module provides an applicative (functional) hash map.
-Notably, each `put` produces a **new trie _and value being replaced, if any_**.
+This module provides an applicative (functional) hash map, called a trie.
+Notably, each operation produces a new trie rather than destructively updating an existing trie.
 
 Those looking for a more familiar (imperative,
 object-oriented) hash map should consider `TrieMap` or `HashMap` instead.
@@ -22,6 +15,12 @@ The basic `Trie` operations consist of:
 
 The `put`, `get` and `remove` operations work over `Key` records,
 which group the hash of the key with its non-hash key value.
+
+LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+
+CREDITS: Based on Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
+
 
 Example:
 ```motoko
@@ -122,8 +121,8 @@ type Branch<K, V> = { size : Nat; left : Trie<K, V>; right : Trie<K, V> }
 ```
 
 Branch nodes of the trie discriminate on a bit position of the keys' hashes.
-we never store this bitpos; rather,
-we enforce a style where this position is always known from context.
+This bit position is not stored in the branch but determined from
+the context of the branch.
 
 ## Type `AssocList`
 ``` motoko no-repl
@@ -253,7 +252,21 @@ Purely-functional representation permits _O(1)_ copy, via persistent sharing.
 func replace<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool, v : ?V) : (Trie<K, V>, ?V)
 ```
 
-Replace the given key's value option with the given one, returning the previous one
+Replace the given key's value option with the given value, returning the modified trie.
+Also returns the replaced value if the key existed and `null` otherwise.
+Compares keys using the provided function `k_eq`.
+
+Note: Replacing a key's value by `null` removes the key and also shrinks the trie.
+
+For a more detailed overview of how to use a `Trie`,
+see the [User's Overview](#overview).
+
+Example:
+```motoko include=initialize
+trie := Trie.put(trie, key "test", Text.equal, 1).0;
+trie := Trie.replace(trie, key "test", Text.equal, 42).0;
+assert (Trie.get(trie, key "hello", Text.equal) == ?42);
+```
 
 ## Function `put`
 ``` motoko no-repl
@@ -482,9 +495,10 @@ for ((k,v) in iter) {
 assert(sum == 74);
 ```
 
-## Value `Build`
+## Module `Build`
+
 ``` motoko no-repl
-let Build
+module Build
 ```
 
 Represent the construction of tries as data.
@@ -504,6 +518,67 @@ sequence.  It is only as balanced as the tries from which we generate
 these build ASTs.  They have no intrinsic balance properties of their
 own.
 
+
+### Type `Build`
+``` motoko no-repl
+type Build<K, V> = {#skip; #put : (K, ?Hash.Hash, V); #seq : { size : Nat; left : Build<K, V>; right : Build<K, V> }}
+```
+
+The build of a trie, as an AST for a simple DSL.
+
+
+### Function `size`
+``` motoko no-repl
+func size<K, V>(tb : Build<K, V>) : Nat
+```
+
+Size of the build, measured in `#put` operations
+
+
+### Function `seq`
+``` motoko no-repl
+func seq<K, V>(l : Build<K, V>, r : Build<K, V>) : Build<K, V>
+```
+
+Build sequence of two sub-builds
+
+
+### Function `prod`
+``` motoko no-repl
+func prod<K1, V1, K2, V2, K3, V3>(tl : Trie<K1, V1>, tr : Trie<K2, V2>, op : (K1, V1, K2, V2) -> ?(K3, V3), _k3_eq : (K3, K3) -> Bool) : Build<K3, V3>
+```
+
+Like [`prod`](#prod), except do not actually do the put calls, just
+record them, as a (binary tree) data structure, isomorphic to the
+recursion of this function (which is balanced, in expectation).
+
+
+### Function `nth`
+``` motoko no-repl
+func nth<K, V>(tb : Build<K, V>, i : Nat) : ?(K, ?Hash.Hash, V)
+```
+
+Project the nth key-value pair from the trie build.
+
+This position is meaningful only when the build contains multiple uses of one or more keys, otherwise it is not.
+
+
+### Function `projectInner`
+``` motoko no-repl
+func projectInner<K1, K2, V>(t : Trie<K1, Build<K2, V>>) : Build<K2, V>
+```
+
+Like [`mergeDisjoint`](#mergedisjoint), except that it avoids the
+work of actually merging any tries; rather, just record the work for
+latter (if ever).
+
+
+### Function `toArray`
+``` motoko no-repl
+func toArray<K, V, W>(tb : Build<K, V>, f : (K, V) -> W) : [W]
+```
+
+Gather the collection of key-value pairs into an array of a (possibly-distinct) type.
 
 ## Function `fold`
 ``` motoko no-repl
@@ -799,7 +874,11 @@ Put the given key's value in the trie; return the new trie;
 func remove<K, V>(t : Trie<K, V>, k : Key<K>, k_eq : (K, K) -> Bool) : (Trie<K, V>, ?V)
 ```
 
-Remove the given key's value in the trie; return the new trie
+Remove the entry for the given key from the trie, by returning the reduced trie.
+Also returns the removed value if the key existed and `null` otherwise.
+Compares keys using the provided function `k_eq`.
+
+Note: The removal of an existing key shrinks the trie.
 
 For a more detailed overview of how to use a `Trie`,
 see the [User's Overview](#overview).
@@ -808,7 +887,7 @@ Example:
 ```motoko include=initialize
 trie := Trie.put(trie, key "hello", Text.equal, 42).0;
 trie := Trie.put(trie, key "bye", Text.equal, 32).0;
-// remove the value associated with "hello"
+// remove the entry associated with "hello"
 trie := Trie.remove(trie, key "hello", Text.equal).0;
 assert (Trie.get(trie, key "hello", Text.equal) == null);
 ```
@@ -840,7 +919,7 @@ new trie, and the prior value, if any.
 
 ## Function `mergeDisjoint2D`
 ``` motoko no-repl
-func mergeDisjoint2D<K1, K2, V>(t : Trie2D<K1, K2, V>, k1_eq : (K1, K1) -> Bool, k2_eq : (K2, K2) -> Bool) : Trie<K2, V>
+func mergeDisjoint2D<K1, K2, V>(t : Trie2D<K1, K2, V>, _k1_eq : (K1, K1) -> Bool, k2_eq : (K2, K2) -> Bool) : Trie<K2, V>
 ```
 
 Like [`mergeDisjoint`](#mergedisjoint), except instead of merging a

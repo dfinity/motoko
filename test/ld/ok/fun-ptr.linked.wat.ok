@@ -1,30 +1,56 @@
 (module
-  (type (;0;) (func (result i32)))
+  (type (;0;) (func (result i64)))
   (type (;1;) (func (param i32 i32) (result i32)))
-  (type (;2;) (func))
-  (func $call_imported (type 0) (result i32)
+  (type (;2;) (func (result i32)))
+  (type (;3;) (func))
+  (func $call_imported (type 2) (result i32)
     call $f2
+    i32.wrap_i64
     call_indirect (type 0)
+    i32.wrap_i64
     i32.const 3
     i32.const 5
     call_indirect (type 1))
-  (func $__wasm_call_ctors (type 2)
-    call $__wasm_apply_data_relocs)
-  (func $__wasm_apply_data_relocs (type 2))
+  (func $__wasm_call_ctors (type 3))
+  (func $__wasm_apply_data_relocs (type 3)
+    i64.const 0
+    i64.const 65536
+    i64.add
+    global.get 0
+    i64.store align=4
+    i64.const 8
+    i64.const 65536
+    i64.add
+    global.get 1
+    i64.store align=4)
   (func $f0 (type 1) (param i32 i32) (result i32)
     local.get 1
     local.get 0
     i32.add)
-  (func $f1 (type 0) (result i32)
-    global.get 0)
-  (func $f2 (type 0) (result i32)
-    global.get 1)
-  (func $link_start (type 2)
+  (func $f1 (type 0) (result i64)
+    i64.const 65536
+    i64.const 0
+    i64.add
+    i64.load)
+  (func $f2 (type 0) (result i64)
+    i64.const 65536
+    i64.const 8
+    i64.add
+    i64.load)
+  (func $link_start (type 3)
     call $__wasm_call_ctors)
+  (func $link_start.1 (type 3)
+    i64.const 65536
+    i32.const 0
+    i32.const 16
+    memory.init 0
+    call $__wasm_apply_data_relocs
+    call $link_start)
   (table (;0;) 3 3 funcref)
-  (memory (;0;) 2)
-  (global (;0;) i32 (i32.const 1))
-  (global (;1;) i32 (i32.const 2))
-  (global (;2;) i32 (i32.const 65536))
-  (start $link_start)
-  (elem (;0;) (i32.const 1) func $f0 $f1))
+  (memory (;0;) i64 2)
+  (global (;0;) i64 (i64.const 2))
+  (global (;1;) i64 (i64.const 1))
+  (global (;2;) i64 (i64.const 65792))
+  (start $link_start.1)
+  (elem (;0;) (i32.const 1) func $f1 $f0)
+  (data (;0;) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00"))

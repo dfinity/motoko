@@ -5,32 +5,37 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc,
+};
+
+#[classical_persistence]
+mod classical;
+#[enhanced_orthogonal_persistence]
+mod enhanced;
+
+#[non_incremental_gc]
 mod compacting;
+#[non_incremental_gc]
 mod generational;
-mod heap;
-mod random;
-mod utils;
+#[incremental_gc]
+mod incremental;
 
-use heap::MotokoHeap;
-use motoko_rts::gc::generational::remembered_set::RememberedSet;
-use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
-use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
+pub mod heap;
+pub mod random;
+pub mod utils;
 
-use motoko_rts::gc::copying::copying_gc_internal;
-use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
-use motoko_rts::gc::mark_compact::compacting_gc_internal;
-use motoko_rts::types::*;
-
-use std::fmt::Write;
-
+use self::utils::{GC, GC_IMPLS};
 use fxhash::{FxHashMap, FxHashSet};
+use heap::MotokoHeap;
+use utils::ObjectIdx;
 
 pub fn test() {
     println!("Testing garbage collection ...");
 
     println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
-        test_gcs(&test_heap);
+        run_gc_tests(&test_heap);
     }
 
     println!("  Testing random heaps...");
@@ -42,8 +47,18 @@ pub fn test() {
     }
     print!("\r");
 
+    test_gc_components();
+}
+
+#[non_incremental_gc]
+fn test_gc_components() {
     compacting::test();
     generational::test();
+}
+
+#[incremental_gc]
+fn test_gc_components() {
+    incremental::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -80,51 +95,61 @@ fn test_heaps() -> Vec<TestHeap> {
     ]
 }
 
-fn test_random_heap(seed: u64, max_objects: u32) {
+fn test_random_heap(seed: u64, max_objects: usize) {
     let random_heap = random::generate(seed, max_objects);
-    test_gcs(&random_heap);
+    run_gc_tests(&random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
 // the same order they appear in these vectors. Each object in `heap` should have a unique index,
 // which is checked when creating the heap.
 #[derive(Debug)]
-struct TestHeap {
-    heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
-    roots: Vec<ObjectIdx>,
-    continuation_table: Vec<ObjectIdx>,
+pub struct TestHeap {
+    pub heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
+    pub roots: Vec<ObjectIdx>,
+    pub continuation_table: Vec<ObjectIdx>,
 }
 
-/// Test all GC implementations with the given heap
-fn test_gcs(heap_descr: &TestHeap) {
-    for gc in &GC_IMPLS {
-        test_gc(
-            *gc,
-            &heap_descr.heap,
-            &heap_descr.roots,
-            &heap_descr.continuation_table,
-        );
+impl TestHeap {
+    pub fn build(&self, gc: GC, free_space: usize) -> MotokoHeap {
+        MotokoHeap::new(
+            &self.heap,
+            &self.roots,
+            &self.continuation_table,
+            gc,
+            free_space,
+        )
     }
 }
 
-fn test_gc(
-    gc: GC,
-    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
-    roots: &[ObjectIdx],
-    continuation_table: &[ObjectIdx],
-) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+/// Test all GC implementations with the given heap
+fn run_gc_tests(test_heap: &TestHeap) {
+    for gc in &GC_IMPLS {
+        test_gc(*gc, test_heap);
+    }
+    reset_gc();
+}
+
+fn test_gc(gc: GC, test_heap: &TestHeap) {
+    let mut heap = test_heap.build(gc, 0);
+    let refs = &test_heap.heap;
+    let roots = &test_heap.roots;
+    let continuation_table = &test_heap.continuation_table;
+
+    initialize_gc(&mut heap);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
-        false, // before gc
+        CheckMode::Reachability,
         refs,
         roots,
         continuation_table,
         &**heap.heap(),
         heap.heap_base_offset(),
         heap.heap_ptr_offset(),
-        heap.continuation_table_ptr_offset(),
+        heap.static_root_array_variable_offset(),
+        heap.continuation_table_variable_offset(),
+        heap.region0_pointer_variable_offset(),
     );
 
     for round in 0..3 {
@@ -132,163 +157,124 @@ fn test_gc(
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
-        let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
+        let static_array_variable_offset = heap.static_root_array_variable_offset();
+        let continuation_table_variable_offset = heap.continuation_table_variable_offset();
+        let region0_ptr_offset = heap.region0_pointer_variable_offset();
         check_dynamic_heap(
-            check_all_reclaimed, // after gc
+            if check_all_reclaimed {
+                CheckMode::AllReclaimed
+            } else {
+                CheckMode::Reachability
+            },
             refs,
             roots,
             continuation_table,
             &**heap.heap(),
             heap_base_offset,
             heap_ptr_offset,
-            continuation_table_ptr_offset,
+            static_array_variable_offset,
+            continuation_table_variable_offset,
+            region0_ptr_offset,
         );
     }
 }
 
-/// Check the dynamic heap:
-///
-/// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
-///   are those in the transitive closure of roots.
-///
-/// - Objects should point to right objects. E.g. if object with index X points to objects with
-///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
-///   heap.
-///
-fn check_dynamic_heap(
-    post_gc: bool,
+#[non_incremental_gc]
+fn initialize_gc(_heap: &mut MotokoHeap) {}
+
+#[incremental_gc]
+fn initialize_gc(heap: &mut MotokoHeap) {
+    use motoko_rts::gc::incremental::{
+        get_partitioned_heap, set_incremental_gc_state, IncrementalGC,
+    };
+    use motoko_rts::types::Bytes;
+    unsafe {
+        let state = IncrementalGC::<MotokoHeap>::initial_gc_state(heap.heap_base_address());
+        set_incremental_gc_state(Some(state));
+        let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
+
+        // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
+        let result = get_partitioned_heap().allocate(heap, Bytes(allocation_size).to_words());
+        // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
+        // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
+        assert_eq!(result.get_ptr(), heap.heap_base_address());
+    }
+}
+
+#[non_incremental_gc]
+fn reset_gc() {}
+
+#[incremental_gc]
+fn reset_gc() {
+    use motoko_rts::gc::incremental::set_incremental_gc_state;
+    unsafe {
+        set_incremental_gc_state(None);
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum CheckMode {
+    /// Check reachability of all necessary objects.
+    Reachability,
+    /// Check the reachability of all necessary objects and
+    /// that all garbage objects have been reclaimed.
+    AllReclaimed,
+    /// Check valid dynamic heap after stabilization.
+    #[cfg(feature = "enhanced_orthogonal_persistence")]
+    Stabilzation,
+}
+
+#[classical_persistence]
+pub fn check_dynamic_heap(
+    mode: CheckMode,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     heap: &[u8],
     heap_base_offset: usize,
     heap_ptr_offset: usize,
-    continuation_table_ptr_offset: usize,
+    _static_root_array_variable_offset: usize,
+    continuation_table_variable_offset: usize,
+    region0_ptr_offset: usize,
 ) {
-    let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
-        .iter()
-        .map(|(obj, refs)| (*obj, refs.as_slice()))
-        .collect();
+    self::classical::check_dynamic_heap(
+        mode,
+        objects,
+        roots,
+        continuation_table,
+        heap,
+        heap_base_offset,
+        heap_ptr_offset,
+        continuation_table_variable_offset,
+        region0_ptr_offset,
+    );
+}
 
-    // Current offset in the heap
-    let mut offset = heap_base_offset;
-
-    // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
-    let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
-
-    let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
-    let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
-
-    while offset < heap_ptr_offset {
-        let object_offset = offset;
-
-        // Address of the current object. Used for debugging.
-        let address = offset as usize + heap.as_ptr() as usize;
-
-        if object_offset == continuation_table_offset {
-            check_continuation_table(object_offset, continuation_table, heap);
-            offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
-                .to_bytes()
-                .as_usize();
-            continue;
-        }
-
-        let tag = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        assert_eq!(tag, TAG_ARRAY);
-
-        let n_fields = read_word(heap, offset);
-        offset += WORD_SIZE;
-
-        // There should be at least one field for the index
-        assert!(n_fields >= 1);
-
-        let object_idx = get_scalar_value(read_word(heap, offset));
-        offset += WORD_SIZE;
-        let old = seen.insert(object_idx, address);
-        if let Some(old) = old {
-            panic!(
-                "Object with index {} seen multiple times: {:#x}, {:#x}",
-                object_idx, old, address
-            );
-        }
-
-        let object_expected_pointees = objects_map.get(&object_idx).unwrap_or_else(|| {
-            panic!("Object with index {} is not in the objects map", object_idx)
-        });
-
-        for field_idx in 1..n_fields {
-            let field = read_word(heap, offset);
-            offset += WORD_SIZE;
-            // Get index of the object pointed by the field
-            let pointee_address = field.wrapping_add(1); // unskew
-            let pointee_offset = (pointee_address as usize) - (heap.as_ptr() as usize);
-            let pointee_idx_offset = pointee_offset as usize + 2 * WORD_SIZE; // skip header + length
-            let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-            let expected_pointee_idx = object_expected_pointees[(field_idx - 1) as usize];
-            assert_eq!(
-                pointee_idx,
-                expected_pointee_idx,
-                "Object with index {} points to {} in field {}, but expected to point to {}",
-                object_idx,
-                pointee_idx,
-                field_idx - 1,
-                expected_pointee_idx,
-            );
-        }
-    }
-
-    // At this point we've checked that all seen objects point to the expected objects (as
-    // specified by `objects`). Check that we've seen the reachable objects and only the reachable
-    // objects.
-    let reachable_objects = compute_reachable_objects(roots, continuation_table, &objects_map);
-
-    // Objects we've seen in the heap
-    let seen_objects: FxHashSet<ObjectIdx> = seen.keys().copied().collect();
-
-    // Reachable objects that we haven't seen in the heap
-    let missing_objects: Vec<ObjectIdx> = reachable_objects
-        .difference(&seen_objects)
-        .copied()
-        .collect();
-
-    let mut error_message = String::new();
-
-    if !missing_objects.is_empty() {
-        write!(
-            &mut error_message,
-            "Reachable objects missing in the {} heap: {:?}",
-            if post_gc { "post-gc" } else { "pre-gc" },
-            missing_objects,
-        )
-        .unwrap();
-    }
-
-    if post_gc {
-        // Unreachable objects that we've seen in the heap
-        let extra_objects: Vec<ObjectIdx> = seen_objects
-            .difference(&reachable_objects)
-            .copied()
-            .collect();
-
-        if !extra_objects.is_empty() {
-            if !error_message.is_empty() {
-                error_message.push('\n');
-            }
-
-            write!(
-                &mut error_message,
-                "Unreachable objects seen in the post-GC heap: {:?}",
-                extra_objects,
-            )
-            .unwrap();
-        }
-    }
-
-    if !error_message.is_empty() {
-        panic!("{}", error_message);
-    }
+#[enhanced_orthogonal_persistence]
+pub fn check_dynamic_heap(
+    mode: CheckMode,
+    objects: &[(ObjectIdx, Vec<ObjectIdx>)],
+    roots: &[ObjectIdx],
+    continuation_table: &[ObjectIdx],
+    heap: &[u8],
+    heap_base_offset: usize,
+    heap_ptr_offset: usize,
+    static_root_array_variable_offset: usize,
+    continuation_table_variable_offset: usize,
+    region0_ptr_offset: usize,
+) {
+    self::enhanced::check_dynamic_heap(
+        mode,
+        objects,
+        roots,
+        continuation_table,
+        heap,
+        heap_base_offset,
+        heap_ptr_offset,
+        static_root_array_variable_offset,
+        continuation_table_variable_offset,
+        region0_ptr_offset,
+    );
 }
 
 fn compute_reachable_objects(
@@ -314,108 +300,4 @@ fn compute_reachable_objects(
     }
 
     closure
-}
-
-fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
-    offset += WORD_SIZE;
-
-    assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
-    offset += WORD_SIZE;
-
-    for obj in continuation_table.iter() {
-        let ptr = unskew_pointer(read_word(heap, offset));
-        offset += WORD_SIZE;
-
-        // Skip object header for idx
-        let idx_address = ptr as usize + size_of::<Array>().to_bytes().as_usize();
-        let idx = get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize));
-
-        assert_eq!(idx, *obj);
-    }
-}
-
-impl GC {
-    fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
-        let heap_base = heap.heap_base_address() as u32;
-        let static_roots = Value::from_ptr(heap.static_root_array_address());
-        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
-
-        let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
-
-        match self {
-            GC::Copying => {
-                unsafe {
-                    copying_gc_internal(
-                        heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
-                        static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
-                    );
-                }
-                true
-            }
-
-            GC::MarkCompact => {
-                unsafe {
-                    compacting_gc_internal(
-                        heap,
-                        heap_base,
-                        // get_hp
-                        || heap_1.heap_ptr_address(),
-                        // set_hp
-                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
-                        static_roots,
-                        continuation_table_ptr_address,
-                        // note_live_size
-                        |_live_size| {},
-                        // note_reclaimed
-                        |_reclaimed| {},
-                    );
-                }
-                true
-            }
-
-            GC::Generational => {
-                let strategy = match round {
-                    0 => Strategy::Young,
-                    _ => Strategy::Full,
-                };
-                unsafe {
-                    REMEMBERED_SET = Some(RememberedSet::new(heap));
-                    LAST_HP = heap_1.last_ptr_address() as u32;
-
-                    let limits = Limits {
-                        base: heap_base as usize,
-                        last_free: heap_1.last_ptr_address(),
-                        free: heap_1.heap_ptr_address(),
-                    };
-                    let roots = Roots {
-                        static_roots,
-                        continuation_table_ptr_loc: continuation_table_ptr_address,
-                    };
-                    let gc_heap = motoko_rts::gc::generational::Heap {
-                        mem: heap,
-                        limits,
-                        roots,
-                    };
-                    let mut gc = GenerationalGC::new(gc_heap, strategy);
-                    gc.run();
-                    let free = gc.heap.limits.free;
-                    heap.set_last_ptr_address(free);
-                    heap.set_heap_ptr_address(free);
-                }
-                round >= 2
-            }
-        }
-    }
 }

@@ -16,9 +16,12 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SHROP -> SHROP
       | T_SHRASSIGN -> SHRASSIGN
       | T_UNDERSCORE -> UNDERSCORE
+      | T_COMPOSITE -> COMPOSITE
       | T_TYPE -> TYPE
+      | T_TRANSIENT -> TRANSIENT
       | T_TRY -> TRY
       | T_THROW -> THROW
+      | T_FINALLY -> FINALLY
       | T_TEXT -> TEXT "..."
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
@@ -43,6 +46,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BANG -> BANG
       | T_QUERY -> QUERY
       | T_PUBLIC -> PUBLIC
+      | T_PERSISTENT -> PERSISTENT
       | T_PRIVATE -> PRIVATE
       | T_PRIM -> PRIM
       | T_POWOP -> POWOP
@@ -131,3 +135,4 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_WRAPSUBASSIGN -> WRAPSUBASSIGN
       | T_WRAPMULASSIGN -> WRAPMULASSIGN
       | T_WRAPPOWASSIGN -> WRAPPOWASSIGN
+      | T_PIPE -> PIPE

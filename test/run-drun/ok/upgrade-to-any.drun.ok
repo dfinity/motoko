@@ -1,0 +1,17 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Version 0
+debug.print: Initialize first variable
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 1
+debug.print: Initialize second variable
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000

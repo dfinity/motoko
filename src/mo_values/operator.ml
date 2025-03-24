@@ -171,6 +171,8 @@ let structural_equality t =
     match t with
     | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
+    | T.Prim T.Error
+    | T.Prim T.Region -> assert false
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
         match Mo_types.Cons.kind c with
@@ -183,14 +185,14 @@ let structural_equality t =
           let v1 = as_array v1 in
           let v2 = as_array v2 in
           Bool (
-            Array.length v1 == Array.length v2 &&
+            Array.length v1 = Array.length v2 &&
             Lib.Array.for_all2 (fun x y -> as_bool (eq_elem x y)) v1 v2
           )
     | T.Opt t -> (
         fun v1 v2 ->
           match (v1, v2) with
           | Null, Null -> Bool true
-          | Null, Opt _ 
+          | Null, Opt _
           | Opt _, Null -> Bool false
           | Opt v1, Opt v2 -> go t v1 v2
           | _, _ -> assert false )
@@ -233,8 +235,13 @@ let structural_equality t =
           else
             go (List.find (fun f -> f.T.lab = l1) fs).T.typ v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
-        assert (T.is_shared_sort s);
-        fun v1 v2 -> Bool (v1 == v2)  (* HACK *)
+       assert (T.is_shared_sort s);
+       fun v1 v2 -> match v1, v2 with
+       | Tup [Blob _; Text _], Tup [Blob _; Text _] -> Bool (v1 = v2) (* public methods *)
+       | Func _, Tup [Blob _; Text _]
+       | Tup [Blob _; Text _], Func _ -> assert false; (* mixed, cannot determine equality *)
+       | Func _, Func _ -> Bool (v1 == v2)  (* both internal, HACK *)
+       | _ -> failwith "illegal shared function"
   in
   go t
 

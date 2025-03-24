@@ -10,13 +10,15 @@ debug.print: ok f0
 debug.print: ok_3
 debug.print: ok f0
 debug.print: ok_4
-debug.print: ok 5:IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: incompatible function type
+debug.print: ok 5:IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: IDL error: incompatible function type.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 debug.print: ok f1
 debug.print: ok_6
 debug.print: ok f1
 debug.print: ok f1
 debug.print: ok_8
-debug.print: ok_9IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: incompatible function type
+debug.print: ok_9IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: IDL error: incompatible function type.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 debug.print: ok f4
 debug.print: ok_10
 ingress Completed: Reply: 0x4449444c0000

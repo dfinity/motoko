@@ -11,7 +11,7 @@
 *)
 
 module ST = Source_token
-open Mo_def.Trivia
+open Trivia
 
 include module type of Lexer_lib
 

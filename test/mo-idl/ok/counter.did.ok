@@ -1,6 +1,6 @@
-type anon_class_2_1 = 
+type _anon_class_2_1 = 
  service {
    dec: () -> () oneway;
    read: () -> (int);
  };
-service : (int, nat) -> anon_class_2_1
+service : (int, nat) -> _anon_class_2_1

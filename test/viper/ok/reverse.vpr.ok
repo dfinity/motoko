@@ -1,0 +1,136 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+field $int: Int
+/* END PRELUDE */
+
+define $Perm($Self) ((true && (acc(($Self).xarray,write) && $array_acc(
+                                                            ($Self).xarray,
+                                                            $int, write))))
+define $Inv($Self) (invariant_8($Self))
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_xarray: Array
+      inhale $array_acc($t_xarray, $int, write);
+      inhale ($size($t_xarray) == 5);
+      ($loc($t_xarray, 0)).$int := 1;
+      ($loc($t_xarray, 1)).$int := 2;
+      ($loc($t_xarray, 2)).$int := 3;
+      ($loc($t_xarray, 3)).$int := 4;
+      ($loc($t_xarray, 4)).$int := 5;
+      ($Self).xarray := $t_xarray; 
+    }
+method reverseArray$Nat($Self: Ref, a: Array)
+    
+    requires $Perm($Self)
+    requires $array_acc(a, $int, write)
+    ensures $Perm($Self)
+    ensures $array_acc(a, $int, write)
+    ensures ($size(($Self).xarray) == old($size(($Self).xarray)))
+    ensures ($size(a) == old($size(a)))
+    ensures (forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a,
+                                                                    k)).$int == 
+             old(($loc(a, (($size(a) - 1) - k))).$int))))
+    { var length: Int
+      var i: Int
+      var j: Int
+      length := $size(a);
+      if ((length == 0))
+         { 
+           goto $Ret; 
+         };
+      i := (length - 1);
+      j := 0;
+      while ((i > j))
+         invariant $Perm($Self)
+         invariant $array_acc(a, $int, write)
+         invariant ($size(($Self).xarray) == old($size(($Self).xarray)))
+         invariant ((i < length) && (i >= 0))
+         invariant ((j < length) && (j >= 0))
+         invariant (i == (($size(a) - 1) - j))
+         invariant (forall k : Int :: (((j <= k) && (k <= i)) ==> ((
+                                                                    $loc(a,
+                                                                    k)).$int == 
+                    old(($loc(a, k)).$int))))
+         invariant (forall k : Int :: (((0 <= k) && (k < j)) ==> (($loc(a,
+                                                                    k)).$int == 
+                    old(($loc(a, (($size(a) - 1) - k))).$int))))
+         invariant (forall k : Int :: (((i < k) && (k < $size(a))) ==> (
+                    ($loc(a, k)).$int == old(($loc(a, (($size(a) - 1) - k))).$int))))
+         { var tmp: Int
+           tmp := ($loc(a, i)).$int;
+           ($loc(a, i)).$int := ($loc(a, j)).$int;
+           ($loc(a, j)).$int := tmp;
+           i := (i - 1);
+           j := (j + 1); 
+         };
+      goto $Ret;
+      label $Ret; 
+    }
+field xarray: Array
+define invariant_8($Self) (($size(($Self).xarray) == 5))
+method copy_xarray($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    requires ($size(($Self).xarray) == 5)
+    ensures $Perm($Self)
+    ensures $array_acc($Res, $int, write)
+    ensures ($size(($Self).xarray) == 5)
+    ensures ($size($Res) == $size(($Self).xarray))
+    { var length: Int
+      var t: Array
+      var i: Int
+      length := $size(($Self).xarray);
+      assert (length >= 0);
+      inhale $array_acc(t, $int, write);
+      inhale ($size(t) == length);
+      inhale $array_init(t, $int, 0);
+      i := 0;
+      while ((i < length))
+         invariant $Perm($Self)
+         invariant $array_acc(t, $int, write)
+         invariant ($size(($Self).xarray) == 5)
+         invariant (i >= 0)
+         { 
+           assert (i < length);
+           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int;
+           i := (i + 1); 
+         };
+      $Res := t;
+      goto $Ret;
+      label $Ret; 
+    }
+method reverse($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var a: Array
+      a := copy_xarray($Self);
+      reverseArray$Nat($Self, a);
+      ($Self).xarray := a;
+      label $Ret; 
+    }

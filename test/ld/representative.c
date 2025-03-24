@@ -9,4 +9,3 @@ export int square(int i) {
   unresolved_import();
   return i * i;
 }
-

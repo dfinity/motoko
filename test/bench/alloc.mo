@@ -1,7 +1,7 @@
 //MOC-FLAG --force-gc
 import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
 
-actor alloc {
+actor _alloc {
 
     func counters() : (Int, Nat64) = (rts_heap_size(), performanceCounter(0));
 
@@ -16,7 +16,6 @@ actor alloc {
         };
         let (m1, n1) = counters();
         debugPrint(debug_show (m1 - m0, n1 - n0));
-
     }
 }
 //SKIP run-low

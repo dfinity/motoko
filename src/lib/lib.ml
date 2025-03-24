@@ -1,3 +1,5 @@
+module StdList = List
+
 module Format =
 struct
   let with_str_formatter f x =
@@ -207,11 +209,6 @@ struct
     else
       None
 
-  let starts_with prefix s = (* in OCaml 4.13 *)
-    match chop_prefix prefix s with
-    | Some _ -> true
-    | _ -> false
-
   let chop_suffix suffix s =
     let suffix_len = String.length suffix in
     let s_len = String.length s in
@@ -234,6 +231,40 @@ struct
       | c -> Buffer.add_char buf c
     done;
     Buffer.contents buf
+
+  (* Courtesy of Claude.ai *)
+  let levenshtein_distance s t =
+    let m = String.length s
+    and n = String.length t in
+
+    (* Ensure s is the shorter string for optimization *)
+    let (s, t, m, n) = if m > n then (t, s, n, m) else (s, t, m, n) in
+
+    (* Initialize the previous row *)
+    let previous_row = Array.init (m + 1) (fun i -> i) in
+
+    (* Compute the distance *)
+    for i = 1 to n do
+      let current_row = Array.make (m + 1) 0 in
+      current_row.(0) <- i;
+
+      for j = 1 to m do
+        let cost = if s.[j-1] = t.[i-1] then 0 else 1 in
+        current_row.(j) <- min
+          (min
+            (previous_row.(j) + 1)     (* Deletion *)
+            (current_row.(j-1) + 1)    (* Insertion *)
+          )
+          (previous_row.(j-1) + cost)  (* Substitution *)
+      done;
+
+      (* Swap rows *)
+      Array.blit current_row 0 previous_row 0 (m + 1)
+    done;
+
+    (* Return the distance *)
+    previous_row.(m)
+
 end
 
 module Utf8 =
@@ -502,10 +533,14 @@ end
 
 module Option =
 struct
-  let get o x =
-    match o with
-    | Some y -> y
-    | None -> x
+  let get o x = Option.value o ~default:x
+
+  let exists f o = Option.to_list o |> StdList.exists f
+
+  let map2 f a b =
+    match a, b with
+    | Some a, Some b -> Some (f a b)
+    | _ -> None
 
   module Syntax =
   struct

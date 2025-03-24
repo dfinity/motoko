@@ -121,7 +121,8 @@ let rec adoc_of_declaration :
   | Value value_doc ->
       header value_doc.name;
       signature (fun _ ->
-          bprintf buf "let %s" value_doc.name;
+          let sort = match value_doc.sort with Let -> "let" | Var -> "var" in
+          bprintf buf "%s %s" sort value_doc.name;
           opt_typ buf env value_doc.typ);
       doc_comment ()
   | Type type_doc ->
@@ -147,6 +148,12 @@ let rec adoc_of_declaration :
       doc_comment ();
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf env) class_doc.fields
+  | Object obj_doc ->
+      header obj_doc.name;
+      signature (fun _ -> bprintf buf "%s" obj_doc.name);
+      doc_comment ();
+      bprintf buf "\n\n";
+      List.iter (adoc_of_doc buf env) obj_doc.fields
   | Unknown unknown ->
       signature (fun _ -> bprintf buf "Unknown %s" unknown);
       doc_comment ()

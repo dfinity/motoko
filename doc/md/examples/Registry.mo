@@ -10,7 +10,7 @@ actor Registry {
       case null {
         map.put(name, map.size());
       };
-      case (?id) { };
+      case (?_) { };
     }
   };
 

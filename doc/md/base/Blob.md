@@ -18,7 +18,7 @@ Some built in features not listed in this module:
 * `b.size() : Nat` returns the number of bytes in the blob `b`;
 * `b.vals() : Iter.Iter<Nat8>` returns an iterator to enumerate the bytes of the blob `b`.
 
- For example:
+For example:
 ```motoko include=import
 import Debug "mo:base/Debug";
 import Nat8 "mo:base/Nat8";
@@ -104,7 +104,7 @@ Blob.hash(blob) // => 1_818_567_776
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(blob1 : Blob, blob2 : Blob) : {#less; #equal; #greater}
+func compare(b1 : Blob, b2 : Blob) : {#less; #equal; #greater}
 ```
 
 General purpose comparison function for `Blob` by comparing the value of

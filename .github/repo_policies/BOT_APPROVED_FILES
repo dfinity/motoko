@@ -1,0 +1,5 @@
+# List of approved files that can be changed by a bot via an automated PR
+
+Changelog.md
+doc/docusaurus/package-lock.json
+nix/sources.json

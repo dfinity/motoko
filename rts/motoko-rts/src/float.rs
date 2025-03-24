@@ -6,33 +6,35 @@ use motoko_rts_macros::ic_mem_fn;
 
 // The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
 #[ic_mem_fn]
-unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Value {
-    // prec and mode are tagged small words (`Nat8`s), so we shift 24 bits. See
-    // `TaggedSmallWord.bits_of_type` in compile.ml.
-    let mode = mode >> 24;
-    let prec = core::cmp::min(prec >> 24, 100) as usize;
+pub unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: usize, mode: usize) -> Value {
+    // prec and mode are tagged small words (`Nat8`s), so we shift 56 or 24 bits.
+    // See `TaggedSmallWord.bits_of_type` in `compile_enhanced.ml` or `compile_classical.ml`.
+    const SHIFT: u32 = usize::BITS - 8;
+    let mode = mode >> SHIFT;
+    let prec = core::cmp::min(prec >> SHIFT, 100) as usize;
 
     // 320 bytes needed for max precision (1.7e308)
-    let buf = [0u8; 320];
-
-    // NB. Using snprintf because I think only 0 and 3 are supposed by Rust's built-in formatter
-    let fmt = match mode {
-        0 => "%.*f\0",
-        1 => "%.*e\0",
-        2 => "%.*g\0",
-        3 => "%.*a\0",
+    const BUFFER_LENGTH: usize = 320;
+    let buffer = match mode {
+        0 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
+        1 => format!(BUFFER_LENGTH, "{:.*e}", prec, a),
+        2 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
+        3 => panic!("float_fmt: unsupported mode"), // Deprecated in the base library.
+        4 => format!(BUFFER_LENGTH, "{}", a),
         _ => panic!("float_fmt: unrecognized mode"),
     };
 
-    let n_written = libc::snprintf(
-        buf.as_ptr() as *mut _,
-        320,
-        fmt.as_ptr() as *const _,
-        prec,
-        a as libc::c_double,
-    );
+    // TODO: Certain modes are not supported such as hexadecimal output (mode 3).
 
-    assert!(n_written > 0);
+    let length = written_length(&buffer);
+    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(length))
+}
 
-    text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written as u32))
+fn written_length(buffer: &[u8]) -> usize {
+    for index in 0..buffer.len() {
+        if buffer[index] == 0 {
+            return index;
+        }
+    }
+    buffer.len()
 }

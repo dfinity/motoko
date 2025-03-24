@@ -1,0 +1,2 @@
+todo_record.mo:110.23-110.28: warning [M0155], operator may trap for inferred type
+  Nat

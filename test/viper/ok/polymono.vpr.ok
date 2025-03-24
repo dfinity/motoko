@@ -1,0 +1,138 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method recur$Bool($Self: Ref, a: Bool)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := recur$Bool($Self, a);
+      goto $Ret;
+      label $Ret; 
+    }
+method mut_recur_b$Nat($Self: Ref, x: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := mut_recur_a$Nat($Self, x);
+      goto $Ret;
+      label $Ret; 
+    }
+method mut_recur_a$Nat($Self: Ref, x: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := mut_recur_b$Nat($Self, x);
+      goto $Ret;
+      label $Ret; 
+    }
+method ignoreValue$Bool($Self: Ref, _a: Bool)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      label $Ret; 
+    }
+method id$Int($Self: Ref, a: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := a;
+      goto $Ret;
+      label $Ret; 
+    }
+method id$Bool($Self: Ref, a: Bool)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := a;
+      goto $Ret;
+      label $Ret; 
+    }
+method firstValue$Bool$Int($Self: Ref, a: Bool, _b: Int)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := id$Bool($Self, a);
+      goto $Ret;
+      label $Ret; 
+    }
+method firstValue$Bool$Bool($Self: Ref, a: Bool, _b: Bool)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := id$Bool($Self, a);
+      goto $Ret;
+      label $Ret; 
+    }
+method f($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var _x1: Bool
+      var _x2: Int
+      _x1 := recur$Bool($Self, true);
+      _x2 := mut_recur_a$Nat($Self, 5);
+      label $Ret; 
+    }
+method ifThenElse($Self: Ref, b: Bool, tru: Int, fls: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var c1: Bool
+      var c2: Bool
+      ignoreValue$Bool($Self, b);
+      c1 := id$Bool($Self, b);
+      c2 := id$Bool($Self, b);
+      c2 := firstValue$Bool$Int($Self, c2, tru);
+      c2 := firstValue$Bool$Bool($Self, c2, c2);
+      if ((c1 && c2))
+         { 
+           $Res := id$Int($Self, tru);
+           goto $Ret; 
+         };
+      $Res := id$Int($Self, fls);
+      goto $Ret;
+      label $Ret; 
+    }

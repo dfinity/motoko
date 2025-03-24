@@ -28,7 +28,9 @@ function build_ref_to {
   if [ -z "$1" ]
   then
     echo "Building $2 moc from working copy.."
-    chronic nix-build -E '((import ./..) {}).moc' \
+    chronic nix-build \
+      --argstr path "$(realpath "$(dirname $0)/..")" \
+      -E '{path}: ((import path) {}).moc' \
       -o $2-moc/
   else
     echo "Building $2 moc (rev $1).."
@@ -38,7 +40,6 @@ function build_ref_to {
       --argstr path "$(realpath "$(dirname $0)/..")" \
       -E '
       {rev, ref, path}:
-      let nixpkg = import ../nix {}; in
       let checkout = (builtins.fetchGit {url = path; ref = ref; rev = rev;}).outPath; in
       builtins.trace checkout (
       ((import checkout) {}).moc)' \

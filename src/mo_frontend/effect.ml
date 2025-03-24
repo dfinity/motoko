@@ -49,15 +49,17 @@ let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
-  | CallE (exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
+  | CallE (_, exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
     T.Await
+  | CallE (Some par, exp1, _, exp2) ->
+    map_max_effs effect_exp [par; exp1; exp2]
   | PrimE _
   | VarE _
   | LitE _
-  | ActorUrlE _
   | ImportE _
   | FuncE _ ->
     T.Triv
+  | ActorUrlE exp1
   | UnE (_, _, exp1)
   | ShowE (_, exp1)
   | FromCandidE exp1
@@ -81,16 +83,14 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | IdxE (exp1, exp2)
   | RelE (_, exp1, _, exp2)
   | AssignE (exp1, exp2)
-  | CallE (exp1, _, exp2)
+  | CallE (None, exp1, _, exp2)
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
   | ImpliesE (exp1, exp2)
   | WhileE (exp1, exp2)
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
-    let t1 = effect_exp exp1 in
-    let t2 = effect_exp exp2 in
-    max_eff t1 t2
+    map_max_effs effect_exp [exp1; exp2]
   | DebugE exp1 ->
     effect_exp exp1
   | ToCandidE exps
@@ -99,8 +99,9 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     map_max_effs effect_exp exps
   | BlockE decs ->
     map_max_effs effect_dec decs
-  | ObjBlockE (sort, dfs) ->
-    infer_effect_dec_fields dfs
+  | ObjBlockE (eo, sort, _, dfs) ->
+    let e = match eo with None -> T.Triv | Some exp -> effect_exp exp in
+    max_eff e (infer_effect_dec_fields dfs)
   | ObjE (bases, efs) ->
     let bases = map_max_effs effect_exp bases in
     let fields = infer_effect_exp_fields efs in
@@ -111,9 +112,9 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE (T.Fut, _, _) ->
+  | AsyncE (_, T.Fut, _, _) ->
     T.Await
-  | AsyncE (T.Cmp, _, _) ->
+  | AsyncE (_, T.Cmp, _, _) ->
     T.Triv
   | ThrowE _
   | TryE _
@@ -129,10 +130,10 @@ and effect_cases cases =
     max_eff e (effect_cases cases')
 
 and infer_effect_dec_fields dfs =
-  List.fold_left (fun e (df : dec_field) -> max_eff e (effect_dec df.it.dec)) T.Triv dfs
+  map_max_effs (fun (df : dec_field) -> effect_dec df.it.dec) dfs
 
 and infer_effect_exp_fields efs =
-  List.fold_left (fun e (ef : exp_field) -> max_eff e (effect_exp ef.it.exp)) T.Triv efs
+  map_max_effs (fun (ef : exp_field) -> effect_exp ef.it.exp) efs
 
 and effect_dec dec =
   dec.note.note_eff

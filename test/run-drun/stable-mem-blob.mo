@@ -17,13 +17,12 @@ actor {
     P.arrayToBlob(a);
   };
 
-  let inc : Nat64 = 8;
-
   var i : Nat64 = 0;
   var size : Nat64 = 0;
   let max = n * 65536;
   while (i + size < max) {
     let v = valOfNat64(size);
+    //P.debugPrint("store blob, load blob.");
     StableMemory.storeBlob(i, v);
     assert (StableMemory.loadBlob(i, P.nat64ToNat(size)) == v);
     i += size;
@@ -47,8 +46,17 @@ actor {
     var size : Nat64 = 0;
     let max = i + 65536;
     while (i + size < max) {
+      if false {
+      P.debugPrint("i = " # debug_show i # "; size = " # debug_show size);
+      P.debugPrint("inspecting the blob at offset " # debug_show i # " and expecting all zeros...");
+      P.debugPrint(debug_show StableMemory.loadBlob(i, P.nat64ToNat(size)));
+      };
+
       assert (StableMemory.loadBlob(i, P.nat64ToNat(size)) == zeroOfNat64(size));
-      StableMemory.storeBlob(i, valOfNat64(size));
+      let blob = valOfNat64(size);
+      // P.debugPrint("storing the blob " # debug_show blob # " at offset " # debug_show i);
+
+      StableMemory.storeBlob(i, blob);
       i += size;
       size += 1;
     };

@@ -18,7 +18,7 @@ import Debug "mo:base/Debug";
 actor {
   public func main() : async() {
     Debug.print("Main balance: " # debug_show(Cycles.balance()));
-    Cycles.add(15_000_000);
+    Cycles.add<system>(15_000_000);
     await operation(); // accepts 10_000_000 cycles
     Debug.print("Main refunded: " # debug_show(Cycles.refunded())); // 5_000_000
     Debug.print("Main balance: " # debug_show(Cycles.balance())); // decreased by around 10_000_000
@@ -27,7 +27,7 @@ actor {
   func operation() : async() {
     Debug.print("Operation balance: " # debug_show(Cycles.balance()));
     Debug.print("Operation available: " # debug_show(Cycles.available()));
-    let obtained = Cycles.accept(10_000_000);
+    let obtained = Cycles.accept<system>(10_000_000);
     Debug.print("Operation obtained: " # debug_show(obtained)); // => 10_000_000
     Debug.print("Operation balance: " # debug_show(Cycles.balance())); // increased by 10_000_000
     Debug.print("Operation available: " # debug_show(Cycles.available())); // decreased by 10_000_000
@@ -35,9 +35,9 @@ actor {
 }
 ```
 
-## Value `balance`
+## Function `balance`
 ``` motoko no-repl
-let balance : () -> (amount : Nat)
+func balance() : (amount : Nat)
 ```
 
 Returns the actor's current balance of cycles as `amount`.
@@ -55,9 +55,9 @@ actor {
 }
 ```
 
-## Value `available`
+## Function `available`
 ``` motoko no-repl
-let available : () -> (amount : Nat)
+func available() : (amount : Nat)
 ```
 
 Returns the currently available `amount` of cycles.
@@ -79,9 +79,9 @@ actor {
 }
 ```
 
-## Value `accept`
+## Function `accept`
 ``` motoko no-repl
-let accept : (amount : Nat) -> (accepted : Nat)
+func accept(amount : Nat) : (accepted : Nat)
 ```
 
 Transfers up to `amount` from `available()` to `balance()`.
@@ -95,20 +95,20 @@ import Debug "mo:base/Debug";
 
 actor {
   public func main() : async() {
-    Cycles.add(15_000_000);
+    Cycles.add<system>(15_000_000);
     await operation(); // accepts 10_000_000 cycles
   };
 
   func operation() : async() {
-    let obtained = Cycles.accept(10_000_000);
+    let obtained = Cycles.accept<system>(10_000_000);
     Debug.print("Obtained: " # debug_show(obtained)); // => 10_000_000
   }
 }
 ```
 
-## Value `add`
+## Function `add`
 ``` motoko no-repl
-let add : (amount : Nat) -> ()
+func add(amount : Nat) : ()
 ```
 
 Indicates additional `amount` of cycles to be transferred in
@@ -128,19 +128,19 @@ import Cycles "mo:base/ExperimentalCycles";
 
 actor {
   func operation() : async() {
-    ignore Cycles.accept(10_000_000);
+    ignore Cycles.accept<system>(10_000_000);
   };
 
   public func main() : async() {
-    Cycles.add(15_000_000);
+    Cycles.add<system>(15_000_000);
     await operation();
   }
 }
 ```
 
-## Value `refunded`
+## Function `refunded`
 ``` motoko no-repl
-let refunded : () -> (amount : Nat)
+func refunded() : (amount : Nat)
 ```
 
 Reports `amount` of cycles refunded in the last `await` of the current
@@ -156,13 +156,35 @@ import Debug "mo:base/Debug";
 
 actor {
   func operation() : async() {
-    ignore Cycles.accept(10_000_000);
+    ignore Cycles.accept<system>(10_000_000);
   };
 
   public func main() : async() {
-    Cycles.add(15_000_000);
+    Cycles.add<system>(15_000_000);
     await operation(); // accepts 10_000_000 cycles
     Debug.print("Refunded: " # debug_show(Cycles.refunded())); // 5_000_000
+  }
+}
+```
+
+## Function `burn`
+``` motoko no-repl
+func burn(amount : Nat) : (burned : Nat)
+```
+
+Attempts to burn `amount` of cycles, deducting `burned` from the canister's
+cycle balance. The burned cycles are irrevocably lost and not available to any
+other principal either.
+
+Example for use on the IC:
+```motoko no-repl
+import Cycles "mo:base/ExperimentalCycles";
+import Debug "mo:base/Debug";
+
+actor {
+  public func main() : async() {
+    let burnt = Cycles.burn<system>(10_000_000);
+    Debug.print("Burned: " # debug_show burnt); // 10_000_000
   }
 }
 ```

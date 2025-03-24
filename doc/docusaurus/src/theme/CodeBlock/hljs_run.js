@@ -78,10 +78,11 @@ export function registerMotoko() {
         $pattern: "[a-zA-Z_]\\w*",
         keyword:
           "actor and await break case catch class" +
-          " continue debug do else for func if in import" +
-          " module not object or label let loop private" +
-          " public return shared try throw query switch" +
-          " type var while with stable flexible system debug_show assert ignore from_candid to_candid",
+          " continue composite debug do else finally for func if in import" +
+          " module not object or label let loop persistent private" +
+          " public return shared transient try throw query switch" +
+          " type var while with stable flexible system debug_show assert ignore from_candid to_candid" +
+          " persistent transient",
         literal: "true false null",
         built_in:
           "Any None Null Bool Int Int8 Int16 Int32 Int64" +

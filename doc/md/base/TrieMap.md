@@ -4,6 +4,11 @@ The class wraps and manipulates an underyling hash trie, found in the `Trie`
 module. The trie is a binary tree in which the position of elements in the
 tree are determined using the hash of the elements.
 
+LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+This limitation is inherited from the underlying `Trie` data structure.
+
+
 Note: The `class` `TrieMap` exposes the same interface as `HashMap`.
 
 Creating a map:
@@ -114,6 +119,8 @@ func delete(key : K)
 Delete the entry associated with key `key`, if it exists. If the key is
 absent, there is no effect.
 
+Note: The deletion of an existing key shrinks the trie map.
+
 Example:
 ```motoko include=initialize
 map.put(0, 10);
@@ -135,6 +142,8 @@ func remove(key : K) : ?V
 
 Delete the entry associated with key `key`. Return the deleted value
 as an option if it exists, and `null` otherwise.
+
+Note: The deletion of an existing key shrinks the trie map.
 
 Example:
 ```motoko include=initialize

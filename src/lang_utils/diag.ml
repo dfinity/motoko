@@ -57,7 +57,7 @@ let add_msgs s ms = s := List.rev ms @ !s
 let get_msgs s = List.rev !s
 
 let has_errors : messages -> bool =
-  List.fold_left (fun b msg -> b || msg.sev == Error) false
+  List.exists (fun msg -> msg.sev == Error)
 
 let string_of_message msg =
   let code = match msg.sev, msg.code with
@@ -68,7 +68,12 @@ let string_of_message msg =
     | Error -> Printf.sprintf "%s error" msg.cat
     | Warning -> "warning"
     | Info -> "info" in
-  Printf.sprintf "%s: %s%s, %s\n" (Source.string_of_region msg.at) label code msg.text
+  let src = if !Flags.print_source_on_error then
+    match Source.read_region_with_markers msg.at with
+    | Some(src) -> Printf.sprintf "> %s\n\n" src
+    | None -> ""
+  else "" in
+  Printf.sprintf "%s: %s%s, %s\n%s" (Source.string_of_region msg.at) label code msg.text src
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings
@@ -76,6 +81,8 @@ let print_message msg =
   else Printf.eprintf "%s%!" (string_of_message msg)
 
 let print_messages = List.iter print_message
+
+let is_error_free (ms: msg_store) = not (has_errors (get_msgs ms))
 
 let with_message_store f =
   let s = ref [] in

@@ -17,7 +17,7 @@ actor {
         case null {#err "error"};
         }
     };
-    public func g(x:Result3<()>):async Result2<Nat> {
+    public func g(_x:Result3<()>):async Result2<Nat> {
         #ok(1);
     };
 }

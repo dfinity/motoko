@@ -1,27 +1,15 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
-import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
+//MOC-FLAG -measure-rts-stack
+import { errorMessage; debugPrint; setCandidLimits} = "mo:⛔";
 
-actor stack {
-
-    var log : Text = "";
-
-    func trace(t : Text) {
-        log #= t;
-        log #= "\n";
-        debugPrint t
-    };
-
-    func counters() : (Int, Nat64, Nat) =
-      (rts_heap_size(),
-       performanceCounter(0),
-       rts_max_stack_size());
-
+actor {
+    let expectedMinimumSize = 29_000;
+    setCandidLimits<system>{ numerator = 0;
+                             denominator = 1;
+                             bias = 1_000_000 };
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 
     public func go(deserialize : Bool) : async () {
-        log := "";
-        let (m0, n0, s0) = counters();
         var i = 0;
         type List = {
           #some : ((), List);
@@ -44,39 +32,25 @@ actor stack {
                if deserialize
                  from_candid(b)
                else null;
-
-              trace(debug_show {
-                length = i;
-                bytes = b.size();
-//                heap = rts_heap_size();
-                stack = rts_max_stack_size();
-                stack_pages = (rts_max_stack_size()+65535)/65536
-              });
+              ()
             }
           } catch e {
-            trace (errorMessage(e));
+            debugPrint(errorMessage(e));
             done := true
           }
         };
-        trace(debug_show{ alloced = i });
-        let b = to_candid(l);
-        trace("serialized");
 
-        let o : ?(List) =
+        assert(i > expectedMinimumSize);
+
+        let b = to_candid(l);
+        debugPrint("serialized");
+
+        let _o : ?(List) =
           if deserialize
             from_candid(b)
           else null;
 
-        if deserialize trace("deserialized");
-        let (m1, n1, s1) = counters();
-        trace(debug_show {
-          length = i;
-          bytes = b.size();
-//          heap = m1 - m0;
-//          cycles = n1 - n0;
-          stack = s1-s0;
-          stack_pages = (s1+65535)/65536}
-        );
+        if deserialize debugPrint("deserialized");
     }
 
 

@@ -1,0 +1,8 @@
+option.mo:3.9-3.13: warning [M0194], unused identifier fld1 (delete or rename to wildcard `_` or `_fld1`)
+option.mo:8.13-8.15: warning [M0194], unused identifier t2 (delete or rename to wildcard `_` or `_t2`)
+option.mo:9.13-9.15: warning [M0194], unused identifier t3 (delete or rename to wildcard `_` or `_t3`)
+option.mo:10.13-10.15: warning [M0194], unused identifier t4 (delete or rename to wildcard `_` or `_t4`)
+option.mo:32.19-32.29: warning [M0194], unused identifier passOption (delete or rename to wildcard `_` or `_passOption`)
+option.mo:33.13-33.15: warning [M0194], unused identifier a2 (delete or rename to wildcard `_` or `_a2`)
+option.mo:36.18-36.27: warning [M0194], unused identifier callTuple (delete or rename to wildcard `_` or `_callTuple`)
+option.mo:37.13-37.14: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

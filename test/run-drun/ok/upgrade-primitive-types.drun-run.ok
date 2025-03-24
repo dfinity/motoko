@@ -1,0 +1,63 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Initialized
+ingress Completed: Reply: 0x4449444c0000
+debug.print: null
+debug.print: false
+debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: 123
+debug.print: 12_345
+debug.print: 1_234_567_890
+debug.print: 123_456_789_012_345
+debug.print: -1_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -123
+debug.print: -12_345
+debug.print: -1_234_567_890
+debug.print: -123_456_789_012_345
+debug.print: 1.234568
+debug.print: '!'
+debug.print: ""TEST""
+debug.print: "\61\62\63"
+debug.print: un4fu-tqaaa-aaaab-qadjq-cai
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Initialized
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: null
+debug.print: true
+debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_891
+debug.print: 124
+debug.print: 12_346
+debug.print: 1_234_567_891
+debug.print: 123_456_789_012_346
+debug.print: -1_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -123
+debug.print: -12_345
+debug.print: -1_234_567_890
+debug.print: -123_456_789_012_345
+debug.print: 1.334568
+debug.print: '?'
+debug.print: ""TEST" "TEST""
+debug.print: "\61\62\63"
+debug.print: un4fu-tqaaa-aaaab-qadjq-cai
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Initialized
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: null
+debug.print: false
+debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_892
+debug.print: 125
+debug.print: 12_347
+debug.print: 1_234_567_892
+debug.print: 123_456_789_012_347
+debug.print: -1_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -123
+debug.print: -12_345
+debug.print: -1_234_567_890
+debug.print: -123_456_789_012_345
+debug.print: 1.434568
+debug.print: '!'
+debug.print: ""TEST" "TEST" "TEST""
+debug.print: "\61\62\63"
+debug.print: un4fu-tqaaa-aaaab-qadjq-cai
+ingress Completed: Reply: 0x4449444c0000

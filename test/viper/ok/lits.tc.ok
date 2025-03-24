@@ -1,0 +1,2 @@
+lits.mo:4.8-4.15: warning [M0194], unused identifier numLits (delete or rename to wildcard `_` or `_numLits`)
+lits.mo:20.8-20.16: warning [M0194], unused identifier boolLits (delete or rename to wildcard `_` or `_boolLits`)

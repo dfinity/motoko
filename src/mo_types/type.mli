@@ -6,7 +6,7 @@ type var = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
-type shared_sort = Query | Write
+type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
@@ -30,6 +30,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Region
 
 type t = typ
 
@@ -55,13 +56,15 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ; depr : string option}
+and src = {depr : string option; region : Source.region}
+and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+val empty_src : src
 
 (* Syntactic orderings *)
 
@@ -81,11 +84,12 @@ end
 val is_shared_sort : 'a shared -> bool
 
 
-(* Short-hands *)
+(* Shorthands *)
 
 val unit : typ
 val bool : typ
 val nat : typ
+val nat32 : typ
 val nat64 : typ
 val int : typ
 val text : typ
@@ -93,6 +97,11 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
+val region : typ
+val heartbeat_type : typ
+val timer_type : typ
+val global_timer_set_type : typ
+val low_memory_type : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
@@ -217,7 +226,10 @@ val span : typ -> int option
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
 
+
 (* Equivalence and Subtyping *)
+
+exception Undecided (* raised if termination depth exceeded  *)
 
 val eq : typ -> typ -> bool
 val eq_kind : kind -> kind -> bool
@@ -231,6 +243,8 @@ val glb : typ -> typ -> typ
 
 
 (* First-order substitution *)
+
+val subst : typ ConEnv.t -> typ -> typ
 
 val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
@@ -253,16 +267,34 @@ val scope_bind : bind
 
 (* Signatures *)
 
-val match_stab_sig : field list -> field list -> bool
+type stab_sig =
+  | Single of field list
+  | PrePost of field list * field list
 
-val string_of_stab_sig : field list -> string
+val pre : stab_sig -> field list
+val post : stab_sig -> field list
 
+val match_stab_sig : stab_sig -> stab_sig -> bool
+
+val string_of_stab_sig : stab_sig -> string
+
+val motoko_runtime_information_type : typ
+
+(* Well-known labels *)
+
+val cycles_lab : lab
+val migration_lab : lab
+val timeout_lab : lab
 
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
 val motoko_stable_var_info_fld : field
-val get_candid_interface_fld : field
+val motoko_gc_trigger_fld : field
+val motoko_runtime_information_fld : field
+
+val cycles_fld : field
+val timeout_fld : field
 
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
@@ -270,7 +302,6 @@ val decode_msg_typ : field list -> typ
 val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
-
 
 (* Pretty printing *)
 

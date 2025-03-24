@@ -35,4 +35,5 @@ let () =
       method parseCandid s = js_parse_candid s
       method parseMotoko s = js_parse_motoko s
       method parseMotokoTyped paths = js_parse_motoko_typed paths
+      method printDeps file = print_deps file
      end);

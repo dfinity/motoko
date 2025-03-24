@@ -1,6 +1,7 @@
 open Type
 
-type val_env = typ Env.t
+type val_kind = Declaration | FieldReference
+type val_env = (typ * Source.region * val_kind) Env.t
 type lib_env = typ Env.t
 type typ_env = con Env.t
 type con_env = ConSet.t

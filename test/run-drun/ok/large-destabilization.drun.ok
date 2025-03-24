@@ -1,0 +1,16 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: preupgrade!
+debug.print: {heap_MB = 68}
+debug.print: {heap_MB = 132}
+debug.print: {heap_MB = 196}
+debug.print: {heap_MB = 260}
+debug.print: {heap_MB = 324}
+debug.print: {heap_MB = 388}
+debug.print: {heap_MB = 452}
+debug.print: {heap_MB = 516}
+debug.print: {heap_MB = 580}
+debug.print: {heap_MB = 644}
+debug.print: {heap_MB = 708}
+debug.print: postupgrade!
+ingress Completed: Reply: 0x4449444c0000

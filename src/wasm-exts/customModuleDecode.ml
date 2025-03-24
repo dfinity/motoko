@@ -1,9 +1,13 @@
 (*
-This module originated as a copy of interpreter/binary/encode.ml in the
+This module originated as a copy of interpreter/binary/decode.ml in the
 reference implementation.
+With adjustments from memory64.
 
 The changes are:
  * Support for additional custom sections
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
+ * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -17,14 +21,13 @@ TODO:
 
 module Error = Wasm.Error
 module Source = Wasm.Source
-module I32 = Wasm.I32
-module I64 = Wasm.I64
 module F32 = Wasm.F32
 module F64 = Wasm.F64
 module I32_convert = Wasm.I32_convert
 module I64_convert = Wasm.I64_convert
 module Utf8 = Lib.Utf8
 open CustomModule
+open Types
 
 (* Decoding stream *)
 
@@ -124,8 +127,9 @@ let rec vsN n s =
   then (if b land 0x40 = 0 then x else Int64.(logor x (logxor (-1L) 0x7fL)))
   else Int64.(logor x (shift_left (vsN (n - 7) s) 7))
 
-let vu1 s = Int64.to_int (vuN 1 s)
+let vu8 s = Int64.to_int32 (vuN 8 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
+let vu64 s = vuN 64 s
 let vs7 s = Int64.to_int (vsN 7 s)
 let vs32 s = Int64.to_int32 (vsN 32 s)
 let vs33 s = I32_convert.wrap_i64 (vsN 33 s)
@@ -139,7 +143,6 @@ let len32 s =
   if I32.le_u n (Int32.of_int (len s)) then Int32.to_int n else
     error s pos "length out of bounds"
 
-let bool s = (vu1 s = 1)
 let string s = let n = len32 s in get_string n s
 let rec list f n s = if n = 0 then [] else let x = f s in x :: list f (n - 1) s
 let opt f b s = if b then Some (f s) else None
@@ -160,7 +163,7 @@ let sized (f : int -> stream -> 'a) (s : stream) =
 
 (* Types *)
 
-open Wasm.Types
+open Types
 
 let value_type s =
   match vs7 s with
@@ -185,19 +188,23 @@ let func_type s =
   | _ -> error s (pos s - 1) "malformed function type"
 
 let limits vu s =
-  let has_max = bool s in
+  let flags = u8 s in
+  require (flags land 0xfa = 0) s (pos s - 1) "malformed limits flags";
+  let has_max = (flags land 1 = 1) in
+  let is64 = (flags land 4 = 4) in
   let min = vu s in
   let max = opt vu has_max s in
-  {min; max}
+  {min; max}, is64
 
 let table_type s =
   let t = elem_type s in
-  let lim = limits vu32 s in
+  let lim, is64 = limits vu32 s in
+  require (not is64) s (pos s - 1) "tables cannot have 64-bit indices";
   TableType (lim, t)
 
 let memory_type s =
-  let lim = limits vu32 s in
-  MemoryType lim
+  let lim, is64 = limits vu64 s in
+  MemoryType (lim, if is64 then I64IndexType else I32IndexType)
 
 let mutability s =
   match u8 s with
@@ -220,11 +227,12 @@ let var s = vu32 s
 
 let op s = u8 s
 let end_ s = expect 0x0b s "END opcode expected"
+let zero s = expect 0x00 s "zero byte expected"
 
 let memop s =
   let align = vu32 s in
   require (I32.le_u align 32l) s (pos s - 1) "malformed memop flags";
-  let offset = vu32 s in
+  let offset = vu64 s in
   Int32.to_int align, offset
 
 let block_type s =
@@ -244,6 +252,15 @@ let math_prefix s =
   | 0x05 -> i64_trunc_sat_f32_u
   | 0x06 -> i64_trunc_sat_f64_s
   | 0x07 -> i64_trunc_sat_f64_u
+  (* Manual extension for specific bulk-memory operations *)
+  | 0x0a -> zero s; zero s; memory_copy
+  | 0x0b -> zero s; memory_fill
+  (* End of manual extension *)
+  (* Manual extension for passive data segments *)
+  | 0x08 ->
+    let x = at var s in
+    zero s; memory_init x
+  (* End of manual extension *)
   | b -> illegal s pos b
 
 let rec instr s =
@@ -289,9 +306,9 @@ let rec instr s =
 
   | 0x10 -> call (at var s)
   | 0x11 ->
+    let y = at var s in
     let x = at var s in
-    expect 0x00 s "zero flag expected";
-    call_indirect x
+    call_indirect x y
 
   | 0x12 | 0x13 | 0x14 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19 as b -> illegal s pos b
 
@@ -521,6 +538,7 @@ let id s =
     | 9 -> `ElemSection
     | 10 -> `CodeSection
     | 11 -> `DataSection
+    | 12 -> `DataCountSection
     | _ -> error s (pos s) "malformed section id"
     ) bo
 
@@ -647,6 +665,21 @@ let code_section s =
 
 (* Element section *)
 
+(* Manual extension for passive data segments *)
+let passive s =
+  Passive
+
+let active s =
+  let index = at var s in
+  let offset = const s in
+  Active {index; offset}
+
+let active_zero s =
+  let index = Source.(0l @@ no_region) in
+  let offset = const s in
+  Active {index; offset}
+(* End of manual extension *)
+
 let segment dat s =
   let index = at var s in
   let offset = const s in
@@ -660,14 +693,37 @@ let elem_section s =
   section `ElemSection (vec (at table_segment)) [] s
 
 
+(* Manual extension for passive data segments *)
 (* Data section *)
 
-let memory_segment s =
-  segment string s
+let data s =
+  match vu32 s with
+  | 0x00l ->
+    let dmode = at active_zero s in
+    let dinit = string s in
+    {dinit; dmode}
+  | 0x01l ->
+    let dmode = at passive s in
+    let dinit = string s in
+    {dinit; dmode}
+  | 0x02l ->
+    let dmode = at active s in
+    let dinit = string s in
+    {dinit; dmode}
+  | _ -> error s (pos s - 1) "malformed data segment kind"
 
 let data_section s =
-  section `DataSection (vec (at memory_segment)) [] s
+  section `DataSection (vec (at data)) [] s
 
+
+(* DataCount section *)
+
+let data_count s =
+  Some (vu32 s)
+
+let data_count_section s =
+  section `DataCountSection data_count None s
+(* End of manual extension *)
 
 (* Custom sections *)
 
@@ -729,18 +785,37 @@ let icp_custom_section n (f : int -> stream -> 'a) (default : (bool * 'a) option
 
 (* Dylink section *)
 
-let dylink _ s =
-  let memory_size = vu32 s in
-  let memory_alignment = vu32 s in
-  let table_size = vu32 s in
-  let table_alignment = vu32 s in
-  let needed_dynlibs = vec string s in
-  Some { memory_size; memory_alignment; table_size; table_alignment; needed_dynlibs }
+(* Cf. https://llvm.org/doxygen/WasmObjectFile_8cpp_source.html and 
+   https://github.com/WebAssembly/tool-conventions/blob/main/DynamicLinking.md *)
+let rec dylink0 sec_end s =
+  let dylink0_subsection s =
+    let subsection_type = vu8 s in
+    let subsection_size = Int32.to_int (vu32 s) in
+    let subsection_end = pos s + subsection_size in
+    match subsection_type with
+    | 0x01l -> (* mem_info *)
+      let memory_size = vu32 s in
+      let memory_alignment = vu32 s in
+      let table_size = vu32 s in
+      let table_alignment = vu32 s in
+      assert (pos s = subsection_end);
+      MemInfo { memory_size; memory_alignment; table_size; table_alignment }
+    | 0x02l -> (* needed *)
+      let dynlibs = vec string s in
+      assert (pos s = subsection_end);
+      Needed dynlibs
+    | _ -> error s (pos s - 1) "unsupported dylink.0 subsection"
+  in
+  assert (pos s <= sec_end);
+  if pos s = sec_end then []
+  else
+    let subsection = dylink0_subsection s in
+    subsection :: (dylink0 sec_end s)
 
-let is_dylink n = (n = Utf8.decode "dylink")
+let is_dylink0 n = (n = Utf8.decode "dylink.0")
 
-let dylink_section s =
-  custom_section is_dylink dylink None s
+let dylink0_section s =
+  custom_section is_dylink0 dylink0 [] s
 
 (* Name custom section *)
 
@@ -829,7 +904,11 @@ let utf8 sec_end s =
 let motoko_sections s =
   let stable_types = icp_custom_section "motoko:stable-types" utf8 None s in
   let compiler = icp_custom_section "motoko:compiler" utf8 None s in
-  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types; compiler} s
+  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types; compiler; } s
+
+(* Enhanced orthogonal persistence section *)
+let enhanced_orthogonal_persistence_section s =
+  icp_custom_section "enhanced-orthogonal-persistence" utf8 None s
 
 (* Candid sections *)
 
@@ -846,13 +925,19 @@ let motoko_stable_types_name = icp_name "motoko:stable-types"
 
 let is_icp icp_name n = icp_name n <> None
 
+let is_wasm_features n = (n = Utf8.decode "wasm_features")
+let wasm_features_section s =
+  custom_section is_wasm_features
+    (fun sec_end s -> let t = utf8 sec_end s in String.split_on_char ',' t) [] s
+
 let is_unknown n = not (
-  is_dylink n ||
+  is_dylink0 n ||
   is_name n ||
   is_motoko n ||
   is_icp candid_service_name n ||
   is_icp candid_args_name n ||
-  is_icp motoko_stable_types_name n)
+  is_icp motoko_stable_types_name n ||
+  is_wasm_features n)
 
 let skip_custom sec_end s =
   skip (sec_end - pos s) s;
@@ -870,7 +955,7 @@ let module_ s =
   require (magic = 0x6d736100l) s 0 "magic header not detected";
   let version = u32 s in
   require (version = Wasm.Encode.version) s 4 "unknown binary version";
-  let dylink = dylink_section s in
+  let dylink0 = dylink0_section s in
   iterate skip_custom_section s;
   let types = type_section s in
   iterate skip_custom_section s;
@@ -890,9 +975,11 @@ let module_ s =
   iterate skip_custom_section s;
   let elems = elem_section s in
   iterate skip_custom_section s;
+  let data_count = data_count_section s in
+  iterate skip_custom_section s;
   let func_bodies = code_section s in
   iterate skip_custom_section s;
-  let data = data_section s in
+  let datas = data_section s in
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
@@ -901,20 +988,28 @@ let module_ s =
   iterate skip_custom_section s;
   let motoko = motoko_sections s in
   iterate skip_custom_section s;
+  let enhanced_orthogonal_persistence = enhanced_orthogonal_persistence_section s in
+  iterate skip_custom_section s;
+  let wasm_features = wasm_features_section s in
+  iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
     s (len s) "function and code section have inconsistent lengths";
+  require (data_count = None || data_count = Some (Lib.List32.length datas))
+  s (len s) "data count and data section have inconsistent lengths";
   let funcs =
     List.map2 Source.(fun t f -> {f.it with ftype = t} @@ f.at)
       func_types func_bodies
   in
   { module_ =
-     {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
-    dylink;
+     {types; tables; memories; globals; funcs; imports; exports; elems; datas; start};
+    dylink0;
     name;
     motoko;
+    enhanced_orthogonal_persistence;
     candid;
     source_mapping_url = None;
+    wasm_features = wasm_features;
   }
 
 

@@ -1,0 +1,25 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Err: IC0537: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Attempted to execute a message, but the canister contains no Wasm module..
+Please install code to this canister before calling it. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#wasm-module-not-found
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 1
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 0
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: -2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: RTS error: Memory-incompatible program upgrade.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly

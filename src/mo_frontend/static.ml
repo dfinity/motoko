@@ -22,7 +22,7 @@ let err m at =
        at
        "M0014"
        "type"
-       "non-static expression in library or module")
+       "non-static expression in library, module or migration expression")
 
 let pat_err m at =
   let open Diag in
@@ -44,8 +44,10 @@ let rec exp m e = match e.it with
       | Const ->  List.iter (exp m) es
       | Var -> err m e.at
     end
-  | ObjBlockE (_, dfs) -> dec_fields m dfs
-  | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
+  | ObjBlockE (eo, _, _, dfs) ->
+    Option.iter (exp m) eo; dec_fields m dfs
+  | ObjE (bases, efs) ->
+    List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
   | (VarE _ | ImportE _) -> ()

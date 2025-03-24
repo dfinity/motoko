@@ -83,7 +83,7 @@ let rec show_val t v =
     end
   | _ ->
     Format.eprintf "@[show_val: %a : %a@.@]"
-      (Value.pp_val 2) v
+      (Value.pp_val 2) (t, v)
       T.pp_typ t;
     assert false
 

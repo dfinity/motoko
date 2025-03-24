@@ -1,0 +1,117 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method idPair$Nat$BW($Self: Ref, p: Pair[Int, BW])
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := p;
+      goto $Ret;
+      label $Ret; 
+    }
+method flatten$Nat$BW($Self: Ref, p: Pair[Int, BW])
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      if ((p).isordered)
+         { var a: Int
+           var b: BW
+           a := (p).ordered$0;
+           b := (p).ordered$1;
+           $Res := ordered(a, b);
+           goto $Ret; 
+         }else
+         { 
+           if ((p).isswapped)
+              { var sp: Pair[BW, Int]
+                sp := (p).swapped$0;
+                if ((sp).isordered)
+                   { var a: BW
+                     var b: Int
+                     a := (sp).ordered$0;
+                     b := (sp).ordered$1;
+                     $Res := ordered(b, a);
+                     goto $Ret; 
+                   }else
+                   { 
+                     if ((sp).isswapped)
+                        { var sp2: Pair[Int, BW]
+                          sp2 := (sp).swapped$0;
+                          $Res := flatten$Nat$BW($Self, sp2);
+                          goto $Ret; 
+                        }; 
+                   }; 
+              }; 
+         };
+      label $Ret; 
+    }
+adt BW  { Black()
+          White() }
+adt Pair [A, B]
+  { ordered(ordered$0 : A, ordered$1 : B)
+    swapped(swapped$0 : Pair[B, A]) }
+method getBW($Self: Ref)
+     returns ($Res: BW)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var x: BW
+      x := Black();
+      $Res := x;
+      goto $Ret;
+      label $Ret; 
+    }
+method get($Self: Ref)
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := idPair$Nat$BW($Self, swapped(ordered(Black(), 10)));
+      goto $Ret;
+      label $Ret; 
+    }
+method getf($Self: Ref)
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := flatten$Nat$BW($Self, swapped(ordered(Black(), 10)));
+      goto $Ret;
+      label $Ret; 
+    }

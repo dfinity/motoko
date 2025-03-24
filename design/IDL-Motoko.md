@@ -196,8 +196,8 @@ escape_method <name> = (* failure, unsupported *)
    are idiomatically expressed in the IDL:
    ```
    e((Int, Nat)) = record {int;nat}
-   e({i:Int, n:Nat)) = record {i:int; n:nat}
-   e({_0_:Int, _1_:Nat)) = record {0:int; 1:nat}
+   e({i:Int, n:Nat}) = record {i:int; n:nat}
+   e({_0_:Int, _1_:Nat}) = record {0:int; 1:nat}
    ```
 
  * The mapping `i` tries to detect types that can be expressed as
@@ -205,7 +205,7 @@ escape_method <name> = (* failure, unsupported *)
    ```
    i(record {int;nat}) = (Int, Nat)
    i(record {int; nat; foo:text}) = {_0_:Int; _1_:Nat; foo:Text}
-   i(record {0:Int, 1:Nat)) = {_0_:int; _1_:nat}
+   i(record {0:int, 1:nat}) = {_0_:Int; _1_:Nat}
    ```
 
    But note that
@@ -221,7 +221,7 @@ escape_method <name> = (* failure, unsupported *)
    names that are not valid Motoko names (fake hash values):
    ```
    i(record {int; if:text; foobar_:nat; "_0_":bool})
-     = (_0_:Int; if_:Text; _1234_:Nat; _4321_:Bool)
+     = {_0_:Int; if_:Text; _1234_:Nat; _4321_:Bool}
    ```
    This is another source of partiality for `e`:
    ```

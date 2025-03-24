@@ -578,7 +578,7 @@ module {
         case (null, ?_) { return #less };
         case (?_, null) { return #greater };
         case (?c1, ?c2) {
-          switch (Char.compare(c1, c2)) {
+          switch (cmp(c1, c2)) {
             case (#equal) { }; // continue
             case other { return other; }
           }

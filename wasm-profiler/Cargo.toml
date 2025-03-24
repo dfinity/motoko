@@ -1,10 +1,10 @@
 [package]
 name = "wasm-profiler"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 
 [dependencies]
-parity-wasm = "0.42.2"
+parity-wasm = { version = "0.45.0", features = ["std", "sign_ext", "bulk"] }
 structopt = "0.3"
 clap = "2.33"
 

@@ -12,15 +12,17 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 (* Resolved imports (filled in separately after parsing) *)
 
+type lib_path = {package : string option; path : string}
 type resolved_import =
   | Unresolved
-  | LibPath of string
+  | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
   | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
 
 type id = string Source.phrase
+(* type id_ref, see below *)
 type typ_id = (string, Type.con option) Source.annotated_phrase
 
 
@@ -31,6 +33,7 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
+and id_ref = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -125,14 +128,14 @@ and vis' =
   | System
 
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
+let is_private vis = match vis.Source.it with Private -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
-
-type inst = (typ list option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
+type inst = ((bool * typ list) option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
@@ -148,7 +151,7 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
-  | VarE of id                                 (* variable *)
+  | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)
   | ActorUrlE of exp                           (* actor reference *)
   | UnE of op_typ * unop * exp                 (* unary operator *)
@@ -162,7 +165,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjBlockE of obj_sort * dec_field list     (* object block *)
+  | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
@@ -170,8 +173,8 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp * inst * exp                  (* function call *)
-  | BlockE of dec list                         (* block (with type after avoidance)*)
+  | CallE of exp option * exp * inst * exp     (* function call *)
+  | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -186,21 +189,20 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
+  | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
   | AwaitE of async_sort * exp                 (* await *)
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
-  | TryE of exp * case list                    (* catch exception *)
+  | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
 (*
-  | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
 
 and assert_kind =
-  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit
+  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}
@@ -221,7 +223,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
+      exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 
 (* Program (pre unit detection) *)
@@ -233,7 +235,11 @@ and prog' = dec list
 (* Signatures (stable variables) *)
 
 type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
-and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
+and stab_sig' = (dec list * stab_body)      (* type declarations & stable actor fields *)
+and stab_body = stab_body' Source.phrase    (* type declarations & stable actor fields *)
+and stab_body' =
+  | Single of typ_field list
+  | PrePost of typ_field list * typ_field list
 
 (* Compilation units *)
 
@@ -243,10 +249,10 @@ and import' = pat * string * resolved_import ref
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * dec_field list      (* main IC actor *)
+ | ActorU of exp option * id option * dec_field list      (* main IC actor *)
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+     exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
@@ -260,15 +266,15 @@ type lib = comp_unit
 (* Helpers *)
 
 let (@@) = Source.(@@)
-let (@?) it at = Source.({it; at; note = empty_typ_note})
-let (@!) it at = Source.({it; at; note = Type.Pre})
-let (@=) it at = Source.({it; at; note = None})
-
+let (@~) it at = Source.annotate Const it at
+let (@?) it at = Source.annotate empty_typ_note it at
+let (@!) it at = Source.annotate Type.Pre it at
+let (@=) it at = Source.annotate None it at
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
   | BoolLit false -> "false"
-  | BoolLit true  ->  "true"
+  | BoolLit true  -> "true"
   | IntLit n
   | NatLit n      -> Numerics.Int.to_pretty_string n
   | Int8Lit n     -> Numerics.Int_8.to_pretty_string n
@@ -296,8 +302,17 @@ open Source
 
 (* Identifiers *)
 
-let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
-let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
+let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
+
+let is_privileged name =
+  String.length name > 0 && name.[0] = '@'
+
+let is_underscored name =
+  String.length name > 0 && name.[0] = '_'
+
+let is_scope name =
+  String.length name > 0 && name.[0] = '$'
 
 (* Types & Scopes *)
 
@@ -318,11 +333,11 @@ let scopeT at =
 (* Expressions *)
 
 let asyncE sort tbs e =
-  AsyncE (sort, tbs, e) @? e.at
+  AsyncE (None, sort, tbs, e) @? e.at
 
 let ignore_asyncE tbs e =
   IgnoreE (
-    AnnotE (AsyncE (Type.Fut, tbs, e) @? e.at,
+    AnnotE (AsyncE (None, Type.Fut, tbs, e) @? e.at,
       AsyncT (Type.Fut, scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let is_asyncE e =
@@ -333,7 +348,7 @@ let is_asyncE e =
 let is_ignore_asyncE e =
   match e.it with
   | IgnoreE
-      {it = AnnotE ({it = AsyncE (Type.Fut, _, _); _},
+      {it = AnnotE ({it = AsyncE (None, Type.Fut, _, _); _},
         {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false

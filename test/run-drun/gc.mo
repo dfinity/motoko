@@ -5,6 +5,9 @@ actor {
     let blob = "\00\01\02\03" : Blob;
     for (b in blob.vals()) {
       await async {};
+    };
+    for (b in blob.values()) {
+      await async {};
       Prim.debugPrint(debug_show b);
     };
   };
@@ -21,6 +24,9 @@ actor {
     let is = ["0","1","2"];
     for (i in is.vals()) {
       await async {};
+    };
+    for (i in is.values()) {
+      await async {};
       Prim.debugPrint(debug_show i);
     };
   };
@@ -29,6 +35,9 @@ actor {
   public shared func testArrayMut() : async () {
     let is = [var "0","1","2"];
     for (i in is.vals()) {
+      await async {};
+    };
+    for (i in is.values()) {
       await async {};
       Prim.debugPrint(debug_show i);
     };

@@ -188,7 +188,7 @@ var motokoHashMap = null;
 function importWasmModule(moduleName, wasiPolyfill) {
 
   const moduleImports = {
-    wasi_unstable: wasiPolyfill,
+    wasi_snapshot_preview1: wasiPolyfill,
     env: {},
   };
 

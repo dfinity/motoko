@@ -9,25 +9,29 @@
 
 ## Heap
 
-* Uniform representation with 32 bit word size.
+* Uniform representation with a defined word size. 
+For [enhanced orthogonal persistence](OrthogonalPersistence.md), 64-bit words are used, while for classical persistence, the word size is 32-bit.
 
-* Use pointer tagging in LSB;.
-  - 0 for pointers, 1 for scalars.
-  - Scalars are real value shifted left by 1, lowest bit set.
-
-* Q: Allocation and GC strategies?
+* Use pointer tagging in the LSB:
+  - 1 for pointers, 0 for scalars.
+  - Scalars are real value shifted left by 1, lowest bit clear.
+  For [enhanced orthogonal persistence](OrthogonalPersistence.md), the types of scalars are additionally tagged.
+  
+* Garbage collected.
 
 
 ## Primitive types
 
-* Nat and Int compile to heap-allocated big nums; unboxed for small numbers <= 31 bit.
+* Nat and Int compile to heap-allocated big nums; unboxed for small numbers `<= 31` bit.
 
-* Nat8/16 compile to unboxed scalars; Nat32/64 are boxed.
+* Nat8/16 compile to unboxed scalars; 
+  On a 32-bit heap, Nat32/64 are boxed. 
+  On a 64-bit heap, only Nat64 is boxed, while Nat32 remains unboxed.
   - May unbox locally.
 
 * Characters are scalars (unicode code points).
 
-* Text is heap-allocated.
+* Text is heap-allocated. Using ropes for concatenations.
 
 
 ## Tuples
@@ -103,6 +107,11 @@ TODO
 
 TODO
 
+## Persistence
+
+Different * [persistence modes](OrthogonalPersistence.md):
+* [Enhanced orthogonal persistence](OrthogonalPersistence.md).
+* [Classical persistence](OldStableMemory.md).
 
 # Hypervisor Extensions needed
 

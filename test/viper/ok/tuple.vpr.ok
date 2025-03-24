@@ -1,0 +1,142 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
+adt Tuple$10 [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9]
+  { Tup$10(tup$10$0 : T0, tup$10$1 : T1, tup$10$2 : T2, tup$10$3 : T3,
+          tup$10$4 : T4, tup$10$5 : T5, tup$10$6 : T6, tup$10$7 : T7,
+          tup$10$8 : T8, tup$10$9 : T9) }
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (((true && acc(($Self).fld1,write)) && acc(($Self).fld2,write)))
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).fld1 := Tup$2(1, false);
+      ($Self).fld2 := Tup$2(1, 2); 
+    }
+field fld1: Tuple$2[Int, Bool]
+field fld2: Tuple$2[Int, Int]
+method localTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var t: Tuple$2[Int, Int]
+      var a: Int
+      var b: Int
+      var t1: Tuple$2[Int, Int]
+      var t2: Tuple$2[Int, Int]
+      t := Tup$2(1, 2);
+      a := (t).tup$2$0;
+      b := (t).tup$2$1;
+      t1 := Tup$2(a, b);
+      assert (((t).tup$2$0 == (t1).tup$2$0) && ((t).tup$2$1 == (t1).tup$2$1));
+      t2 := Tup$2(1, 2);
+      t2 := Tup$2(3, 4);
+      assert (((t2).tup$2$0 != 1) && ((t2).tup$2$1 != 2));
+      assert (((t2).tup$2$0 == 3) && ((t2).tup$2$1 == 4));
+      label $Ret; 
+    }
+method getTuple($Self: Ref)
+     returns ($Res: Tuple$2[Int, Bool])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures ((($Res).tup$2$0 == 42) && (($Res).tup$2$1 == false))
+    { 
+      $Res := Tup$2(42, false);
+      goto $Ret;
+      label $Ret; 
+    }
+method getLargeTuple($Self: Ref)
+     returns ($Res: Tuple$10[Int, Bool, Int, Int, Bool, Int, Bool, Int, Bool,
+                    Tuple$2[Int, Bool]])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var t: Tuple$2[Int, Bool]
+      t := getTuple($Self);
+      $Res := Tup$10(1, true, 2, 3, false, 4, true, 5, false, t);
+      goto $Ret;
+      label $Ret; 
+    }
+method tupleArg($Self: Ref, a: Tuple$2[Bool, Bool])
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := ((a).tup$2$0 && (a).tup$2$1);
+      goto $Ret;
+      label $Ret; 
+    }
+method tupleArg2($Self: Ref, a: Tuple$2[Int, Int], b: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := (((a).tup$2$0 + (a).tup$2$1) + b);
+      goto $Ret;
+      label $Ret; 
+    }
+method passTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var t: Tuple$2[Bool, Bool]
+      var r: Bool
+      var t1: Tuple$2[Int, Int]
+      var r2: Int
+      t := Tup$2(true, false);
+      r := tupleArg($Self, t);
+      t1 := Tup$2(1, 2);
+      r2 := tupleArg2($Self, t1, 2);
+      label $Ret; 
+    }
+method callTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var t: Tuple$2[Int, Bool]
+      var a: Int
+      var b: Bool
+      t := getTuple($Self);
+      assert (((t).tup$2$0 == 42) && ((t).tup$2$1 == false));
+      a := (t).tup$2$0;
+      b := (t).tup$2$1;
+      assert ((a == 42) && (b == false));
+      label $Ret; 
+    }
+method changeField($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var x: Int
+      x := (($Self).fld1).tup$2$0;
+      ($Self).fld2 := Tup$2(2, 3);
+      label $Ret; 
+    }

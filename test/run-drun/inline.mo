@@ -1,6 +1,3 @@
-//MOC-ENV MOC_UNLOCK_PRIM=yesplease
-import Prim "mo:⛔";
-
 actor {
   func inline(t1: Text, t2 : Text) : Text = t1 # t2;
   func makecalls() : () {

@@ -20,7 +20,7 @@ shared(msg) actor class PiggyBank(
     let acceptable =
       if (amount <= limit) amount
       else limit;
-    let accepted = Cycles.accept(acceptable);
+    let accepted = Cycles.accept<system>(acceptable);
     assert (accepted == acceptable);
     savings += acceptable;
   };
@@ -28,7 +28,7 @@ shared(msg) actor class PiggyBank(
   public shared(msg) func withdraw(amount : Nat) : async () {
     assert (msg.caller == owner);
     assert (amount <= savings);
-    Cycles.add(amount);
+    Cycles.add<system>(amount);
     await benefit();
     let refund = Cycles.refunded();
     savings -= amount - refund;
