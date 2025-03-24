@@ -588,16 +588,17 @@ func @timer_helper() : async () {
   func gatherExpired(n : ?@Node) = switch n {
     case null ();
     case (?n) {
-      if (n.expire[0] > 0) gatherExpired(n.pre); // by corollary
-      if (n.expire[0] <= now and gathered < thunks.size()) {
-        if (n.expire[0] > 0) {
+      let pivot = n.expire[0];
+      if (pivot > 0) gatherExpired(n.pre); // by corollary
+      if (pivot <= now and gathered < thunks.size()) {
+        if (pivot > 0) {
           // not expunged yet
           thunks[gathered] := ?(n.job);
           switch (n.delay) {
             case (null or ?0) n.expire[0] := 0;
             case (?delay) {
               // re-add the node, skipping past expirations
-              let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
+              let expire = pivot + delay * (1 + (now - pivot) / delay);
               n.expire[0] := 0;
               // N.B. reinsert only works on pruned nodes
               func reinsert(m : ?@Node) : @Node = switch m {
