@@ -962,7 +962,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    not RelArgs.is_lossy d
+    not (RelArg.is_loss_less d)
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
@@ -1032,14 +1032,14 @@ and rel_fields d rel eq tfs1 tfs2 =
   | [], [] ->
     true
   | _, [] when rel != eq ->
-    not (RelArgs.is_loss_less d)
+    not (RelArg.is_loss_less d)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ d rel eq tf1.typ tf2.typ &&
       rel_fields d rel eq tfs1' tfs2'
     | -1 when rel != eq ->
-      not (RelArgs.is_loss_less d) &&
+      not (RelArg.is_loss_less d) &&
       rel_fields d rel eq tfs1' tfs2
     | _ -> false
     )
@@ -1108,7 +1108,6 @@ and eq_con d eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
-
 
 (* Compatibility *)
 
@@ -1912,6 +1911,8 @@ include MakePretty(ShowStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
+let stable_sub t1 t2 =
+  rel_typ RelArg.loss_less (ref SS.empty) (ref SS.empty) t1 t2
 
 let pre = function
   | Single tfs -> tfs
@@ -1929,17 +1930,20 @@ let rec match_stab_sig sig1 sig2 =
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
-  | [], _ | _, [] ->
-    (* same amount of fields, new fields, or dropped fields ok *)
+  | [], _ ->
+    (* same amount of fields or new fields ok *)
     true
+  | _, [] ->
+    (* no dropped fields *)
+    false
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
        match_stab_fields tfs1' tfs2'
      | -1 ->
-       (* dropped field ok *)
-       match_stab_fields tfs1' tfs2
+       (* no dropped fields *)
+       false
      | _ ->
        (* new field ok *)
        match_stab_fields tfs1 tfs2'
