@@ -34,9 +34,9 @@ let emoji = "👋";
 let concat = hello # " " # emoji; // "Hello! 👋"
 ```
 
-## Value `fromChar`
+## Function `fromChar`
 ``` motoko no-repl
-let fromChar : (c : Char) -> Text
+func fromChar(c : Char) : Text
 ```
 
 Converts the given `Char` to a `Text` value.
@@ -471,9 +471,9 @@ import Char "mo:base/Char";
 Text.compareWith("abc", "ABC", func(c1, c2) { Char.compare(c1, c2) }) // #greater
 ```
 
-## Value `encodeUtf8`
+## Function `encodeUtf8`
 ``` motoko no-repl
-let encodeUtf8 : Text -> Blob
+func encodeUtf8(_ : Text) : Blob
 ```
 
 Returns a UTF-8 encoded `Blob` from the given `Text`.
@@ -482,9 +482,9 @@ Returns a UTF-8 encoded `Blob` from the given `Text`.
 let blob = Text.encodeUtf8("Hello");
 ```
 
-## Value `decodeUtf8`
+## Function `decodeUtf8`
 ``` motoko no-repl
-let decodeUtf8 : Blob -> ?Text
+func decodeUtf8(_ : Blob) : ?Text
 ```
 
 Tries to decode the given `Blob` as UTF-8.
@@ -494,9 +494,9 @@ Returns `null` if the blob is not valid UTF-8.
 let text = Text.decodeUtf8("\48\65\6C\6C\6F"); // ?"Hello"
 ```
 
-## Value `toLowercase`
+## Function `toLowercase`
 ``` motoko no-repl
-let toLowercase : Text -> Text
+func toLowercase(_ : Text) : Text
 ```
 
 Returns the text argument in lowercase.
@@ -506,9 +506,9 @@ WARNING: Unicode compliant only when compiled, not interpreted.
 let text = Text.toLowercase("Good Day"); // ?"good day"
 ```
 
-## Value `toUppercase`
+## Function `toUppercase`
 ``` motoko no-repl
-let toUppercase : Text -> Text
+func toUppercase(_ : Text) : Text
 ```
 
 Returns the text argument in uppercase. Unicode compliant.

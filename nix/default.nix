@@ -55,9 +55,8 @@ let
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
                 patchPhase = ''
-                grep -r warn-error .
-                substituteInPlace ./interpreter/Makefile \
-                  --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
+                  substituteInPlace ./interpreter/Makefile \
+                    --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
                 '';
               };
 

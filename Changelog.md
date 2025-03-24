@@ -1,5 +1,17 @@
 # Motoko compiler changelog
 
+## 0.14.4 (2025-03-18)
+
+* motoko (`moc`)
+
+  * Added `canisterSubnet` primitive (#4857).
+
+* motoko-base
+
+  * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
+
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
+
 ## 0.14.3 (2025-03-04)
 
 * motoko (`moc`)
