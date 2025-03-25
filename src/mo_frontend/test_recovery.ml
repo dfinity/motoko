@@ -147,7 +147,12 @@ let%expect_test "test2" =
                 (LetD
                   (VarP x)
                   (AnnotE
-                    (BinE ??? (LitE (PreLit 1 Nat)) AddOp (VarE _))
+                    (BinE
+                      ???
+                      (LitE (PreLit 1 Nat))
+                      AddOp
+                      (VarE __error_recovery_var__)
+                    )
                     (PathT (IdH Int))
                   )
                 )
@@ -323,6 +328,95 @@ actor Main {
       <unop> <exp_bin(ob)>
       <inst> <exp_nullary(ob)>
       [ <exp(ob)> ]
+
+    (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
+      func <pat_plain> <annot_opt> <func_body>
+      class <pat_plain> <annot_opt> <class_body>
+      object class <pat_plain> <annot_opt> <class_body>
+      module class <pat_plain> <annot_opt> <class_body>
+      func <id> <pat_plain> <annot_opt> <func_body>
+      class <id> <pat_plain> <annot_opt> <class_body>
+      actor class <pat_plain> <annot_opt> <class_body>
+      persistent actor class <pat_plain> <annot_opt> <class_body>
+      object class <id> <pat_plain> <annot_opt> <class_body>
+      module class <id> <pat_plain> <annot_opt> <class_body>
+      actor class <id> <pat_plain> <annot_opt> <class_body>
+      persistent actor class <id> <pat_plain> <annot_opt> <class_body>
+      func < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
+      class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      func < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
+      func <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
+      class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      func <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
+      class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
+      object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
+      persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body> |}]
+
+let%expect_test "test5" =
+  let s = "module {
+
+    let x =
+
+    public query test() : async Nat {
+        123
+    }
+};" in
+  Printf.printf "%s" @@ show (parse_from_string s);
+  [%expect{|
+    Ok: (Prog
+      (ExpD
+        (ObjBlockE
+          _
+          Module
+          _
+          (DecField
+            (LetD (VarP x) (VarE __error_recovery_var__))
+            Private
+            (Flexible)
+          )
+          (DecField
+            (ExpD
+              (FuncE
+                ???
+                (Query (VarP test))
+                @anon-func-5.12
+                ($ (PrimT Any))
+                (TupP)
+                (AsyncT (PathT (IdH $)) (PathT (IdH Nat)))
+
+                (AsyncE
+                  _
+                  ($@anon-func-5.12 (PrimT Any))
+                  (BlockE (ExpD (LitE (PreLit 123 Nat))))
+                )
+              )
+            )
+            Public
+            (Flexible)
+          )
+        )
+      )
+    )
+
+     with errors:
+    (unknown location): syntax error [M0001], unexpected token 'public', expected one of token or <phrase> sequence:
+      <exp(ob)>
+      <exp(ob)> else <exp_nest>
 
     (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
       func <pat_plain> <annot_opt> <func_body>

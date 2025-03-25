@@ -147,12 +147,12 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
         source: 'bad.mo',
         severity: 1,
         range: {
-          start: { line: 0, character: 2 },
-          end: { line: 0, character: 2 }
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 0 }
         },
         code: 'M0057',
         category: 'type',
-        message: 'unbound variable _'
+        message: 'unbound variable __error_recovery_var__'
       }
 
   ],
