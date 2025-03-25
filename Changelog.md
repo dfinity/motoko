@@ -6,7 +6,7 @@
 
   * Performance improvements to the default timer mechanism (#3872, #4967).
 
-* Motoko documentation (`mo-doc`)
+* documentation (`mo-doc`)
 
   * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
 
