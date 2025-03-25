@@ -87,6 +87,18 @@ module RecoveryTracer = MenhirRecoveryLib.DummyPrinter (I)
 module RecoveryConfig = struct
   include Recover_parser
 
+  (* Adapt [default_value region] to MenhirRecoverLib interface ([default_value loc]) *)
+  let default_value (loc: Custom_compiler_libs.Location.t) sym =
+      let open Custom_compiler_libs.Location in
+      let open Lexing in
+      let open Source in
+      let file = loc.loc_start.pos_fname in
+      let region_loc : region = {
+        left  : pos = {file; line = loc.loc_start.pos_lnum; column = loc.loc_start.pos_bol};
+        right : pos = {file; line = loc.loc_end.pos_lnum; column = loc.loc_end.pos_bol};
+      } in
+      default_value region_loc sym
+
   let guide _ = false
   let use_indentation_heuristic = false
   let is_eof  = function Parser.EOF -> true | _ -> false
