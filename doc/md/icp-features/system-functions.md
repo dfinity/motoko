@@ -4,13 +4,21 @@ sidebar_position: 6
 
 # System functions
 
-System functions allow canisters to interact with the Internet Computer's runtime environment, serving as key integration points within the canister lifecycle. There are five system functions: **`heartbeat`, `timer`, `preupgrade`, `postupgrade`, and `inspect`**. Declaring any other system function will result in an error. These functions allow developers to execute code at crucial moments, such as during upgrades, at scheduled intervals, or in response to system events. By leveraging these hooks, canisters can efficiently manage state transitions, automate tasks, and handle system-level operations. Each function operates within a distinct execution context, providing powerful mechanisms for controlling canister behavior and ensuring stability.
+ICP supports five system functions that canisters can call to interact with the ICP runtime environment:
+
+- `heartbeat`
+- `timer`
+- `preupgrade`
+- `postupgrade`
+- `inspect`
+
+Declaring any other system function will result in an error. Canisters can use these functions to efficiently manage state transitions, automate tasks, or handle system-level operations. 
 
 ## `heartbeat()`
 
-ICP canisters can opt to receive heartbeat messages by exposing a `canister_heartbeat` function. In Motoko, this is achieved by declaring the system function `heartbeat`, which takes no arguments and returns an asynchronous unit type (`async ()`). Since `heartbeat()` is async, it can invoke other asynchronous functions and await their results. This function executes on every **subnet heartbeat**, enabling periodic task execution without requiring external triggers.
+Canisters can opt to receive heartbeat messages by exposing a `canister_heartbeat` function. In Motoko, this is achieved by declaring the system function `heartbeat`, which takes no arguments and returns an asynchronous unit type (`async ()`). Since `heartbeat()` is async, it can invoke other asynchronous functions and await their results. This function executes on every **subnet heartbeat**, enabling periodic task execution without requiring external triggers.
 
-If a canister exports a function named `canister_heartbeat`, it must have the type `() -> ()`, ensuring it adheres to the expected system function signature[see heartbeat](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat).
+If a canister exports a function named `canister_heartbeat`, it must have the type `() -> ()`, ensuring it adheres to the expected [system function signature](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat).
 
 One example use case for heartbeats is a recurring alarm, where the canister performs an action at regular intervals. In the example below, the canister triggers an event every fifth heartbeat by maintaining a counter:
 
@@ -35,13 +43,15 @@ persistent actor Alarm {
 }
 ```
 
-The heartbeat function executes asynchronously, meaning it can issue cross-canister calls and await responses. However, because every async call in Motoko introduces a context switch, the actual execution of the heartbeat function may be delayed relative to when the subnet issues the heartbeat. The function's result is ignored, so any errors or traps do not affect subsequent executions.
+The heartbeat function executes asynchronously, meaning it can issue inter-canister calls and await responses. However, because every async call in Motoko introduces a context switch, the actual execution of the heartbeat function may be delayed relative to when the subnet issues the heartbeat. The function's result is ignored, so any errors or traps do not affect subsequent executions.
 
-Since subnet heartbeats operate at the protocol level, their timing is **not precise** and depends on network conditions and execution load. As a result, using heartbeats for **high-frequency or time-sensitive operations** should be done cautiously, as there is no guarantee of real-time execution.
+Since subnet heartbeats operate at the protocol level, their timing is not precise and depends on network conditions and execution load. As a result, using heartbeats for **high-frequency or time-sensitive operations should be done cautiously**, as there is no guarantee of real-time execution.
 
 ## `timer(setGlobalTimer : Nat64 -> ())`
 
-The `timer()` system function allows canisters to **schedule a single execution** of a task after a specified delay. To make it repeat, the function must explicitly reset the timer using `setGlobalTimer()` within its body. It takes a single argument for resetting the global timer and returns `async ()`. Unlike `heartbeat()`, which runs automatically on every subnet tick, `timer()` requires **manual rescheduling** after execution. This gives canisters precise control over whether the timer runs **once** or **continuously**, depending on when (or if) `setGlobalTimer()` is called again.
+The `timer()` system function allows canisters to schedule a single execution of a task after a specified delay. To make it repeat, the function must explicitly reset the timer using `setGlobalTimer()` within its body. It takes a single argument for resetting the global timer and returns `async ()`. 
+
+Unlike `heartbeat()`, which runs automatically on every subnet tick, `timer()` requires **manual rescheduling** after execution. This gives canisters precise control over whether the timer runs once or continuously, depending on when (or if) `setGlobalTimer()` is called again.
 
 In the following example, `timer()` runs once immediately after deployoment, then stops:
 
@@ -69,9 +79,11 @@ system func timer(setGlobalTimer : Nat64 -> ()) : async () {
 
 ## `preupgrade()`
 
-The `preupgrade()` system function is called immediately before a canister upgrade, allowing a canister to prepare for state migration by saving necessary data. It is primarily used to transfer non-stable variables into stable storage, ensuring that important state information persists across upgrades. Since `preupgrade()` runs before the new Wasm module is installed, any failure—such as a trap or exceeding computation limits prevents the upgrade from succeeding, potentially leaving the canister in an **unrecoverable state**. As a result, **using `preupgrade()` is discouraged unless necessary**.
+The `preupgrade()` system function is called immediately before a canister upgrade, allowing a canister to prepare for state migration by saving necessary data. It is primarily used to transfer non-stable variables into stable storage, ensuring that important state information persists across upgrades. Since `preupgrade()` runs before the new Wasm module is installed. 
 
-The following example saves a hashmap of user balances into a stable variable before upgrading:
+Any failure, such as a trap or exceeding computation limits prevents the upgrade from succeeding, potentially leaving the canister in an unrecoverable state. As a result, **using `preupgrade()` is discouraged unless necessary**.
+
+The following example saves a `HashMap` of user balances into a stable variable before upgrading.
 
 `balances` is a non-stable `HashMap` that would normally be lost during an upgrade. Before upgrading, `preupgrade()` stores the key-value pairs in a stable array (`savedBalances`).
 
@@ -96,7 +108,7 @@ After upgrading, the `postupgrade()` function (shown [next](#postupgrade)) can r
 
 The `postupgrade()` system function is called immediately after a canister upgrade, allowing a canister to restore state or execute initialization logic. Unlike `preupgrade()`, **it is not required**, as most of its effects can be achieved using actor initialization expressions (`let` bindings and expression statements). However, `postupgrade()` is useful for reconstructing data structures or running migration logic.
 
-This example restores the `balances` hash map using the data saved in `preupgrade()`:
+This example restores the `balances` `HashMap` using the data saved in `preupgrade()`:
 
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
@@ -112,11 +124,21 @@ persistent actor Token {
 }
 ```
 
-The **use of upgrade hooks is not recommended** as they can fail causing the program to enter an unrecoverable state. `preupgrade()` can make an upgrade fail- if it traps, the canister cannot be upgraded. In many cases, stable variables or actor initialization expressions can replace `postupgrade()`. Complex transformations increase the risk of errors and failures. With advancements in orthogonal persistence, these hooks are expected to be deprecated.
+The **use of upgrade hooks is not recommended** as they can fail and cause the program to enter an unrecoverable state. With advancements in orthogonal persistence, these hooks are expected to be deprecated.
+
+`preupgrade()` can make a canister trap and fail to upgrade. In many cases, stable variables or actor initialization expressions can replace `postupgrade()`. Complex transformations increase the risk of errors and failures.
 
 ## `inspect()`
 
-The `inspect()` system function allows a canister to **inspect ingress messages** before execution, determining whether to accept or reject them. The function receives a **record of message attributes**, including the **caller’s principal**, the **raw argument blob**, and a **variant identifying the target function**. It returns a `Bool`, where `true` permits execution and `false` rejects the message. Similar to a **query**, any side effects are discarded, and if `inspect()` traps, it is equivalent to returning `false`. Unlike other system functions, the argument type of `inspect()` depends on the actor's exposed interface, meaning it can selectively handle different methods or ignore unnecessary fields. However, **`inspect()` should not be used for definitive access control** because it runs on a **single replica without full consensus**, making it susceptible to boundary node spoofing. Additionally, `inspect()` only applies to **ingress messages**, not inter-canister calls, meaning secure access control must still be enforced within shared functions.
+The `inspect()` system function allows a canister to **inspect ingress messages** before execution, determining whether to accept or reject them. The function receives a record of message attributes, including:
+
+ - The **caller’s principal**
+ - The **raw argument blob**
+ - A **variant identifying the target function**
+ 
+It returns a `Bool`, where `true` permits execution and `false` rejects the message. Similar to a **query**, any side effects are discarded. If `inspect()` traps, it is equivalent to returning `false`. Unlike other system functions, the argument type of `inspect()` depends on the actor's exposed interface, meaning it can selectively handle different methods or ignore unnecessary fields. 
+
+However, **`inspect()` should not be used for definitive access control** because it runs on a **single replica without going through consensus**, making it susceptible to boundary node spoofing. Additionally, `inspect()` only applies to **ingress messages**, not inter-canister calls, meaning secure access control must still be enforced within shared functions.
 
 The following actor defines an inspect function that blocks anonymous callers, limits message size, and rejects specific argument values.
 
