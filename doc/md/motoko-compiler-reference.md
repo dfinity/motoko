@@ -85,7 +85,6 @@ You can use the following options with the `moc` command:
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (only supported with classical persistence, default 32).                               |
 | `--trap-on-call-error`                    | Trap, don't throw an [`Error`](../base/Error.md), when an IC call fails due to the destination queue being full or crossing a freezing threshold.               |
-|                                           | Emulates behaviour of moc versions < 0.8.0.                                                                                                           |
 | `-t`                                      | Activate tracing in interpreter.                                                                                                                     |
 | `-v`                                      | Generate verbose output.                                                                                                                             |
 | `--version`                               | Display version information.                                                                                                                         |
