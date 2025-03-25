@@ -126,7 +126,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Line breaks
 
-- Pick a fixed right margin for lines and break definitions or expressions. 80 is considered a good limit by many.
+- Pick a fixed right margin for lines and break definitions or expressions accordingly. A limit of 80 characters is considered a good standard as recommended by style guides such as [PEP 8](https://peps.python.org/pep-0008/#maximum-line-length), the [GNU Coding Standards](https://www.gnu.org/prep/standards/standards.html#Long-Lines), and the [Linux Kernel Coding Style](https://www.kernel.org/doc/html/latest/process/coding-style.html#breaking-long-lines-and-strings).
 
     ``` motoko no-repl
     let sum = a + b + 2*c + d +
@@ -930,6 +930,24 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     ```
 
 - Use composite queries where applicable.
+
+Example:
+
+```motoko no-repl
+// This is an unecessary update call :
+public func couldBeQuery() : async () {
+  await queryFunction();
+}
+```
+
+This can be optimized with a composite query:
+
+```motoko no-repl
+// Composite queries can await other queries without becoming an update call
+public composite query func betterQuery() : async () {
+  await queryFunction();
+}
+```
 
 ### Pattern matching
 
