@@ -523,7 +523,7 @@ rec {
       '';
     };
 
-  in fix_names ({
+  in fix_names {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
@@ -548,11 +548,13 @@ rec {
       trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
-    }) // { recurseForDerivations = true; };
+    }
+    // (if system == "aarch64-darwin" then fix_names
+    { bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ]; } else {})
+    // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
     name = "samples";
