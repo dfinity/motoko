@@ -82,11 +82,6 @@ sig
   end
 end
 
-module Seq :
-sig
-  val for_all : ('a -> bool) -> 'a Seq.t -> bool (* 4.14 *)
-end
-
 module Option :
 sig
   module Syntax :

@@ -562,14 +562,10 @@ func @prune(n : ?@Node) : ?@Node = switch n {
 func @nextExpiration(n : ?@Node) : Nat64 = switch n {
   case null 0;
   case (?n) {
-    var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
-    if (exp == 0) {
-      exp := n.expire[0];
-      if (exp == 0) {
-        exp := @nextExpiration(n.post)
-      }
-    };
-    exp
+    let pivot = n.expire[0];
+    if (pivot == 0) return @nextExpiration(n.post);
+    let exp = @nextExpiration(n.pre);
+    if (exp == 0) pivot else exp
   }
 };
 
@@ -588,31 +584,34 @@ func @timer_helper() : async () {
   func gatherExpired(n : ?@Node) = switch n {
     case null ();
     case (?n) {
-      gatherExpired(n.pre);
-      if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
-        thunks[gathered] := ?(n.job);
-        switch (n.delay) {
-          case (null or ?0) ();
-          case (?delay) {
-            // re-add the node, skipping past expirations
-            let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
-            n.expire[0] := 0;
-            // N.B. reinsert only works on pruned nodes
-            func reinsert(m : ?@Node) : @Node = switch m {
-              case null ({ n with expire = [var expire]; pre = null; post = null });
-              case (?m) {
-                assert m.expire[0] != 0;
-                if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
-                else ({ m with post = ?reinsert(m.post) })
-              }
-            };
-            @timers := ?reinsert(@prune(@timers));
+      let pivot = n.expire[0];
+      if (pivot > 0) gatherExpired(n.pre); // by corollary
+      if (pivot <= now and gathered < thunks.size()) {
+        if (pivot > 0) {
+          // not expunged yet
+          thunks[gathered] := ?(n.job);
+          switch (n.delay) {
+            case (null or ?0) n.expire[0] := 0;
+            case (?delay) {
+              // re-add the node, skipping past expirations
+              let expire = pivot + delay * (1 + (now - pivot) / delay);
+              n.expire[0] := 0;
+              // N.B. reinsert only works on pruned nodes
+              func reinsert(m : ?@Node) : @Node = switch m {
+                case null ({ n with expire = [var expire]; pre = null; post = null });
+                case (?m) {
+                  assert m.expire[0] != 0;
+                  if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
+                  else ({ m with post = ?reinsert(m.post) })
+                }
+              };
+              @timers := ?reinsert(@prune(@timers));
+            }
           };
+          gathered += 1;
         };
-        n.expire[0] := 0;
-        gathered += 1;
-      };
-      gatherExpired(n.post);
+        gatherExpired(n.post)
+      }
     }
   };
 
