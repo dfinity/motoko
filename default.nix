@@ -80,6 +80,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.menhirLib
+    pkgs.ocamlPackages.menhirSdk
+    pkgs.ocamlPackages.ocaml-recovery-parser
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -90,6 +92,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.ppx_expect
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
     pkgs.obelisk
