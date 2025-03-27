@@ -80,63 +80,6 @@ actor {
 }
 ```
 
-## Dynamic calls
-
-Although most canisters on ICP utilize Candid, the protocol itself doesn't mandate it. At the [protocol level]https://learn.internetcomputer.org/hc/en-us/articles/34206453538964-Blockchain-Protocol, canisters communicate using raw binary data. Candid serves as a widely adopted standard to interpret this binary data.
-
-Explicit handling of Candid encoding may be beneficial when making dynamic calls to canister methods using the `call` function from the `ExperimentalInternetComputer` module.
-
-The `call` function requires three parameters:
-
-1. A canister's principal.
-2. The method name as a `Text`.
-3. Raw binary data (`Blob`) as an input argument. 
-
-It returns a future (`async`) containing the method's result as raw binary data.
-
-Dynamic calls are especially useful when interacting with canisters that have complex or non-standard interfaces, or when developers require granular control over the calling process. However, they require that you manually handle the binary encoding and decoding, which can introduce errors.
-
-If the target service uses Candid and the method's types are known, developers can conveniently leverage `to_candid` and `from_candid` for binary data handling.
-
-Here's an example demonstrating how to perform a dynamic call:
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-import { call } "mo:base/ExperimentalInternetComputer";
-import Debug "mo:base/Debug";
-
-actor This{
-  public type User = {
-    userId : Nat;
-    name : Text;
-  };
-
-  public func createUser(userId : Nat, name : Text) : async User {
-    { userId = userId; name = name }
-  };
-
-  // Dynamically call 'createUser' method on the same actor
-  public func dynamicCreateUser(userId : Nat, name : Text) : async ?User {
-    let args = to_candid(userId, name); // encode arguments explicitly
-    let resultBlob = await call(Principal.fromActor(This), "createUser", args);
-
-    let decodedUser : ?User = from_candid(resultBlob);
-    switch decodedUser {
-      case (?user) {
-        Debug.print("User created dynamically: " # user.name);
-        return ?user;
-      };
-      case null {
-        Debug.print("Failed to decode dynamic call result.");
-        return null;
-      };
-    };
-  };
-}
-```
-
-Dynamic calls should be used thoughtfully. In most cases, standard inter-canister calls and automatic Candid handling provided by Motoko offer a safer, simpler, and more convenient approach.
-
 ### Resources
 
 For more detailed information on Candid, refer to:

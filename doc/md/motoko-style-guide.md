@@ -220,8 +220,8 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       longArg2,
       longArg3,
       longArg4,
-      longArg5,
-    );
+      longArg5
+      );
 
     // COUNTER EXAMPLE!
     let x = someFunction(arg1, arg2, arg3,
@@ -259,8 +259,8 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       // It's definition also takes multiple lines.
     }
 
-    func add(x : Nat, y : Nat) { return x + y };
-    func mul(x : Nat, y : Nat) { return x * y };
+    func add(x : Nat, y : Nat) { x + y };
+    func mul(x : Nat, y : Nat) { x * y };
     ```
 
 - Separate logic groups of definitions with two empty lines. Add a one-line comment as a "section header" for each group.
@@ -586,8 +586,8 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     class Cart(length_ : Nat) {
       var width_ = 0;
 
-      public func length() : Nat { return length_ };
-      public func width() : Nat { return width_ };
+      public func length() : Nat { length_ };
+      public func width() : Nat { width_ };
     }
     ```
 
@@ -610,7 +610,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
           case (#mul(e1, e2)) { eval(e1) * eval(e2) };
         };
       Debug.print(n);
-      return n;
+      n;
     };
     ```
 
@@ -837,7 +837,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
         a := b;
         b := c % b;
       };
-      return a;
+      a;
     };
     ```
 
@@ -900,9 +900,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     ```motoko no-repl
     type MyError = { #NotFound; #InvalidInput; #PermissionDenied };
 
-    func safeDivide(a : Int, b : Int) : Result<Int, MyError> {
-      if (b == 0) { return #err(#InvalidInput) };
-      return #ok(a / b);
+    func safeDivide(a : Int, b : Int) : Result.Result<Int, MyError> {
+      if (b == 0) { return #err (#InvalidInput) };
+      #ok (a / b);
     };
     ```
 
@@ -913,6 +913,15 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     assert(x > 0);  // Only use if x should never be <= 0
     ```
 
+- Use `debug assert` for development-time checks.
+  - `debug assert` is like `assert`, but only runs in non-release builds.
+  - Useful for checking internal assumptions or invariants without impacting production performance.
+  - All `debug` expressions are ignored when compiled with `moc --release`.
+
+    ```motoko no-repl
+    debug assert(balance >= 0);  // Ensure balance is never negative during development
+    ```
+
 ### Concurrency
 
 - Use `await` judiciously.
@@ -921,12 +930,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     ```motoko no-repl
     let user = await db.getUser(id); // Good ~4s
     let orders = await db.getOrders(user); // Bad: sequential calls introduce high latency ~6s
-    ```
-
-  - Instead, use parallel calls when possible:
-
-    ```motoko no-repl
-    let (user, orders) = await (db.getUser(id), db.getOrders(id));
     ```
 
 - Use composite queries where applicable.
@@ -966,13 +969,13 @@ public composite query func betterQuery() : async () {
 
 ### Data structures
 
-- Prefer `Buffer` over dynamic array resizing.
-  - `Array` in Motoko is immutable, so if dynamic resizing is needed, `Buffer` is a better choice.
+- Prefer `List` over dynamic array resizing.
+  - `Array` in Motoko is immutable, so if dynamic resizing is needed, `List` is a better choice.
 
     ```motoko no-repl
-    let buf = Buffer<Nat>(10);
-    buf.add(42);
-    let arr = Buffer.toArray<Nat>(buf);
+    let list = List.empty<Nat>()
+    List.add(list, 1);;
+    let arr = List.toArray(list);
     ```
 
 ## Motoko grammar
