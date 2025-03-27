@@ -8,6 +8,7 @@ let
   nixpkgs = import ./nix { };
   linux = import ./default.nix { system = "x86_64-linux"; inherit officialRelease; };
   darwin = import ./default.nix { system = "x86_64-darwin"; inherit officialRelease; };
+  darwinArm = import ./default.nix { system = "aarch64-darwin"; inherit officialRelease; };
 
   releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; };
 
@@ -33,6 +34,7 @@ let
       mkdir $out
       cp ${as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-Linux-x86_64-${releaseVersion}.tar.gz
       cp ${as_tarball "x86_64-darwin" (with darwin; [ mo-ide mo-doc moc ])} $out/motoko-Darwin-x86_64-${releaseVersion}.tar.gz
+      cp ${as_tarball "aarch64-darwin" (with darwinArm; [ mo-ide mo-doc moc ])} $out/motoko-Darwin-arm64-${releaseVersion}.tar.gz
 
       cp ${as_js "moc" linux.js.moc} $out/moc-${releaseVersion}.js
       cp ${as_js "moc-interpreter" linux.js.moc_interpreter} $out/moc-interpreter-${releaseVersion}.js
