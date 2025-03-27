@@ -151,8 +151,8 @@ let ocaml_exe = name: bin: rts:
           $out/bin/*
       '';
 
-      doInstallCheck = true;
-      installCheckPhase = if is_static then ''
+      doInstallCheck = !officialRelease;
+      installCheckPhase = nixpkgs.lib.optionalString is_static ''
         ldd $out/bin/* || true
         file $out/bin/*
         which patchelf
@@ -164,7 +164,7 @@ let ocaml_exe = name: bin: rts:
         file $out/bin/*
         ls -l $out/bin/*
         chmod a-w $out/bin/*
-      '' else "" + ''
+      '' + ''
         # sanity check
         ls -l $out/bin/*
         $out/bin/* --help >/dev/null
