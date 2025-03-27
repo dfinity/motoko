@@ -153,24 +153,14 @@ let ocaml_exe = name: bin: rts:
           $out/bin/*
       '' + nixpkgs.lib.optionalString is_dyn_static ''
         # these systems need a fixup to the loader interpreter
-        ldd $out/bin/* || true
-        file $out/bin/*
-        which patchelf
-        ldd $(which patchelf)
-        ls -l $out/bin/*
         chmod +w $out/bin/*
-        patchelf --set-interpreter "${staticpkgs.musl}/lib/ld-musl-aarch64.so.1" $out/bin/* || true
-        ldd $out/bin/* || true
-        file $out/bin/*
-        ls -l $out/bin/*
+        patchelf --set-interpreter "${staticpkgs.musl}/lib/ld-musl-aarch64.so.1" $out/bin/*
         chmod a-w $out/bin/*
       '';
 
       doInstallCheck = !officialRelease;
       installCheckPhase = ''
-        ls -l $out/bin/*
         $out/bin/* --help > /dev/null
-        echo /installCheckPhase
       '';
     };
 in
