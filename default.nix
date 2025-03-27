@@ -96,7 +96,6 @@ let commonBuildInputs = pkgs:
     pkgs.perl
     pkgs.removeReferencesTo
     pkgs.which
-    pkgs.patchelf
   ]; in
 
 let ocaml_exe = name: bin: rts:
@@ -105,11 +104,14 @@ let ocaml_exe = name: bin: rts:
       if is_static
       then "release-static"
       else "release";
+    is_dyn_static =
+      is_static && system == "aarch64-linux";
   in
     staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      allowedRequisites = if is_static then staticpkgs.musl else [];
+      allowedRequisites = (if is_static then [staticpkgs.musl] else [])
+                       ++ (if is_dyn_static then [staticpkgs.patchelf] else []);
 
       src = subpath ./src;
 
@@ -149,10 +151,8 @@ let ocaml_exe = name: bin: rts:
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
-      '';
-
-      doInstallCheck = !officialRelease;
-      installCheckPhase = nixpkgs.lib.optionalString is_static ''
+      '' + nixpkgs.lib.optionalString is_dyn_static ''
+        # these systems need a fixup to the loader interpreter
         ldd $out/bin/* || true
         file $out/bin/*
         which patchelf
@@ -164,10 +164,12 @@ let ocaml_exe = name: bin: rts:
         file $out/bin/*
         ls -l $out/bin/*
         chmod a-w $out/bin/*
-      '' + ''
-        # sanity check
+      '';
+
+      doInstallCheck = !officialRelease;
+      installCheckPhase = ''
         ls -l $out/bin/*
-        $out/bin/* --help >/dev/null
+        $out/bin/* --help > /dev/null
         echo /installCheckPhase
       '';
     };
