@@ -34,7 +34,7 @@ jobs:
       with:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
-        tools-cache: false
+        tool-cache: false
 
         # all of these default to true, but feel free to set to
         # "false" if necessary for your workflow
