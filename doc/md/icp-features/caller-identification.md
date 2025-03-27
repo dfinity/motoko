@@ -4,9 +4,9 @@ sidebar_position: 3
 
 # Caller identification
 
-Principals serve as unique identifiers for users and canisters on ICP Every user interacting with a canister is assigned a **principal**, which acts as their identity when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps. 
+[Principals](https://internetcomputer.org/docs/building-apps/canister-management/control) serve as unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister will have a principal which acts as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps. 
 
-When a shared function is called, the caller’s principal is automatically provided, allowing the canister to identify who initiated the request. This enables **access control** for canisters to restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions. The following sections explore how to use caller identification to implement access control in Motoko.
+When a shared function is called, the caller’s [principal](https://internetcomputer.org/docs/building-apps/canister-management/control) is automatically provided, allowing the canister to identify who initiated the request. This enables **access control** for canisters to restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions. The following sections explore how to use caller identification to implement access control in Motoko.
 
 The `shared` keyword is used to declare a shared function. A shared function can also declare an optional parameter of type `{caller : Principal}` to identify and verify request origins.
 
@@ -26,7 +26,7 @@ shared(msg) persistent actor class Counter(init : Nat) {
 
 ## Basic access control
 
-A simple way to implement access control is by storing the caller’s principal when the canister is first deployed, then only allowing that principal to make modifications. Then, an `update` function can verify that the caller of the function matches the stored principal before executing the message. This ensures that only the original deployer of the canister can update critical data while others have read-only access. The following example defines a restricted message board where only the principal that deployed the canister can update the message, while any user can read it:
+A simple way to implement [access control](https://internetcomputer.org/docs/building-apps/canister-management/control) is by storing the caller’s principal when the canister is first deployed, then only allowing that principal to make modifications. Then, an `update` function can verify that the caller of the function matches the stored principal before executing the message. This ensures that only the original deployer of the canister can update critical data while others have read-only access. The following example defines a restricted message board where only the principal that deployed the canister can update the message, while any user can read it:
 
 ```motoko no-repl
 import Error "mo:base/Error";
@@ -222,7 +222,7 @@ shared(msg) persistent actor class MandatoryAccess() {
 
 ### Access control list
 
-An **access control list (ACL)** defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike role-based access control (RBAC) which groups users into roles, ACLs require manual management of user access for each function. ACLs are flexible but can become difficult to scale in larger applications. The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users:
+An access control list (ACL) defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike role-based access control (RBAC) which groups users into roles, ACLs require manual management of user access for each function. ACLs are flexible but can become difficult to scale in larger applications. The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users:
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -299,7 +299,7 @@ shared(msg) persistent actor class ACLAccess() {
 
 ### Attribute-based access control
 
-**Attribute-based access control (ABAC)** grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include token balances, reputation scores, or other onchain data, making ABAC ideal for Web3 environments. This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
+Attribute-based access control (ABAC) grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include token balances, reputation scores, or other onchain data, making ABAC ideal for Web3 environments. This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";

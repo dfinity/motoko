@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Randomness
 
-Randomness is used within many applications, from generating unique identifiers to ensuring fairness in games and cryptographic protocols. On ICP, all computations, including randomness, must be **verifiable and reproducible** across the network's nodes.
+[Randomness](https://internetcomputer.org/docs/building-apps/network-features/randomness) is used within many applications, from generating unique identifiers to ensuring fairness in games and cryptographic protocols. On ICP, all computations, including [randomness](https://internetcomputer.org/docs/building-apps/network-features/randomness), must be **verifiable and reproducible** across the network's nodes.
 
 To address this, ICP provides a **verifiable random function (VRF)** through the [management canister](https://internetcomputer.org/docs/references/system-canisters/management-canister). This function produces random values that are **unpredictable yet verifiable**, ensuring fairness and security while maintaining network consensus. The VRF generates 256-bit random blobs in each execution round, which can be accessed via the `raw_rand` function. This method guarantees cryptographic security, making it suitable for use cases such as cryptographic key generation.
 
@@ -12,28 +12,28 @@ To address this, ICP provides a **verifiable random function (VRF)** through the
 
 Motoko provides multiple methods for incorporating randomness into your code, each suited for different scenarios:
 
-1. The `Random` module in the base library offers an interface to work with random values derived from `raw_rand`, including finite sources of randomness for efficient computations.
+1. The [`Random`](https://internetcomputer.org/docs/motoko/main/base/Random) module in the base library offers an interface to work with random values derived from `raw_rand`, including finite sources of randomness for efficient computations.
 
-2. For applications that do not require strong cryptographic guarantees, **time-based randomness** can be generated using the `fuzz` package, which provides a lightweight alternative without relying on network calls.
+2. For applications that do not require strong cryptographic guarantees, **time-based randomness** can be generated using the [`fuzz` package](https://mops.one/fuzz), which provides a lightweight alternative without relying on network calls.
 
-3. For generating **unique identifiers**, the `idempotency-keys` package offers UUID v4 generation, ensuring globally unique values for transactions and distributed systems.
+3. For generating **unique identifiers**, the [`idempotency-keys` package](https://mops.one/idempotency-keys) offers UUID v4 generation, ensuring globally unique values for transactions and distributed systems.
 
 The right method for your application depends on its security, performance, and reproducibility requirements.
 
 | Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|
 | `raw_rand` function    | Returns 32 bytes of cryptographic randomness from the ICP’s VRF.   | Strong cryptographic guarantees, ensuring unpredictability.  | Secure key generation, fairness compliant applications, unpredictable randomness. | Directly retrieves randomness from the network’s consensus layer, 32-byte (256-bit) blobs, asynchronous, returns fresh entropy each call. |
-| `Random` module   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
-| `fuzz` module     | Pseudo-random generator that can be seeded with time, blobs, or custom functions. | Security depends on the seed. | Fuzz testing, procedural generation, simulations, dynamic randomness. | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators. |
-| `idempotency-keys` module  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy.   | Unique transaction IDs, idempotency, database keys.   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`. |
+| [`Random` module](https://internetcomputer.org/docs/motoko/main/base/Random)   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
+| [`fuzz` package](https://mops.one/fuzz)     | Pseudo-random generator that can be seeded with time, blobs, or custom functions. | Security depends on the seed. | Fuzz testing, procedural generation, simulations, dynamic randomness. | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators. |
+| [`idempotency-keys` package](https://mops.one/idempotency-keys)  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy.   | Unique transaction IDs, idempotency, database keys.   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`. |
 
 :::info
-Before using the `fuzz` or `idempotency-keys` modules, ensure that [Mops](https://mops.one/) is installed and initialized in your Motoko project.
+Before using the [`fuzz`](https://mops.one/fuzz) or [`idempotency-keys`](https://mops.one/idempotency-keys) packages, ensure that [Mops](https://mops.one/) is installed and initialized in your Motoko project.
 :::
 
 ## `raw_rand`
 
-The `raw_rand` function is a system API provided by the ICP management canister for requesting cryptographic randomness derived from the network’s verifiable random function. `raw_rand` generates fresh entropy in every execution round, making it suitable for applications requiring high security such as key generation or lotteries where fairness is a legal requirement.
+The `raw_rand` function is a system API provided by the [ICP management canister](https://internetcomputer.org/docs/references/system-canisters/management-canister) for requesting cryptographic randomness derived from the network’s verifiable random function. `raw_rand` generates fresh entropy in every execution round, making it suitable for applications requiring high security such as key generation or lotteries where fairness is a legal requirement.
 
 Since `raw_rand` operates asynchronously, canisters must await its response before using the generated bytes. Each call returns a 32-byte (256-bit) random blob. Below is an example of how to call `raw_rand`:
 
@@ -51,7 +51,7 @@ actor {
 
 ## `Random`
 
-The `Random` module provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random blob must be fetched asynchronously. Below is an example demonstrating how to generate a random boolean using `Random.Finite`:
+The [`Random` module](https://internetcomputer.org/docs/motoko/main/base/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random blob must be fetched asynchronously. Below is an example demonstrating how to generate a random boolean using `Random.Finite`:
 
 ```motoko no-repl
 import Random "mo:base/Random";
@@ -68,7 +68,7 @@ actor {
 
 ## `fuzz`
 
-The `fuzz` package is a random data generator designed primarily for testing, but it can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, blobs, and principals. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random blob for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies. The following example demonstrates initialization with the default seed and generating a random `Nat`:
+The [`fuzz` package](https://mops.one/fuzz) is a random data generator designed primarily for testing, but it can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, blobs, and principals. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random blob for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies. The following example demonstrates initialization with the default seed and generating a random `Nat`:
 
 ```motoko no-repl
 import Fuzz "mo:fuzz";
@@ -82,7 +82,7 @@ import Fuzz "mo:fuzz";
 
 ## `idempotency-keys`
 
-The `idempotency-keys` package provides a method for generating universally unique identifiers (UUID) version 4 (v4), ensuring globally unique values suitable for transaction tracking and request deduplication. It takes a 16-byte random seed and formats it according to the UUID v4 specification. The security of the generated UUIDs depends on the entropy source used for the seed, with `raw_rand` being the recommended option for ensuring cryptographic uniqueness. This makes it useful for idempotent API requests, database keys, and other scenarios requiring unique identifiers. The following example demonstrates generating a UUID v4 using `idempotency-keys`:
+The [`idempotency-keys` package](https://mops.one/idempotency-keys) provides a method for generating universally unique identifiers (UUID) version 4 (v4), ensuring globally unique values suitable for transaction tracking and request deduplication. It takes a 16-byte random seed and formats it according to the UUID v4 specification. The security of the generated UUIDs depends on the entropy source used for the seed, with `raw_rand` being the recommended option for ensuring cryptographic uniqueness. This makes it useful for idempotent API requests, database keys, and other scenarios requiring unique identifiers. The following example demonstrates generating a UUID v4 using `idempotency-keys`:
 
 ```motoko no-repl
 import UUID "mo:idempotency-keys/UUID";

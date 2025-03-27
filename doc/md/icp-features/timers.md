@@ -4,9 +4,9 @@ sidebar_position: 2
 
 # Timers
 
-Canisters deployed on ICP can schedule code execution at specific intervals using [timers](https://internetcomputer.org/docs/motoko/main/base/Timer). Timers are used to execute periodic tasks such as recurring state mutation, automating maintenance, or enforcing timed access control. 
+Canisters deployed on ICP can schedule code execution at specific intervals using [timers](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers). Timers are used to execute periodic tasks such as recurring state mutation, automating maintenance, or enforcing timed access control. 
 
-Motoko provides the `Timer` module, which can be used to create recurring timers to execute code at regular intervals. These timers are managed at the application level.
+Motoko provides the [`Timer`](https://internetcomputer.org/docs/motoko/main/base/Timer) module, which can be used to create recurring timers to execute code at regular intervals. These timers are managed at the application level.
 
 For more precise control, Motoko also supports system timers, which interact with the canister’s global timer mechanism. System timers operate at a lower level, allowing a canister to handle timer expirations directly by defining a `system func timer()`. While recurring timers provide a straightforward approach for most time-based tasks, system timers offer finer control over scheduling but may interfere with the `Timer` module if both are used together.
 

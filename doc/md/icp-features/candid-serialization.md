@@ -4,17 +4,17 @@ sidebar_position: 4
 
 # Candid serialization
 
-**Candid** is an interface description language and serialization format designed specifically for the Internet Computer. It enables different services and canisters to communicate regardless of their implementation languages, as Candid provides a language-agnostic way to describe and transmit data. It uses strong typing that guarantees accurate data interpretation across services and languages. This type safety is complemented by an efficient binary format for encoding data, making it ideal for network transmission.
+[Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts) is an interface description language and serialization format designed specifically for the Internet Computer. It enables different services and canisters to communicate regardless of their implementation languages, as Candid provides a [language-agnostic way](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/using-candid) to describe and transmit data. It uses [strong typing](https://internetcomputer.org/docs/references/candid-ref) that guarantees accurate data interpretation across services and languages. This type safety is complemented by an efficient binary format for encoding data, making it ideal for network transmission.
 
-Candid serves as the standard communication protocol between canisters. **Motoko canisters automatically generate Candid interfaces.** Motoko also provides built-in functions for easy serialization and deserialization of data to and from Candid. When one canister calls another, the arguments are serialized to Candid, transmitted, and then deserialized by the receiving canister. This standardization enables developers to create frontends in languages like JavaScript that can easily interact with backend canisters written in Motoko or other languages.
+[Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts) serves as the standard communication protocol between canisters. **Motoko canisters automatically generate Candid interfaces.** Motoko also provides built-in functions for easy serialization and deserialization of data to and from Candid. When one canister calls another, the arguments are [serialized to Candid]((https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/using-candid)), transmitted, and then deserialized by the receiving canister. This standardization enables developers to create frontends in languages like JavaScript that can easily interact with backend canisters written in Motoko or other languages.
 
 Candid's design allows for backwards-compatible upgrades of canister interfaces, facilitating the evolution of services over time. 
 
 ## Working with Candid
 
-The Motoko compiler generates a Candid interface (`.did`) file corresponding to a canister's public methods. This file ensures that data passed into and returned from these methods is automatically encoded to and decoded from Candid’s binary format. 
+The Motoko compiler generates a [Candid interface (`.did`) file](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/using-candid#the-did-file) corresponding to a canister's public methods. This file ensures that data passed into and returned from these methods is automatically encoded to and decoded from Candid’s binary format. 
 
-Motoko provides the `to_candid` and `from_candid` functions for serializing and deserializing Candid-encoded data. The `to_candid` function serializes a sequence of Motoko values into a `Blob` containing a Candid binary encoding of the data. Motoko canisters automatically handle the serialization and deserialization of data when the canister interacts with inter-canister calls or ingress messages.
+Motoko provides the `to_candid` and `from_candid` functions for serializing and deserializing Candid-encoded data. The `to_candid` function serializes a sequence of Motoko values into a `Blob` containing a Candid binary encoding of the data. Motoko canisters automatically handle the serialization and deserialization of data when the canister interacts with [inter-canister calls or ingress messages](https://internetcomputer.org/docs/building-apps/essentials/message-execution).
 
 There are many different Candid encodings, and thus `Blob`s, for the same value. There is no guarantee that `to_candid` will always return the same `Blob` given the same argument. That means that you should never use them to compare values for equality or compute a hash for a value using its Candid encoding. 
 
@@ -82,7 +82,7 @@ actor {
 
 ## Dynamic calls
 
-Although most canisters on ICP utilize Candid, the protocol itself doesn't mandate it. At the protocol level, canisters communicate using raw binary data. Candid serves as a widely adopted standard to interpret this binary data.
+Although most canisters on ICP utilize Candid, the protocol itself doesn't mandate it. At the [protocol level]https://learn.internetcomputer.org/hc/en-us/articles/34206453538964-Blockchain-Protocol, canisters communicate using raw binary data. Candid serves as a widely adopted standard to interpret this binary data.
 
 Explicit handling of Candid encoding may be beneficial when making dynamic calls to canister methods using the `call` function from the `ExperimentalInternetComputer` module.
 

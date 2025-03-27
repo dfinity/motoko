@@ -34,7 +34,7 @@ Since stable memory does not inherently manage layout, it is the developer’s r
 
 ## Using a `Region`
 
-It is the developer's responsibility to properly manipulate and interpret the data within a `Regions` structue, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable `Region` content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
+It is the developer's responsibility to properly manipulate and interpret the data within a `Region`s structue, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable `Region` content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
 
 ### Creation and allocation
 
@@ -75,11 +75,11 @@ func ensureCapacity(r : Region, requiredBytes : Nat64) {
 }
 ```
 
-`Regions` can only grow, never shrink. Growth may fail due to ICP resource limitations and it is recommended to use the minimum pages needed to conserve resources.
+`Regions` can only grow, never shrink. Growth may fail due to [ICP resource limitations](https://internetcomputer.org/docs/building-apps/canister-management/resource-limits) and it is recommended to use the minimum pages needed to conserve resources.
 
 ### Reading and writing data
 
-`Regions` support direct storage and retrieval of primitive data types at specific byte offsets. Since stable memory does not inherently manage data structure layouts, offsets must be tracked manually to ensure correct placement and retrieval of values.
+`Region`s support direct storage and retrieval of primitive data types at specific byte offsets. Since stable memory does not inherently manage data structure layouts, offsets must be tracked manually to ensure correct placement and retrieval of values.
 
 Smaller data types, such as an 8-bit naturals (`Nat8`), can be written and retrieved from a designated offset. The chosen offset determines where in the `Region` the value is stored, making it crucial to manage offsets properly to avoid data corruption.
 
@@ -112,7 +112,7 @@ let pi = Region.loadFloat(myRegion, 200);  // Returns 3.14159
 ```
 
 
-`Regions` also allows storing and retrieving binary data as blobs. This is useful for handling arbitrary sequences of bytes, such as serialized objects or encoded information.
+`Region`s also allow storing and retrieving binary data as `Blob`s. This is useful for handling arbitrary sequences of bytes, such as serialized objects or encoded information.
 
 ```motoko no-repl
 // Create a blob
@@ -125,7 +125,7 @@ Region.storeBlob(myRegion, 300, myData);
 let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 ```
 
-Blobs can be stored at any offset, but their size must be considered when choosing a starting position. Retrieving the correct number of bytes ensures that data integrity is maintained when working with binary storage in a `Region`. 
+`Blob`s can be stored at any offset, but their size must be considered when choosing a starting position. Retrieving the correct number of bytes ensures that data integrity is maintained when working with binary storage in a `Region`. 
 
 ## Memory layout strategies
 
@@ -179,7 +179,7 @@ func readEntry(index : Nat64, size : Nat) : Blob {
 
 ### Index-based
 
-For variable-sized data, an index `Region` is used to track where each entry is stored within a separate data `Region`. This method maintains two separate memory `Regions`: one for **indexes** that store positions and sizes and one for **actual data**. Using an index allows efficient access to variable-length data while avoiding fragmentation issues.
+For variable-sized data, an index `Region` is used to track where each entry is stored within a separate data `Region`. This method maintains two separate memory `Region`s: one for **indexes** that store positions and sizes and one for **actual data**. Using an index allows efficient access to variable-length data while avoiding fragmentation issues.
 
 ```motoko no-repl
 // Two regions: one for index, one for data
@@ -365,7 +365,7 @@ Efficient use of stable memory requires optimizing read and write operations to 
 
 ### Memory usage estimation
 
-Estimating the amount of memory needed requires calculating the expected storage requirements based on entry size and quantity. The total memory requirement is determined by multiplying the average entry size by the number of expected entries, then adding an overhead buffer for metadata and alignment, typically between 10–20%. The resulting size is then divided by 65)536 bytes (the size of a page) to determine the number of pages required.
+Estimating the amount of memory needed requires calculating the expected storage requirements based on entry size and quantity. The total memory requirement is determined by multiplying the average entry size by the number of expected entries, then adding an overhead buffer for metadata and alignment, typically between 10–20%. The resulting size is then divided by 65_536 bytes (the size of a page) to determine the number of pages required.
 
 For example, if each entry is 200 bytes and the application expects to store 1_000 entries, the total raw memory usage is:
 
