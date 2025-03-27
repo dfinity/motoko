@@ -29,7 +29,7 @@ jobs:
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
-      uses: insightsengineering/disk-space-reclaimer@v1
+      uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
       with:
         # this might remove tools that are actually needed,
