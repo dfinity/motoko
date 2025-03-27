@@ -95,7 +95,6 @@ let commonBuildInputs = pkgs:
     pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
-    pkgs.which
   ]; in
 
 let ocaml_exe = name: bin: rts:
@@ -133,9 +132,7 @@ let ocaml_exe = name: bin: rts:
 
       installPhase = ''
         mkdir -p $out/bin
-        ls -l ${bin}
         cp --verbose --dereference ${bin} $out/bin
-        ls -l $out/bin
       '' + nixpkgs.lib.optionalString nixpkgs.stdenv.isDarwin ''
         # there are references to darwin system libraries
         # in the binaries. But curiously, we can remove them
