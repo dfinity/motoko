@@ -148,7 +148,7 @@ let ocaml_exe = name: bin: rts:
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
           $out/bin/*
-      '' + nixpkgs.lib.optionalString is_dyn_static ''
+      '' + nixpkgs.lib.optionalString (!officialRelease && is_dyn_static) ''
         # these systems need a fixup to the loader interpreter
         chmod +w $out/bin/*
         patchelf --set-interpreter "${staticpkgs.musl}/lib/ld-musl-aarch64.so.1" $out/bin/*
