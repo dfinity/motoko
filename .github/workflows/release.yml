@@ -67,6 +67,7 @@ jobs:
         nix-build --max-jobs 1 --arg officialRelease true -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
         $(nix-build --max-jobs 1 --arg officialRelease true -A moc)/bin/moc --version
         file $(nix-build --max-jobs 1 --arg officialRelease true -A moc)/bin/moc
+        ldd $(nix-build --max-jobs 1 --arg officialRelease true -A moc)/bin/moc || true
 
   # Finally do the upload. Hopefully the previous job has uploaded the
   # build product to the cachix cache, as we cannot build the darwin products on
