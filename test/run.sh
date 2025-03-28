@@ -323,7 +323,7 @@ do
         continue
       fi
     fi
-    if grep -q "//SUPPORTED-PLATFORM-ONLY" $base.mo
+    if [[ $moc_extra_flags == *"-measure-rts-stack"* ]]
     then
       if [[ $(uname -m) != "x86_64" ]]
       then

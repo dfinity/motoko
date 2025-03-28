@@ -1,5 +1,4 @@
 //MOC-FLAG -measure-rts-stack
-//SUPPORTED-PLATFORM-ONLY
 import { errorMessage; debugPrint; setCandidLimits } = "mo:⛔";
 
 actor {
