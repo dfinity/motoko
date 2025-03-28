@@ -1872,14 +1872,17 @@ and check_exp' env0 t exp : T.typ =
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    List.iter (fun ft ->
+    if List.for_all (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
-      then local_error env exp.at "M0151"
+      then begin
+      local_error env exp.at "M0151"
         "object literal is missing field %s from expected type%a"
         ft.T.lab
         display_typ_expand t;
-    ) fts;
-    detect_lost_fields env t e;
+        false
+      end else true
+    ) fts
+    then detect_lost_fields env t e;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -2011,8 +2014,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand t'
         display_typ_expand t
         (Suggest.suggest_conversion env.libs env.vals t' t)
-    end;
-    detect_lost_fields env t e;
+    end
+    else detect_lost_fields env t e;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
