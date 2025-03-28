@@ -1868,7 +1868,7 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields), T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
+  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
@@ -1879,6 +1879,7 @@ and check_exp' env0 t exp : T.typ =
         ft.T.lab
         display_typ_expand t;
     ) fts;
+    detect_lost_fields env t e;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -2034,15 +2035,17 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and detect_lost_fields env t = function
-  | ObjE (_::_, flds) ->
-     let [@warning "-8"] T.Obj (_, fts) = t in
-     List.iter (fun (fld : exp_field) ->
+  | ObjE (_, flds) ->
+    let [@warning "-8"] T.Obj (_, fts) = t in
+    List.iter
+      (fun (fld : exp_field) ->
          let id = fld.it.id.it in
          match List.find_opt (fun ft -> ft.T.lab = id) fts with
          | Some _ -> ()
          | None ->
-          warn env fld.at "M0101999"
-      "lost_field %s" id) flds
+            warn env fld.at "M0215"
+              "lost_field %s" id)
+      flds
   | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
