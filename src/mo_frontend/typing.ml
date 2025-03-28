@@ -2034,9 +2034,15 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and detect_lost_fields env t = function
-  | ObjE (_::_, fld::flds) ->
-    warn env fld.at "M0101999"
-      "lost_field %s" fld.it.id.it
+  | ObjE (_::_, flds) ->
+     let [@warning "-8"] T.Obj (_, fts) = t in
+     List.iter (fun (fld : exp_field) ->
+         let id = fld.it.id.it in
+         match List.find_opt (fun ft -> ft.T.lab = id) fts with
+         | Some _ -> ()
+         | None ->
+          warn env fld.at "M0101999"
+      "lost_field %s" id) flds
   | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
