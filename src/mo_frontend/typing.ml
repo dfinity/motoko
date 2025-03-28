@@ -2001,7 +2001,7 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1 ;
     t
-  | _ ->
+  | e, _ ->
     let t' = infer_exp env0 exp in
     if not (sub env exp.at t' t) then
     begin
@@ -2011,6 +2011,7 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand t
         (Suggest.suggest_conversion env.libs env.vals t' t)
     end;
+    detect_lost_fields env t e;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -2031,6 +2032,12 @@ and check_exp_field env (ef : exp_field) fts =
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
+
+and detect_lost_fields env t = function
+  | ObjE (_::_, fld::flds) ->
+    warn env fld.at "M0101999"
+      "lost_field %s" fld.it.id.it
+  | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
