@@ -538,11 +538,12 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
-      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
+      # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }
-    // (if system == "aarch64-darwin" then fix_names
-    { bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ]; } else {})
+    // nixpkgs.lib.optionalAttrs
+         (system == "aarch64-darwin")
+         (fix_names { bench = perf_subdir "bench" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
