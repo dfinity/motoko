@@ -2044,7 +2044,9 @@ and detect_lost_fields env t = function
          | Some _ -> ()
          | None ->
             warn env fld.at "M0215"
-              "lost_field %s" id)
+              "Field %s is ignored in record of type%a"
+              id
+              display_typ t)
       flds
   | _ -> ()
 
