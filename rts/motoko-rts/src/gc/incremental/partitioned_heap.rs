@@ -894,6 +894,11 @@ impl PartitionedHeap {
         let heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(size <= allocation_partition.end_address());
         if heap_pointer <= allocation_partition.end_address() - size {
+            // Since the partition is allocated incrementally, we need to
+            // ensure that the memory is allocated up to the end of the object,
+            // which will also be the end of the dynamic_size of the partition.
+            mem.grow_memory(heap_pointer + size);
+
             (*allocation_partition).dynamic_size += size;
             Value::from_ptr(heap_pointer)
         } else {
@@ -910,7 +915,13 @@ impl PartitionedHeap {
         self.precomputed_heap_size += self.allocation_partition().dynamic_size;
 
         let new_partition = self.allocate_free_partition(mem, size);
-        mem.grow_memory(new_partition.end_address());
+
+        // Since the partition is allocated incrementally, we need to
+        // ensure that the memory is allocated up to the end of the object.
+        // In this case the allocation starts at the end of the
+        // current dynamic_size of the partition.
+        mem.grow_memory(new_partition.dynamic_space_end() + size);
+
         let heap_pointer = new_partition.dynamic_space_end();
         new_partition.dynamic_size += size;
         self.allocation_index = new_partition.index;
@@ -1046,6 +1057,5 @@ impl PartitionedHeap {
 pub(crate) unsafe fn allocate_initial_memory(heap_base: Bytes<usize>) {
     use crate::memory::ic::allocate_wasm_memory;
 
-    let memory_size = heap_base.next_multiple_of(PARTITION_SIZE);
-    allocate_wasm_memory(memory_size);
+    allocate_wasm_memory(heap_base);
 }
