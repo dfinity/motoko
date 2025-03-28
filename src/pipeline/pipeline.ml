@@ -174,7 +174,8 @@ let async_cap_of_prog prog =
   match (CompUnit.comp_unit_of_prog false prog).it.body.it with
   | ActorClassU _ -> Async_cap.NullCap
   | ActorU _ -> Async_cap.initial_cap()
-  | ModuleU _ -> assert false
+  | ModuleU _
+  | FileU _ -> assert false
   | ProgU _ ->
      if !Flags.compiled then
        Async_cap.NullCap
@@ -222,6 +223,9 @@ let lib_of_prog f prog : Syntax.lib  =
   let lib = CompUnit.comp_unit_of_prog true prog in
   { lib with Source.note = { lib.Source.note with Syntax.filename = f } }
 
+let lib_of_value full_path : Syntax.lib  =
+  let lib = CompUnit.comp_unit_of_value full_path in
+  { lib with Source.note = { lib.Source.note with Syntax.filename = full_path } }
 
 (* Prelude and internals *)
 
@@ -401,6 +405,12 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         pending := remove ri.Source.it !pending;
         Diag.return ()
       end
+    | Syntax.ImportedValuePath full_path ->
+      let lib = lib_of_value full_path in
+      libs := lib :: !libs; (* NB: Conceptually an append *)
+      let sscope = Scope.lib full_path Type.blob in
+      senv := Scope.adjoin !senv sscope;
+      Diag.return ()
     | Syntax.IDLPath (f, _) ->
       let open Diag.Syntax in
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in

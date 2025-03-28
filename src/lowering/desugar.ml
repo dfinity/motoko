@@ -1241,6 +1241,11 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
+    | S.ImportedValuePath path ->
+       T.(match t with
+          | Prim Text -> textE
+          | Prim Blob -> blobE
+          | t -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t));*) assert false) path
   in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
@@ -1285,6 +1290,8 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
+  | S.FileU str ->
+    I.LibU ([], { (unitE ()) with at = u.at })
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
