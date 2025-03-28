@@ -109,8 +109,8 @@ let ocaml_exe = name: bin: rts:
     staticpkgs.stdenv.mkDerivation {
       inherit name;
 
-      allowedRequisites = (if is_static then [staticpkgs.musl] else [])
-                       ++ (if is_dyn_static then [staticpkgs.patchelf] else []);
+      allowedRequisites = nixpkgs.lib.optional is_static staticpkgs.musl
+                       ++ nixpkgs.lib.optional is_dyn_static staticpkgs.patchelf;
 
       src = subpath ./src;
 
