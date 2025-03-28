@@ -4,11 +4,11 @@ import Prim "mo:prim";
   func({unstable1 : () -> () }) :
     { unstable2 : () -> (); // not stable
       var three : Text; // wrong type, reject
-      var version : (); // unrequired/mispelled, reject
+      var versoin : (); // unrequired/mispelled, reject
     } {
     { var three = "";
       var unused = ();
-      var version = ();
+      var versoin = ();
       unstable2 = func () {};
     }})
 actor {
