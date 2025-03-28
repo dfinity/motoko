@@ -197,6 +197,7 @@ unsafe fn update_stable_type<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
     check_compatibility: bool,
+    in_migration: bool,
 ) {
     assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
     assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
@@ -205,7 +206,7 @@ unsafe fn update_stable_type<M: Memory>(
     let old_type = &mut (*metadata).stable_type;
     if check_compatibility
         && !old_type.is_default()
-        && !memory_compatible(mem, old_type, &mut new_type)
+        && !memory_compatible(mem, old_type, &mut new_type, in_migration)
     {
         rts_trap_with("Memory-incompatible program upgrade");
     }
@@ -221,8 +222,9 @@ pub unsafe fn register_stable_type<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
+    in_migration: bool,
 ) {
-    update_stable_type(mem, new_candid_data, new_type_offsets, true);
+    update_stable_type(mem, new_candid_data, new_type_offsets, true, in_migration);
 }
 
 /// Update the stable actor type without compatibility checks.
@@ -234,7 +236,7 @@ pub unsafe fn assign_stable_type<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
 ) {
-    update_stable_type(mem, new_candid_data, new_type_offsets, false);
+    update_stable_type(mem, new_candid_data, new_type_offsets, false, false);
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {

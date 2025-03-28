@@ -77,7 +77,7 @@ and exp' =
   | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)
   | TryE of exp * case list * (id * Type.typ) option (* try/catch/cleanup *)
 
-and stable_actor_typ = { pre: Type.typ; post: Type.typ }
+and stable_actor_typ = { is_migration: bool; pre: Type.typ; post: Type.typ }
 
 and system = {
   meta : meta;
@@ -182,7 +182,7 @@ and prim =
   | ICReplyDeadlinePrim
   | ICArgDataPrim
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
-  | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
+  | ICStableRead of bool * Type.typ    (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
 
 (* Declarations *)
@@ -331,5 +331,5 @@ let map_prim t_typ t_id p =
   | ICMethodNamePrim
   | ICReplyDeadlinePrim -> p
   | ICStableWrite t -> ICStableWrite (t_typ t)
-  | ICStableRead t -> ICStableRead (t_typ t)
+  | ICStableRead (b, t) -> ICStableRead (b, t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)

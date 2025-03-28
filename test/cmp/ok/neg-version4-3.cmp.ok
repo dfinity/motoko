@@ -1,5 +1,5 @@
-(unknown location): Compatibility error [M0170], stable variable four of previous type
+(unknown location): Compatibility error [M0216], stable variable four of previous type
   var [var (Text, Nat, Bool)]
-cannot be consumed at new type
+cannot be migrated at non-equal type
   var [var (Nat, Text)]
 FALSE

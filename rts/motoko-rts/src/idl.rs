@@ -667,6 +667,7 @@ pub(crate) unsafe fn memory_compatible(
     t1: i32,
     t2: i32,
     main_actor: bool,
+    in_migration: bool,
 ) -> bool {
     // Do not use the cache for the main actor sub-type relation, as it does not follow the ordinary sub-type rules,
     // i.e. new actor fields can be inserted in new program versions.
@@ -735,6 +736,7 @@ pub(crate) unsafe fn memory_compatible(
                 t11,
                 t21,
                 false,
+                false,
             )
         }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
@@ -745,13 +747,17 @@ pub(crate) unsafe fn memory_compatible(
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+            memory_compatible(
+                rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+            )
         }
         (_, IDL_CON_opt) => false,
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+            memory_compatible(
+                rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+            )
         }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
@@ -774,6 +780,7 @@ pub(crate) unsafe fn memory_compatible(
                     t21,
                     t11,
                     false,
+                    false,
                 ) {
                     return false;
                 }
@@ -787,8 +794,9 @@ pub(crate) unsafe fn memory_compatible(
             for _ in 0..out2 {
                 let t21 = sleb128_decode(&mut tb2);
                 let t11 = sleb128_decode(&mut tb1);
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+                ) {
                     return false;
                 }
             }
@@ -834,8 +842,9 @@ pub(crate) unsafe fn memory_compatible(
                 if tag1 != tag2 {
                     return false;
                 }
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+                ) {
                     return false;
                 }
             }
@@ -865,8 +874,9 @@ pub(crate) unsafe fn memory_compatible(
                 if tag1 != tag2 {
                     return false;
                 };
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+                ) {
                     return false;
                 }
             }
@@ -890,6 +900,9 @@ pub(crate) unsafe fn memory_compatible(
                 n2 -= 1;
                 while tag1 != tag2 {
                     if tag1 < tag2 {
+                        if in_migration {
+                            return false;
+                        }; // can't drop fields
                         if n1 > 0 {
                             tag1 = leb128_decode(&mut tb1);
                             t11 = sleb128_decode(&mut tb1);
@@ -908,11 +921,28 @@ pub(crate) unsafe fn memory_compatible(
                         return true;
                     };
                 }
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel,
+                    if in_migration {
+                        TypeVariance::Invariance
+                    } else {
+                        TypeVariance::Covariance
+                    },
+                    typtbl1,
+                    typtbl2,
+                    end1,
+                    end2,
+                    t11,
+                    t21,
+                    false,
+                    false,
+                ) {
                     return false;
                 }
             }
+            if in_migration {
+                return n1 == 0; // no trailing fields dropped
+            };
             return true;
         }
         (IDL_CON_variant, IDL_CON_variant) => {
@@ -937,8 +967,9 @@ pub(crate) unsafe fn memory_compatible(
                 if tag1 != tag2 {
                     return false;
                 }
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+                ) {
                     return false;
                 }
             }
@@ -972,8 +1003,9 @@ pub(crate) unsafe fn memory_compatible(
                 if cmp != 0 {
                     return false;
                 };
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
+                if !memory_compatible(
+                    rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false, false,
+                ) {
                     return false;
                 }
             }
