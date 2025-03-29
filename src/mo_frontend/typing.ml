@@ -3248,9 +3248,9 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at "M0139"
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (List.length typ_binds = 1) then
         local_error env dec.at "M0140"
