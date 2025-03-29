@@ -1351,7 +1351,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) ->
+  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) as e ->
     let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
@@ -1378,6 +1378,7 @@ and infer_exp'' env exp : T.typ =
             "body of type%a\ndoes not match expected type%a"
             display_typ_expand t
             display_typ_expand t'
+        else detect_lost_fields env t' e;
       | _ -> ()
     end;
     t
@@ -2052,7 +2053,7 @@ and detect_lost_fields env t = function
               id
               display_typ t)
       flds
-  | ObjBlockE (_exp_opt, { it = Type.Object; _}, typ_opt, dec_fields) ->
+  | ObjBlockE (_exp_opt, { it = Type.Object; _}, _typ_opt, dec_fields) ->
     let pub_fields = pub_fields dec_fields |> snd in
     let pub_ids = T.Env.keys pub_fields in
     let [@warning "-8"] T.Obj (_, fts) = t in
