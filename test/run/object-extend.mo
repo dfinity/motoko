@@ -70,3 +70,5 @@ let ab_ok : { next : () -> ?Text; bar : Nat } = { ["Array base"].values() with b
 // detecting lost fields
 let ab_ok_warn : { next : () -> ?Text; bar : Nat } = { ab_ok with bur = 42 };
 let foo_warn : { foo : Text } = { foo = "FOO"; quux = "QUUX" };
+let bar_warn : { foo : Text } = object { public let foo = "FOO"; public let quux = "QUUX" };
+//MxOC-FLAG -dp
