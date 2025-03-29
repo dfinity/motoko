@@ -72,4 +72,4 @@ let ab_ok_warn : { next : () -> ?Text; bar : Nat } = { ab_ok with bur = 42 };
 let foo_warn : { foo : Text } = { foo = "FOO"; quux = "QUUX" };
 let bar_warn : { foo : Text } = object { public let foo = "FOO"; public let quux = "QUUX" };
 object obj_warn : { foo : Text } { public let foo = "FOO"; public let quux = "QUUX" };
-class() : { foo : Text } = { public let foo = "FOO"; public let quux = "QUUX" };
+class() : { foo : Text } = { public let (foo, quux) = ("FOO", "QUUX") };
