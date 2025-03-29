@@ -2958,6 +2958,7 @@ and infer_dec env dec : T.typ =
             "class body of type%a\ndoes not match expected type%a"
             display_typ_expand t'
             display_typ_expand t''
+        else ObjBlockE (exp_opt, obj_sort, (None, typ_opt), dec_fields) |> detect_lost_fields env t''
       | Some typ, T.Actor ->
          local_error env dec.at "M0193" "actor class has non-async return type"
       | _, T.Memory -> assert false

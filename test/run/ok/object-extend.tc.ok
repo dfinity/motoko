@@ -6,7 +6,9 @@ object-extend.mo:72.48-72.61: warning [M0215], Field `quux` is ignored in record
   {foo : Text}
 object-extend.mo:73.77-73.81: warning [M0215], Public field `quux` is ignored in object of type
   {foo : Text}
-object-extend.mo:74.62-74.66: warning [M0215], Public field `quux` is ignored in object of type
+object-extend.mo:74.71-74.75: warning [M0215], Public field `quux` is ignored in object of type
+  {foo : Text}
+object-extend.mo:75.65-75.69: warning [M0215], Public field `quux` is ignored in object of type
   {foo : Text}
 object-extend.mo:56.6-56.9: warning [M0194], unused identifier mix (delete or rename to wildcard `_` or `_mix`)
 object-extend.mo:59.6-59.9: warning [M0194], unused identifier mox (delete or rename to wildcard `_` or `_mox`)
@@ -15,3 +17,4 @@ object-extend.mo:67.5-67.10: warning [M0194], unused identifier tb_ok (delete or
 object-extend.mo:71.5-71.15: warning [M0194], unused identifier ab_ok_warn (delete or rename to wildcard `_` or `_ab_ok_warn`)
 object-extend.mo:72.5-72.13: warning [M0194], unused identifier foo_warn (delete or rename to wildcard `_` or `_foo_warn`)
 object-extend.mo:73.5-73.13: warning [M0194], unused identifier bar_warn (delete or rename to wildcard `_` or `_bar_warn`)
+object-extend.mo:74.8-74.16: warning [M0194], unused identifier obj_warn (delete or rename to wildcard `_` or `_obj_warn`)
