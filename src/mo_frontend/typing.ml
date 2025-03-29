@@ -2052,22 +2052,20 @@ and detect_lost_fields env t = function
               id
               display_typ t)
       flds
-  | ObjBlockE (exp_opt, { it = Type.Object; _}, typ_opt, dec_fields) ->
+  | ObjBlockE (_exp_opt, { it = Type.Object; _}, typ_opt, dec_fields) ->
+    let pub_fields = pub_fields dec_fields |> snd in
+    let pub_ids = T.Env.keys pub_fields in
     let [@warning "-8"] T.Obj (_, fts) = t in
     List.iter
-      (fun (fld : dec_field) ->
-        match fld.it with
-        | { dec = {it = LetD ({it = VarP id; _}, _, _); _}; vis = {it=Public _; _}; _} ->
-          begin match List.find_opt (fun ft -> ft.T.lab = id.it) fts with
-         | Some _ -> ()
-         | None ->
-           warn env fld.at "M0215"
+      (fun id ->
+        match List.find_opt (fun ft -> ft.T.lab = id) fts with
+        | Some _ -> ()
+        | None ->
+           warn env ((T.Env.find id pub_fields).id_region) "M0215"
              "Public field `%s` is ignored in object of type%a"
-             id.it
-             display_typ t
-         end
-         | _ -> ())
-      dec_fields
+             id
+             display_typ t)
+      pub_ids
   | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
