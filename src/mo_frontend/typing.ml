@@ -2040,7 +2040,7 @@ and check_exp_field env (ef : exp_field) fts =
 
 and detect_lost_fields env t = function
   | _ when env.pre || not (T.is_obj t) -> ()
-  | ObjE (_, flds) ->
+  | ObjE (bs, flds) ->
     let [@warning "-8"] T.Obj (_, fts) = t in
     List.iter
       (fun (fld : exp_field) ->
@@ -2049,8 +2049,8 @@ and detect_lost_fields env t = function
          | Some _ -> ()
          | None ->
             warn env fld.at "M0215"
-              "Field `%s` is ignored in record of type%a"
-              id
+              "Field `%s` is ignored in record%s of type%a"
+              id (if bs = [] then "" else " extension")
               display_typ t)
       flds
   | ObjBlockE (_exp_opt, { it = Type.Object; _}, _typ_opt, dec_fields) ->

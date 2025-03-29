@@ -1,6 +1,6 @@
 object-extend.mo:46.16-46.21: warning [M0215], Field `l` is ignored in record of type
   {}
-object-extend.mo:71.67-71.75: warning [M0215], Field `bur` is ignored in record of type
+object-extend.mo:71.67-71.75: warning [M0215], Field `bur` is ignored in record extension of type
   {bar : Nat; next : () -> ?Text}
 object-extend.mo:72.48-72.61: warning [M0215], Field `quux` is ignored in record of type
   {foo : Text}
