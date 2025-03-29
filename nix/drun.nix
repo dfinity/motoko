@@ -36,7 +36,7 @@ pkgs:
          config.flag("-Wno-strict-aliasing");
          config.flag("-Wno-invalid-offsetof");
 +        if target.contains("darwin") {
-+            config.flag("-faligned-allocation");config.flag("-faligned-allocation");
++            config.flag("-faligned-allocation");
 +        }    
      }
 
