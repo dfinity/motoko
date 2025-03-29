@@ -2469,7 +2469,7 @@ and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
 (* Objects *)
 
 and pub_fields dec_fields : visibility_env =
-  List.fold_right pub_field dec_fields (T.Env.empty, T.Env.empty)
+  List.fold_right pub_field dec_fields T.Env.(empty, empty)
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
