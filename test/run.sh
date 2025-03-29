@@ -323,6 +323,14 @@ do
         continue
       fi
     fi
+    if [[ $moc_extra_flags == *"-measure-rts-stack"* ]]
+    then
+      if [[ $(uname -m) != "x86_64" ]]
+      then
+        $ECHO " Skipped (not applicable on experimental platforms)"
+        continue
+      fi
+    fi
     if [ $VIPER = 'yes' ]
     then
       TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
