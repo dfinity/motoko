@@ -267,6 +267,10 @@ val scope_bind : bind
 
 (* Signatures *)
 
+(* like sub, but disallows promotion to  Any or narrower object types
+   that signal data loss *)
+val stable_sub : typ -> typ -> bool
+
 type stab_sig =
   | Single of field list
   | PrePost of field list * field list

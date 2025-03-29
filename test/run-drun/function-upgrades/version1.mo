@@ -11,9 +11,9 @@ actor {
    stable let x1 = f1;
 
    // Compatible change:
-   // - Both parameters are changed to sub-types (removing an variant tag, adding an object field).
-   // - Return type is changed to a super-type (removing object field).
-   public shared func f2(_ : {#one}, _ : { oldField : Nat; newField: Text }) : async { } {
+   // - Both parameters are changed to stable sub-types (removing an variant tag, demoting a field).
+   // - Return type is changed to a super-type (promoting object field).
+   public shared func f2(_ : {#one}, _ : { oldField : Nat }) : async { oldField : Int } {
       loop {};
    };
    stable let x2 = f2;

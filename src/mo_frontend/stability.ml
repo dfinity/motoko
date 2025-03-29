@@ -14,17 +14,17 @@ let display_typ = Lib.Format.display Type.pp_typ
 
 let display_typ_expand = Lib.Format.display Type.pp_typ_expand
 
-let warning_discard s tf =
+let error_discard s tf =
   Diag.add_msg s
-    (Diag.warning_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\n will be discarded. This may cause data loss. Are you sure?"
+    (Diag.error_message Source.no_region "M0169" cat
+      (Format.asprintf "stable variable %s of previous type%a\n cannot be implicitly discarded. This may cause data loss. Use an explicit migration function."
         tf.lab
         display_typ tf.typ))
 
 let error_sub s tf1 tf2 =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a"
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a without data loss. Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
@@ -50,17 +50,17 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
         Some () (* no or additional fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropped field is allowed with warning, recurse on tfs1' *)
-        warning_discard s tf1;
+        error_discard s tf1;
         go tfs1' []
       | tf1::tfs1', tf2::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-            if not (sub (as_immut tf1.typ) (as_immut tf2.typ)) then
+            if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
               error_sub s tf1 tf2;
             go tfs1' tfs2'
          | -1 ->
            (* dropped field is allowed with warning, recurse on tfs1' *)
-           warning_discard s tf1;
+           error_discard s tf1;
            go tfs1' tfs2
          | _ ->
            go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
