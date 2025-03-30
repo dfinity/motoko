@@ -68,7 +68,7 @@ To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
 If you change dependencies (e.g. bump versions, add more crates),
 
  1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
-    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
+    done by running `cargo build --target=wasm32-wasip1` in `motoko-rts-tests/`
     directory.
  2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
     character)
@@ -105,8 +105,8 @@ re-vendored?`, proceed as follows:
 Running RTS tests
 -----------------
 
-- Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
-- Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`
+- Build tests using rustc WASI target: `cargo build --target=wasm32-wasip1`
+- Run with wasmtime: `wasmtime target/wasm32-wasip1/debug/motoko-rts-tests.wasm`
 
 Debugging the RTS
 -----------------
