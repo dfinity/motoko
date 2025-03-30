@@ -84,7 +84,7 @@ let
           cargo-nightly = rustc-nightly;
           rustPlatform-nightly = self.makeRustPlatform rec {
             rustcX = super.rustc;
-            rustc = rust-channel.rust // { targetPlatforms = super.rustc.targetPlatforms; badTargetPlatforms = super.rustc.badTargetPlatforms; };
+            rustc = rust-channel.rust // { inherit (super.rustc) targetPlatforms badTargetPlatforms; };
             cargo = rustc;
           };
         })
@@ -94,7 +94,7 @@ let
           rust-channel = self.moz_overlay.rustChannelOf { version = "1.85.0"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform rec {
-            rustc = rust-channel.rust;
+            rustc = rust-channel.rust // { inherit (super.rustc) targetPlatforms badTargetPlatforms; };
 #== =====
 #        (self: super: {
 #          rustPlatform_moz_stable = self.makeRustPlatform rec {
