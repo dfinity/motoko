@@ -66,3 +66,7 @@ func mux<A <: { a : Int }, B <: { b : Char }>(a : A, b : B) : { a : Int; b : Cha
 // extending iterators
 let tb_ok : { next : () -> ?Char; bar : Nat } = { "Text base".chars() with bar = 42 };
 let ab_ok : { next : () -> ?Text; bar : Nat } = { ["Array base"].values() with bar = 42 };
+
+// detecting lost fields
+let ab_ok_warn : { next : () -> ?Text; bar : Nat } = { ab_ok with bur = 42 };
+let foo_warn : { foo : Text } = { foo = "FOO"; quux = "QUUX" };
