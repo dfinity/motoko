@@ -322,7 +322,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs_20 ]) ++
       [ filecheck wasmtime ];
 
 
@@ -553,7 +553,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-18_x
+          nixpkgs.nodejs_20
           nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
@@ -592,21 +592,11 @@ rec {
   '';
 
   ic-wasm =
-    nixpkgs.rustPlatform.buildRustPackage {
+    nixpkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-lQ4I6Fmodi0jxVuWPSvxbOpXcEX+0Lny7/N3GpW8UUI=";
+      cargoSha256 = "sha256-NejNcKaEgteBy5zQ60xHPuskRfj8u1g6qdHocuQkE+U=";
       doCheck = false;
-      patchPhase = ''
-        mkdir -p .cargo
-        cat > .cargo/config.toml << EOF
-[target.x86_64-apple-darwin]
-rustflags = [ "-C", "linker=c++" ]
-
-[target.aarch64-apple-darwin]
-rustflags = [ "-C", "linker=c++" ]
-EOF
-      '';
     };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache

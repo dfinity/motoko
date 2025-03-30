@@ -524,13 +524,6 @@ struct
   end
 end
 
-module Seq =
-struct
-  let rec for_all p s = match s () with
-    | Seq.Nil -> true
-    | Seq.Cons (x, s') -> p x && for_all p s'
-end
-
 module Option =
 struct
   let get o x = Option.value o ~default:x
