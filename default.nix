@@ -592,7 +592,7 @@ rec {
   '';
 
   ic-wasm =
-    nixpkgs.rustPlatform.buildRustPackage {
+    nixpkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
       cargoSha256 = "sha256-lQ4I6Fmodi0jxVuWPSvxbOpXcEX+0Lny7/N3GpW8UUI=";
