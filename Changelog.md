@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## 0.14.5 (2025-03-25)
+
+* motoko (`moc`)
+
+  * Performance improvements to the default timer mechanism (#3872, #4967).
+
+* documentation (`mo-doc`)
+
+  * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
+
 ## 0.14.4 (2025-03-18)
 
 * motoko (`moc`)
