@@ -154,7 +154,7 @@ main = do
     putStrLn "Starting the session"
     runSession
       serverCommand
-      fullCaps
+      fullLatestClientCaps
       "." $ do
         log "Initializing"
         initRes <- initializeResponse
