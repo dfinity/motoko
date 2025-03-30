@@ -98,7 +98,7 @@ Sometimes you want to also bump the  `.toml` dependencies...
 
 E.g. when you get `perhaps a crate was updated and forgotten to be
 re-vendored?`, proceed as follows:
-[Invalid recipe deleted. Try `cabal update in `rts/motoko-rts*`,
+[Invalid recipe deleted. Try `cargo update` in `rts/motoko-rts*`,
  invalidate hashes: {`cargoVendorTools.cargoSha256`, `rustStdDepsHash`, `rtsDeps.sha256`}
  all at the same time and then `nix-build -A rts -K` to examine the build products.]
 
