@@ -1,4 +1,5 @@
 # Text
+
 Utility functions for `Text` values.
 
 A `Text` value represents human-readable text as a sequence of characters of type `Char`.
@@ -10,9 +11,7 @@ let iter = text.chars(); // iterator ('H', 'e', 'l', 'l', 'o', '!')
 let concat = text # " 👋"; // "Hello! 👋"
 ```
 
-The `"mo:base/Text"` module defines additional operations on `Text` values.
-
-Import the module from the base library:
+Usage:
 
 ```motoko name=import
 import Text "mo:base/Text";
@@ -20,8 +19,8 @@ import Text "mo:base/Text";
 
 Note: `Text` values are represented as ropes of UTF-8 character sequences with O(1) concatenation.
 
-
 ## Type `Text`
+
 ``` motoko no-repl
 type Text = Prim.Types.Text
 ```
@@ -35,6 +34,7 @@ let concat = hello # " " # emoji; // "Hello! 👋"
 ```
 
 ## Value `fromChar`
+
 ``` motoko no-repl
 let fromChar : (c : Char) -> Text
 ```
@@ -46,6 +46,7 @@ let text = Text.fromChar('A'); // "A"
 ```
 
 ## Function `fromArray`
+
 ``` motoko no-repl
 func fromArray(a : [Char]) : Text
 ```
@@ -60,6 +61,7 @@ Runtime: O(a.size())
 Space: O(a.size())
 
 ## Function `fromVarArray`
+
 ``` motoko no-repl
 func fromVarArray(a : [var Char]) : Text
 ```
@@ -74,6 +76,7 @@ Runtime: O(a.size())
 Space: O(a.size())
 
 ## Function `toIter`
+
 ``` motoko no-repl
 func toIter(t : Text) : Iter.Iter<Char>
 ```
@@ -91,6 +94,7 @@ for (c in Text.toIter("abc")) {
 ```
 
 ## Function `toArray`
+
 ``` motoko no-repl
 func toArray(t : Text) : [Char]
 ```
@@ -107,6 +111,7 @@ Runtime: O(t.size())
 Space: O(t.size())
 
 ## Function `toVarArray`
+
 ``` motoko no-repl
 func toVarArray(t : Text) : [var Char]
 ```
@@ -123,6 +128,7 @@ Runtime: O(t.size())
 Space: O(t.size())
 
 ## Function `fromIter`
+
 ``` motoko no-repl
 func fromIter(cs : Iter.Iter<Char>) : Text
 ```
@@ -134,12 +140,14 @@ let text = Text.fromIter(['a', 'b', 'c'].vals()); // "abc"
 ```
 
 ## Function `fromList`
+
 ``` motoko no-repl
 func fromList(cs : List.List<Char>) : Text
 ```
 
 Create a text from a character list.
 Example:
+
 ```motoko include=initialize
 fromList(?('H', ?('e', ?('l', ?('l', ?('o', null))))));
 // => "Hello"
@@ -149,12 +157,14 @@ Runtime: O(size cs)
 Space: O(size cs)
 
 ## Function `toList`
+
 ``` motoko no-repl
 func toList(t : Text) : List.List<Char>
 ```
 
 Create a character list from a text.
 Example:
+
 ```motoko include=initialize
 toList("Hello");
 // => ?('H', ?('e', ?('l', ?('l', ?('o', null)))))
@@ -164,6 +174,7 @@ Runtime: O(t.size())
 Space: O(t.size())
 
 ## Function `size`
+
 ``` motoko no-repl
 func size(t : Text) : Nat
 ```
@@ -177,6 +188,7 @@ let size = Text.size("abc"); // 3
 ```
 
 ## Function `hash`
+
 ``` motoko no-repl
 func hash(t : Text) : Hash.Hash
 ```
@@ -190,6 +202,7 @@ let hash = Text.hash("abc");
 Note: this algorithm is intended for use in data structures rather than as a cryptographic hash function.
 
 ## Function `concat`
+
 ``` motoko no-repl
 func concat(t1 : Text, t2 : Text) : Text
 ```
@@ -205,6 +218,7 @@ let togetherAgain = Text.concat(a, b); // "HelloThere"
 ```
 
 ## Function `equal`
+
 ``` motoko no-repl
 func equal(t1 : Text, t2 : Text) : Bool
 ```
@@ -212,6 +226,7 @@ func equal(t1 : Text, t2 : Text) : Bool
 Returns `t1 == t2`.
 
 ## Function `notEqual`
+
 ``` motoko no-repl
 func notEqual(t1 : Text, t2 : Text) : Bool
 ```
@@ -219,6 +234,7 @@ func notEqual(t1 : Text, t2 : Text) : Bool
 Returns `t1 != t2`.
 
 ## Function `less`
+
 ``` motoko no-repl
 func less(t1 : Text, t2 : Text) : Bool
 ```
@@ -226,6 +242,7 @@ func less(t1 : Text, t2 : Text) : Bool
 Returns `t1 < t2`.
 
 ## Function `lessOrEqual`
+
 ``` motoko no-repl
 func lessOrEqual(t1 : Text, t2 : Text) : Bool
 ```
@@ -233,6 +250,7 @@ func lessOrEqual(t1 : Text, t2 : Text) : Bool
 Returns `t1 <= t2`.
 
 ## Function `greater`
+
 ``` motoko no-repl
 func greater(t1 : Text, t2 : Text) : Bool
 ```
@@ -240,6 +258,7 @@ func greater(t1 : Text, t2 : Text) : Bool
 Returns `t1 > t2`.
 
 ## Function `greaterOrEqual`
+
 ``` motoko no-repl
 func greaterOrEqual(t1 : Text, t2 : Text) : Bool
 ```
@@ -247,6 +266,7 @@ func greaterOrEqual(t1 : Text, t2 : Text) : Bool
 Returns `t1 >= t2`.
 
 ## Function `compare`
+
 ``` motoko no-repl
 func compare(t1 : Text, t2 : Text) : {#less; #equal; #greater}
 ```
@@ -262,6 +282,7 @@ print(debug_show Text.compare("abc", "ABC")); // #greater
 ```
 
 ## Function `join`
+
 ``` motoko no-repl
 func join(sep : Text, ts : Iter.Iter<Text>) : Text
 ```
@@ -273,6 +294,7 @@ let joined = Text.join(", ", ["a", "b", "c"].vals()); // "a, b, c"
 ```
 
 ## Function `map`
+
 ``` motoko no-repl
 func map(t : Text, f : Char -> Char) : Text
 ```
@@ -288,6 +310,7 @@ let result = Text.map("Motoko?", func(c) {
 ```
 
 ## Function `translate`
+
 ``` motoko no-repl
 func translate(t : Text, f : Char -> Text) : Text
 ```
@@ -303,6 +326,7 @@ let result = Text.translate("Motoko?", func(c) {
 ```
 
 ## Type `Pattern`
+
 ``` motoko no-repl
 type Pattern = {#char : Char; #text : Text; #predicate : (Char -> Bool)}
 ```
@@ -322,6 +346,7 @@ let predicatePattern : Text.Pattern = #predicate (func(c) { c == 'A' or c == 'B'
 ```
 
 ## Function `split`
+
 ``` motoko no-repl
 func split(t : Text, p : Pattern) : Iter.Iter<Text>
 ```
@@ -336,6 +361,7 @@ Text.join("|", words) // "This|is|a|sentence."
 ```
 
 ## Function `tokens`
+
 ``` motoko no-repl
 func tokens(t : Text, p : Pattern) : Iter.Iter<Text>
 ```
@@ -350,6 +376,7 @@ Text.join("|", tokens) // "this|needs|an|example"
 ```
 
 ## Function `contains`
+
 ``` motoko no-repl
 func contains(t : Text, p : Pattern) : Bool
 ```
@@ -361,6 +388,7 @@ Text.contains("Motoko", #text "oto") // true
 ```
 
 ## Function `startsWith`
+
 ``` motoko no-repl
 func startsWith(t : Text, p : Pattern) : Bool
 ```
@@ -372,6 +400,7 @@ Text.startsWith("Motoko", #text "Mo") // true
 ```
 
 ## Function `endsWith`
+
 ``` motoko no-repl
 func endsWith(t : Text, p : Pattern) : Bool
 ```
@@ -383,6 +412,7 @@ Text.endsWith("Motoko", #char 'o') // true
 ```
 
 ## Function `replace`
+
 ``` motoko no-repl
 func replace(t : Text, p : Pattern, r : Text) : Text
 ```
@@ -394,6 +424,7 @@ let result = Text.replace("abcabc", #char 'a', "A"); // "AbcAbc"
 ```
 
 ## Function `stripStart`
+
 ``` motoko no-repl
 func stripStart(t : Text, p : Pattern) : ?Text
 ```
@@ -409,6 +440,7 @@ let one = Text.stripStart("--abc", #char '-'); // ?"-abc"
 ```
 
 ## Function `stripEnd`
+
 ``` motoko no-repl
 func stripEnd(t : Text, p : Pattern) : ?Text
 ```
@@ -424,6 +456,7 @@ let one = Text.stripEnd("xyz--", #char '-'); // ?"xyz-"
 ```
 
 ## Function `trimStart`
+
 ``` motoko no-repl
 func trimStart(t : Text, p : Pattern) : Text
 ```
@@ -436,6 +469,7 @@ let trimmed = Text.trimStart("---abc", #char '-'); // "abc"
 ```
 
 ## Function `trimEnd`
+
 ``` motoko no-repl
 func trimEnd(t : Text, p : Pattern) : Text
 ```
@@ -448,6 +482,7 @@ let trimmed = Text.trimEnd("xyz---", #char '-'); // "xyz"
 ```
 
 ## Function `trim`
+
 ``` motoko no-repl
 func trim(t : Text, p : Pattern) : Text
 ```
@@ -459,6 +494,7 @@ let trimmed = Text.trim("---abcxyz---", #char '-'); // "abcxyz"
 ```
 
 ## Function `compareWith`
+
 ``` motoko no-repl
 func compareWith(t1 : Text, t2 : Text, cmp : (Char, Char) -> {#less; #equal; #greater}) : {#less; #equal; #greater}
 ```
@@ -472,6 +508,7 @@ Text.compareWith("abc", "ABC", func(c1, c2) { Char.compare(c1, c2) }) // #greate
 ```
 
 ## Value `encodeUtf8`
+
 ``` motoko no-repl
 let encodeUtf8 : Text -> Blob
 ```
@@ -483,6 +520,7 @@ let blob = Text.encodeUtf8("Hello");
 ```
 
 ## Value `decodeUtf8`
+
 ``` motoko no-repl
 let decodeUtf8 : Blob -> ?Text
 ```
@@ -495,6 +533,7 @@ let text = Text.decodeUtf8("\48\65\6C\6C\6F"); // ?"Hello"
 ```
 
 ## Value `toLowercase`
+
 ``` motoko no-repl
 let toLowercase : Text -> Text
 ```
@@ -507,6 +546,7 @@ let text = Text.toLowercase("Good Day"); // ?"good day"
 ```
 
 ## Value `toUppercase`
+
 ``` motoko no-repl
 let toUppercase : Text -> Text
 ```

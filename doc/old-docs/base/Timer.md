@@ -2,46 +2,63 @@
 
 Timers for one-off or periodic tasks. Applicable as part of the default mechanism.
 
-Note: If `moc` is invoked with `-no-timer`, the importing will fail.
+:::note [Compilation flag]
 
-Note: The resolution of the timers is in the order of the block rate,
-      so durations should be chosen well above that. For frequent
-      canister wake-ups the heartbeat mechanism should be considered.
+If `moc` is invoked with `-no-timer`, the importing will fail.
+:::
 
-Note: The functionality described below is enabled only when the actor does not override it by declaring an explicit `system func timer`.
+:::note [Timer resolution]
 
-Note: Timers are _not_ persisted across upgrades. One possible strategy
-      to re-establish timers after an upgrade is to walk stable variables
-      in the `post_upgrade` hook and distill necessary timer information
-      from there.
+The resolution of the timers is in the order of the block rate,  
+so durations should be chosen well above that. For frequent  
+canister wake-ups the heartbeat mechanism should be considered.
+:::
 
-Note: Basing security (e.g. access control) on timers is almost always
-      the wrong choice. Be sure to inform yourself about state-of-the art
-      dApp security. If you _must use_ timers for security controls, be sure
-      to consider reentrancy issues, and the vanishing of timers on upgrades
-      and reinstalls.
+:::note [Overriding system function]
 
-Note: For further usage information for timers on the IC please consult
-      https://internetcomputer.org/docs/current/developer-docs/backend/periodic-tasks#timers-library-limitations
+The functionality described below is enabled only when the actor does not override it by declaring an explicit `system func timer`.
+:::
+
+:::note [Upgrade persistence]
+
+Timers are _not_ persisted across upgrades. One possible strategy  
+to re-establish timers after an upgrade is to walk stable variables  
+in the `post_upgrade` hook and distill necessary timer information  
+from there.
+:::
+
+:::note [Security warning]
+
+Basing security (e.g. access control) on timers is almost always the wrong choice.  
+Be sure to inform yourself about state-of-the-art dApp security.  
+If you _must use_ timers for security controls, be sure to consider reentrancy issues,  
+and the vanishing of timers on upgrades and reinstalls.
+:::
+
+:::note [Further information]
+
+For further usage information for timers [see here](https://internetcomputer.org/docs/current/developer-docs/backend/periodic-tasks#timers-library-limitations)
+:::
 
 ## Type `Duration`
+
 ``` motoko no-repl
 type Duration = {#seconds : Nat; #nanoseconds : Nat}
 ```
 
-
 ## Type `TimerId`
+
 ``` motoko no-repl
 type TimerId = Nat
 ```
 
-
 ## Function `setTimer`
+
 ``` motoko no-repl
 func setTimer(d : Duration, job : () -> async ()) : TimerId
 ```
 
-Installs a one-off timer that upon expiration after given duration `d`
+Installs a one-off timer that upon expiration after given duration `d`  
 executes the future `job()`.
 
 ```motoko no-repl
@@ -54,14 +71,18 @@ appt.reminder = setTimer(#nanoseconds (Int.abs(appt.when - now - thirtyMinutes))
 ```
 
 ## Function `recurringTimer`
+
 ``` motoko no-repl
 func recurringTimer(d : Duration, job : () -> async ()) : TimerId
 ```
 
-Installs a recurring timer that upon expiration after given duration `d`
+Installs a recurring timer that upon expiration after given duration `d`  
 executes the future `job()` and reinserts itself for another expiration.
 
-Note: A duration of 0 will only expire once.
+:::note [One-time expiration on zero duration]
+
+A duration of 0 will only expire once.
+:::
 
 ```motoko no-repl
 func checkAndWaterPlants() : async () {
@@ -71,11 +92,12 @@ let daily = recurringTimer(#seconds (24 * 60 * 60), checkAndWaterPlants);
 ```
 
 ## Value `cancelTimer`
+
 ``` motoko no-repl
 let cancelTimer : TimerId -> ()
 ```
 
-Cancels a still active timer with `(id : TimerId)`. For expired timers
+Cancels a still active timer with `(id : TimerId)`. For expired timers  
 and not recognised `id`s nothing happens.
 
 ```motoko no-repl

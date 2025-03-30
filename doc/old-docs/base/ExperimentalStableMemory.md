@@ -1,49 +1,53 @@
 # ExperimentalStableMemory
+
 Byte-level access to (virtual) _stable memory_.
 
-**WARNING**: As its name suggests, this library is **experimental**, subject to change
-and may be replaced by safer alternatives in later versions of Motoko.
+:::warning [Experimental module]
+
+As the name suggests, this library is experimental, subject to change, and may be replaced by safer alternatives in later versions of Motoko.  
 Use at your own risk and discretion.
+:::
 
-**DEPRECATION**: Use of `ExperimentalStableMemory` library may be deprecated in future.
-Going forward, users should consider using library `Region.mo` to allocate *isolated* regions of memory instead.
-Using dedicated regions for different user applications ensures that writing
-to one region will not affect the state of another, unrelated region.
+:::warning [Deprecation notice]
 
-This is a lightweight abstraction over IC _stable memory_ and supports persisting
-raw binary data across Motoko upgrades.
-Use of this module is fully compatible with Motoko's use of
-_stable variables_, whose persistence mechanism also uses (real) IC stable memory internally, but does not interfere with this API.
+Use of `ExperimentalStableMemory` may be deprecated in the future.
+Consider using `Region.mo` for isolated memory regions.
+Isolated regions ensure that writing to one region does not affect unrelated state elsewhere.
+:::
 
-Memory is allocated, using `grow(pages)`, sequentially and on demand, in units of 64KiB pages, starting with 0 allocated pages.
-New pages are zero initialized.
-Growth is capped by a soft limit on page count controlled by compile-time flag
-`--max-stable-pages <n>` (the default is 65536, or 4GiB).
+This is a lightweight abstraction over IC _stable memory_ and supports persisting raw binary data across Motoko upgrades.
+It is fully compatible with Motoko's _stable variables_, which also use IC stable memory internally, but do not interfere with this API.
 
-Each `load` operation loads from byte address `offset` in little-endian
-format using the natural bit-width of the type in question.
-The operation traps if attempting to read beyond the current stable memory size.
+Memory is allocated using `grow(pages)`, sequentially and on demand, in units of 64KiB pages, starting with 0 allocated pages.
+New pages are zero-initialised.
+Growth is capped by a soft page limit set with the compile-time flag `--max-stable-pages <n>` (default: 65536, or 4GiB).
 
-Each `store` operation stores to byte address `offset` in little-endian format using the natural bit-width of the type in question.
-The operation traps if attempting to write beyond the current stable memory size.
+Each `load` reads from byte address `offset` in little-endian format using the natural bit-width of the type.
+Traps if reading beyond the allocated size.
 
-Text values can be handled by using `Text.decodeUtf8` and `Text.encodeUtf8`, in conjunction with `loadBlob` and `storeBlob`.
+Each `store` writes to byte address `offset` in little-endian format using the natural bit-width of the type.
+Traps if writing beyond the allocated size.
 
-The current page allocation and page contents is preserved across upgrades.
+Text can be handled using `Text.decodeUtf8` and `Text.encodeUtf8` in combination with `loadBlob` and `storeBlob`.
 
-NB: The IC's actual stable memory size (`ic0.stable_size`) may exceed the
-page size reported by Motoko function `size()`.
-This (and the cap on growth) are to accommodate Motoko's stable variables.
-Applications that plan to use Motoko stable variables sparingly or not at all can
-increase `--max-stable-pages` as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 64Gib).
-All applications should reserve at least one page for stable variable data, even when no stable variables are used.
+The current page allocation and contents are preserved across upgrades.
+
+:::note [IC stable memory discrepancy]
+
+The IC’s reported stable memory size (`ic0.stable_size`) may exceed what Motoko’s `size()` returns.
+This and the growth cap exist to protect Motoko’s internal use of stable variables.
+If you're not using stable variables (or using them sparingly), you may increase `--max-stable-pages` toward the IC maximum (currently 64GiB).
+Even if not using stable variables, always reserve at least one page.
+:::
 
 Usage:
+
 ```motoko no-repl
 import StableMemory "mo:base/ExperimentalStableMemory";
 ```
 
 ## Value `size`
+
 ``` motoko no-repl
 let size : () -> (pages : Nat64)
 ```
@@ -55,6 +59,7 @@ Preserved across upgrades, together with contents of allocated
 stable memory.
 
 Example:
+
 ```motoko no-repl
 let beforeSize = StableMemory.size();
 ignore StableMemory.grow(10);
@@ -63,6 +68,7 @@ afterSize - beforeSize // => 10
 ```
 
 ## Value `grow`
+
 ``` motoko no-repl
 let grow : (newPages : Nat64) -> (oldPages : Nat64)
 ```
@@ -76,6 +82,7 @@ Function `grow` is capped by a soft limit on `size` controlled by compile-time f
  `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 
 Example:
+
 ```motoko no-repl
 import Error "mo:base/Error";
 
@@ -88,6 +95,7 @@ afterSize - beforeSize // => 10
 ```
 
 ## Value `stableVarQuery`
+
 ``` motoko no-repl
 let stableVarQuery : () -> (shared query () -> async { size : Nat64 })
 ```
@@ -100,6 +108,7 @@ Like any other query, its state changes are discarded so no actual upgrade (or o
 The query can only be called by the enclosing actor and will trap for other callers.
 
 Example:
+
 ```motoko no-repl
 actor {
   stable var state = "";
@@ -114,6 +123,7 @@ actor {
 ```
 
 ## Value `loadNat32`
+
 ``` motoko no-repl
 let loadNat32 : (offset : Nat64) -> Nat32
 ```
@@ -122,6 +132,7 @@ Loads a `Nat32` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -130,6 +141,7 @@ StableMemory.loadNat32(offset) // => 123
 ```
 
 ## Value `storeNat32`
+
 ``` motoko no-repl
 let storeNat32 : (offset : Nat64, value : Nat32) -> ()
 ```
@@ -138,6 +150,7 @@ Stores a `Nat32` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -146,6 +159,7 @@ StableMemory.loadNat32(offset) // => 123
 ```
 
 ## Value `loadNat8`
+
 ``` motoko no-repl
 let loadNat8 : (offset : Nat64) -> Nat8
 ```
@@ -154,6 +168,7 @@ Loads a `Nat8` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -162,6 +177,7 @@ StableMemory.loadNat8(offset) // => 123
 ```
 
 ## Value `storeNat8`
+
 ``` motoko no-repl
 let storeNat8 : (offset : Nat64, value : Nat8) -> ()
 ```
@@ -170,6 +186,7 @@ Stores a `Nat8` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -178,6 +195,7 @@ StableMemory.loadNat8(offset) // => 123
 ```
 
 ## Value `loadNat16`
+
 ``` motoko no-repl
 let loadNat16 : (offset : Nat64) -> Nat16
 ```
@@ -186,6 +204,7 @@ Loads a `Nat16` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -194,6 +213,7 @@ StableMemory.loadNat16(offset) // => 123
 ```
 
 ## Value `storeNat16`
+
 ``` motoko no-repl
 let storeNat16 : (offset : Nat64, value : Nat16) -> ()
 ```
@@ -202,6 +222,7 @@ Stores a `Nat16` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -210,6 +231,7 @@ StableMemory.loadNat16(offset) // => 123
 ```
 
 ## Value `loadNat64`
+
 ``` motoko no-repl
 let loadNat64 : (offset : Nat64) -> Nat64
 ```
@@ -218,6 +240,7 @@ Loads a `Nat64` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -226,6 +249,7 @@ StableMemory.loadNat64(offset) // => 123
 ```
 
 ## Value `storeNat64`
+
 ``` motoko no-repl
 let storeNat64 : (offset : Nat64, value : Nat64) -> ()
 ```
@@ -234,6 +258,7 @@ Stores a `Nat64` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -242,6 +267,7 @@ StableMemory.loadNat64(offset) // => 123
 ```
 
 ## Value `loadInt32`
+
 ``` motoko no-repl
 let loadInt32 : (offset : Nat64) -> Int32
 ```
@@ -250,6 +276,7 @@ Loads an `Int32` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -258,6 +285,7 @@ StableMemory.loadInt32(offset) // => 123
 ```
 
 ## Value `storeInt32`
+
 ``` motoko no-repl
 let storeInt32 : (offset : Nat64, value : Int32) -> ()
 ```
@@ -266,6 +294,7 @@ Stores an `Int32` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -274,6 +303,7 @@ StableMemory.loadInt32(offset) // => 123
 ```
 
 ## Value `loadInt8`
+
 ``` motoko no-repl
 let loadInt8 : (offset : Nat64) -> Int8
 ```
@@ -282,6 +312,7 @@ Loads an `Int8` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -290,6 +321,7 @@ StableMemory.loadInt8(offset) // => 123
 ```
 
 ## Value `storeInt8`
+
 ``` motoko no-repl
 let storeInt8 : (offset : Nat64, value : Int8) -> ()
 ```
@@ -298,6 +330,7 @@ Stores an `Int8` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -306,6 +339,7 @@ StableMemory.loadInt8(offset) // => 123
 ```
 
 ## Value `loadInt16`
+
 ``` motoko no-repl
 let loadInt16 : (offset : Nat64) -> Int16
 ```
@@ -314,6 +348,7 @@ Loads an `Int16` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -322,6 +357,7 @@ StableMemory.loadInt16(offset) // => 123
 ```
 
 ## Value `storeInt16`
+
 ``` motoko no-repl
 let storeInt16 : (offset : Nat64, value : Int16) -> ()
 ```
@@ -330,6 +366,7 @@ Stores an `Int16` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -338,6 +375,7 @@ StableMemory.loadInt16(offset) // => 123
 ```
 
 ## Value `loadInt64`
+
 ``` motoko no-repl
 let loadInt64 : (offset : Nat64) -> Int64
 ```
@@ -346,6 +384,7 @@ Loads an `Int64` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -354,6 +393,7 @@ StableMemory.loadInt64(offset) // => 123
 ```
 
 ## Value `storeInt64`
+
 ``` motoko no-repl
 let storeInt64 : (offset : Nat64, value : Int64) -> ()
 ```
@@ -362,6 +402,7 @@ Stores an `Int64` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 123;
@@ -370,6 +411,7 @@ StableMemory.loadInt64(offset) // => 123
 ```
 
 ## Value `loadFloat`
+
 ``` motoko no-repl
 let loadFloat : (offset : Nat64) -> Float
 ```
@@ -378,6 +420,7 @@ Loads a `Float` value from stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 1.25;
@@ -386,6 +429,7 @@ StableMemory.loadFloat(offset) // => 1.25
 ```
 
 ## Value `storeFloat`
+
 ``` motoko no-repl
 let storeFloat : (offset : Nat64, value : Float) -> ()
 ```
@@ -394,6 +438,7 @@ Stores a `Float` value in stable memory at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let offset = 0;
 let value = 1.25;
@@ -402,6 +447,7 @@ StableMemory.loadFloat(offset) // => 1.25
 ```
 
 ## Value `loadBlob`
+
 ``` motoko no-repl
 let loadBlob : (offset : Nat64, size : Nat) -> Blob
 ```
@@ -410,6 +456,7 @@ Load `size` bytes starting from `offset` as a `Blob`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 import Blob "mo:base/Blob";
 
@@ -421,6 +468,7 @@ Blob.toArray(StableMemory.loadBlob(offset, size)) // => [1, 2, 3]
 ```
 
 ## Value `storeBlob`
+
 ``` motoko no-repl
 let storeBlob : (offset : Nat64, value : Blob) -> ()
 ```
@@ -429,6 +477,7 @@ Write bytes of `blob` beginning at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 import Blob "mo:base/Blob";
 

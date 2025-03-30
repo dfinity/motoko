@@ -1,28 +1,27 @@
 # Region
+
 Byte-level access to isolated, (virtual) stable memory _regions_.
 
 This is a moderately lightweight abstraction over IC _stable memory_ and supports persisting
 regions of binary data across Motoko upgrades.
 Use of this module is fully compatible with Motoko's use of
 _stable variables_, whose persistence mechanism also uses (real) IC stable memory internally, but does not interfere with this API.
-It is also fully compatible with existing uses of the `ExperimentalStableMemory` library, which has a similar interface, but,
-only supported a single memory region, without isolation between different applications.
 
 The `Region` type is stable and can be used in stable data structures.
 
 A new, empty `Region` is allocated using function `new()`.
 
 Regions are stateful objects and can be distinguished by the numeric identifier returned by function `id(region)`.
-Every region owns an initially empty, but growable sequence of virtual IC stable memory pages. 
+Every region owns an initially empty, but growable sequence of virtual IC stable memory pages.
 The current size, in pages, of a region is returned by function `size(region)`.
-The size of a region determines the range, [ 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of `load`/`store` operations on the region.
+The size of a region determines the range, ( 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of `load`/`store` operations on the region.
 
 Memory is allocated to a region, using function `grow(region, pages)`, sequentially and on demand, in units of 64KiB logical pages, starting with 0 allocated pages.
 A call to `grow` may succeed, returning the previous size of the region, or fail, returning a sentinel value. New pages are zero initialized.
 
 A size of a region can only grow and never shrink.
-In addition, the stable memory pages allocated to a region will *not* be reclaimed by garbage collection, even
-if the region object itself becomes unreachable. 
+In addition, the stable memory pages allocated to a region will _not_ be reclaimed by garbage collection, even
+if the region object itself becomes unreachable.
 
 Growth is capped by a soft limit on physical page count controlled by compile-time flag
 `--max-stable-pages <n>` (the default is 65536, or 4GiB).
@@ -38,19 +37,26 @@ Text values can be handled by using `Text.decodeUtf8` and `Text.encodeUtf8`, in 
 
 The current region allocation and region contents are preserved across upgrades.
 
-NB: The IC's actual stable memory size (`ic0.stable_size`) may exceed the
-total page size reported by summing all regions sizes.
-This (and the cap on growth) are to accommodate Motoko's stable variables and bookkeeping for regions.
-Applications that plan to use Motoko stable variables sparingly or not at all can
-increase `--max-stable-pages` as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 64Gib).
-All applications should reserve at least one page for stable variable data, even when no stable variables are used.
+:::warning [No garbage collection]
+Pages allocated to a region are never reclaimed, even if the region becomes unreachable.
+:::
+
+:::note [Defaults and limits]
+
+The actual IC stable memory size (`ic0.stable_size`) may exceed the total size reported by summing all region sizes. This difference accounts for space used by Motoko’s stable variables and internal bookkeeping for memory regions.
+
+When stable variables are used sparingly or not at all, the `--max-stable-pages` limit may be increased to approach the IC’s maximum capacity (currently 64 GiB). At least one page should be reserved for system use, even when no stable variables are declared.
+
+:::
 
 Usage:
+
 ```motoko no-repl
 import Region "mo:base/Region";
 ```
 
 ## Type `Region`
+
 ``` motoko no-repl
 type Region = Prim.Types.Region
 ```
@@ -59,6 +65,7 @@ A stateful handle to an isolated region of IC stable memory.
 `Region` is a stable type and regions can be stored in stable variables.
 
 ## Value `new`
+
 ``` motoko no-repl
 let new : () -> Region
 ```
@@ -73,16 +80,19 @@ assert Region.size(region) == 0;
 ```
 
 ## Value `id`
+
 ``` motoko no-repl
 let id : Region -> Nat
 ```
 
 Return a Nat identifying the given region.
 Maybe be used for equality, comparison and hashing.
-NB: Regions returned by `new()` are numbered from 16
+
+:::note
+Regions returned by `new()` are numbered from 16
 (regions 0..15 are currently reserved for internal use).
 Allocate a new, isolated Region of size 0.
-
+:::
 Example:
 
 ```motoko no-repl
@@ -91,6 +101,7 @@ assert Region.id(region) == 16;
 ```
 
 ## Value `size`
+
 ``` motoko no-repl
 let size : (region : Region) -> (pages : Nat64)
 ```
@@ -102,6 +113,7 @@ Preserved across upgrades, together with contents of allocated
 stable memory.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let beforeSize = Region.size(region);
@@ -111,6 +123,7 @@ afterSize - beforeSize // => 10
 ```
 
 ## Value `grow`
+
 ``` motoko no-repl
 let grow : (region : Region, newPages : Nat64) -> (oldPages : Nat64)
 ```
@@ -124,6 +137,7 @@ Function `grow` is capped by a soft limit on `size` controlled by compile-time f
  `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 
 Example:
+
 ```motoko no-repl
 import Error "mo:base/Error";
 
@@ -137,6 +151,7 @@ afterSize - beforeSize // => 10
 ```
 
 ## Value `loadNat8`
+
 ``` motoko no-repl
 let loadNat8 : (region : Region, offset : Nat64) -> Nat8
 ```
@@ -145,6 +160,7 @@ Within `region`, load a `Nat8` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -154,6 +170,7 @@ Region.loadNat8(region, offset) // => 123
 ```
 
 ## Value `storeNat8`
+
 ``` motoko no-repl
 let storeNat8 : (region : Region, offset : Nat64, value : Nat8) -> ()
 ```
@@ -162,6 +179,7 @@ Within `region`, store a `Nat8` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -171,6 +189,7 @@ Region.loadNat8(region, offset) // => 123
 ```
 
 ## Value `loadNat16`
+
 ``` motoko no-repl
 let loadNat16 : (region : Region, offset : Nat64) -> Nat16
 ```
@@ -179,6 +198,7 @@ Within `region`, load a `Nat16` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -188,6 +208,7 @@ Region.loadNat16(region, offset) // => 123
 ```
 
 ## Value `storeNat16`
+
 ``` motoko no-repl
 let storeNat16 : (region : Region, offset : Nat64, value : Nat16) -> ()
 ```
@@ -196,6 +217,7 @@ Within `region`, store a `Nat16` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -205,6 +227,7 @@ Region.loadNat16(region, offset) // => 123
 ```
 
 ## Value `loadNat32`
+
 ``` motoko no-repl
 let loadNat32 : (region : Region, offset : Nat64) -> Nat32
 ```
@@ -213,6 +236,7 @@ Within `region`, load a `Nat32` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -222,6 +246,7 @@ Region.loadNat32(region, offset) // => 123
 ```
 
 ## Value `storeNat32`
+
 ``` motoko no-repl
 let storeNat32 : (region : Region, offset : Nat64, value : Nat32) -> ()
 ```
@@ -230,6 +255,7 @@ Within `region`, store a `Nat32` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -239,6 +265,7 @@ Region.loadNat32(region, offset) // => 123
 ```
 
 ## Value `loadNat64`
+
 ``` motoko no-repl
 let loadNat64 : (region : Region, offset : Nat64) -> Nat64
 ```
@@ -247,6 +274,7 @@ Within `region`, load a `Nat64` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -256,6 +284,7 @@ Region.loadNat64(region, offset) // => 123
 ```
 
 ## Value `storeNat64`
+
 ``` motoko no-repl
 let storeNat64 : (region : Region, offset : Nat64, value : Nat64) -> ()
 ```
@@ -264,6 +293,7 @@ Within `region`, store a `Nat64` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -273,6 +303,7 @@ Region.loadNat64(region, offset) // => 123
 ```
 
 ## Value `loadInt8`
+
 ``` motoko no-repl
 let loadInt8 : (region : Region, offset : Nat64) -> Int8
 ```
@@ -281,6 +312,7 @@ Within `region`, load a `Int8` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -290,6 +322,7 @@ Region.loadInt8(region, offset) // => 123
 ```
 
 ## Value `storeInt8`
+
 ``` motoko no-repl
 let storeInt8 : (region : Region, offset : Nat64, value : Int8) -> ()
 ```
@@ -298,6 +331,7 @@ Within `region`, store a `Int8` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -307,6 +341,7 @@ Region.loadInt8(region, offset) // => 123
 ```
 
 ## Value `loadInt16`
+
 ``` motoko no-repl
 let loadInt16 : (region : Region, offset : Nat64) -> Int16
 ```
@@ -315,6 +350,7 @@ Within `region`, load a `Int16` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -324,6 +360,7 @@ Region.loadInt16(region, offset) // => 123
 ```
 
 ## Value `storeInt16`
+
 ``` motoko no-repl
 let storeInt16 : (region : Region, offset : Nat64, value : Int16) -> ()
 ```
@@ -332,6 +369,7 @@ Within `region`, store a `Int16` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -341,6 +379,7 @@ Region.loadInt16(region, offset) // => 123
 ```
 
 ## Value `loadInt32`
+
 ``` motoko no-repl
 let loadInt32 : (region : Region, offset : Nat64) -> Int32
 ```
@@ -349,6 +388,7 @@ Within `region`, load a `Int32` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -358,6 +398,7 @@ Region.loadInt32(region, offset) // => 123
 ```
 
 ## Value `storeInt32`
+
 ``` motoko no-repl
 let storeInt32 : (region : Region, offset : Nat64, value : Int32) -> ()
 ```
@@ -366,6 +407,7 @@ Within `region`, store a `Int32` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -375,6 +417,7 @@ Region.loadInt32(region, offset) // => 123
 ```
 
 ## Value `loadInt64`
+
 ``` motoko no-repl
 let loadInt64 : (region : Region, offset : Nat64) -> Int64
 ```
@@ -383,6 +426,7 @@ Within `region`, load a `Int64` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -392,6 +436,7 @@ Region.loadInt64(region, offset) // => 123
 ```
 
 ## Value `storeInt64`
+
 ``` motoko no-repl
 let storeInt64 : (region : Region, offset : Nat64, value : Int64) -> ()
 ```
@@ -400,6 +445,7 @@ Within `region`, store a `Int64` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -409,6 +455,7 @@ Region.loadInt64(region, offset) // => 123
 ```
 
 ## Value `loadFloat`
+
 ``` motoko no-repl
 let loadFloat : (region : Region, offset : Nat64) -> Float
 ```
@@ -417,6 +464,7 @@ Within `region`, loads a `Float` value from the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -426,6 +474,7 @@ Region.loadFloat(region, offset) // => 1.25
 ```
 
 ## Value `storeFloat`
+
 ``` motoko no-repl
 let storeFloat : (region : Region, offset : Nat64, value : Float) -> ()
 ```
@@ -434,6 +483,7 @@ Within `region`, store float `value` at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 let region = Region.new();
 let offset = 0;
@@ -443,6 +493,7 @@ Region.loadFloat(region, offset) // => 1.25
 ```
 
 ## Value `loadBlob`
+
 ``` motoko no-repl
 let loadBlob : (region : Region, offset : Nat64, size : Nat) -> Blob
 ```
@@ -451,6 +502,7 @@ Within `region,` load `size` bytes starting from `offset` as a `Blob`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 import Blob "mo:base/Blob";
 
@@ -463,14 +515,16 @@ Blob.toArray(Region.loadBlob(region, offset, size)) // => [1, 2, 3]
 ```
 
 ## Value `storeBlob`
+
 ``` motoko no-repl
 let storeBlob : (region : Region, offset : Nat64, value : Blob) -> ()
 ```
 
-Within `region, write `blob.size()` bytes of `blob` beginning at `offset`.
+Within `region, write`blob.size()` bytes of `blob` beginning at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
+
 ```motoko no-repl
 import Blob "mo:base/Blob";
 

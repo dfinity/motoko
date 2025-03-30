@@ -1,9 +1,8 @@
 # Option
+
 Typesafe nulls
 
-Optional values can be seen as a typesafe `null`. A value of type `?Int` can
-be constructed with either `null` or `?42`. The simplest way to get at the
-contents of an optional is to use pattern matching:
+Optional values can be seen as a typesafe `null`. A value of type `?Int` can be constructed with either `null` or `?42`. The simplest way to get at the contents of an optional is to use pattern matching:
 
 ```motoko
 let optionalInt1 : ?Int = ?42;
@@ -22,31 +21,38 @@ let int2orZero : Int = switch optionalInt2 {
 assert int2orZero == 0;
 ```
 
-The functions in this module capture some common operations when working
-with optionals that can be more succinct than using pattern matching.
+The functions in this module capture some common operations when working with optionals that can be more succinct than using pattern matching.
 
 ## Function `get`
-``` motoko no-repl
+
+```motoko
 func get<T>(x : ?T, default : T) : T
 ```
 
-Unwraps an optional value, with a default value, i.e. `get(?x, d) = x` and
-`get(null, d) = d`.
+Unwraps an optional value, with a default value.
+
+`get(?x, d) = x`  
+`get(null, d) = d`
 
 ## Function `getMapped`
-``` motoko no-repl
+
+```motoko
 func getMapped<A, B>(x : ?A, f : A -> B, default : B) : B
 ```
 
-Unwraps an optional value using a function, or returns the default, i.e.
-`option(?x, f, d) = f x` and `option(null, f, d) = d`.
+Unwraps an optional value using a function, or returns the default.
+
+`getMapped(?x, f, d) = f x`  
+`getMapped(null, f, d) = d`
 
 ## Function `map`
-``` motoko no-repl
+
+```motoko
 func map<A, B>(x : ?A, f : A -> B) : ?B
 ```
 
-Applies a function to the wrapped value. `null`'s are left untouched.
+Applies a function to the wrapped value. `null` is left untouched.
+
 ```motoko
 import Option "mo:base/Option";
 assert Option.map<Nat, Nat>(?42, func x = x + 1) == ?43;
@@ -54,12 +60,12 @@ assert Option.map<Nat, Nat>(null, func x = x + 1) == null;
 ```
 
 ## Function `iterate`
-``` motoko no-repl
+
+```motoko
 func iterate<A>(x : ?A, f : A -> ())
 ```
 
-Applies a function to the wrapped value, but discards the result. Use
-`iterate` if you're only interested in the side effect `f` produces.
+Applies a function to the wrapped value, discarding the result. Use `iterate` for side effects.
 
 ```motoko
 import Option "mo:base/Option";
@@ -71,27 +77,29 @@ assert counter == 5;
 ```
 
 ## Function `apply`
-``` motoko no-repl
+
+```motoko
 func apply<A, B>(x : ?A, f : ?(A -> B)) : ?B
 ```
 
-Applies an optional function to an optional value. Returns `null` if at
-least one of the arguments is `null`.
+Applies an optional function to an optional value. Returns `null` if at least one argument is `null`.
 
 ## Function `chain`
-``` motoko no-repl
+
+```motoko
 func chain<A, B>(x : ?A, f : A -> ?B) : ?B
 ```
 
-Applies a function to an optional value. Returns `null` if the argument is
-`null`, or the function returns `null`.
+Applies a function to an optional value. Returns `null` if the input is `null` or if the function returns `null`.
 
 ## Function `flatten`
-``` motoko no-repl
+
+```motoko
 func flatten<A>(x : ??A) : ?A
 ```
 
 Given an optional optional value, removes one layer of optionality.
+
 ```motoko
 import Option "mo:base/Option";
 assert Option.flatten(?(?(42))) == ?42;
@@ -100,58 +108,82 @@ assert Option.flatten(null) == null;
 ```
 
 ## Function `make`
-``` motoko no-repl
+
+```motoko
 func make<A>(x : A) : ?A
 ```
 
 Creates an optional value from a definite value.
+
 ```motoko
 import Option "mo:base/Option";
 assert Option.make(42) == ?42;
 ```
 
 ## Function `isSome`
-``` motoko no-repl
+
+```motoko
 func isSome(x : ?Any) : Bool
 ```
 
-Returns true if the argument is not `null`, otherwise returns false.
+Returns `true` if the argument is not `null`.
 
 ## Function `isNull`
-``` motoko no-repl
+
+```motoko
 func isNull(x : ?Any) : Bool
 ```
 
-Returns true if the argument is `null`, otherwise returns false.
+Returns `true` if the argument is `null`.
 
 ## Function `equal`
-``` motoko no-repl
+
+```motoko
 func equal<A>(x : ?A, y : ?A, eq : (A, A) -> Bool) : Bool
 ```
 
-Returns true if the optional arguments are equal according to the equality function provided, otherwise returns false.
+Returns `true` if the optional values are equal according to the equality function.
 
-## Function `assertSome`
-``` motoko no-repl
+## Function `assertSome` — @deprecated
+
+```motoko
 func assertSome(x : ?Any)
 ```
 
 Asserts that the value is not `null`; fails otherwise.
-@deprecated Option.assertSome will be removed soon; use an assert expression instead
 
-## Function `assertNull`
-``` motoko no-repl
+:::warning [Deprecated function]
+
+`Option.assertSome` will be removed soon. Use an `assert` expression instead.
+
+:::
+
+## Function `assertNull` — @deprecated
+
+```motoko
 func assertNull(x : ?Any)
 ```
 
-Asserts that the value _is_ `null`; fails otherwise.
-@deprecated Option.assertNull will be removed soon; use an assert expression instead
+Asserts that the value is `null`; fails otherwise.
 
-## Function `unwrap`
-``` motoko no-repl
+:::warning [Deprecated function]
+
+`Option.assertNull` will be removed soon. Use an `assert` expression instead.
+
+:::
+
+## Function `unwrap` — @deprecated
+
+```motoko
 func unwrap<T>(x : ?T) : T
 ```
 
-Unwraps an optional value, i.e. `unwrap(?x) = x`.
+Unwraps an optional value.
 
-@deprecated Option.unwrap is unsafe and fails if the argument is null; it will be removed soon; use a `switch` or `do?` expression instead
+`unwrap(?x) = x`
+
+:::warning [Deprecated function]
+
+`Option.unwrap` is unsafe and will be removed soon. Use a `switch` or `do?` expression instead.
+
+:::

@@ -1,7 +1,9 @@
 # Iter
+
 Iterators
 
 ## Type `Iter`
+
 ``` motoko no-repl
 type Iter<T> = { next : () -> ?T }
 ```
@@ -14,6 +16,7 @@ the Iterator that cannot be put back, so keep that in mind when sharing
 iterators between consumers.
 
 An iterater `i` can be iterated over using
+
 ```
 for (x in i) {
   …do something with x…
@@ -28,6 +31,7 @@ class range(x : Nat, y : Int)
 
 Creates an iterator that produces all `Nat`s from `x` to `y` including
 both of the bounds.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
@@ -38,10 +42,10 @@ assert(null == iter.next());
 ```
 
 ### Function `next`
+
 ``` motoko no-repl
 func next() : ?Nat
 ```
-
 
 ## Class `revRange`
 
@@ -53,12 +57,14 @@ Like `range` but produces the values in the opposite
 order.
 
 ### Function `next`
+
 ``` motoko no-repl
 func next() : ?Int
 ```
 
 
 ## Function `iterate`
+
 ``` motoko no-repl
 func iterate<A>(xs : Iter<A>, f : (A, Nat) -> ())
 ```
@@ -76,6 +82,7 @@ assert(6 == sum)
 ```
 
 ## Function `size`
+
 ``` motoko no-repl
 func size<A>(xs : Iter<A>) : Nat
 ```
@@ -84,12 +91,14 @@ Consumes an iterator and counts how many elements were produced
 (discarding them in the process).
 
 ## Function `map`
+
 ``` motoko no-repl
 func map<A, B>(xs : Iter<A>, f : A -> B) : Iter<B>
 ```
 
 Takes a function and an iterator and returns a new iterator that lazily applies
 the function to every element produced by the argument iterator.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
@@ -101,12 +110,14 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `filter`
+
 ``` motoko no-repl
 func filter<A>(xs : Iter<A>, f : A -> Bool) : Iter<A>
 ```
 
 Takes a function and an iterator and returns a new iterator that produces
 elements from the original iterator if and only if the predicate is true.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
@@ -117,11 +128,13 @@ assert(null == mappedIter.next());
 ```
 
 ## Function `make`
+
 ``` motoko no-repl
 func make<A>(x : A) : Iter<A>
 ```
 
 Creates an iterator that produces an infinite sequence of `x`.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.make(10);
@@ -132,12 +145,14 @@ assert(?10 == iter.next());
 ```
 
 ## Function `concat`
+
 ``` motoko no-repl
 func concat<A>(a : Iter<A>, b : Iter<A>) : Iter<A>
 ```
 
 Takes two iterators and returns a new iterator that produces
 elements from the original iterators sequentally.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter1 = Iter.range(1, 2);
@@ -151,11 +166,13 @@ assert(null == concatenatedIter.next());
 ```
 
 ## Function `fromArray`
+
 ``` motoko no-repl
 func fromArray<A>(xs : [A]) : Iter<A>
 ```
 
 Creates an iterator that produces the elements of an Array in ascending index order.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.fromArray([1, 2, 3]);
@@ -166,6 +183,7 @@ assert(null == iter.next());
 ```
 
 ## Function `fromArrayMut`
+
 ``` motoko no-repl
 func fromArrayMut<A>(xs : [var A]) : Iter<A>
 ```
@@ -175,6 +193,7 @@ the elements of the Array at the time the iterator is created, so
 further modifications won't be reflected in the iterator.
 
 ## Value `fromList`
+
 ``` motoko no-repl
 let fromList
 ```
@@ -182,11 +201,13 @@ let fromList
 Like `fromArray` but for Lists.
 
 ## Function `toArray`
+
 ``` motoko no-repl
 func toArray<A>(xs : Iter<A>) : [A]
 ```
 
 Consumes an iterator and collects its produced elements in an Array.
+
 ```motoko
 import Iter "mo:base/Iter";
 let iter = Iter.range(1, 3);
@@ -194,6 +215,7 @@ assert([1, 2, 3] == Iter.toArray(iter));
 ```
 
 ## Function `toArrayMut`
+
 ``` motoko no-repl
 func toArrayMut<A>(xs : Iter<A>) : [var A]
 ```
@@ -201,6 +223,7 @@ func toArrayMut<A>(xs : Iter<A>) : [var A]
 Like `toArray` but for Arrays with mutable elements.
 
 ## Function `toList`
+
 ``` motoko no-repl
 func toList<A>(xs : Iter<A>) : List.List<A>
 ```
@@ -208,6 +231,7 @@ func toList<A>(xs : Iter<A>) : List.List<A>
 Like `toArray` but for Lists.
 
 ## Function `sort`
+
 ``` motoko no-repl
 func sort<A>(xs : Iter<A>, compare : (A, A) -> Order.Order) : Iter<A>
 ```

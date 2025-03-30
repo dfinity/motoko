@@ -1,18 +1,28 @@
 # Array
-Provides extended utility functions on Arrays.
 
-Note the difference between mutable and non-mutable arrays below.
+An array is an ordered, fixed-size collection of elements of the same type.
 
-WARNING: If you are looking for a list that can grow and shrink in size,
-it is recommended you use either the Buffer class or the List class for
-those purposes. Arrays must be created with a fixed size.
+:::warning
+
+ If you are looking for a list that can grow and shrink in size,
+it is recommended you use either the `Buffer` or `List` data structure for
+those purposes.
+
+:::
+
+:::note [Assumptions]
+
+Runtime and space complexity assumes that `generator`, `equal`, and other functions execute in `O(1)` time and space.
+:::
 
 Import from the base library to use this module.
+
 ```motoko name=import
 import Array "mo:base/Array";
 ```
 
 ## Function `init`
+
 ``` motoko no-repl
 func init<X>(size : Nat, initValue : X) : [var X]
 ```
@@ -23,10 +33,12 @@ Create a mutable array with `size` copies of the initial value.
 let array = Array.init<Nat>(4, 2);
 ```
 
-Runtime: O(size)
-Space: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `tabulate`
+
 ``` motoko no-repl
 func tabulate<X>(size : Nat, generator : Nat -> X) : [X]
 ```
@@ -38,12 +50,12 @@ is created by applying `generator` to i.
 let array : [Nat] = Array.tabulate<Nat>(4, func i = i * 2);
 ```
 
-Runtime: O(size)
-Space: O(size)
-
-*Runtime and space assumes that `generator` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `tabulateVar`
+
 ``` motoko no-repl
 func tabulateVar<X>(size : Nat, generator : Nat -> X) : [var X]
 ```
@@ -57,12 +69,12 @@ array[2] := 0;
 array
 ```
 
-Runtime: O(size)
-Space: O(size)
-
-*Runtime and space assumes that `generator` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `freeze`
+
 ``` motoko no-repl
 func freeze<X>(varArray : [var X]) : [X]
 ```
@@ -76,11 +88,12 @@ varArray[2] := 3;
 let array = Array.freeze<Nat>(varArray);
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `thaw`
+
 ``` motoko no-repl
 func thaw<A>(array : [A]) : [var A]
 ```
@@ -95,11 +108,12 @@ varArray[2] := 3;
 varArray
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `equal`
+
 ``` motoko no-repl
 func equal<X>(array1 : [X], array2 : [X], equal : (X, X) -> Bool) : Bool
 ```
@@ -116,13 +130,12 @@ let array2 = [0, 1, 2, 3];
 Array.equal(array1, array2, equal)
 ```
 
-Runtime: O(size1 + size2)
-
-Space: O(1)
-
-*Runtime and space assumes that `equal` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size1 + size2)` | `O(size1 + size2)` |
 
 ## Function `find`
+
 ``` motoko no-repl
 func find<X>(array : [X], predicate : X -> Bool) : ?X
 ```
@@ -134,31 +147,38 @@ If no element satisfies the predicate, returns null.
 let array = [1, 9, 4, 8];
 Array.find<Nat>(array, func x = x > 8)
 ```
-Runtime: O(size)
 
-Space: O(1)
-
-*Runtime and space assumes that `predicate` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `append`
+
 ``` motoko no-repl
 func append<X>(array1 : [X], array2 : [X]) : [X]
 ```
 
 Create a new array by appending the values of `array1` and `array2`.
-Note that `Array.append` copies its arguments and has linear complexity;
-when used in a loop, consider using a `Buffer`, and `Buffer.append`, instead.
+
+:::note [Efficient appending]
+
+`Array.append` copies its arguments and runs in linear time.  
+For better performance in loops, consider using `Buffer` and `Buffer.append` instead.
+
+:::
 
 ```motoko include=import
 let array1 = [1, 2, 3];
 let array2 = [4, 5, 6];
 Array.append<Nat>(array1, array2)
 ```
-Runtime: O(size1 + size2)
 
-Space: O(size1 + size2)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size1 + size2)` | `O(size1 + size2)` |
 
 ## Function `sort`
+
 ``` motoko no-repl
 func sort<X>(array : [X], compare : (X, X) -> Order.Order) : [X]
 ```
@@ -172,12 +192,13 @@ import Nat "mo:base/Nat";
 let array = [4, 2, 6];
 Array.sort(array, Nat.compare)
 ```
-Runtime: O(size * log(size))
 
-Space: O(size)
-*Runtime and space assumes that `compare` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size * log(size))` | `O(size)` |
 
 ## Function `sortInPlace`
+
 ``` motoko no-repl
 func sortInPlace<X>(array : [var X], compare : (X, X) -> Order.Order)
 ```
@@ -193,12 +214,13 @@ let array = [var 4, 2, 6];
 Array.sortInPlace(array, compare);
 array
 ```
-Runtime: O(size * log(size))
 
-Space: O(size)
-*Runtime and space assumes that `compare` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size * log(size))` | `O(size)` |
 
 ## Function `reverse`
+
 ``` motoko no-repl
 func reverse<X>(array : [X]) : [X]
 ```
@@ -212,11 +234,12 @@ let array = [10, 11, 12];
 Array.reverse(array)
 ```
 
-Runtime: O(size)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
 ## Function `map`
+
 ``` motoko no-repl
 func map<X, Y>(array : [X], f : X -> Y) : [Y]
 ```
@@ -231,13 +254,14 @@ let array = [0, 1, 2, 3];
 Array.map<Nat, Nat>(array, func x = x * 3)
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
+  
 
 ## Function `filter`
+
 ``` motoko no-repl
 func filter<X>(array : [X], predicate : X -> Bool) : [X]
 ```
@@ -249,12 +273,13 @@ in `array`, retaining the elements for which `predicate` returns true.
 let array = [4, 2, 6, 1, 5];
 let evenElements = Array.filter<Nat>(array, func x = x % 2 == 0);
 ```
-Runtime: O(size)
 
-Space: O(size)
-*Runtime and space assumes that `predicate` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
 ## Function `mapEntries`
+
 ``` motoko no-repl
 func mapEntries<X, Y>(array : [X], f : (X, Nat) -> Y) : [Y]
 ```
@@ -268,13 +293,14 @@ let array = [10, 10, 10, 10];
 Array.mapEntries<Nat, Nat>(array, func (x, i) = i * x)
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
+  
 
 ## Function `mapFilter`
+
 ``` motoko no-repl
 func mapFilter<X, Y>(array : [X], f : X -> ?Y) : [Y]
 ```
@@ -292,12 +318,15 @@ let newArray =
     func x = if (x == 0) { null } else { ?toText(100 / x) } // can't divide by 0, so return null
   );
 ```
-Runtime: O(size)
 
-Space: O(size)
-*Runtime and space assumes that `f` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
+
+  
 
 ## Function `mapResult`
+
 ``` motoko no-repl
 func mapResult<X, Y, E>(array : [X], f : X -> Result.Result<Y, E>) : Result.Result<[Y], E>
 ```
@@ -318,13 +347,14 @@ Array.mapResult<Nat, Nat, Text>(array, func x {
 })
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
+  
 
 ## Function `chain`
+
 ``` motoko no-repl
 func chain<X, Y>(array : [X], k : X -> [Y]) : [Y]
 ```
@@ -340,12 +370,14 @@ let array = [1, 2, 3, 4];
 Array.chain<Nat, Int>(array, func x = [x, -x])
 
 ```
-Runtime: O(size)
 
-Space: O(size)
-*Runtime and space assumes that `k` runs in O(1) time and space.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(size)` |
 
+ 
 ## Function `foldLeft`
+
 ``` motoko no-repl
 func foldLeft<X, A>(array : [X], base : A, combine : (A, X) -> A) : A
 ```
@@ -366,13 +398,12 @@ let sum =
   );
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
-Space: O(1)
+ ## Function `foldRight`
 
-*Runtime and space assumes that `combine` runs in O(1) time and space.
-
-## Function `foldRight`
 ``` motoko no-repl
 func foldRight<X, A>(array : [X], base : A, combine : (X, A) -> A) : A
 ```
@@ -388,13 +419,12 @@ let array = [1, 9, 4, 8];
 let bookTitle = Array.foldRight<Nat, Text>(array, "", func(x, acc) = toText(x) # acc);
 ```
 
-Runtime: O(size)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(size)` | `O(1)` |
 
-Space: O(1)
+ ## Function `flatten`
 
-*Runtime and space assumes that `combine` runs in O(1) time and space.
-
-## Function `flatten`
 ``` motoko no-repl
 func flatten<X>(arrays : [[X]]) : [X]
 ```
@@ -413,6 +443,7 @@ Runtime: O(number of elements in array)
 Space: O(number of elements in array)
 
 ## Function `make`
+
 ``` motoko no-repl
 func make<X>(element : X) : [X]
 ```
@@ -423,11 +454,12 @@ Create an array containing a single value.
 Array.make(2)
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `vals`
+
 ``` motoko no-repl
 func vals<X>(array : [X]) : I.Iter<X>
 ```
@@ -436,8 +468,10 @@ Returns an Iterator (`Iter`) over the elements of `array`.
 Iterator provides a single method `next()`, which returns
 elements in order, or `null` when out of elements to iterate over.
 
-NOTE: You can also use `array.vals()` instead of this function. See example
-below.
+:::note
+
+Alternatively, you can use `array.size()` to achieve the same result. See the example below.
+:::
 
 ```motoko include=import
 
@@ -450,11 +484,12 @@ for (element in array.vals()) {
 sum
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `keys`
+
 ``` motoko no-repl
 func keys<X>(array : [X]) : I.Iter<Nat>
 ```
@@ -463,8 +498,11 @@ Returns an Iterator (`Iter`) over the indices of `array`.
 Iterator provides a single method `next()`, which returns
 indices in order, or `null` when out of index to iterate over.
 
-NOTE: You can also use `array.keys()` instead of this function. See example
+::: note Title: Alternate approach
+You can also use `array.keys()` instead of this function. See example
 below.
+
+:::
 
 ```motoko include=import
 
@@ -477,19 +515,22 @@ for (element in array.keys()) {
 sum
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `size`
+
 ``` motoko no-repl
 func size<X>(array : [X]) : Nat
 ```
 
 Returns the size of `array`.
 
-NOTE: You can also use `array.size()` instead of this function. See example
-below.
+:::note [Alternative approach]
+
+Alternatively, you can use `array.size()` to achieve the same result. See the example below.
+:::
 
 ```motoko include=import
 
@@ -497,11 +538,12 @@ let array = [10, 11, 12];
 let size = Array.size(array);
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `subArray`
+
 ``` motoko no-repl
 func subArray<X>(array : [X], start : Nat, length : Nat) : [X]
 ```
@@ -515,10 +557,13 @@ Limitations: Traps if the start index + length is greater than the size of the a
 let array = [1,2,3,4,5];
 let subArray = Array.subArray<Nat>(array, 2, 3);
 ```
-Runtime: O(length);
-Space: O(length);
+
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(length)` | `O(length)` |
 
 ## Function `indexOf`
+
 ``` motoko no-repl
 func indexOf<X>(element : X, array : [X], equal : (X, X) -> Bool) : ?Nat
 ```
@@ -533,10 +578,12 @@ assert Array.indexOf<Char>('f', array, Char.equal) == ?2;
 assert Array.indexOf<Char>('g', array, Char.equal) == null;
 ```
 
-Runtime: O(array.size());
-Space: O(1);
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(array.size())` | `O(1)` |
 
 ## Function `nextIndexOf`
+
 ``` motoko no-repl
 func nextIndexOf<X>(element : X, array : [X], fromInclusive : Nat, equal : (X, X) -> Bool) : ?Nat
 ```
@@ -553,10 +600,12 @@ assert Array.nextIndexOf<Char>('f', array, 3, Char.equal) == ?3;
 assert Array.nextIndexOf<Char>('f', array, 4, Char.equal) == null;
 ```
 
-Runtime: O(array.size());
-Space: O(1);
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(array.size())` | `O(1)` |
 
 ## Function `lastIndexOf`
+
 ``` motoko no-repl
 func lastIndexOf<X>(element : X, array : [X], equal : (X, X) -> Bool) : ?Nat
 ```
@@ -572,10 +621,12 @@ assert Array.lastIndexOf<Char>('e', array, Char.equal) == ?5;
 assert Array.lastIndexOf<Char>('g', array, Char.equal) == null;
 ```
 
-Runtime: O(array.size());
-Space: O(1);
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(array.size())` | `O(1)` |
 
 ## Function `prevIndexOf`
+
 ``` motoko no-repl
 func prevIndexOf<T>(element : T, array : [T], fromExclusive : Nat, equal : (T, T) -> Bool) : ?Nat
 ```
@@ -591,10 +642,12 @@ assert Array.prevIndexOf<Char>('e', array, 5, Char.equal) == ?4;
 assert Array.prevIndexOf<Char>('e', array, 4, Char.equal) == null;
 ```
 
-Runtime: O(array.size());
-Space: O(1);
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(array.size())` | `O(1)` |
 
 ## Function `slice`
+
 ``` motoko no-repl
 func slice<X>(array : [X], fromInclusive : Nat, toExclusive : Nat) : I.Iter<X>
 ```
@@ -612,10 +665,12 @@ let s = Array.slice<Nat>(array, 0, 0);
 assert s.next() == null;
 ```
 
-Runtime: O(1)
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Function `take`
+
 ``` motoko no-repl
 func take<T>(array : [T], length : Int) : [T]
 ```
@@ -631,5 +686,7 @@ assert Array.take(array, -2) == [4, 5];
 assert Array.take(array, 10) == [1, 2, 3, 4, 5];
 assert Array.take(array, -99) == [1, 2, 3, 4, 5];
 ```
-Runtime: O(length);
-Space: O(length);
+
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(length)` | `O(length)` |

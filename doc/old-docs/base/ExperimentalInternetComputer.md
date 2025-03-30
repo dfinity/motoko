@@ -1,9 +1,13 @@
 # ExperimentalInternetComputer
+
 Low-level interface to the Internet Computer.
 
-**WARNING:** This low-level API is **experimental** and likely to change or even disappear.
+:::warning [Experimental API]
+This low-level API is **experimental** and likely to change or even disappear.
+:::
 
 ## Value `call`
+
 ``` motoko no-repl
 let call : (canister : Principal, name : Text, data : Blob) -> async (reply : Blob)
 ```
@@ -14,9 +18,13 @@ Returns the response to the call, an IC _reply_ or _reject_, as a Motoko future:
 * The message data of an IC reply determines the binary contents of `reply`.
 * The error code and textual message data of an IC reject determines the future's `Error` value.
 
-Note: `call` is an asynchronous function and can only be applied in an asynchronous context.
+:::note [Asynchronous context required]
+
+`call` is an asynchronous function and can only be applied in an asynchronous context.
+:::
 
 Example:
+
 ```motoko no-repl
 import IC "mo:base/ExperimentalInternetComputer";
 import Principal "mo:base/Principal";
@@ -33,6 +41,7 @@ let output : ?OutputType = from_candid(rawReply); // { decimals = 8 }
 [Learn more about Candid serialization](https://internetcomputer.org/docs/current/motoko/main/reference/language-manual#candid-serialization)
 
 ## Function `countInstructions`
+
 ``` motoko no-repl
 func countInstructions(comp : () -> ()) : Nat64
 ```
@@ -43,9 +52,13 @@ instructions performed during the execution of `comp()`.
 More precisely, returns the difference between the state of the IC instruction counter (_performance counter_ `0`) before and after executing `comp()`
 (see [Performance Counter](https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-performance-counter)).
 
-NB: `countInstructions(comp)` will _not_ account for any deferred garbage collection costs incurred by `comp()`.
+:::note [GC cost not included]
+
+`countInstructions(comp)` will _not_ account for any deferred garbage collection costs incurred by `comp()`.
+:::
 
 Example:
+
 ```motoko no-repl
 import IC "mo:base/ExperimentalInternetComputer";
 
@@ -55,6 +68,7 @@ let count = IC.countInstructions(func() {
 ```
 
 ## Value `performanceCounter`
+
 ``` motoko no-repl
 let performanceCounter : (counter : Nat32) -> (value : Nat64)
 ```
@@ -75,6 +89,7 @@ Returns the current value of IC _performance counter_ `counter`.
 Consult [Performance Counter](https://internetcomputer.org/docs/current/references/ic-interface-spec#system-api-performance-counter) for details.
 
 Example:
+
 ```motoko no-repl
 import IC "mo:base/ExperimentalInternetComputer";
 
@@ -84,6 +99,7 @@ let diff : Nat64 = IC.performanceCounter(1) - c1;
 ```
 
 ## Function `replyDeadline`
+
 ``` motoko no-repl
 func replyDeadline() : Nat
 ```
@@ -91,4 +107,3 @@ func replyDeadline() : Nat
 Returns the time (in nanoseconds from the epoch start) by when the update message should
 reply to the best effort message so that it can be received by the requesting canister.
 Queries and non-best-effort update messages return zero.
-
