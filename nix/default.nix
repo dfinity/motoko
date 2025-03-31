@@ -90,11 +90,11 @@ let
 
         # Rust stable
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { version = "1.78.0"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { version = "1.85.0"; channel = "stable"; };
         in {
-          rustPlatform_moz_stable = self.makeRustPlatform {
+          rustPlatform_moz_stable = self.makeRustPlatform rec {
             rustc = rust-channel.rust;
-            cargo = rust-channel.rust;
+            cargo = rustc;
           };
         })
 
