@@ -1868,17 +1868,21 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields), T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
+  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    List.iter (fun ft ->
+    if List.for_all (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
-      then local_error env exp.at "M0151"
+      then begin
+      local_error env exp.at "M0151"
         "object literal is missing field %s from expected type%a"
         ft.T.lab
         display_typ_expand t;
-    ) fts;
+        false
+      end else true
+    ) fts
+    then detect_lost_fields env t e;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -2001,7 +2005,7 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1 ;
     t
-  | _ ->
+  | e, _ ->
     let t' = infer_exp env0 exp in
     if not (sub env exp.at t' t) then
     begin
@@ -2010,7 +2014,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand t'
         display_typ_expand t
         (Suggest.suggest_conversion env.libs env.vals t' t)
-    end;
+    end
+    else detect_lost_fields env t e;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -2031,6 +2036,23 @@ and check_exp_field env (ef : exp_field) fts =
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
+
+and detect_lost_fields env t = function
+  | _ when env.pre || not (T.is_obj t) -> ()
+  | ObjE (_, flds) ->
+    let [@warning "-8"] T.Obj (_, fts) = t in
+    List.iter
+      (fun (fld : exp_field) ->
+         let id = fld.it.id.it in
+         match List.find_opt (fun ft -> ft.T.lab = id) fts with
+         | Some _ -> ()
+         | None ->
+            warn env fld.at "M0215"
+              "Field `%s` is ignored in record of type%a"
+              id
+              display_typ t)
+      flds
+  | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
