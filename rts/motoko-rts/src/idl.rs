@@ -855,7 +855,7 @@ pub(crate) unsafe fn memory_compatible(
                 let t11 = sleb128_decode(&mut tb1);
                 n1 -= 1;
                 if tag1 < tag2 {
-                    return false; // discarded field, return false
+                    return false; // discarded field
                 }
                 if tag1 > tag2 {
                     return false; // new field, return false

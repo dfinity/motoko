@@ -920,9 +920,9 @@ module RelArg :
   sig
     type arg
     val default : arg (* ordinary subtyping, with loss of info *)
-    val loss_less : arg (* loss_less subtyping *)
+    val lossless : arg (* lossless subtyping *)
     val inc_depth : arg -> arg
-    val is_loss_less : arg -> bool
+    val is_lossless : arg -> bool
     val exceeds_max_depth : arg -> bool
 end
 =

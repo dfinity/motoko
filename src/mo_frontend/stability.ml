@@ -47,7 +47,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
-        Some () (* no or additional fields ok *)
+        Some () (* new fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropped field rejected, recurse on tfs1' *)
         error_discard s tf1;
@@ -59,7 +59,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
               error_sub s tf1 tf2;
             go tfs1' tfs2'
          | -1 ->
-           (* dropped field is allowed with warning, recurse on tfs1' *)
+           (* dropped field rejected, recurse on tfs1' *)
            error_discard s tf1;
            go tfs1' tfs2
          | _ ->
