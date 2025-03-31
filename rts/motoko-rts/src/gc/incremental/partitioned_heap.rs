@@ -214,6 +214,12 @@ impl Partition {
         use crate::constants::WORD_SIZE;
         debug_assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
+        // This code assumes that the free space has been allocated (with Wasm memory grow).
+        // With incremental partition allocation, this might not be the case.
+        // We need to ensure that the free space is allocated if we try to clear it.
+        use crate::memory::ic::allocate_wasm_memory;
+        allocate_wasm_memory(Bytes(self.end_address()));
+
         debug_assert_eq!(remaining_space % WORD_SIZE, 0);
         debug_assert!(remaining_space <= PARTITION_SIZE);
         if remaining_space == 0 {
