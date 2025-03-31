@@ -1,14 +1,14 @@
-object-extend.mo:46.16-46.21: warning [M0215], Field `l` is ignored in record of type
+object-extend.mo:46.16-46.21: warning [M0215], field `l` is provided but not expected in record of type
   {}
-object-extend.mo:71.67-71.75: warning [M0215], Field `bur` is ignored in record extension of type
+object-extend.mo:71.67-71.75: warning [M0215], field `bur` is provided but not expected in record extension of type
   {bar : Nat; next : () -> ?Text}
-object-extend.mo:72.48-72.61: warning [M0215], Field `quux` is ignored in record of type
+object-extend.mo:72.48-72.61: warning [M0215], field `quux` is provided but not expected in record of type
   {foo : Text}
-object-extend.mo:73.77-73.81: warning [M0215], Public field `quux` is ignored in object of type
+object-extend.mo:73.77-73.81: warning [M0215], public field `quux` is provided but not expected in object of type
   {foo : Text}
-object-extend.mo:74.71-74.75: warning [M0215], Public field `quux` is ignored in object of type
+object-extend.mo:74.71-74.75: warning [M0215], public field `quux` is provided but not expected in object of type
   {foo : Text}
-object-extend.mo:75.47-75.51: warning [M0215], Public field `quux` is ignored in object of type
+object-extend.mo:75.47-75.51: warning [M0215], public field `quux` is provided but not expected in object of type
   {foo : Text}
 object-extend.mo:56.6-56.9: warning [M0194], unused identifier mix (delete or rename to wildcard `_` or `_mix`)
 object-extend.mo:59.6-59.9: warning [M0194], unused identifier mox (delete or rename to wildcard `_` or `_mox`)
