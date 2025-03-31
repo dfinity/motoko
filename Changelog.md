@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+* To prevent implicit data loss due to upgrades, stable fields may no longer be dropped or promoted to lossy supertypes (#4970).
+  Removing a stable variable, or promoting its type to a lossy supertype by, for example, dropping nested record fields,
+  now requires an explicit migration expression.
+  Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
+
 ## 0.14.5 (2025-03-25)
 
 * motoko (`moc`)

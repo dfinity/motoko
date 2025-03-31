@@ -1034,62 +1034,89 @@ A type `T` is well-formed only if recursively its constituent types are well-for
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true:
 
--   `T` equals `U` (subtyping is *reflexive*).
+1.   `T` equals `U` (subtyping is *reflexive*).
 
--   `U` equals `Any`.
+2.   `U` equals `Any`.
 
--   `T` equals `None`.
+3.   `T` equals `None`.
 
--   `T` is a type parameter `X` declared with constraint `U`.
+4.   `T` is a type parameter `X` declared with constraint `U`.
 
--   `T` is [`Nat`](../base/Nat.md) and `U` is [`Int`](../base/Int.md).
+5.   `T` is [`Nat`](../base/Nat.md) and `U` is [`Int`](../base/Int.md).
 
--   `T` is a tuple `(T0, …​, Tn)`, `U` is a tuple `(U0, …​, Un)`, and for each `0 <= i <= n`, `Ti <: Ui`.
+6.   `T` is a tuple `(T0, …​, Tn)`, `U` is a tuple `(U0, …​, Un)`, and for each `0 <= i <= n`, `Ti <: Ui`.
 
--   `T` is an immutable array type `[ V ]`, `U` is an immutable array type `[ W ]` and `V <: W`.
+7.   `T` is an immutable array type `[ V ]`, `U` is an immutable array type `[ W ]` and `V <: W`.
 
--   `T` is a mutable array type `[ var V ]`, `U` is a mutable array type `[ var W ]` and `V == W`.
+8.   `T` is a mutable array type `[ var V ]`, `U` is a mutable array type `[ var W ]` and `V == W`.
 
--   `T` is `Null` and `U` is an option type `? W` for some `W`.
+9.   `T` is `Null` and `U` is an option type `? W` for some `W`.
 
--   `T` is `? V`, `U` is `? W` and `V <: W`.
+10.  `T` is `? V`, `U` is `? W` and `V <: W`.
 
--   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
+11.   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
+12.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
 
-    -   `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
+      1. `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
 
-    -   If field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
+      2. If field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
-    -   If mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`.
+      3. If mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`, and
 
-        That is, object type `T` is a subtype of object type `U` if they have the same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
-         Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.
+      4. If type field `type id<T0,…,TN> = V` is in `fts1` then `type id<T0,…,TN> = W` is in `fts0` and `V == W` (up to renaming of type parameters).
 
--   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
+      That is, object type `T` is a subtype of object type `U` if they have the same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
+      Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.
 
-    -   If field `# id : V` is in `fts0` then `# id : W` is in `fts1` and `V <: W`.
+13.   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
 
-        That is, variant type `T` is a subtype of variant type `U` if every field of `T` subtypes the same field of `U`. In particular, `T` may specify fewer variants than `U`.
+       1.   If field `# id : V` is in `fts0` then `# id : W` is in `fts1` and `V <: W`.
 
--   `T` is a function type `<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
+       That is, variant type `T` is a subtype of variant type `U` if every field of `T` subtypes the same field of `U`. In particular, `T` may specify fewer variants than `U`.
 
-    -   `T` and `U` are either both equivalently `<shared>?`, and
+14.   `T` is a function type `<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
 
-    -   Assuming constraints `X0 <: W0, …​, Xn <: Wn` then
+       1.   `T` and `U` are either both equivalently `<shared>?`, and
 
-        -   for all `i`, `Wi == Vi`, and
+       2.   Assuming constraints `X0 <: W0, …​, Xn <: Wn` then
 
-        -   `U1 <: T1`, and
+            1.   for all `i`, `Wi == Vi`, and
 
-        -   `T2 <: U2`.
+            2.   `U1 <: T1`, and
+
+            3.   `T2 <: U2`.
 
             That is, function type `T` is a subtype of function type `U` if they have same `<shared>?` qualification, they have the same type parameters (modulo renaming) and assuming the bounds in `U`, every bound in `T` supertypes the corresponding parameter bound in `U` (contra-variance), the domain of `T` supertypes the domain of `U` (contra-variance) and the range of `T` subtypes the range of `U` (co-variance).
 
--   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
+15.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
--   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
+16.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
+
+#### Stable Subtyping
+
+Two types `T`, `U` are related by *stable subtyping*, written `T < U`, (and not to be confused with ordinary subtyping `T <: U`), using the same rules
+as subtyping but replacing occurences of `_ <: _` by `_ < _` and, crucially, excluding rule:
+
+2.   `U` equals `Any`.
+
+And adopting a more restrictive rule for object types:
+
+12.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
+
+      1. `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
+
+      2. Field `id : W` is in `fts1` if, and only if, `id : V` is in `fts0` and `V < W`, and
+
+      3. Mutable field `var id : W` is in `fts1` if, and only if,  `var id : V` is in `fts0` and `V == W`, and
+
+      4. If type field `type id<T0,…,TN> = V` is in `fts1` then `type id<T0,…,TN> = W` is in `fts0` and `V == W` (up to renaming of type parameters).
+
+Note that stable subtyping entails subtyping, i.e. `T < U` implies `T <: U` but is a strictly smaller relation.
+In particular, compared with subtyping, no type other than `None` is a stable subtype of `Any` and no value field may be dropped from the stable supertype of an object type.
+
+This stricter relation is used to determine the compatibility of stable variables across upgrades while preventing any implicit loss of data that would otherwise
+be allowed by full subtyping.
 
 ### Shareability
 
@@ -1340,12 +1367,15 @@ In the absence of any `<parenthetical>?` migration expression, sequences of decl
 
     - If the stable declaration was not declared stable in the retired actor, and is thus new, its value is obtained by evaluating `<dec>`.
 
-  - For an upgrade to be safe:
+For an upgrade to be safe:
 
-    - Every stable identifier declared with type `T` in the retired actor and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
+  - Every stable identifier declared with type `T` in the retired actor must be declared stable and of type `U` in the replacement actor and must satisfy `T < U` (stable subtyping).
 
-This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor.
-Note that stable variables may be removed across upgrades, or may simply be deprecated by an upgrade to type `Any`.
+This condition ensures that every stable variable is either fresh, requiring initialization, or its value can be safely inherited from the retired actor, without any loss of data.
+
+Note that stable variables cannot be implicitly removed across upgrades and cannot be promoted to type `Any`.
+These effects can only be achieved using an explicit [migration expression](#migration-expressions).
+
 
 #### Migration expressions
 
@@ -1387,13 +1417,13 @@ consumed by the migration function (by appearing in its domain) or absent in the
 For the upgrade to be safe:
 
 - Every stable identifier declared with type `U` in the domain of the migration function
-  must be declared stable for some type `T` in the retired actor, with `T <: U`.
+  must be declared stable for some type `T` in the retired actor, with `T < U` (stable subtyping).
 
 - Every stable identifier declared with type `T` in the retired actor, not present in the domain or codomain,
-  and declared stable and of type `U` in the replacement actor, must satisfy `T <: U`.
+  and declared stable and of type `U` in the replacement actor, must satisfy `T < U` (stable subtyping).
 
-This condition ensures that every stable variable is either discarded or fresh, requiring initialization,
-or that its value can be safely consumed from the output of migration or the retired actor.
+Thses conditions ensure that every stable variable is either discarded or fresh, requiring initialization,
+or that its value can be safely consumed from the output of migration or the retired actor without loss of date.
 
 The compiler will issue a warning if a migration function appears to be discarding data by consuming a field and not producing it.
 The warnings should be carefully considered to verify any data loss is intentional and not accidental.
