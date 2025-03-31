@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## 0.14.6 (FUTURE)
+
+* motoko (`moc`)
+
+  * Now we detect (and warn) for fields in literal objects and record extensions,
+    (as well as `public` fields in `object` and `class`) that are inaccessible
+    due to a user-specified type constraint (#4978, #4981).
+
 ## 0.14.5 (2025-03-25)
 
 * motoko (`moc`)
