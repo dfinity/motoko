@@ -323,6 +323,14 @@ do
         continue
       fi
     fi
+    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      then
+        $ECHO " Skipped (not applicable to incremental gc)"
+        continue
+      fi
+    fi
     if [ $VIPER = 'yes' ]
     then
       TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
