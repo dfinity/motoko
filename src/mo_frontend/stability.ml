@@ -49,7 +49,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
       | [], _ ->
         Some () (* no or additional fields ok *)
       | tf1 :: tfs1', [] ->
-        (* dropped field is allowed with warning, recurse on tfs1' *)
+        (* dropped field rejected, recurse on tfs1' *)
         error_discard s tf1;
         go tfs1' []
       | tf1::tfs1', tf2::tfs2' ->
