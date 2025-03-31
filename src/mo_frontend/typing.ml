@@ -2045,7 +2045,7 @@ and detect_lost_fields env t = function
     List.iter
       (fun (fld : exp_field) ->
          let id = fld.it.id.it in
-         match List.find_opt (fun ft -> ft.T.lab = id) fts with
+         match T.lookup_val_field_opt id fts with
          | Some _ -> ()
          | None ->
             warn env fld.at "M0215"
@@ -2059,7 +2059,7 @@ and detect_lost_fields env t = function
     let [@warning "-8"] T.Obj (_, fts) = t in
     List.iter
       (fun id ->
-        match List.find_opt (fun ft -> ft.T.lab = id) fts with
+        match T.lookup_val_field_opt id fts with
         | Some _ -> ()
         | None ->
            warn env ((T.Env.find id pub_fields).id_region) "M0215"
