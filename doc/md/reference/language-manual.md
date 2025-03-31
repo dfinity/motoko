@@ -1113,7 +1113,7 @@ And adopting a more restrictive rule for object types:
       4. If type field `type id<T0,…,TN> = V` is in `fts1` then `type id<T0,…,TN> = W` is in `fts0` and `V == W` (up to renaming of type parameters).
 
 Note that stable subtyping entails subtyping, i.e. `T < U` implies `T <: U` but is a strictly smaller relation.
-In particular, compared with subtyping, no type other than `None` is a stable subtype of `Any` and no value field may be dropped from the stable supertype of an object type.
+In particular, compared with subtyping, no type other than `Any` is a stable subtype of `Any` and no value field may be dropped from the stable supertype of an object type.
 
 This stricter relation is used to determine the compatibility of stable variables across upgrades while preventing any implicit loss of data that would otherwise
 be allowed by full subtyping.
