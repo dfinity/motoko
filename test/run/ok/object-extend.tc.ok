@@ -18,3 +18,5 @@ object-extend.mo:71.5-71.15: warning [M0194], unused identifier ab_ok_warn (dele
 object-extend.mo:72.5-72.13: warning [M0194], unused identifier foo_warn (delete or rename to wildcard `_` or `_foo_warn`)
 object-extend.mo:73.5-73.13: warning [M0194], unused identifier bar_warn (delete or rename to wildcard `_` or `_bar_warn`)
 object-extend.mo:74.8-74.16: warning [M0194], unused identifier obj_warn (delete or rename to wildcard `_` or `_obj_warn`)
+object-extend.mo:78.5-78.21: warning [M0194], unused identifier bar_type_no_warn (delete or rename to wildcard `_` or `_bar_type_no_warn`)
+object-extend.mo:80.5-80.18: warning [M0194], unused identifier bar_type_warn (delete or rename to wildcard `_` or `_bar_type_warn`)
