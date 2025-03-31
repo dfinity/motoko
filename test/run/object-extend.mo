@@ -75,6 +75,6 @@ object obj_warn : { foo : Text } { public let foo = "FOO"; public let quux = "QU
 class() : { foo : Text } = { public let (foo, quux) = ("FOO", "QUUX") };
 
 // don't confuse with types
-let bar_type_no_warn : { foo : Text } = object { public let foo = "FOO"; public type Quux = Text };
+let bar_type_warn_type : { foo : Text } = object { public let foo = "FOO"; public type Quux = Text };
 
-let bar_type_warn : { type Quux = Text; foo : Text} = object { public let foo = "FOO"; public let Quux = "QUUX"; public type Quux = Text };
+let bar_type_warn : { type Quux = Text; foo : Text } = object { public let foo = "FOO"; public let Quux = "QUUX"; public type Quux = Text };

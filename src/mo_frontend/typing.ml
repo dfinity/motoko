@@ -2054,8 +2054,7 @@ and detect_lost_fields env t = function
               display_typ t)
       flds
   | ObjBlockE (_exp_opt, { it = Type.Object; _}, _typ_opt, dec_fields) ->
-    let pub_fields = pub_fields dec_fields |> snd in
-    let pub_ids = T.Env.keys pub_fields in
+    let pub_types, pub_fields = pub_fields dec_fields in
     let [@warning "-8"] T.Obj (_, fts) = t in
     List.iter
       (fun id ->
@@ -2066,7 +2065,17 @@ and detect_lost_fields env t = function
              "public field `%s` is provided but not expected in object of type%a"
              id
              display_typ t)
-      pub_ids
+      (T.Env.keys pub_fields);
+    List.iter
+      (fun id ->
+        match T.lookup_typ_field_opt id fts with
+        | Some _ -> ()
+        | None ->
+           warn env ((T.Env.find id pub_types).id_region) "M0215"
+             "public type `%s` is provided but not expected in object of type%a"
+             id
+             display_typ t)
+      (T.Env.keys pub_types)
   | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
