@@ -738,7 +738,7 @@ pub(crate) unsafe fn memory_compatible(
             )
         }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
-        (_, IDL_PRIM_reserved) => false, // information loss, return false
+        (_, IDL_PRIM_reserved) => false, // information lost
         (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
         (IDL_CON_opt, IDL_CON_opt) => {
@@ -858,7 +858,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false; // discarded field
                 }
                 if tag1 > tag2 {
-                    return false; // new field, return false
+                    return false; // new field
                 };
                 if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
                 {
@@ -885,7 +885,7 @@ pub(crate) unsafe fn memory_compatible(
                 n2 -= 1;
                 while tag1 != tag2 {
                     if tag1 < tag2 {
-                        return false; // discarded field, return false
+                        return false; // discarded field
                     };
                     if tag1 > tag2 {
                         if n2 > 0 {
@@ -902,7 +902,7 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            return n1 == 0; // return false if any remaining fields discarded
+            return n1 == 0; // false if any remaining fields discarded
         }
         (IDL_CON_variant, IDL_CON_variant) => {
             let n1 = leb128_decode(&mut tb1);
