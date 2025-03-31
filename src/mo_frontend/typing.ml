@@ -2049,7 +2049,7 @@ and detect_lost_fields env t = function
          | Some _ -> ()
          | None ->
             warn env fld.at "M0215"
-              "Field `%s` is ignored in record%s of type%a"
+              "field `%s` is provided but not expected in record%s of type%a"
               id (if bs = [] then "" else " extension")
               display_typ t)
       flds
@@ -2063,7 +2063,7 @@ and detect_lost_fields env t = function
         | Some _ -> ()
         | None ->
            warn env ((T.Env.find id pub_fields).id_region) "M0215"
-             "Public field `%s` is ignored in object of type%a"
+             "public field `%s` is provided but not expected in object of type%a"
              id
              display_typ t)
       pub_ids
