@@ -78,3 +78,6 @@ class() : { foo : Text } = { public let (foo, quux) = ("FOO", "QUUX") };
 let bar_type_warn_type : { foo : Text } = object { public let foo = "FOO"; public type Quux = Text };
 
 let bar_type_warn : { type Quux = Text; foo : Text } = object { public let foo = "FOO"; public let Quux = "QUUX"; public type Quux = Text };
+
+object obj_warn_type : { foo : Text } { public let foo = "FOO"; public type Quux = Text };
+class() : { foo : Text } = { public let foo = "FOO"; public type Quux = Text };
