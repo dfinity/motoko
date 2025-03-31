@@ -2,6 +2,7 @@
 //SKIP run-ir
 //SKIP run-low
 //MOC-FLAG --incremental-gc
+//CLASSICAL-PERSISTENCE-ONLY
 
 import Prim "mo:prim";
 
