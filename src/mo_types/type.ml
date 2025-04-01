@@ -75,7 +75,7 @@ let empty_src = {depr = None; region = Source.no_region}
 (* Stable signatures *)
 type stab_sig =
   | Single of field list
-  | PrePost of field list * field list
+  | PrePost of ((* required *) bool * field) list * field list
 
 (* Efficient comparison *)
 let tag_prim = function
@@ -1747,7 +1747,16 @@ and pp_stab_field vs ppf {lab; typ; src} =
   | Mut t' ->
     fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
-    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
+     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
+
+and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
+  let req = if required then "in" else "stable" in
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
+
 
 and pp_tag vs ppf {lab; typ; src} =
   match typ with
@@ -1807,7 +1816,7 @@ and pp_kind ppf k =
 and pp_stab_sig ppf sig_ =
   let all_fields = match sig_ with
     | Single tfs -> tfs
-    | PrePost (pre, post) -> pre @ post
+    | PrePost (pre, post) -> List.map snd pre @ post
   in
   let cs = List.fold_right
     (cons_field false)
@@ -1840,7 +1849,7 @@ and pp_stab_sig ppf sig_ =
     | PrePost (pre, post) ->
       fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
         (string_of_obj_sort Actor)
-        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_pre_stab_field vs)) pre
         (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
   in
   fprintf ppf "@[<v 0>%a%a%a;@]"
@@ -1915,7 +1924,9 @@ let stable_sub t1 t2 =
   rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
 
 let pre = function
-  | Single tfs -> tfs
+  | Single tfs ->
+    (* all vars optional *)
+    List.map (fun tf -> (false, tf)) tfs
   | PrePost (tfs, _) -> tfs
 
 let post = function
@@ -1923,20 +1934,20 @@ let post = function
   | PrePost (_, tfs) -> tfs
 
 let rec match_stab_sig sig1 sig2 =
-  let tfs1 = post sig1 in
-  let tfs2 = pre sig2 in
-  match_stab_fields tfs1 tfs2
+  let post_tfs1 = post sig1 in
+  let pre_tfs2 = pre sig2 in
+  match_stab_fields post_tfs1 pre_tfs2
 
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], _ ->
-    (* same amount of fields or new fields ok *)
-    true
+    (* same amount of fields or new, non-required, fields ok *)
+    List.for_all (fun (required, tf) -> not required) tfs2
   | _, [] ->
     (* no dropped fields *)
     false
-  | tf1::tfs1', tf2::tfs2' ->
+  | tf1::tfs1', (required, tf2)::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
        stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
@@ -1946,6 +1957,7 @@ and match_stab_fields tfs1 tfs2 =
        false
      | _ ->
        (* new field ok *)
+       (not required) &&
        match_stab_fields tfs1 tfs2'
     )
 
@@ -1953,5 +1965,5 @@ let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
   (match stab_sig with
   | Single _ -> "// Version: 1.0.0\n"
-  | PrePost _ -> "// Version: 2.0.0\n") ^
+  | PrePost _ -> "// Version: 3.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig

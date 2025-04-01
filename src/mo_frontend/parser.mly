@@ -1005,6 +1005,17 @@ stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
 
+pre_stab_field :
+  | r=req mut=var_opt x=id COLON t=typ
+    { (r, ValF (x, t, mut) @@ at $sloc) }
+
+%inline req :
+  | STABLE { false @@ at $sloc }
+  | IN { true @@ at $sloc }
+
+
+
+
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
@@ -1015,7 +1026,7 @@ parse_stab_sig :
           note = { filename; trivia } }
     }
   | start ds=seplist(typ_dec, semicolon)
-       ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
+       ACTOR LPAR LCURLY sfs_pre=seplist(pre_stab_field, semicolon) RCURLY COMMA
              LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
     { let trivia = !triv_table in
       let sigs = PrePost(sfs_pre, sfs_post) in

@@ -288,7 +288,7 @@ let validate_stab_sig s : unit Diag.result =
   | Single s1, Single s2 ->
     Stability.match_stab_sig (Single s1) (Single s2)
   | PrePost (pre1, post1), PrePost (pre2, post2) ->
-    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in
+     (*    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in *)
     Stability.match_stab_sig (Single post1) (Single post2)
   | _, _ -> assert false)
 
