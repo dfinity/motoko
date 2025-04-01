@@ -7,7 +7,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13 ]
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -29,12 +29,12 @@ jobs:
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
-      uses: insightsengineering/disk-space-reclaimer@v1
+      uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
       with:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
-        tools-cache: false
+        tool-cache: false
 
         # all of these default to true, but feel free to set to
         # "false" if necessary for your workflow
@@ -50,17 +50,11 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "pre-build `drun`"
-      if: startsWith(github.head_ref, 'update/ic-')
-      run: |
-        nix-build --max-jobs 1 -A drun
-        nix-store --gc --print-roots | grep /motoko/
-
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
       run: |
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
@@ -71,14 +65,14 @@ jobs:
           --argstr to "$to"
 
     - name: Read performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
       id: perf
       uses: juliangruber/read-file-action@v1
       with:
         path: ./perf-delta.txt
 
     - name: Find performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
       uses: peter-evans/find-comment@v3
       id: fc
       with:
@@ -89,7 +83,7 @@ jobs:
     # Forks can't add comments so this job does not run on forks, see
     # motoko#2864.
     - name: Create or update performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -125,7 +119,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13 ]
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4

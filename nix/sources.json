@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/latest-drun",
+        "branch": "drun/2025-02-27_03",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "01c8dfda47126bb5f688302e0161f17c2c0cfe6f",
-        "sha256": "16h037xagxwf00k13y3h0gvfs7f3c45z2ml0j1pgvzg2fx5pzahy",
+        "rev": "12fec30a322fa5c39d97ea9385f2cdcaa22f6696",
+        "sha256": "155ifhgs74ny8c7qm7sabwg4j8bc5vx54k0zsi3hm2slzb0jq41i",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/01c8dfda47126bb5f688302e0161f17c2c0cfe6f.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/12fec30a322fa5c39d97ea9385f2cdcaa22f6696.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "48db35ee8e77b40d2749961f29a6ad53e9698571",
-        "sha256": "12lnzk2y4z9bkxw4401qyhkw88zx2brq2g0gx5g7kjljadm6298w",
+        "rev": "4c52e75c12bb730e795d8a4c2862987f4a9524a3",
+        "sha256": "0xbxmwfk5124d86dhawbvprvq80j8j6wl0li706cf5pw9sb3ibqa",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/48db35ee8e77b40d2749961f29a6ad53e9698571.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/4c52e75c12bb730e795d8a4c2862987f4a9524a3.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -75,10 +75,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "02990d9745fccc73eb464ac40a39ce7fc2330504",
-        "sha256": "15x5wfswkb7w66yd92k61z1knbahxxh0zz7iinniqwjsjbbzdgq3",
+        "rev": "133d6c4264dd250f6fb1877b0966c7cf778df655",
+        "sha256": "0iwm8xmmjia5ika1i0g84myw90al72phmx5sby74jc3i9qv5l3wx",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/02990d9745fccc73eb464ac40a39ce7fc2330504.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/133d6c4264dd250f6fb1877b0966c7cf778df655.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -100,10 +100,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "404f983f8c1da3ed403c95df9bd18d7c3b23399d",
-        "sha256": "025alb35qf1iwmz45615ahp400q54582kqzc0238a51ai2w88pxc",
+        "rev": "0da3c44a9460a26d2025ec3ed2ec60a895eb1114",
+        "sha256": "1n435wya14pbl04g6n4zrqaslpik4xq0fv1i2g2mz8sq3dqg7dk0",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/404f983f8c1da3ed403c95df9bd18d7c3b23399d.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/0da3c44a9460a26d2025ec3ed2ec60a895eb1114.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

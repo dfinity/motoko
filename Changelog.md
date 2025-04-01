@@ -1,5 +1,42 @@
 # Motoko compiler changelog
 
+## 0.14.6 (2025-04-01)
+
+* motoko (`moc`)
+
+  * To prevent implicit data loss due to upgrades, stable fields may no longer be dropped or promoted to lossy supertypes (#4970).
+    Removing a stable variable, or promoting its type to a lossy supertype by, for example, dropping nested record fields,
+    now requires an explicit migration expression.
+    Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
+
+  * Now we detect (and warn for) fields in literal objects and record extensions,
+    (as well as `public` fields or types in `object` and `class`) that are inaccessible
+    due to a user-specified type constraint (#4978, #4981).
+
+  * We now provide release artefacts for `Darwin-arm64` and `Linux-aarch64` platforms (#4952).
+
+## 0.14.5 (2025-03-25)
+
+* motoko (`moc`)
+
+  * Performance improvements to the default timer mechanism (#3872, #4967).
+
+* documentation (`mo-doc`)
+
+  * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
+
+## 0.14.4 (2025-03-18)
+
+* motoko (`moc`)
+
+  * Added `canisterSubnet` primitive (#4857).
+
+* motoko-base
+
+  * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
+
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
+
 ## 0.14.3 (2025-03-04)
 
 * motoko (`moc`)

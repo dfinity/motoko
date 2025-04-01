@@ -935,14 +935,36 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-let max_depth = 10_000
+module RelArg :
+  sig
+    type arg
+    val sub : arg (* ordinary subtyping, with loss of info *)
+    val stable_sub : arg (* stable subtyping, without loss of info*)
+    val inc_depth : arg -> arg
+    val is_stable_sub : arg -> bool
+    val exceeds_max_depth : arg -> bool
+end
+=
+struct
+  let max_depth = 10_000
+  type arg = int
+  let sub = 0
+  let stable_sub = 1
+  let inc_depth arg =
+    let drop_bit = Int.logand arg 1 in
+    let depth = Int.shift_right arg 1 in
+    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
+  let is_stable_sub arg = Int.logand arg 1 = 1
+  let exceeds_max_depth d =
+    Int.shift_right d 1 > max_depth
+end
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ d rel eq t1 t2 =
-  let d = d + 1 in
-  if d > max_depth then raise Undecided else
+  let d = RelArg.inc_depth d in
+  if RelArg.exceeds_max_depth d then raise Undecided else
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
@@ -959,7 +981,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    true
+    not (RelArg.is_stable_sub d)
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
@@ -1033,13 +1055,14 @@ and rel_fields d rel eq tfs1 tfs2 =
   | [], [] ->
     true
   | _, [] when rel != eq ->
-    true
+    not (RelArg.is_stable_sub d)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ d rel eq tf1.typ tf2.typ &&
       rel_fields d rel eq tfs1' tfs2'
     | -1 when rel != eq ->
+      not (RelArg.is_stable_sub d) &&
       rel_fields d rel eq tfs1' tfs2
     | _ -> false
     )
@@ -1076,20 +1099,20 @@ and rel_bind ts d rel eq tb1 tb2 =
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ 0 eq eq t1 t2
+  let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ 0 (ref SS.empty) (ref SS.empty) t1 t2
+  rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds 0 eq eq tbs1 tbs2 <> None
+  let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    (match rel_binds 0 eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ 0 eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds RelArg.sub eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ RelArg.sub eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
@@ -1108,7 +1131,6 @@ and eq_con d eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
-
 
 (* Compatibility *)
 
@@ -1933,6 +1955,8 @@ include MakePretty(ShowStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
+let stable_sub t1 t2 =
+  rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
 
 let pre = function
   | Single tfs -> tfs
@@ -1950,17 +1974,20 @@ let rec match_stab_sig sig1 sig2 =
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
-  | [], _ | _, [] ->
-    (* same amount of fields, new fields, or dropped fields ok *)
+  | [], _ ->
+    (* same amount of fields or new fields ok *)
     true
+  | _, [] ->
+    (* no dropped fields *)
+    false
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
        match_stab_fields tfs1' tfs2'
      | -1 ->
-       (* dropped field ok *)
-       match_stab_fields tfs1' tfs2
+       (* no dropped fields *)
+       false
      | _ ->
        (* new field ok *)
        match_stab_fields tfs1 tfs2'

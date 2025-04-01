@@ -1356,7 +1356,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) ->
+  | ObjBlockE (exp_opt, obj_sort, typ_opt, dec_fields) as e ->
     let _typ_opt = infer_migration env obj_sort exp_opt in
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
@@ -1383,6 +1383,7 @@ and infer_exp'' env exp : T.typ =
             "body of type%a\ndoes not match expected type%a"
             display_typ_expand t
             display_typ_expand t'
+        else detect_lost_fields env t' e;
       | _ -> ()
     end;
     t
@@ -1873,17 +1874,21 @@ and check_exp' env0 t exp : T.typ =
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
-  | ObjE ([], exp_fields), T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
+  | ObjE ([], exp_fields) as e, T.Obj(T.Object, fts) -> (* TODO: infer bases? Default does a decent job. *)
     check_ids env "object" "field"
       (List.map (fun (ef : exp_field) -> ef.it.id) exp_fields);
     List.iter (fun ef -> check_exp_field env ef fts) exp_fields;
-    List.iter (fun ft ->
+    if List.for_all (fun ft ->
       if not (List.exists (fun (ef : exp_field) -> ft.T.lab = ef.it.id.it) exp_fields)
-      then local_error env exp.at "M0151"
+      then begin
+      local_error env exp.at "M0151"
         "object literal is missing field %s from expected type%a"
         ft.T.lab
         display_typ_expand t;
-    ) fts;
+        false
+      end else true
+    ) fts
+    then detect_lost_fields env t e;
     t
   | OptE exp1, _ when T.is_opt t ->
     check_exp env (T.as_opt t) exp1;
@@ -2006,7 +2011,7 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1 ;
     t
-  | _ ->
+  | e, _ ->
     let t' = infer_exp env0 exp in
     if not (sub env exp.at t' t) then
     begin
@@ -2015,7 +2020,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand t'
         display_typ_expand t
         (Suggest.suggest_conversion env.libs env.vals t' t)
-    end;
+    end
+    else detect_lost_fields env t e;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
@@ -2036,6 +2042,46 @@ and check_exp_field env (ef : exp_field) fts =
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
+
+and detect_lost_fields env t = function
+  | _ when env.pre || not (T.is_obj t) -> ()
+  | ObjE (bs, flds) ->
+    let [@warning "-8"] T.Obj (_, fts) = t in
+    List.iter
+      (fun (fld : exp_field) ->
+         let id = fld.it.id.it in
+         match T.lookup_val_field_opt id fts with
+         | Some _ -> ()
+         | None ->
+            warn env fld.at "M0215"
+              "field `%s` is provided but not expected in record%s of type%a"
+              id (if bs = [] then "" else " extension")
+              display_typ t)
+      flds
+  | ObjBlockE (_exp_opt, { it = Type.Object; _}, _typ_opt, dec_fields) ->
+    let pub_types, pub_fields = pub_fields dec_fields in
+    let [@warning "-8"] T.Obj (_, fts) = t in
+    List.iter
+      (fun id ->
+        match T.lookup_val_field_opt id fts with
+        | Some _ -> ()
+        | None ->
+           warn env ((T.Env.find id pub_fields).id_region) "M0215"
+             "public field `%s` is provided but not expected in object of type%a"
+             id
+             display_typ t)
+      (T.Env.keys pub_fields);
+    List.iter
+      (fun id ->
+        match T.lookup_typ_field_opt id fts with
+        | Some _ -> ()
+        | None ->
+           warn env ((T.Env.find id pub_types).id_region) "M0215"
+             "public type `%s` is provided but not expected in object of type%a"
+             id
+             display_typ t)
+      (T.Env.keys pub_types)
+  | _ -> ()
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
@@ -2439,7 +2485,7 @@ and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
 (* Objects *)
 
 and pub_fields dec_fields : visibility_env =
-  List.fold_right pub_field dec_fields (T.Env.empty, T.Env.empty)
+  List.fold_right pub_field dec_fields T.Env.(empty, empty)
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
@@ -2709,7 +2755,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt tf.T.lab rng_tfs with
        | None -> ()
        | Some typ ->
-         if not (T.sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
+         if not (T.stable_sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
            local_error env focus "M0204"
              "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab
@@ -2929,6 +2975,7 @@ and infer_dec env dec : T.typ =
             "class body of type%a\ndoes not match expected type%a"
             display_typ_expand t'
             display_typ_expand t''
+        else ObjBlockE (exp_opt, obj_sort, (None, typ_opt), dec_fields) |> detect_lost_fields env t''
       | Some typ, T.Actor ->
          local_error env dec.at "M0193" "actor class has non-async return type"
       | _, T.Memory -> assert false
@@ -3218,9 +3265,9 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at "M0139"
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (List.length typ_binds = 1) then
         local_error env dec.at "M0140"

@@ -82,11 +82,6 @@ sig
   end
 end
 
-module Seq :
-sig
-  val for_all : ('a -> bool) -> 'a Seq.t -> bool (* 4.14 *)
-end
-
 module Option :
 sig
   module Syntax :
@@ -156,7 +151,6 @@ sig
   val split : string -> char -> string list
   val breakup : string -> int -> string list
   val find_from_opt : (char -> bool) -> string -> int -> int option
-  val starts_with : string -> string -> bool
   val chop_prefix : string -> string -> string option
   val chop_suffix : string -> string -> string option
   val lightweight_escaped : string -> string
