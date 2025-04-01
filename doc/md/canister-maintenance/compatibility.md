@@ -74,7 +74,8 @@ In this extension of the interface, old clients remain satisfied, while new ones
 ## Dual interface evolution
 
 An upgrade is safe provided that both the Candid interface and stable type signatures remain compatible:
-* Each stable variable must either be newly declared, dropped, or re-declared at a supertype of its old type.
+* Each stable variable must either be newly declared, or re-declared at a stable supertype of its old type. A stable supertype is any supertype that
+  does not involve promotion to `Any` or dropping object fields.
 * The Candid interface evolves to a subtype.
 
 Consider the following four versions of the counter example:
