@@ -36,7 +36,9 @@ enhanced_orthogonal_persistence = ["incremental_gc"]
 
 [dependencies]
 libc = { version = "0.2.139", default-features = false, optional = true }
+libm = "=0.2.7"
 motoko-rts-macros = { path = "../motoko-rts-macros" }
+unicode-ident = "=1.0.16"
 
 [profile.dev]
 panic = "abort"
