@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.14.6 (FUTURE)
+## 0.14.6 (2025-04-01)
 
 * motoko (`moc`)
 
@@ -9,9 +9,11 @@
     now requires an explicit migration expression.
     Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
 
-  * Now we detect (and warn) for fields in literal objects and record extensions,
-    (as well as `public` fields in `object` and `class`) that are inaccessible
+  * Now we detect (and warn for) fields in literal objects and record extensions,
+    (as well as `public` fields or types in `object` and `class`) that are inaccessible
     due to a user-specified type constraint (#4978, #4981).
+
+  * We now provide release artefacts for `Darwin-arm64` and `Linux-aarch64` platforms (#4952).
 
 ## 0.14.5 (2025-03-25)
 
