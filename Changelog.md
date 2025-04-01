@@ -1,5 +1,23 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
+    The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
+
+    For example,
+    ``` motoko
+    func add(x : Int, y : Int) : (res : Int) = x + y;
+    ```
+    now has inferred type:
+    ``` motoko
+    (x : Int, y: Int) -> (res : Int)
+    ```
+    Previously, the type would be inferred as:
+    ``` motoko
+    (Int, Int) -> Int
+    ```
+
 ## 0.14.6 (2025-04-01)
 
 * motoko (`moc`)
