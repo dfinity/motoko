@@ -4723,6 +4723,8 @@ module IC = struct
       E.add_func_import env "ic0" "canister_cycle_balance128" [I64Type] [];
       E.add_func_import env "ic0" "canister_self_copy" (i64s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
+      E.add_func_import env "ic0" "root_key_copy" (i64s 3) [];
+      E.add_func_import env "ic0" "root_key_size" [] [I64Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
       E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
@@ -5088,6 +5090,18 @@ module IC = struct
       )
     | _ ->
       E.trap_with env "cannot get actor-subnet-reference when running locally"
+
+  let get_root_key env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "root_key" [I64Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size") (* todo *)
+          (fun env -> system_call env "subnet_self_copy") (* todo *)
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get root-key when running locally"
 
   let get_system_time env =
     match E.mode env with
@@ -12180,6 +12194,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "canister_subnet", [] ->
     SR.Vanilla, IC.get_subnet_reference env
+
+  | OtherPrim "root_key", [] ->
+    SR.Vanilla, IC.get_root_key env
 
   (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
