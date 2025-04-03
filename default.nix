@@ -597,7 +597,7 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) drun wabt wasmtime wasm nix-update;
+  inherit (nixpkgs) drun wabt wasmtime wasm nix-update cargo-nightly;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
