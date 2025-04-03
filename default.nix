@@ -176,7 +176,7 @@ rec {
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-2/BvDQJvkFJPpLaKp0CSQVlKGU1VPlNohAmUvvYqxUc=";
+      rustStdDepsHash = "sha256-Odp4wNNbbUd0jpyiT8uEDmacqMimvywLMuOxygUR3mQ=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
