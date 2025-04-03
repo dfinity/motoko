@@ -166,24 +166,24 @@ rec {
   rts =
     let
       # Build Rust package cargo-vendor-tools
-      cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
+      cargoVendorTools = nixpkgs.rustPlatform_moz_stable.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-EYS5fb/IovKFeHrLvMGMakNWvIT/AVXYSNQnjm4uc4o=";
+        cargoSha256 = "sha256-iStF9C4nVd9m/FhX9ojaiFku9BOR/s+WAYw7LrTEcHw=";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-2/BvDQJvkFJPpLaKp0CSQVlKGU1VPlNohAmUvvYqxUc=";
+      rustStdDepsHash = "sha256-Odp4wNNbbUd0jpyiT8uEDmacqMimvywLMuOxygUR3mQ=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
         name = "rustc-std-deps";
 
         nativeBuildInputs = with nixpkgs; [
-          curl
+          nixpkgs.rustc-nightly curl
         ];
 
         buildCommand = ''
@@ -202,7 +202,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
+        sha256 = "sha256-hlc7YTY5g3OSWiBF/8vX3Li+G7jQSZo87ySknAJSJjI=";
         copyLockfile = true;
       };
 
