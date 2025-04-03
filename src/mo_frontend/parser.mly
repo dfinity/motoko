@@ -1013,9 +1013,6 @@ pre_stab_field :
   | STABLE { false @@ at $sloc }
   | IN { true @@ at $sloc }
 
-
-
-
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
