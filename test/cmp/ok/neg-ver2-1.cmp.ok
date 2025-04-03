@@ -1,0 +1,10 @@
+(unknown location): Compatibility error [M0169], stable variable four of previous type
+  var [var (Nat, Text)]
+ cannot be implicitly discarded. This may cause data loss. Use an explicit migration function.
+(unknown location): Compatibility error [M0169], stable variable one of previous type
+  var [var Nat]
+ is required but not provided.
+(unknown location): Compatibility error [M0169], stable variable two of previous type
+  var [var Text]
+ is required but not provided.
+FALSE

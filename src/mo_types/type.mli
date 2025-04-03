@@ -273,9 +273,9 @@ val stable_sub : typ -> typ -> bool
 
 type stab_sig =
   | Single of field list
-  | PrePost of field list * field list
+  | PrePost of (bool * field) list * field list
 
-val pre : stab_sig -> field list
+val pre : stab_sig -> (bool * field) list
 val post : stab_sig -> field list
 
 val match_stab_sig : stab_sig -> stab_sig -> bool
