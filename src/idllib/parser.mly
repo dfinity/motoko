@@ -141,7 +141,6 @@ data_typ :
   | t=ref_typ { t }
   | t=prim_typ { t }
 
-
 typs :
   | LPAR fs=seplist(data_typ, COMMA) RPAR
     { fs }

@@ -985,7 +985,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
-     true
+    true
   | Named (_n, t1'), t2 ->
     rel_typ d rel eq t1' t2
   | t1, Named (_n, t2') ->
@@ -1179,7 +1179,7 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
-  | Named _, _ -> assert false
+  | Named _, _
   | _, Named _ -> assert false
   | _, _ ->
     false
@@ -1230,7 +1230,7 @@ let rec inhabited_typ co t =
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t') ->
-       inhabited_typ co t')
+      inhabited_typ co t')
   | Named _ -> assert false
   end
 
