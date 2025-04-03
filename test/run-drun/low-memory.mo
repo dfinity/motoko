@@ -35,27 +35,24 @@ actor Self {
   public shared func run() : async () {
     Cycles.add<system>(2_000_000_000_000);
     let lowMemoryActor1 = await LowMemoryActor.LowMemoryActor(lowMemoryCallback);
-    // await lowMemoryActor1.allocateMemory();
+    await lowMemoryActor1.allocateMemory();
 
     let threshold1 = maxMemory - (await lowMemoryActor1.memorySize()) - mb : Nat;
     await setMemoryThreshold(lowMemoryActor1, threshold1);
     await lowMemoryActor1.allocateMemory();
 
-    // Not yet implemented on IC: Should retrigger when shrinking memory by reinstallation.
-    // let lowMemoryActor2 = await (system LowMemoryActor.LowMemoryActor)(#reinstall lowMemoryActor1)(lowMemoryCallback);
-    // await lowMemoryActor2.allocateMemory();
-    // await lowMemoryActor2.allocateMemory();
+    let lowMemoryActor2 = await (system LowMemoryActor.LowMemoryActor)(#reinstall lowMemoryActor1)(lowMemoryCallback);
+    await lowMemoryActor2.allocateMemory();
+    await lowMemoryActor2.allocateMemory();
 
-    // Not yet implemented on IC: Should retrigger when lowering threshold.
-    // let threshold2 = maxMemory - (await lowMemoryActor2.memorySize()) - mb : Nat;
-    // await setMemoryThreshold(lowMemoryActor2, threshold2);
-    // await lowMemoryActor2.allocateMemory();
+    let threshold2 = maxMemory - (await lowMemoryActor2.memorySize()) - mb : Nat;
+    await setMemoryThreshold(lowMemoryActor2, threshold2);
+    await lowMemoryActor2.allocateMemory();
   };
 };
 
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress run "DIDL\x00\x00"
