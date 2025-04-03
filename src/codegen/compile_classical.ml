@@ -70,7 +70,7 @@ module TaggingScheme = struct
   type bit = I | O
   let _ = (I,O) (* silence warning on unused constructors *)
 
-  type tag =
+  (* type tag =
     TBool
   | TRef
   | TNum
@@ -80,10 +80,10 @@ module TaggingScheme = struct
   | TNat8 | TInt8
   | TNat16 | TInt16
   | TUnit
-  | TUnused
+  | TUnused *)
 
   (* Leverage OCaml pattern match compilation to check tagging scheme is injective *)
-  let _decode u32 =
+  (* let _decode u32 =
     match u32 with
     | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
     | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
@@ -99,7 +99,7 @@ module TaggingScheme = struct
     | ((_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TNat8
     | ((_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TInt8
     | ((O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TUnit
-    | _                                                                            -> TUnused
+    | _                                                                            -> TUnused *)
 
   let tag_of_typ pty = Type.(
     if !Flags.rtti then
@@ -5081,6 +5081,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
+      E.add_func_import env "ic0" "cost_create_canister" [I32Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
@@ -5571,6 +5572,13 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 
+  let cost_create_canister env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "cost_create_canister"
+    | _ ->
+      E.trap_with env "cannot get cost of create canister when running locally"
+
   let set_certified_data env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
@@ -5703,6 +5711,18 @@ module Cycles = struct
     )
 
 end (* Cycles *)
+
+module Cost = struct
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [I32Type] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cost_create_canister env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+end
 
 (* Low-level, almost raw access to IC stable memory.
    Essentially a virtual page allocator
@@ -12235,6 +12255,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  (* Cost *)
+  | SystemCostCreateCanisterPrim, [] ->
+    SR.Vanilla, Cost.create_canister env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"

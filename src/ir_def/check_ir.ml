@@ -687,6 +687,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemTimeoutSetPrim, [e1] ->
       typ e1 <: T.nat32;
       T.unit <: t
+    (* Cost *)
+    | SystemCostCreateCanisterPrim, [] ->
+      T.nat <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;
