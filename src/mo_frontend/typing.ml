@@ -3435,8 +3435,13 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
             List.sort T.compare_field fs
           in
           match sfs.it with
-          | Single sfs -> T.Single (check_fields sfs)
-          | PrePost (pre,post) ->
-             T.PrePost (check_fields pre, check_fields post)
+          | Single sfs -> T.Single (List.sort T.compare_field (check_fields sfs))
+          | PrePost (pre, post) ->
+            let reqs = List.map (fun f -> (fst f).it) pre in
+            let pres = List.map snd pre in
+            T.PrePost (List.sort
+                         (fun (r1, tf1) (r2, tf2) -> T.compare_field tf1 tf2)
+                         (List.combine reqs (check_fields pres)),
+                       List.sort T.compare_field (check_fields post))
         ) sig_.it
     )

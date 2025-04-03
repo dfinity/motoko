@@ -2,6 +2,7 @@
 
 * motoko (`moc`)
 
+
   * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
     The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
 
@@ -17,6 +18,11 @@
     ``` motoko
     (Int, Int) -> Int
     ```
+
+  * Refine the `*.most` stable signature file format to distinguish stable variables that are strictly required by the migration function rather than propagated from the actor body (#4991).
+    This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
+    Required fields are declared `in`, not `stable`, in the actor's pre-signature.
+
 
 ## 0.14.6 (2025-04-01)
 
