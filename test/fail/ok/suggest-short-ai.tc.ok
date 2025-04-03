@@ -209,6 +209,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     regionStoreNat64 : (Region, Nat64, Nat64) -> ();
     regionStoreNat8 : (Region, Nat64, Nat8) -> ();
     replyDeadline : () -> Nat64;
+    rootKey : () -> Blob;
     rts_callback_table_count : () -> Nat;
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
