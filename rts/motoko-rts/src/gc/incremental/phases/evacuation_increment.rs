@@ -106,7 +106,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         let payload_address = original as usize + header_size.to_bytes().as_usize();
         let payload_size = object_size - header_size;
         crate::mem_utils::memzero(payload_address, payload_size);
-        const INVALID_TAG: Tag = 0;
-        (*original).tag = INVALID_TAG;
+        // Do not clear object tag and forwarding pointer
     }
 }
