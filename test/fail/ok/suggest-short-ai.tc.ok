@@ -1,4 +1,4 @@
-suggest-short-ai.mo:4.1-4.5: type error [M0072], field s does not exist in type:
+suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
   module {
     type ErrorCode =
       {
@@ -8,7 +8,8 @@ suggest-short-ai.mo:4.1-4.5: type error [M0072], field s does not exist in type:
         #destination_invalid;
         #future : Nat32;
         #system_fatal;
-        #system_transient
+        #system_transient;
+        #system_unknown
       };
     Array_init : <T>(Nat, T) -> [var T];
     Array_tabulate : <T>(Nat, Nat -> T) -> [T];
@@ -58,6 +59,7 @@ suggest-short-ai.mo:4.1-4.5: type error [M0072], field s does not exist in type:
     btstNat8 : (Nat8, Nat8) -> Bool;
     call_raw : (Principal, Text, Blob) -> async Blob;
     cancelTimer : Nat -> ();
+    canisterSubnet : () -> Principal;
     canisterVersion : () -> Nat64;
     charIsAlphabetic : Char -> Bool;
     charIsLowercase : Char -> Bool;
@@ -150,6 +152,7 @@ suggest-short-ai.mo:4.1-4.5: type error [M0072], field s does not exist in type:
     intToNat64Wrap : Int -> Nat64;
     intToNat8Wrap : Int -> Nat8;
     isController : Principal -> Bool;
+    isReplicatedExecution : () -> Bool;
     log : Float -> Float;
     nat16ToInt16 : Nat16 -> Int16;
     nat16ToNat : Nat16 -> Nat;

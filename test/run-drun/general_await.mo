@@ -40,6 +40,12 @@ actor Await {
        case null (assert false);
      };
    };
+   for (o in os.values()) {
+     switch o {
+       case (? a) await a;
+       case null (assert false);
+     };
+   };
   };
 
   // Dynamic parallel waiting (with results)

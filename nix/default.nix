@@ -38,37 +38,15 @@ let
 
         # Selecting the ocaml version
         # Also update ocaml-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_14; })
 
         (self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // rec {
 
-              # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
-              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs rec {
-                version = "5.0.1";
-                src = self.fetchurl {
-                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
-                  sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
-                };
-              };
-
-              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
-              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
-                pname = "js_of_ocaml";
-
-                inherit (js_of_ocaml-compiler) version src;
-                duneVersion = "3";
-
-                buildInputs = [ ppxlib ];
-                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
-
-                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
-              };
-
-              # downgrade wasm until we have support for 2.0.0
+              # downgrade wasm until we have support for 2.0.1
               # (https://github.com/dfinity/motoko/pull/3364)
-              wasm = super.ocamlPackages.wasm.overrideAttrs rec {
+              wasm_1 = super.ocamlPackages.wasm.overrideAttrs rec {
                 version = "1.1.1";
                 src = self.fetchFromGitHub {
                   owner = "WebAssembly";
@@ -76,10 +54,81 @@ let
                   rev = "opam-${version}";
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
+                patchPhase = ''
+                  substituteInPlace ./interpreter/Makefile \
+                    --replace-fail "+a-4-27-42-44-45" "+a-4-27-42-44-45-70"
+                '';
               };
 
               # No testing of atdgen, as it pulls in python stuff, tricky on musl
               atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
+            };
+          }
+        )
+
+        # Wasmtime overlay
+        (self: super: {
+          wasmtime =
+            self.rustPlatform_moz_stable.buildRustPackage rec {
+              pname = "wasmtime";
+              version = "26.0.1";
+
+              src = super.fetchFromGitHub {
+                owner = "bytecodealliance";
+                repo = pname;
+                rev = "v${version}";
+                hash = "sha256-Q7f35Y3ZZ7BHLwmdsa0I5gtlNMObscVD/3jKrVetGnA=";
+                fetchSubmodules = true;
+              };
+
+              auditable = false;
+              cargoHash = "sha256-kaE+LoqnWPZcM9H5FM7SRPRq2J78yrL5zWdV2klVLDU=";
+              cargoBuildFlags = [ "--package" "wasmtime-cli" "--package" "wasmtime-c-api" ];
+
+              outputs = [ "out" "dev" ];
+
+              buildInputs = [] ; #super.lib.optional super.stdenv.hostPlatform.isDarwin Security;
+
+              # rustfmt is brought into scope to fix the following
+              #   warning: cranelift-codegen@0.108.0:
+              #   Failed to run `rustfmt` on ISLE-generated code: Os
+              #   { code: 2, kind: NotFound, message: "No such file or directory" }
+              nativeBuildInputs = with super; [ cmake rustfmt ];
+
+              doCheck = with super.stdenv.buildPlatform;
+                # SIMD tests are only executed on platforms that support all
+                # required processor features (e.g. SSE3, SSSE3 and SSE4.1 on x86_64):
+                # https://github.com/bytecodealliance/wasmtime/blob/v9.0.0/cranelift/codegen/src/isa/x64/mod.rs#L220
+                (isx86_64 -> sse3Support && ssse3Support && sse4_1Support) &&
+                # The dependency `wasi-preview1-component-adapter` fails to build because of:
+                # error: linker `rust-lld` not found
+                !isAarch64;
+
+              postInstall = ''
+                # move libs from out to dev
+                install -d -m 0755 $dev/lib
+                install -m 0644 ''${!outputLib}/lib/* $dev/lib
+                rm -r ''${!outputLib}/lib
+
+                install -d -m0755 $dev/include/wasmtime
+                install -m0644 $src/crates/c-api/include/*.h $dev/include
+                install -m0644 $src/crates/c-api/include/wasmtime/*.h $dev/include/wasmtime
+              '' + super.lib.optionalString super.stdenv.hostPlatform.isDarwin ''
+                install_name_tool -id \
+                  $dev/lib/libwasmtime.dylib \
+                  $dev/lib/libwasmtime.dylib
+              '';
+
+              meta = with super.lib; {
+                description =
+                  "Standalone JIT-style runtime for WebAssembly, using Cranelift";
+                homepage = "https://wasmtime.dev/";
+                license = licenses.asl20;
+                mainProgram = "wasmtime";
+                maintainers = with maintainers; [ ereslibre matthewbauer ];
+                platforms = platforms.unix;
+                changelog = "https://github.com/bytecodealliance/wasmtime/blob/v${version}/RELEASES.md";
+              };
             };
           }
         )
@@ -108,11 +157,11 @@ let
 
         # Rust stable
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { version = "1.78.0"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { version = "1.85.0"; channel = "stable"; };
         in {
-          rustPlatform_moz_stable = self.makeRustPlatform {
+          rustPlatform_moz_stable = self.makeRustPlatform rec {
             rustc = rust-channel.rust;
-            cargo = rust-channel.rust;
+            cargo = rustc;
           };
         })
 

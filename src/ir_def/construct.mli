@@ -66,6 +66,7 @@ val let_else_switch : pat -> exp -> exp -> exp
 val natE : Mo_values.Numerics.Nat.t -> exp
 val intE : Mo_values.Numerics.Int.t -> exp
 val nat32E : Mo_values.Numerics.Nat32.t -> exp
+val nat64E : Mo_values.Numerics.Nat64.t -> exp
 val textE : string -> exp
 val blobE : string -> exp
 val letE : var -> exp -> exp -> exp
@@ -90,6 +91,7 @@ val breakE: id -> exp -> exp
 val retE: exp -> exp
 val immuteE: exp -> exp
 val assignE : var -> exp -> exp
+val assignVarE : id -> exp -> exp
 val labelE : id -> typ -> exp -> exp
 val loopE : exp -> exp
 val forE : pat -> exp -> exp -> exp
@@ -146,6 +148,8 @@ val (-*-) : exp -> exp -> exp (* application *)
 (* Objects *)
 
 val objE : obj_sort -> (lab * con) list -> (lab * exp) list -> exp
+
+val objectE : obj_sort -> (lab * exp) list -> field list -> exp
 
 (* Records *)
 

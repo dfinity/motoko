@@ -5,9 +5,9 @@
 pub mod compatibility;
 pub mod stable_functions;
 
-use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;
 use stable_functions::{register_stable_functions, StableFunctionState};
+use compatibility::MemoryCompatibilityTest;
 
 use crate::{
     barriers::write_with_barrier,
@@ -133,6 +133,13 @@ unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     }
 }
 
+/// Returns the availability of the stable actor record (false on (re-)install, true on upgrade)
+#[no_mangle]
+pub unsafe extern "C" fn has_stable_actor() -> bool {
+    let metadata = PersistentMetadata::get();
+    !((*metadata).stable_actor.forward_if_possible() == DEFAULT_VALUE)
+}
+
 /// Returns the stable sub-record of the actor of the upgraded canister version.
 /// Returns scalar 0 if no actor is stored after on a fresh memory.
 #[no_mangle]
@@ -208,6 +215,35 @@ pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M) {
 /// Register the stable actor type on canister initialization and upgrade, for EOP and graph copy.
 /// Before this call, the garbage collector of stable functions must have run.
 /// This is either on EOP upgrade or on stabilization start of graph copy.
+unsafe fn update_stable_type<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+    stable_functions_map: Value,
+    check_compatibility: bool,
+) {
+    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
+    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
+    assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
+    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
+    let metadata = PersistentMetadata::get();
+    let old_type = &mut (*metadata).stable_type;
+    let type_test = if !check_compatibility || old_type.is_default() {
+        None
+    } else {
+        Some(MemoryCompatibilityTest::new(mem, old_type, &mut new_type))
+    };
+    if type_test
+        .as_ref()
+        .is_some_and(|test| !test.compatible_stable_actor())
+    {
+        rts_trap_with("Memory-incompatible program upgrade");
+    }
+    (*metadata).stable_type.assign(mem, &new_type);
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
+}
+
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.
@@ -218,25 +254,32 @@ pub unsafe fn register_stable_type<M: Memory>(
     new_type_offsets: Value,
     stable_functions_map: Value,
 ) {
-    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
-    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
-    assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
-    let new_type = &mut TypeDescriptor::new(new_candid_data, new_type_offsets);
-    let metadata = PersistentMetadata::get();
-    let old_type = &mut (*metadata).stable_type;
-    let type_test = if old_type.is_default() {
-        None
-    } else {
-        Some(MemoryCompatibilityTest::new(mem, old_type, new_type))
-    };
-    if type_test
-        .as_ref()
-        .is_some_and(|test| !test.compatible_stable_actor())
-    {
-        rts_trap_with("Memory-incompatible program upgrade");
-    }
-    (*metadata).stable_type.assign(mem, &new_type);
-    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
+    update_stable_type(
+        mem,
+        new_candid_data,
+        new_type_offsets,
+        stable_functions_map,
+        true,
+    );
+}
+
+/// Update the stable actor type without compatibility checks.
+/// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
+/// The `new_type` value points to a blob encoding the new stable actor type.
+#[ic_mem_fn]
+pub unsafe fn assign_stable_type<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+    stable_functions_map: Value,
+) {
+    update_stable_type(
+        mem,
+        new_candid_data,
+        new_type_offsets,
+        stable_functions_map,
+        false,
+    );
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {

@@ -97,7 +97,7 @@ module {
   */
   public let hashNat8s : [Hash] -> Hash = func(key) {
     var hash = Prim.natToNat32(0);
-    for (natOfKey in key.vals()) {
+    for (natOfKey in key.values()) {
       hash := hash +% natOfKey;
       hash := hash +% hash << 10;
       hash := hash ^ (hash >> 6);

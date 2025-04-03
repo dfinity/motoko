@@ -284,7 +284,13 @@ let validate_stab_sig s : unit Diag.result =
   let* p2 = parse_stab_sig s name in
   let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
-  Stability.match_stab_sig s1 s2
+  Type.(match s1, s2 with
+  | Single s1, Single s2 ->
+    Stability.match_stab_sig (Single s1) (Single s2)
+  | PrePost (pre1, post1), PrePost (pre2, post2) ->
+    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in
+    Stability.match_stab_sig (Single post1) (Single post2)
+  | _, _ -> assert false)
 
 (* The prim module *)
 
@@ -322,7 +328,6 @@ let check_prim () : Syntax.lib * stat_env =
       let senv1 = Scope.adjoin senv0 sscope in
       lib, senv1
 
-
 (* Imported file loading *)
 
 (*
@@ -334,6 +339,13 @@ When we load a declaration (i.e from the REPL), we also care about the type
 and the newly added scopes, so these are returned separately.
 *)
 
+type scope_cache = Scope.t Type.Env.t
+
+type load_result_cached =
+    ( Syntax.lib list
+    * (Syntax.prog * string list) list
+    * Scope.t
+    * scope_cache ) Diag.result
 
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
@@ -361,7 +373,16 @@ let unique_import_name identified_imports resolved_import =
     | _ -> None) (* import without variable binding or multiple imports of same library url *)
   | _ -> None (* no library import *)  
 
-let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
+let resolved_import_name ri =
+  match ri.Source.it with
+  | Syntax.Unresolved -> "/* unresolved */"
+  | Syntax.LibPath { Syntax.package = _; path }
+  | Syntax.IDLPath (path, _) -> path
+  | Syntax.PrimPath -> "@prim"
+
+let chase_imports_cached root_imports parsefn senv0 imports scopes_map
+    : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
+  =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -373,14 +394,27 @@ let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.
   * To avoid duplicates, i.e. load each file at most once, we check the
     senv.
   * We accumulate the resulting libraries in reverse order, for O(1) appending.
+  * There is a cache that can be queried to avoid recomputing unchanged dependencies.
   *)
+
+  let open Diag.Syntax in
 
   let open ResolveImport.S in
   let pending = ref empty in
   let senv = ref senv0 in
   let libs = ref [] in
+  let cache = ref scopes_map in
 
-  let rec go qualified_name pkg_opt ri = match ri.Source.it with
+  let rec go_cached qualified_name pkg_opt ri =
+    match Type.Env.find_opt (resolved_import_name ri) !cache with
+    | None -> go qualified_name pkg_opt ri
+    | Some sscope ->
+      senv := Scope.adjoin !senv sscope;
+      Diag.return ()
+  and go qualified_name pkg_opt ri =
+    let it = ri.Source.it in
+    let ri_name = resolved_import_name ri in
+    match it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -389,20 +423,20 @@ let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.
         let lib, sscope = check_prim () in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
+        cache := Type.Env.add ri_name sscope !cache;
         Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
-      else if mem ri.Source.it !pending then
+      else if mem it !pending then
         Diag.error
           ri.Source.at
           "M0003"
           "import"
           (Printf.sprintf "file %s must not depend on itself" f)
       else begin
-        pending := add ri.Source.it !pending;
-        let open Diag.Syntax in
+        pending := add it !pending;
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
@@ -413,11 +447,14 @@ let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.
         let* sscope = check_lib qualified_name !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
-        pending := remove ri.Source.it !pending;
+        cache := Type.Env.add ri_name sscope !cache;
+        pending := remove it !pending;
         Diag.return ()
       end
     | Syntax.IDLPath (f, _) ->
-      let open Diag.Syntax in
+      (* TODO: [Idllib.Pipeline.check_file] will perform a similar pipeline,
+         going recursively through imports of the IDL path to parse and
+         typecheck them. We should extend the cache system to it as well. *)
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
         Diag.error
@@ -438,26 +475,50 @@ let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.
         | actor ->
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
+          cache := Type.Env.add ri_name sscope !cache;
           Diag.return ()
   and go_set identified_imports pkg_opt todo =
     Diag.traverse_ (fun import ->
       let qualified_name = unique_import_name identified_imports import.Source.it in
-      go qualified_name pkg_opt import
+      go_cached qualified_name pkg_opt import
     ) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set root_imports None imports)
+  Diag.map (fun () -> List.rev !libs, !senv, !cache) (go_set root_imports None imports)
 
-let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
+let chase_imports root_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
+  let open Diag.Syntax in
+  let cache = Type.Env.empty in
+  let* libs, senv, _cache = chase_imports_cached root_imports parsefn senv0 imports cache in
+  Diag.return (libs, senv)
+
+let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache : load_result_cached =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
-  let progs' = List.map fst rs in
+  let progs = List.map fst rs in
   let libs = List.concat_map snd rs in
-  let root_imports = List.concat_map (resolve_import_names (Some [])) progs' in
-  let* libs, senv' = chase_imports root_imports parsefn senv libs in
-  let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
-  let* senv'' = check_progs ~viper_mode senv' progs' in
-  Diag.return (libs, progs', senv'')
+  let root_imports = List.concat_map (resolve_import_names (Some [])) progs in
+  let* libs, senv, scope_cache =
+    chase_imports_cached root_imports parsefn senv libs scope_cache
+  in
+  let* () = Typing.check_actors ?viper_mode ?check_actors senv progs in
+  (* [infer_prog] seems to annotate the AST with types by mutating some of its
+     nodes, therefore, we always run the type checker for programs. *)
+  let* senv = check_progs ?viper_mode senv progs in
+  Diag.return
+    ( libs
+    , List.map (fun (prog, rims) -> prog, List.map resolved_import_name rims) rs
+    , senv
+    , scope_cache )
+
+let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
+  let open Diag.Syntax in
+  let scope_cache = Type.Env.empty in
+  let* libs, rs, senv, _scope_cache =
+    load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache
+  in
+  let progs = List.map fst rs in
+  Diag.return (libs, progs, senv)
 
 let load_decl parse_one senv : load_decl_result =
   let open Diag.Syntax in
@@ -709,7 +770,7 @@ let load_as_rts () =
   let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity, !Flags.gc_strategy) with
     | (true, false, Flags.Incremental) -> Rts.wasm_eop_release
     | (true, true, Flags.Incremental) -> Rts.wasm_eop_debug
-    | (false, false, Flags.Copying) 
+    | (false, false, Flags.Copying)
     | (false, false, Flags.MarkCompact)
     | (false, false, Flags.Generational) -> Rts.wasm_non_incremental_release
     | (false, true, Flags.Copying)
