@@ -1747,7 +1747,7 @@ and pp_stab_field vs ppf {lab; typ; src} =
   | Mut t' ->
     fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
-     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
+    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
 and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
   let req = if required then "in" else "stable" in
