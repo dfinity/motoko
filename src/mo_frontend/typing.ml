@@ -2845,7 +2845,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    let dom_tfs, rng_tfs =
      try
       let sort, tbs, t_dom, t_rng = T.as_func_sub (T.Local T.Flexible) 0 typ in
-      if sort <> (T.Local T.Flexible) || tbs <> [] then raise (Invalid_argument "");
+      if (sort <> (T.Local T.Flexible) && sort <> (T.Local T.Stable)) || tbs <> [] then raise (Invalid_argument "");
       check_fields "consumes" (T.normalize t_dom),
       check_fields "produces" (T.promote t_rng)
      with Invalid_argument _ ->

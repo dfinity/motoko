@@ -424,6 +424,13 @@ module E = struct
     type_offsets_segment: int32;
     function_map_segment: int32;
   }
+  (* If no migration function is specified, pre = post *)
+  type stable_migration_descriptor = {
+    (* input to migration function, domain *)
+    pre: stable_type_descriptor;
+    (* output of migration function, range *)
+    post: stable_type_descriptor;
+  }
   (* Object allocation code. *)
   type object_allocation = t -> G.t
   (* Pool of shared objects.
@@ -499,8 +506,8 @@ module E = struct
     (* Stable functions, mapping the function name to the Wasm table index and closure type *)
     stable_functions: (int32 * Type.typ) NameEnv.t ref;
 
-    (* Type descriptor for the EOP memory compatibility check, created in `conclude_module` *)
-    stable_type_descriptor: stable_type_descriptor option ref;
+    (* Type descriptors for the EOP memory compatibility check, created in `conclude_module` *)
+    stable_migration_descriptor: stable_migration_descriptor option ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
@@ -544,7 +551,7 @@ module E = struct
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
-    stable_type_descriptor = ref None;
+    stable_migration_descriptor = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -8825,30 +8832,47 @@ end (* StableFunctions *)
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
+  type migration_side = Pre | Post
+
   let register_delayed_globals env =
-    (E.add_global64_delayed env "__eop_candid_data_length" Immutable,
-    E.add_global64_delayed env "__eop_type_offsets_length" Immutable,
-    E.add_global64_delayed env "__eop_function_map_length" Immutable)
+    (
+      (E.add_global64_delayed env "__eop_pre_candid_data_length" Immutable,
+      E.add_global64_delayed env "__eop_pre_type_offsets_length" Immutable,
+      E.add_global64_delayed env "__eop_pre_function_map_length" Immutable)
+    ,
+      (E.add_global64_delayed env "__eop_post_candid_data_length" Immutable,
+      E.add_global64_delayed env "__eop_post_type_offsets_length" Immutable,
+      E.add_global64_delayed env "__eop_post_function_map_length" Immutable)
+    )
 
   let reserve_type_table_segments env =
-    let candid_data_segment = E.add_data_segment env "" in
-    let type_offsets_segment = E.add_data_segment env "" in
-    let function_map_segment = E.add_data_segment env "" in
-    env.E.stable_type_descriptor := Some E.{
-      candid_data_segment;
-      type_offsets_segment;
-      function_map_segment
+    let new_type_table_segments env =
+      let candid_data_segment = E.add_data_segment env "" in
+      let type_offsets_segment = E.add_data_segment env "" in
+      let function_map_segment = E.add_data_segment env "" in
+      E.{
+        candid_data_segment;
+        type_offsets_segment;
+        function_map_segment
+      }
+    in
+    let pre = new_type_table_segments env in
+    let post = new_type_table_segments env in
+    env.E.stable_migration_descriptor := Some E.{
+      pre;
+      post
     }
 
-  let get_candid_data_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_candid_data_length")))
-
-  let get_type_offsets_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_type_offsets_length")))
-
-  let get_function_map_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_function_map_length")))
-
+  let type_segment_lengths env migration_side =
+    match migration_side with
+    | Pre ->
+      ((fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_candid_data_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_type_offsets_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_function_map_length")))))
+    | Post ->
+      ((fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_candid_data_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_type_offsets_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_function_map_length")))))
 
   let has_stable_actor env = E.call_import env "rts" "has_stable_actor"
 
@@ -8858,10 +8882,14 @@ module EnhancedOrthogonalPersistence = struct
 
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
 
-  let get_stable_type_descriptor env =
-    match !(E.(env.stable_type_descriptor)) with
+  let get_stable_type_descriptor env migration_side =
+    let descriptor = match !(E.(env.stable_migration_descriptor)) with
     | Some descriptor -> descriptor
     | None -> assert false
+    in
+    match migration_side with
+    | Pre -> descriptor.E.pre
+    | Post -> descriptor.E.post
 
   module TM = Map.Make (Type.Ord)
   module TS = Set.Make (Type.Ord)
@@ -9011,7 +9039,7 @@ module EnhancedOrthogonalPersistence = struct
               match actor_type_opt with
               | None ->
                 E.trap_with env "moc_visit_stable_functions only supported for actor"
-              | Some actor_type -> visit_stable_functions env actor_type)
+              | Some actor_type -> visit_stable_functions env actor_type.Ir.pre)
           )
       in
       E.add_export env (nr {
@@ -9019,13 +9047,18 @@ module EnhancedOrthogonalPersistence = struct
         edesc = nr (FuncExport (nr moc_visit_stable_functions_fi))
       })
 
-  let create_type_descriptor env actor_type_opt (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
+  let create_type_descriptor env migration_side actor_type_opt length_setters =
+    let (set_candid_data_length, set_type_offsets_length, set_function_map_length) = length_setters in
     match actor_type_opt with
     | None ->
       (set_candid_data_length 0L;
       set_type_offsets_length 0L;
       set_function_map_length 0L)
-    | Some actor_type ->
+    | Some stable_actor_type ->
+      let actor_type = match migration_side with
+      | Pre -> stable_actor_type.Ir.pre
+      | Post -> stable_actor_type.Ir.post
+      in
       (let stable_functions = StableFunctions.sorted_stable_functions env in
       let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
       let stable_types = actor_type::stable_closures in
@@ -9038,7 +9071,7 @@ module EnhancedOrthogonalPersistence = struct
           (name_hash, wasm_table_index, closure_type_index)
       ) stable_functions closure_type_indices in
       let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
-      let descriptor = get_stable_type_descriptor env in
+      let descriptor = get_stable_type_descriptor env migration_side in
       let candid_data_binary = [StaticBytes.Bytes candid_data] in
       let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
       set_candid_data_length candid_data_length;
@@ -9047,10 +9080,16 @@ module EnhancedOrthogonalPersistence = struct
       set_type_offsets_length type_offsets_length;
       let function_map_length = E.replace_data_segment env E.(descriptor.function_map_segment) stable_function_map in
       set_function_map_length function_map_length)
+  
+  let create_migration_descriptor env actor_type_opt set_eop_globals =
+    let (pre_setters, post_setters) = set_eop_globals in
+    create_type_descriptor env Pre actor_type_opt pre_setters;
+    create_type_descriptor env Post actor_type_opt post_setters
 
-  let load_type_descriptor env =
+  let load_type_descriptor env migration_side =
     (* Object pool is not yet initialized, cannot use Tagged.share *)
-    let descriptor = get_stable_type_descriptor env in
+    let descriptor = get_stable_type_descriptor env migration_side in
+    let (get_candid_data_length, get_type_offsets_length, get_function_map_length) = type_segment_lengths env migration_side in
     Blob.load_data_segment env Tagged.B E.(descriptor.candid_data_segment) (get_candid_data_length env) ^^
     Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env) ^^
     Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
@@ -9060,11 +9099,11 @@ module EnhancedOrthogonalPersistence = struct
     E.call_import env "rts" "collect_stable_functions"
 
   let register_stable_type env =
-    load_type_descriptor env ^^
+    load_type_descriptor env Pre ^^
     E.call_import env "rts" "register_stable_type"
 
   let assign_stable_type env =
-    load_type_descriptor env ^^
+    load_type_descriptor env Post ^^
     E.call_import env "rts" "assign_stable_type"
 
   let load_old_field env field get_old_actor =
@@ -9134,7 +9173,7 @@ module GraphCopyStabilization = struct
     E.call_import env "rts" "is_graph_stabilization_started" ^^ Bool.from_rts_int32
 
   let start_graph_stabilization env =
-    EnhancedOrthogonalPersistence.load_type_descriptor env ^^
+    EnhancedOrthogonalPersistence.load_type_descriptor env EnhancedOrthogonalPersistence.Post ^^
     E.call_import env "rts" "start_graph_stabilization"
 
   let graph_stabilization_increment env =
@@ -13617,7 +13656,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o =
+and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals start_fi_o =
 
   RTS_Exports.system_exports env;
   EnhancedOrthogonalPersistence.system_export env actor_type;
@@ -13630,7 +13669,7 @@ and conclude_module env actor_type set_serialization_globals set_eop_globals sta
   Serialization.create_global_type_descriptor env set_serialization_globals;
 
   (* Segments for EOP memory compatibility check *)
-  EnhancedOrthogonalPersistence.create_type_descriptor env actor_type set_eop_globals;
+  EnhancedOrthogonalPersistence.create_migration_descriptor env actor_type set_eop_globals;
 
   (* declare before building GC *)
 
@@ -13770,7 +13809,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   in
 
   let actor_type = match prog with
-  | (ActorU (_, _, _, up, _), _) -> Some up.stable_type.Ir.pre
+  | (ActorU (_, _, _, up, _), _) -> Some up.stable_type
   | _ -> None
   in
 

@@ -25,7 +25,6 @@ pub unsafe fn test() {
 }
 
 unsafe fn test_visited_set(amount: usize) {
-    println!("TESTING {amount}");
     test_insert_iterate(amount);
     test_duplicates(amount);
     test_collisions(amount);
