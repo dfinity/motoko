@@ -4738,6 +4738,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
       E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
+      E.add_func_import env "ic0" "cost_create_canister" [I64Type] [];
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
@@ -5304,6 +5305,13 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 
+  let cost_create_canister env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      system_call env "cost_create_canister"
+    | _ ->
+      E.trap_with env "cannot get cost of create canister when running locally"
+
   let set_certified_data env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
@@ -5441,6 +5449,18 @@ module Cycles = struct
     )
 
 end (* Cycles *)
+
+module Cost = struct
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
+        get_dst ^^
+        IC.cycles_available env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+end
 
 (* Low-level, almost raw access to IC stable memory.
    Essentially a virtual page allocator
@@ -12348,6 +12368,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  (* Cost *)
+  | SystemCostCreateCanisterPrim, [] ->
+    SR.Vanilla, Cost.create_canister env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit,

@@ -362,6 +362,8 @@ func cyclesBurn<system>(amount : Nat) : Nat {
   (prim "cyclesBurn" : Nat -> Nat) amount;
 };
 
+func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
+
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob)();

@@ -78,6 +78,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     clzNat64 : Nat64 -> Nat64;
     clzNat8 : Nat8 -> Nat8;
     cos : Float -> Float;
+    costCreateCanister : () -> Nat;
     createActor : (Blob, Blob) -> async Principal;
     ctzInt16 : Int16 -> Int16;
     ctzInt32 : Int32 -> Int32;
