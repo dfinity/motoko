@@ -24,7 +24,7 @@
     This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
     Required fields are declared `in`, not `stable`, in the actor's pre-signature.
 
-  * Added improved LSP cache for typechecking (thanks to Serokell) (4931).
+  * Added improved LSP cache for typechecking (thanks to Serokell) (#4931).
 
   * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
 
