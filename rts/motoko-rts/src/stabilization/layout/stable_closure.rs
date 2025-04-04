@@ -11,26 +11,30 @@ use crate::{
     types::{size_of, Closure, Value, Words, TAG_CLOSURE},
 };
 
-use super::{Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{
+    stable_hash_blob::size_by_hash_blob, Serializer, StableToSpace, StableValue, StaticScanner,
+};
 
 #[repr(C)]
 pub struct StableClosure {
     function_id: i64, // Stable function id.
-    size: u64,        // Number of fields.
-                      // Dynamically sized body with `size` fields, each of `StableValue` being a captured variable.
+    size: u64,        // Number of captured variables.
+    hash_blob: StableValue, // Pointer to a blob containing the `u32` hashes of the captured variable ids.
+                            // Dynamically sized body with `size` fields, each of `StableValue` being a captured variable.
 }
 
 impl StaticScanner<StableValue> for StableClosure {}
 
 impl Serializer<Closure> for StableClosure {
     unsafe fn serialize_static_part(
-        _stable_memory: &mut StableMemoryStream,
+        stable_memory: &mut StableMemoryStream,
         main_object: *mut Closure,
     ) -> Self {
         debug_assert!(!is_flexible_function_id((*main_object).funid));
         StableClosure {
             function_id: (*main_object).funid as i64,
-            size: (*main_object).size as u64,
+            size: get_closure_size(stable_memory, main_object) as u64,
+            hash_blob: StableValue::serialize((*main_object).hash_blob),
         }
     }
 
@@ -38,10 +42,11 @@ impl Serializer<Closure> for StableClosure {
         stable_memory: &mut StableMemoryStream,
         main_object: *mut Closure,
     ) {
-        for index in 0..(*main_object).size {
-            let main_field = main_object.get(index);
-            let stable_field = StableValue::serialize(main_field);
-            stable_memory.write(&stable_field);
+        let closure_size = get_closure_size(stable_memory, main_object);
+        for index in 0..closure_size {
+            let main_captured = main_object.get(index);
+            let stable_captured = StableValue::serialize(main_captured);
+            stable_memory.write(&stable_captured);
         }
     }
 
@@ -82,8 +87,8 @@ impl Serializer<Closure> for StableClosure {
         (*target_object)
             .header
             .init_forward(Value::from_ptr(target_object as usize));
-        (*target_object).size = self.size as usize;
         (*target_object).funid = self.function_id as isize;
+        (*target_object).hash_blob = self.hash_blob.deserialize();
     }
 
     unsafe fn deserialize_dynamic_part<M: Memory>(
@@ -114,4 +119,15 @@ fn is_flexible_function_id(function_id: isize) -> bool {
 #[cfg(not(feature = "ic"))]
 fn is_flexible_function_id(_function_id: isize) -> bool {
     true
+}
+
+/// Resolve closure size (number of captured variables) during serialization.
+/// This requires a look up in the hash blob, which may however already have been
+/// serialized to stable memory.
+fn get_closure_size(stable_memory: &StableMemoryStream, main_object: *mut Closure) -> usize {
+    // Do not call tag as it resolves the forwarding pointer.
+    unsafe {
+        let main_hash_blob = (*main_object).hash_blob;
+        size_by_hash_blob(stable_memory, main_hash_blob)
+    }
 }
