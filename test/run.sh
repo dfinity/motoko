@@ -323,6 +323,14 @@ do
         continue
       fi
     fi
+    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      then
+        $ECHO " Skipped (not applicable to incremental gc)"
+        continue
+      fi
+    fi
     if [[ $moc_extra_flags == *"-measure-rts-stack"* ]]
     then
       if [[ $(uname -m) != "x86_64" ]]
@@ -528,6 +536,14 @@ do
       then
         if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]]
         then
+          continue
+        fi
+      fi
+      if grep -q "# INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then
+          $ECHO " Skipped (not applicable to incremental gc)"
           continue
         fi
       fi
