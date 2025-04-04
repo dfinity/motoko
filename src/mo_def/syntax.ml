@@ -241,7 +241,8 @@ and stab_sig' = (dec list * stab_body)      (* type declarations & stable actor 
 and stab_body = stab_body' Source.phrase    (* type declarations & stable actor fields *)
 and stab_body' =
   | Single of typ_field list
-  | PrePost of typ_field list * typ_field list
+  | PrePost of (req * typ_field) list * typ_field list
+and req = bool Source.phrase
 
 (* Compilation units *)
 

@@ -9,6 +9,6 @@ type List =
    tail: opt List;
  };
 service : {
-  f: (nat) -> (List_1);
-  g: (int) -> (List);
+  f: (x: nat) -> (List_1);
+  g: (x: int) -> (List);
 }

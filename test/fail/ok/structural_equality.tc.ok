@@ -1,7 +1,7 @@
 structural_equality.mo:2.1-2.57: type error [M0060], operator is not defined for operand types
-  Nat -> Nat
+  (x : Nat) -> Nat
 and
-  Nat -> Nat
+  (x : Nat) -> Nat
 structural_equality.mo:4.1-4.33: type error [M0060], operator is not defined for operand types
   {var x : Nat}
 and

@@ -9,6 +9,7 @@ open Type
   * If it is already in the set, we have found a loop. Mark it as `unproductive`. Else add to the setduring the next step.
   * Consider its RHS:
     * If it is a concrete type, return `Productive`.
+    * If it is a named type, recurse.
     * If it is the nth type parameter, return `Param n`
     * If it is a type application `T<t1,…,tn>`, recurse.
       * If recursion returns `Productive` or `Nonproductive`, return that.
@@ -45,6 +46,8 @@ let non_productive cs =
           end
         | info -> info
       end
+    | Named (n, t) ->
+      rhs cs t (* TBR *)
     | _ ->  (* anything else is productive *)
       Productive
 

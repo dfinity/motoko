@@ -56,6 +56,8 @@ let transform prog =
     | Any -> Any
     | Non -> Non
     | Pre -> Pre
+    | Named (n , t) -> (* erased! *)
+      t_typ t 
     | Typ c -> assert false (* second class *)
 
   and t_bind tb =

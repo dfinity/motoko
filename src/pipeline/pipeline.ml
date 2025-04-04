@@ -277,6 +277,7 @@ let stable_compatible pre post : unit Diag.result =
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Stability.match_stab_sig s1 s2
 
+(* basic sanity checking of emitted stable signatures *)
 let validate_stab_sig s : unit Diag.result =
   let open Diag.Syntax in
   let name = "stable-types" in
@@ -286,9 +287,11 @@ let validate_stab_sig s : unit Diag.result =
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Type.(match s1, s2 with
   | Single s1, Single s2 ->
+    (* check we can self-upgrade *)
     Stability.match_stab_sig (Single s1) (Single s2)
   | PrePost (pre1, post1), PrePost (pre2, post2) ->
-    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in
+    (* check we can at least self-upgrade,
+       with a possibly different or no migration function *)
     Stability.match_stab_sig (Single post1) (Single post2)
   | _, _ -> assert false)
 
@@ -852,7 +855,7 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
-  (* validate any stable type signature *)
+  (* validate any stable type signature, as a sanity check *)
   let* () =
     match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
     | Some (_, ss) -> validate_stab_sig ss
