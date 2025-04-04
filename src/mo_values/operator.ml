@@ -236,12 +236,13 @@ let structural_equality t =
             go (List.find (fun f -> f.T.lab = l1) fs).T.typ v1 v2
     | T.Func (s, c, tbs, ts1, ts2) ->
        assert (T.is_shared_sort s);
-       fun v1 v2 -> match v1, v2 with
+      (fun v1 v2 -> match v1, v2 with
        | Tup [Blob _; Text _], Tup [Blob _; Text _] -> Bool (v1 = v2) (* public methods *)
        | Func _, Tup [Blob _; Text _]
        | Tup [Blob _; Text _], Func _ -> assert false; (* mixed, cannot determine equality *)
        | Func _, Func _ -> Bool (v1 == v2)  (* both internal, HACK *)
-       | _ -> failwith "illegal shared function"
+       | _ -> failwith "illegal shared function")
+    | T.Named (n, t1) -> go t1
   in
   go t
 

@@ -12,4 +12,4 @@ type A =
  service {
    get: () -> (List_1);
  };
-service : (List) -> A
+service : (init: List) -> A
