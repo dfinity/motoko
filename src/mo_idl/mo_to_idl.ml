@@ -44,43 +44,44 @@ module MakeState() = struct
              stamp := Stamp.add c (k, n + 1) !stamp;
              type_map := TypeMap.add id (k, n + 1) !type_map;
              (k, n + 1))
-        | Some (k, n) -> (k, n)
+        | Some kn -> kn
       in
       begin
         match (k, n) with
+        | _ when k < 0 || n < 0 -> assert false
         | (0, 0) -> name
-        | (0, n) when n > 0 -> Printf.sprintf "%s_%d" name n
-        | (k, 0) when k > 0 -> Printf.sprintf "%s__%d" name k
-        | (k, n) when k > 0 && n > 0 -> Printf.sprintf "%s__%d_%d" name k n
-        | _ -> assert false
+        | (0, n) -> Printf.sprintf "%s_%d" name n
+        | (k, 0) -> Printf.sprintf "%s__%d" name k
+        | (k, n) -> Printf.sprintf "%s__%d_%d" name k n
       end
     | _ -> assert false
 
-  let prim = function
-    | Null -> I.PrimT I.Null
-    | Bool -> I.PrimT I.Bool
-    | Nat -> I.PrimT I.Nat
-    | Nat8 -> I.PrimT I.Nat8
-    | Nat16 -> I.PrimT I.Nat16
-    | Nat32 -> I.PrimT I.Nat32
-    | Nat64 -> I.PrimT I.Nat64
-    | Int -> I.PrimT I.Int
-    | Int8 -> I.PrimT I.Int8
-    | Int16 -> I.PrimT I.Int16
-    | Int32 -> I.PrimT I.Int32
-    | Int64 -> I.PrimT I.Int64
-    | Float -> I.PrimT I.Float64
-    | Char -> I.PrimT I.Nat32
-    | Text -> I.PrimT I.Text
-    | Blob -> I.BlobT
-    | Principal -> I.PrincipalT
+  let prim = let open I in
+    function
+    | Type.Null -> PrimT Null
+    | Bool -> PrimT Bool
+    | Nat -> PrimT Nat
+    | Nat8 -> PrimT Nat8
+    | Nat16 -> PrimT Nat16
+    | Nat32 -> PrimT Nat32
+    | Nat64 -> PrimT Nat64
+    | Int -> PrimT Int
+    | Int8 -> PrimT Int8
+    | Int16 -> PrimT Int16
+    | Int32 -> PrimT Int32
+    | Int64 -> PrimT Int64
+    | Float -> PrimT Float64
+    | Char -> PrimT Nat32
+    | Text -> PrimT Text
+    | Blob -> BlobT
+    | Principal -> PrincipalT
     | Region
     | Error -> assert false
 
-  let rec typ t =
-    (match t with
-    | Any -> I.PrimT I.Reserved
-    | Non -> I.PrimT I.Empty
+  let rec typ t0 =
+    (match t0 with
+    | Any -> I.(PrimT Reserved)
+    | Non -> I.(PrimT Empty)
     | Prim p -> prim p
     | Var (s, i) -> assert false
     | Con (c, ts) ->
@@ -88,22 +89,32 @@ module MakeState() = struct
         | Def (_, t) ->
            (match (open_ ts t) with
             | Prim p -> prim p
-            | Any -> I.PrimT I.Reserved
-            | Non -> I.PrimT I.Empty
+            | Any -> I.(PrimT Reserved)
+            | Non -> I.(PrimT Empty)
+            | Con (c1, ts1) when ts = [] && Cons.eq c c1 -> failwith "CON EQ"
+            | Con (c1, ts1) when false && List.length ts = 0 && List.length ts1 = 1 && Cons.name c = Cons.name c1 -> failwith (Cons.name c ^ " = Innerer.Credit<Nat>")
+            | Con (c1, ts1) when false && List.length ts = 1 && compare ts ts1 = 0 && Cons.name c = Cons.name c1 -> failwith "CON"
             | t ->
                let id = monomorphize_con ts c in
                if not (Env.mem id !env) then
                  begin
                    env := Env.add id (I.PreT @@ no_region) !env;
-                   let t = typ (normalize t) in
-                   env := Env.add id t !env
+                   match t with
+                   | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
+                     begin match typ t with
+                     | { it = I.VarT _ } as t -> env := Env.add id t !env
+                     | t -> env := Env.add id t !env
+                     end
+                   | _ ->
+                     let t = typ (normalize t) in
+                     env := Env.add id t !env
                  end;
                I.VarT (id @@ no_region))
         | _ -> assert false)
     | Typ c -> assert false
     | Tup ts ->
        if ts = [] then
-         I.PrimT I.Null
+         I.(PrimT Null)
        else
          I.RecordT (tuple ts)
     | Array t -> I.VecT (typ t)
@@ -111,7 +122,7 @@ module MakeState() = struct
     | Obj (Object, fs) ->
        I.RecordT (fields fs)
     | Obj (Actor, fs) -> I.ServT (meths fs)
-    | Obj (Module, _) -> assert false
+    | Obj (Module, _)
     | Obj (Memory, _) -> assert false
     | Variant fs ->
        I.VariantT (fields fs)
@@ -196,7 +207,6 @@ module MakeState() = struct
         dec::list
       ) !env []
 
-
   let actor prog =
     let open E in
     let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
@@ -212,7 +222,6 @@ module MakeState() = struct
           Some (I.ClassT (args, actor) @@ cub.at)
         | _ -> assert false
        )
-
 end
 
 let prog (progs, senv) : I.prog =
