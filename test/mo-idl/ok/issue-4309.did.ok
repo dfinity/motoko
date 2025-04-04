@@ -1,7 +1,7 @@
 type Foo__2 = variant {bla;};
-type Foo__1 = variant {bla;};
-type Foo = variant {bla;};
-type Credit__2 = nat;
+type Foo__1 = Foo__2;
+type Foo = Foo__2;
+type Credit__2 = Credit__1;
 type Credit__1 = nat;
 type Credit = nat;
 service : {

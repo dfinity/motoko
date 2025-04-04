@@ -101,10 +101,10 @@ module MakeState() = struct
                    env := Env.add id (I.PreT @@ no_region) !env;
                    match t with
                    | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
-                     begin match typ t with
-                     | { it = I.VarT _ } as t -> env := Env.add id t !env
-                     | t -> env := Env.add id t !env
-                     end
+                     let rec follow pen = function
+                     | { it = I.VarT { it } } as t -> follow t (Env.find it !env)
+                     | t -> env := Env.add id pen !env in
+                     follow (I.PreT @@ no_region) (typ t)
                    | _ ->
                      let t = typ (normalize t) in
                      env := Env.add id t !env
