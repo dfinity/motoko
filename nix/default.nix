@@ -73,18 +73,18 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2024-07-28"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2025-04-01"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-wasi"
+               "wasm32-wasip1"
             ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
-          rustPlatform-nightly = self.makeRustPlatform {
-            rustc = rustc-nightly;
-            cargo = cargo-nightly;
+          rustPlatform-nightly = self.makeRustPlatform rec {
+            rustc = rust-channel.rust;
+            cargo = rustc;
           };
         })
 
