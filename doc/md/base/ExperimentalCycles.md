@@ -137,6 +137,7 @@ actor {
   }
 }
 ```
+@deprecated This function will be removed in future. Use the parenthetical syntax on message sends and `async` expressions to attach cycles: `(with cycles = <amount>) C.send(...)`.
 
 ## Function `refunded`
 ``` motoko no-repl
