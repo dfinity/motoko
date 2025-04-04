@@ -1,7 +1,7 @@
 //MOC-FLAG --actor-idl issue-4309
 
-import Types = "./issue-4309-types";
-import Types2 = "./issue-4309-types";
+import Types = "./import/issue-4309-types";
+import Types2 = "./import/issue-4309-types";
 
 actor {
   module Inner {
