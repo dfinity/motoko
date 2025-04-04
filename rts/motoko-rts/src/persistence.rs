@@ -5,9 +5,9 @@
 pub mod compatibility;
 pub mod stable_functions;
 
+use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;
 use stable_functions::{register_stable_functions, StableFunctionState};
-use compatibility::MemoryCompatibilityTest;
 
 use crate::{
     barriers::write_with_barrier,
