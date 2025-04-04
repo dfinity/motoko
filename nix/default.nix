@@ -73,18 +73,19 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2024-07-28"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2025-01-01"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
-               "wasm32-wasi"
+               "wasm32-wasip1"
             ];
             extensions = ["rust-src"];
           };
           cargo-nightly = rustc-nightly;
-          rustPlatform-nightly = self.makeRustPlatform {
-            rustc = rustc-nightly;
-            cargo = cargo-nightly;
+          rustPlatform-nightly = self.makeRustPlatform rec {
+            rustcX = super.rustc;
+            rustc = rust-channel.rust // { inherit (super.rustc) targetPlatforms badTargetPlatforms; };
+            cargo = rustc;
           };
         })
 
@@ -93,7 +94,13 @@ let
           rust-channel = self.moz_overlay.rustChannelOf { version = "1.85.0"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform rec {
-            rustc = rust-channel.rust;
+            rustc = rust-channel.rust // { inherit (super.rustc) targetPlatforms badTargetPlatforms; };
+#== =====
+#        (self: super: {
+#          rustPlatform_moz_stable = self.makeRustPlatform rec {
+#            rustcX = super.rustc;
+#            rustc = self.moz_overlay.latest.rustChannels.stable.rust // { targetPlatforms = super.rustc.targetPlatforms; badTargetPlatforms = super.rustc.badTargetPlatforms; };
+#>>> >>>> 205cd54c4 (WIP: very much so)
             cargo = rustc;
           };
         })
