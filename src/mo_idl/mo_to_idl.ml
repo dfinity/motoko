@@ -94,20 +94,21 @@ module MakeState() = struct
             | Con (c1, ts1) when ts = [] && Cons.eq c c1 -> failwith "CON EQ"
             | Con (c1, ts1) when false && List.length ts = 0 && List.length ts1 = 1 && Cons.name c = Cons.name c1 -> failwith (Cons.name c ^ " = Innerer.Credit<Nat>")
             | Con (c1, ts1) when false && List.length ts = 1 && compare ts ts1 = 0 && Cons.name c = Cons.name c1 -> failwith "CON"
+
+
+            | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
+               let rec follow pen = function
+                 | { it = I.VarT { it } } as t -> follow t (Env.find it !env)
+                 | t -> env := Env.add (monomorphize_con ts c) pen !env; I.VarT ((monomorphize_con ts c) @@ no_region) in
+               follow (I.PreT @@ no_region) (typ t)
+
             | t ->
                let id = monomorphize_con ts c in
                if not (Env.mem id !env) then
                  begin
                    env := Env.add id (I.PreT @@ no_region) !env;
-                   match t with
-                   | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
-                     let rec follow pen = function
-                     | { it = I.VarT { it } } as t -> follow t (Env.find it !env)
-                     | t -> env := Env.add id pen !env in
-                     follow (I.PreT @@ no_region) (typ t)
-                   | _ ->
-                     let t = typ (normalize t) in
-                     env := Env.add id t !env
+                   let t = typ (normalize t) in
+                   env := Env.add id t !env
                  end;
                I.VarT (id @@ no_region))
         | _ -> assert false)
