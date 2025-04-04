@@ -37,6 +37,11 @@ let initial_scope =
 
 type unused_warnings = (string * Source.region * Scope.val_kind) List.t
 
+type parameter_context = {
+  count: int;
+  positions: int T.Env.t;
+}
+
 type env =
   { level: level;
     vals : val_env;
@@ -62,6 +67,7 @@ type env =
     named_scope: string list option;
     captured: S.t ref;
     generic_variable_count: int ref;
+    parameters: parameter_context ref;
     errors_only : bool;
   }
 
@@ -91,6 +97,10 @@ let env_of_scope ?(viper_mode=false) msgs scope named_scope =
     named_scope;
     captured = ref S.empty;
     generic_variable_count = ref 0;
+    parameters = ref {
+      count = 0;
+      positions = T.Env.empty
+    };
   }
 
 let use_identifier env id =
@@ -294,10 +304,11 @@ let enter_scope env =
   let used_identifiers_before = !(env.used_identifiers) in
   let generic_count_before = !(env.generic_variable_count) in
   let captured_before = !(env.captured) in
-  (used_identifiers_before, generic_count_before, captured_before)
+  let parameters_before = !(env.parameters) in
+  (used_identifiers_before, generic_count_before, captured_before, parameters_before)
 
 let leave_scope env inner_identifiers initial_usage =
-  let used_identifiers_before, generic_count_before, captured_before = initial_usage in
+  let used_identifiers_before, generic_count_before, captured_before, parameters_before = initial_usage in
   detect_unused env inner_identifiers;
   let inner_identifiers = get_identifiers inner_identifiers in
   let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
@@ -305,14 +316,24 @@ let leave_scope env inner_identifiers initial_usage =
   env.used_identifiers := final_usage;
   env.generic_variable_count := generic_count_before;
   let unshadowed_captured = S.diff !(env.captured) inner_identifiers in
-  env.captured := S.union captured_before unshadowed_captured
+  env.captured := S.union captured_before unshadowed_captured;
+  env.parameters := parameters_before
 
 (* Stable functions support *)
+
+let captured_variable_name env id =
+  let parameters = !(env.parameters) in
+  match T.Env.find_opt id parameters.positions with
+  | Some position -> Printf.sprintf "<param-%i>" position;
+  | None -> id
 
 let collect_captured_variables env =
   let captured = List.filter_map (fun id ->
     match T.Env.find_opt id env.vals with
-    | Some (typ, _, _, _, Nested) -> Some (id, typ)
+    | Some (typ, _, _, _, Nested) -> 
+      let stable_name = captured_variable_name env id in
+      let captured_variable = Type.{ stable_name; variable_type = typ } in
+      Some (id, captured_variable)
     | _ -> None
   ) (S.elements !(env.captured)) in
   T.Env.from_list captured
@@ -344,6 +365,27 @@ let generic_variable_index env =
   let index = !(env.generic_variable_count) in
   env.generic_variable_count := index + 1;
   Some index
+
+let append_parameter parameters pattern =
+  match pattern.it with
+  | VarP id | AnnotP ({it = VarP id; _}, _) ->
+    let { count; positions } = parameters in
+    let positions = T.Env.remove id.it positions in
+    let positions = T.Env.add id.it count positions in
+    let count = count + 1 in
+    { count; positions }
+  | _ -> parameters
+
+let new_parameters parameters pattern =
+  match pattern.it with
+  | TupP tuple ->
+    List.fold_left append_parameter parameters tuple
+  | _ -> parameters
+
+let shadow_parameter env id =
+  let parameters = !(env.parameters) in
+  let positions = T.Env.remove id parameters.positions in
+  env.parameters := { parameters with positions }
 
 (* Value environments *)
 
@@ -488,7 +530,6 @@ let check_import env at f ri =
     error env at "M0021" "cannot infer type of forward import %s" f
   | Some t -> t
   | None -> error env at "M0022" "imported file %s not loaded" full_path
-
 
 (* Paths *)
 
@@ -1548,6 +1589,7 @@ and infer_exp'' env exp : T.typ =
     check_shared_return env typ.at sort c ts2;
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
+    let parameters = new_parameters !(env'.parameters) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
@@ -1560,6 +1602,7 @@ and infer_exp'' env exp : T.typ =
           rets = Some codom;
           named_scope;
           captured = ref S.empty;
+          parameters = ref parameters;
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
@@ -1570,8 +1613,8 @@ and infer_exp'' env exp : T.typ =
       env.captured := S.union !(env''.captured) !(env'.captured);
       (match !closure with
       | Some Type.{ captured_variables; _ } ->
-        T.Env.iter (fun id typ ->
-          if not (T.stable typ) then
+        T.Env.iter (fun id T.{ variable_type; _ } ->
+          if not (T.stable variable_type) then
           (error env exp1.at "M0217"
                 "stable function %s closes over non-stable variable %s"
                 name id)
@@ -3179,6 +3222,7 @@ and gather_dec env scope dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
     ) ->
+    shadow_parameter env id.it;
     let named_scope = match env.named_scope with
     | Some prefix -> Some (prefix @ [id.it])
     | None -> None
@@ -3197,8 +3241,11 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env;
     }
-  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
-  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
+  | LetD (pat, _, _) -> 
+    Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
+  | VarD (id, _) -> 
+    shadow_parameter env id.it;
+    Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
@@ -3239,7 +3286,9 @@ and gather_pat env ve pat : Scope.val_env =
 and gather_pat_aux env val_kind ve pat : Scope.val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> ve
-  | VarP id -> gather_id env ve id val_kind
+  | VarP id -> 
+    shadow_parameter env id.it;
+    gather_id env ve id val_kind
   | TupP pats -> List.fold_left (gather_pat env) ve pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
@@ -3365,6 +3414,7 @@ and infer_dec_valdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), (obj_id, _), dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
+    shadow_parameter env id.it;
     let named_scope = match env.named_scope, obj_sort.it, obj_id with
     | Some prefix, _, Some name -> Some (prefix @ [name.it])
     | Some prefix, T.Module, None -> Some (prefix @ [id.it])
@@ -3388,15 +3438,18 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
+    shadow_parameter env id.it;
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
   | TypD (id, _, _) ->
+    shadow_parameter env id.it;
     let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _, _) ->
+    shadow_parameter env id.it;
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then

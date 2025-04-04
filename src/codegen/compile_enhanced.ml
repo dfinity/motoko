@@ -2390,7 +2390,9 @@ module Closure = struct
 
   let make_stable_closure_type captured stable_closure =
     let variable_types = List.map (fun id ->
-      Type.Env.find id stable_closure.Type.captured_variables
+      let variable = Type.Env.find id stable_closure.Type.captured_variables in
+      Printf.printf "CLOSURE CAPTURED %s\n" variable.Type.stable_name;
+      variable.Type.variable_type
     ) captured in
     Type.Tup variable_types
 
