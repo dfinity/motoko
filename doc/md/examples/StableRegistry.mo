@@ -7,7 +7,7 @@ persistent actor Registry {
   var entries : [(Text, Nat)] = []; // implicitly `stable`
 
   transient let map = Map.fromIter<Text,Nat>(
-    entries.vals(), 10, Text.equal, Text.hash);
+    entries.values(), 10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {
     switch (map.get(name)) {

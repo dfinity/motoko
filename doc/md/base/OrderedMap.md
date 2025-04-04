@@ -19,7 +19,7 @@ Credits:
 The core of this implementation is derived from:
 
 * Ken Friis Larsen's [RedBlackMap.sml](https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml), which itself is based on:
-* Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](https://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
+* Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
 
 ## Type `Map`
 ``` motoko no-repl
@@ -719,9 +719,9 @@ func validate<V>(m : Map<K, V>) : ()
 Debug helper that check internal invariants of the given map `m`. 
 Raise an error (for a stack trace) if invariants are violated.
 
-## Value `Make`
+## Function `Make`
 ``` motoko no-repl
-let Make : <K>(compare : (K, K) -> O.Order) -> Operations<K>
+func Make<K>(compare : (K, K) -> O.Order) : Operations<K>
 ```
 
 Create `OrderedMap.Operations` object capturing key type `K` and `compare` function. 

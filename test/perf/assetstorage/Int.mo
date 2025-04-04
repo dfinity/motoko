@@ -91,7 +91,7 @@ module {
   // this is a local copy of deprecated Hash.hashNat8 (redefined to suppress the warning)
   private func hashNat8(key : [Nat32]) : Hash.Hash {
     var hash : Nat32 = 0;
-    for (natOfKey in key.vals()) {
+    for (natOfKey in key.values()) {
       hash := hash +% natOfKey;
       hash := hash +% hash << 10;
       hash := hash ^ (hash >> 6)

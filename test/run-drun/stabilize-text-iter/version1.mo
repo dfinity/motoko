@@ -1,7 +1,9 @@
 import Prim "mo:prim";
 
 actor {
-  stable let value : {} = {
+  stable let value : {
+    stableField : Text
+  } = {
     stableField = "Version 1";
   };
 
@@ -12,6 +14,7 @@ actor {
   stable let vector : [Any] = [null];
   stable let array : [var Any] = [var null];
   stable let opt : ?Any = null;
+  stable let new : () = (); // to prevent downgrade
 
   public func print() : async () {
     Prim.debugPrint(debug_show (value));

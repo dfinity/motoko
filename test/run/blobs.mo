@@ -13,7 +13,7 @@ assert (("\00":Blob) < ("\01":Blob));
 assert (("\00":Blob) <= ("\01":Blob));
 
 do {
-let i1 = ("\00\01☃":Blob).vals();
+let i1 = ("\00\01☃":Blob).values();
 switch(i1.next()) {
   case (?b) { assert (b == (0:Nat8)); };
   case null { assert false; };

@@ -49,7 +49,7 @@ actor LabelBreakContinue {
     /* let range = [0, 1, 2, 3, 4, 5];
 
     i := 0;
-    label for_loop for(j in range.vals()) {
+    label for_loop for(j in range.values()) {
       assert:loop:invariant (j == i);
       assert:loop:invariant (j < 3);
       i := i + 1;

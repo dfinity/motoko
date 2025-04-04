@@ -163,8 +163,8 @@ actor {
         for (i in range(0, N-1)) {
           for (j in range(0, N-1)) {
             if (board[i * N + j] == empty) {
-              for (p in [-1, 0, 1].vals()) {
-                for (q in [-1, 0, 1].vals()) {
+              for (p in [-1, 0, 1].values()) {
+                for (q in [-1, 0, 1].values()) {
                   if (not(p == 0 and q == 0)) {
                     if (exists(board, opponent(color), i, j, p, q) and 
                         eventually(board, color, i, j, p, q)) {
@@ -184,8 +184,8 @@ actor {
     // given position is a valid move before this call.
     flexible func set_and_flip(board: Board, color: Color, i: Nat, j: Nat) {
         board[i * N + j] := color;
-        for (p in [-1, 0, 1].vals()) {
-          for (q in [-1, 0, 1].vals()) {
+        for (p in [-1, 0, 1].values()) {
+          for (q in [-1, 0, 1].values()) {
             if (not(p == 0 and q == 0)) {
               if (exists(board, opponent(color), i, j, p, q) and 
                   eventually(board, color, i, j, p, q)) {
@@ -198,7 +198,7 @@ actor {
 
     // Check if the given board is empty.
     flexible func is_empty(board: Board) : Bool {
-      for (c in board.vals()) {
+      for (c in board.values()) {
         if (c != empty){
           return false;
         }
@@ -211,7 +211,7 @@ actor {
     flexible func score(board: Board) : (Nat, Nat) {
       var wc = 0;
       var bc = 0;
-      for (c in board.vals()) {
+      for (c in board.values()) {
         if (c == white) {
           wc += 1;
         }

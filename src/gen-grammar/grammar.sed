@@ -12,7 +12,7 @@ s/<id>/ID/g
 /^<parse_module_header> ::=/,+2d
 /^<stab_field> ::=/,+2d
 /^<typ_dec> ::=/,+2d
-/^<parse_stab_sig> ::=/,+2d
+/^<parse_stab_sig> ::=/,+5d
 /.*PRIM.*/d
 /^<bl> ::=/,+2d
 /^<ob> ::=/,+2d

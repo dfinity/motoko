@@ -252,7 +252,7 @@ let days = ["Monday", "Tuesday", … ];
 assert(days.len() == 7);
 assert(days[1] == "Tuesday");
 // days[7] will trap (fixed size)
-for (d in days.vals()) { Debug.print(d) };
+for (d in days.values()) { Debug.print(d) };
 ```
 
 ## Arrays (mutable)

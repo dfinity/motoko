@@ -131,6 +131,9 @@ module MakeState() = struct
             | Write -> []),
            t1, args ts)
        | _ -> assert false)
+    | Named (n, t) ->
+      (* drop name, Candid only allows names on function argument and return types *)
+      (typ t).it
     | Func _
     | Async _
     | Mut _
@@ -152,7 +155,18 @@ module MakeState() = struct
         I.{label = I.Unnamed id @@ no_region; typ = typ x} @@ no_region
       ) ts
   and args ts =
-    List.map typ ts
+    List.map arg_typ ts
+  and arg_typ t =
+    match t with
+    | Named (name, t) ->
+       let open Idllib.Escape in
+       (match unescape name with
+       | Nat nat ->
+          I.{name= None; typ = typ t} @@ no_region
+       | Id id ->
+          I.{name= Some (id @@ no_region); typ = typ t} @@ no_region)
+    | t ->
+      I.{name= None; typ = typ t} @@ no_region
   and meths fs =
     List.fold_right (fun f list ->
         match f.typ with
@@ -192,7 +206,7 @@ module MakeState() = struct
     | ActorClassU _ ->
        (match normalize cub.note.note_typ with
         | Func (Local _, Returns, [tb], ts1, [t2]) ->
-          let args = List.map typ (List.map (open_ [Non]) ts1) in
+          let args = List.map arg_typ (List.map (open_ [Non]) ts1) in
           let (_, _, rng) = as_async (normalize (open_ [Non] t2)) in
           let actor = typ rng in
           Some (I.ClassT (args, actor) @@ cub.at)
@@ -218,9 +232,9 @@ let of_actor_type t : I.prog =
   let prog = I.{decs; actor} in
   {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
 
-let of_service_type ts t : I.typ list * I.prog =
+let of_service_type ts t : I.arg_typ list * I.prog =
   let open MakeState() in
-  let args = List.map typ ts  in
+  let args = List.map arg_typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs; actor} in

@@ -103,7 +103,7 @@ pat-subtyping-fail.mo:151.16-151.29: type error [M0117], pattern of type
 cannot consume expected type
   Int
 pat-subtyping-fail.mo:157.11-157.29: type error [M0096], expression of type
-  Nat -> ()
+  (x : Nat) -> ()
 cannot produce expected type
   Int -> ()
 pat-subtyping-fail.mo:160.18-160.25: type error [M0117], pattern of type

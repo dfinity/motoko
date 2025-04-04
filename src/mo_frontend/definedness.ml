@@ -82,7 +82,7 @@ let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
+  | CallE (par_opt, e1, _ts, e2) -> eagerify (Option.to_list par_opt @ [e1; e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (_, e)
   | RetE e
@@ -90,7 +90,11 @@ let rec exp msgs e : f = match e.it with
   (* Uses are delayed by function expressions *)
   | FuncE (_, sp, tp, p, t, _, _, e) ->
     delayify ((exp msgs e /// pat msgs p) /// shared_pat msgs sp)
-  | ObjBlockE (s, (self_id_opt, _), dfs) ->
+  | ObjBlockE (eo, s, (self_id_opt, _), dfs) ->
+    (* TBR: treatment of eo *)
+    (match eo with
+     | None -> M.empty
+     | Some e1 -> eagerify (exp msgs e1)) ++
     group msgs (add_self self_id_opt s (dec_fields msgs dfs))
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _
@@ -115,6 +119,7 @@ let rec exp msgs e : f = match e.it with
   | OrE (e1, e2)
   | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
+  | AsyncE (Some par, _, _, e) -> exps msgs [par; e]
   | UnE (_, _, e)
   | ShowE (_, e)
   | FromCandidE e
@@ -124,7 +129,7 @@ let rec exp msgs e : f = match e.it with
   | OldE e
   | LabelE (_, _, e)
   | DebugE e
-  | AsyncE (_, _, e)
+  | AsyncE (None, _, _, e)
   | AwaitE (_, e)
   | AssertE (_, e)
   | AnnotE (e, _)
@@ -177,8 +182,14 @@ and dec msgs d = match d.it with
   | LetD (p, e, Some f) -> pat msgs p +++ exp msgs e +++ exp msgs f
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
-  | ClassD (csp, i, tp, p, t, s, i', dfs, _) ->
-    (M.empty, S.singleton i.it) +++ delayify (
+  | ClassD (eo, csp, s, i, tp, p, t, i', dfs, _) ->
+     ((M.empty, S.singleton i.it) +++
+     (* TBR: treatment of eo *)
+     (match eo with
+      | None -> M.empty
+      | Some e -> delayify (exp msgs e /// shared_pat msgs csp))
+     ) +++
+     delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
 

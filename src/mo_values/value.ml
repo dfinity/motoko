@@ -58,7 +58,7 @@ and value =
   | Async of async
   | Comp of comp
   | Mut of value ref
-  | Iter of value Seq.t ref (* internal to {b.vals(), t.chars()} iterator *)
+  | Iter of value Seq.t ref (* internal to {b.values(), t.chars()} iterator *)
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}

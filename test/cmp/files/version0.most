@@ -1,0 +1,6 @@
+// Version: 1.0.0
+actor {
+  stable var one : [var Nat];
+  stable var two : [var Text];
+  stable var zero : Nat
+};

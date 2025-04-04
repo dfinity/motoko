@@ -27,9 +27,9 @@ Usage:
 import Random "mo:base/Random";
 ```
 
-## Value `blob`
+## Function `blob`
 ``` motoko no-repl
-let blob : shared () -> async Blob
+func blob() : async Blob
 ```
 
 Obtains a full blob (32 bytes) worth of fresh entropy.

@@ -16,11 +16,11 @@ actor class Cloneable(
   public func someMethod() : async () {
     state += 1;
     Prim.debugPrint(debug_show(state));
+    Prim.debugPrint(debug_show Cycles.available());
   };
 
   // our clone methods, indirecting through makeCloneable
   public func clone(init : Nat) : async Cloneable {
-    Cycles.add<system>(Cycles.balance() / 2);
-    await makeCloneable(init : Nat);
+      await (with cycles = Cycles.balance() / 2) makeCloneable init;
   }
 }

@@ -2,6 +2,7 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 debug.print: init'ed
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 0
+debug.print: initial subnet: fscpm-uiaaa-aaaaa-aaaap-yai
 debug.print: initial version: 2
 ingress Completed: Reply: 0x4449444c0000
 debug.print: a

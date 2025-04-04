@@ -1,0 +1,7 @@
+// Version: 1.0.0
+type NewCard = {description : Text; title : Text};
+type OldCard = {title : Text};
+actor {
+  stable var map : [(Nat32, OldCard)];
+  stable var newMap : [(Nat32, NewCard)]
+};

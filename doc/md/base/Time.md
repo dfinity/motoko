@@ -8,9 +8,9 @@ type Time = Int
 
 System time is represent as nanoseconds since 1970-01-01.
 
-## Value `now`
+## Function `now`
 ``` motoko no-repl
-let now : () -> Time
+func now() : Time
 ```
 
 Current system time given as nanoseconds since 1970-01-01. The system guarantees that:

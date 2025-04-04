@@ -27,9 +27,9 @@ Example:
 Nat8.maximumValue; // => 255 : Nat8
 ```
 
-## Value `toNat`
+## Function `toNat`
 ``` motoko no-repl
-let toNat : Nat8 -> Nat
+func toNat(_ : Nat8) : Nat
 ```
 
 Converts an 8-bit unsigned integer to an unsigned integer with infinite precision.
@@ -39,9 +39,9 @@ Example:
 Nat8.toNat(123); // => 123 : Nat
 ```
 
-## Value `fromNat`
+## Function `fromNat`
 ``` motoko no-repl
-let fromNat : Nat -> Nat8
+func fromNat(_ : Nat) : Nat8
 ```
 
 Converts an unsigned integer with infinite precision to an 8-bit unsigned integer.
@@ -53,9 +53,9 @@ Example:
 Nat8.fromNat(123); // => 123 : Nat8
 ```
 
-## Value `fromNat16`
+## Function `fromNat16`
 ``` motoko no-repl
-let fromNat16 : Nat16 -> Nat8
+func fromNat16(_ : Nat16) : Nat8
 ```
 
 Converts a 16-bit unsigned integer to a 8-bit unsigned integer.
@@ -67,9 +67,9 @@ Example:
 Nat8.fromNat16(123); // => 123 : Nat8
 ```
 
-## Value `toNat16`
+## Function `toNat16`
 ``` motoko no-repl
-let toNat16 : Nat8 -> Nat16
+func toNat16(_ : Nat8) : Nat16
 ```
 
 Converts an 8-bit unsigned integer to a 16-bit unsigned integer.
@@ -79,9 +79,9 @@ Example:
 Nat8.toNat16(123); // => 123 : Nat16
 ```
 
-## Value `fromIntWrap`
+## Function `fromIntWrap`
 ``` motoko no-repl
-let fromIntWrap : Int -> Nat8
+func fromIntWrap(_ : Int) : Nat8
 ```
 
 Converts a signed integer with infinite precision to an 8-bit unsigned integer.
@@ -598,9 +598,9 @@ Example:
 Nat8.bitflip(5, 2); // => 1
 ```
 
-## Value `bitcountNonZero`
+## Function `bitcountNonZero`
 ``` motoko no-repl
-let bitcountNonZero : (x : Nat8) -> Nat8
+func bitcountNonZero(x : Nat8) : Nat8
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -610,9 +610,9 @@ Example:
 Nat8.bitcountNonZero(5); // => 2
 ```
 
-## Value `bitcountLeadingZero`
+## Function `bitcountLeadingZero`
 ``` motoko no-repl
-let bitcountLeadingZero : (x : Nat8) -> Nat8
+func bitcountLeadingZero(x : Nat8) : Nat8
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -622,9 +622,9 @@ Example:
 Nat8.bitcountLeadingZero(5); // => 5
 ```
 
-## Value `bitcountTrailingZero`
+## Function `bitcountTrailingZero`
 ``` motoko no-repl
-let bitcountTrailingZero : (x : Nat8) -> Nat8
+func bitcountTrailingZero(x : Nat8) : Nat8
 ```
 
 Returns the count of trailing zero bits in `x`.

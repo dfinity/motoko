@@ -27,9 +27,9 @@ Example:
 Nat64.maximumValue; // => 18446744073709551615 : Nat64
 ```
 
-## Value `toNat`
+## Function `toNat`
 ``` motoko no-repl
-let toNat : Nat64 -> Nat
+func toNat(_ : Nat64) : Nat
 ```
 
 Converts a 64-bit unsigned integer to an unsigned integer with infinite precision.
@@ -39,9 +39,9 @@ Example:
 Nat64.toNat(123); // => 123 : Nat
 ```
 
-## Value `fromNat`
+## Function `fromNat`
 ``` motoko no-repl
-let fromNat : Nat -> Nat64
+func fromNat(_ : Nat) : Nat64
 ```
 
 Converts an unsigned integer with infinite precision to a 64-bit unsigned integer.
@@ -79,9 +79,9 @@ Example:
 Nat64.toNat32(123); // => 123 : Nat32
 ```
 
-## Value `fromIntWrap`
+## Function `fromIntWrap`
 ``` motoko no-repl
-let fromIntWrap : Int -> Nat64
+func fromIntWrap(_ : Int) : Nat64
 ```
 
 Converts a signed integer with infinite precision to a 64-bit unsigned integer.
@@ -598,9 +598,9 @@ Example:
 Nat64.bitflip(5, 2); // => 1
 ```
 
-## Value `bitcountNonZero`
+## Function `bitcountNonZero`
 ``` motoko no-repl
-let bitcountNonZero : (x : Nat64) -> Nat64
+func bitcountNonZero(x : Nat64) : Nat64
 ```
 
 Returns the count of non-zero bits in `x`.
@@ -610,9 +610,9 @@ Example:
 Nat64.bitcountNonZero(5); // => 2
 ```
 
-## Value `bitcountLeadingZero`
+## Function `bitcountLeadingZero`
 ``` motoko no-repl
-let bitcountLeadingZero : (x : Nat64) -> Nat64
+func bitcountLeadingZero(x : Nat64) : Nat64
 ```
 
 Returns the count of leading zero bits in `x`.
@@ -622,9 +622,9 @@ Example:
 Nat64.bitcountLeadingZero(5); // => 61
 ```
 
-## Value `bitcountTrailingZero`
+## Function `bitcountTrailingZero`
 ``` motoko no-repl
-let bitcountTrailingZero : (x : Nat64) -> Nat64
+func bitcountTrailingZero(x : Nat64) : Nat64
 ```
 
 Returns the count of trailing zero bits in `x`.

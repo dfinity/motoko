@@ -3,4 +3,4 @@ type _anon_class_2_1 =
    dec: () -> () oneway;
    read: () -> (int);
  };
-service : (int, nat) -> _anon_class_2_1
+service : (i: int, step: nat) -> _anon_class_2_1

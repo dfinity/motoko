@@ -68,14 +68,14 @@ module {
   public func account_key(t: Principal) : Trie.Key<Principal> = { key = t; hash = Principal.hash t };
   public func accounts_fromArray(arr: [Account]) : Trie.Trie<Principal, Tokens> {
       var s = Trie.empty<Principal, Tokens>();
-      for (account in arr.vals()) {
+      for (account in arr.values()) {
           s := Trie.put(s, account_key(account.owner), Principal.equal, account.tokens).0;
       };
       s
   };
   public func proposals_fromArray(arr: [Proposal]) : Trie.Trie<Nat, Proposal> {
       var s = Trie.empty<Nat, Proposal>();
-      for (proposal in arr.vals()) {
+      for (proposal in arr.values()) {
           s := Trie.put(s, proposal_key(proposal.id), Nat.equal, proposal).0;
       };
       s

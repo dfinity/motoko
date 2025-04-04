@@ -209,11 +209,6 @@ struct
     else
       None
 
-  let starts_with prefix s = (* in OCaml 4.13 *)
-    match chop_prefix prefix s with
-    | Some _ -> true
-    | _ -> false
-
   let chop_suffix suffix s =
     let suffix_len = String.length suffix in
     let s_len = String.length s in
@@ -527,13 +522,6 @@ struct
     let set a i x = Array1.set a (index_of_int64 i) x
     let sub a i n = Array1.sub a (index_of_int64 i) (index_of_int64 n)
   end
-end
-
-module Seq =
-struct
-  let rec for_all p s = match s () with
-    | Seq.Nil -> true
-    | Seq.Cons (x, s') -> p x && for_all p s'
 end
 
 module Option =

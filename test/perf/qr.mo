@@ -82,7 +82,7 @@ actor QR {
       (#Version 1, #Q, #Alphanumeric, "HELLO WORLD"),
       (#Version 2, #M, #Alphanumeric, "HTTPS://SDK.DFINITY.ORG"),
     ];
-    for ((version, level, mode, text) in tests.vals())  {
+    for ((version, level, mode, text) in tests.values())  {
       let result = await QR.encode(version, level, mode, text);
       Prelude.printLn(switch result {
         case (?matrix) "\n" # (await QR.show(matrix));

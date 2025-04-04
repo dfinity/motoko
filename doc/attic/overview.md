@@ -370,7 +370,7 @@ assert(days[1] == "Tue");
 
 // days[7] will trap (fixed size)
 
-for (d in days.vals()) { Debug.print(d) };
+for (d in days.values()) { Debug.print(d) };
 ```
 
 ## Arrays (mutable)
@@ -623,7 +623,7 @@ actor Broadcast {
 
   public func send(t : Text) : async Nat {
     var sum = 0;
-    for (a in r.vals()) {
+    for (a in r.values()) {
       sum += await a.recv(t);
     };
     return sum;
@@ -650,7 +650,7 @@ if the result is an `Error`, `throw`s the error.
 ``` motoko no-repl
   public func send(t : Text) : async Nat {
     var sum = 0;
-    for (a in r.vals()) {
+    for (a in r.values()) {
       sum += await a.recv(t); // may return Nat or `throw` error
     };
     return sum;
@@ -670,7 +670,7 @@ A bad implementation of `send`:
   var sum = 0; // shared state!
   public func send(t : Text) : async Nat {
     sum := 0;
-    for (a in r.vals()) {
+    for (a in r.values()) {
       sum += await a.recv(t);
     };
     return sum;

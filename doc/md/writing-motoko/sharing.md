@@ -52,7 +52,7 @@ persistent actor Publisher {
   };
 
   public func publish() {
-    for (sub in subs.vals()) {
+    for (sub in subs.values()) {
       sub.notify();
     };
   };
@@ -167,7 +167,7 @@ persistent actor Publisher {
   };
 
   public func publish() {
-    for (sub in subs.vals()) {
+    for (sub in subs.values()) {
       sub.callback();
     };
   };

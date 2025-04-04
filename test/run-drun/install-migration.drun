@@ -1,0 +1,5 @@
+# SKIP ic-ref-run
+install $ID install-migration/actor.mo ""
+reinstall $ID install-migration/actor.mo ""
+
+

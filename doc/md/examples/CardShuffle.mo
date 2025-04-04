@@ -63,7 +63,7 @@ persistent actor {
   public query func show() : async Text {
     let ?cards = deck else throw Error.reject("shuffle in progress");
     var t = "";
-    for (card in cards.vals()) {
+    for (card in cards.values()) {
        t #= Char.toText(card);
     };
     t;

@@ -20,7 +20,7 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
   | BreakE (x, exp1) -> f { exp with it = BreakE (x, over_exp f exp1) }
   | RetE exp1 -> f { exp with it = RetE (over_exp f exp1) }
   | AnnotE (exp1, x) -> f { exp with it = AnnotE (over_exp f exp1, x) }
-  | AsyncE (s, tb, exp1) -> f { exp with it = AsyncE (s, tb, over_exp f exp1) }
+  | AsyncE (par, s, tb, exp1) -> f { exp with it = AsyncE (Option.map (over_exp f) par, s, tb, over_exp f exp1) }
   | AwaitE (s, exp1) -> f { exp with it = AwaitE (s, over_exp f exp1) }
   | ThrowE exp1 -> f { exp with it = ThrowE (over_exp f exp1) }
   | BinE (x, exp1, y, exp2) ->
@@ -31,8 +31,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = RelE (x, over_exp f exp1, y, over_exp f exp2) }
   | AssignE (exp1, exp2) ->
      f { exp with it = AssignE (over_exp f exp1, over_exp f exp2) }
-  | CallE (exp1, x, exp2) ->
-     f { exp with it = CallE (over_exp f exp1, x, over_exp f exp2) }
+  | CallE (par_opt, exp1, x, exp2) ->
+     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, over_exp f exp2) }
   | AndE (exp1, exp2) ->
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
@@ -54,8 +54,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = ArrayE (x, List.map (over_exp f) exps) }
   | BlockE ds ->
      f { exp with it = BlockE (List.map (over_dec f) ds) }
-  | ObjBlockE (x, t, dfs) ->
-     f { exp with it = ObjBlockE (x, t, List.map (over_dec_field f) dfs) }
+  | ObjBlockE (eo, s, t, dfs) ->
+     f { exp with it = ObjBlockE (Option.map (over_exp f) eo, s, t, List.map (over_dec_field f) dfs) }
   | ObjE (bases, efs) ->
      f { exp with it = ObjE (List.map (over_exp f) bases, List.map (over_exp_field f) efs) }
   | IfE (exp1, exp2, exp3) ->
@@ -76,8 +76,8 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
      { d with it = VarD (x, over_exp f e)}
   | LetD (x, e, fail) ->
      { d with it = LetD (x, over_exp f e, Option.map (over_exp f) fail)}
-  | ClassD (sp, cid, tbs, p, t_o, s, id, dfs, context) ->
-     { d with it = ClassD (sp, cid, tbs, p, t_o, s, id, List.map (over_dec_field f) dfs, context)}
+  | ClassD (e_o, sp, s, cid, tbs, p, t_o, id, dfs, context) ->
+     { d with it = ClassD (Option.map (over_exp f) e_o, sp, s, cid, tbs, p, t_o, id, List.map (over_dec_field f) dfs, context)}
 
 and over_dec_field (f : exp -> exp) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec f df.it.dec } }

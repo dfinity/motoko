@@ -23,5 +23,5 @@ $didc check count-v4.did count-v2.did && echo "ok"
 
 moc --stable-compatible count-v0.most count-v1.most && echo "ok"
 moc --stable-compatible count-v1.most count-v2.most && echo "ok"
-moc --stable-compatible count-v2.most count-v3.most || echo "noway"
-moc --stable-compatible count-v2.most count-v4.most && echo "ok"
+moc --stable-compatible count-v2.most count-v3.most && echo "ok"
+moc --stable-compatible count-v2.most count-v4.most || echo "noway"

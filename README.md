@@ -1,4 +1,4 @@
-# [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/Building.md)
+# [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/.github/CONTRIBUTING.md)
 
 
 A safe, simple, actor-based programming language for building [Internet Computer](https://internetcomputer.org/) (ICP) canister smart contracts.
@@ -49,7 +49,8 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Base library](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
 * [Example projects](https://github.com/dfinity/examples/tree/master/motoko)
-* [Motoko Playground](https://github.com/dfinity/motoko-playground) &middot; ([online IDE](https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app))
+* [ICP Ninja, online authoring of canisters](https://icp.ninja)
+* [Motoko Playground](https://github.com/dfinity/motoko-playground) &middot; (DEPRECATED — [online IDE](https://play.motoko.org))
 * [Embed Motoko code snippets](https://github.com/dfinity/embed-motoko) &middot; ([online interpreter](https://embed.smartcontracts.org/))
 * [VS Code extension](https://github.com/dfinity/vscode-motoko) &middot; ([install](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko))
 * [Browser and Node.js bindings](https://github.com/dfinity/node-motoko) &middot; ([npm package](https://www.npmjs.com/package/motoko))
@@ -64,4 +65,4 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## Contributing
 
-See our [contribution guidelines](.github/CONTRIBUTING.md) and [code of conduct](.github/CODE_OF_CONDUCT.md) to get started.
+See our [contribution guidelines](.github/CONTRIBUTING.md), [code of conduct](.github/CODE_OF_CONDUCT.md) and [build instructions](Building.md) to get started.

@@ -69,7 +69,7 @@ actor a {
 
   public func iter() : async () {
 
-     for (amount in tests.vals()) {
+     for (amount in tests.values()) {
        Prim.debugPrint(debug_show {balance = balance()});
        if (balance() < amount) {
          await provisional_top_up_actor(a, amount - balance());

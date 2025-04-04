@@ -1,0 +1,45 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Version 0
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {one = [var 1]; two = [var "1"]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {three = [var (1, "1")]}; old = {one = [var 1]; two = [var "1"]}}}
+debug.print: Version 1
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {three = [var (1, "1")]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 1
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {three = [var (1, "1")]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {four = [var (1, "1")]}; old = {three = [var (1, "1")]}}}
+debug.print: Version 2
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var (1, "1")]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 2
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var (1, "1")]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {four = [var ("1", 1)]}; old = {four = [var (1, "1")]}}}
+debug.print: Version 3
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var ("1", 1)]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 3
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var ("1", 1)]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {migration = {new = {four = [var ("1", 1, false)]}; old = {four = [var ("1", 1)]}}}
+debug.print: Version 4
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var ("1", 1, false)]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 4
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var ("1", 1, false)]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000
+debug.print: Version 5
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {four = [var ("1", 1, false)]; zero = 0}
+ingress Completed: Reply: 0x4449444c0000

@@ -84,9 +84,9 @@ import Float "mo:base/Float";
 Float.isNaN(0.0/0.0) // => true
 ```
 
-## Value `abs`
+## Function `abs`
 ``` motoko no-repl
-let abs : (x : Float) -> Float
+func abs(x : Float) : Float
 ```
 
 Returns the absolute value of `x`.
@@ -106,9 +106,9 @@ import Float "mo:base/Float";
 Float.abs(-1.2) // => 1.2
 ```
 
-## Value `sqrt`
+## Function `sqrt`
 ``` motoko no-repl
-let sqrt : (x : Float) -> Float
+func sqrt(x : Float) : Float
 ```
 
 Returns the square root of `x`.
@@ -128,9 +128,9 @@ import Float "mo:base/Float";
 Float.sqrt(6.25) // => 2.5
 ```
 
-## Value `ceil`
+## Function `ceil`
 ``` motoko no-repl
-let ceil : (x : Float) -> Float
+func ceil(x : Float) : Float
 ```
 
 Returns the smallest integral float greater than or equal to `x`.
@@ -151,9 +151,9 @@ import Float "mo:base/Float";
 Float.ceil(1.2) // => 2.0
 ```
 
-## Value `floor`
+## Function `floor`
 ``` motoko no-repl
-let floor : (x : Float) -> Float
+func floor(x : Float) : Float
 ```
 
 Returns the largest integral float less than or equal to `x`.
@@ -174,9 +174,9 @@ import Float "mo:base/Float";
 Float.floor(1.2) // => 1.0
 ```
 
-## Value `trunc`
+## Function `trunc`
 ``` motoko no-repl
-let trunc : (x : Float) -> Float
+func trunc(x : Float) : Float
 ```
 
 Returns the nearest integral float not greater in magnitude than `x`.
@@ -198,9 +198,9 @@ import Float "mo:base/Float";
 Float.trunc(2.75) // => 2.0
 ```
 
-## Value `nearest`
+## Function `nearest`
 ``` motoko no-repl
-let nearest : (x : Float) -> Float
+func nearest(x : Float) : Float
 ```
 
 Returns the nearest integral float to `x`.
@@ -223,9 +223,9 @@ import Float "mo:base/Float";
 Float.nearest(2.75) // => 3.0
 ```
 
-## Value `copySign`
+## Function `copySign`
 ``` motoko no-repl
-let copySign : (x : Float, y : Float) -> Float
+func copySign(x : Float, y : Float) : Float
 ```
 
 Returns `x` if `x` and `y` have same sign, otherwise `x` with negated sign.
@@ -239,9 +239,9 @@ import Float "mo:base/Float";
 Float.copySign(1.2, -2.3) // => -1.2
 ```
 
-## Value `min`
+## Function `min`
 ``` motoko no-repl
-let min : (x : Float, y : Float) -> Float
+func min(x : Float, y : Float) : Float
 ```
 
 Returns the smaller value of `x` and `y`.
@@ -259,9 +259,9 @@ import Float "mo:base/Float";
 Float.min(1.2, -2.3) // => -2.3 (with numerical imprecision)
 ```
 
-## Value `max`
+## Function `max`
 ``` motoko no-repl
-let max : (x : Float, y : Float) -> Float
+func max(x : Float, y : Float) : Float
 ```
 
 Returns the larger value of `x` and `y`.
@@ -279,9 +279,9 @@ import Float "mo:base/Float";
 Float.max(1.2, -2.3) // => 1.2
 ```
 
-## Value `sin`
+## Function `sin`
 ``` motoko no-repl
-let sin : (x : Float) -> Float
+func sin(x : Float) : Float
 ```
 
 Returns the sine of the radian angle `x`.
@@ -300,9 +300,9 @@ import Float "mo:base/Float";
 Float.sin(Float.pi / 2) // => 1.0
 ```
 
-## Value `cos`
+## Function `cos`
 ``` motoko no-repl
-let cos : (x : Float) -> Float
+func cos(x : Float) : Float
 ```
 
 Returns the cosine of the radian angle `x`.
@@ -321,9 +321,9 @@ import Float "mo:base/Float";
 Float.cos(Float.pi / 2) // => 0.0 (with numerical imprecision)
 ```
 
-## Value `tan`
+## Function `tan`
 ``` motoko no-repl
-let tan : (x : Float) -> Float
+func tan(x : Float) : Float
 ```
 
 Returns the tangent of the radian angle `x`.
@@ -342,9 +342,9 @@ import Float "mo:base/Float";
 Float.tan(Float.pi / 4) // => 1.0 (with numerical imprecision)
 ```
 
-## Value `arcsin`
+## Function `arcsin`
 ``` motoko no-repl
-let arcsin : (x : Float) -> Float
+func arcsin(x : Float) : Float
 ```
 
 Returns the arc sine of `x` in radians.
@@ -363,9 +363,9 @@ import Float "mo:base/Float";
 Float.arcsin(1.0) // => Float.pi / 2
 ```
 
-## Value `arccos`
+## Function `arccos`
 ``` motoko no-repl
-let arccos : (x : Float) -> Float
+func arccos(x : Float) : Float
 ```
 
 Returns the arc cosine of `x` in radians.
@@ -384,9 +384,9 @@ import Float "mo:base/Float";
 Float.arccos(1.0) // => 0.0
 ```
 
-## Value `arctan`
+## Function `arctan`
 ``` motoko no-repl
-let arctan : (x : Float) -> Float
+func arctan(x : Float) : Float
 ```
 
 Returns the arc tangent of `x` in radians.
@@ -405,9 +405,9 @@ import Float "mo:base/Float";
 Float.arctan(1.0) // => Float.pi / 4
 ```
 
-## Value `arctan2`
+## Function `arctan2`
 ``` motoko no-repl
-let arctan2 : (y : Float, x : Float) -> Float
+func arctan2(y : Float, x : Float) : Float
 ```
 
 Given `(y,x)`, returns the arc tangent in radians of `y/x` based on the signs of both values to determine the correct quadrant.
@@ -434,9 +434,9 @@ let sqrt2over2 = Float.sqrt(2) / 2;
 Float.arctan2(sqrt2over2, sqrt2over2) // => Float.pi / 4
 ```
 
-## Value `exp`
+## Function `exp`
 ``` motoko no-repl
-let exp : (x : Float) -> Float
+func exp(x : Float) : Float
 ```
 
 Returns the value of `e` raised to the `x`-th power.
@@ -455,9 +455,9 @@ import Float "mo:base/Float";
 Float.exp(1.0) // => Float.e
 ```
 
-## Value `log`
+## Function `log`
 ``` motoko no-repl
-let log : (x : Float) -> Float
+func log(x : Float) : Float
 ```
 
 Returns the natural logarithm (base-`e`) of `x`.
@@ -506,9 +506,9 @@ import Float "mo:base/Float";
 Float.format(#exp 3, 123.0) // => "1.230e+02"
 ```
 
-## Value `toText`
+## Function `toText`
 ``` motoko no-repl
-let toText : Float -> Text
+func toText(_ : Float) : Text
 ```
 
 Conversion to Text. Use `format(fmt, x)` for more detailed control.
@@ -525,9 +525,9 @@ import Float "mo:base/Float";
 Float.toText(0.12) // => "0.12"
 ```
 
-## Value `toInt64`
+## Function `toInt64`
 ``` motoko no-repl
-let toInt64 : Float -> Int64
+func toInt64(_ : Float) : Int64
 ```
 
 Conversion to Int64 by truncating Float, equivalent to `toInt64(trunc(f))`
@@ -542,9 +542,9 @@ import Float "mo:base/Float";
 Float.toInt64(-12.3) // => -12
 ```
 
-## Value `fromInt64`
+## Function `fromInt64`
 ``` motoko no-repl
-let fromInt64 : Int64 -> Float
+func fromInt64(_ : Int64) : Float
 ```
 
 Conversion from Int64.
@@ -558,9 +558,9 @@ import Float "mo:base/Float";
 Float.fromInt64(-42) // => -42.0
 ```
 
-## Value `toInt`
+## Function `toInt`
 ``` motoko no-repl
-let toInt : Float -> Int
+func toInt(_ : Float) : Int
 ```
 
 Conversion to Int.
@@ -574,9 +574,9 @@ import Float "mo:base/Float";
 Float.toInt(1.2e6) // => +1_200_000
 ```
 
-## Value `fromInt`
+## Function `fromInt`
 ``` motoko no-repl
-let fromInt : Int -> Float
+func fromInt(_ : Int) : Float
 ```
 
 Conversion from Int. May result in `Inf`.

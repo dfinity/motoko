@@ -3,7 +3,7 @@ import Prim "mo:prim";
 actor {
   let temporary = 1;
 
-  let blobiter = ("hello" : Blob).vals();
+  let blobiter = ("hello" : Blob).values();
 
   stable let value : {
     stableField : Text;

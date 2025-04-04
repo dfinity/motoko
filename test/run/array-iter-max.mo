@@ -3,7 +3,7 @@ import Prim "mo:⛔";
 let max_size = 2**29; // maximum array size
 let a = Prim.Array_tabulate<Nat>(max_size,func i = i+1);
 var c = 0;
-for (i in a.vals()) {
+for (i in a.values()) {
   assert i == c+1; c += 1;
 }
 ;
