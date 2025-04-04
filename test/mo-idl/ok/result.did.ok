@@ -24,6 +24,6 @@ type Result =
    ok;
  };
 service : {
-  f: (opt nat) -> (Result_1);
-  g: (Result3) -> (Result2_1);
+  f: (x: opt nat) -> (Result_1);
+  g: (_x: Result3) -> (Result2_1);
 }

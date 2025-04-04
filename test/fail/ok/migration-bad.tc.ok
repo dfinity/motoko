@@ -1,7 +1,7 @@
 migration-bad.mo:3.7-3.21: type error [M0203], expected non-generic, local function type, but migration expression produces type
   ()
 migration-bad.mo:7.7-7.40: type error [M0203], expected non-generic, local function type, but migration expression produces type
-  <T>T -> T
+  <T>(x : T) -> T
 migration-bad.mo:11.7-11.36: type error [M0202], expected object type, but migration expression consumes non-object type
   ()
 migration-bad.mo:15.7-15.36: type error [M0202], expected object type, but migration expression produces non-object type
