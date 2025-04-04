@@ -4713,6 +4713,7 @@ module IC = struct
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
+      let i = I64Type in
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
@@ -4738,7 +4739,15 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
       E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
-      E.add_func_import env "ic0" "cost_create_canister" [I64Type] [];
+
+      (* Cost *)
+      E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_create_canister" [i] [];
+      E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
+      E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
+      (* E.add_func_import env "ic0" "cost_vetkd_derive_encrypted_key" [i; i; I32Type; i] [I32Type]; *)
+
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];

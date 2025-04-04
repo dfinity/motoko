@@ -5056,6 +5056,7 @@ module IC = struct
     G.i (Call (nr (E.built_in env get_actor_to_persist_function_name)))
 
   let import_ic0 env =
+      let i = I32Type in
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
@@ -5081,7 +5082,15 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
       E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
-      E.add_func_import env "ic0" "cost_create_canister" [I32Type] [];
+
+      (* Cost *)
+      E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_create_canister" [i] [];
+      E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
+      E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
+      (* E.add_func_import env "ic0" "cost_vetkd_derive_encrypted_key" [i; i; I32Type; i] [I32Type]; *)
+
       E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
@@ -5572,12 +5581,13 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 
-  let cost_create_canister env =
-    match E.mode env with
-    | Flags.(ICMode | RefMode) ->
-      system_call env "cost_create_canister"
-    | _ ->
-      E.trap_with env "cannot get cost of create canister when running locally"
+  (* Cost *)
+  let cost_call = ic_system_call "cost_call"
+  let cost_create_canister = ic_system_call "cost_create_canister"
+  let cost_http_request = ic_system_call "cost_http_request"
+  let cost_sign_with_ecdsa = ic_system_call "cost_sign_with_ecdsa"
+  let cost_sign_with_schnorr = ic_system_call "cost_sign_with_schnorr"
+  let cost_vetkd_derive_encrypted_key = ic_system_call "cost_vetkd_derive_encrypted_key"
 
   let set_certified_data env =
     match E.mode env with
