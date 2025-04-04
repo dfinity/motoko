@@ -2,6 +2,7 @@
 
 * motoko (`moc`)
 
+  * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
 
   * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
     The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
