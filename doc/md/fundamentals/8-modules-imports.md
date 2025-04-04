@@ -1,0 +1,183 @@
+---
+sidebar_position: 8
+---
+
+# Modules and imports
+
+Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach allows the language to evolve while maintaining simplicity.
+
+The base library is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+
+## Importing from the base library
+
+The Motoko base library includes common utilities for working with data structures, debugging, and other functionality.
+
+To import from the base library, use the `import` keyword, followed by the `mo:base/` module path:
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+
+Debug.print("Hello, world!");
+```
+
+The `mo:` prefix identifies a Motoko module. The declaration does not include the `.mo` file extension.
+
+## Importing specific functions
+
+Instead of importing an entire module, individual functions can be imported:
+
+```motoko no-repl
+import { equal } "mo:base/Nat";
+
+let result = equal(10, 10); // Returns true
+```
+
+Functions can also be renamed at import:
+
+```motoko no-repl
+import { map; find; foldLeft = fold } "mo:base/Array";
+```
+
+`map` and `find` are imported as-is, while `foldLeft` is renamed to `fold`.
+
+## Importing local files
+
+Projects often split code into multiple files for better organization. A common structure:
+
+```
+src/project_backend
+ ├── main.mo   // Contains the main actor
+ ├── types.mo  // Stores type definitions
+ ├── utils.mo  // Contains helper functions
+```
+
+To import local modules:
+
+```motoko no-repl
+import Types "types";
+import Utils "utils";
+```
+
+A prefix is not required for local imports and the `.mo` file extension is omitted. The imported modules must be in the same directory as `main.mo`.
+
+## Importing from another package or directory
+
+Modules can also be imported from other packages or subdirectories:
+
+```motoko no-repl
+import Render "mo:redraw/Render";
+import Mono5x5 "mo:redraw/glyph/Mono5x5";
+```
+
+The `redraw` package contains a `Render` module. The `Mono5x5` module is inside the `glyph/` subdirectory.
+
+
+## Importing packages from a package manager
+
+Dependencies are managed using a package manager or defined in `dfx.json`.
+
+
+Motoko supports package managers like Mops and Vessel to install third-party libraries.
+
+### Configuring the package manager in `dfx.json`
+
+```json
+{
+  "defaults": {
+    "build": {
+      "packtool": "mops sources"
+    }
+  }
+}
+```
+
+For Vessel, use `"vessel sources"`.
+
+### Installing a package with a package manager
+
+With Mops:
+
+```sh
+mops add vector
+```
+Then import the Mops package:
+
+``motoko no-repl
+import Vec "mo:vector";
+import Vec "mo:vector/Class";
+``
+
+With Vessel, add the package to `vessel.dhall`.
+
+## Importing actor classes
+
+When imported, an actor class provides a type definition describing the class interface and a function that returns an instance of the class.
+
+
+For example, if you define the following actor class:
+```motoko no-repl title="Counters.mo"
+persistent actor class Counter(init : Nat) {
+  var count = init;
+
+  public func inc() : async () { count += 1 };
+
+  public func read() : async Nat { count };
+
+  public func bump() : async Nat {
+    count += 1;
+    count;
+  };
+};
+```
+
+It can be imported into another file:
+
+```motoko no-repl
+import Counters "Counters";
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+persistent actor CountToTen {
+  public func countToTen() : async () {
+    let C : Counters.Counter = await Counters.Counter(1);
+    while ((await C.read()) < 10) {
+      Debug.print(Nat.toText(await C.read()));
+      await C.inc();
+    };
+  }
+};
+```
+
+`Counters.Counter(1)` installs a new counter on the network. Installation is asynchronous, so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
+
+## Importing from another canister
+
+Actors and their functions can be imported from other deployed canisters using the `canister:` prefix.
+
+
+```motoko no-repl
+import BigMap "canister:BigMap";
+import Connectd "canister:Connectd";
+```
+
+`BigMap` and `Connectd` are separate canisters defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
+
+Unlike a Motoko module, an imported canister:
+
+- Can be implemented in any language that emits a Candid interface.
+- Has its type derived from a `.did` file, not from Motoko itself.
+
+## Naming imported modules
+
+While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
+
+
+```motoko no-repl
+import List "mo:base/List";
+import Sequence "mo:collections/List";
+import L "mo:base/List";
+```
+
+`List` from Motoko's base library remains `List`. `List` from another package is renamed `Sequence`. `List` is also imported as `L` for convenience.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

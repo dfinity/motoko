@@ -1,0 +1,51 @@
+---
+sidebar_position: 10
+---
+
+# Comments  
+
+Motoko supports single-line, multi-line, and nested comments.
+
+## Single line
+
+Use `//` for comments that extend to the end of a line.
+
+```motoko no-repl
+// This is a single-line comment
+```
+
+Use `///` for function or module documentation.
+
+```motoko no-repl
+/// Returns the sum of two integers.
+func add(a: Int, b: Int): Int {
+  a + b
+}
+```
+
+## Multi-line
+
+Use `/* ... */` for block comments spanning multiple lines.
+
+```motoko no-repl
+/* This is a
+    multi-line comment */
+```
+
+## Nested
+
+Multi-line comments can be nested within each other.
+
+```motoko no-repl
+/* Outer comment
+    /* Nested comment */
+    End of outer comment */
+```
+
+## References
+
+- [Comment style guide](/docs/motoko/motoko-style#comments)
+
+- [Generating Motoko documentation](/docs/motoko/motoko-tooling/mo-doc)
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
