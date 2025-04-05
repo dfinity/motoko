@@ -1,7 +1,4 @@
-type Foo__2 = Foo;
-type Foo__1 = Foo;
 type Foo = variant {bla;};
-type Credit__2 = Credit__1_1;
 type Credit__1_1 = nat;
 type Credit__1 = nat;
 type Credit = nat;

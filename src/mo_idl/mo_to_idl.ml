@@ -11,6 +11,7 @@ module I = Idllib.Syntax
 module MakeState() = struct
 
   let env = ref Env.empty
+  let hide = ref Env.empty
 
   (* For monomorphization *)
   module Stamp = Type.ConEnv
@@ -102,7 +103,7 @@ module MakeState() = struct
               (if Env.mem id !env then
                  assert (pen.it = (Env.find id !env).it)
                else
-                 env := Env.add id pen !env);
+                 env := Env.add id pen !env; hide := Env.add id true !hide);
               pen.it
             | t ->
               let id = monomorphize_con ts c in
@@ -176,11 +177,11 @@ module MakeState() = struct
        let open Idllib.Escape in
        (match unescape name with
        | Nat nat ->
-          I.{name= None; typ = typ t} @@ no_region
+          I.{name = None; typ = typ t} @@ no_region
        | Id id ->
-          I.{name= Some (id @@ no_region); typ = typ t} @@ no_region)
+          I.{name = Some (id @@ no_region); typ = typ t} @@ no_region)
     | t ->
-      I.{name= None; typ = typ t} @@ no_region
+      I.{name = None; typ = typ t} @@ no_region
   and meths fs =
     List.fold_right (fun f list ->
         match f.typ with
@@ -205,6 +206,7 @@ module MakeState() = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
+        if Env.find_opt id !hide = Some true then list else
         (* TODO: pass corresponding Motoko source region? *)
         let dec = I.TypD (id @@ no_region, t) @@ no_region in
         dec::list
