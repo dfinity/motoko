@@ -6,6 +6,6 @@ type Credit__1_1 = nat;
 type Credit__1 = nat;
 type Credit = nat;
 service : {
-  get: () -> (Credit, Credit__1, Credit__2);
-  silly: (Foo__2, Foo__1, Foo, Foo) -> ();
+  get: () -> (Credit, Credit__1, Credit__1_1);
+  silly: (Foo, Foo, Foo, Foo) -> ();
 }
