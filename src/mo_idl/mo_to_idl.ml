@@ -97,7 +97,7 @@ module MakeState() = struct
 
 
             | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
-              let { it = I.VarT { it } } as pen = typ t in
+              let [@warning "-8-9"] { it = I.VarT { it } } as pen = typ t in
               let id = monomorphize_con ts c in
               (if Env.mem id !env then
                  assert (pen.it = (Env.find id !env).it)
