@@ -143,6 +143,18 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
       message:
         "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
     },
+    {
+        source: 'bad.mo',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 0 }
+        },
+        code: 'M0057',
+        category: 'type',
+        message: 'unbound variable __error_recovery_var__'
+      }
+
   ],
   code: null,
 });
@@ -158,9 +170,11 @@ assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
 // Check AST format
 const astFile = Motoko.readFile("ast.mo");
 for (const ast of [
-  Motoko.parseMotoko(astFile),
+  Motoko.parseMotoko(/*enable_recovery=*/false, astFile),
   Motoko.parseMotokoTyped(["ast.mo"]).code[0].ast,
-  Motoko.parseMotokoTypedWithScopeCache(["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/false, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotoko(/*enable_recovery=*/true, astFile),
+  Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
 ]) {
   const astString = JSON.stringify(ast);
 
@@ -233,3 +247,14 @@ assert.deepStrictEqual(Motoko.candid("ast.mo"), {
   ],
   code: candid,
 });
+
+// Check error recovery
+const badAstFile = Motoko.readFile("bad.mo");
+
+assert(Motoko.parseMotoko(/*enable_recovery=*/false, badAstFile).code == null);
+assert(Motoko.parseMotoko(/*enable_recovery=*/true, badAstFile).code != null);
+assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/false, ["bad.mo"], new Map()).code == null);
+
+// TODO: This requires avoid dropping 'code' field in all checks though all pipeline e.g. infer_prog
+// assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["bad.mo"], new Map()).code != null);
+

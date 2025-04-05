@@ -33,11 +33,11 @@ let () =
       method stableCompatible pre post = js_stable_compatible pre post
       method compileWasm mode s = Flags.compiled := true; js_compile_wasm mode s
       method parseCandid s = js_parse_candid s
-      (* The methods [parseMotoko{,WithDeps,Typed,TypedWithScopeCache}] exist
-         for backwards compability. They're mostly used by the language server. *)
-      method parseMotoko s = js_parse_motoko s
-      method parseMotokoWithDeps path s = js_parse_motoko_with_deps path s
+      method parseMotoko enableRecovery s = js_parse_motoko enableRecovery s
+      method parseMotokoWithDeps enableRecovery path s = js_parse_motoko_with_deps enableRecovery path s
+      (* The method [parseMotokoTyped] is saved for backward compability.
+         New versions of tooling should use [parseMotokoTypedWithScopeCache]. *)
       method parseMotokoTyped paths = js_parse_motoko_typed paths
-      method parseMotokoTypedWithScopeCache paths scopeCache = js_parse_motoko_typed_with_scope_cache paths scopeCache
+      method parseMotokoTypedWithScopeCache enableRecovery paths scopeCache = js_parse_motoko_typed_with_scope_cache enableRecovery paths scopeCache
       method printDeps file = print_deps file
      end);
