@@ -97,20 +97,34 @@ module MakeState() = struct
 
 
             | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
+              let { it = I.VarT { it } } as pen = typ t in
+              let id = monomorphize_con ts c in
+              (if Env.mem id !env then
+                 assert (Env.find id !env = pen)
+               else
+                 env := Env.add id pen !env);
+              pen.it
+               (*
                let rec follow pen = function
-                 | { it = I.VarT { it } } as t -> follow t (Env.find it !env)
-                 | t -> env := Env.add (monomorphize_con ts c) pen !env; I.VarT ((monomorphize_con ts c) @@ no_region) in
+                 | { it = I.VarT { it } } as t ->
+                   let t' = follow t (Env.find it !env) in
+                   env := Env.add it t' !env;
+                   t'
+                 | t ->
+                   env := Env.add (monomorphize_con ts c) pen !env;
+                   let { it = I.VarT { it } } = pen in
+                   I.VarT (it @@ no_region) in
                follow (I.PreT @@ no_region) (typ t)
-
+                *)
             | t ->
-               let id = monomorphize_con ts c in
-               if not (Env.mem id !env) then
-                 begin
-                   env := Env.add id (I.PreT @@ no_region) !env;
-                   let t = typ (normalize t) in
-                   env := Env.add id t !env
-                 end;
-               I.VarT (id @@ no_region))
+              let id = monomorphize_con ts c in
+              if not (Env.mem id !env) then
+                begin
+                  env := Env.add id (I.PreT @@ no_region) !env;
+                  let t = typ (normalize t) in
+                  env := Env.add id t !env
+                end;
+              I.VarT (id @@ no_region))
         | _ -> assert false)
     | Typ c -> assert false
     | Tup ts ->
