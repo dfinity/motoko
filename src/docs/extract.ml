@@ -66,7 +66,8 @@ let un_prog prog =
       imports
   in
   match body.it with
-  | ProgU decs -> Ok ([], []) (* treat all fields as private *)
+  | FileU _
+  | ProgU _ -> Ok ([], []) (* treat all fields as private *)
   | ModuleU (_, decs) -> Ok (imports, decs)
   | ActorU (_, _, decs) -> Ok (imports, decs)
   | ActorClassU (_, _, _, _, _, _, _, decs) ->
