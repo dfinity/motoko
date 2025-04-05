@@ -100,22 +100,10 @@ module MakeState() = struct
               let { it = I.VarT { it } } as pen = typ t in
               let id = monomorphize_con ts c in
               (if Env.mem id !env then
-                 assert (Env.find id !env = pen)
+                 assert (pen.it = (Env.find id !env).it)
                else
                  env := Env.add id pen !env);
               pen.it
-               (*
-               let rec follow pen = function
-                 | { it = I.VarT { it } } as t ->
-                   let t' = follow t (Env.find it !env) in
-                   env := Env.add it t' !env;
-                   t'
-                 | t ->
-                   env := Env.add (monomorphize_con ts c) pen !env;
-                   let { it = I.VarT { it } } = pen in
-                   I.VarT (it @@ no_region) in
-               follow (I.PreT @@ no_region) (typ t)
-                *)
             | t ->
               let id = monomorphize_con ts c in
               if not (Env.mem id !env) then
