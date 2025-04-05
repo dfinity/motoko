@@ -49,18 +49,18 @@ and typ_meth (tb : typ_meth)
 and mode m = Atom (string_of_mode m)
 
 and typ t = match t.it with
-  | VarT s        -> "VarT" $$ [id s]
-  | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
-  | RecordT ts        -> "RecordT" $$ List.map typ_field ts
-  | VecT t       -> "VecT" $$ [typ t]
-  | BlobT -> Atom "BlobT"
-  | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts        -> "VariantT" $$ List.map typ_field cts
+  | VarT s           -> "VarT" $$ [id s]
+  | PrimT p          -> "PrimT" $$ [Atom (string_of_prim p)]
+  | RecordT ts       -> "RecordT" $$ List.map typ_field ts
+  | VecT t           -> "VecT" $$ [typ t]
+  | BlobT            -> Atom "BlobT"
+  | OptT t           -> "OptT" $$ [typ t]
+  | VariantT cts     -> "VariantT" $$ List.map typ_field cts
   | FuncT (ms, s, t) -> "FuncT" $$ List.map arg_typ s @ List.map arg_typ t @ List.map mode ms
-  | ServT ts -> "ServT" $$ List.map typ_meth ts
-  | ClassT (ts, t) -> "ClassT" $$ List.map arg_typ ts @ [typ t]
-  | PrincipalT -> Atom "PrincipalT"
-  | PreT -> Atom "PreT"
+  | ServT ts         -> "ServT" $$ List.map typ_meth ts
+  | ClassT (ts, t)   -> "ClassT" $$ List.map arg_typ ts @ [typ t]
+  | PrincipalT       -> Atom "PrincipalT"
+  | PreT             -> Atom "PreT"
 
 and arg_typ t =
   match t.it.name with
