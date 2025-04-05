@@ -1,4 +1,6 @@
+type Version__1 = Version;
 type Version = variant {Version: nat;};
+type Mode__1 = Mode;
 type Mode = 
  variant {
    Alphanumeric;
@@ -6,6 +8,7 @@ type Mode =
    Kanji;
    Numeric;
  };
+type ErrorCorrection__1 = ErrorCorrection;
 type ErrorCorrection = 
  variant {
    H;
