@@ -59,7 +59,7 @@ jobs:
         echo "Branch name: ${{ github.event.pull_request.head.ref }}"
         echo "Branch namehere: ${{ github.head_ref || github.ref_name }}"
         git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
-        # git switch ${github.event.pull_request.head.ref}
+        git switch ${{ github.event.pull_request.head.ref }}
 
     - name: Commit `test/bench` changes
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
