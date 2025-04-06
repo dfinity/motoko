@@ -371,8 +371,8 @@ rec {
             type -p moc && moc --version
             make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
           '';
-
-          installPhase = nixpkgs.lib.optionalString accept ''
+      } // nixpkgs.lib.optionalAttrs accept {
+        installPhase = nixpkgs.lib.optionalString accept ''
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
