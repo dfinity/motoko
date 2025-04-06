@@ -51,7 +51,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+      run: nix-build-uncached --max-jobs ${{ runner.cpuCount }} -A all-systems-go -build-flags -L
 
     - name: Commit `test/bench` changes
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
@@ -71,7 +71,7 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
+        nix-build --max-jobs ${{ runner.cpuCount }} perf-delta.nix -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to"
