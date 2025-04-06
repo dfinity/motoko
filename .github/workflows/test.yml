@@ -74,7 +74,7 @@ jobs:
         committer_name: GitHub Actions
         committer_email: actions@github.com
         message: "Updating `test/bench` numbers"
-        commit: --porcelain -- test/bench/ok
+        commit: -- test/bench/ok
 
     - name: Calculate performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
