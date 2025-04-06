@@ -55,7 +55,7 @@ jobs:
 
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
-      run: git diff --no-index $(nix-build -A tests.bench) test/bench/ok
+      run: git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
 
     - name: Commit `test/bench` changes
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
