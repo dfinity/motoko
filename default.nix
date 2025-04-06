@@ -369,7 +369,7 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir} ${nixpkgs.lib.optionalString accept "accept"}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
           '';
       };
 
