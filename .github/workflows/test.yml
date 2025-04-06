@@ -53,6 +53,18 @@ jobs:
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
+    - name: Commit `test/bench` changes
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
+      uses: EndBug/add-and-commit@v9
+      with:
+        default_author: github_actions
+        author_name: Cycle and memory benchmark updater
+        github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
+        committer_name: GitHub Actions
+        committer_email: actions@github.com
+        message: "Updating `test/bench` numbers"
+        commit: -- test/bench/ok
+
     - name: Calculate performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
       run: |

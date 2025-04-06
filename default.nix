@@ -541,8 +541,8 @@ rec {
       inherit qc lsp unit candid coverage;
     }
     // nixpkgs.lib.optionalAttrs
-         (system == "aarch64-darwin")
-         (fix_names { bench = perf_subdir "bench" [ moc nixpkgs.drun ic-wasm ];})
+         (system == "x86_64-linux")
+         (fix_names { bench = perf_subdir "bench accept" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
