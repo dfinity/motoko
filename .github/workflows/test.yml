@@ -17,6 +17,8 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
+        # This is needed to be able to push and trigger CI with that push
+        token: ${{ secrets.NIV_UPDATER_TOKEN }}
     - uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
