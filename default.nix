@@ -1,6 +1,7 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+  accept-bench ? "x86_64-linux",
   officialRelease ? false,
 }:
 
@@ -359,7 +360,7 @@ rec {
       };
 
     acceptable_subdir = accept: dir: deps:
-      testDerivation {
+      testDerivation ({
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
 
@@ -376,7 +377,7 @@ rec {
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
-      };
+      });
 
     test_subdir = dir: deps: acceptable_subdir false dir deps;
 
@@ -548,7 +549,7 @@ rec {
       inherit qc lsp unit candid coverage;
     }
     // nixpkgs.lib.optionalAttrs
-         (system == "x86_64-linux")
+         (system == accept-bench)
          (fix_names { bench = perf_subdir true "bench" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
