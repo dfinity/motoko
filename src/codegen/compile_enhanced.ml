@@ -3893,8 +3893,6 @@ module FieldLookupTable = struct
     let hashes = field_names |>
       List.map (fun name -> E.hash_label env name) |>
       List.sort compare in
-    Printf.printf "HASH BLOB\n";
-    List.iter (fun name -> Printf.printf "  %s HASH %i\n" name (Int64.to_int (E.hash_label env name))) field_names;
     let hash_blob =
       let hash_payload = StaticBytes.[ i64s hashes ] in
       Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
@@ -4010,7 +4008,6 @@ module Closure = struct
   let make_stable_closure_type captured stable_closure =
     let fields = List.map (fun id ->
       let variable = Type.Env.find id stable_closure.Type.captured_variables in
-      Printf.printf "CLOSURE CAPTURED %s\n" variable.Type.stable_name;
       Type.{
         lab = variable.stable_name;
         typ = variable.variable_type;
@@ -4018,7 +4015,6 @@ module Closure = struct
       }
     ) captured in
     Type.Obj (Type.Object, fields)
-
 
   let constant env get_fi stable_closure =
     let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
@@ -9799,15 +9795,12 @@ module FuncDec = struct
       let set_clos, get_clos = new_local env (name ^ "_clos") in
 
       let len = Wasm.I64.of_int_u (List.length captured) in
-      Printf.printf "CLOSURE %i\n" (Int64.to_int len);
-      List.iter (fun name -> Printf.printf "CAPTURE %s\n" name) captured;
-
+      
       let captured_variable_name name =
         match env.E.is_canister, stable_context with
         | true, Some stable_closure ->
           let open Type in
           let variable = Env.find name stable_closure.captured_variables in
-          Printf.printf "ACCESS CAPTURED %s STABLE %s\n" name variable.stable_name;
           variable.stable_name
         | _ -> name
       in
