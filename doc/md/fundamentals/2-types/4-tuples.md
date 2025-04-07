@@ -88,11 +88,11 @@ Tuples can be stored in arrays or other data structures. Tuples can be structure
 let users: [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
-This structure efficiently represents a collection of key-value pairs without requiring a dedicated record type.
+This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](/docs/motoko/fundamentals/types/records) type.
 
 ## Extracting values using switch
 
-To access the name of the first record in the tuple using best practices, a `switch` expression should be used:
+To access the name of the first [record](/docs/motoko/fundamentals/types/records) in the tuple using best practices, a `switch` expression should be used.
 
 ```motoko no-repl
 let users: [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];

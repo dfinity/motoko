@@ -6,16 +6,16 @@ sidebar_position: 7
 
 ## Messaging restrictions
 
-ICP enforces rules on when and how canisters communicate. These restrictions prevent execution errors statically in Motoko.  
+ICP enforces rules on when and how [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) communicate. These restrictions prevent execution errors statically in Motoko.
 
 | Restriction | Reason |
 |-------------|--------|
 | A canister cannot send messages during installation. | Prevents execution errors at deployment. |
 | A query function cannot send messages. | Query functions run locally and do not trigger updates. |
-| Shared functions cannot be called in a synchronous context. | Shared calls require `async` execution |
-| Only async contexts support error handling (`try/catch`). | Messaging errors only occur in async contexts |
+| Shared functions cannot be called in a synchronous context. | Shared calls require `async` execution. |
+| Only async contexts support [error handling](/docs/motoko/fundamentals/error-handling) (`try/catch`). | Messaging errors only occur in async contexts. |
 
-In Motoko, an expression is in an async context if it appears in an `async` function. Query functions do not open an async context, so they cannot use `await` or send messages.  
+In Motoko, an expression is in an async context if it appears in an `async` function. Query functions are 'ready only' functions, so they do not create an async context and cannot use `await` or send messages.
 
 ```motoko no-repl
 actor Counter {
@@ -37,7 +37,7 @@ actor Counter {
 
 ## Message inspection
 
-Canisters can inspect and filter incoming messages before execution to prevent spam or malicious requests. This is done using the `inspect` system function, which can accept or reject messages based on criteria like caller identity, message size, or function type.
+Canisters can inspect and filter incoming messages before execution to prevent spam or malicious requests. This is done using the `inspect` system function, which can accept or reject messages based on criteria like caller identity, message size, or function type. Messages are filtered before execution, preventing unnecessary cycles costs. Anonymous calls can be blocked to prevent spam, and the size of a request can be checked before processing.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -61,13 +61,9 @@ actor Counter {
 };
 ```
 
-- Messages are filtered before execution, reducing unnecessary cycles.
-- Anonymous calls can be blocked, preventing spam.
-- The size of a request can be checked before processing.
-
 ## Inter-canister calls
 
-One of the key features of ICP is the ability for canisters to invoke functions in other canisters. This capability, known as inter-canister calls, allows functionality to be reused and shared across multiple dapps.
+One of the key features of ICP is the ability for [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) to invoke functions in other canisters. This capability, known as inter-canister calls, allows functionality to be reused and shared across multiple dapps.
 
 The following methods can be used for inter-canister calls:
 
@@ -126,7 +122,7 @@ actor Subscriber {
 
 ### Actor type annotation
 
-Actor type annotations provide flexibility when interacting with external canisters but require ensuring function signatures match at runtime. If they do not, calls will fail.
+Actor type annotations provide flexibility when interacting with external [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) but require ensuring function signatures match at runtime. If they do not, calls will fail.
 
 ```motoko no-repl
 import Array "mo:base/Array";

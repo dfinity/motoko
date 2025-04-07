@@ -4,7 +4,7 @@ sidebar_position: 10
 
 # Pattern matching
 
-Pattern matching allows concise and expressive handling of different data structures in Motoko. It is commonly used in `switch` expressions to destructure and process values.
+Pattern matching allows concise and expressive handling of different data structures in Motoko. It can be used in `switch` expressions to destructure and process values.
 
 Motoko supports several types of patterns:
 
@@ -18,7 +18,7 @@ Motoko supports several types of patterns:
 
 ## Wildcard (`_`)
 
-The wildcard pattern `_` matches any value but does not bind it to a variable. It is useful for handling cases where the specific value does not matter.
+The wildcard pattern `_` matches any value but does not bind to a variable. It is useful for handling cases where the specific value does not matter.
 
 ```motoko no-repl
 func processNumber(n: Nat): Text {

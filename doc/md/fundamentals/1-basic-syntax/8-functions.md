@@ -4,15 +4,15 @@ sidebar_position: 8
 
 # Functions
 
-Functions in Motoko can be take on a variety of different attributes, the most basic of which is if the function is public or private. Public functions are callable by users or other canisters, while private functions can only be called within the program that defines it.
+Functions in Motoko can be take on a variety of different attributes, the most basic of which is if the function is public or private. Public functions are callable by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters), while private functions can only be called within the program that defines it.
 
-The most basic Motoko [function](/docs/motoko/fundamentals/declarations/function-declarations) declaration is:
+The most basic Motoko [function declaration](/docs/motoko/fundamentals/declarations/function-declarations) is:
 
 ```motoko
 func exampleFunction() {};
 ```
 
-By default, all functions are declared private unless explicitly declared `public`:
+By default, all functions are declared private unless explicitly declared `public`.
 
 ```motoko no-repl
 public func exampleFunction() {};

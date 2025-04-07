@@ -50,7 +50,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     let record = { a = 1; b = 2; c = 3 };
     ```
 
--   Put spaces inside braces, unless they are a simple variant or record.
+-   Put spaces inside braces, unless they are a simple variant or [record](/docs/motoko/fundamentals/types/records).
 
     ``` motoko no-repl
     func f() { 0 };
@@ -720,7 +720,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Use [`Nat`](../base/Nat.md) for any integral value that cannot be negative.
 
--   Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits or when matching types imposed by external requirements, such as other canisters.
+-   Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits or when matching types imposed by external requirements, such as other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
 -   Avoid proliferation of option types, and therefore `null`.
 
@@ -728,7 +728,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Consider using records instead of tuples when there are more than 2 or 3 components. Records are just simple objects with named fields.
 
-    Note that record types need not be declared but can be used in place.
+    Note that [record](/docs/motoko/fundamentals/types/records) types need not be declared but can be used in place.
 
     ``` motoko no-repl
       func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
@@ -752,7 +752,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
--   Consider using a record (an object with just data) as argument for long parameter lists.
+-   Consider using a [record](/docs/motoko/fundamentals/types/records) (an object with just data) as argument for long parameter lists.
 
     ``` motoko no-repl
     func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
@@ -867,9 +867,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Use a module defining a plain type and functions on it where appropriate. Use classes only as a means for encapsulating state or behavior.
 
-    Rationale: Objects with methods have disadvantages over simple record types with separate functions (see above).
+    Rationale: Objects with methods have disadvantages over simple [record](/docs/motoko/fundamentals/types/records) types with separate functions (see above).
 
--   If values of a class are meant to be sendable (shared), the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, for example, as a record.
+-   If values of a class are meant to be sendable (shared), the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, for example, as a [record](/docs/motoko/fundamentals/types/records).
 
     :::note
 

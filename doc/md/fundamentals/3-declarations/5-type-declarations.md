@@ -4,23 +4,23 @@ sidebar_position: 5
 
 # Type declarations 
 
-A type declaration in Motoko allows defining custom types that improve readability, reusability, and structure in the code. These can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed, valid types.
+A type declaration are used for defining custom types that improve readability, reusability, and structure in the code. They can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed, valid types.
 
 ## Defining a type
 
 The `type` keyword assigns a name to a type and makes it reusable.
 
-```motoko
+```motoko no-repl
+// An alias for Nat
 type Age = Nat;
+
+// An alias for Text
 type Username = Text;
 ```
 
-- `Age` is an alias for [`Nat`](/docs/motoko/base/Nat).
-- `Username` is an alias for [`Text`](/docs/motoko/base/Text).
+These types can then be used in function definitions.
 
-These types can then be used in function definitions:
-
-```motoko
+```motoko no-repl
 func greet(name: Username, age: Age) : Text {
     "Hello, " # name # "! You are " # Nat.toText(age) # " years old."
 }
@@ -28,15 +28,17 @@ func greet(name: Username, age: Age) : Text {
 
 ## Record types
 
-A type can represent a structured record with labeled fields.
+A type can represent a structured [record](/docs/motoko/fundamentals/types/records) with labeled fields.
 
-```motoko
+```motoko no-repl
+// A reusable record
 type Ghost = {
     firstName: Text;
     lastName: Text;
     age: Nat;
 };
 
+// An instance of Ghost
 let motoko: Ghost = {
     firstName = "Motoko";
     lastName = "Sentinels";
@@ -44,19 +46,17 @@ let motoko: Ghost = {
 };
 ```
 
-- `Ghost` is a reusable record type.
-- `motoko` is an instance of `Ghost`.
-
 ## Variant types
 
 A type can also define variants, representing different possible states.
 
-```motoko
-// allows only one of its variants at a time.
+```motoko no-repl
+// Allows only one of its variants at a time.
 type Status = {
     #Active;
     #Inactive;
-// carries an additional [`Text`](/docs/motoko/base/Text) value.
+
+// Carries an additional Text value.
     #Banned : Text;
 };
 
@@ -68,11 +68,12 @@ let bannedUser: Status = #Banned("Violation of rules");
 
 Type declarations can be parameterized to work with multiple types.
 
-```motoko
+```motoko no-repl
 // `Box<T> is a generic type where T represents any type.
 type Box<T> = {
     value: T;
 };
+
 // numberBox stores a Nat and textBox stores a Text.
 let numberBox: Box<Nat> = { value = 42 };
 let textBox: Box<Text> = { value = "Hello" };
@@ -86,7 +87,7 @@ Motoko allows recursive type definitions, provided they are productive.
 
 ### Productive recursive type
 
-```motoko
+```motoko no-repl
 type List<T> = ?(T, List<T>);
 ```
 
@@ -94,7 +95,7 @@ type List<T> = ?(T, List<T>);
 
 ### Non-productive recursive type
 
-```motoko
+```motoko no-repl
 type C = C; // This definition infinitely refers to itself
 ```
 
@@ -106,7 +107,7 @@ Motoko enforces non-expansiveness to prevent type definitions from expanding ind
 
 ### Non-expansive
 
-```motoko
+```motoko no-repl
 type List<T> = ?(T, List<T>);
 ```
 
@@ -114,7 +115,7 @@ Expands without introducing a larger type.
 
 ### Expansive
 
-```motoko
+```motoko no-repl
 type Seq<T> = ?(T, Seq<[T]>);
 ```
 
@@ -122,7 +123,7 @@ Expands by wrapping `T` inside `[T]`, growing the type. This is expansive and no
 
 ## References
 
-- [Record](../expressions/control-flow/record.md)
-- [Variant](../expressions/control-flow/variant.md)
+- [`Record`](/docs/motoko/fundamentals/types/records)
+- [`Variant`](/docs/motoko/fundamentals/types/variants)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

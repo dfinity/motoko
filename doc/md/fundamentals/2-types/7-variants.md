@@ -6,11 +6,8 @@ sidebar_position: 7
 
 Variants allow defining values that can take on multiple possible forms, each labeled with a distinct tag. Unlike [records](/docs/motoko/fundamentals/types/records), where all fields exist at once, a variant holds exactly one of its possible values at any given time. This makes variants useful for representing states, actions, or categorized data.
 
-A variant is a type that can hold one of multiple possible values, each labeled with a distinct tag. Unlike records, which contain multiple fields at once, a variant only holds a single field at a time.
 
 ## Defining a variant
-
-A variant type consists of tags, each representing a possible value. Each tag can have an associated type or be a unit tag (no associated value). Variants are especially useful for defining recursive data structures, such as a binary tree.
 
 ```motoko no-repl
 type Status = {
@@ -20,11 +17,11 @@ type Status = {
 };
 ```
 
-`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a [`Text`](/docs/motoko/base/Text) value, such as the reason for banning.
+`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a [`Text`](/docs/motoko/base/Text) value, such as the reason for the ban.
 
 ## Assigning variants
 
-To assign a variant value, use one of the defined tags:
+To assign a variant value, use one of the defined tags.
 
 ```motoko no-repl
 let activeUser: Status = #Active;
@@ -33,7 +30,7 @@ let bannedUser: Status = #Banned("Violation of rules");
 
 ## Accessing a variant's value
 
-To work with a variant, use a [`switch`](/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case:
+To work with a variant, use a [`switch`](/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
 ```motoko no-repl
 let activeUser: Status = #Active;
@@ -61,7 +58,7 @@ A traffic light cycles between three distinct states:
 - Yellow: Vehicles should prepare to stop.
 - Green: Vehicles may proceed.
 
-Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid state —every possible value is explicitly defined. The transitions are controlled and predictable.
+Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid [state](/docs/motoko/fundamentals/state), as every possible value is explicitly defined. The transitions are controlled and predictable.
 
 ### Defining the traffic light state
 
@@ -76,7 +73,7 @@ type TrafficLight = {
 
 ### Transitioning between states
 
-A function can define how the traffic light cycles from one state to the next.
+A function can define how the traffic light cycles from one [state](/docs/motoko/fundamentals/state) to the next.
 
 ```motoko no-repl
 func nextState(light: TrafficLight): TrafficLight {
@@ -127,7 +124,7 @@ func nextState(light: TrafficLight): TrafficLight {
 
 ## Defining a binary tree type using variants
 
-A binary tree is a data structure where each node has up to two child nodes. A variant is well-suited to represent this structure since a node can either contain a value with left and right children or be an empty leaf. This tree type is recursive as it refers to itself in its definition.
+A binary tree is a data structure where each node has up to two child nodes. A variant can be used to represent this structure since a node can either contain a value with left and right children or be an empty leaf. This tree type is recursive as it refers to itself in its definition.
 
 ```motoko no-repl
 type Tree = {
@@ -140,11 +137,9 @@ type Tree = {
   };
 ```
 
-This contains two variants:
+This example contains two variants:
 
-1. `#node` contains:
-  - A value of type [`Nat`](/docs/motoko/base/Nat).
-  - Two child trees (`left` and `right`).
+1. `#node` contains a value of type [`Nat`](/docs/motoko/base/Nat) and two child trees (`left` and `right`).
 2. `#leaf` represents an empty node.
 
 ### Building the tree
@@ -175,7 +170,7 @@ A tree can be traversed in multiple ways. One common approach is in-order traver
 2. Root node  
 3. Right subtree  
 
-The following recursively traverses the tree in order and prints each value as it is visited:  
+The following example recursively traverses the tree in order and prints each value as it is visited.
 
 ```motoko no-repl
 type Tree = {
@@ -206,9 +201,9 @@ func traverseInOrder(t : Tree) {
   traverseInOrder(tree);
 ```
 
-### Generalizing the tree with generics  
+### Using generic types
 
-Currently, the tree only supports [`Nat`](/docs/motoko/base/Nat) values. To allow it to store any type of data, a generic type can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
+Currently, the example tree only supports [`Nat`](/docs/motoko/base/Nat) values. To allow it to store any type of data, a [generic type](/docs/motoko/fundamentals/types/advanced-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
 
 ```motoko no-repl
 type Tree<T> = {
@@ -221,6 +216,6 @@ type Tree<T> = {
 };
 ```  
 
-With this change, a tree can store any type, such as [`Text`](/docs/motoko/base/Text), [`Nat`](/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
+With this change, the tree can store any type, such as [`Text`](/docs/motoko/base/Text), [`Nat`](/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

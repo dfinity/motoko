@@ -4,26 +4,22 @@ sidebar_position: 11
 
 # Error handling
 
-There are three primary ways to represent and handle errors values in Motoko:
-
 | Method | Purpose | Behavior | Example use case |
 |--------|---------|----------|----------|
 | Error | Represents recoverable errors using `throw` and `try/catch`. | Can be caught and handled. | Handling messaging errors. |
 | Option (`?T`) | Represents a value that may be missing. | Returns `null` if no value is available. | Searching for an item, optional parameters. |
 | Result (`Result.Result<T, E>`) | Represents success (`#ok`) or failure (`#err`). | Encodes both valid results and errors in a structured format. | Operations that can fail, such as authentication. |
 
-## Traps and assertions
-
 In addition to explicit error handling, Motoko provides traps and assertions for dealing with execution errors.
 
 | Method | Purpose | Behavior | Example use case |
 |--------|---------|----------|----------|
-| Trap (`Debug.trap`) | Indicates an unrecoverable error. | Immediately stops execution and rolls back state. | Preventing invalid operations, handling fatal errors. |
+| Trap (`Debug.trap`) | Indicates an unrecoverable error. | Immediately stops execution and rolls back [state](/docs/motoko/fundamentals/state). | Preventing invalid operations, handling fatal errors. |
 | Assertion (`assert`) | Ensures that a condition holds. | Traps if the condition is false. | Enforcing invariants, validating input. |
 
-### Traps
+## Traps
 
-Traps immediately stop execution and roll back state. They are used for fatal errors that cannot be recovered.
+Traps immediately stop execution and roll back [state](/docs/motoko/fundamentals/state). They are used for fatal errors that cannot be recovered.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
@@ -36,7 +32,7 @@ func divide(a: Nat, b: Nat): Nat {
 };
 ```
 
-### Assertions
+## Assertions
 
 Assertions enforce expected conditions. If the condition is false, they introduce a trap but are not errors themselves.
 
@@ -59,7 +55,7 @@ func validateAge(age: Nat): () {
 | M0030 | Type field does not exist in type. | ```type Person = { name : Text }; func getName(p : Person) : Nat { p.age }``` | The field `age` doesn't exist in the `Person` type. |
 | M0031 | Shared function has non-shared parameter type. | ```public shared func process(obj : { var count : Nat }) { ... }``` | Shared functions cannot have mutable types as parameters. |
 | M0032 | Shared function has non-shared return type. | ```public shared func getData() : { var data : [Nat] } { ... }``` | Shared functions cannot return mutable types. |
-| M0033 | Async has non-shared content type. | ```async { var counter = 0 }``` | Async blocks cannot contain mutable state. |
+| M0033 | Async has non-shared content type. | ```async { var counter = 0 }``` | Async blocks cannot contain mutable [state](/docs/motoko/fundamentals/state). |
 | M0036 | Invalid return type for shared query function. | ```public shared query func getUsers() : async [User] { ... }``` | Query functions cannot return async types. |
 | M0038 | Misplaced await. | ```func compute() { let x = await promise; }``` | `await` can only be used in an async function or block. |
 | M0045 | Wrong number of type arguments. | ```func process<T>(x : Array<T, Nat>) { ... }``` | `Array` type expects one type parameter, not two. |
@@ -75,7 +71,7 @@ func validateAge(age: Nat): () {
 | M0082 | Expected iterable type. | ```for (item in 42) { ... }``` | The value `42` is not an iterable type for a for-loop. |
 | M0088 | Expected async type. | ```let result = await 42;``` | Cannot `await` on a non-async value. |
 | M0089 | Redundant ignore. | ```ignore (5);``` | The `ignore` is unnecessary for a value that doesn't need to be ignored. |
-| M0090 | Actor reference must have an actor type .| ```let a = actor { ... }; a.someMethod();``` | The variable `a` must have an explicit actor type to call its methods. |
+| M0090 | Actor reference must have an [actor](/docs/motoko/fundamentals/actors-async) type .| ```let a = actor { ... }; a.someMethod();``` | The variable `a` must have an explicit [actor](/docs/motoko/fundamentals/actors-async) type to call its methods. |
 | M0096 | Expression can't produce expected type. | ```func getValue() : Bool { return "true"; }``` | String cannot be returned where a [`Bool`](/docs/motoko/base/Bool) is expected. |
 | M0097 | Expected function type. | ```let x = 5; x();``` | Cannot call a non-function value. |
 | M0098 | Cannot instantiate function type. | ```type Func = (Nat) -> Nat; let f = Func();``` | Function types cannot be instantiated directly. |
@@ -86,8 +82,8 @@ func validateAge(age: Nat): () {
 | M0139 | Inner actor classes are not supported. | ```class Outer() { actor class Inner() { ... } }``` | Actor classes cannot be nested inside other classes. |
 | M0141 | Forbidden declaration in program. | ```import Prim "mo:prim";``` | Certain imports/declarations are not allowed in normal user code. |
 | M0145 | Pattern does not cover value. | ```switch (option) { case (null) { ... } };``` (missing `?some` case) | Switch statement doesn't handle all possible values. |
-| M0149 | An immutable record field (declared without `var`) was supplied where a mutable record field (specified with `var`), was expected. | ```type Mutable = { var x : Nat }; func set(r : Mutable) { ... }; set({ x = 10 });``` | Immutable record provided where mutable was expected. |
-| M0150 | A mutable record field (declared with `var`) was supplied where an immutable record field (specified without `var`) was expected. | ```type Immutable = { x : Nat }; let record : Immutable = { var x = 10 };``` | Mutable field provided where immutable was expected. |
+| M0149 | An immutable [record](/docs/motoko/fundamentals/types/records) field (declared without `var`) was supplied where a mutable [record](/docs/motoko/fundamentals/types/records) field (specified with `var`), was expected. | ```type Mutable = { var x : Nat }; func set(r : Mutable) { ... }; set({ x = 10 });``` | Immutable [record](/docs/motoko/fundamentals/types/records) provided where mutable was expected. |
+| M0150 | A mutable [record](/docs/motoko/fundamentals/types/records) field (declared with `var`) was supplied where an immutable [record](/docs/motoko/fundamentals/types/records) field (specified without `var`) was expected. | ```type Immutable = { x : Nat }; let record : Immutable = { var x = 10 };``` | Mutable field provided where immutable was expected. |
 | M0151 | A object literal is missing some fields. | ```type Person = { name : Text; age : Nat }; let p : Person = { name = "John" };``` | The `age` field is missing from the object literal. |
 | M0153 | An imported Candid file (.did) mentions types that cannot be represented in Motoko. | ```import Types from "types.did";``` (where `types.did` contains incompatible types) | The imported Candid file contains types that don't map to Motoko types. |
 | M0154 | Deprecation annotation. | ```@deprecated("Use newFunction instead") func oldFunction() { ... }``` | Using a deprecated function or feature that has been marked with `@deprecated`. |

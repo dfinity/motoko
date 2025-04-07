@@ -10,14 +10,14 @@ Motoko provides different types of functions based on where in the program they 
 
 | Keyword  | Function  |
 |-------------|--------------|
-| `public`    | Makes a function callable by users or other canisters. |
-| `shared`    | Enables inter-canister calls and provides access to the caller’s identity. |
-| `async`     | Runs the function asynchronously and returns a future result. |
-| `query`     | Optimized for reading data but cannot modify state. |
+| `public`    | Makes a function callable by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). |
+| `shared`    | Enables [inter-canister](/docs/motoko/fundamentals/messaging) calls and provides access to the caller’s identity. |
+| `async`     | Runs the function [asynchronously](/docs/motoko/fundamentals/actors-async#async--await) and returns a future result. |
+| `query`     | Optimized for reading data but cannot modify [state](/docs/motoko/fundamentals/state). |
 
 ## Function comparison
 
-| Function type                | Mutates state | Calls updates | Calls queries | Asynchronous | External calls |
+| Function type                | Mutates [state](/docs/motoko/fundamentals/state) | Calls updates | Calls queries | Asynchronous | External calls |
 |------------------------------|---------------|------------------|------------------|---------------|---------------|
 | Local                    | No            | Yes              | Yes              | No            | No            |
 | Generic                  | No            | Yes              | Yes              | No            | No            |
@@ -27,7 +27,7 @@ Motoko provides different types of functions based on where in the program they 
 
 ## Local functions
 
-Local functions run within the canister's actor. They does not make calls to other canisters. Local functions are processed fast and synchronously.
+Local functions run within the canister's [actor](/docs/motoko/fundamentals/actors-async). They do not make calls to other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are processed fast and synchronously.
 
 ```motoko no-repl
 func add(a: Nat, b: Nat): Nat {
@@ -52,17 +52,43 @@ let num: Nat = identity<Nat>(42);
 let text: Text = identity<Text>("Hello");
 ```
 
+## Shared functions
+
+Shared functions can be called from outside the canister (e.g., by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters)). These are processed [asynchronously](/docs/motoko/fundamentals/actors-async#async--await) because they interact with the network.
+
+```motoko no-repl
+  public shared func getBalance(): async Nat {
+    return 100;
+  };
+```
+
 **Example use case:** Reusable logic for different types.
 
 ## Query functions
 
-[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot modify state and execute faster than update functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an update function.
+[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot modify [state](/docs/motoko/fundamentals/state) and execute faster than [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) function.
 
 ```motoko no-repl
   public query func greet(name : Text) : async Text {
     return greeting # name # "!";
   };
 ```
+
+### Shared query functions
+
+```motoko
+actor Bank {
+    stable var balance: Nat = 100;
+
+    public query func getBalance(): async Nat {
+        return balance;
+    };
+};
+await Bank.getBalance();
+```
+
+**Example use case:** Fetching data quickly without modifying the canister [state](/docs/motoko/fundamentals/state).
+
 
 ### Composite queries
 
@@ -90,64 +116,7 @@ actor Counter {
 }
 ```
 
-## Update functions
-
-[Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s state and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
-
-```motoko no-repl
-  public func setGreeting(prefix : Text) : async () {
-    greeting := prefix;
-  };
-```
-
-## Shared functions
-
-Shared functions can be called from outside the canister (e.g., by users or other canisters). These are processed asynchronously because they require interacting with the network.
-
-```motoko no-repl
-  public shared func getBalance(): async Nat {
-    return 100;
-  };
-```
-
-**Example use case:** Exposing public endpoints for inter-canister or frontend interactions.
-
-### Shared update functions
-
-Shared update functions modify a canister’s state and must persist data changes.
-
-```motoko
-actor Bank {
-    stable var balance: Nat = 0;
-
-    public shared func deposit(amount: Nat): async () {
-        balance += amount;
-    };
-};
-```
-
-**Example use case**: Transactions, user state updates, or anything that modifies persistent data.
-
-### Shared query functions
-
-Shared query functions allow fast, read-only access to the canister’s state. They are asynchronous but execute much faster than an update function because they do not modify the state and do not go through consensus.
-
-```motoko
-actor Bank {
-    stable var balance: Nat = 100;
-
-    public query func getBalance(): async Nat {
-        return balance;
-    };
-};
-await Bank.getBalance();
-```
-
-**Example use case:** Fetching data quickly without modifying the canister state.
-
 ### Shared composite query functions
-
-Shared composite queries are a query function that can call other query functions, allowing query chains without being converted into an update function.
 
 ```motoko no-repl
 actor Bank {
@@ -165,7 +134,34 @@ actor Bank {
 await Bank.doubleBalance();
 ```
 
-**Example use case:** Efficiently combining multiple queries while avoiding inter-canister update calls.
+**Example use case:** Efficiently combining multiple queries while avoiding [inter-canister](/docs/motoko/fundamentals/messaging) update calls.
+
+
+## Update functions
+
+[Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s [state](/docs/motoko/fundamentals/state) and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
+
+```motoko no-repl
+  public func setGreeting(prefix : Text) : async () {
+    greeting := prefix;
+  };
+```
+
+**Example use case:** Exposing public endpoints for [inter-canister](/docs/motoko/fundamentals/messaging) or [frontend](/docs/building-apps/frontends/using-an-asset-canister) interactions.
+
+### Shared update functions
+
+```motoko
+actor Bank {
+    stable var balance: Nat = 0;
+
+    public shared func deposit(amount: Nat): async () {
+        balance += amount;
+    };
+};
+```
+
+**Example use case**: Transactions, user [state](/docs/motoko/fundamentals/state) updates, or anything that modifies persistent data.
 
 ## Passing arguments to functions
 
@@ -173,7 +169,7 @@ An argument is a value passed to a function when called. Arguments enable functi
 
 ### Single argument
 
-A function can take a single argument of a specific type:
+A function can take a single argument of a specific type.
 
 ```motoko no-repl
   public func increment(amount: Nat) : async Nat {
@@ -184,7 +180,7 @@ A function can take a single argument of a specific type:
 
 ### Multiple arguments
 
-Functions can accept multiple arguments by separating them with commas:
+Functions can accept multiple arguments by separating them with commas.
 
 ```motoko no-repl
   public func add(x: Nat, y: Nat) : async Nat {
@@ -194,7 +190,7 @@ Functions can accept multiple arguments by separating them with commas:
 
 ### Using a record as an argument
 
-Multiple values can be passed as a single argument by encapsulating them within a record type:
+Multiple values can be passed as a single argument by encapsulating them within a [record](/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
 type UserData = { name: Text; age: Nat };
@@ -205,7 +201,7 @@ type UserData = { name: Text; age: Nat };
 
 ### Using an array as an argument
 
-A collection of values can be passed as a single array argument:
+A collection of values can be passed as a single array argument.
 
 ```motoko no-repl
   public func sum(numbers: [Nat]) : async Nat {

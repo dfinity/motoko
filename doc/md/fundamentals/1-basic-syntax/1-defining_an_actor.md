@@ -4,11 +4,11 @@ sidebar_position: 1
 
 # Defining an actor
 
-In Motoko, an actor is a unit of computation that encapsulates state and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and interact with each other through asynchronous messaging.
+In Motoko, an actor is a unit of computation that encapsulates [state](/docs/motoko/fundamentals/state) and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and interact with each other through [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) messaging.
 
-Actors are objects with special system-level capabilities. An actor supports asynchronous operations and can persist state across calls. Unlike modules, actors cannot be instantiated on their own using `actor()`. Each actor runs independently with its own message queue, allowing concurrent execution.
+Actors are objects with special system-level capabilities. An actor supports [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) operations and can persist [state](/docs/motoko/fundamentals/state) across calls. Unlike modules, actors cannot be instantiated on their own using `actor()`. Each actor runs independently with its own message queue, allowing concurrent execution.
 
-A Motoko program typically starts by defining an actor:
+A Motoko program typically starts by defining an actor.
 
 ```motoko
 // Declares an actor named Main
@@ -19,7 +19,7 @@ actor Main {
   };
 };
 
-// Actors in Motoko communicate asynchronously. await ensures the result is retrieved once the function completes.
+// Actors in Motoko communicate [asynchronously](/docs/motoko/fundamentals/actors-async#async--await). await ensures the result is retrieved once the function completes.
 await Main.hello();
 ```
 

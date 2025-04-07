@@ -6,13 +6,15 @@ sidebar_position: 8
 
 Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach allows the language to evolve while maintaining simplicity.
 
+:::caution
+
 The base library is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+
+:::
 
 ## Importing from the base library
 
-The Motoko base library includes common utilities for working with data structures, debugging, and other functionality.
-
-To import from the base library, use the `import` keyword, followed by the `mo:base/` module path:
+The Motoko base library includes common utilities for working with data structures, debugging, and other functionality. To import from the base library, use the `import` keyword, followed by the `mo:base/` module path.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
@@ -24,7 +26,7 @@ The `mo:` prefix identifies a Motoko module. The declaration does not include th
 
 ## Importing specific functions
 
-Instead of importing an entire module, individual functions can be imported:
+Instead of importing an entire module, individual functions can be imported.
 
 ```motoko no-repl
 import { equal } "mo:base/Nat";
@@ -32,17 +34,17 @@ import { equal } "mo:base/Nat";
 let result = equal(10, 10); // Returns true
 ```
 
-Functions can also be renamed at import:
+Functions can also be renamed at import.
 
 ```motoko no-repl
+// map and find are imported as-is, while foldLeft is renamed to fold.
 import { map; find; foldLeft = fold } "mo:base/Array";
 ```
 
-`map` and `find` are imported as-is, while `foldLeft` is renamed to `fold`.
 
 ## Importing local files
 
-Projects often split code into multiple files for better organization. A common structure:
+Projects may split code into multiple files for better organization, such as:
 
 ```
 src/project_backend
@@ -51,33 +53,28 @@ src/project_backend
  ├── utils.mo  // Contains helper functions
 ```
 
-To import local modules:
+A prefix is not required for local imports and the `.mo` file extension is omitted. The imported modules must be in the same directory as `main.mo`.
 
 ```motoko no-repl
 import Types "types";
 import Utils "utils";
 ```
 
-A prefix is not required for local imports and the `.mo` file extension is omitted. The imported modules must be in the same directory as `main.mo`.
-
 ## Importing from another package or directory
 
-Modules can also be imported from other packages or subdirectories:
+Modules can also be imported from other packages or subdirectories.
 
 ```motoko no-repl
+// Redraw package contains a Render module
 import Render "mo:redraw/Render";
+
+// Mono5x5 module is inside the glyph/ subdirectory.
 import Mono5x5 "mo:redraw/glyph/Mono5x5";
 ```
 
-The `redraw` package contains a `Render` module. The `Mono5x5` module is inside the `glyph/` subdirectory.
-
-
 ## Importing packages from a package manager
 
-Dependencies are managed using a package manager or defined in `dfx.json`.
-
-
-Motoko supports package managers like Mops and Vessel to install third-party libraries.
+Dependencies are managed using a package manager or defined in the project's `dfx.json` file. Motoko supports package managers like [Mops](https://mops.one/) and [Vessel](https://github.com/dfinity/vessel) to install third-party libraries.
 
 ### Configuring the package manager in `dfx.json`
 
@@ -95,26 +92,16 @@ For Vessel, use `"vessel sources"`.
 
 ### Installing a package with a package manager
 
-With Mops:
+With [Mops](https://mops.one/), add the mops package with `mops add`, then import the package into your Motoko code `import Vec "mo:vector";`.
 
-```sh
-mops add vector
-```
-Then import the Mops package:
-
-``motoko no-repl
-import Vec "mo:vector";
-import Vec "mo:vector/Class";
-``
-
-With Vessel, add the package to `vessel.dhall`.
+With [Vessel](https://github.com/dfinity/vessel), add the package to `vessel.dhall`.
 
 ## Importing actor classes
 
-When imported, an actor class provides a type definition describing the class interface and a function that returns an instance of the class.
-
+When imported, an [actor](/docs/motoko/fundamentals/actors-async) class provides a type definition describing the class interface and a function that returns an instance of the class.
 
 For example, if you define the following actor class:
+
 ```motoko no-repl title="Counters.mo"
 persistent actor class Counter(init : Nat) {
   var count = init;
@@ -148,11 +135,11 @@ persistent actor CountToTen {
 };
 ```
 
-`Counters.Counter(1)` installs a new counter on the network. Installation is asynchronous, so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
+`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the [actor](/docs/motoko/fundamentals/actors-async) class is not named, it will result in a bad import error because [actor](/docs/motoko/fundamentals/actors-async) class imports cannot be anonymous.
 
 ## Importing from another canister
 
-Actors and their functions can be imported from other deployed canisters using the `canister:` prefix.
+Actors and their functions can be imported from other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) using the `canister:` prefix.
 
 
 ```motoko no-repl
@@ -160,7 +147,7 @@ import BigMap "canister:BigMap";
 import Connectd "canister:Connectd";
 ```
 
-`BigMap` and `Connectd` are separate canisters defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
+`BigMap` and `Connectd` are separate [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
 
 Unlike a Motoko module, an imported canister:
 
@@ -170,7 +157,6 @@ Unlike a Motoko module, an imported canister:
 ## Naming imported modules
 
 While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
-
 
 ```motoko no-repl
 import List "mo:base/List";

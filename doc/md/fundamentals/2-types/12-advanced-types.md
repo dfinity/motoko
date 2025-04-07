@@ -25,9 +25,8 @@ Even though `p1` and `p2` are distinct objects, they are considered equal becaus
 
 Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](/docs/motoko/fundamentals/types/functions), [classes](/docs/motoko/fundamentals/types/objects-classes), and data structures.
 
-A simple example of a generic function:
-
 ```motoko no-repl
+// Generic function
 func identity<T>(x : T) : T {
   return x;
 }
@@ -49,15 +48,11 @@ let textBox = Box<Text>("Hello");
 
 ## Recursive types
 
-Recursive types allow a type to refer to itself, enabling the creation of nested structures.
-
-The base library utilizes recursive types to define linked lists:
+Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base library utilizes recursive types to define linked lists.
 
 ```motoko no-repl
 public type List<T> = ?(T, List<T>);
 ```
-
-This structure allows for dynamic growth while maintaining type safety.
 
 ### Manually reversing a linked list
 
@@ -86,7 +81,13 @@ reverse(numbers); // 3-> 2-> 1
 
 ## Type bounds
 
-Generic types can be constrained by using subtype constraints, ensuring that any type used in a generic function meets specific structural or concrete type requirements that are checked during compilation.
+Generic types can use subtype constraints, ensuring that any type used in a generic function meets specific structural or concrete type requirements.
+
+These constraints are enforced at compilation. This guarantees that the necessary properties or operations are available when the function is used, eliminating certain classes of runtime errors.
+
+Although the concept of type bounds is often associated with [inheritance-based polymorphism](https://www.codecademy.com/learn/learn-java/modules/learn-java-inheritance-and-polymorphism/cheatsheet) in other languages, Motoko uses structural typing. This means that the subtype relationship is determined by the structure of the types rather than an explicit inheritance hierarchy. **Motoko does not support inheritance**.
+
+This approach balances the flexibility of generic programming with the safety of compile-time checks, enabling the creation of generic functions that operate on a range of types while still enforcing specific structural or type constraints.
 
 The following examples illustrate this behavior:
 
@@ -99,9 +100,9 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the record `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](/docs/motoko/fundamentals/types/records) `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
 
-Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a basic type:
+Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a basic type.
 
 ```motoko no-repl
 func addIfInt<T <: Int>(x : T, y : T) : Int {
@@ -113,12 +114,6 @@ let result = addIfInt(5, -10);  // Allowed because both are of type Int.
 
 Here, `T <: Int` constrains `T` to be a subtype of [`Int`](/docs/motoko/base/Int). Since [`Int`](/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
 
-- The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](/docs/motoko/base/Int) or [`Float`](/docs/motoko/base/Float), it restricts `T` to that type.
-
-- These constraints are enforced at compile time, meaning the compiler checks that the provided type satisfies the constraint. This guarantees that the necessary properties or operations are available when the function is used, eliminating certain classes of runtime errors.
-
-- Although the concept of type bounds is often associated with [inheritance-based polymorphism](https://www.codecademy.com/learn/learn-java/modules/learn-java-inheritance-and-polymorphism/cheatsheet) in other languages, Motoko uses structural typing. This means that the subtype relationship is determined by the structure of the types rather than an explicit inheritance hierarchy. **Motoko does not support inheritance**.
-
-This approach balances the flexibility of generic programming with the safety of compile-time checks, enabling the creation of generic functions that operate on a range of types while still enforcing specific structural or type constraints.
+The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](/docs/motoko/base/Int) or [`Float`](/docs/motoko/base/Float), it restricts `T` to that type.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

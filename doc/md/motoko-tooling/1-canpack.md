@@ -5,7 +5,7 @@ sidebar: 1
 # Canpack
 
 
-Canpack is a code generation tool designed to simplify communication across canisters written in different languages. It currently supports calling a Rust crate from Motoko code. Canpack generates a separate canister for the host language, then combines the other language's code fragments that are defined across different libraries.
+Canpack is a code generation tool designed to simplify communication across [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) written in different languages. It currently supports calling a Rust crate from Motoko code. Canpack generates a separate canister for the host language, then combines the other language's code fragments that are defined across different libraries.
 
 Canpack supports the [Mops](https://mops.one/) package manager.
 
@@ -84,7 +84,7 @@ actor {
 }
 ```
 
-Motoko canisters can import any Rust crate that is compatible with Canpack. Canpack supports any IC Wasm-compatible crate.
+Motoko [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) can import any Rust crate that is compatible with Canpack. Canpack supports any IC Wasm-compatible crate.
 
 ### Adding Canpack support to a crate
 

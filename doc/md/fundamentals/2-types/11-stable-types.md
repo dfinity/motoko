@@ -4,13 +4,13 @@ sidebar_position: 11
 
 # Stable types  
 
-Stable types are essential for preserving state across canister upgrades in Motoko. They allow applications to evolve while ensuring that critical data remains intact. Unlike shared types, which focus on inter-canister communication, stable types ensure data persistence over time.  
+Stable types are essential for preserving [state](/docs/motoko/fundamentals/state) across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). Unlike shared types, which focus on [inter-canister](/docs/motoko/fundamentals/messaging) communication, stable types ensure data persistence over time.
 
-A type is stable if it can be safely stored and restored during an upgrade. This includes all shared types, as well as certain mutable structures that are designed for long-term storage.
+A type is stable if it can be safely stored and restored before and after an upgrade. This includes all shared types, as well as certain mutable structures that are designed for long-term storage.
 
 ## Stable vs shared types
 
-While all shared types are stable, the reverse is not true. Some stable types, such as mutable structures, cannot be shared across canisters.
+While all shared types are stable, the reverse is not true. Some stable types cannot be shared across [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
 | Type                            | Stable | Shared |
 |---------------------------------|--------|--------|
@@ -29,7 +29,7 @@ While all shared types are stable, the reverse is not true. Some stable types, s
 
 ### Primitive types
 
-Most [primitive types](/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable:
+Most [primitive types](/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
 
 ```motoko no-repl
 // Numbers, text, and booleans are stable
@@ -40,11 +40,11 @@ stable var isActive: Bool = true;
 
 ### Immutable and mutable collections  
 
-Both immutable and mutable collections of stable types are stable:  
+Both immutable and mutable collections of stable types are stable.
 
 ```motoko no-repl
 // Immutable arrays are stable
-stable var usernames: [Text] = ["Motoko", "Bob"];
+stable var usernames: [Text] = ["Motoko", "Ghost"];
 
 // Mutable arrays are also stable (unlike shared types)
 stable var scores: [var Nat] = [var 100, 85, 92];
@@ -71,7 +71,7 @@ stable var settings = {
 
 ### Variants with stable type tags  
 
-[Variants](/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types:
+[Variants](/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
 
 ```motoko no-repl
 // Variants with stable tags are stable
@@ -87,7 +87,7 @@ stable var ghostStatus: UserStatus = #busy("In a meeting");
 
 ### Option types  
 
-[Option](/docs/motoko/fundamentals/types/options-results) types are stable when they contain stable types:
+[Option](/docs/motoko/fundamentals/types/options-results) types are stable when they contain stable types.
 
 ```motoko no-repl
 // Option types with stable inner types are stable
@@ -97,7 +97,7 @@ stable var optionalMessage: ?Text = null;
 
 ### Regions  
 
-The `Region` type, which provides low-level memory management, is stable:  
+The `Region` type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
 // Regions are stable
@@ -106,7 +106,7 @@ stable var storage: Region = Region.new();
 
 ### Actor references  
 
-References to [actors](/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions:
+References to [actors](/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
 // Actor types are stable
@@ -119,15 +119,17 @@ stable var logger: ?LoggerActor = null;
 
 ### Mutable arrays
 
+Mutable arrays are stable but not shared.
+
 ```motoko no-repl
-// Mutable arrays are stable but NOT shared
 stable var counters: [var Nat] = [var 0, 0, 0];
 ```
 
 ### Objects with mutable fields
 
+Objects with mutable fields are stable but not shared.
+
 ```motoko no-repl
-// Objects with mutable fields are stable but NOT shared
 stable var user = {
     var name = "Motoko";
     var loginCount = 0;

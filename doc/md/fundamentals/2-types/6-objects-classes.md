@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## Objects
 
-An object, similar to a [record](/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including asynchronous behavior. Unlike records, objects can encapsulate or share their state and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
+An object, similar to a [record](/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
 
 ```motoko no-repl
 object Account {
@@ -27,7 +27,7 @@ object Account {
 
 ## Classes
 
-A class acts as a blueprint for creating multiple objects with independent state.
+A class acts as a blueprint for creating multiple objects with independent [state](/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
 class Account(initialBalance: Nat) {
@@ -73,7 +73,7 @@ object class Account(initialBalance: Nat) {
 
 ## Modules
 
-A module provides reusable utility functions and encapsulates both state and behavior, module state is not persistent unless explicitly stored. It supports asynchronous operations, making it suitable for managing complex functionality across different parts of a program.
+A module provides reusable utility functions and encapsulates both [state](/docs/motoko/fundamentals/state) and behavior, module [state](/docs/motoko/fundamentals/state) is not persistent unless explicitly stored. It supports [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) operations, making it suitable for managing complex functionality across different parts of a program.
 
 ```motoko no-repl
 module CurrencyConverter {
@@ -121,10 +121,10 @@ A function expecting `{ getBalance : () -> Nat }` can accept any of the above, s
 - A subtype must be usable wherever its supertype is expected.  
 - The more general object has fewer methods because it makes fewer assumptions about available functionality.  
 
-basicAccount <: standardAccount <: premiumAccount, or equivalently:  `basicAccount` is a subtype of `standardAccount`, which is a subtype of `premiumAccount`.
+`basicAccount <: standardAccount <: premiumAccount`, or equivalently:  `basicAccount` is a subtype of `standardAccount`, which is a subtype of `premiumAccount`.
 
-A function expecting `PremiumAccount` expects `withdraw`, so it cannot accept `BasicAccount`.  
-However, a function expecting `BasicAccount` only needs `getBalance`, so it can accept all three objects.
+A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
+However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three objects.
 
 ```motoko no-repl
 func printBalance(account: { getBalance : () -> Nat }) {
@@ -132,9 +132,9 @@ func printBalance(account: { getBalance : () -> Nat }) {
 };
 
 // Works, because all have getBalance
-printBalance(BasicAccount);
-printBalance(StandardAccount);
-printBalance(PremiumAccount);
+printBalance(basicAccount);
+printBalance(standardAccount);
+printBalance(premiumAccount);
 ```
 
 ```motoko no-repl
@@ -143,10 +143,10 @@ func withdrawFromAccount(account: { withdraw : Nat -> Bool }) {
   Debug.print(if success then "Withdrawal successful" else "Insufficient funds");
 };
 
-// Works only for PremiumAccount, fails for others
-withdrawFromAccount(PremiumAccount);  // Works
-withdrawFromAccount(StandardAccount); // Fails (missing withdraw)
-withdrawFromAccount(BasicAccount);    // Fails (missing withdraw)
+// Works only for premiumAccount, fails for others
+withdrawFromAccount(premiumAccount);  // Works
+withdrawFromAccount(standardAccount); // Fails (missing withdraw)
+withdrawFromAccount(basicAccount);    // Fails (missing withdraw)
 ```
 
 [Learn more about subtyping](/docs/motoko/fundamentals/types/subtyping).

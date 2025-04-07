@@ -717,7 +717,7 @@ The type [`Blob`](../base/Blob.md) of category O (Ordered) represents binary blo
 
 ### Type [`Principal`](../base/Principal.md)
 
-The type [`Principal`](../base/Principal.md) of category O (Ordered) represents opaque principals such as canisters and users that can be used to identify callers of shared functions and used for simple authentication. Although opaque, principals may be converted to binary [`Blob`](../base/Blob.md) values for more efficient hashing and other applications.
+The type [`Principal`](../base/Principal.md) of category O (Ordered) represents opaque principals such as [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) and users that can be used to identify callers of shared functions and used for simple authentication. Although opaque, principals may be converted to binary [`Blob`](../base/Blob.md) values for more efficient hashing and other applications.
 
 ### Error type
 
@@ -1301,7 +1301,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-When building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
+When building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
 Sensible choices for `<pat>` are identifiers, such as [`Array`](../base/Array.md), or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.
 

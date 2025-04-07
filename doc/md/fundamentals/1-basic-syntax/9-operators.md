@@ -132,7 +132,7 @@ For example:
 let result = 10 + 5 * 2; // result = 20
 ```
 
-Use parentheses to enforce a different order:
+Use parentheses to enforce a different order.
 
 ```motoko
 let result = (10 + 5) * 2; // result = 30
@@ -140,7 +140,7 @@ let result = (10 + 5) * 2; // result = 30
 
 ## Pipes
 
-Pipes (`|>`) chain together function calls in a readable way. Instead of nesting function calls, pipes pass the result of one expression as an argument to the next function. The value of the left side of the pipe is referenced on the right side using an underscore `_`.
+Pipes (`|>`) chain together function calls in a readable way. Instead of nesting function calls, pipes pass the result of one expression as an argument to the next function. The value of the left side of the pipe is referenced on the right side using an underscore (`_`).
 
 ```motoko
 func double(n: Int): Int { n * 2 };

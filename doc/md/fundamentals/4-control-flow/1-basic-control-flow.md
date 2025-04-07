@@ -9,7 +9,7 @@ sidebar_position: 1
 | `return` | Exits a function and returns a value. |
 | `if` | Executes a block if the condition is `true`. |
 | `if/else` | Executes different blocks based on a condition. |
-| `switch` | Pattern matching for variants, options, results, etc. |
+| `switch` | [Pattern matching](/docs/motoko/fundamentals/pattern-matching) for variants, options, results, etc. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
 | `while` | Runs while a condition is `true`. |
@@ -95,11 +95,11 @@ func getUserAge(user: ?Nat): ?Nat {
 <!--- this contains a null break usage example, we should point a reader here for a search for null break--->
 
 ## `label`
-A label assigns a name to a block of code, allowing structured control flow. This named block executes like any other, but its result can be accessed directly. Labels enable more control over execution, making it possible to define clear exit points and structure complex logic effectively.
+A label assigns a name to a block of code that executes like any other, but its result can be accessed directly. Labels enable more control over execution, making it possible to define clear exit points and structure complex logic effectively.
 
-When a labeled block runs, it evaluates its contents and produces a result. If no specific result is required, it defaults to an empty value. Labels do not alter how a block executes but provide a way to reference and control its flow.
+When a labeled block runs, it evaluates its contents and produces a result. If no specific result is required, it defaults to an empty value. Labels do not alter how a block executes but provide a way to reference and control its flow. A labeled block is required to define an exit point.
 
-```motoko
+```motoko no-repl
 public func labelControlFlow() : async Int {
     label processNumbers : Int {
       let numbers : [Int] = [3, -1, 0, 5, -2, 7];
@@ -113,11 +113,11 @@ public func labelControlFlow() : async Int {
 }
 ```
 
-## `break`
+### `break` within a labeled block
 
-A break statement stops execution inside a labeled block and returns a value immediately. However, a break must always reference an identifier. It cannot be used on its own. A labeled block is required to define an exit point.
+A `break` statement stops execution inside a labeled block and returns a value immediately. However, a break must always reference an identifier. It cannot be used on its own.
 
-```motoko
+```motoko no-repl
 public func breakControlFlow() : async Int {
     label processNumbers: Int {
         let numbers : [Int] = [3, -1, 0, 5, -2, 7];
@@ -133,8 +133,6 @@ public func breakControlFlow() : async Int {
     };
 }
 ```
-
-An identifier must be provided when using the break keyword.
 
 ## `while`
 
@@ -161,7 +159,7 @@ for (num in numbers.vals()) {
 
 ## `let-else`
 
-Let-else allows conditional binding.
+`let-else` allows conditional binding.
 
 ```motoko no-repl
 let age = 18;
@@ -174,16 +172,19 @@ let authorized : Bool = if (age > 18) {true} else {false};
 In Motoko, code follows sequential execution, running one statement after another. However, certain constructs allow altering this flow, including exiting a block early, skipping part of a loop, returning a value from a function or calling a function.
 
 
-### Continue
+### `continue`
 
-A continue statement skips the rest of the current iteration in a loop and moves directly to the next one. Like break, continue must reference a label. It works only within a **labeled loop**, ensuring controlled iteration.
+A `continue` statement skips the rest of the current iteration in a loop and moves directly to the next one. Like `break`, `continue` must reference a label. It works only within a labeled loop, ensuring controlled iteration.
 
-```motoko
+```motoko no-repl
 public func continueControlFlow() : async Int {
+
+    // Labeled block
     label processNumbers: Int {
         let numbers : [Int] = [3, -1, 0, 5, -2, 7];
         var sum : Int = 0;
 
+        // Labeled loop
         label processing for (num in numbers.vals()) {
             if (num < 0) {
                 continue processing; // Skip negative numbers
@@ -195,13 +196,11 @@ public func continueControlFlow() : async Int {
 }
 ```
 
-`processNumbers` is a labeled block while `processing` is a labeled loop. The continue keyword can only be used in the context of a labeled loop.
+### `return`
 
-### Return
+The `return` statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
-The return statement immediately exits a function and provides a result. Unlike break or continue, return stops execution entirely and returns a value to the caller.
-
-```motoko
+```motoko no-repl
 public func returnControlFlow() : async Int {
     let numbers : [Int] = [3, 0, 5, -1, -2, 7];
     var sum : Int = 0;
@@ -217,9 +216,9 @@ public func returnControlFlow() : async Int {
 
 ### Function calls
 
-A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or asynchronous messaging between canisters.  
+A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
-```motoko
+```motoko no-repl
 public func processNumbers(numbers: [Int]) : Int {
     var sum : Int = 0;
         for (num in numbers.vals()) {

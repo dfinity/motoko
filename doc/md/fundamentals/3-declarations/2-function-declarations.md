@@ -4,28 +4,27 @@ sidebar_position: 2
 
 # Functions declarations
 
-A function in Motoko is a reusable block of code that takes inputs, processes them, and returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
+A function in Motoko is a reusable block of code that takes inputs, processes them, then returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
 
 ## Declaring a function  
 
 Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse.
 
-```motoko
+```motoko no-repl
+// The function is named 'add'
+// 'a: Int' and 'b: Int' are parameters with types.
+// 'Int' is the return type.
 func add(a: Int, b: Int) : Int {
+    // Exits the function and provides a result.
     return a + b;
 }
 ```
-
-- `add` is the function name.
-- `(a: Int, b: Int)` are parameters with types.
-- `: Int` specifies the return type.
-- `return a + b;` exits the function and provides a result.
 
 ## Calling a function  
 
 To execute a function, pass the required arguments:  
 
-```motoko
+```motoko no-repl
 func add(a: Int, b: Int) : Int {
     return a + b;
 };
@@ -34,9 +33,9 @@ add(3, 5);
 
 ## Functions as values  
 
-Functions in Motoko are first-class values, meaning they can be assigned to variables, stored in data structures, and passed as arguments.
+Functions in Motoko are first-class values. They can be assigned to variables, stored in data structures, and passed as arguments.
 
-```motoko
+```motoko no-repl
 let double = func (x: Int) : Int { x * 2 };
 let applyFunction = func (f: (Int) -> Int, value: Int) : Int { f(value) };
 
@@ -47,9 +46,9 @@ applyFunction(double, 10);
 
 ## Anonymous functions
 
-Motoko supports functions without names (anonymous). They are often used in expressions or passed as arguments.
+Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
-```motoko
+```motoko no-repl
 let multiply = func (x: Int, y: Int) : Int { x * y };
 multiply(4, 2);
 ```
@@ -59,10 +58,9 @@ The function is assigned to `multiply` instead of being named directly. `{ x * y
 
 ## Recursive functions  
 
-A function that can call itself is known as a recursive function. Recursion allows looping behavior without explicit loops.
+A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops.
 
-
-```motoko
+```motoko no-repl
 func factorial(n: Nat) : Nat {
     if (n == 0) {
         return 1;
@@ -74,9 +72,9 @@ func factorial(n: Nat) : Nat {
 
 ## Shared functions in actors  
 
-In actors, functions can be marked as `shared` to allow asynchronous, inter-canister communication.
+In actors, functions can be marked as `shared` to allow [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) [inter-canister](/docs/motoko/fundamentals/messaging) communication.
 
-```motoko
+```motoko no-repl
 actor Counter {
     stable var count: Nat = 0;
 
@@ -98,7 +96,6 @@ One key advantage of `shared` functions is that they can access the caller's `Pr
 
 ```motoko
 actor Example {
-// msg.caller retrieves the Principal of the caller.
 // msg.caller retrieves the Principal of the caller.
     public shared(msg) func whoAmI() : async Principal {
         return msg.caller;

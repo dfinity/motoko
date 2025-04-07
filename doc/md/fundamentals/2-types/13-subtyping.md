@@ -16,11 +16,11 @@ Subtyping is a fundamental concept in type systems that allows a value of one ty
 
 - `F[T]` represents a type constructor applied to type `T` (e.g. `?T` for option type).
 
-- `<:` means "is a subtype of".
+- `<:` means "is a subtype of."
 
 ## Numeric (`Nat <: Int`)
 
-[`Nat`](/docs/motoko/base/Nat) is a subtype of [`Int`](/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](/docs/motoko/base/Nat) (negative numbers exist in `Int`).
+[`Nat`](/docs/motoko/base/Nat) is a subtype of [`Int`](/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](/docs/motoko/base/Nat) (as negative numbers exist in `Int`).
 
 ```motoko no-repl
 let x : Int = 10 : Nat;  // Allowed, since Nat is a subtype of Int

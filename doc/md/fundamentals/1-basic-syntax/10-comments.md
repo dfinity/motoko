@@ -14,7 +14,7 @@ Use `//` for comments that extend to the end of a line.
 // This is a single-line comment
 ```
 
-Use `///` for function or module documentation.
+Use `///` for function or module documentation. Module documentation can be exported into documentation files such as Markdown or HTML using [mo-doc](/docs/motoko/motoko-tooling/mo-doc).
 
 ```motoko no-repl
 /// Returns the sum of two integers.

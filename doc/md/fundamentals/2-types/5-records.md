@@ -15,16 +15,13 @@ let person = {
   };
 ```
 
-`person` is a record with two labeled fields:
+`person` is a record with two labeled fields, `name` of type [`Text`](/docs/motoko/base/Text) and `age` of type [`Nat`](/docs/motoko/base/Nat).
 
-1. `name` of type [`Text`](/docs/motoko/base/Text).
-2. `age` of type [`Nat`](/docs/motoko/base/Nat).
-
-The values of the fields are `"Motoko"` and `25`.
+The values of the fields are `"Motoko"` and `25` respectively.
 
 ## Accessing fields
 
-Fields in a record can be accessed using the dot (`.`) notation:
+Fields in a record can be accessed using the dot (`.`) notation.
 
 ```motoko no-repl
 let person = {
@@ -42,7 +39,7 @@ If a field does not exist in the record, the program traps.
 
 ## Record mutability
 
-By default, record fields are immutable. To create a mutable field, use `var`:
+By default, record fields are immutable. To create a mutable field, use `var`.
 
 ```motoko
 let person = {
@@ -69,7 +66,7 @@ Attempting to update an immutable field will raise an error.
 
 ## Nested records
 
-Records can contain other records, allowing for hierarchical data structures.  
+Records can contain other records, allowing for hierarchical data structures that maintain organization while ensuring type safety and clarity.
 
 ```motoko no-repl
 type Address = {
@@ -89,11 +86,10 @@ let individual: Individual = {
 };
 ```
 
-This structure maintains organization while ensuring type safety and clarity.
-
 ## Pattern matching on records
 
-Records can be destructured using [`switch`](/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields.
+Records can be destructured using [`switch`](/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
+
 
 ```motoko no-repl
 type Address = {
@@ -116,8 +112,6 @@ let cityName: Text = switch (individual) {
     case ({ address = { city } }) city; //New York
 };
 ```
-
-This approach makes accessing deeply nested fields more explicit and readable.
 
 ## Using records in collections
 
@@ -145,7 +139,7 @@ Since records are immutable by default, updating a record requires creating a mo
 
 ### Merging records with `and`
 
-The `and` keyword merges multiple records when they have no conflicting fields:
+The `and` keyword merges multiple records when they have no conflicting fields.
 
 ```motoko no-repl
 let contact = { email: Text = "alice@example.com"; };
@@ -193,7 +187,7 @@ Debug.print(debug_show (fullProfile));
 
 ## Tuples vs records
 
-Tuples and records both allow grouping values, but they have key differences in structure, mutability, and field access.
+Tuples and records both allow grouping values, but they have key differences in structure, mutability, and field access. While tuples provide a compact way to group values, records offer more flexibility for structured data modeling, especially when dealing with complex relationships or named fields.
 
 | Feature         | Tuple                                     | Record                                |
 |----------------|------------------------------------------|----------------------------------------|
@@ -225,8 +219,6 @@ let username: Text = switch (user) {
     case (name, _) name;
 };
 ```
-
-While tuples provide a compact way to group values, records offer more flexibility for structured data modeling, especially when dealing with complex relationships or named fields.
 
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

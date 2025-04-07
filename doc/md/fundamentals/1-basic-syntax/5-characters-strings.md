@@ -6,16 +6,13 @@ sidebar_position: 5
 
 ## Characters
 
-The `Char` type in Motoko represents a single unicode character delimited with `'`
+The `Char` type in Motoko represents a single unicode character delimited with a single quotation mark (`'`).
 
 ```motoko no-repl
 let letter: Char = 'A';
 let symbol: Char = '✮';
-```
 
-Comparing characters
-
-```motoko
+// Comparing characters
 'I' == 'i' // False
 ```
 
@@ -25,15 +22,13 @@ Comparing characters
 
 ## Strings
 
-Sequences of characters are handled using the [`Text`](/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with `"`
+Sequences of characters are handled using the [`Text`](/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
 
-```motoko
+```motoko no-repl
 let greeting: Text = "Hello, world!";
-```
 
-Concatenating text
+// Concatenating text
 
-```motoko
 "ICP" # "x" # "Motoko" // ICP x Motoko
 ```
 

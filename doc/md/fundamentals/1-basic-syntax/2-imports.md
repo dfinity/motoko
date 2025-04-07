@@ -6,19 +6,19 @@ sidebar_position: 2
 
 Package imports should be at the top of the source file. Imports allow you to reuse code from external libraries or modules, making code easier to maintain and manage. You can import from:
 
-**1. Standard modules provided by the base library:**
+**1. Standard modules provided by the base library.**
 
 ```motoko no-repl
 import Text "mo:base/Text";
 ```
 
-**2. Third-party packages installed via the Mops package manager:**
+**2. Third-party packages installed via the Mops package manager.**
 
 ```motoko no-repl
 import Package "mo:packagename";
 ```
 
-**3. Files within the current project:**
+**3. Files within the current project.**
 
 ```motoko no-repl
 import Utils "utils";

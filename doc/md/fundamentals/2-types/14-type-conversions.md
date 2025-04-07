@@ -4,7 +4,7 @@ sidebar_position: 14
 
 # Type conversions
 
-Conversions allow transforming values between different types to ensure compatibility and ease of manipulation. Common conversions include numeric transformation, such as converting [`Float`](/docs/motoko/base/Float) or [`Int`](/docs/motoko/base/Int) to [`Nat`](/docs/motoko/base/Nat), and text manipulation, like converting [`Text`](/docs/motoko/base/Text) to [`Float`](/docs/motoko/base/Float) or encoding [`Text`](/docs/motoko/base/Text) as a `Blob`. Arrays and tuples can be converted into structured types, such as records or hashmaps, for better organization. Additionally, time conversions enable transforming `Time.now()` (nanoseconds since 1970) into human-readable date formats, with optional timezone adjustments. These conversions provide flexibility when working with different data types.
+Conversions are used to transform values between different types to ensure compatibility and ease of manipulation. Common conversions include numeric transformation, such as converting [`Float`](/docs/motoko/base/Float) or [`Int`](/docs/motoko/base/Int) to [`Nat`](/docs/motoko/base/Nat), and text manipulation, like converting [`Text`](/docs/motoko/base/Text) to [`Float`](/docs/motoko/base/Float) or encoding [`Text`](/docs/motoko/base/Text) as a [`Blob`](/docs/motoko/base/Blob). Arrays and tuples can be converted into structured types, such as records or hashmaps, for better organization. Additionally, time conversions enable transforming `Time.now()` (nanoseconds since 1970) into human-readable date formats, with optional timezone adjustments. These conversions provide flexibility when working with different data types.
 
 ## Converting types to `Nat`
 
@@ -48,7 +48,7 @@ let result4 = intToNat(-5);   // 5
 
 Motoko allows converting a [`Nat8`](/docs/motoko/base/Nat8) value to a [`Char`](/docs/motoko/base/Char), where the [`Nat8`](/docs/motoko/base/Nat8) value represents a **unicode scalar value** in the **ASCII range**.
 
-Since [`Nat8`](/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to `Nat32` before being converted into [`Char`](/docs/motoko/base/Char).
+Since [`Nat8`](/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to [`Nat32`](/docs/motoko/base/Nat32) before being converted into [`Char`](/docs/motoko/base/Char).
 
 ```motoko no-repl
 import Char "mo:base/Char";
@@ -78,7 +78,7 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 
 ### `Text` to an optional `Blob` for a ledger memo
 
-[`Text`](/docs/motoko/base/Text) can be converted into a `Blob` using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
+[`Text`](/docs/motoko/base/Text) can be converted into a [`Blob`](/docs/motoko/base/Blob) using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
 
 ```motoko no-repl
 import Text "mo:base/Text";
@@ -99,7 +99,7 @@ Motoko does not have a built-in `Text.toFloat` function, so parsing [`Text`](/do
 - Integer and decimal parts.
 - Scientific notation (`e` or `E`).
 - Negative numbers.
-- Edge cases (empty input, invalid characters, multiple decimal points, etc.).
+- Edge cases (empty input, invalid characters, multiple decimal points, etc.)
 
 Below is a robust implementation:
 
@@ -310,7 +310,9 @@ import Iter "mo:base/Iter";
 
 On ICP, time is measured in nanoseconds since the Unix epoch (January 1, 1970, UTC). The `Time.now()` function returns the current system time in nanoseconds, which must be converted accordingly for date and time.
 
-This section demonstrates how to extract the year, month, day, hour, minute, and second from `Time.now()` by computing the number of days and seconds elapsed since 1970. It accounts for leap years when determining the month and day.  Additionally, a method for applying a timezone offset is provided, allowing adjustments such as converting UTC to Eastern Standard Time (EST) by subtracting 5 hours. The final output is formatted as `MM-DD-YYYY HH-MM-SS` for readability.
+This section demonstrates how to extract the year, month, day, hour, minute, and second from `Time.now()` by computing the number of days and seconds elapsed since 1970. It accounts for leap years when determining the month and day.
+
+Additionally, a method for applying a timezone offset is provided, allowing adjustments such as converting UTC to Eastern Standard Time (EST) by subtracting 5 hours. The final output is formatted as `MM-DD-YYYY HH-MM-SS` for readability.
 
 ```motoko no-repl
 import Time "mo:base/Time";
@@ -435,7 +437,7 @@ public func arrayOfNatToText(arr: [Nat]): async Text {
 
 ### `Array` of tuples to an object
 
-Motoko lacks support for dynamic objects, so an array of tuples is converted into a record or a structured representation.
+Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](/docs/motoko/fundamentals/types/records) or a structured representation.
 
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
@@ -450,7 +452,7 @@ func arrayToMap(arr: [(Text, Nat)]): HashMap.HashMap<Text, Nat> {
 
 ```
 
-To convert an array of tuples `[(Text, Nat)]` into a custom record type, such as `User`, `Array.map` is used to transform each tuple into a structured record.
+To convert an array of tuples `[(Text, Nat)]` into a custom [record](/docs/motoko/fundamentals/types/records) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](/docs/motoko/fundamentals/types/records).
 
 ```motoko no-repl
 import Array "mo:base/Array";

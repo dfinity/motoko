@@ -8,10 +8,9 @@ sidebar_position: 2
 
 An unconditional loop runs indefinitely unless explicitly stopped. Unlike `while` or `for` loops, which depend on a condition, unconditional loops continue execution without a predefined exit condition. These loops are useful when a process needs to run continuously, waiting for an external event, or relying on an internal break condition.
 
+The `loop` keyword explicitly defines an infinite loop. However, when using `break`, the loop must have a label to indicate where execution should stop.
 
-The `loop` keyword explicitly defines an infinite loop. However, when using break, the loop must have a label to indicate where execution should stop.
-
-```motoko
+```motoko no-repl
 public func unconditionalLoop() : async Nat {
     var count : Nat = 0;
 
@@ -30,13 +29,13 @@ public func unconditionalLoop() : async Nat {
 
 A `for` loop in Motoko follows the structure:  
 
-```motoko
+```motoko no-repl
 for (pattern in iterator) {
   // Code to run for each item in the iterator
 }
 ```
 
-1. The iterator expression must have type `{ next : () → ?T }`, meaning it provides a `next` function that returns either a value (`?T`) or `null` when there are no more items.
+1. The iterator expression must have type `{ next : () → ?T }`, providing a `next` function that returns either a value (`?T`) or `null` when there are no more items.
 2. The pattern must match the type `T` of the values produced by the iterator.
 3. The loop first evaluates the iterator:
    - If evaluating the iterator causes a trap, the loop stops immediately.  
@@ -44,7 +43,7 @@ for (pattern in iterator) {
    - If `next()` returns a value, it is assigned to the pattern and the loop body executes.  
 4. The loop continues calling `next()` until it returns `null`, at which point the loop stops and the final result is `()`.  
 
-```motoko
+```motoko no-repl
 let numbers = [1, 2, 3, 4, 5];
 
 for (num in numbers.vals()) {
@@ -56,23 +55,23 @@ for (num in numbers.vals()) {
 
 ## `while` loop
 
-A `while` loop in Motoko follows this structure:
+A `while` loop in Motoko follows the structure:
 
-```motoko
+```motoko no-repl
 while (condition) {
   // Code to run while the condition is true
 }
 ```
 
 1. The condition must be a [`Bool`](/docs/motoko/base/Bool) (`true` or `false`).
-2. The loop body must have type `()` (it doesn't return a meaningful value).
+2. The loop body must have type `()` such that it doesn't return a meaningful value.
 3. The loop first evaluates the condition:
    - If it causes a trap (error), the loop stops immediately.
-   - If it evaluates to false, the loop ends and does nothing.
-   - If it evaluates to true, the body runs and the loop repeats the process.
+   - If it evaluates to `false`, the loop ends and does nothing.
+   - If it evaluates to `true`, the body runs and the loop repeats the process.
 4. Once the condition becomes false, the loop stops, and the final result is `()`.
 
-```motoko
+```motoko no-repl
 var count = 3;
 while (count > 0) {
   Debug.print("Counting down...");

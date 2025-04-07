@@ -6,7 +6,7 @@ sidebar_position: 10
 
 | Type    | Syntax                  | Purpose                          | When to use it                                   |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
-| Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result** . |
+| Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result**. |
 | Result  | `Result.Result<T, E>`  where `T` is the success type and `E` is the error type.  | Represents success or failure.   | When an operation can either **succeed or fail**. |
 
 ## Options
@@ -15,7 +15,7 @@ Options provide a structured way to represent values that may or may not be pres
 
 An option is defined using `?` followed by the type of the value it can hold.
 
-```motoko
+```motoko no-repl
 var username: ?Text = null;
 ```
 
@@ -38,7 +38,7 @@ By leveraging the `Option` module, handling optional values becomes more concise
 
 ### Providing default values
 
-Instead of manually handling `null` cases with pattern matching, `Option.get` allows for cleaner fallback logic:
+Instead of manually handling `null` cases with [pattern matching](/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
 ```motoko no-repl
 import Option "mo:base/Option";
@@ -47,11 +47,9 @@ let username: ?Text = null;
 let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
-This approach ensures that missing values are safely replaced with a default.
-
 ### Using options for error handling
 
-Options can be used to catch expected failures instead of calling [`trap`](/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
+Options can be used to catch expected failures instead of calling a [`trap`](/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
 
 ```motoko no-repl
 func safeDivide(a: Int, b: Int): ?Int {
@@ -62,7 +60,7 @@ let result1 = safeDivide(10, 2); // ?5
 let result2 = safeDivide(10, 0); // null
 ```
 
-This prevents division errors from interrupting program execution.
+This example prevents division errors from interrupting program execution.
 
 ### Applying transformations to options
 
@@ -75,11 +73,11 @@ import Option "mo:base/Option";
   let doubled = Option.map<Nat, Nat>(number, func (x : Nat) = x * 2); // ?20
 ```
 
-If `number` is `null`, `map` ensures the result remains `null` instead of performing an invalid operation.
+In this example, if `number` is `null`, `map` ensures the result remains `null` instead of performing an invalid operation.
 
 ### Applying an optional function
 
-Sometimes, both the function and value are optional. `Option.apply` calls a function only if both are present.
+Sometimes, both the function and value are optional. `Option.apply` calls a function only if both are present. This is useful when chaining optional operations that may return `null`.
 
 ```motoko no-repl
 import Option "mo:base/Option";
@@ -92,7 +90,6 @@ let result = Option.apply<Nat,Nat>(maybeValue, maybeIncrement); // ?11
 
 If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
 
-This is useful when chaining optional operations that may return `null`.
 
 ### Combining multiple optional values
 
@@ -140,11 +137,6 @@ To unwrap an option (`?T`), both cases must be handled:
 
 If the value exists (`?value`), it can be accessed directly as its inner type (`T`) within the `case (?value)` branch. If the value is `null`, an alternative action or default value must be provided in the `case null` branch to ensure safe execution. This prevents runtime errors and ensures that optional values are handled explicitly.
 
-### References
-
-- [Option](https://internetcomputer.org/docs/current/motoko/main/base/option)
-
-
 ## Results
 
 The `Result` type can hold:
@@ -163,5 +155,10 @@ func divide(a: Nat, b: Nat): Result.Result<Nat, Text> {
     return #ok(a / b);
 };
 ```
+
+## References
+
+- [`Option`](/docs/motokobase/Option)
+
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -14,7 +14,7 @@ Literals are fixed values written directly in the code.
 
 - **Text literals**: `"Hello"`
 
-You can use literals directly in expressions:
+You can use literals directly in expressions.
 
 ```motoko
 100 + 50
