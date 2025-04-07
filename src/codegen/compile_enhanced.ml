@@ -407,6 +407,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
+  module FieldEnv = Env.Make(String)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -2332,91 +2333,6 @@ module Variant = struct
 
 end (* Variant *)
 
-
-module Closure = struct
-  (* In this module, we deal with closures, i.e. functions that capture parts
-     of their environment.
-
-     The structure of a closure is:
-
-       ┌──────┬─────┬───────┬──────┬──────────────┐
-       │ obj header │ funid │ size │ captured ... │
-       └──────┴─────┴───────┴──────┴──────────────┘
-
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
-  *)
-  let header_size = Int64.add Tagged.header_size 2L
-
-  let funptr_field = Tagged.header_size
-  let len_field = Int64.add 1L Tagged.header_size
-
-  let load_data env i =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (Int64.add header_size i)
-
-  let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
-    Tagged.store_field env (Int64.add header_size i)
-
-  let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env
-
-  (* Expect on the stack
-     * the function closure (using prepare_closure_call)
-     * and arguments (n-ary!)
-     * the function closure again!
-  *)
-  let call_closure env n_args n_res =
-    (* Calculate the wasm type for a given calling convention.
-       An extra first argument for the closure! *)
-    let ty = E.func_type env (FuncType (
-      I64Type :: Lib.List.make n_args I64Type,
-      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
-    (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env funptr_field ^^
-    (if env.E.is_canister then
-      E.call_import env "rts" "resolve_function_call"
-    else
-      G.nop) ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    (* All done: Call! *)
-    let table_index = 0l in
-    G.i (CallIndirect (nr table_index, nr ty)) ^^
-    FakeMultiVal.load env (Lib.List.make n_res I64Type)
-
-  let make_stable_closure_type captured stable_closure =
-    let variable_types = List.map (fun id ->
-      let variable = Type.Env.find id stable_closure.Type.captured_variables in
-      Printf.printf "CLOSURE CAPTURED %s\n" variable.Type.stable_name;
-      variable.Type.variable_type
-    ) captured in
-    Type.Tup variable_types
-
-  let constant env get_fi stable_closure =
-    let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
-    (match stable_closure with
-    | Some stable_closure ->
-      (* no captured variables in constant functions *)
-      let qualified_name = stable_closure.Type.function_path in
-      let closure_type = make_stable_closure_type [] stable_closure in
-      E.add_stable_func env qualified_name wasm_table_index closure_type
-    | None -> ());
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
-      compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
-      (if env.E.is_canister then
-        E.call_import env "rts" "resolve_function_literal"
-      else
-        G.nop);
-      compile_unboxed_const 0L (* no captured variables *)
-    ])
-
-end (* Closure *)
-
-
 module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
 
@@ -3965,6 +3881,167 @@ module Blob = struct
 
 end (* Blob *)
 
+(* Used by Closure and Object *)
+module FieldLookupTable = struct
+  let build_hash_blob env (field_names : string list) =
+    let name_position_map = field_names |>
+      List.map (fun name -> (E.hash_label env name, name)) |>
+      List.sort compare |>
+      List.mapi (fun index (_, name) -> (name, Int64.of_int index)) |>
+      List.fold_left (fun map (name, index) -> E.FieldEnv.add name index map) E.FieldEnv.empty
+    in
+    let hashes = field_names |>
+      List.map (fun name -> E.hash_label env name) |>
+      List.sort compare in
+    Printf.printf "HASH BLOB\n";
+    List.iter (fun name -> Printf.printf "  %s HASH %i\n" name (Int64.to_int (E.hash_label env name))) field_names;
+    let hash_blob =
+      let hash_payload = StaticBytes.[ i64s hashes ] in
+      Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
+    in
+    (name_position_map, hash_blob)
+
+  let field_address env header low_bound =
+    let (hash_pointer_field, header_size) = header in
+    assert Int64.((to_int hash_pointer_field) < (to_int header_size));
+    let name = Printf.sprintf "field_address<%i>-<%i>-<%d>" (Int64.to_int hash_pointer_field) (Int64.to_int header_size) low_bound  in
+    Func.share_code2 Func.Always env name (("x", I64Type), ("hash", I64Type)) [I64Type] (fun env get_x get_hash ->
+      let set_x = G.setter_for get_x in
+      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
+
+      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+
+      get_x ^^ Tagged.load_field env hash_pointer_field ^^
+      Blob.payload_ptr_unskewed env ^^
+
+      (* Linearly scan through the fields (binary search can come later) *)
+      (* unskew h_ptr and advance both to low bound *)
+      compile_add_const Int64.(mul Heap.word_size (of_int low_bound)) ^^
+      set_h_ptr ^^
+      get_x ^^
+      compile_add_const Int64.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
+      set_x ^^
+      G.loop0 (
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash ^^ compile_comparison I64Op.Eq ^^
+          E.if0
+            (get_x ^^ G.i Return)
+            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+            get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+            G.i (Br (nr 1l)))
+        ) ^^
+      G.i Unreachable
+    )
+
+end (* FieldLookupTable *)
+
+
+module Closure = struct
+  (* In this module, we deal with closures, i.e. functions that capture parts
+     of their environment. Closures have a stable representation that is portable
+     across compiler changes, with captured variables been located by their program
+     context (position of captured parameters, name of captured locals).
+
+     The hash of the captured variables is based on an id:
+     * Position of captured parameters (considering also nested functions/objects)
+     * Identifier of captured local variables
+
+     The structure of a closure is:
+
+       ┌──────┬─────┬───────┬──────────┬──────────────┐
+       │ obj header │ funid │ hash_ptr │ captured ... │
+       └──────┴─────┴───────┴──────────┴──────────────┘
+          ┌──────────────────────┘
+          │  
+          ↓  
+          ┌─────────────┬────────────────┬────────────────┬───┐
+          │ blob header │ captured1_hash │ captured2_hash │ … │
+          └─────────────┴────────────────┴────────────────┴───┘
+
+     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+  *)
+  let header_size = Int64.add Tagged.header_size 2L
+  let funptr_field = Tagged.header_size
+  let hash_pointer_field = Int64.add 1L Tagged.header_size
+
+  let captured_address env stable_name =
+    let header = (hash_pointer_field, header_size) in
+    compile_unboxed_const (E.hash_label env stable_name) ^^
+    FieldLookupTable.field_address env header 0
+  
+  let load_captured env stable_name =
+    captured_address env stable_name ^^
+    load_ptr
+    
+  let store_captured env stable_name =
+    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
+    set_closure_data ^^
+    captured_address env stable_name ^^
+    get_closure_data ^^
+    store_ptr
+
+  let prepare_closure_call env =
+    Tagged.load_forwarding_pointer env
+
+  (* Expect on the stack
+     * the function closure (using prepare_closure_call)
+     * and arguments (n-ary!)
+     * the function closure again!
+  *)
+  let call_closure env n_args n_res =
+    (* Calculate the wasm type for a given calling convention.
+       An extra first argument for the closure! *)
+    let ty = E.func_type env (FuncType (
+      I64Type :: Lib.List.make n_args I64Type,
+      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
+    (* get the table index *)
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env funptr_field ^^
+    (if env.E.is_canister then
+      E.call_import env "rts" "resolve_function_call"
+    else
+      G.nop) ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    (* All done: Call! *)
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
+    FakeMultiVal.load env (Lib.List.make n_res I64Type)
+
+  let make_stable_closure_type captured stable_closure =
+    let fields = List.map (fun id ->
+      let variable = Type.Env.find id stable_closure.Type.captured_variables in
+      Printf.printf "CLOSURE CAPTURED %s\n" variable.Type.stable_name;
+      Type.{
+        lab = variable.stable_name;
+        typ = variable.variable_type;
+        src = empty_src
+      }
+    ) captured in
+    Type.Obj (Type.Object, fields)
+
+
+  let constant env get_fi stable_closure =
+    let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
+    (match stable_closure with
+    | Some stable_closure ->
+      (* no captured variables in constant functions *)
+      let qualified_name = stable_closure.Type.function_path in
+      let closure_type = make_stable_closure_type [] stable_closure in
+      E.add_stable_func env qualified_name wasm_table_index closure_type
+    | None -> ());
+    (* no captured variables in constant functions *)
+    let (_, empty_hash_blob) = FieldLookupTable.build_hash_blob env [] in
+    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
+      (if env.E.is_canister then
+        E.call_import env "rts" "resolve_function_literal"
+      else
+        G.nop);
+      Tagged.materialize_shared_value env empty_hash_blob
+    ])
+
+end (* Closure *)
+
 module Object = struct
   (* An object with a mutable field1 and immutable field 2 has the following
      heap layout:
@@ -4013,37 +4090,16 @@ module Object = struct
 
   let hash_ptr_field = Int64.add Tagged.header_size 0L
 
-  module FieldEnv = Env.Make(String)
-
   (* This is for non-recursive objects. *)
   (* The instructions in the field already create the indirection if needed *)
-  let object_builder env (fs : (string * (E.t -> G.t)) list ) =
-    let name_pos_map =
-      fs |>
-        (* We could store only public fields in the object, but
-          then we need to allocate separate boxes for the non-public ones:
-          List.filter (fun (_, vis, f) -> vis.it = Public) |>
-        *)
-        List.map (fun (n,_) -> (E.hash_label env n, n)) |>
-        List.sort compare |>
-        List.mapi (fun i (_h,n) -> (n,Int64.of_int i)) |>
-        List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
-
-      let sz = Int64.of_int (FieldEnv.cardinal name_pos_map) in
-
-      (* Create hash blob *)
-      let hashes = fs |>
-        List.map (fun (n,_) -> E.hash_label env n) |>
-        List.sort compare in
-      let hash_blob =
-        let hash_payload = StaticBytes.[ i64s hashes ] in
-        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
-      in
-
+  let object_builder env (fs : (string * (E.t -> G.t)) list) =
+    let field_names = List.map (fun (name, _) -> name) fs in
+    let (name_pos_map, hash_blob) = FieldLookupTable.build_hash_blob env field_names in
+    let size = Int64.of_int (E.FieldEnv.cardinal name_pos_map) in
       (fun env ->
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
-        Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
+        Tagged.alloc env (Int64.add header_size size) Tagged.Object ^^
         set_ri ^^
 
         (* Set hash_ptr *)
@@ -4056,7 +4112,7 @@ module Object = struct
           (* Write the pointer to the indirection *)
           get_ri ^^
           generate_value env ^^
-          let i = FieldEnv.find name name_pos_map in
+          let i = E.FieldEnv.find name name_pos_map in
           let offset = Int64.add header_size i in
           Tagged.store_field env offset
         in
@@ -4087,35 +4143,7 @@ module Object = struct
     Bool.from_rts_int32
 
   (* Returns a pointer to the object field (without following the field indirection) *)
-  let idx_hash_raw env low_bound =
-    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 Func.Always env name (("x", I64Type), ("hash", I64Type)) [I64Type] (fun env get_x get_hash ->
-      let set_x = G.setter_for get_x in
-      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
-
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-
-      get_x ^^ Tagged.load_field env hash_ptr_field ^^
-      Blob.payload_ptr_unskewed env ^^
-
-      (* Linearly scan through the fields (binary search can come later) *)
-      (* unskew h_ptr and advance both to low bound *)
-      compile_add_const Int64.(mul Heap.word_size (of_int low_bound)) ^^
-      set_h_ptr ^^
-      get_x ^^
-      compile_add_const Int64.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
-      set_x ^^
-      G.loop0 (
-          get_h_ptr ^^ load_unskewed_ptr ^^
-          get_hash ^^ compile_comparison I64Op.Eq ^^
-          E.if0
-            (get_x ^^ G.i Return)
-            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-            get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
-            G.i (Br (nr 1l)))
-        ) ^^
-      G.i Unreachable
-    )
+  let idx_hash_raw env = FieldLookupTable.field_address env (hash_ptr_field, header_size)
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx_hash env low_bound indirect =
@@ -9771,16 +9799,29 @@ module FuncDec = struct
       let set_clos, get_clos = new_local env (name ^ "_clos") in
 
       let len = Wasm.I64.of_int_u (List.length captured) in
-      let store_env, restore_env =
-        let rec go i = function
+      Printf.printf "CLOSURE %i\n" (Int64.to_int len);
+      List.iter (fun name -> Printf.printf "CAPTURE %s\n" name) captured;
+
+      let captured_variable_name name =
+        match env.E.is_canister, stable_context with
+        | true, Some stable_closure ->
+          let open Type in
+          let variable = Env.find name stable_closure.captured_variables in
+          Printf.printf "ACCESS CAPTURED %s STABLE %s\n" name variable.stable_name;
+          variable.stable_name
+        | _ -> name
+      in
+
+      let store_env, restore_env = let rec go = function
           | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
-              let store_rest, restore_rest = go (i + 1) vs in
+              let stable_name = captured_variable_name v in
+              let store_rest, restore_rest = go vs in
               let store_this, restore_this = Var.capture env ae v in
               let store_env =
                 get_clos ^^
                 store_this ^^
-                Closure.store_data env (Wasm.I64.of_int_u i) ^^
+                Closure.store_captured env stable_name ^^
                 store_rest in
               let restore_env env ae1 get_env =
                 let ae2, codeW = restore_this env ae1 in
@@ -9788,11 +9829,11 @@ module FuncDec = struct
                 (ae3,
                  fun body ->
                  get_env ^^
-                 Closure.load_data env (Wasm.I64.of_int_u i) ^^
+                 Closure.load_captured env stable_name ^^
                  codeW (code_restW body)
                 )
               in store_env, restore_env in
-        go 0 captured in
+        go captured in
 
       let f =
         if is_local
@@ -9825,10 +9866,12 @@ module FuncDec = struct
 
         Tagged.store_field env Closure.funptr_field ^^
 
-        (* Store the length *)
+        (* Store the hash blob *)
+        let field_names = List.map captured_variable_name captured in
+        let (_, hash_blob) = FieldLookupTable.build_hash_blob env field_names in
         get_clos ^^
-        compile_unboxed_const len ^^
-        Tagged.store_field env Closure.len_field ^^
+        Tagged.materialize_shared_value env hash_blob ^^
+        Tagged.store_field env Closure.hash_pointer_field ^^
 
         (* Store all captured values *)
         store_env ^^
