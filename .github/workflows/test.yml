@@ -56,8 +56,6 @@ jobs:
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
       run: |
-        echo "Branch name: ${{ github.event.pull_request.head.ref }}"
-        echo "Branch here: ${{ github.head_ref || github.ref_name }}"
         git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ github.event.pull_request.head.ref }}
         git branch --show-current
