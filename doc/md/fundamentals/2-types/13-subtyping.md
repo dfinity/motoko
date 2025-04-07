@@ -99,7 +99,7 @@ let g : (Int) -> Nat = child;   // Not allowed because the return type must be c
 
 ## Objects, modules & actors
 
-[Objects](/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped, meaning an object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
+[Objects](/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped. An object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
 
 ```motoko no-repl
 type Parent = { getName : () -> Text };
