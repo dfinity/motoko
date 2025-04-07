@@ -3,7 +3,7 @@ no-stable-functions-classical.mo:13.40-13.52: type error [M0096], expression of 
 cannot produce expected type
   stable () -> ()
 no-stable-functions-classical.mo:14.41-14.51: type error [M0096], expression of type
-  Nat -> Text
+  (x : Nat) -> Text
 cannot produce expected type
   stable Nat -> Text
 no-stable-functions-classical.mo:25.14-25.22: type error [M0096], expression of type
@@ -11,7 +11,7 @@ no-stable-functions-classical.mo:25.14-25.22: type error [M0096], expression of 
 cannot produce expected type
   stable () -> ()
 no-stable-functions-classical.mo:26.12-26.18: type error [M0096], expression of type
-  Nat -> Text
+  (x : Nat) -> Text
 cannot produce expected type
   stable Nat -> Text
 no-stable-functions-classical.mo:13.14-13.19: type error [M0216], Stable functions are only supported with enhanced orthogonal persistence
