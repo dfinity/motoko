@@ -367,6 +367,19 @@ let blob_size t at =
     k (V.Int (Numerics.Nat.of_int (String.length t)))
   )
 
+let blob_keys t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt (V.Int (Numerics.Nat.of_int !i)) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
+  )
+
 let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
@@ -546,6 +559,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
+          | "keys" -> blob_keys
           | "get" -> blob_get
           | "vals" | "values" -> blob_vals
           | s -> assert false

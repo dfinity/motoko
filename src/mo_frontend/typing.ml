@@ -1173,6 +1173,7 @@ let blob_obj () =
     {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+    {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
   ]
 
 let text_obj () =
