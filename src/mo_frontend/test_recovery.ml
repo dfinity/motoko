@@ -1,3 +1,6 @@
+(** Maintenance note:
+    Update of the expected values could be done via [dune runtest --auto-promote].
+*)
 
 let parse_from_lexbuf lexbuf : Mo_def.Syntax.prog Diag.result =
   let open Mo_frontend in
@@ -7,7 +10,7 @@ let parse_from_lexbuf lexbuf : Mo_def.Syntax.prog Diag.result =
   let lexer, triv_table = Lexer.tokenizer lexer_mode lexbuf in
   let () = Parser_lib.triv_table := triv_table in
   let start =  Parser.Incremental.parse_prog lexbuf.Lexing.lex_start_p in
-  let error_details = !Mo_config.Flags.error_detail in
+  let error_details = 0 in
   let* mk_syntax = Mo_frontend.Parsing.parse ~recovery:true lexer_mode error_details start lexer lexbuf
   in Diag.return @@ mk_syntax name
 
@@ -81,49 +84,9 @@ let%expect_test "test1" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
-      }
-      .<nat>
-      !
-      <exp_nullary(ob)>
-      <binop> <exp(ob)>
-      ; seplist(<dec_field>,<semicolon>)
-      |> <exp_bin(ob)>
-      or <exp_bin(ob)>
-      <unassign> <exp(ob)>
-      implies <exp_bin(ob)>
-      <relop> <exp_bin(ob)>
-      else <exp_nest>
-      . <id>
-      : <typ_nobin>
-      <binop> <exp_bin(ob)>
-      <binassign> <exp(ob)>
-      and <exp_bin(ob)>
-      <unop> <exp_bin(ob)>
-      <inst> <exp_nullary(ob)>
-      [ <exp(ob)> ]
+    (unknown location): syntax error [M0001], unexpected token 'let'
 
-    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
-      }
-      .<nat>
-      !
-      <exp_nullary(ob)>
-      <binop> <exp(ob)>
-      ; seplist(<dec_field>,<semicolon>)
-      |> <exp_bin(ob)>
-      or <exp_bin(ob)>
-      <unassign> <exp(ob)>
-      implies <exp_bin(ob)>
-      <relop> <exp_bin(ob)>
-      else <exp_nest>
-      . <id>
-      : <typ_nobin>
-      <binop> <exp_bin(ob)>
-      <binassign> <exp(ob)>
-      and <exp_bin(ob)>
-      <unop> <exp_bin(ob)>
-      <inst> <exp_nullary(ob)>
-      [ <exp(ob)> ] |}]
+    (unknown location): syntax error [M0001], unexpected token 'let' |}]
 
 let%expect_test "test2" =
   let s = "actor {
@@ -171,8 +134,7 @@ let%expect_test "test2" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
-      <exp_bin(ob)> |}]
+    (unknown location): syntax error [M0001], unexpected token 'let' |}]
 
 let%expect_test "test3" =
   let s = "actor {
@@ -239,19 +201,11 @@ let%expect_test "test3" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'Int', expected one of token or <phrase> sequence:
-      )
-      or <pat_bin>
-      , seplist(<pat_bin>,,)
-      : <typ>
+    (unknown location): syntax error [M0001], unexpected token 'Int'
 
-    (unknown location): syntax error [M0001], unexpected token 'private', expected one of token or <phrase> sequence:
-      }
-      ; seplist(<dec_field>,<semicolon>)
+    (unknown location): syntax error [M0001], unexpected token 'private'
 
-    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
-      }
-      ; seplist(<dec_field>,<semicolon>) |}] 
+    (unknown location): syntax error [M0001], unexpected token 'let' |}] 
 
 
 let%expect_test "test4" =
@@ -307,65 +261,9 @@ actor Main {
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'public', expected one of token or <phrase> sequence:
-      }
-      .<nat>
-      !
-      <exp_nullary(ob)>
-      <binop> <exp(ob)>
-      ; seplist(<dec_field>,<semicolon>)
-      |> <exp_bin(ob)>
-      or <exp_bin(ob)>
-      <unassign> <exp(ob)>
-      implies <exp_bin(ob)>
-      <relop> <exp_bin(ob)>
-      else <exp_nest>
-      . <id>
-      : <typ_nobin>
-      <binop> <exp_bin(ob)>
-      <binassign> <exp(ob)>
-      and <exp_bin(ob)>
-      <unop> <exp_bin(ob)>
-      <inst> <exp_nullary(ob)>
-      [ <exp(ob)> ]
+    (unknown location): syntax error [M0001], unexpected token 'public'
 
-    (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
-      func <pat_plain> <annot_opt> <func_body>
-      class <pat_plain> <annot_opt> <class_body>
-      object class <pat_plain> <annot_opt> <class_body>
-      module class <pat_plain> <annot_opt> <class_body>
-      func <id> <pat_plain> <annot_opt> <func_body>
-      class <id> <pat_plain> <annot_opt> <class_body>
-      actor class <pat_plain> <annot_opt> <class_body>
-      persistent actor class <pat_plain> <annot_opt> <class_body>
-      object class <id> <pat_plain> <annot_opt> <class_body>
-      module class <id> <pat_plain> <annot_opt> <class_body>
-      actor class <id> <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> <pat_plain> <annot_opt> <class_body>
-      func < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
-      class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      func < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
-      func <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
-      class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      func <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
-      class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body> |}]
+    (unknown location): syntax error [M0001], unexpected token '(' |}]
 
 let%expect_test "test5" =
   let s = "module {
@@ -414,44 +312,6 @@ let%expect_test "test5" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'public', expected one of token or <phrase> sequence:
-      <exp(ob)>
-      <exp(ob)> else <exp_nest>
+    (unknown location): syntax error [M0001], unexpected token 'public'
 
-    (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
-      func <pat_plain> <annot_opt> <func_body>
-      class <pat_plain> <annot_opt> <class_body>
-      object class <pat_plain> <annot_opt> <class_body>
-      module class <pat_plain> <annot_opt> <class_body>
-      func <id> <pat_plain> <annot_opt> <func_body>
-      class <id> <pat_plain> <annot_opt> <class_body>
-      actor class <pat_plain> <annot_opt> <class_body>
-      persistent actor class <pat_plain> <annot_opt> <class_body>
-      object class <id> <pat_plain> <annot_opt> <class_body>
-      module class <id> <pat_plain> <annot_opt> <class_body>
-      actor class <id> <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> <pat_plain> <annot_opt> <class_body>
-      func < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
-      class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      module class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      func < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
-      func <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <func_body>
-      class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      persistent actor class < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      object class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      module class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      module class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      func <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <func_body>
-      class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      persistent actor class < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> < seplist(<typ_bind>,,) > <pat_plain> <annot_opt> <class_body>
-      object class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      module class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body>
-      persistent actor class <id> < system (, <typ_bind>)* > <pat_plain> <annot_opt> <class_body> |}]
+    (unknown location): syntax error [M0001], unexpected token '(' |}]
