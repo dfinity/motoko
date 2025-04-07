@@ -325,7 +325,12 @@ and objblock eo s id ty dec_fields =
 %[@recover.default_cost_of_symbol     1000]
 %[@recover.default_cost_of_production 1]
 
-%[@recover.prelude open Mo_def.Syntax]
+%[@recover.prelude
+    open Mo_def.Syntax
+
+    (* mk_stub_expr loc = VarE ("__error_recovery_var__" @~ loc) @? loc *)
+    let mk_stub_expr loc = LoopE (BlockE [] @? loc, None) @? loc
+ ]
 
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
@@ -615,7 +620,7 @@ exp_plain :
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
 (* recovery comment: force to emit special variable instead of "_" to filter spurious errors *)
-exp_nullary [@recover.expr VarE ("__error_recovery_var__" @~ loc) @? loc] (B) :
+exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | e=B
   | e=exp_plain
     { e }
@@ -778,7 +783,7 @@ exp_nonvar(B) :
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 (* recovery comment: force to emit special variable rather than "return" *)
-exp [@recover.expr  VarE ("__error_recovery_var__" @~ loc) @? loc] (B) :
+exp [@recover.expr mk_stub_expr loc] (B) :
   | e=exp_nonvar(B)
     { e }
   | d=dec_var

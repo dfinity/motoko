@@ -97,7 +97,7 @@ module RecoveryConfig = struct
         left  : pos = {file; line = loc.loc_start.pos_lnum; column = loc.loc_start.pos_bol};
         right : pos = {file; line = loc.loc_end.pos_lnum; column = loc.loc_end.pos_bol};
       } in
-      default_value region_loc sym
+      default_value region_loc sym (* [default_value] is included from Recover_parser *)
 
   let guide _ = false
   let use_indentation_heuristic = false

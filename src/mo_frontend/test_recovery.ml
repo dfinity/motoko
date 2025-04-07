@@ -110,12 +110,7 @@ let%expect_test "test2" =
                 (LetD
                   (VarP x)
                   (AnnotE
-                    (BinE
-                      ???
-                      (LitE (PreLit 1 Nat))
-                      AddOp
-                      (VarE __error_recovery_var__)
-                    )
+                    (BinE ??? (LitE (PreLit 1 Nat)) AddOp (LoopE (BlockE)))
                     (PathT (IdH Int))
                   )
                 )
@@ -282,11 +277,7 @@ let%expect_test "test5" =
           _
           Module
           _
-          (DecField
-            (LetD (VarP x) (VarE __error_recovery_var__))
-            Private
-            (Flexible)
-          )
+          (DecField (LetD (VarP x) (LoopE (BlockE))) Private (Flexible))
           (DecField
             (ExpD
               (FuncE
