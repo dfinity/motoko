@@ -19,15 +19,29 @@ actor client {
   public func go() : async () {
     print(debug_show (Prim.costCreateCanister()) # " -- create canister cost");
 
-    let before0 = Cycles.balance();
-    let before1 = Cycles.balance();
-    let { canister_id } = await ic00.create_canister({ settings = null });
-    let after = Cycles.balance();
+    if (Cycles.balance() == 0) {
+      await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
+      print("top up; balance = " # debug_show (Cycles.balance()));
+    } else {
+      print("already topped up; balance = " # debug_show (Cycles.balance()));
+    };
+
+    // let before = Cycles.balance();
+    printCycles();
+    let { canister_id } = await (with cycles = 500_000_000_000) ic00.create_canister({ settings = null });
+    // let after = Cycles.balance();
     print("created canister id: " # debug_show (canister_id));
-    print(debug_show(before0) # " -- Cycles.balance() before0");
-    print(debug_show(before1) # " -- Cycles.balance() before1");
-    print(debug_show(after) # " -- Cycles.balance() after");
-    print(debug_show (before1 - after : Nat) # " -- Cycles.balance() diff");
+    printCycles();
+
+    // print(debug_show (before) # " -- Cycles.balance() before");
+    // print(debug_show (after) # " -- Cycles.balance() after");
+    // print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
+  };
+
+  func printCycles() {
+    print("Cycles.balance()   = " # debug_show (Cycles.balance()));
+    print("Cycles.available() = " # debug_show (Cycles.available()));
+    print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
   };
 };
 

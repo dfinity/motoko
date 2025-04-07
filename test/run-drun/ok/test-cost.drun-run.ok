@@ -1,9 +1,12 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: client: 0 -- create canister cost
+debug.print: client: already topped up; balance = 100_000_000_000_000
+debug.print: client: Cycles.balance()   = 100_000_000_000_000
+debug.print: client: Cycles.available() = 0
+debug.print: client: Cycles.refunded()  = 0
 debug.print: client: created canister id: rrkah-fqaaa-aaaaa-aaaaq-cai
-debug.print: client: 100_000_000_000_000 -- Cycles.balance() before0
-debug.print: client: 100_000_000_000_000 -- Cycles.balance() before1
-debug.print: client: 100_000_000_000_000 -- Cycles.balance() after
-debug.print: client: 0 -- Cycles.balance() diff
+debug.print: client: Cycles.balance()   = 99_500_000_000_000
+debug.print: client: Cycles.available() = 0
+debug.print: client: Cycles.refunded()  = 0
 ingress Completed: Reply: 0x4449444c0000
