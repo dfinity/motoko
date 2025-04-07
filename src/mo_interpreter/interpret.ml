@@ -353,6 +353,14 @@ let blob_vals t at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
+let blob_get t at =
+  V.local_func 1 1 (fun c v k ->
+    let n = V.as_int v in
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (String.length t))
+    then k V.(Nat8 (Numerics.Nat8.of_int (Char.code (String.get t (Numerics.Nat.to_int n)))))
+    else trap at "blob index out of bounds"
+  )
+
 let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
@@ -538,6 +546,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
+          | "get" -> blob_get
           | "vals" | "values" -> blob_vals
           | s -> assert false
         in k (f b exp.at)
