@@ -1,6 +1,17 @@
+type Result_1 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result = 
+ variant {
+   err;
+   ok;
+ };
 type Foo = variant {bla;};
 type Credit = nat;
 service : {
+  erroring: () -> (Result_1);
   get: () -> (Credit, Credit, Credit);
-  silly: (Foo, Foo, Foo, Foo) -> ();
+  silly: (Foo, Foo, Foo, Foo) -> (Result);
 }

@@ -7,6 +7,7 @@ actor {
   module Inner {
     public type Foo = Types.Foo;
     public type Credit<T> = Nat;
+    public type Result<T, E> = Types.Result<T, E>;
   };
 
   module Innerer {
@@ -18,5 +19,6 @@ actor {
   public func get() : async (Credit, Inner.Credit<Nat>, Innerer.Credit<Nat>) {
       (0, 0, 0)
   };
-  public func silly(_ : Foo, _ : Inner.Foo, _ : Types.Foo, _ : Types2.Foo) : async () { }
+  public func silly(_ : Foo, _ : Inner.Foo, _ : Types.Foo, _ : Types2.Foo) : async Inner.Result<(), ()> { #ok };
+  public func erroring() : async Inner.Result<(), Text> { #err "feel good" }
 }
