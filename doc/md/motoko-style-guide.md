@@ -394,6 +394,30 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Consistently ending lines with semicolon simplifies adding, removing, or swapping lines.
 
+### Trailing commas
+
+- Trailing commas are allowed in tuples and argument lists, but not in records (which use semicolons).
+
+- Use trailing commas only in multi-line expressions.
+
+- Omit trailing commas in single-line expressions.
+
+- Consistency across the project is more important than the specific style chosen.
+
+    ```motoko no-repl
+    // Trailing comma in multi-line tuple
+    let tuple = (
+      1,
+      2,
+      3 //remove the last comma as a best practice
+    );
+
+    // Avoid trailing comma in single-line
+    let pair = (1, 2);
+    ```
+
+Rationale: Trailing commas reduce diff noise(unnecessary changes that show up in a version control diff) and simplify line edits in multi-line expressions.
+
 ### Braces
 
 - Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
@@ -894,7 +918,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 ### Error handling
 
 - Use `Result` for error handling where applicable.
-  - Use `Result<T, E>` rather than exceptions for recoverable errors.
+  - Use `Result<Ok, Err>` rather than exceptions for recoverable errors.
   - Use meaningful error types instead of generic `Text`.
 
     ```motoko no-repl
@@ -910,7 +934,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
   - `assert` should be reserved for conditions that should never fail if the program is correct.
 
     ```motoko no-repl
-    assert(x > 0);  // Only use if x should never be <= 0
+    assert x > 0;  // Only use if x should never be <= 0
     ```
 
 - Use `debug assert` for development-time checks.
@@ -919,7 +943,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
   - All `debug` expressions are ignored when compiled with `moc --release`.
 
     ```motoko no-repl
-    debug assert(balance >= 0);  // Ensure balance is never negative during development
+    debug assert balance >= 0;  // Ensure balance is never negative during development
     ```
 
 ### Concurrency
@@ -931,6 +955,19 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let user = await db.getUser(id); // Good ~4s
     let orders = await db.getOrders(user); // Bad: sequential calls introduce high latency ~6s
     ```
+
+- Use `async*` and `await*` for same-canister calls.
+  - When calling an async function **within the same canister**, use `async*` to declare the function and `await*` to call it. This avoids unnecessary inter-canister message overhead.
+
+  ```motoko no-repl
+  func internalLogic(): async* () {
+    //Some internal logic
+  };
+
+  public func intraCall(): async (){
+    await* internalLogic()
+  }
+  ```
 
 - Use composite queries where applicable.
 
@@ -952,7 +989,28 @@ public composite query func betterQuery() : async () {
 }
 ```
 
+:::note
+Composite queries cannot perform or persist state changes. Any modifications made during a composite query will be rolled back automatically. Use them only when no mutation is required.
+:::
+
 ### Pattern matching
+
+- Prefer `let-else` when one path returns or traps.
+  When destructuring a `Result` or `Option` where the failure case immediately exits the function (e.g. via `return`, or `trap`), use `let-else` to avoid deep nesting and improve readability.
+
+  ```motoko no-repl
+  // Extract a value from an Option type
+  func extractUserName(userOpt: ?Text) : Text {
+    // Without let-else (verbose)
+    // switch (userOpt) {
+    //   case (null) { return "Guest"; };
+    //   case (?name) { return "User: " # name; };
+    // };
+    // With let-else (concise)
+    let ?name = userOpt else return "Guest";
+    return "User: " # name;
+  }
+  ```
 
 - Use `switch` instead of manual conditionals for variants.
   - Prefer exhaustive pattern matching to avoid missing cases.
@@ -962,7 +1020,7 @@ public composite query func betterQuery() : async () {
     switch (response) {
       case (#possiblity1) { processPossibility1() };
       case (#possiblity2) { processPossibility2() }
-      case (#possiblity2) { processPossibility3() };
+      case (#possiblity3) { processPossibility3() };
       case (_) { handleExecption(err) };;
     };
     ```
