@@ -1,0 +1,10 @@
+type Foo__2 = variant {bla;};
+type Foo__1 = variant {bla;};
+type Foo = variant {bla;};
+type Credit__2 = nat;
+type Credit__1 = nat;
+type Credit = nat;
+service : {
+  get: () -> (Credit, Credit__1, Credit__2);
+  silly: (Foo, Foo__1, Foo__2, Foo__2) -> ();
+}
