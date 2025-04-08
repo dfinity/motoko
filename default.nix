@@ -1,6 +1,7 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+  accept-bench ? "x86_64-linux",
   officialRelease ? false,
 }:
 
@@ -80,6 +81,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.menhirLib
+    pkgs.ocamlPackages.menhirSdk
+    pkgs.ocamlPackages.ocaml-recovery-parser
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -90,6 +93,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.ppx_expect
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
     pkgs.obelisk
@@ -358,8 +362,8 @@ rec {
         name = "test-${dir}-src";
       };
 
-    test_subdir = dir: deps:
-      testDerivation {
+    acceptable_subdir = accept: dir: deps:
+      testDerivation ({
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
 
@@ -369,9 +373,16 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
           '';
-      };
+      } // nixpkgs.lib.optionalAttrs accept {
+        installPhase = nixpkgs.lib.optionalString accept ''
+            mkdir -p $out/share
+            cp -v ${dir}/ok/*.ok $out/share
+          '';
+      });
+
+    test_subdir = dir: deps: acceptable_subdir false dir deps;
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
@@ -404,8 +415,8 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
       };
 
-    perf_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+    perf_subdir = accept: dir: deps:
+      (acceptable_subdir accept dir deps).overrideAttrs (args: {
         checkPhase = ''
           mkdir -p $out
           export PERF_OUT=$out/stats.csv
@@ -535,14 +546,14 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      perf       = perf_subdir false "perf" [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }
     // nixpkgs.lib.optionalAttrs
-         (system == "aarch64-darwin")
-         (fix_names { bench = perf_subdir "bench" [ moc nixpkgs.drun ic-wasm ];})
+         (system == accept-bench)
+         (fix_names { bench = perf_subdir true "bench" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
