@@ -3891,7 +3891,6 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-
   (* Dynamic blob index access. Returns the value of the element.
      Does bounds checking *)
   let idx env =
