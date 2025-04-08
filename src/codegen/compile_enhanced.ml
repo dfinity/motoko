@@ -8993,7 +8993,7 @@ module StableFunctionGC = struct
               end
             else G.nop
           | Func _ | Opt _ ->
-            (* Stable function closures are generically visited in the RTS.
+            (* Stable function closures are visited in the RTS.
                 Inlined options are not visited and null boxes are filtered by the RTS. *)
             E.trap_with env "visit stable function: illegal case"
           | _ ->
