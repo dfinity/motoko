@@ -12,6 +12,8 @@ module MakeState() = struct
 
   let env = ref Env.empty
   let hide = ref Env.empty
+  module RevMap = Map.Make (struct type t = string * I.typ' let compare = compare end)
+  let rev = ref RevMap.empty
 
   (* For monomorphization *)
   module Stamp = Type.ConEnv
@@ -96,7 +98,7 @@ module MakeState() = struct
             | Con (c1, ts1) when false && List.length ts = 0 && List.length ts1 = 1 && Cons.name c = Cons.name c1 -> failwith (Cons.name c ^ " = Innerer.Credit<Nat>")
             | Con (c1, ts1) when false && List.length ts = 1 && compare ts ts1 = 0 && Cons.name c = Cons.name c1 -> failwith "CON"
 
-
+(*
             | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
               let [@warning "-8-9"] { it = I.VarT { it } } as pen = typ t in
               let id = monomorphize_con ts c in
@@ -104,16 +106,25 @@ module MakeState() = struct
                  assert (pen.it = (Env.find id !env).it)
                else
                  env := Env.add id pen !env; hide := Env.add id true !hide);
-              pen.it
+              pen.it*)
             | t ->
               let id = monomorphize_con ts c in
-              if not (Env.mem id !env) then
-                begin
-                  env := Env.add id (I.PreT @@ no_region) !env;
-                  let t = typ (normalize t) in
-                  env := Env.add id t !env
-                end;
-              I.VarT (id @@ no_region))
+              if Env.mem id !env
+              then (Env.find id !env).it
+              else begin
+                env := Env.add id (I.PreT @@ no_region) !env;
+                let t = typ (normalize t) in
+                match RevMap.find_opt (Cons.name c, t.it) !rev with
+                | None ->
+                  env := Env.add id t !env;
+                  rev := RevMap.add (Cons.name c, t.it) id !rev;
+                  I.VarT (id @@ no_region)
+                | Some id' ->
+                  env := Env.add id (I.VarT (id' @@ no_region) @@ no_region) !env;
+                  hide := Env.add id true !hide;
+                  I.VarT (id' @@ no_region)
+              end
+           )
         | _ -> assert false)
     | Typ c -> assert false
     | Tup ts ->
