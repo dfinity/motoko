@@ -8,18 +8,12 @@ use crate::{
     memory::Memory,
     persistence::stable_functions::is_flexible_function_id,
     types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_OBJECT, TAG_SOME},
-    visitor::enhanced::visit_pointer_fields,
 };
 
-use super::{resolve_stable_function_id, FunctionId, PersistentVirtualTable};
+use super::{resolve_stable_function_id, FunctionId, PersistentVirtualTable, VirtualTableEntry};
 
 // Note: For a type-directed selective visiting, we need to revisit the
 // same object if it occurs with a different static type.
-
-// Currently fields in closure (captures) are not yet discovered in a type-directed way.
-// This sentinel denotes that there is no static type known and the generic visitor is to be invoked.
-// TODO: Optimization: Use expected closure types to select a compiler-generated specialized visitor.
-const UNKNOWN_TYPE_ID: u64 = u64::MAX;
 
 extern "C" {
     fn moc_visit_stable_functions(object: Value, type_id: u64);
@@ -56,8 +50,6 @@ impl FunctionGC {
                         // skip null boxes, not visited
                     } else if object.tag() == TAG_CLOSURE {
                         self.visit_stable_closure(mem, object);
-                    } else if type_id == UNKNOWN_TYPE_ID {
-                        self.generic_visit(mem, object);
                     } else {
                         // Specialized field visitor, as optimization.
                         moc_visit_stable_functions(object, type_id);
@@ -67,34 +59,28 @@ impl FunctionGC {
         }
     }
 
-    unsafe fn generic_visit<M: Memory>(&mut self, mem: &mut M, object: Value) {
-        visit_pointer_fields(
-            mem,
-            object.as_obj(),
-            object.tag(),
-            |mem, field| {
-                stable_functions_gc_visit(mem, *field, UNKNOWN_TYPE_ID);
-            },
-            |_, slice_start, arr| {
-                assert!(slice_start == 0);
-                arr.len()
-            },
-        );
-    }
-
     unsafe fn visit_stable_closure<M: Memory>(&mut self, mem: &mut M, object: Value) {
         let closure = object.as_closure();
         let function_id = (*closure).funid;
         assert!(!is_flexible_function_id(function_id));
         self.mark_function(function_id);
-        self.generic_visit(mem, object);
+        let closure_type_id = self.get_closure_type_id(function_id);
+        stable_functions_gc_visit(mem, object, closure_type_id);
+    }
+
+    unsafe fn get_function_entry(&mut self, function_id: FunctionId) -> *mut VirtualTableEntry {
+        self.virtual_table
+            .get(resolve_stable_function_id(function_id))
     }
 
     unsafe fn mark_function(&mut self, function_id: FunctionId) {
-        let entry = self
-            .virtual_table
-            .get(resolve_stable_function_id(function_id));
+        let entry = self.get_function_entry(function_id);
         (*entry).marked = true;
+    }
+
+    unsafe fn get_closure_type_id(&mut self, function_id: FunctionId) -> u64 {
+        let entry = self.get_function_entry(function_id);
+        (*entry).gc_type_id
     }
 
     unsafe fn clear_mark_bits(&mut self) {

@@ -260,7 +260,8 @@ pub struct VirtualTableEntry {
     function_name_hash: NameHash,
     closure_type_index: TypeIndex, // Referring to the persisted type table.
     wasm_table_index: WasmTableIndex,
-    marked: bool, // set by stable function GC
+    gc_type_id: u64, // Closure type ID used by the stable function GC.
+    marked: bool,    // set by stable function GC
 }
 
 /// Determine the Wasm table index for a function call (stable or flexible function).
@@ -299,6 +300,8 @@ pub struct StableFunctionEntry {
     wasm_table_index: WasmTableIndex,
     // Referring to the type table of the new prorgram version.
     closure_type_index: TypeIndex,
+    // Used for the stable functions GC, type id of the closure.
+    gc_type_id: u64,
     /// Cache for runtime optimization.
     /// This entry is uninitialized by the compiler and the runtime system
     /// uses this space to remember matched function ids for faster lookup.
@@ -397,7 +400,7 @@ unsafe fn prepare_stable_function_map(stable_functions: *mut StableFunctionMap) 
 
 /// Step 2. Scan the persistent virtual table and match all marked entries with `stable_functions_map`.
 /// Check the all necessary stable functions exist in the new version and that their closure types are
-/// compatible. Assign the function ids in the stable function map.
+/// compatible. Assign the function ids and updated closure types in the stable function map.
 unsafe fn update_existing_functions(
     virtual_table: *mut PersistentVirtualTable,
     stable_functions: *mut StableFunctionMap,
@@ -433,10 +436,12 @@ unsafe fn update_existing_functions(
         if stable_function_entry != null_mut() {
             (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
             (*virtual_table_entry).closure_type_index = (*stable_function_entry).closure_type_index;
+            (*virtual_table_entry).gc_type_id = (*stable_function_entry).gc_type_id;
             (*stable_function_entry).cached_function_id = function_id as FunctionId;
         } else {
             (*virtual_table_entry).wasm_table_index = usize::MAX;
             (*virtual_table_entry).closure_type_index = isize::MAX;
+            (*virtual_table_entry).gc_type_id = u64::MAX;
         }
     }
 }
@@ -476,10 +481,12 @@ unsafe fn add_new_functions<M: Memory>(
             let function_name_hash = (*stable_function_entry).function_name_hash;
             let closure_type_index = (*stable_function_entry).closure_type_index;
             let wasm_table_index = (*stable_function_entry).wasm_table_index;
+            let gc_type_id = (*stable_function_entry).gc_type_id;
             let new_virtual_table_entry = VirtualTableEntry {
                 function_name_hash,
                 closure_type_index,
                 wasm_table_index,
+                gc_type_id,
                 marked: false,
             };
             debug_assert!(!is_flexible_function_id(function_id));
