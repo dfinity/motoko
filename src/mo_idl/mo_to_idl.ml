@@ -97,7 +97,10 @@ module MakeState() = struct
             | t ->
               let id = monomorphize_con ts c in
               if Env.mem id !env
-              then (Env.find id !env).it
+              then let seen = (Env.find id !env).it in
+                match seen with
+                | I.PreT -> I.VarT (id @@ no_region)
+                | _ -> seen
               else begin
                 env := Env.add id (I.PreT @@ no_region) !env;
                 let t = typ (normalize t) in
@@ -110,8 +113,7 @@ module MakeState() = struct
                   env := Env.add id (I.VarT (id' @@ no_region) @@ no_region) !env;
                   hide := Env.add id true !hide;
                   I.VarT (id' @@ no_region)
-              end
-           )
+              end)
         | _ -> assert false)
     | Typ c -> assert false
     | Tup ts ->
