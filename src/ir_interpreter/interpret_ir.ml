@@ -365,7 +365,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | GetLastArrayOffset,  [v1] ->
         k (V.Int Numerics.Int.(of_int (Array.length (V.as_array v1) - 1)))
       | IdxBlobPrim, [v1; v2] ->
-        k V.(Nat8 ((as_blob v1).[Numerics.Int.to_int (V.as_int v2)] |> Char.code |> Numerics.Nat8.of_int))
+        k V.(Nat8 Numerics.((as_blob v1).[Int.to_int (as_int v2)] |> Char.code |> Nat8.of_int))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
