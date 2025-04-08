@@ -81,8 +81,8 @@ module MakeState() = struct
     | Region
     | Error -> assert false
 
-  let rec typ t0 =
-    (match t0 with
+  let rec typ t =
+    (match t with
     | Any -> I.(PrimT Reserved)
     | Non -> I.(PrimT Empty)
     | Prim p -> prim p
