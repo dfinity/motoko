@@ -65,9 +65,10 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    with today’s date.
 
  * Make sure the markdown doc for base is up-to-date:
-   For now, in a nix-shell:
+   For now, in a nix-shell (preferably _re-entering_):
 
    ```bash
+      make -C rts
       make -C src
       make -C doc base
       git diff
@@ -87,6 +88,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    merge it into `master` without additional approval, but it will take some
    time as the title (version number) enters into the `nix` dependency tracking.
  * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
+ * `git show` to verify we are at the right commit
  * `git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR`
  * `git push origin 0.14.$MOC_MINOR`
 
@@ -116,6 +118,7 @@ repo by a scheduled `niv-updater-action`.
 
 Finally tag the base release (so the documentation interpreter can do the right thing):
 * `git switch master && git pull`
+* `git show` to verify we are at the right commit
 * `git tag moc-0.14.$MOC_MINOR`
 * `git push origin moc-0.14.$MOC_MINOR`
 
