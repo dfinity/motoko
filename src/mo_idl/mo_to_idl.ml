@@ -96,11 +96,12 @@ module MakeState() = struct
             | Non -> I.(PrimT Empty)
             | t ->
               let id = monomorphize_con ts c in
-              if Env.mem id !env
-              then let seen = (Env.find id !env).it in
+              if Env.mem id !env then
+                let seen = (Env.find id !env).it in
                 match seen with
                 | I.PreT -> I.VarT (id @@ no_region)
-                | _ -> seen
+                | I.VarT _ -> seen
+                | _ -> I.VarT (RevMap.find (Cons.name c, seen) !rev @@ no_region)
               else begin
                 env := Env.add id (I.PreT @@ no_region) !env;
                 let t = typ (normalize t) in
