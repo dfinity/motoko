@@ -94,19 +94,6 @@ module MakeState() = struct
             | Prim p -> prim p
             | Any -> I.(PrimT Reserved)
             | Non -> I.(PrimT Empty)
-            | Con (c1, ts1) when ts = [] && Cons.eq c c1 -> failwith "CON EQ"
-            | Con (c1, ts1) when false && List.length ts = 0 && List.length ts1 = 1 && Cons.name c = Cons.name c1 -> failwith (Cons.name c ^ " = Innerer.Credit<Nat>")
-            | Con (c1, ts1) when false && List.length ts = 1 && compare ts ts1 = 0 && Cons.name c = Cons.name c1 -> failwith "CON"
-
-(*
-            | Con (c1, ts1) when compare ts ts1 = 0 && Cons.name c = Cons.name c1 ->
-              let [@warning "-8-9"] { it = I.VarT { it } } as pen = typ t in
-              let id = monomorphize_con ts c in
-              (if Env.mem id !env then
-                 assert (pen.it = (Env.find id !env).it)
-               else
-                 env := Env.add id pen !env; hide := Env.add id true !hide);
-              pen.it*)
             | t ->
               let id = monomorphize_con ts c in
               if Env.mem id !env
