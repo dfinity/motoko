@@ -4449,7 +4449,7 @@ module Blob = struct
       E.else_trap_with env "Blob index out of bounds" ^^
 
       get_idx ^^
-      compile_add_const Int32.(mul (header_size env) Heap.word_size) ^^
+      compile_add_const Int32.(mul (header_size env) Heap.word_size |> add ptr_unskew) ^^
       get_blob ^^
       Tagged.load_forwarding_pointer env ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
