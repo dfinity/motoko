@@ -583,8 +583,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
-           with Invalid_argument s -> trap exp.at "%s" s)
+        k V.(let i = Numerics.Int.to_int (as_int v2) in
+             match v1 with
+             | Blob s ->
+               Nat8 (s.[i] |> Char.code |> Numerics.Nat8.of_int)
+             | _ ->
+               try (as_array v1).(i)
+               with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
   | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->

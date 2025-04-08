@@ -874,10 +874,10 @@ and blob_dotE proj e =
     let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE (varE f) [] e in
   match proj with
-    | "size" -> call "@blob_size"   [] [T.nat]
+    | "size" -> call "@blob_size" [] [T.nat]
     | "keys" -> call "@blob_keys" [] T.[iter_obj nat]
     | "vals" | "values" -> call "@blob_vals" [] T.[iter_obj (Prim Nat8)]
-    | "get" -> call "@blob_get"  [T.nat] T.[Prim Nat8]
+    | "get" -> call "@blob_get" [T.nat] T.[Prim Nat8]
     |  _ -> assert false
 
 and text_dotE proj e =
