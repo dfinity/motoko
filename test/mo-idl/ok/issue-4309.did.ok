@@ -1,8 +1,6 @@
 type Foo = variant {bla;};
-type Credit__1_1 = nat;
-type Credit__1 = nat;
 type Credit = nat;
 service : {
-  get: () -> (Credit, Credit__1, Credit__1_1);
+  get: () -> (Credit, Credit, Credit);
   silly: (Foo, Foo, Foo, Foo) -> ();
 }
