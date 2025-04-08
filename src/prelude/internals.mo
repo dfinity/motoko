@@ -84,7 +84,7 @@ func @blob_keys(b : Blob) : () -> @Iter<Nat> =
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   };
 func @blob_get(b : Blob) : Nat -> Nat8 =
-  func (n : Nat) : Nat8 = 42; // FIXME
+  func (n : Nat) : Nat8 = b[n];
 func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
   func () : @Iter<Nat8> = object {
     type BlobIter = Any; // not exposed

@@ -111,6 +111,7 @@ and exp' at note = function
   | S.ArrayE (m, es) ->
     let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
+  | S.IdxE (e1, e2) when e1.note.S.note_typ = T.blob -> I.PrimE (I.IdxBlobPrim, [exp e1; exp e2])
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
