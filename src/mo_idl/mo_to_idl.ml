@@ -97,20 +97,20 @@ module MakeState() = struct
             | t ->
               let id = monomorphize_con ts c in
               if Env.mem id !env then
-                match (Env.find id !env).it with
+                match Env.find id !env with
                 | I.PreT -> I.VarT (id @@ no_region)
                 | I.VarT _ as seen -> seen
                 | seen -> I.VarT (RevMap.find (Cons.name c, seen) !rev @@ no_region)
               else begin
-                env := Env.add id (I.PreT @@ no_region) !env;
+                env := Env.add id I.PreT !env;
                 let t = typ (normalize t) in
                 match RevMap.find_opt (Cons.name c, t.it) !rev with
                 | None ->
-                  env := Env.add id t !env;
+                  env := Env.add id t.it !env;
                   rev := RevMap.add (Cons.name c, t.it) id !rev;
                   I.VarT (id @@ no_region)
                 | Some id' ->
-                  env := Env.add id (I.VarT (id' @@ no_region) @@ no_region) !env;
+                  env := Env.add id (I.VarT (id' @@ no_region)) !env;
                   hide := Env.add id true !hide;
                   I.VarT (id' @@ no_region)
               end)
@@ -208,7 +208,7 @@ module MakeState() = struct
     Env.fold (fun id t list ->
         if Env.find_opt id !hide = Some true then list else
         (* TODO: pass corresponding Motoko source region? *)
-        let dec = I.TypD (id @@ no_region, t) @@ no_region in
+        let dec = I.TypD (id @@ no_region, t @@ no_region) @@ no_region in
         dec::list
       ) !env []
 
