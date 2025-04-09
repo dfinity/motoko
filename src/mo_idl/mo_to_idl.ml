@@ -91,7 +91,7 @@ module MakeState() = struct
     | Con (c, ts) ->
       (match Cons.kind c with
        | Def (_, t) ->
-         I.(match (open_ ts t) with
+         I.(match open_ ts t with
             | Prim p -> prim p
             | Any -> PrimT Reserved
             | Non -> PrimT Empty
