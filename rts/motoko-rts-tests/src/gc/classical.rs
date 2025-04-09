@@ -65,10 +65,10 @@ impl GC {
 
             GC::Generational => {
                 use motoko_rts::gc::generational::{
-                    remembered_set::RememberedSet,
                     write_barrier::{LAST_HP, REMEMBERED_SET},
                     GenerationalGC, Strategy,
                 };
+                use motoko_rts::gc::remembered_set::RememberedSet;
 
                 let strategy = match _round {
                     0 => Strategy::Young,

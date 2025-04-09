@@ -6,7 +6,6 @@
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod mark_stack;
-pub mod remembered_set;
 #[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
