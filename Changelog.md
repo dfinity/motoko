@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
+
 ## 0.14.7 (2025-04-04)
 
 * motoko (`moc`)
