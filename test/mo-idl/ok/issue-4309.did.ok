@@ -1,5 +1,42 @@
+type Ternary__1 = 
+ record {
+   nat;
+   int;
+   bool;
+ };
+type TernaryInv = 
+ record {
+   bool;
+   int;
+   nat;
+ };
+type Ternary = 
+ record {
+   nat;
+   int;
+   bool;
+ };
 type Foo = variant {bla;};
+type Binary__1 = 
+ record {
+   nat;
+   int;
+ };
+type BinaryInv = 
+ record {
+   int;
+   nat;
+ };
+type Binary = 
+ record {
+   nat;
+   int;
+ };
 service : {
+  binary: () -> (Binary, Binary__1, Binary__1);
+  binaryInv: () -> (Binary, BinaryInv, BinaryInv);
   get: () -> (nat, nat, nat);
   silly: (Foo, Foo, Foo, Foo) -> ();
+  ternary: () -> (Ternary, Ternary__1, Ternary__1);
+  ternaryInv: () -> (Ternary, TernaryInv, TernaryInv);
 }

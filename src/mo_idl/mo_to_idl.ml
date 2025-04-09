@@ -28,14 +28,14 @@ module MakeState() = struct
   let eta_contract c =
     match Cons.kind c with
     | Def (tbs, Con(d, ts)) ->
-      let rec check_ts n ts =
-        match n, ts with
-        | 0, [] -> true
-        | i, Var (_, j) :: ts0 ->
-          i = j && check_ts (n-1) ts0
-        | _, _  -> false
+      let rec check_ts n tbs ts =
+        match tbs, ts with
+        | [], [] -> true
+        | _ :: tbs0, Var (_, j) :: ts0 ->
+           n = j && check_ts (n+1) tbs0 ts0
+        | _ -> false
       in
-      if check_ts (List.length tbs) ts
+      if check_ts 0 tbs ts
       then Some d
       else None
     | _ -> None
