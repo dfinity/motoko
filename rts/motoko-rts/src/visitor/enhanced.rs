@@ -67,6 +67,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
 
         TAG_CLOSURE => {
             let closure = obj as *mut Closure;
+            visit_ptr_field(ctx, closure.hash_blob_addr());
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i);
