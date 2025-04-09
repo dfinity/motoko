@@ -860,6 +860,11 @@ pub struct Closure {
 }
 
 impl Closure {
+    #[enhanced_orthogonal_persistence]
+    pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
+        &mut (*self).hash_blob
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip closure header
     }
