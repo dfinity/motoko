@@ -6,12 +6,13 @@ open Trivia
 open Type
 module E = Syntax
 module I = Idllib.Syntax
+module Set = Idllib.Resolve_import.Set
 
 (* use a functor to allocate temporary shared state *)
 module MakeState() = struct
 
   let env = ref Env.empty
-  let hide = ref Env.empty
+  let hide = ref Set.empty
   module RevMap = Map.Make (struct type t = string * I.typ' let compare = compare end)
   let rev = ref RevMap.empty
 
@@ -111,7 +112,7 @@ module MakeState() = struct
                   I.VarT (id @@ no_region)
                 | Some id' ->
                   env := Env.add id (I.VarT (id' @@ no_region)) !env;
-                  hide := Env.add id true !hide;
+                  hide := Set.add id !hide;
                   I.VarT (id' @@ no_region)
               end)
         | _ -> assert false)
@@ -206,7 +207,7 @@ module MakeState() = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
-        if Env.find_opt id !hide = Some true then list else
+        if Set.find_opt id !hide = Some id then list else
         (* TODO: pass corresponding Motoko source region? *)
         let dec = I.TypD (id @@ no_region, t @@ no_region) @@ no_region in
         dec::list
