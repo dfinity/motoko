@@ -1,5 +1,10 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959)
+
+
 ## 0.14.7 (2025-04-04)
 
 * motoko (`moc`)
