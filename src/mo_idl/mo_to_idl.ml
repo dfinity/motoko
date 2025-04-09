@@ -25,7 +25,28 @@ module MakeState() = struct
         then c else '_'
       ) name
 
-  let monomorphize_con vs c =
+  let eta_contract c =
+    match Cons.kind c with
+    | Def (tbs, Con(d, ts)) ->
+      let rec check_ts n ts =
+        match n, ts with
+        | 0, [] -> true
+        | i, Var (_, j) :: ts0 ->
+          i = j && check_ts (n-1) ts0
+        | _, _  -> false
+      in
+      if check_ts (List.length tbs) ts
+      then Some d
+      else None
+    | _ -> None
+
+  let rec eta_norm c =
+    match eta_contract c with
+    | Some d -> eta_norm d
+    | None -> c
+
+  let monomorphize_con vs c0 =
+    let c = eta_norm c0 in
     let name = normalize_name (Cons.name c) in
     match Cons.kind c with
     | Def _ ->
@@ -84,9 +105,10 @@ module MakeState() = struct
     | Prim p -> prim p
     | Var (s, i) -> assert false
     | Con (c, ts) ->
+       let c = eta_norm c in
        (match Cons.kind c with
         | Def (_, t) ->
-           (match (open_ ts t) with
+           (match normalize (open_ ts t) with
             | Prim p -> prim p
             | Any -> I.PrimT I.Reserved
             | Non -> I.PrimT I.Empty
