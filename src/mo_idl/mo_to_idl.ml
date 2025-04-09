@@ -89,32 +89,31 @@ module MakeState() = struct
     | Prim p -> prim p
     | Var (s, i) -> assert false
     | Con (c, ts) ->
-       (match Cons.kind c with
-        | Def (_, t) ->
-           (match (open_ ts t) with
+      (match Cons.kind c with
+       | Def (_, t) ->
+         I.(match (open_ ts t) with
             | Prim p -> prim p
-            | Any -> I.(PrimT Reserved)
-            | Non -> I.(PrimT Empty)
+            | Any -> PrimT Reserved
+            | Non -> PrimT Empty
             | t ->
               let id = monomorphize_con ts c in
               match Env.find_opt id !env with
-              | Some t -> (match t with
-                | I.PreT -> I.VarT (id @@ no_region)
-                | I.VarT _ as seen -> seen
-                | seen -> I.VarT (RevMap.find (Cons.name c, seen) !rev @@ no_region))
-             | None -> begin
-                env := Env.add id I.PreT !env;
-                let t = typ (normalize t) in
-                match RevMap.find_opt (Cons.name c, t.it) !rev with
-                | None ->
-                  env := Env.add id t.it !env;
-                  rev := RevMap.add (Cons.name c, t.it) id !rev;
-                  I.VarT (id @@ no_region)
-                | Some id' ->
-                  env := Env.add id (I.VarT (id' @@ no_region)) !env;
-                  hide := Set.add id !hide;
-                  I.VarT (id' @@ no_region)
-              end)
+              | Some PreT -> VarT (id @@ no_region)
+              | Some (VarT _ as seen) -> seen
+              | Some seen -> VarT (RevMap.find (Cons.name c, seen) !rev @@ no_region)
+              | None -> begin
+                  env := Env.add id PreT !env;
+                  let t = typ (normalize t) in
+                  match RevMap.find_opt (Cons.name c, t.it) !rev with
+                  | None ->
+                    env := Env.add id t.it !env;
+                    rev := RevMap.add (Cons.name c, t.it) id !rev;
+                    VarT (id @@ no_region)
+                  | Some id' ->
+                    env := Env.add id (VarT (id' @@ no_region)) !env;
+                    hide := Set.add id !hide;
+                    VarT (id' @@ no_region)
+                end)
         | _ -> assert false)
     | Typ c -> assert false
     | Tup ts ->
@@ -207,7 +206,7 @@ module MakeState() = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
-        if Set.find_opt id !hide = Some id then list else
+        if Set.mem id !hide then list else
         (* TODO: pass corresponding Motoko source region? *)
         let dec = I.TypD (id @@ no_region, t @@ no_region) @@ no_region in
         dec::list
