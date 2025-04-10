@@ -4970,10 +4970,6 @@ module IC = struct
     ic_system_call "in_replicated_execution" env ^^ 
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
-  let replicated_execution env =
-    ic_system_call "in_replicated_execution" env ^^ 
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
-
   let canister_version env = ic_system_call "canister_version" env
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
