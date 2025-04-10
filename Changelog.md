@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
+
   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
 
   * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
