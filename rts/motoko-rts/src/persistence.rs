@@ -4,6 +4,7 @@
 
 pub mod compatibility;
 pub mod stable_functions;
+mod name_resolution;
 
 use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;
@@ -57,6 +58,8 @@ struct PersistentMetadata {
     upgrade_instructions: u64,
     /// Support for stable local functions.
     stable_function_state: StableFunctionState,
+    /// Reference to `name_resolution::NameTable`.
+    name_table: Value,
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
@@ -82,6 +85,7 @@ impl PersistentMetadata {
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
                     && (*self).stable_function_state.is_default()
+                    && (*self).name_table == DEFAULT_VALUE
         );
         initialized
     }
@@ -105,6 +109,7 @@ impl PersistentMetadata {
         (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
         (*self).stable_function_state = StableFunctionState::default();
+        (*self).name_table = NULL_POINTER;
     }
 }
 
@@ -312,6 +317,28 @@ pub(crate) unsafe fn stable_function_state() -> &'static mut StableFunctionState
 pub(crate) unsafe fn restore_stable_type<M: Memory>(mem: &mut M, type_descriptor: &TypeDescriptor) {
     let metadata = PersistentMetadata::get();
     (*metadata).stable_type.assign(mem, type_descriptor);
+}
+
+pub(crate) unsafe extern "C" fn load_name_table() -> Value {
+    let metadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    (*metadata).name_table.forward_if_possible()
+}
+
+#[ic_mem_fn]
+pub unsafe fn save_name_table<M: Memory>(mem: &mut M, table: Value) {
+    assert!(table != DEFAULT_VALUE);
+    let metadata: *mut PersistentMetadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    let location = &mut (*metadata).name_table as *mut Value;
+    write_with_barrier(mem, location, table);
+}
+
+/// GC root pointer required for GC marking and updating.
+pub(crate) unsafe fn name_table_location() -> *mut Value {
+    let metadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    &mut (*metadata).name_table as *mut Value
 }
 
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.

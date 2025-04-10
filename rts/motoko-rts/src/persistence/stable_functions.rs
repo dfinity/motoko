@@ -112,6 +112,7 @@ use crate::{
     memory::{alloc_blob, Memory},
     rts_trap_with,
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_CLOSURE},
+    persistence::name_resolution::lookup_name,
 };
 
 use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
@@ -420,7 +421,8 @@ unsafe fn update_existing_functions(
         let marked = (*virtual_table_entry).marked;
         if marked {
             if stable_function_entry == null_mut() {
-                let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
+                let name = lookup_name(name_hash);
+                let buffer = format!(200, "Incompatible upgrade: Stable function {name} is missing in the new program version");
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
             }
@@ -431,9 +433,10 @@ unsafe fn update_existing_functions(
             if type_test
                 .is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
             {
+                let name = lookup_name(name_hash);
                 let buffer = format!(
                     200,
-                    "Memory-incompatible closure type of stable function {name_hash}"
+                    "Memory-incompatible closure type of stable function {name}"
                 );
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
