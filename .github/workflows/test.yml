@@ -18,18 +18,6 @@ jobs:
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
 
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
-      uses: cachix/install-nix-action@v31
-
-    # We are using the ic-hs-test cachix cache that is also used by
-    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
-    # cache), but also to get the ic-ref-test binary without rebuilding
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
-      uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       uses: nixbuild/nix-quick-install-action@v30
 
@@ -39,23 +27,16 @@ jobs:
         nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
         generate_summary_for: 'job'
 
-      # Free up disk space on Ubuntu
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      if: startsWith(matrix.os, 'ubuntu-')
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      uses: cachix/install-nix-action@v31
 
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: false
+    # We are using the ic-hs-test cachix cache that is also used by
+    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
+    # cache), but also to get the ic-ref-test binary without rebuilding
+    - uses: cachix/cachix-action@v16
+      with:
+        name: ic-hs-test
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       name: "nix build"
@@ -70,8 +51,7 @@ jobs:
           all-systems-go
 
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
-      run: cachix watch-store ic-hs-test &
+    - run: cachix watch-store ic-hs-test &
 
     - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
       run: nix-env -iA nix-build-uncached -f nix/
