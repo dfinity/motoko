@@ -237,10 +237,10 @@ module Make (Cfg : Config) = struct
       | Flexible -> Atom "Flexible"
       | Stable -> Atom "Stable")
 
-  and typ_field (tf : typ_field) = match tf.it with
-    | ValF (id, t, m) -> id.it $$ [typ t; mut m]
-    | TypF (id', tbs, t) ->
-        "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
+  and typ_field (tf : typ_field) = source tf.at (match tf.it with
+    | ValF (lab, t, m) -> "ValF" $$ [id lab; typ t; mut m]
+    | TypF (lab, tbs, t) -> "TypF" $$ id lab :: List.map typ_bind tbs @ [typ t])
+
   and typ_item ((id, ty) : typ_item) =
     match id with
     | None -> [typ ty]
