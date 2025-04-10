@@ -1,0 +1,4 @@
+position: 22
+label: 'ICP features'
+collapsible: true # make the category collapsible
+collapsed: true 
