@@ -8922,7 +8922,6 @@ module StableFunctionGC = struct
       in
       let root_types = stable_actor.Ir.post::stable_closures in
       let map, _ = List.fold_left (collect_types true) (TM.empty, 0) root_types in
-      TM.iter (fun typ id -> Printf.printf "REACHABLE id %i %s\n" id (string_of_typ typ)) map;
       map
 
   let get_type_index reachable_types typ =
