@@ -45,3 +45,10 @@ do {
   let i2 : Blob = "Hi\00\01☃";
   for (i in i2.keys()) debugPrint (debug_show i2.get(i));
 };
+
+do {
+  type Blub = Blob;
+  let i3 : Blub = "жарко☃";
+  assert i3.size() == 13;
+  debugPrint(debug_show ("жарко☃" : Blub)[1]);
+};
