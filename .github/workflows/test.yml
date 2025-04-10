@@ -33,8 +33,9 @@ jobs:
 
     - name: Configure Nix
       run: |
-        echo "build-users-group =" >> /etc/nix/nix.conf
-        echo "sandbox = false" >> /etc/nix/nix.conf
+        sudo mkdir -p /etc/nix
+        echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
+        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
 
     - uses: cachix/install-nix-action@v31
 
