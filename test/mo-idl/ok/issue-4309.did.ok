@@ -1,10 +1,39 @@
-type Foo__2 = variant {bla;};
-type Foo__1 = variant {bla;};
+type Snoc = 
+ opt record {
+       Cons;
+       nat;
+     };
+type Result_1 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result = 
+ variant {
+   err;
+   ok;
+ };
+type List2 = 
+ opt record {
+       nat32;
+       List;
+     };
+type List = 
+ opt record {
+       nat32;
+       List2;
+     };
 type Foo = variant {bla;};
-type Credit__2 = nat;
-type Credit__1 = nat;
 type Credit = nat;
+type Cons = 
+ opt record {
+       nat;
+       Snoc;
+     };
 service : {
-  get: () -> (Credit, Credit__1, Credit__2);
-  silly: (Foo, Foo__1, Foo__2, Foo__2) -> ();
+  consful: (snoc: Snoc) -> (Cons);
+  erroring: () -> (Result_1);
+  get: () -> (Credit, Credit, Credit);
+  listful: (list: List2) -> (List);
+  silly: (Foo, Foo, Foo, Foo) -> (Result);
 }
