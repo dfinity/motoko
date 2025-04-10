@@ -808,29 +808,31 @@ rec {
       # Get the actual derivations for the selected names
       builtins.map (name: tests.${name}) selected_names;
 
+  common-constituents = [
+    moc
+    mo-ide
+    mo-doc
+    didc
+    deser
+    samples
+    rts
+    base-src
+    base-tests
+    base-doc
+    docs
+    report-site
+    shell
+    check-formatting
+    check-rts-formatting
+    check-generated
+    check-grammar
+    check-error-codes
+  ];
+
   # Release version - excludes debug tests
   release-systems-go = nixpkgs.releaseTools.aggregate {
     name = "release-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
+    constituents = common-constituents ++
     filter_tests "release" tests  # Only include release tests
     ++ builtins.attrValues js
     ;
@@ -839,31 +841,12 @@ rec {
   # Debug version - only includes debug tests
   debug-systems-go = nixpkgs.releaseTools.aggregate {
     name = "debug-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
+    constituents = common-constituents ++
     filter_tests "debug" tests  # Only include debug tests
     ++ builtins.attrValues js
     ;
   };
-    
+
   viperServer = nixpkgs.fetchurl {
     url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
