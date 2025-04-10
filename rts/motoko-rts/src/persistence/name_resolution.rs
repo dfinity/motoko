@@ -67,7 +67,8 @@ impl NameTable {
 
     unsafe fn text_section_length(self: *const Self) -> usize {
         let length = block_size(self as usize).to_bytes().as_usize();
-        length - self.text_section_start() as usize
+        let end = self as usize + length;
+        end - self.text_section_start() as usize
     }
 
     unsafe fn text_section_read(self: *mut Self, offset: usize, length: usize) -> String {
@@ -92,7 +93,7 @@ impl SortedArray<NameHash> for *mut NameTable {
 }
 
 fn undefined_name(hash: NameHash) -> String {
-    let buffer = format!(100, "unknown<{hash}>");
+    let buffer = format!(100, "<{hash}>");
     from_utf8(&buffer).unwrap().to_string()
 }
 

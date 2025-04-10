@@ -1319,6 +1319,7 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "save_name_table" [I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -8836,10 +8837,10 @@ module StableFunctions = struct
   let sorted_stable_functions env =
     let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type) remainder ->
       let name_hash = Mo_types.Hash.hash name in
-      (name_hash, wasm_table_index, closure_type) :: remainder)
+      (name_hash, name, wasm_table_index, closure_type) :: remainder)
       !(env.E.stable_functions) []
     in
-    List.sort (fun (hash1, _, _) (hash2, _, _) ->
+    List.sort (fun (hash1, _, _, _) (hash2, _, _, _) ->
       Int32.compare hash1 hash2) entries
 
   let create_stable_function_map (env : E.t) sorted_stable_functions =
@@ -8918,7 +8919,7 @@ module StableFunctionGC = struct
       in
       let stable_closures =
         let stable_functions = StableFunctions.sorted_stable_functions env in
-        List.map (fun (_, _, closure_type) -> closure_type) stable_functions 
+        List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions 
       in
       let root_types = stable_actor.Ir.post::stable_closures in
       let map, _ = List.fold_left (collect_types true) (TM.empty, 0) root_types in
@@ -9004,6 +9005,50 @@ module StableFunctionGC = struct
     in
     TM.mapi emit_visitor reachable_types |> TM.bindings |> List.map snd |> G.concat
 end (* StableFunctionGC *)
+
+module NameTable = struct
+  let build_table (records: (int32 * string) list) : string =
+    let append_text section text =
+      let offset = String.length section in
+      let length = String.length text in
+      let section = section ^ text in
+      (offset, length, section)
+    in
+    let append_hash section hash offset length =
+      let entry = [Int64.of_int32 hash; Int64.of_int offset; Int64.of_int length] in
+      let encoded = StaticBytes.(as_bytes [i64s entry]) in
+      section ^ encoded
+    in
+    let append_record sections record =
+      let (hash, name) = record in
+      let (hash_section, text_section) = sections in
+      let (offset, length, text_section) = append_text text_section name in
+      let hash_section = append_hash hash_section hash offset length in
+      (hash_section, text_section)
+    in
+    let empty_section = "" in
+    let empty_table = (empty_section, empty_section) in
+    let table = List.fold_left append_record empty_table records in
+    let (hash_section, text_section) = table in
+    let table_length = Int64.of_int (List.length records) in
+    let table = StaticBytes.[
+      I64 table_length;
+      Bytes hash_section;
+      Bytes text_section
+    ] in
+    StaticBytes.as_bytes table
+
+  let name_records env =
+    let functions = StableFunctions.sorted_stable_functions env in
+    List.map (fun (hash, name, _, _) -> (hash, name)) functions
+
+  let register env =
+    let records = name_records env in
+    let payload = build_table records in
+    Blob.lit env Tagged.B payload ^^   
+    E.call_import env "rts" "save_name_table"
+
+end (* NameTable *)
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
@@ -9096,7 +9141,7 @@ module EnhancedOrthogonalPersistence = struct
       | Post -> stable_actor_type.Ir.post
       in
       (let stable_functions = StableFunctions.sorted_stable_functions env in
-      let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
+      let stable_closures = List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions in
       let stable_types = actor_type::stable_closures in
       let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
       let actor_type_index = List.hd type_indices in
@@ -9104,7 +9149,7 @@ module EnhancedOrthogonalPersistence = struct
       let closure_type_indices = List.tl type_indices in
       let reachable_types = StableFunctionGC.reachable_types env actor_type_opt in 
       let stable_functions = List.map2 (
-        fun (name_hash, wasm_table_index, closure_type) closure_type_index ->
+        fun (name_hash, _, wasm_table_index, closure_type) closure_type_index ->
           let gc_type_index = StableFunctionGC.get_type_index reachable_types closure_type in
           (name_hash, wasm_table_index, closure_type_index, gc_type_index)
       ) stable_functions closure_type_indices in
@@ -10570,6 +10615,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
+    NameTable.register env ^^
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
