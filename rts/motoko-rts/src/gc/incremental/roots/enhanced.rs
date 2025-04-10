@@ -35,7 +35,10 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
 pub unsafe fn root_set() -> Roots {
     use crate::{
         continuation_table::continuation_table_loc,
-        persistence::{stable_actor_location, stable_function_state, stable_type_descriptor, name_table_location},
+        persistence::{
+            name_table_location, stable_actor_location, stable_function_state,
+            stable_type_descriptor,
+        },
         region::region0_get_ptr_loc,
     };
     [

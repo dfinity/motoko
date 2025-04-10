@@ -2,12 +2,12 @@
 //!
 //! Currently only used for stable function names, to yield better error messages
 //! for missing or incompatible stable functions.
-//! 
+//!
 //! Can be extended to also cover field and option names, for e.g. data visualizer.
 
-use crate::types::{block_size, Blob, Value};
 use crate::algorithms::SortedArray;
 use crate::persistence::load_name_table;
+use crate::types::{block_size, Blob, Value};
 use alloc::string::{String, ToString};
 use core::slice::from_raw_parts;
 use core::str::from_utf8;

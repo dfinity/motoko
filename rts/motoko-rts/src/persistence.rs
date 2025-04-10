@@ -3,8 +3,8 @@
 //! Persistent metadata table, located at 6MB, in the static partition space.
 
 pub mod compatibility;
-pub mod stable_functions;
 mod name_resolution;
+pub mod stable_functions;
 
 use compatibility::MemoryCompatibilityTest;
 use motoko_rts_macros::ic_mem_fn;

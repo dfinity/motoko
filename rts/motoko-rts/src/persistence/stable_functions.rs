@@ -110,9 +110,9 @@ use crate::{
     algorithms::SortedArray,
     barriers::{allocation_barrier, write_with_barrier},
     memory::{alloc_blob, Memory},
+    persistence::name_resolution::lookup_name,
     rts_trap_with,
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_CLOSURE},
-    persistence::name_resolution::lookup_name,
 };
 
 use super::{compatibility::MemoryCompatibilityTest, stable_function_state};
