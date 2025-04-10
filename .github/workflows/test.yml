@@ -25,9 +25,15 @@ jobs:
     - name: Set USER environment variable
       run: echo "USER=runner" >> $GITHUB_ENV
 
-    - name: Set Nix permissions
+    - name: Mount Nix store
       run: |
         sudo mkdir -p /nix
+        sudo mount --bind /nix /nix
+        sudo mount --make-private /nix
+        sudo mount --make-rshared /nix
+
+    - name: Set Nix permissions
+      run: |
         sudo chown -R runner:runner /nix
         sudo chmod -R 755 /nix
     
@@ -51,6 +57,7 @@ jobs:
         # Add these lines to allow writing to the store
         echo "store = /nix/store" | sudo tee -a /etc/nix/nix.conf
         echo "build-users-group = runner" | sudo tee -a /etc/nix/nix.conf
+        echo "download-buffer-size = 104857600" | sudo tee -a /etc/nix/nix.conf
     
     - name: Set work directory permissions
       run: |
