@@ -37,6 +37,16 @@ jobs:
         echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
     
+    - name: Check storage space
+      run: |
+        echo "Disk space usage:"
+        df -h
+        echo "Current directory size:"
+        du -sh .
+        echo "Nix store size:"
+        du -sh /nix/store
+        echo "Temp directory size:"
+        du -sh /home/runner/_work/_temp
 
     - uses: cachix/install-nix-action@v31
 
