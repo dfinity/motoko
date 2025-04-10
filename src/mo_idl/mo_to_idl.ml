@@ -108,15 +108,17 @@ module MakeState() = struct
               | None -> begin
                   env := Env.add id PreT !env;
                   let t = typ (normalize t) in
-                  match RevMap.find_opt (Cons.name c, t.it) !rev with
+                  let rev_key = Cons.name c, t.it in
+                  match RevMap.find_opt rev_key !rev with
                   | None ->
                     env := Env.add id t.it !env;
-                    rev := RevMap.add (Cons.name c, t.it) id !rev;
+                    rev := RevMap.add rev_key id !rev;
                     VarT (id @@ no_region)
                   | Some id' ->
-                    env := Env.add id (VarT (id' @@ no_region)) !env;
+                    let canonical = VarT (id' @@ no_region) in
+                    env := Env.add id canonical !env;
                     hide := Set.add id !hide;
-                    VarT (id' @@ no_region)
+                    canonical
                 end)
         | _ -> assert false)
     | Typ c -> assert false
