@@ -787,20 +787,28 @@ rec {
       '';
   };
 
-  # Helper function to filter tests by type.
+  # Helper function to filter tests by type
   filter_tests = type: tests:
-    builtins.filter (test: 
-      if type == "debug" then
-        # Match tests ending in -dbg or -debug
-        builtins.match ".*-dbg$" test.name != null || 
-        builtins.match ".*-debug$" test.name != null
-      else
-        # Match tests that don't end in -dbg or -debug
-        builtins.match ".*-dbg$" test.name == null && 
-        builtins.match ".*-debug$" test.name == null
-    ) (builtins.attrValues tests);
+    let
+      # Get all test names that match the pattern
+      debug_tests = builtins.filter (name: 
+        builtins.match ".*-dbg$" name != null || 
+        builtins.match ".*-debug$" name != null
+      ) (builtins.attrNames tests);
+      
+      # Get all test names that don't match the pattern
+      release_tests = builtins.filter (name:
+        builtins.match ".*-dbg$" name == null && 
+        builtins.match ".*-debug$" name == null
+      ) (builtins.attrNames tests);
+      
+      # Select which set of names to use
+      selected_names = if type == "debug" then debug_tests else release_tests;
+    in
+      # Get the actual derivations for the selected names
+      builtins.map (name: tests.${name}) selected_names;
 
-  # Release version - excludes debug tests.
+  # Release version - excludes debug tests
   release-systems-go = nixpkgs.releaseTools.aggregate {
     name = "release-systems-go";
     constituents = [
