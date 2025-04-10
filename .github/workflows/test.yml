@@ -17,13 +17,19 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-        
+
     - name: Install xz
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install -y xz-utils
 
     - name: Set USER environment variable
       run: echo "USER=runner" >> $GITHUB_ENV
+
+    - name: Set Nix permissions
+      run: |
+        sudo mkdir -p /nix
+        sudo chown -R runner:runner /nix
+        sudo chmod -R 755 /nix
 
     - uses: cachix/install-nix-action@v31
 
