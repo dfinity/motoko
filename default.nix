@@ -808,8 +808,8 @@ rec {
       # Get the actual derivations for the selected names
       builtins.map (name: tests.${name}) selected_names;
 
-  # Release version - excludes debug tests
-  release-systems-go = nixpkgs.releaseTools.aggregate {
+  # Release version - excludes debug tests.
+  let release-systems-go = nixpkgs.releaseTools.aggregate {
     name = "release-systems-go";
     constituents = [
       moc
@@ -836,8 +836,8 @@ rec {
     ;
   };
 
-  # Debug version - only includes debug tests
-  debug-systems-go = nixpkgs.releaseTools.aggregate {
+  # Debug version - only includes debug tests.
+  let debug-systems-go = nixpkgs.releaseTools.aggregate {
     name = "debug-systems-go";
     constituents = [
       moc
@@ -860,34 +860,6 @@ rec {
       check-error-codes
     ] ++
     filter_tests "debug" tests  # Only include debug tests.
-    ++ builtins.attrValues js
-    ;
-  };
-
-  all-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "all-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      # ic-ref-run
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    builtins.attrValues tests
     ++ builtins.attrValues js
     ;
   };

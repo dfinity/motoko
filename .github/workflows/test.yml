@@ -51,7 +51,7 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "nix-build"
+    - name: "nix-build-${{ matrix.build_type }}"
       run: nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
 
     - name: Discover `test/bench` changes
