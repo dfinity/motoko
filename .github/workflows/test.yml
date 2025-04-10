@@ -36,7 +36,7 @@ jobs:
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       uses: nixbuild/nixbuild-action@v20
       with:
-        nixbuild_token: ${{ secrets.nixbuild_token }}
+        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
         generate_summary_for: 'job'
 
       # Free up disk space on Ubuntu
