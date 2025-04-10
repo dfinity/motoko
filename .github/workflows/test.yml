@@ -43,18 +43,6 @@ jobs:
         # Ensure parent directory is also owned by runner
         sudo chown runner:runner /nix
 
-    - name: Diagnostic - Check environment
-      run: |
-        echo "=== Mount points ==="
-        mount | grep -E 'nix|overlay'
-        echo "=== Nix store permissions ==="
-        ls -la /nix/store
-        echo "=== Current user and groups ==="
-        id
-        echo "=== Nix configuration ==="
-        cat /etc/nix/nix.conf
-        echo "=== Environment variables ==="
-        env | grep -E 'NIX|USER|HOME'
 
     - name: Configure Nix
       run: |
