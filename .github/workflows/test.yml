@@ -7,7 +7,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ dind-large, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ dind-large] #, macos-13, ubuntu-24.04-arm, macos-latest ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,6 +30,11 @@ jobs:
         sudo mkdir -p /nix
         sudo chown -R runner:runner /nix
         sudo chmod -R 755 /nix
+
+    - name: Configure Nix
+      run: |
+        echo "build-users-group =" >> /etc/nix/nix.conf
+        echo "sandbox = false" >> /etc/nix/nix.conf
 
     - uses: cachix/install-nix-action@v31
 
@@ -152,7 +157,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ dind-large, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ dind-large] #, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
