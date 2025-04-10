@@ -17,15 +17,27 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v31
+
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v16
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+      uses: nixbuild/nix-quick-install-action@v30
+
+    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+      uses: nixbuild/nixbuild-action@v20
+      with:
+        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+        generate_summary_for: 'job'
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
@@ -45,12 +57,27 @@ jobs:
         docker-images: true
         swap-storage: false
 
+    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+    - name: "nix build"
+      run: |
+        nix build \
+          --print-build-logs \
+          --builders "" \
+          --max-jobs 2 \
+          --eval-store auto \
+          --store ssh-ng://eu.nixbuild.net \
+          -f default.nix \
+          all-systems-go
+
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      run: cachix watch-store ic-hs-test &
 
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "nix-build"
+    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+      name: "nix-build"
       run: nix-build-uncached --max-jobs auto -A all-systems-go -build-flags -L
 
     - name: Discover `test/bench` changes
