@@ -39,16 +39,18 @@ jobs:
 
     - uses: cachix/install-nix-action@v31
 
-    - name: Check storage space
+    - name: Debug mounts and permissions
       run: |
-        echo "Disk space usage:"
-        df -h
-        echo "Current directory size:"
-        du -sh .
-        echo "Nix store size:"
-        du -sh /nix/store
-        echo "Temp directory size:"
-        du -sh /home/runner/_work/_temp
+        echo "Mount points and their options:"
+        mount | grep -E 'overlay|tmpfs|/dev/'
+        echo "Detailed permissions for work directory:"
+        ls -la /home/runner/_work
+        echo "Detailed permissions for temp directory:"
+        ls -la /home/runner/_work/_temp
+        echo "Docker root directory permissions:"
+        ls -la /var/lib/docker
+        echo "Overlay filesystem info:"
+        cat /proc/mounts | grep overlay
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
