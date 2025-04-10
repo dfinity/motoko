@@ -110,6 +110,7 @@ use crate::{
     algorithms::SortedArray,
     barriers::{allocation_barrier, write_with_barrier},
     memory::{alloc_blob, Memory},
+    persistence::name_resolution::lookup_name,
     rts_trap_with,
     types::{Blob, Bytes, Value, NULL_POINTER, TAG_BLOB_B, TAG_CLOSURE},
 };
@@ -339,8 +340,7 @@ impl StableFunctionMap {
     }
 }
 
-/// Garbage collect the stable functions in the old version on an upgrade.
-/// Called on EOP upgrade and graph copy stabilization start.
+/// Garbage collect the stable functions in the old version on an EOP upgrade.
 pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, old_actor: Value) {
     // Retrieve the persistent virtual, or, if not present, initialize an empty one.
     let virtual_table = prepare_virtual_table(mem);
@@ -420,7 +420,8 @@ unsafe fn update_existing_functions(
         let marked = (*virtual_table_entry).marked;
         if marked {
             if stable_function_entry == null_mut() {
-                let buffer = format!(200, "Incompatible upgrade: Stable function {name_hash} is missing in the new program version");
+                let name = lookup_name(name_hash);
+                let buffer = format!(200, "Incompatible upgrade: Stable function {name} is missing in the new program version");
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
             }
@@ -431,9 +432,10 @@ unsafe fn update_existing_functions(
             if type_test
                 .is_some_and(|test| !test.is_compatible(old_closure as i32, new_closure as i32))
             {
+                let name = lookup_name(name_hash);
                 let buffer = format!(
                     200,
-                    "Memory-incompatible closure type of stable function {name_hash}"
+                    "Memory-incompatible closure type of stable function {name}"
                 );
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
