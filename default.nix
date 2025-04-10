@@ -840,8 +840,7 @@ rec {
     name = "debug-systems-go";
     constituents = common-constituents ++
     filter_tests "debug" tests  # Only include debug tests
-    ++ builtins.attrValues js
-    ;
+    ++ builtins.attrValues js;
   };
 
   viperServer = nixpkgs.fetchurl {
