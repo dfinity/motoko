@@ -22,13 +22,13 @@
 //! * Stable functions match between program versions if they have an equal fully qualified name.
 //! * For matching functions, the function type of the new version must be compatible to the previous version (super-type).
 //! * For matching functions, the closure type in the new version must be compatible with the previous version (super-type).
-//! 
+//!
 //! Stable closures compatibility is determined as followed:
 //! * Captured parameters are identified by position (also considering nested functions).
 //! * Captured locals are identified by identifier (possibly applying shadowing).
 //! * The new stable closure can drop captured parameters or locals, but not introduce new ones.
 //! * The types of the captured parameters/locals must match, i.e. new version is a super-type.
-//! 
+//!
 //! All other functions, such as lambdas, named functions in a lambda, async functions, or functions
 //! imported from a module without a unique import identifier, are flexible functions.
 //!
