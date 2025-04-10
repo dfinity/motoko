@@ -45,15 +45,6 @@ jobs:
 
     - uses: cachix/install-nix-action@v31
 
-    - name: Debug mounts and permissions
-      run: |
-        echo "Mount points and their options:"
-        mount | grep -E 'overlay|tmpfs|/dev/'
-        echo "Detailed permissions for work directory:"
-        ls -la /home/runner/_work
-        echo "Detailed permissions for temp directory:"
-        ls -la /home/runner/_work/_temp
-
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
