@@ -43,7 +43,6 @@ jobs:
         # Ensure parent directory is also owned by runner
         sudo chown runner:runner /nix
 
-
     - name: Configure Nix
       run: |
         sudo mkdir -p /etc/nix
@@ -52,18 +51,6 @@ jobs:
         # Add these lines to allow writing to the store
         echo "store = /nix/store" | sudo tee -a /etc/nix/nix.conf
         echo "build-users-group = runner" | sudo tee -a /etc/nix/nix.conf
-    
-    - name: Set up local Nix store
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/.nix-store
-        sudo chown -R runner:runner $GITHUB_WORKSPACE/.nix-store
-        sudo chmod -R 755 $GITHUB_WORKSPACE/.nix-store
-
-    - name: Configure local Nix store
-      run: |
-        echo "store = $GITHUB_WORKSPACE/.nix-store" | sudo tee -a /etc/nix/nix.conf
-        echo "build-users-group = runner" | sudo tee -a /etc/nix/nix.conf
-        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
     
     - name: Set work directory permissions
       run: |
