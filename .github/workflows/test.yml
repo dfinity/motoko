@@ -37,6 +37,9 @@ jobs:
         echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
     
+
+    - uses: cachix/install-nix-action@v31
+
     - name: Debug permissions
       run: |
         ls -la /nix/store
@@ -45,8 +48,6 @@ jobs:
         echo "NIX_REMOTE=$NIX_REMOTE"
         echo "NIX_BUILD_HOOK=$NIX_BUILD_HOOK"
         echo "NIX_DAEMON_SOCKET=$NIX_DAEMON_SOCKET"
-
-    - uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
