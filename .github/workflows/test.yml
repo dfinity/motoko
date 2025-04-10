@@ -57,10 +57,10 @@ jobs:
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    # - uses: cachix/cachix-action@v16
-    #   with:
-    #     name: ic-hs-test
-    #     authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - uses: cachix/cachix-action@v16
+      with:
+        name: ic-hs-test
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
