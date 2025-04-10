@@ -159,6 +159,9 @@
     '<>>='
     '@='
 
+<parenthetical> ::= 
+    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')'
+
 <exp_obj> ::= 
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
@@ -186,6 +189,7 @@
 
 <exp_un> ::= 
     <exp_post>
+    <parenthetical> <exp_post> <inst> <exp_nullary>
     '#' <id>
     '#' <id> <exp_nullary>
     '?' <exp_un>
@@ -211,7 +215,7 @@
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
     'return' <exp>?
-    'async' <exp_nest>
+    <parenthetical>? 'async' <exp_nest>
     'async*' <exp_nest>
     'await' <exp_nest>
     'await*' <exp_nest>
@@ -310,8 +314,11 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <parenthetical>? <obj_or_class_dec>
+
+<obj_or_class_dec> ::= 
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
@@ -337,5 +344,12 @@
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
 
+<pre_stab_field> ::= 
+    <req> 'var'? <id> ':' <typ>
+
+<req> ::= 
+    'stable'
+    'in'
+ ')'
 
 

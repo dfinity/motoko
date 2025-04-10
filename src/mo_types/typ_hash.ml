@@ -129,8 +129,8 @@ let rec go = function
     , ts1 @ ts2
     )
   | Async _ -> raise (Invalid_argument "typ_hash: Only supports serializable data")
-
   | Con _ as t -> go (normalize t)
+  | Named _ as t -> go (normalize t)
   | Pre -> assert false
   | Var _ -> ((Nullary, "t"), []) (* t for type variable *)
   | Typ _ -> assert false

@@ -165,7 +165,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, _typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, _typ) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
       let (env', _) = decs lvl env ds in
       exp_ lvl env' preupgrade;
@@ -173,6 +173,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env' heartbeat;
       exp_ lvl env' timer;
       exp_ lvl env' inspect;
+      exp_ lvl env' low_memory;
       exp_ lvl env' stable_record;
       surely_false
   in
@@ -229,7 +230,7 @@ and block lvl env (ds, body) =
 and comp_unit = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> decs_ TopLvl M.empty ds
-  | ActorU (as_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, typ) ->
+  | ActorU (as_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
     let env = match as_opt with
       | None -> M.empty
       | Some as_ -> args TopLvl M.empty as_
@@ -240,6 +241,7 @@ and comp_unit = function
     exp_ TopLvl env' heartbeat;
     exp_ TopLvl env' timer;
     exp_ TopLvl env' inspect;
+    exp_ TopLvl env' low_memory;
     exp_ TopLvl env' stable_record
 
 let analyze ((cu, _flavor) : prog) =

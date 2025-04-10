@@ -407,6 +407,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
+  module FieldEnv = Env.Make(String)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -423,6 +424,13 @@ module E = struct
     candid_data_segment: int32;
     type_offsets_segment: int32;
     function_map_segment: int32;
+  }
+  (* If no migration function is specified, pre = post *)
+  type stable_migration_descriptor = {
+    (* input to migration function, domain *)
+    pre: stable_type_descriptor;
+    (* output of migration function, range *)
+    post: stable_type_descriptor;
   }
   (* Object allocation code. *)
   type object_allocation = t -> G.t
@@ -499,8 +507,8 @@ module E = struct
     (* Stable functions, mapping the function name to the Wasm table index and closure type *)
     stable_functions: (int32 * Type.typ) NameEnv.t ref;
 
-    (* Type descriptor for the EOP memory compatibility check, created in `conclude_module` *)
-    stable_type_descriptor: stable_type_descriptor option ref;
+    (* Type descriptors for the EOP memory compatibility check, created in `conclude_module` *)
+    stable_migration_descriptor: stable_migration_descriptor option ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
@@ -544,7 +552,7 @@ module E = struct
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
-    stable_type_descriptor = ref None;
+    stable_migration_descriptor = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -1163,6 +1171,8 @@ module RTS = struct
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "has_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -1309,6 +1319,7 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "save_name_table" [I64Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -2322,89 +2333,6 @@ module Variant = struct
     compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
-
-
-module Closure = struct
-  (* In this module, we deal with closures, i.e. functions that capture parts
-     of their environment.
-
-     The structure of a closure is:
-
-       ┌──────┬─────┬───────┬──────┬──────────────┐
-       │ obj header │ funid │ size │ captured ... │
-       └──────┴─────┴───────┴──────┴──────────────┘
-
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
-  *)
-  let header_size = Int64.add Tagged.header_size 2L
-
-  let funptr_field = Tagged.header_size
-  let len_field = Int64.add 1L Tagged.header_size
-
-  let load_data env i =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (Int64.add header_size i)
-
-  let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
-    Tagged.store_field env (Int64.add header_size i)
-
-  let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env
-
-  (* Expect on the stack
-     * the function closure (using prepare_closure_call)
-     * and arguments (n-ary!)
-     * the function closure again!
-  *)
-  let call_closure env n_args n_res =
-    (* Calculate the wasm type for a given calling convention.
-       An extra first argument for the closure! *)
-    let ty = E.func_type env (FuncType (
-      I64Type :: Lib.List.make n_args I64Type,
-      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
-    (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env funptr_field ^^
-    (if env.E.is_canister then
-      E.call_import env "rts" "resolve_function_call"
-    else
-      G.nop) ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    (* All done: Call! *)
-    let table_index = 0l in
-    G.i (CallIndirect (nr table_index, nr ty)) ^^
-    FakeMultiVal.load env (Lib.List.make n_res I64Type)
-
-  let make_stable_closure_type captured stable_closure =
-    let variable_types = List.map (fun id ->
-      Type.Env.find id stable_closure.Type.captured_variables
-    ) captured in
-    Type.Tup variable_types
-
-  let constant env get_fi stable_closure =
-    let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
-    (match stable_closure with
-    | Some stable_closure ->
-      (* no captured variables in constant functions *)
-      let qualified_name = stable_closure.Type.function_path in
-      let closure_type = make_stable_closure_type [] stable_closure in
-      E.add_stable_func env qualified_name wasm_table_index closure_type
-    | None -> ());
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
-      compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
-      (if env.E.is_canister then
-        E.call_import env "rts" "resolve_function_literal"
-      else
-        G.nop);
-      compile_unboxed_const 0L (* no captured variables *)
-    ])
-
-end (* Closure *)
-
 
 module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
@@ -3954,6 +3882,163 @@ module Blob = struct
 
 end (* Blob *)
 
+(* Used by Closure and Object *)
+module FieldLookupTable = struct
+  let build_hash_blob env (field_names : string list) =
+    let name_position_map = field_names |>
+      List.map (fun name -> (E.hash_label env name, name)) |>
+      List.sort compare |>
+      List.mapi (fun index (_, name) -> (name, Int64.of_int index)) |>
+      List.fold_left (fun map (name, index) -> E.FieldEnv.add name index map) E.FieldEnv.empty
+    in
+    let hashes = field_names |>
+      List.map (fun name -> E.hash_label env name) |>
+      List.sort compare in
+    let hash_blob =
+      let hash_payload = StaticBytes.[ i64s hashes ] in
+      Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
+    in
+    (name_position_map, hash_blob)
+
+  let field_address env header low_bound =
+    let (hash_pointer_field, header_size) = header in
+    assert Int64.((to_int hash_pointer_field) < (to_int header_size));
+    let name = Printf.sprintf "field_address<%i>-<%i>-<%d>" (Int64.to_int hash_pointer_field) (Int64.to_int header_size) low_bound  in
+    Func.share_code2 Func.Always env name (("x", I64Type), ("hash", I64Type)) [I64Type] (fun env get_x get_hash ->
+      let set_x = G.setter_for get_x in
+      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
+
+      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+
+      get_x ^^ Tagged.load_field env hash_pointer_field ^^
+      Blob.payload_ptr_unskewed env ^^
+
+      (* Linearly scan through the fields (binary search can come later) *)
+      (* unskew h_ptr and advance both to low bound *)
+      compile_add_const Int64.(mul Heap.word_size (of_int low_bound)) ^^
+      set_h_ptr ^^
+      get_x ^^
+      compile_add_const Int64.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
+      set_x ^^
+      G.loop0 (
+          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash ^^ compile_comparison I64Op.Eq ^^
+          E.if0
+            (get_x ^^ G.i Return)
+            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+            get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+            G.i (Br (nr 1l)))
+        ) ^^
+      G.i Unreachable
+    )
+
+end (* FieldLookupTable *)
+
+
+module Closure = struct
+  (* In this module, we deal with closures, i.e. functions that capture parts
+     of their environment. Closures have a stable representation that is portable
+     across compiler changes, with captured variables been located by their program
+     context (position of captured parameters, name of captured locals).
+
+     The hash of the captured variables is based on an id:
+     * Position of captured parameters (considering also nested functions/objects)
+     * Identifier of captured local variables
+
+     The structure of a closure is:
+
+       ┌──────┬─────┬───────┬──────────┬──────────────┐
+       │ obj header │ funid │ hash_ptr │ captured ... │
+       └──────┴─────┴───────┴──────────┴──────────────┘
+          ┌──────────────────────┘
+          │  
+          ↓  
+          ┌─────────────┬────────────────┬────────────────┬───┐
+          │ blob header │ captured1_hash │ captured2_hash │ … │
+          └─────────────┴────────────────┴────────────────┴───┘
+
+     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+  *)
+  let header_size = Int64.add Tagged.header_size 2L
+  let funptr_field = Tagged.header_size
+  let hash_pointer_field = Int64.add 1L Tagged.header_size
+
+  let captured_address env stable_name =
+    let header = (hash_pointer_field, header_size) in
+    compile_unboxed_const (E.hash_label env stable_name) ^^
+    FieldLookupTable.field_address env header 0
+  
+  let load_captured env stable_name =
+    captured_address env stable_name ^^
+    load_ptr
+    
+  let store_captured env stable_name =
+    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
+    set_closure_data ^^
+    captured_address env stable_name ^^
+    get_closure_data ^^
+    store_ptr
+
+  let prepare_closure_call env =
+    Tagged.load_forwarding_pointer env
+
+  (* Expect on the stack
+     * the function closure (using prepare_closure_call)
+     * and arguments (n-ary!)
+     * the function closure again!
+  *)
+  let call_closure env n_args n_res =
+    (* Calculate the wasm type for a given calling convention.
+       An extra first argument for the closure! *)
+    let ty = E.func_type env (FuncType (
+      I64Type :: Lib.List.make n_args I64Type,
+      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
+    (* get the table index *)
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env funptr_field ^^
+    (if env.E.is_canister then
+      E.call_import env "rts" "resolve_function_call"
+    else
+      G.nop) ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    (* All done: Call! *)
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
+    FakeMultiVal.load env (Lib.List.make n_res I64Type)
+
+  let make_stable_closure_type captured stable_closure =
+    let fields = List.map (fun id ->
+      let variable = Type.Env.find id stable_closure.Type.captured_variables in
+      Type.{
+        lab = variable.stable_name;
+        typ = variable.variable_type;
+        src = empty_src
+      }
+    ) captured in
+    Type.Obj (Type.Object, fields)
+
+  let constant env get_fi stable_closure =
+    let wasm_table_index = E.add_fun_ptr env (get_fi ()) in
+    (match stable_closure with
+    | Some stable_closure ->
+      (* no captured variables in constant functions *)
+      let qualified_name = stable_closure.Type.function_path in
+      let closure_type = make_stable_closure_type [] stable_closure in
+      E.add_stable_func env qualified_name wasm_table_index closure_type
+    | None -> ());
+    (* no captured variables in constant functions *)
+    let (_, empty_hash_blob) = FieldLookupTable.build_hash_blob env [] in
+    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
+      (if env.E.is_canister then
+        E.call_import env "rts" "resolve_function_literal"
+      else
+        G.nop);
+      Tagged.materialize_shared_value env empty_hash_blob
+    ])
+
+end (* Closure *)
+
 module Object = struct
   (* An object with a mutable field1 and immutable field 2 has the following
      heap layout:
@@ -4002,37 +4087,16 @@ module Object = struct
 
   let hash_ptr_field = Int64.add Tagged.header_size 0L
 
-  module FieldEnv = Env.Make(String)
-
   (* This is for non-recursive objects. *)
   (* The instructions in the field already create the indirection if needed *)
-  let object_builder env (fs : (string * (E.t -> G.t)) list ) =
-    let name_pos_map =
-      fs |>
-        (* We could store only public fields in the object, but
-          then we need to allocate separate boxes for the non-public ones:
-          List.filter (fun (_, vis, f) -> vis.it = Public) |>
-        *)
-        List.map (fun (n,_) -> (E.hash_label env n, n)) |>
-        List.sort compare |>
-        List.mapi (fun i (_h,n) -> (n,Int64.of_int i)) |>
-        List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
-
-      let sz = Int64.of_int (FieldEnv.cardinal name_pos_map) in
-
-      (* Create hash blob *)
-      let hashes = fs |>
-        List.map (fun (n,_) -> E.hash_label env n) |>
-        List.sort compare in
-      let hash_blob =
-        let hash_payload = StaticBytes.[ i64s hashes ] in
-        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
-      in
-
+  let object_builder env (fs : (string * (E.t -> G.t)) list) =
+    let field_names = List.map (fun (name, _) -> name) fs in
+    let (name_pos_map, hash_blob) = FieldLookupTable.build_hash_blob env field_names in
+    let size = Int64.of_int (E.FieldEnv.cardinal name_pos_map) in
       (fun env ->
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
-        Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
+        Tagged.alloc env (Int64.add header_size size) Tagged.Object ^^
         set_ri ^^
 
         (* Set hash_ptr *)
@@ -4045,7 +4109,7 @@ module Object = struct
           (* Write the pointer to the indirection *)
           get_ri ^^
           generate_value env ^^
-          let i = FieldEnv.find name name_pos_map in
+          let i = E.FieldEnv.find name name_pos_map in
           let offset = Int64.add header_size i in
           Tagged.store_field env offset
         in
@@ -4076,35 +4140,7 @@ module Object = struct
     Bool.from_rts_int32
 
   (* Returns a pointer to the object field (without following the field indirection) *)
-  let idx_hash_raw env low_bound =
-    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 Func.Always env name (("x", I64Type), ("hash", I64Type)) [I64Type] (fun env get_x get_hash ->
-      let set_x = G.setter_for get_x in
-      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
-
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-
-      get_x ^^ Tagged.load_field env hash_ptr_field ^^
-      Blob.payload_ptr_unskewed env ^^
-
-      (* Linearly scan through the fields (binary search can come later) *)
-      (* unskew h_ptr and advance both to low bound *)
-      compile_add_const Int64.(mul Heap.word_size (of_int low_bound)) ^^
-      set_h_ptr ^^
-      get_x ^^
-      compile_add_const Int64.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
-      set_x ^^
-      G.loop0 (
-          get_h_ptr ^^ load_unskewed_ptr ^^
-          get_hash ^^ compile_comparison I64Op.Eq ^^
-          E.if0
-            (get_x ^^ G.i Return)
-            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-            get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
-            G.i (Br (nr 1l)))
-        ) ^^
-      G.i Unreachable
-    )
+  let idx_hash_raw env = FieldLookupTable.field_address env (hash_ptr_field, header_size)
 
   (* Returns a pointer to the object field (possibly following the indirection) *)
   let idx_hash env low_bound indirect =
@@ -4772,6 +4808,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i64s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
@@ -4780,7 +4817,10 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
+      E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
       E.add_func_import env "ic0" "is_controller" (i64s 2) [I32Type];
+      E.add_func_import env "ic0" "subnet_self_copy" (i64s 3) [];
+      E.add_func_import env "ic0" "subnet_self_size" [] [I64Type];
       E.add_func_import env "ic0" "debug_print" (i64s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i64s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I64Type];
@@ -4926,6 +4966,10 @@ module IC = struct
     ic_system_call "is_controller" env ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
+  let replicated_execution env =
+    ic_system_call "in_replicated_execution" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
   let canister_version env = ic_system_call "canister_version" env
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
@@ -5030,6 +5074,18 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let export_low_memory env =
+    assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
+    let fi = E.add_fun env "canister_on_low_wasm_memory"
+      (Func.of_body env [] [] (fun env ->
+        G.i (Call (nr (E.built_in env "low_memory_exp"))) ^^
+        GC.collect_garbage env))
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "canister_on_low_wasm_memory";
+      edesc = nr (FuncExport (nr fi))
+    })
+
   let initialize_main_actor_function_name = "@initialize_main_actor"
 
   let initialize_main_actor env =
@@ -5113,6 +5169,18 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
 
+  let get_subnet_reference env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "canister_subnet" [I64Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size")
+          (fun env -> system_call env "subnet_self_copy")
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get actor-subnet-reference when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5189,7 +5257,8 @@ module IC = struct
          "system_transient", 2L;
          "destination_invalid", 3L;
          "canister_reject", 4L;
-         "canister_error", 5L]
+         "canister_error", 5L;
+         "system_unknown", 6L]
         (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
@@ -8768,133 +8837,103 @@ module StableFunctions = struct
   let sorted_stable_functions env =
     let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type) remainder ->
       let name_hash = Mo_types.Hash.hash name in
-      (name_hash, wasm_table_index, closure_type) :: remainder)
+      (name_hash, name, wasm_table_index, closure_type) :: remainder)
       !(env.E.stable_functions) []
     in
-    List.sort (fun (hash1, _, _) (hash2, _, _) ->
+    List.sort (fun (hash1, _, _, _) (hash2, _, _, _) ->
       Int32.compare hash1 hash2) entries
 
   let create_stable_function_map (env : E.t) sorted_stable_functions =
-    List.concat_map(fun (name_hash, wasm_table_index, closure_type_index) ->
-      (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, _empty: u64)]
+    List.concat_map(fun (name_hash, wasm_table_index, closure_type_index, gc_type_index) ->
+      (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, gc_type_index: i64, _empty: u64)]
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
       StaticBytes.[
         I64 (Int64.of_int32 name_hash);
         I64 (Int64.of_int32 wasm_table_index);
         I64 (Int64.of_int32 closure_type_index);
+        I64 (Int64.of_int32 gc_type_index);
         I64 0L; (* reserve for runtime system *) ]
     ) sorted_stable_functions
 
 end (* StableFunctions *)
 
-(* Enhanced orthogonal persistence *)
-module EnhancedOrthogonalPersistence = struct
-  let register_delayed_globals env =
-    (E.add_global64_delayed env "__eop_candid_data_length" Immutable,
-    E.add_global64_delayed env "__eop_type_offsets_length" Immutable,
-    E.add_global64_delayed env "__eop_function_map_length" Immutable)
 
-  let reserve_type_table_segments env =
-    let candid_data_segment = E.add_data_segment env "" in
-    let type_offsets_segment = E.add_data_segment env "" in
-    let function_map_segment = E.add_data_segment env "" in
-    env.E.stable_type_descriptor := Some E.{
-      candid_data_segment;
-      type_offsets_segment;
-      function_map_segment
-    }
-
-  let get_candid_data_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_candid_data_length")))
-
-  let get_type_offsets_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_type_offsets_length")))
-
-  let get_function_map_length env =
-    G.i (GlobalGet (nr (E.get_global env "__eop_function_map_length")))
-
-
-  let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
-
-  let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
-
-  let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
-
-  let get_stable_type_descriptor env =
-    match !(E.(env.stable_type_descriptor)) with
-    | Some descriptor -> descriptor
-    | None -> assert false
-
+(* Stable function garbage collection on upgrade:
+    Selective traversal of stable objects that contain stable functions:
+    - Type-directed for higher scalability, limited search space.
+    - Not using recursion to avoid stack overflows. *)
+module StableFunctionGC = struct
   module TM = Map.Make (Type.Ord)
   module TS = Set.Make (Type.Ord)
 
-  (* Stable function garbage collection on upgrade:
-     Selective traversal of stable objects that contain stable functions:
-    - Type-directed for higher scalability, limited search space.
-    - Not using recursion to avoid stack overflows. *)
+  let must_visit typ = 
+    let open Type in
+    let rec go visited typ =
+      if TS.mem typ visited then false
+      else
+        let visited = TS.add typ visited in
+        match promote typ with
+        | Func ((Local Stable), _, _, _, _) -> true
+        | Func ((Shared _), _, _, _, _) -> false
+        | Prim _ | Any | Non-> false
+        | Obj ((Object | Memory), field_list) | Variant field_list ->
+          List.exists (fun field -> go visited field.typ) field_list
+        | Obj (Actor, _) -> false
+        | Tup type_list ->
+          List.exists (go visited) type_list
+        | Array nested | Mut nested | Opt nested ->
+          go visited nested
+        | _ -> assert false (* illegal stable type *)
+    in
+    go TS.empty typ
+
+  let reachable_types env actor_type_opt =
+    match actor_type_opt with
+    | None -> TM.empty
+    | Some stable_actor ->
+      let open Type in
+      let rec collect_types is_root (map, id) typ =
+        if (is_root || (must_visit typ)) && not (TM.mem typ map) then
+          begin
+          let map = TM.add typ id map in
+          let id = id + 1 in
+          match promote typ with
+          | Func ((Local Stable), _, _, _, _) ->
+            (* The closure types are collected as root types *)
+            (map, id)
+          | Obj ((Object | Memory), field_list) | Variant field_list->
+            let field_types = List.map (fun field -> field.typ) field_list in
+            let relevant_types = List.filter must_visit field_types in
+            List.fold_left (collect_types false) (map, id) relevant_types
+          | Tup type_list ->
+            let relevant_types = List.filter must_visit type_list in
+            List.fold_left (collect_types false) (map, id) relevant_types
+          | Array nested | Opt nested | Mut nested ->
+            if must_visit nested then
+              collect_types false (map, id) nested
+            else (map, id)
+          | _ -> assert false
+          end
+        else (map, id)
+      in
+      let stable_closures =
+        let stable_functions = StableFunctions.sorted_stable_functions env in
+        List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions 
+      in
+      let root_types = stable_actor.Ir.post::stable_closures in
+      let map, _ = List.fold_left (collect_types true) (TM.empty, 0) root_types in
+      map
+
+  let get_type_index reachable_types typ =
+    Int32.of_int (TM.find typ reachable_types)
+
   (* This function implements the specific visiting of fields that may 
      contain directly or indirectly refer to stable function. 
      It is invoked by the RTS for each visited object and 
      again calls the RTS back with the selected field values. *)
-  (* TODO: Design refactoring: We can use the type ids of the persistent 
-     type table and encode the relevant fields for each of these types 
-     in a blob format parsed by the RTS. With this, the RTS does not 
-     need to call back the compiler-generated visitor functions. 
-     Moreover, closure types would then also be known by the RTS for
-     selective traversal.
-     For generic types in stable functions, one could exclude types using 
-     stable functions to skip generic type traversal in closures. *)
-  let visit_stable_functions env actor_type =
+  let visit_stable_functions env reachable_types =
     let open Type in
-    let must_visit typ = 
-      let rec go visited typ =
-        if TS.mem typ visited then false
-        else
-          let visited = TS.add typ visited in
-          match promote typ with
-          | Func ((Local Stable), _, _, _, _) -> true
-          | Func ((Shared _), _, _, _, _) -> false
-          | Prim _ | Any | Non-> false
-          | Obj ((Object | Memory), field_list) | Variant field_list ->
-            List.exists (fun field -> go visited field.typ) field_list
-          | Obj (Actor, _) -> false
-          | Tup type_list ->
-            List.exists (go visited) type_list
-          | Array nested | Mut nested | Opt nested ->
-            go visited nested
-          | _ -> assert false (* illegal stable type *)
-      in
-      go TS.empty typ
-    in
-    let rec collect_types (map, id) typ =
-      if must_visit typ && not (TM.mem typ map) then
-        begin
-        let map = TM.add typ id map in
-        let id = id + 1 in
-        match promote typ with
-        | Func ((Local Stable), _, _, _, _) ->
-          (* Note: It is important to scan the closure as well. 
-             This is done in the runtime system in generic way.
-             TODO: Optimization: Associate the static closure type for 
-             specialized closure visiting. *)
-          (map, id)
-        | Obj ((Object | Memory), field_list) | Variant field_list->
-          let field_types = List.map (fun field -> field.typ) field_list in
-          let relevant_types = List.filter must_visit field_types in
-          List.fold_left collect_types (map, id) relevant_types
-        | Tup type_list ->
-          let relevant_types = List.filter must_visit type_list in
-          List.fold_left collect_types (map, id) relevant_types
-        | Array nested | Opt nested | Mut nested ->
-          if must_visit nested then
-            collect_types (map, id) nested
-          else (map, id)
-        | _ -> assert false
-        end
-      else (map, id)
-    in
-    let map, _ = collect_types (TM.empty, 0) actor_type in
     let get_object = G.i (LocalGet (nr 0l)) in
     let get_type_id = G.i (LocalGet (nr 1l)) in
     (* Options are inlined, visit the inner type, null box is filtered out by RTS *)
@@ -8905,7 +8944,7 @@ module EnhancedOrthogonalPersistence = struct
     let emit_visitor typ type_id : G.t =
       let visit_field field_type =
         let unwrapped = unwrap_options field_type in
-        let type_id = TM.find unwrapped map in
+        let type_id = TM.find unwrapped reachable_types in
         compile_unboxed_const (Int64.of_int type_id) ^^
         E.call_import env "rts" "stable_functions_gc_visit"
       in
@@ -8955,8 +8994,8 @@ module EnhancedOrthogonalPersistence = struct
               end
             else G.nop
           | Func _ | Opt _ ->
-            (* Stable function closures are generically visited in the RTS.
-               Inlined options are not visited and null boxes are filtered by the RTS. *)
+            (* Stable function closures are visited in the RTS.
+                Inlined options are not visited and null boxes are filtered by the RTS. *)
             E.trap_with env "visit stable function: illegal case"
           | _ ->
             (* TODO: Define special trap without object pool *)
@@ -8964,9 +9003,116 @@ module EnhancedOrthogonalPersistence = struct
         end
         G.nop
     in
-    TM.mapi emit_visitor map |> TM.bindings |> List.map snd |> G.concat
+    TM.mapi emit_visitor reachable_types |> TM.bindings |> List.map snd |> G.concat
+end (* StableFunctionGC *)
 
+module NameTable = struct
+  let build_table (records: (int32 * string) list) : string =
+    let append_text section text =
+      let offset = String.length section in
+      let length = String.length text in
+      let section = section ^ text in
+      (offset, length, section)
+    in
+    let append_hash section hash offset length =
+      let entry = [Int64.of_int32 hash; Int64.of_int offset; Int64.of_int length] in
+      let encoded = StaticBytes.(as_bytes [i64s entry]) in
+      section ^ encoded
+    in
+    let append_record sections record =
+      let (hash, name) = record in
+      let (hash_section, text_section) = sections in
+      let (offset, length, text_section) = append_text text_section name in
+      let hash_section = append_hash hash_section hash offset length in
+      (hash_section, text_section)
+    in
+    let empty_section = "" in
+    let empty_table = (empty_section, empty_section) in
+    let table = List.fold_left append_record empty_table records in
+    let (hash_section, text_section) = table in
+    let table_length = Int64.of_int (List.length records) in
+    let table = StaticBytes.[
+      I64 table_length;
+      Bytes hash_section;
+      Bytes text_section
+    ] in
+    StaticBytes.as_bytes table
+
+  let name_records env =
+    let functions = StableFunctions.sorted_stable_functions env in
+    List.map (fun (hash, name, _, _) -> (hash, name)) functions
+
+  let register env =
+    let records = name_records env in
+    let payload = build_table records in
+    Blob.lit env Tagged.B payload ^^   
+    E.call_import env "rts" "save_name_table"
+
+end (* NameTable *)
+
+(* Enhanced orthogonal persistence *)
+module EnhancedOrthogonalPersistence = struct
+  type migration_side = Pre | Post
+
+  let register_delayed_globals env =
+    (
+      (E.add_global64_delayed env "__eop_pre_candid_data_length" Immutable,
+      E.add_global64_delayed env "__eop_pre_type_offsets_length" Immutable,
+      E.add_global64_delayed env "__eop_pre_function_map_length" Immutable)
+    ,
+      (E.add_global64_delayed env "__eop_post_candid_data_length" Immutable,
+      E.add_global64_delayed env "__eop_post_type_offsets_length" Immutable,
+      E.add_global64_delayed env "__eop_post_function_map_length" Immutable)
+    )
+
+  let reserve_type_table_segments env =
+    let new_type_table_segments env =
+      let candid_data_segment = E.add_data_segment env "" in
+      let type_offsets_segment = E.add_data_segment env "" in
+      let function_map_segment = E.add_data_segment env "" in
+      E.{
+        candid_data_segment;
+        type_offsets_segment;
+        function_map_segment
+      }
+    in
+    let pre = new_type_table_segments env in
+    let post = new_type_table_segments env in
+    env.E.stable_migration_descriptor := Some E.{
+      pre;
+      post
+    }
+
+  let type_segment_lengths env migration_side =
+    match migration_side with
+    | Pre ->
+      ((fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_candid_data_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_type_offsets_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_pre_function_map_length")))))
+    | Post ->
+      ((fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_candid_data_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_type_offsets_length")))),
+       (fun env -> G.i (GlobalGet (nr (E.get_global env "__eop_post_function_map_length")))))
+
+  let has_stable_actor env = E.call_import env "rts" "has_stable_actor"
+
+  let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
+
+  let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
+
+  let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
+
+  let get_stable_type_descriptor env migration_side =
+    let descriptor = match !(E.(env.stable_migration_descriptor)) with
+    | Some descriptor -> descriptor
+    | None -> assert false
+    in
+    match migration_side with
+    | Pre -> descriptor.E.pre
+    | Post -> descriptor.E.post
+    
     let system_export env actor_type_opt =
+      let stable_function_gc_types = StableFunctionGC.reachable_types env actor_type_opt in
       let moc_visit_stable_functions_fi =
         E.add_fun env "moc_visit_stable_functions" (
           Func.of_body env ["object", I64Type; "type_id", I64Type] []
@@ -8974,7 +9120,7 @@ module EnhancedOrthogonalPersistence = struct
               match actor_type_opt with
               | None ->
                 E.trap_with env "moc_visit_stable_functions only supported for actor"
-              | Some actor_type -> visit_stable_functions env actor_type)
+              | Some actor_type -> StableFunctionGC.visit_stable_functions env stable_function_gc_types)
           )
       in
       E.add_export env (nr {
@@ -8982,26 +9128,33 @@ module EnhancedOrthogonalPersistence = struct
         edesc = nr (FuncExport (nr moc_visit_stable_functions_fi))
       })
 
-  let create_type_descriptor env actor_type_opt (set_candid_data_length, set_type_offsets_length, set_function_map_length) =
+  let create_type_descriptor env migration_side actor_type_opt length_setters =
+    let (set_candid_data_length, set_type_offsets_length, set_function_map_length) = length_setters in
     match actor_type_opt with
     | None ->
       (set_candid_data_length 0L;
       set_type_offsets_length 0L;
       set_function_map_length 0L)
-    | Some actor_type ->
+    | Some stable_actor_type ->
+      let actor_type = match migration_side with
+      | Pre -> stable_actor_type.Ir.pre
+      | Post -> stable_actor_type.Ir.post
+      in
       (let stable_functions = StableFunctions.sorted_stable_functions env in
-      let stable_closures = List.map (fun (_, _, closure_type) -> closure_type) stable_functions in
+      let stable_closures = List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions in
       let stable_types = actor_type::stable_closures in
       let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
       let actor_type_index = List.hd type_indices in
       assert(actor_type_index = 0l);
       let closure_type_indices = List.tl type_indices in
+      let reachable_types = StableFunctionGC.reachable_types env actor_type_opt in 
       let stable_functions = List.map2 (
-        fun (name_hash, wasm_table_index, _) closure_type_index ->
-          (name_hash, wasm_table_index, closure_type_index)
+        fun (name_hash, _, wasm_table_index, closure_type) closure_type_index ->
+          let gc_type_index = StableFunctionGC.get_type_index reachable_types closure_type in
+          (name_hash, wasm_table_index, closure_type_index, gc_type_index)
       ) stable_functions closure_type_indices in
       let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
-      let descriptor = get_stable_type_descriptor env in
+      let descriptor = get_stable_type_descriptor env migration_side in
       let candid_data_binary = [StaticBytes.Bytes candid_data] in
       let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
       set_candid_data_length candid_data_length;
@@ -9010,10 +9163,16 @@ module EnhancedOrthogonalPersistence = struct
       set_type_offsets_length type_offsets_length;
       let function_map_length = E.replace_data_segment env E.(descriptor.function_map_segment) stable_function_map in
       set_function_map_length function_map_length)
+  
+  let create_migration_descriptor env actor_type_opt set_eop_globals =
+    let (pre_setters, post_setters) = set_eop_globals in
+    create_type_descriptor env Pre actor_type_opt pre_setters;
+    create_type_descriptor env Post actor_type_opt post_setters
 
-  let load_type_descriptor env =
+  let load_type_descriptor env migration_side =
     (* Object pool is not yet initialized, cannot use Tagged.share *)
-    let descriptor = get_stable_type_descriptor env in
+    let descriptor = get_stable_type_descriptor env migration_side in
+    let (get_candid_data_length, get_type_offsets_length, get_function_map_length) = type_segment_lengths env migration_side in
     Blob.load_data_segment env Tagged.B E.(descriptor.candid_data_segment) (get_candid_data_length env) ^^
     Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env) ^^
     Blob.load_data_segment env Tagged.B E.(descriptor.function_map_segment) (get_function_map_length env)
@@ -9023,8 +9182,12 @@ module EnhancedOrthogonalPersistence = struct
     E.call_import env "rts" "collect_stable_functions"
 
   let register_stable_type env =
-    load_type_descriptor env ^^
+    load_type_descriptor env Pre ^^
     E.call_import env "rts" "register_stable_type"
+
+  let assign_stable_type env =
+    load_type_descriptor env Post ^^
+    E.call_import env "rts" "assign_stable_type"
 
   let load_old_field env field get_old_actor =
     if field.Type.typ = Type.(Opt Any) then
@@ -9064,7 +9227,8 @@ module EnhancedOrthogonalPersistence = struct
     upgrade_actor env actor_type ^^
     free_stable_actor env
 
-  let save env actor_type =
+  let save env =
+    assign_stable_type env ^^
     IC.get_actor_to_persist env ^^
     save_stable_actor env ^^
     collect_stable_functions env ^^
@@ -9089,7 +9253,7 @@ module GraphCopyStabilization = struct
     E.call_import env "rts" "is_graph_stabilization_started" ^^ Bool.from_rts_int32
 
   let start_graph_stabilization env =
-    EnhancedOrthogonalPersistence.load_type_descriptor env ^^
+    EnhancedOrthogonalPersistence.load_type_descriptor env EnhancedOrthogonalPersistence.Post ^^
     E.call_import env "rts" "start_graph_stabilization"
 
   let graph_stabilization_increment env =
@@ -9685,16 +9849,26 @@ module FuncDec = struct
       let set_clos, get_clos = new_local env (name ^ "_clos") in
 
       let len = Wasm.I64.of_int_u (List.length captured) in
-      let store_env, restore_env =
-        let rec go i = function
+      
+      let captured_variable_name name =
+        match env.E.is_canister, stable_context with
+        | true, Some stable_closure ->
+          let open Type in
+          let variable = Env.find name stable_closure.captured_variables in
+          variable.stable_name
+        | _ -> name
+      in
+
+      let store_env, restore_env = let rec go = function
           | [] -> (G.nop, fun _env ae1 _ -> ae1, unmodified)
           | (v::vs) ->
-              let store_rest, restore_rest = go (i + 1) vs in
+              let stable_name = captured_variable_name v in
+              let store_rest, restore_rest = go vs in
               let store_this, restore_this = Var.capture env ae v in
               let store_env =
                 get_clos ^^
                 store_this ^^
-                Closure.store_data env (Wasm.I64.of_int_u i) ^^
+                Closure.store_captured env stable_name ^^
                 store_rest in
               let restore_env env ae1 get_env =
                 let ae2, codeW = restore_this env ae1 in
@@ -9702,11 +9876,11 @@ module FuncDec = struct
                 (ae3,
                  fun body ->
                  get_env ^^
-                 Closure.load_data env (Wasm.I64.of_int_u i) ^^
+                 Closure.load_captured env stable_name ^^
                  codeW (code_restW body)
                 )
               in store_env, restore_env in
-        go 0 captured in
+        go captured in
 
       let f =
         if is_local
@@ -9739,10 +9913,12 @@ module FuncDec = struct
 
         Tagged.store_field env Closure.funptr_field ^^
 
-        (* Store the length *)
+        (* Store the hash blob *)
+        let field_names = List.map captured_variable_name captured in
+        let (_, hash_blob) = FieldLookupTable.build_hash_blob env field_names in
         get_clos ^^
-        compile_unboxed_const len ^^
-        Tagged.store_field env Closure.len_field ^^
+        Tagged.materialize_shared_value env hash_blob ^^
+        Tagged.store_field env Closure.hash_pointer_field ^^
 
         (* Store all captured values *)
         store_env ^^
@@ -9962,7 +10138,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         TaggedSmallWord.msb_adjust Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -10031,7 +10207,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         TaggedSmallWord.lsb_adjust Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -10332,7 +10508,7 @@ module IncrementalGraphStabilization = struct
     compile_test I64Op.Eqz ^^
     E.if0
       begin
-        destabilization_increment env actor_type ^^
+        destabilization_increment env actor_type.Ir.pre ^^
         get_destabilized_actor env ^^
         (E.if0
           G.nop
@@ -10372,14 +10548,14 @@ module IncrementalGraphStabilization = struct
     get_destabilized_actor env
     (* Upgrade costs are already record in RTS for graph-copy-based (de-)stabilization. *)
 
-  let define_methods env actor_type =
+  let define_methods env (actor_type : Ir.stable_actor_typ) =
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
     export_stabilize_before_upgrade_method env;
     define_async_destabilization_reply_callback env;
     define_async_destabilization_reject_callback env;
-    export_async_destabilization_method env actor_type;
+    export_async_destabilization_method env actor_type.Ir.pre;
     export_destabilize_after_upgrade_method env;
 
 end (* IncrementalGraphStabilization *)
@@ -10439,6 +10615,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
+    NameTable.register env ^^
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
@@ -10457,11 +10634,32 @@ module Persistence = struct
       end) ^^
     StableMem.region_init env
 
-  let save env actor_type =
+  let in_upgrade env =
+    use_enhanced_orthogonal_persistence env ^^
+    (E.if1 I64Type
+      begin
+       EnhancedOrthogonalPersistence.has_stable_actor env ^^
+       Bool.from_rts_int32
+      end
+      begin
+        use_graph_destabilization env ^^
+        E.if1 I64Type
+          begin
+            Bool.lit true
+          end
+          begin
+            use_candid_destabilization env ^^
+            E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            StableMem.stable64_size env ^^
+            Bool.from_int64
+          end
+      end)
+
+  let save env =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
     E.if0
       (IncrementalGraphStabilization.complete_stabilization_on_upgrade env)
-      (EnhancedOrthogonalPersistence.save env actor_type)
+      (EnhancedOrthogonalPersistence.save env)
 
   let register_stable_type env =
     assert (not !(E.(env.object_pool.frozen)));
@@ -12038,6 +12236,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_upgrade", [] -> (* EOP specific *)
+    assert (!Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    Persistence.in_upgrade env
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -12177,6 +12380,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     get_principal ^^
     Blob.len env ^^
     IC.is_controller env
+
+  | OtherPrim "replicated_execution", [] ->
+    SR.Vanilla,
+    IC.replicated_execution env
 
   | OtherPrim "canister_version", [] ->
     SR.UnboxedWord64 Type.Nat64,
@@ -12464,7 +12671,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_self_reference env ^^
     IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
-  (* Other prims, binary*)
+  | OtherPrim "canister_subnet", [] ->
+    SR.Vanilla, IC.get_subnet_reference env
+
+  (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
@@ -12585,6 +12795,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12613,9 +12824,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableRead ty, [] ->
     SR.Vanilla,
     Persistence.load env ty
-  | ICStableWrite ty, [] ->
+  | ICStableWrite _ty, [] ->
     SR.unit,
-    Persistence.save env ty
+    Persistence.save env
 
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
@@ -12630,6 +12841,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12943,7 +13161,7 @@ and compile_lit_pat env l =
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     compile_lit_as env SR.Vanilla l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^
@@ -13467,6 +13685,15 @@ and main_actor as_opt mod_env ds fs up =
        IC.export_inspect env;
     end;
 
+    (* Export low memory hook (but only when required) *)
+    begin match up.low_memory.it with
+    | Ir.PrimE (Ir.TupPrim, []) -> ()
+    | _ ->
+      Func.define_built_in env "low_memory_exp" [] [] (fun env ->
+        compile_exp_as env ae2 SR.unit up.low_memory);
+      IC.export_low_memory env;
+    end;
+
     (* Helper function to build the stable actor wrapper *)
     Func.define_built_in mod_env IC.get_actor_to_persist_function_name [] [I64Type] (fun env ->
       compile_exp_as env ae2 SR.Vanilla build_stable_actor
@@ -13522,7 +13749,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o =
+and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals start_fi_o =
 
   RTS_Exports.system_exports env;
   EnhancedOrthogonalPersistence.system_export env actor_type;
@@ -13535,7 +13762,7 @@ and conclude_module env actor_type set_serialization_globals set_eop_globals sta
   Serialization.create_global_type_descriptor env set_serialization_globals;
 
   (* Segments for EOP memory compatibility check *)
-  EnhancedOrthogonalPersistence.create_type_descriptor env actor_type set_eop_globals;
+  EnhancedOrthogonalPersistence.create_migration_descriptor env actor_type set_eop_globals;
 
   (* declare before building GC *)
 

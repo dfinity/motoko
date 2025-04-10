@@ -2,6 +2,7 @@
 
 type lab = string
 type var = string
+type name = string
 
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
@@ -50,6 +51,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Named of name * typ
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -85,11 +87,12 @@ end
 val is_shared_sort : 'a shared -> bool
 
 
-(* Short-hands *)
+(* Shorthands *)
 
 val unit : typ
 val bool : typ
 val nat : typ
+val nat32 : typ
 val nat64 : typ
 val int : typ
 val text : typ
@@ -98,6 +101,10 @@ val error : typ
 val char : typ
 val principal : typ
 val region : typ
+val heartbeat_type : typ
+val timer_type : typ
+val global_timer_set_type : typ
+val low_memory_type : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ
@@ -256,9 +263,14 @@ module Env : Env.S with type key = string
 
 (* Stable function support *)
 
+type captured_variable = {
+  stable_name: string; (* positional id for parameters, named id for locals *)
+  variable_type: typ;
+}
+
 type stable_closure = {
   function_path: string list; (* fully qualified function name *)
-  captured_variables: typ Env.t; (* captured mutable variables *)
+  captured_variables: captured_variable Env.t; (* captured mutable variables *)
 }
 
 (* Scope bindings *)
@@ -270,11 +282,28 @@ val scope_bind : bind
 
 (* Signatures *)
 
-val match_stab_sig : field list -> field list -> bool
+(* like sub, but disallows promotion to  Any or narrower object types
+   that signal data loss *)
+val stable_sub : typ -> typ -> bool
 
-val string_of_stab_sig : field list -> string
+type stab_sig =
+  | Single of field list
+  | PrePost of (bool * field) list * field list
+
+val pre : stab_sig -> (bool * field) list
+val post : stab_sig -> field list
+
+val match_stab_sig : stab_sig -> stab_sig -> bool
+
+val string_of_stab_sig : stab_sig -> string
 
 val motoko_runtime_information_type : typ
+
+(* Well-known labels *)
+
+val cycles_lab : lab
+val migration_lab : lab
+val timeout_lab : lab
 
 (* Well-known fields *)
 
@@ -283,13 +312,15 @@ val motoko_stable_var_info_fld : field
 val motoko_gc_trigger_fld : field
 val motoko_runtime_information_fld : field
 
+val cycles_fld : field
+val timeout_fld : field
+
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ
 
 val canister_settings_typ : typ
 val install_arg_typ : typ
 val install_typ : typ list -> typ -> typ
-
 
 (* Pretty printing *)
 

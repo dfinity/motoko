@@ -56,14 +56,14 @@ actor {
 
   public func readAll() : async () {
     let ts = await readLast(count);
-    for (t in ts.vals()) {
+    for (t in ts.values()) {
       Prim.debugPrint(t);
     };
   };
 
   public func readExtra() : async () {
     let ts = await readLast(2*count);
-    for (t in ts.vals()) {
+    for (t in ts.values()) {
       Prim.debugPrint(t);
     }
   }

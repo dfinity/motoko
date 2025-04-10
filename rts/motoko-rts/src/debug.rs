@@ -198,7 +198,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_CLOSURE => {
             let closure = obj as *const Closure;
-            let _ = write!(buf, "<Closure size={:#x}>", (*closure).size);
+            let _ = write!(buf, "<Closure size={:#x}>", closure.size());
         }
         TAG_SOME => {
             let some = obj as *const Some;

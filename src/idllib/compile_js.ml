@@ -45,11 +45,13 @@ let chase_env env actor =
     | VecT t -> chase t
     | RecordT fs -> chase_fields fs
     | VariantT fs -> chase_fields fs
-    | FuncT (ms, fs1, fs2) -> List.iter chase fs1; List.iter chase fs2
+    | FuncT (ms, fs1, fs2) -> List.iter chase_arg fs1; List.iter chase_arg fs2
     | ClassT _ -> assert false
     | PreT -> assert false
   and chase_fields fs =
     List.iter (fun (f : typ_field) -> chase f.it.typ) fs
+  and chase_arg arg_typ =
+    chase arg_typ.it.typ
   in
   chase actor;
   List.rev (!new_env)
@@ -73,11 +75,13 @@ let infer_rec env_list =
     | VecT t -> go t
     | RecordT fs -> go_fields fs
     | VariantT fs -> go_fields fs
-    | FuncT (_, fs1, fs2) -> List.iter go fs1; List.iter go fs2
+    | FuncT (_, fs1, fs2) -> List.iter go_arg_typ fs1; List.iter go_arg_typ fs2
     | ClassT _ -> assert false
     | PreT -> assert false
   and go_fields fs =
     List.iter (fun (f:typ_field) -> go f.it.typ) fs
+  and go_arg_typ arg_typ =
+    go arg_typ.it.typ
   in
   List.iter (fun {var;typ;_} -> go typ; seen := TS.add var !seen) env_list;
   !recs
@@ -153,7 +157,7 @@ let rec pp_typ ppf t =
 and pp_args ppf args =
   pp_open_box ppf 1;
   str ppf "[";
-  concat ppf pp_typ "," args;
+  concat ppf pp_typ "," (List.map (fun (arg : arg_typ) -> arg.it.typ) args);
   str ppf "]";
   pp_close_box ppf ()
 

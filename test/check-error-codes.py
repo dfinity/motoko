@@ -8,8 +8,7 @@ import glob
 import sys
 
 if len(sys.argv) != 2:
-    print("""USAGE: python check-error-codes.py path/to/error-codes.ml
-""")
+    print("USAGE: python check-error-codes.py ../src/lang_utils/error_codes.ml")
     sys.exit(2)
 
 registered_codes = set()

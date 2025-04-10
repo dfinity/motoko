@@ -1,6 +1,7 @@
 (* Representation *)
 type lab = string
 type var = string
+type name = string
 
 type control =
   | Returns        (* regular local function or one-shot shared function *)
@@ -57,6 +58,7 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Named of name * typ                       (* named type *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -72,6 +74,11 @@ and kind =
   | Abs of bind list * typ * int option
 
 let empty_src = {depr = None; region = Source.no_region}
+
+(* Stable signatures *)
+type stab_sig =
+  | Single of field list
+  | PrePost of ((* required *) bool * field) list * field list
 
 (* Efficient comparison *)
 let tag_prim = function
@@ -129,6 +136,7 @@ let tag = function
   | Non -> 12
   | Pre -> 13
   | Typ _ -> 14
+  | Named _ -> 15
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -217,6 +225,10 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   | Non, Non
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
+  | Named (n1, t1), Named (n2, t2) ->
+    (match String.compare n1 n2 with
+     | 0 -> compare_typ t1 t2
+     | ord -> ord)
   | _ -> Int.compare (tag t1) (tag t2)
 
 and compare_tb tb1 tb2 =
@@ -312,11 +324,12 @@ let compare_field f1 f2 =
   | {lab = l1; typ = _; _}, {lab = l2; typ = _; _} -> compare l1 l2
 
 
-(* Short-hands *)
+(* Shorthands *)
 
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
+let nat32 = Prim Nat32
 let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text
@@ -325,6 +338,7 @@ let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
 let region = Prim Region
+
 
 let fields flds =
   List.sort compare_field
@@ -348,6 +362,7 @@ let catchErrorCodes = List.sort compare_field (
     { lab = "system_transient"; typ = unit; src = empty_src};
     { lab = "destination_invalid"; typ = unit; src = empty_src};
     { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "system_unknown"; typ = unit; src = empty_src};
     { lab = "future"; typ = Prim Nat32; src = empty_src};
     { lab = "call_error"; typ = call_error; src = empty_src};
   ])
@@ -417,6 +432,7 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -468,6 +484,7 @@ let rec subst sigma t =
                       type parameter cannot mention that parameter
                       (but can mention other (closed) type constructors).
                     *)
+  | Named (name, t) -> Named (name, subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -517,6 +534,7 @@ let rec open' i ts t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -561,12 +579,14 @@ let rec normalize = function
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
+  | Named (_, t) -> normalize t
   | t -> t
 
 let rec promote = function
   | Con (con, ts) ->
     let Def (tbs, t) | Abs (tbs, t, _) = Cons.kind con
     in promote (reduce tbs t ts)
+  | Named (_, t) -> promote t
   | t -> t
 
 
@@ -726,6 +746,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+  | Named (_, t) -> span t
 
 
 (* Collecting type constructors *)
@@ -757,6 +778,9 @@ let rec cons' inTyp t cs =
     else
       (* don't add c unless mentioned in Cons.kind c *)
       cons_kind' inTyp (Cons.kind c) cs
+  | Named (_ , t) ->
+    cons' inTyp t cs
+
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -811,6 +835,7 @@ let concrete t =
         List.for_all go (List.map (open_ ts) ts2)
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
+      | Named (_, t) -> go t
     end
   in go t
 
@@ -844,6 +869,7 @@ let serializable allow_mut allow_stable_functions t =
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) ->
         is_shared_sort s || allow_stable_functions && s = Local Stable
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -878,6 +904,7 @@ let find_unshared t =
         if is_shared_sort s
         then None
         else Some t
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -915,14 +942,36 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-let max_depth = 10_000
+module RelArg :
+  sig
+    type arg
+    val sub : arg (* ordinary subtyping, with loss of info *)
+    val stable_sub : arg (* stable subtyping, without loss of info*)
+    val inc_depth : arg -> arg
+    val is_stable_sub : arg -> bool
+    val exceeds_max_depth : arg -> bool
+end
+=
+struct
+  let max_depth = 10_000
+  type arg = int
+  let sub = 0
+  let stable_sub = 1
+  let inc_depth arg =
+    let drop_bit = Int.logand arg 1 in
+    let depth = Int.shift_right arg 1 in
+    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
+  let is_stable_sub arg = Int.logand arg 1 = 1
+  let exceeds_max_depth d =
+    Int.shift_right d 1 > max_depth
+end
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_typ d rel eq t1 t2 =
-  let d = d + 1 in
-  if d > max_depth then raise Undecided else
+  let d = RelArg.inc_depth d in
+  if RelArg.exceeds_max_depth d then raise Undecided else
   t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
@@ -939,11 +988,15 @@ let rec rel_typ d rel eq t1 t2 =
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    true
+    not (RelArg.is_stable_sub d)
   | Non, Non ->
     true
   | Non, _ when rel != eq ->
     true
+  | Named (_n, t1'), t2 ->
+    rel_typ d rel eq t1' t2
+  | t1, Named (_n, t2') ->
+    rel_typ d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
@@ -1014,13 +1067,14 @@ and rel_fields d rel eq tfs1 tfs2 =
   | [], [] ->
     true
   | _, [] when rel != eq ->
-    true
+    not (RelArg.is_stable_sub d)
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
       rel_typ d rel eq tf1.typ tf2.typ &&
       rel_fields d rel eq tfs1' tfs2'
     | -1 when rel != eq ->
+      not (RelArg.is_stable_sub d) &&
       rel_fields d rel eq tfs1' tfs2
     | _ -> false
     )
@@ -1057,20 +1111,20 @@ and rel_bind ts d rel eq tb1 tb2 =
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
 
 and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ 0 eq eq t1 t2
+  let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2
 
 and sub t1 t2 : bool =
-  rel_typ 0 (ref SS.empty) (ref SS.empty) t1 t2
+  rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2
 
 and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds 0 eq eq tbs1 tbs2 <> None
+  let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1, _), Abs (tbs2, t2, _) ->
-    (match rel_binds 0 eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ 0 eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds RelArg.sub eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ RelArg.sub eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
@@ -1089,7 +1143,6 @@ and eq_con d eq c1 c2 =
     )
 
 let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
-
 
 (* Compatibility *)
 
@@ -1138,6 +1191,8 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
+  | Named _, _
+  | _, Named _ -> assert false
   | _, _ ->
     false
   end
@@ -1183,11 +1238,12 @@ let rec inhabited_typ co t =
   | Variant tfs -> List.exists (inhabited_field co) tfs
   | Var _ -> true  (* TODO(rossberg): consider bound *)
   | Con (c, ts) ->
-    match Cons.kind c with
+    (match Cons.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t', _) ->
-      inhabited_typ co t'
+      inhabited_typ co t')
+  | Named _ -> assert false
   end
 
 and inhabited_field co tf = inhabited_typ co tf.typ
@@ -1211,6 +1267,7 @@ let rec singleton_typ co t =
   | Variant _ -> false
   | Var _ -> false
   | Con _ -> false
+  | Named _ -> assert false
   end
 
 and singleton_field co tf = singleton_typ co tf.typ
@@ -1306,6 +1363,14 @@ let rec combine rel lubs glbs t1 t2 =
         in
         set_kind c (Def ([], t'));
         t'
+    | Named (n1, t1'), Named (n2, t2') ->
+      if n1 = n2 then
+        Named (n1, combine rel lubs glbs t1' t2')
+      else
+        combine rel lubs glbs t1' t2'
+    | Named (_, t), t'
+    | t, Named (_, t') ->
+      combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
 
@@ -1348,9 +1413,14 @@ module Env = Env.Make(String)
 
 (* Stable function support *)
 
+type captured_variable = {
+  stable_name: string; (* positional id for parameters, named id for locals *)
+  variable_type: typ;
+}
+
 type stable_closure = {
   function_path: string list; (* fully qualified function name *)
-  captured_variables: typ Env.t; (* captured mutable variables *)
+  captured_variables: captured_variable Env.t; (* captured mutable variables *)
 }
 
 (* Scopes *)
@@ -1359,6 +1429,21 @@ let scope_var var = "$" ^ var
 let default_scope_var = scope_var ""
 let scope_bound = Any
 let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
+
+(* Shorthands for replica callbacks *)
+
+let heartbeat_type =
+  Func (Local Flexible, Returns, [scope_bind], [], [Async (Fut, Var (default_scope_var, 0), unit)])
+
+let global_timer_set_type = Func (Local Flexible, Returns, [], [Prim Nat64], [])
+
+let timer_type =
+  Func (Local Flexible, Returns, [scope_bind],
+        [global_timer_set_type],
+        [Async (Fut, Var (default_scope_var, 0), unit)])
+
+let low_memory_type =
+  Func (Local Flexible, Returns, [scope_bind], [], [Async (Cmp, Var (default_scope_var, 0), unit)])
 
 (* Well-known fields *)
 
@@ -1439,8 +1524,8 @@ let canister_settings_typ =
 
 let wasm_memory_persistence_typ =
   sum [
-    ("Keep", unit);
-    ("Replace", unit);
+    ("keep", unit);
+    ("replace", unit);
   ]
 
 let upgrade_with_persistence_option_typ =
@@ -1463,6 +1548,12 @@ let install_typ ts actor_typ =
     [ install_arg_typ ],
     [ Func(Local Flexible, Returns, [scope_bind], ts, [Async (Fut, Var (default_scope_var, 0), actor_typ)]) ])
 
+let cycles_lab = "cycles"
+let migration_lab = "migration"
+let timeout_lab = "timeout"
+
+let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
+let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
 
 (* Pretty printing *)
 
@@ -1577,6 +1668,7 @@ and can_omit n t =
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
+    | Named (n, t) -> go i t
   in go n t
 
 let rec pp_typ_obj vs ppf o =
@@ -1596,11 +1688,19 @@ and pp_typ_variant vs ppf fs =
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
 
+and pp_typ_item vs ppf t =
+  match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
+  | typ -> pp_typ' vs ppf t
+
 and pp_typ_nullary vs ppf t =
   match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
+      (pp_print_list ~pp_sep:comma (pp_typ_item vs)) ts
       (if List.length ts = 1 then "," else "")
   | Pre -> pr ppf "???"
   | Any -> pr ppf "Any"
@@ -1718,6 +1818,15 @@ and pp_stab_field vs ppf {lab; typ; src} =
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
+and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
+  let req = if required then "in" else "stable" in
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>%s var %s :@ %a@]" req lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
+
+
 and pp_tag vs ppf {lab; typ; src} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
@@ -1774,11 +1883,15 @@ and pp_kind ppf k =
   pp_kind' vs ppf k
 
 and pp_stab_sig ppf sig_ =
+  let all_fields = match sig_ with
+    | Single tfs -> tfs
+    | PrePost (pre, post) -> List.map snd pre @ post
+  in
   let cs = List.fold_right
     (cons_field false)
     (* false here ^ means ignore unreferenced Typ c components
        that would produce unreferenced bindings when unfolded *)
-    sig_ ConSet.empty in
+    all_fields ConSet.empty in
   let vs = vs_of_cs cs in
   let ds =
     let cs' = ConSet.filter (fun c ->
@@ -1796,15 +1909,22 @@ and pp_stab_sig ppf sig_ =
           typ = Typ c;
           src = empty_src }) ds)
   in
-  let pp_stab_fields ppf sig_ =
-    fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
-      (string_of_obj_sort Actor)
-      (pp_print_list ~pp_sep:semi (pp_stab_field vs)) sig_
+  let pp_stab_actor ppf sig_ =
+    match sig_ with
+    | Single tfs ->
+      fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
+    | PrePost (pre, post) ->
+      fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_pre_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
   in
   fprintf ppf "@[<v 0>%a%a%a;@]"
-   (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-   (if fs = [] then fun ppf () -> () else semi) ()
-   pp_stab_fields sig_
+    (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+    (if fs = [] then fun ppf () -> () else semi) ()
+    pp_stab_actor sig_
 
 let rec pp_typ_expand' vs ppf t =
   match t with
@@ -1869,27 +1989,50 @@ include MakePretty(ShowStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
+let stable_sub t1 t2 =
+  rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
 
-let rec match_stab_sig tfs1 tfs2 =
+let pre = function
+  | Single tfs ->
+    (* all vars optional *)
+    List.map (fun tf -> (false, tf)) tfs
+  | PrePost (tfs, _) -> tfs
+
+let post = function
+  | Single tfs -> tfs
+  | PrePost (_, tfs) -> tfs
+
+let rec match_stab_sig sig1 sig2 =
+  let post_tfs1 = post sig1 in
+  let pre_tfs2 = pre sig2 in
+  match_stab_fields post_tfs1 pre_tfs2
+
+and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
-  | [], _ | _, [] ->
-    (* same amount of fields, new fields, or dropped fields ok *)
-    true
-  | tf1::tfs1', tf2::tfs2' ->
+  | [], _ ->
+    (* same amount of fields or new, non-required, fields ok *)
+    List.for_all (fun (required, tf) -> not required) tfs2
+  | _, [] ->
+    (* no dropped fields *)
+    false
+  | tf1::tfs1', (required, tf2)::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-       match_stab_sig tfs1' tfs2'
+       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+       match_stab_fields tfs1' tfs2'
      | -1 ->
-       (* dropped field ok *)
-       match_stab_sig tfs1' tfs2
+       (* no dropped fields *)
+       false
      | _ ->
        (* new field ok *)
-       match_stab_sig tfs1 tfs2'
+       (not required) &&
+       match_stab_fields tfs1 tfs2'
     )
 
-let string_of_stab_sig fields : string =
+let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
-  "// Version: 1.0.0\n" ^
-  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) fields
+  (match stab_sig with
+  | Single _ -> "// Version: 1.0.0\n"
+  | PrePost _ -> "// Version: 3.0.0\n") ^
+  Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig

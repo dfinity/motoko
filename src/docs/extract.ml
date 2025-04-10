@@ -66,8 +66,18 @@ let un_prog prog =
       imports
   in
   match body.it with
+  | ProgU decs -> Ok ([], []) (* treat all fields as private *)
   | ModuleU (_, decs) -> Ok (imports, decs)
-  | _ -> Error "Couldn't find a module expression"
+  | ActorU (_, _, decs) -> Ok (imports, decs)
+  | ActorClassU (_, _, _, _, _, _, _, decs) ->
+      let _, decs = CompUnit.decs_of_lib comp_unit in
+      let decs =
+        List.map
+          (fun d ->
+            { vis = Public None @@ no_region; dec = d; stab = None } @@ d.at)
+          decs
+      in
+      Ok (imports, decs)
 
 module PosTable = Trivia.PosHashtbl
 
@@ -118,6 +128,26 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
+  let extract_typ_item (id_opt, typ) =
+    {
+      name = (match id_opt with Some id -> id.it | _ -> "_");
+      typ = Some typ;
+      doc = None;
+    }
+
+  let extract_ty_args = function
+    | { it = Syntax.ParT arg; _ } ->
+        [ { name = "_"; typ = Some arg; doc = None } ]
+    | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
+        [ { name; typ = Some arg; doc = None } ]
+    | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
+    | typ -> [ { name = "_"; typ = Some typ; doc = None } ]
+
+  let is_func_ty ty =
+    match ty.it with
+    | Syntax.FuncT (_, ty_args, dom, cod) -> Some (ty_args, dom, cod)
+    | _ -> None
+
   let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
       =
    fun sort exp name ->
@@ -125,6 +155,12 @@ struct
     | Syntax.FuncE (_, _, type_args, args, typ, _, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
+    | Syntax.AnnotE (e, ty) when is_func_ty ty <> None -> (
+        match is_func_ty ty with
+        | Some (type_args, args, res) ->
+            Function
+              { name; typ = Some res; type_args; args = extract_ty_args args }
+        | _ -> assert false)
     | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }
     | _ -> Value { sort; name; typ = None }
 
@@ -140,7 +176,7 @@ struct
           _;
         } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
@@ -155,7 +191,7 @@ struct
         )
     | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (_, sort, _, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
@@ -184,7 +220,16 @@ struct
         {
           it =
             Syntax.ClassD
-              (shared_pat, name, type_args, ctor, _, obj_sort, _, fields, _);
+              ( exp_opt,
+                shared_pat,
+                obj_sort,
+                name,
+                type_args,
+                ctor,
+                _,
+                _,
+                fields,
+                _ );
           _;
         } ->
         let mk_field_xref xref = mk_xref (Xref.XClass (name.it, xref)) in

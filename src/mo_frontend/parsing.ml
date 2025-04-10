@@ -70,39 +70,95 @@ let slice_lexeme lexbuf i1 i2 =
   then "<unknown>" (* Too rare to care *)
   else Bytes.sub_string lexbuf.lex_buffer offset len
 
-let parse mode error_detail checkpoint lexer lexbuf =
-  Diag.with_message_store (fun m ->
-    try
-      (* Temporary hack! *)
-      Parser_lib.msg_store := Some m;
-      Parser_lib.mode := Some mode;
-      Some (E.entry checkpoint lexer)
-    with E.Error ((start, end_), explanations) ->
-      let at =
+module I = Parser.MenhirInterpreter
+
+(* For debug *)
+(* module RecoveryTracer = MenhirRecoveryLib.MakePrinter ( *)
+(*   struct *)
+(*     module I = Parser.MenhirInterpreter *)
+(*     let print s = Printf.eprintf "%s" s *)
+(*     let print_symbol s = print (Printers.string_of_symbol s) *)
+(*     let print_element = None *)
+(*     let print_token t = print (Source_token.string_of_parser_token t) *)
+(*   end) *)
+
+module RecoveryTracer = MenhirRecoveryLib.DummyPrinter (I)
+
+module RecoveryConfig = struct
+  include Recover_parser
+
+  (* Adapt [default_value region] to MenhirRecoverLib interface ([default_value loc]) *)
+  let default_value (loc: Custom_compiler_libs.Location.t) sym =
+      let open Custom_compiler_libs.Location in
+      let open Lexing in
+      let open Source in
+      let file = loc.loc_start.pos_fname in
+      let region_loc : region = {
+        left  : pos = {file; line = loc.loc_start.pos_lnum; column = loc.loc_start.pos_bol};
+        right : pos = {file; line = loc.loc_end.pos_lnum; column = loc.loc_end.pos_bol};
+      } in
+      default_value region_loc sym (* [default_value] is included from Recover_parser *)
+
+  let guide _ = false
+  let use_indentation_heuristic = false
+  let is_eof  = function Parser.EOF -> true | _ -> false
+end
+
+module R = MenhirRecoveryLib.Make (Parser.MenhirInterpreter) (RecoveryConfig) (RecoveryTracer)
+
+let handle_error lexbuf error_detail message_store (start, end_) explanations =
+  let at =
         Source.{left = Lexer.convert_pos start; right = Lexer.convert_pos end_}
-      in
-      let lexeme = slice_lexeme lexbuf start end_ in
-      let token =
-        if lexeme = "" then "end of input" else
-        "token '" ^ String.escaped lexeme ^ "'"
-      in
-      let msg =
-        match error_detail with
-        | 1 ->
-          Printf.sprintf
-            "unexpected %s, expected one of token or <phrase>:\n  %s"
-            token (abstract_symbols explanations)
-        | 2 ->
-          Printf.sprintf
-            "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
-            token (abstract_futures explanations)
-        | 3 ->
-          Printf.sprintf
-            "unexpected %s in position marked . of partially parsed item(s):\n%s"
-            token (abstract_items explanations)
-        | _ ->
-          Printf.sprintf "unexpected %s" token
-      in
-      Diag.add_msg m (Diag.error_message at "M0001" "syntax" msg);
-      None
+  in
+  let lexeme = slice_lexeme lexbuf start end_ in
+  let token =
+    if lexeme = "" then "end of input" else
+      "token '" ^ String.escaped lexeme ^ "'"
+  in
+  let msg =
+    match error_detail with
+    | 1 ->
+      Printf.sprintf
+        "unexpected %s, expected one of token or <phrase>:\n  %s"
+        token (abstract_symbols explanations)
+    | 2 ->
+      Printf.sprintf
+        "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
+        token (abstract_futures explanations)
+    | 3 ->
+      Printf.sprintf
+        "unexpected %s in position marked . of partially parsed item(s):\n%s"
+        token (abstract_items explanations)
+    | _ ->
+      Printf.sprintf "unexpected %s" token
+  in
+  Diag.add_msg message_store (Diag.error_message at "M0001" "syntax" msg)
+
+(* We drive the parser in the usual way, but records the last [InputNeeded]
+   checkpoint. If a syntax error is detected, we go back to this checkpoint
+   and analyze it in order to produce a meaningful diagnostic. *)
+
+let parse ?(recovery = false) mode error_detail start lexer lexbuf =
+  Diag.with_message_store ~allow_errors:recovery (fun m ->
+    Parser_lib.msg_store := Some m;
+    Parser_lib.mode := Some mode;
+    let save_error (inputneeded_cp : 'a I.checkpoint) (fail_cp : 'a I.checkpoint) : unit =
+    (* The parser signals a syntax error. Note the position of the
+         problematic token, which is useful. Then, go back to the
+         last [InputNeeded] checkpoint and investigate. *)
+      match fail_cp with
+      | I.HandlingError env ->
+        let (startp, _) as positions = I.positions env in
+        let explanations = E.investigate startp inputneeded_cp in
+        handle_error lexbuf error_detail m positions explanations
+      | _ -> assert false
+    in
+    let fail cp = None in
+    let save_error_and_fail cp1 cp2 = save_error cp1 cp2; fail cp2 in
+    let succ e =  Some e in
+    if recovery then
+      R.loop_handle_recover succ fail save_error lexer start
+    else
+      I.loop_handle_undo succ save_error_and_fail lexer start
   )
+

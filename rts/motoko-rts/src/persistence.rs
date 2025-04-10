@@ -3,6 +3,7 @@
 //! Persistent metadata table, located at 6MB, in the static partition space.
 
 pub mod compatibility;
+mod name_resolution;
 pub mod stable_functions;
 
 use compatibility::MemoryCompatibilityTest;
@@ -57,6 +58,8 @@ struct PersistentMetadata {
     upgrade_instructions: u64,
     /// Support for stable local functions.
     stable_function_state: StableFunctionState,
+    /// Reference to `name_resolution::NameTable`.
+    name_table: Value,
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
@@ -82,6 +85,7 @@ impl PersistentMetadata {
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
                     && (*self).stable_function_state.is_default()
+                    && (*self).name_table == DEFAULT_VALUE
         );
         initialized
     }
@@ -105,6 +109,7 @@ impl PersistentMetadata {
         (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
         (*self).stable_function_state = StableFunctionState::default();
+        (*self).name_table = NULL_POINTER;
     }
 }
 
@@ -131,6 +136,13 @@ unsafe fn use_enhanced_orthogonal_persistence() -> bool {
         | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
     }
+}
+
+/// Returns the availability of the stable actor record (false on (re-)install, true on upgrade)
+#[no_mangle]
+pub unsafe extern "C" fn has_stable_actor() -> bool {
+    let metadata = PersistentMetadata::get();
+    !((*metadata).stable_actor.forward_if_possible() == DEFAULT_VALUE)
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
@@ -208,6 +220,35 @@ pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M) {
 /// Register the stable actor type on canister initialization and upgrade, for EOP and graph copy.
 /// Before this call, the garbage collector of stable functions must have run.
 /// This is either on EOP upgrade or on stabilization start of graph copy.
+unsafe fn update_stable_type<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+    stable_functions_map: Value,
+    check_compatibility: bool,
+) {
+    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
+    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
+    assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
+    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
+    let metadata = PersistentMetadata::get();
+    let old_type = &mut (*metadata).stable_type;
+    let type_test = if !check_compatibility || old_type.is_default() {
+        None
+    } else {
+        Some(MemoryCompatibilityTest::new(mem, old_type, &mut new_type))
+    };
+    if type_test
+        .as_ref()
+        .is_some_and(|test| !test.compatible_stable_actor())
+    {
+        rts_trap_with("Memory-incompatible program upgrade");
+    }
+    (*metadata).stable_type.assign(mem, &new_type);
+    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
+}
+
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.
@@ -218,25 +259,32 @@ pub unsafe fn register_stable_type<M: Memory>(
     new_type_offsets: Value,
     stable_functions_map: Value,
 ) {
-    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
-    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
-    assert_eq!(stable_functions_map.tag(), TAG_BLOB_B);
-    let new_type = &mut TypeDescriptor::new(new_candid_data, new_type_offsets);
-    let metadata = PersistentMetadata::get();
-    let old_type = &mut (*metadata).stable_type;
-    let type_test = if old_type.is_default() {
-        None
-    } else {
-        Some(MemoryCompatibilityTest::new(mem, old_type, new_type))
-    };
-    if type_test
-        .as_ref()
-        .is_some_and(|test| !test.compatible_stable_actor())
-    {
-        rts_trap_with("Memory-incompatible program upgrade");
-    }
-    (*metadata).stable_type.assign(mem, &new_type);
-    register_stable_functions(mem, stable_functions_map, type_test.as_ref());
+    update_stable_type(
+        mem,
+        new_candid_data,
+        new_type_offsets,
+        stable_functions_map,
+        true,
+    );
+}
+
+/// Update the stable actor type without compatibility checks.
+/// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
+/// The `new_type` value points to a blob encoding the new stable actor type.
+#[ic_mem_fn]
+pub unsafe fn assign_stable_type<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+    stable_functions_map: Value,
+) {
+    update_stable_type(
+        mem,
+        new_candid_data,
+        new_type_offsets,
+        stable_functions_map,
+        false,
+    );
 }
 
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
@@ -269,6 +317,28 @@ pub(crate) unsafe fn stable_function_state() -> &'static mut StableFunctionState
 pub(crate) unsafe fn restore_stable_type<M: Memory>(mem: &mut M, type_descriptor: &TypeDescriptor) {
     let metadata = PersistentMetadata::get();
     (*metadata).stable_type.assign(mem, type_descriptor);
+}
+
+pub(crate) unsafe extern "C" fn load_name_table() -> Value {
+    let metadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    (*metadata).name_table.forward_if_possible()
+}
+
+#[ic_mem_fn]
+pub unsafe fn save_name_table<M: Memory>(mem: &mut M, table: Value) {
+    assert!(table != DEFAULT_VALUE);
+    let metadata: *mut PersistentMetadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    let location = &mut (*metadata).name_table as *mut Value;
+    write_with_barrier(mem, location, table);
+}
+
+/// GC root pointer required for GC marking and updating.
+pub(crate) unsafe fn name_table_location() -> *mut Value {
+    let metadata = PersistentMetadata::get();
+    assert!((*metadata).name_table != DEFAULT_VALUE);
+    &mut (*metadata).name_table as *mut Value
 }
 
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.

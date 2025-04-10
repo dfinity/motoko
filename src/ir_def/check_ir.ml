@@ -241,9 +241,14 @@ let rec check_typ env typ : unit =
     if not (Lib.List.is_strictly_ordered T.compare_field fields) then
       error env no_region "variant type's fields are not distinct and sorted %s" (T.string_of_typ typ)
   | T.Mut typ ->
-    error env no_region "unexpected T.Mut"
+    error env no_region "unexpected T.Mut %s" (T.string_of_typ typ)
   | T.Typ c ->
     error env no_region "unexpected T.Typ"
+  | T.Named (_, typ1) ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "named type field in non-typ_field flavor";
+    check_typ env typ1
+
 
 and check_mut_typ env = function
   | T.Mut t -> check_typ env t
@@ -687,6 +692,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat;
       T.unit <: t
+    | SystemTimeoutSetPrim, [e1] ->
+      typ e1 <: T.nat32;
+      T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;
@@ -820,7 +828,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_r <: T.(Construct.err_contT unit);
     typ exp_c <: Construct.clean_contT;
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_record; stable_type }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; low_memory; stable_record; stable_type }, t0) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -831,13 +839,16 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     check_exp env'' stable_record;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
-    typ stable_record <: stable_type;
+    typ low_memory <: T.unit;
+    typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
@@ -1163,7 +1174,7 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_type; stable_record }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect; low_memory; stable_type; stable_record }, t0) ->
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1182,12 +1193,15 @@ let check_comp_unit env = function
     check_exp env'' timer;
     check_exp env'' inspect;
     check_exp env'' stable_record;
+    let async_cap = Some Async_cap.top_cap in
+    check_exp { env'' with async = async_cap } low_memory;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
-    typ stable_record <: stable_type;
+    typ low_memory <: T.unit;
+    typ stable_record <: stable_type.post;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
