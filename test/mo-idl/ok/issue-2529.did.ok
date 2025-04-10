@@ -1,12 +1,12 @@
-type Version = variant {Version: nat;};
-type Mode = 
+type Version_3 = variant {Version: nat;};
+type Mode_3 = 
  variant {
    Alphanumeric;
    EightBit;
    Kanji;
    Numeric;
  };
-type ErrorCorrection = 
+type ErrorCorrection_3 = 
  variant {
    H;
    L;
@@ -14,6 +14,6 @@ type ErrorCorrection =
    Q;
  };
 service : {
-  encode: (version: Version, level: ErrorCorrection, mode: Mode, "text":
-   text) -> (text);
+  encode: (version: Version_3, level: ErrorCorrection_3, mode: Mode_3,
+   "text": text) -> (text);
 }

@@ -1,6 +1,4 @@
-type Text = null;
 type Nat = null;
-type Id = int;
 service : {
-  f: (x: Nat, y: Text) -> (Id);
+  f: (x: Nat, y: Nat) -> (int);
 }
