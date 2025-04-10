@@ -340,8 +340,7 @@ impl StableFunctionMap {
     }
 }
 
-/// Garbage collect the stable functions in the old version on an upgrade.
-/// Called on EOP upgrade and graph copy stabilization start.
+/// Garbage collect the stable functions in the old version on an EOP upgrade.
 pub unsafe fn collect_stable_functions<M: Memory>(mem: &mut M, old_actor: Value) {
     // Retrieve the persistent virtual, or, if not present, initialize an empty one.
     let virtual_table = prepare_virtual_table(mem);
