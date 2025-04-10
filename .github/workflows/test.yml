@@ -30,12 +30,27 @@ jobs:
         sudo mkdir -p /nix
         sudo chown -R runner:runner /nix
         sudo chmod -R 755 /nix
+    
+
+    - name: Set Nix store permissions
+      run: |
+        # Create Nix store directory if it doesn't exist
+        sudo mkdir -p /nix/store
+        # Set ownership
+        sudo chown -R runner:runner /nix/store
+        # Set permissions
+        sudo chmod -R 755 /nix/store
+        # Ensure parent directory is also owned by runner
+        sudo chown runner:runner /nix
 
     - name: Configure Nix
       run: |
         sudo mkdir -p /etc/nix
         echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
+        # Add these lines to allow writing to the store
+        echo "store = /nix/store" | sudo tee -a /etc/nix/nix.conf
+        echo "build-users-group = runner" | sudo tee -a /etc/nix/nix.conf
     
     - name: Set work directory permissions
       run: |
