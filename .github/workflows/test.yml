@@ -40,14 +40,18 @@ jobs:
 
     - uses: cachix/install-nix-action@v31
 
-    - name: Debug permissions
+    - name: Debug Docker environment
       run: |
+        echo "Docker info:"
+        docker info
+        echo "Current user and groups:"
+        id
+        echo "Nix store permissions:"
         ls -la /nix/store
-        whoami
-        groups
-        echo "NIX_REMOTE=$NIX_REMOTE"
-        echo "NIX_BUILD_HOOK=$NIX_BUILD_HOOK"
-        echo "NIX_DAEMON_SOCKET=$NIX_DAEMON_SOCKET"
+        echo "Nix daemon status:"
+        ps aux | grep nix
+        echo "Mount points:"
+        mount | grep nix
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
