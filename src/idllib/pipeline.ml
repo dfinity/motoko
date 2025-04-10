@@ -105,7 +105,7 @@ let chase_imports senv imports =
         pending := S.add file !pending;
         let open Diag.Syntax in
         let* prog, base = parse_file file in
-        let* imports = Resolve_import.resolve prog base in
+        let imports = Resolve_import.resolve prog base in
         let* () = go_set imports in
         let* base_env = merge_env imports senv !lib_env in
         let* scope, _ = check_prog base_env prog in
@@ -119,7 +119,7 @@ let chase_imports senv imports =
 let load_prog parse senv =
   let open Diag.Syntax in
   let* prog, base = parse in
-  let* imports = Resolve_import.resolve prog base in
+  let imports = Resolve_import.resolve prog base in
   let* lib_env = chase_imports senv imports in
   let* base_env = merge_env imports senv lib_env in
   let* scope, actor = check_prog base_env prog in
