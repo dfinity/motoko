@@ -23,7 +23,16 @@ pub struct StableClosure {
                             // Dynamically sized body with `size` fields, each of `StableValue` being a captured variable.
 }
 
-impl StaticScanner<StableValue> for StableClosure {}
+impl StaticScanner<StableValue> for StableClosure {
+    fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
+        &mut self,
+        context: &mut C,
+        translate: &F,
+    ) -> bool {
+        self.hash_blob = translate(context, self.hash_blob);
+        true
+    }
+}
 
 impl Serializer<Closure> for StableClosure {
     unsafe fn serialize_static_part(
