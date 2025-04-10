@@ -8920,8 +8920,9 @@ module StableFunctionGC = struct
         let stable_functions = StableFunctions.sorted_stable_functions env in
         List.map (fun (_, _, closure_type) -> closure_type) stable_functions 
       in
-      let root_types = [stable_actor.Ir.pre; stable_actor.Ir.post] @ stable_closures in
+      let root_types = stable_actor.Ir.post::stable_closures in
       let map, _ = List.fold_left (collect_types true) (TM.empty, 0) root_types in
+      TM.iter (fun typ id -> Printf.printf "REACHABLE id %i %s\n" id (string_of_typ typ)) map;
       map
 
   let get_type_index reachable_types typ =
@@ -8931,7 +8932,7 @@ module StableFunctionGC = struct
      contain directly or indirectly refer to stable function. 
      It is invoked by the RTS for each visited object and 
      again calls the RTS back with the selected field values. *)
-  let visit_stable_functions env reachable_types actor_type =
+  let visit_stable_functions env reachable_types =
     let open Type in
     let get_object = G.i (LocalGet (nr 0l)) in
     let get_type_id = G.i (LocalGet (nr 1l)) in
@@ -9075,7 +9076,7 @@ module EnhancedOrthogonalPersistence = struct
               match actor_type_opt with
               | None ->
                 E.trap_with env "moc_visit_stable_functions only supported for actor"
-              | Some actor_type -> StableFunctionGC.visit_stable_functions env stable_function_gc_types actor_type.Ir.pre)
+              | Some actor_type -> StableFunctionGC.visit_stable_functions env stable_function_gc_types)
           )
       in
       E.add_export env (nr {
@@ -9199,9 +9200,6 @@ module EnhancedOrthogonalPersistence = struct
     ) ^^
     NewStableMemory.restore env ^^
     UpgradeStatistics.add_instructions env
-
-  let initialize env actor_type =
-    register_stable_type env actor_type
 
 end (* EnhancedOrthogonalPersistence *)
 
