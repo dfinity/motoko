@@ -808,62 +808,68 @@ rec {
       # Get the actual derivations for the selected names
       builtins.map (name: tests.${name}) selected_names;
 
-  # Release version - excludes debug tests.
-  let release-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "release-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    filter_tests "release" tests  # Only include release tests.
-    ++ builtins.attrValues js
-    ;
-  };
+  # Release version - excludes debug tests
+  release-systems-go = let
+    release-systems-go = nixpkgs.releaseTools.aggregate {
+      name = "release-systems-go";
+      constituents = [
+        moc
+        mo-ide
+        mo-doc
+        didc
+        deser
+        samples
+        rts
+        base-src
+        base-tests
+        base-doc
+        docs
+        report-site
+        shell
+        check-formatting
+        check-rts-formatting
+        check-generated
+        check-grammar
+        check-error-codes
+      ] ++
+      filter_tests "release" tests  # Only include release tests
+      ++ builtins.attrValues js
+      ;
+    };
+  in
+    release-systems-go;
 
-  # Debug version - only includes debug tests.
-  let debug-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "debug-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    filter_tests "debug" tests  # Only include debug tests.
-    ++ builtins.attrValues js
-    ;
-  };
-
+  # Debug version - only includes debug tests
+  debug-systems-go = let
+    debug-systems-go = nixpkgs.releaseTools.aggregate {
+      name = "debug-systems-go";
+      constituents = [
+        moc
+        mo-ide
+        mo-doc
+        didc
+        deser
+        samples
+        rts
+        base-src
+        base-tests
+        base-doc
+        docs
+        report-site
+        shell
+        check-formatting
+        check-rts-formatting
+        check-generated
+        check-grammar
+        check-error-codes
+      ] ++
+      filter_tests "debug" tests  # Only include debug tests
+      ++ builtins.attrValues js
+      ;
+    };
+  in
+    debug-systems-go;
+    
   viperServer = nixpkgs.fetchurl {
     url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
