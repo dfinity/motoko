@@ -58,7 +58,7 @@ jobs:
         swap-storage: false
 
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
-    - name: "nix build"
+      name: "nix build"
       run: |
         nix build \
           --print-build-logs \
