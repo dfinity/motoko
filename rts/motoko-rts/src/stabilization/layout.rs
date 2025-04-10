@@ -59,6 +59,7 @@ mod stable_bits64;
 mod stable_blob;
 mod stable_closure;
 mod stable_concat;
+mod stable_hash_blob;
 mod stable_mutbox;
 mod stable_object;
 mod stable_region;

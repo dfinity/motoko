@@ -263,9 +263,14 @@ module Env : Env.S with type key = string
 
 (* Stable function support *)
 
+type captured_variable = {
+  stable_name: string; (* positional id for parameters, named id for locals *)
+  variable_type: typ;
+}
+
 type stable_closure = {
   function_path: string list; (* fully qualified function name *)
-  captured_variables: typ Env.t; (* captured mutable variables *)
+  captured_variables: captured_variable Env.t; (* captured mutable variables *)
 }
 
 (* Scope bindings *)
