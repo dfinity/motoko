@@ -38,15 +38,15 @@ jobs:
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
     
 
-    - uses: cachix/install-nix-action@v31
+    #- uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    # - uses: cachix/cachix-action@v16
+    #   with:
+    #     name: ic-hs-test
+    #     authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
@@ -67,7 +67,7 @@ jobs:
         swap-storage: false
 
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
+    # - run: cachix watch-store ic-hs-test &
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
