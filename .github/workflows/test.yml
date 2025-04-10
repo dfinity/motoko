@@ -19,8 +19,8 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: Install xz
       if: runner.os == 'Linux'
-      run: sudo apt-get install -y xz-utils
-      
+      run: apt-get update && apt-get install -y xz-utils
+
     - uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
