@@ -5,6 +5,6 @@ persistent actor {
         Prim.debugPrint("REQUIRED FUNCTION VERSION 2");
     };
 
-    var retained = requiredFunction;
+    let retained = requiredFunction;
     retained();
 }
