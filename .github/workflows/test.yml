@@ -25,6 +25,9 @@ jobs:
     - name: Set USER environment variable
       run: echo "USER=runner" >> $GITHUB_ENV
 
+    - name: Unset TMPDIR
+      run: echo "unset TMPDIR" >> $GITHUB_ENV
+
     - name: Set Nix permissions
       run: |
         sudo mkdir -p /nix
