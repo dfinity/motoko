@@ -38,6 +38,9 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
+    - run: cachix watch-store ic-hs-test &
+
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       name: "nix build"
       run: |
@@ -49,9 +52,6 @@ jobs:
           --store ssh-ng://eu.nixbuild.net \
           -f default.nix \
           all-systems-go
-
-    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
 
     - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
       run: nix-env -iA nix-build-uncached -f nix/
