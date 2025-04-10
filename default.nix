@@ -787,6 +787,75 @@ rec {
       '';
   };
 
+  # Helper function to filter tests by type.
+  filter_tests = type: tests:
+    builtins.filter (test: 
+      if type == "debug" then
+        # Match tests ending in -dbg or -debug
+        builtins.match ".*-dbg$" test.name != null || 
+        builtins.match ".*-debug$" test.name != null
+      else
+        # Match tests that don't end in -dbg or -debug
+        builtins.match ".*-dbg$" test.name == null && 
+        builtins.match ".*-debug$" test.name == null
+    ) (builtins.attrValues tests);
+
+  # Release version - excludes debug tests.
+  release-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "release-systems-go";
+    constituents = [
+      moc
+      mo-ide
+      mo-doc
+      didc
+      deser
+      samples
+      rts
+      base-src
+      base-tests
+      base-doc
+      docs
+      report-site
+      shell
+      check-formatting
+      check-rts-formatting
+      check-generated
+      check-grammar
+      check-error-codes
+    ] ++
+    filter_tests "release" tests  # Only include release tests.
+    ++ builtins.attrValues js
+    ;
+  };
+
+  # Debug version - only includes debug tests
+  debug-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "debug-systems-go";
+    constituents = [
+      moc
+      mo-ide
+      mo-doc
+      didc
+      deser
+      samples
+      rts
+      base-src
+      base-tests
+      base-doc
+      docs
+      report-site
+      shell
+      check-formatting
+      check-rts-formatting
+      check-generated
+      check-grammar
+      check-error-codes
+    ] ++
+    filter_tests "debug" tests  # Only include debug tests.
+    ++ builtins.attrValues js
+    ;
+  };
+
   all-systems-go = nixpkgs.releaseTools.aggregate {
     name = "all-systems-go";
     constituents = [
