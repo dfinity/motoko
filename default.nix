@@ -832,8 +832,7 @@ rec {
     name = "release-systems-go";
     constituents = common-constituents ++
     filter_tests "release" tests  # Only include release tests
-    ++ builtins.attrValues js
-    ;
+    ++ builtins.attrValues js;
   };
 
   # Debug version - only includes debug tests
