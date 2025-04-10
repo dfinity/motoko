@@ -36,7 +36,9 @@ jobs:
         sudo mkdir -p /etc/nix
         echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
-    
+
+    - uses: cachix/install-nix-action@v31
+
     - name: Check storage space
       run: |
         echo "Disk space usage:"
@@ -47,8 +49,6 @@ jobs:
         du -sh /nix/store
         echo "Temp directory size:"
         du -sh /home/runner/_work/_temp
-
-    - uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
