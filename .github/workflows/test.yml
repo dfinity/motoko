@@ -23,7 +23,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -y xz-utils
 
     - name: Set USER environment variable
-      run: echo "USER=runner" >> $GITHUB_ENV
+      run: echo "USER=root" >> $GITHUB_ENV
 
     - name: Set Nix permissions
       run: |
@@ -36,6 +36,15 @@ jobs:
         sudo mkdir -p /etc/nix
         echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
         echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
+    
+    - name: Debug permissions
+      run: |
+        ls -la /nix/store
+        whoami
+        groups
+        echo "NIX_REMOTE=$NIX_REMOTE"
+        echo "NIX_BUILD_HOOK=$NIX_BUILD_HOOK"
+        echo "NIX_DAEMON_SOCKET=$NIX_DAEMON_SOCKET"
 
     - uses: cachix/install-nix-action@v31
 
