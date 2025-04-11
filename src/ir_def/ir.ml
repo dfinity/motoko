@@ -163,6 +163,15 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
+  (* Cost *)
+  (* TODO: Consider a single constructor `SystemCostPrim of system_cost_prim` *)
+  | SystemCostCallPrim
+  | SystemCostCreateCanisterPrim
+  | SystemCostHttpRequestPrim
+  | SystemCostSignWithEcdsaPrim
+  | SystemCostSignWithSchnorrPrim
+  | SystemCostVetkdDeriveEncryptedKeyPrim
+  (*  *)
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
@@ -315,6 +324,12 @@ let map_prim t_typ t_id p =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
+  | SystemCostCallPrim
+  | SystemCostCreateCanisterPrim
+  | SystemCostHttpRequestPrim
+  | SystemCostSignWithEcdsaPrim
+  | SystemCostSignWithSchnorrPrim
+  | SystemCostVetkdDeriveEncryptedKeyPrim
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate

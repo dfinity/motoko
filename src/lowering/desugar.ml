@@ -191,6 +191,11 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesBurnPrim, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "timeoutSet";_},_);_}, _, e) ->
     I.PrimE (I.SystemTimeoutSetPrim, [exp e])
+  (* Cost *)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costCreateCanister";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (es = []);
+    I.PrimE (I.SystemCostCreateCanisterPrim, [])
+  
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
