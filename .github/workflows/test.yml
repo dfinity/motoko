@@ -44,15 +44,7 @@ jobs:
 
     - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       name: "nix build"
-      run: |
-        nix build \
-          --print-build-logs \
-          --builders "" \
-          --max-jobs 2 \
-          --eval-store auto \
-          --store ssh-ng://eu.nixbuild.net \
-          -f default.nix \
-          ${{ matrix.build_type }}-systems-go
+      run: ./nixbuild -f default.nix ${{ matrix.build_type }}-systems-go
 
     - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
       run: nix-env -iA nix-build-uncached -f nix/
@@ -87,19 +79,10 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        out=$(nix build \
-          --print-build-logs \
-          --builders "" \
-          --max-jobs 2 \
-          --eval-store auto \
-          --store ssh-ng://eu.nixbuild.net \
-          -f perf-delta.nix \
-          -o perf-delta.txt \
+        out=$(./nixbuildcopy -f perf-delta.nix \
           --argstr ref HEAD \
           --argstr from "$from" \
-          --argstr to "$to" \
-          --json | jq '.[0].outputs.out' -r)
-        nix copy --from ssh-ng://eu.nixbuild.net "$out"
+          --argstr to "$to")
         ln -s "$out" ./perf-delta.txt
 
     - name: Read performance delta
