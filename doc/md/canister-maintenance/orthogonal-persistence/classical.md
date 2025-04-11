@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Classical orthogonal persistence
 
-Classical orthogonal persistence is the old implementation of Motoko's orthogonal persistence. It is currently still the default option, as enhanced orthogonal persistence is in the beta-testing stage.
+Classical orthogonal persistence is the old implementation of Motoko's orthogonal persistence. It is planned to deprecate classical persistence in the future and make enhanced orthogonal persistence the new default mode.
 
 On an upgrade, the classical orthogonal persistence mechanism serializes all stable data to the stable memory and then deserializes it back to the main memory. This has several downsides:
 

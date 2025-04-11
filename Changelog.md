@@ -2,8 +2,21 @@
 
 * motoko (`moc`)
 
-   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959)
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase.
 
+    EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
+    
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ...
+    ```
+
+  * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
+
+  * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
 
 ## 0.14.7 (2025-04-04)
 
