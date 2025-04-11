@@ -98,8 +98,9 @@ jobs:
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to" \
-          --json | jq '.outputs.out' -r)
+          --json | jq '.[0].outputs.out' -r)
         nix copy --from ssh-ng://eu.nixbuild.net "$out"
+        ln -s "$out" ./perf-delta.txt
 
     - name: Read performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
