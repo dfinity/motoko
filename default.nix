@@ -254,7 +254,7 @@ rec {
           "directory" = "$(stripHash ${allDeps})"
         __END__
 
-        
+
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
       '';
@@ -329,6 +329,7 @@ rec {
 
   tests = let
     testDerivationArgs = {
+      NIXBUILDNET_DEFAULT_CPU = 4;
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
       phases = "unpackPhase checkPhase installPhase";
@@ -791,15 +792,15 @@ rec {
   filter_tests = type: tests:
     let
       # Get all test names that match the pattern
-      debug_tests = builtins.filter (name: 
+      debug_tests = builtins.filter (name:
         builtins.match ".*-debug$" name != null
       ) (builtins.attrNames tests);
-      
+
       # Get all test names that don't match the pattern
       release_tests = builtins.filter (name:
         builtins.match ".*-debug$" name == null
       ) (builtins.attrNames tests);
-      
+
       # Select which set of names to use
       selected_names = if type == "debug" then debug_tests else release_tests;
     in

@@ -27,6 +27,7 @@ jobs:
       with:
         nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
         generate_summary_for: 'job'
+        settings-from-drv-env: true
 
     - if: ${{ startsWith(matrix.os, 'macos-') }}
       uses: cachix/install-nix-action@v31
