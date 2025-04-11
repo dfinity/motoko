@@ -1,22 +1,22 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Motoko style guidelines
 
-To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
+To increase the readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
 
 ## Layout
 
 ### Spacing
 
--   Put spaces around arithmetic operators, except to visually group sub-expressions of more tightly binding operators.
+- Put spaces around arithmetic operators, except when visually grouping sub-expressions of more tightly binding operators.
 
     ``` motoko no-repl
     let z = - 2*x + 3*y + 4*(x*x + y*y);
     ```
 
--   Put spaces around comparison operators, Boolean operators, and assignment operators.
+- Put spaces around comparison operators, Boolean operators, and assignment operators.
 
     ``` motoko no-repl
     4 + 5 <= 5 + 4;
@@ -25,14 +25,14 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     v += 1;
     ```
 
--   Put spaces around '='.
+- Put spaces around '='.
 
     ``` motoko no-repl
     var v = 0;
     let r = { a = 1; b = 2 };
     ```
 
--   Analogously, put spaces around `:`.
+- Analogously, put spaces around `:`.
 
     ``` motoko no-repl
     var v : Nat = 0;
@@ -43,14 +43,14 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
     Rationale: ':' is to declarations what '=' is to definitions. Moreover, the left-hand of a type annotation may generally be an arbitrary complex expression or pattern.
 
--   Put a space after a comma or semicolon, but not before.
+- Put a space after a comma or semicolon, but not before.
 
     ``` motoko no-repl
     let tuple = (1, 2, 3);
     let record = { a = 1; b = 2; c = 3 };
     ```
 
--   Put spaces inside braces, unless they are a simple variant or [record](/docs/motoko/fundamentals/types/records).
+- Put spaces inside braces, unless they are a simple variant or record.
 
     ``` motoko no-repl
     func f() { 0 };
@@ -64,7 +64,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     type Proc = {h : Nat; w : Nat} -> {#ok; #fail};
     ```
 
--   Put spaces inside brackets if they stretch multiple lines.
+- Put spaces inside brackets if they stretch multiple lines.
 
     ``` motoko no-repl
     foo(
@@ -81,11 +81,11 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     );
     ```
 
--   Put a space between statement keywords and their operands.
+- Put a space between statement keywords and their operands.
 
     ``` motoko no-repl
     if (f()) A else B;
-    for (x in xs.vals()) { ... };
+    for (x in xs.values()) { ... };
     switch (compare(x, y)) {
       case (#less) { A };
       case (_) { B };
@@ -95,7 +95,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     await (async (0));
     ```
 
--   Do not put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
+- Do not put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
 
     ``` motoko no-repl
     type Pair<X> = (X, X);
@@ -107,7 +107,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     id<Nat>(5);
     ```
 
--   Put a space between a function and its argument if it is not a tuple or parenthesized expression (see [parentheses](#parentheses)) or a record used as a named parameter list (see [picking types](#picking-types)).
+- Put a space between a function and its argument if it is not a tuple or parenthesized expression (see [parentheses](#parentheses)) or a record used as a named parameter list (see [picking types](#picking-types)).
 
     ``` motoko no-repl
     sin 0.0;
@@ -117,7 +117,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
--   Do not put a space around access operators like `.`, `?`, `!`, or index brackets.
+- Do not put a space around access operators like `.`, `?`, `!`, or index brackets.
 
     ``` motoko no-repl
     foo(bar).baz[5]().boo;
@@ -126,7 +126,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Line breaks
 
--   Pick a fixed right margin for lines and break definitions or expressions. 80 still is considered a good limit by many.
+- Pick a fixed right margin for lines and break definitions or expressions accordingly. A limit of 80 characters is considered a good standard as recommended by style guides such as [PEP 8](https://peps.python.org/pep-0008/#maximum-line-length), the [GNU Coding Standards](https://www.gnu.org/prep/standards/standards.html#Long-Lines), and the [Linux Kernel Coding Style](https://www.kernel.org/doc/html/latest/process/coding-style.html#breaking-long-lines-and-strings).
 
     ``` motoko no-repl
     let sum = a + b + 2*c + d +
@@ -142,13 +142,13 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Among other reasons, this style of formatting:
 
-    1.  Avoids code being hidden to the right in a window.
+    1. Avoids code being hidden to the right in a window.
 
-    2.  Avoids random line breaks in side-by-side diffs. For example, as shown by GitHub or similar code review tools.
+    2. Avoids random line breaks in side-by-side diffs. For example, as shown by GitHub or similar code review tools.
 
-    3.  Allows prettier display on paper, web sites, or other media.
+    3. Allows prettier display on paper, web sites, or other media.
 
--   Break lines after an operator.
+- Break lines after an operator.
 
     ``` motoko no-repl
     a + b + c +
@@ -158,7 +158,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       boo();
     ```
 
--   When breaking function definitions or calls with long argument lists, put each argument on a separate line.
+- When breaking function definitions or calls with long argument lists, put each argument on a separate line.
 
     Also, consider using records for long parameter lists, see [picking types](#picking-types).
 
@@ -189,7 +189,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Indentation
 
--   Each level of indentation should be 2 spaces.
+- Each level of indentation should be 2 spaces.
 
     ``` motoko no-repl
     actor A {
@@ -201,7 +201,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: There may be a lot of nesting. Using only 2 spaces avoids wasting screen estate.
 
--   Indentation should not depend on the lexical contents of previous lines.
+- Indentation should not depend on the lexical contents of previous lines.
 
     In particular, do not vertically align indentation with inner characters from previous lines.
 
@@ -220,8 +220,8 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       longArg2,
       longArg3,
       longArg4,
-      longArg5,
-    );
+      longArg5
+      );
 
     // COUNTER EXAMPLE!
     let x = someFunction(arg1, arg2, arg3,
@@ -230,23 +230,23 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: There are many problems with vertical alignment, for example:
 
-    1.  It wastes a lot of horizontal space.
+    1. It wastes a lot of horizontal space.
 
-    2.  It creates wildly inconsistent indentation levels that obfuscate the structure of the code.
+    2. It creates wildly inconsistent indentation levels that obfuscate the structure of the code.
 
-    3.  It can produce realignment churn when changing a line, which, even when automated by editors, inflates and obfuscates diffs.
+    3. It can produce realignment churn when changing a line, which, even when automated by editors, inflates and obfuscates diffs.
 
-    4.  It completely breaks with variable-width fonts.
+    4. It completely breaks with variable-width fonts.
 
     Rule of thumb: there should be no indentation that is not a multiple of 2.
 
--   Do not use tabs.
+- Do not use tabs.
 
     Rationale: The interpretation of tabs varies wildly across tools and they get lost or are displayed incorrectly in many contexts, such as web pages, diffs, etc.
 
 ### Grouping
 
--   Separate complex multi-line definitions with empty lines. One-liners can be put on consecutive lines.
+- Separate complex multi-line definitions with empty lines. One-liners can be put on consecutive lines.
 
     ``` motoko no-repl
     func foo() {
@@ -259,11 +259,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       // It's definition also takes multiple lines.
     }
 
-    func add(x : Nat, y : Nat) { return x + y };
-    func mul(x : Nat, y : Nat) { return x * y };
+    func add(x : Nat, y : Nat) { x + y };
+    func mul(x : Nat, y : Nat) { x * y };
     ```
 
--   Separate logic groups of definitions with two empty lines. Add a one-line comment as a "section header" for each group.
+- Separate logic groups of definitions with two empty lines. Add a one-line comment as a "section header" for each group.
 
     ``` motoko no-repl
     // A very large class
@@ -309,7 +309,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Comments
 
--   Use line comments (`//…​`). Use block comments (`/* …​ */`) only when commenting in the middle of a line or for commenting out pieces of code during development.
+- Use line comments (`//…​`). Use block comments (`/* …​ */`) only when commenting in the middle of a line or for commenting out pieces of code during development.
 
     ``` motoko no-repl
     // The following function runs the current
@@ -327,13 +327,13 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Line comments make it easier to insert, remove or swap individual lines.
 
--   Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
+- Put short comments explaining a single line at the end of the line, separated by at least 2 spaces.
 
     ``` motoko no-repl
     paBoom(getSnibble()));  // create new snibble
     ```
 
--   Put multi-line comments before a line of code, with the same indentation as the code it is describing.
+- Put multi-line comments before a line of code, with the same indentation as the code it is describing.
 
     ``` motoko no-repl
     func f() {
@@ -344,17 +344,17 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     }
     ```
 
--   Capitalize comments that are on separate lines. Use a proper full stop for sentences.
+- Capitalize comments that are on separate lines. Use a proper full stop for sentences.
 
 ## Punctuation
 
 ### Semicolons
 
--   Motoko uniformly requires a semicolon to separate expressions or local declarations in a block, regardless of whether the preceding declaration ends in a closing '}'.
+- Motoko uniformly requires a semicolon to separate expressions or local declarations in a block, regardless of whether the preceding declaration ends in a closing '}'.
 
     Rationale: This is unlike other C-style languages, which tend to have rather ad-hoc rules.
 
--   Put a semicolon after the last expression in a block, unless the whole block is written on a single line.
+- Put a semicolon after the last expression in a block, unless the whole block is written on a single line.
 
     Similarly for types.
 
@@ -394,9 +394,33 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Consistently ending lines with semicolon simplifies adding, removing, or swapping lines.
 
+### Trailing commas
+
+- Trailing commas are allowed in tuples and argument lists, but not in records (which use semicolons).
+
+- Use trailing commas only in multi-line expressions.
+
+- Omit trailing commas in single-line expressions.
+
+- Consistency across the project is more important than the specific style chosen.
+
+    ```motoko no-repl
+    // Trailing comma in multi-line tuple
+    let tuple = (
+      1,
+      2,
+      3 //remove the last comma as a best practice
+    );
+
+    // Avoid trailing comma in single-line
+    let pair = (1, 2);
+    ```
+
+Rationale: Trailing commas reduce diff noise(unnecessary changes that show up in a version control diff) and simplify line edits in multi-line expressions.
+
 ### Braces
 
--   Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
+- Put braces around function bodies, `if` or `case` branches, and loop bodies, unless they appear nested as an expression and only contain a single expression.
 
     ``` motoko no-repl
     func f(x) { f1(x); f2(x) };
@@ -406,7 +430,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     func succ(x : Nat) : Nat = x + 1;
     ```
 
--   Use "C-style" layout for braced sub-expressions stretching multiple lines.
+- Use "C-style" layout for braced sub-expressions stretching multiple lines.
 
     ``` motoko no-repl
     func f() {
@@ -429,7 +453,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Parentheses
 
--   Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already. For example, a tuple, object, or array, or a simple constant or identifier.
+- Motoko supports optional parentheses in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already. For example, a tuple, object, array, or a simple constant or identifier.
 
     ``` motoko no-repl
     type Op = Nat -> Nat;
@@ -445,7 +469,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
--   Avoid overuse of parenless style.
+- Avoid overuse of omitting parentheses.
 
     In particular, do not omit parentheses and braces on statements at the same time.
 
@@ -459,18 +483,18 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
-    Rationale: Omitting both at the same time makes the code harder to read, since there is less visual clue how it groups.
+    Rationale: Omitting both at the same time makes the code harder to read, since there are less visual clues as to how it is grouped.
 
--   Similarly, do not omit parentheses around function parameters if the function also has type parameters.
+- Similarly, do not omit parentheses around function parameters if the function also has type parameters.
 
     ``` motoko no-repl
     // COUNTER EXAMPLE!
     foo<Nat> 0;   // DO NOT DO THIS!
     ```
 
--   Omit parentheses around argument types of a function type with a single argument and no type parameters.
+- Omit parentheses around argument types of a function type with a single argument and no type parameters.
 
-    But do not omit them around when functions or classes also have type parameters.
+    But do not omit them when functions or classes also have type parameters.
 
     ``` motoko no-repl
     type Inv = Nat -> Nat;
@@ -483,7 +507,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Miscellaneous
 
--   Use `_` to group digits in numbers.
+- Use `_` to group digits in numbers.
 
     Group by 3 digits in decimal numbers and by 4 in hexadecimal notation.
 
@@ -497,9 +521,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Style
 
--   Use `UpperCamelCase` for type names (including classes or type parameters), module names, and actor names.
+- Use `UpperCamelCase` for type names (including classes or type parameters), module names, and actor names.
 
--   Use `lowerCamelCase` for all other names, including constants and variant fields.
+- Use `lowerCamelCase` for all other names, including constants and variant fields.
 
     ``` motoko no-repl
     module MoreMuff {
@@ -523,7 +547,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: The general convention is upper case for "static" entities like types and lower case for "dynamic" values. Modules and actors are fairly static and can export types. Objects usually don’t export types and tend to be used mostly as dynamic values.
 
--   Spell acronyms as regular words.
+- Capitalize acronyms as regular words.
 
     ``` motoko no-repl
     type HttpHeader = ...;
@@ -531,7 +555,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let urlDigest = ...;
     ```
 
--   Do not use identifier names that start with an underscore `_`, except to document that a variable in a pattern is intentionally unused.
+- Do not use identifier names that start with an underscore `_`, except to document that a variable in a pattern is intentionally unused.
 
     ``` motoko no-repl
     let (width, _color, name) = rumpler();
@@ -546,7 +570,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Conventions
 
--   The name of functions returning a value should describe that value.
+- The name of functions returning a value should describe that value.
 
     Avoid redundant `get` prefixes.
 
@@ -556,7 +580,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     sum(array);
     ```
 
--   The name of functions performing side effects or complex operations should describe that operation.
+- The name of functions performing side effects or complex operations should describe that operation.
 
     ``` motoko no-repl
     dict.clear();
@@ -564,7 +588,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let result = traverse(graph);
     ```
 
--   The name of predicate functions returning [`Bool`](../base/Bool.md) should use an `is` or `has` prefix or a similar description of the tested property.
+- The name of predicate functions returning [`Bool`](../old-docs/base/Bool.md) should use an `is` or `has` prefix or a similar description of the tested property.
 
     ``` motoko no-repl
     class Set<X>() {
@@ -578,16 +602,16 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
--   Functions converting to or from a type `X` are named `toX` and `fromX`, respectively, if the source, resp. target, is either the object the function is a method of, or the primary type of the module this function appears in.
+- Functions converting to or from a type `X` are named `toX` and `fromX`, respectively, if the source, resp. target, is either the object the function is a method of, or the primary type of the module this function appears in.
 
--   In classes or objects, use a name ending with `_` to distinguish private variables from getters.
+- In classes or objects, use a name ending with `_` to distinguish private variables from getters.
 
     ``` motoko no-repl
     class Cart(length_ : Nat) {
       var width_ = 0;
 
-      public func length() : Nat { return length_ };
-      public func width() : Nat { return width_ };
+      public func length() : Nat { length_ };
+      public func width() : Nat { width_ };
     }
     ```
 
@@ -595,7 +619,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Identifiers with a leading `_` should *not* be used for private state, since that indicates an unused name (see [style](#style)).
 
--   Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
+- Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
 
     It is fine to use single character identifiers when there is nothing interesting to say, especially when using the same naming scheme consistently.
 
@@ -610,19 +634,19 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
           case (#mul(e1, e2)) { eval(e1) * eval(e2) };
         };
       Debug.print(n);
-      return n;
+      n;
     };
     ```
 
-    Rationale: Contrary to popular belief, overly chatty local names can decrease readability instead of increasing it, by increasing the noise level.
+    Rationale: Contrary to popular belief, overly chatty local names can decrease readability instead of increasing it.
 
--   In suitable cases, use plural form for describing a collection of items, such as a list or array.
+- In suitable cases, use plural form for describing a collection of items, such as a list or array.
 
     This also works for short names.
 
     ``` motoko no-repl
     func foreach<X>(xs : [X], f : X -> ()) {
-      for (x in xs.vals()) { f(x) }
+      for (x in xs.values()) { f(x) }
     }
     ```
 
@@ -630,7 +654,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Type annotations
 
--   Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
+- Put type annotations on definitions that involve fixed-width numeric types to disambiguate the type of overloaded arithmetic operators and constants.
 
     ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
@@ -640,7 +664,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::note
 
-    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type [`Int`](../base/Int.md) instead of [`Nat`](../base/Nat.md), if desired.
+    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type [`Int`](../old-docs/base/Int.md) instead of [`Nat`](../old-docs/base/Nat.md), if desired.
 
     :::
 
@@ -649,7 +673,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let offset = +1;   // type Int
     ```
 
--   Similarly, put inline type annotations on arithmetic expressions with types other than [`Nat`](../base/Nat.md) or [`Int`](../base/Int.md).
+- Similarly, put inline type annotations on arithmetic expressions with types other than [`Nat`](../old-docs/base/Nat.md) or [`Int`](../old-docs/base/Int.md).
 
     ``` motoko no-repl
     if (x & mask == (1 : Nat32)) { ... };
@@ -657,11 +681,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::note
 
-    The need to annotate constants in cases like this is a short-coming of Motoko’s type system that we hope to address soon.
+    The need to annotate constants in cases like this is a short-coming of Motoko’s type system.
 
     :::
 
-    An annotation is not needed on function arguments, since their type is usually inferred from the function. The only exception is when that argument has generic type and the type arguments have been omitted.
+    An annotation is not needed on function arguments since their type is usually inferred from the function. The only exception is when that argument has a generic type and the type arguments have been omitted.
 
     ``` motoko no-repl
     func foo(len : Nat32, vec : [Nat16]) { ... };
@@ -672,7 +696,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     bar(0 : Nat16);
     ```
 
--   Put type annotations on mutable variables, unless their type is obvious.
+- Put type annotations on mutable variables.
 
     ``` motoko no-repl
     var name = "Motoko";
@@ -688,7 +712,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type [`Nat`](../base/Nat.md) without the annotation, ruling out assignments of integers.
 
--   Put type annotations on all public fields in a class.
+- Put type annotations on all public fields in a class.
 
     ``` motoko no-repl
     class C(init_ : Nat) {
@@ -697,19 +721,19 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     }
     ```
 
--   Omit return type annotations of functions when the type is `()`.
+- Omit return type annotations of functions when the type is `()`.
 
     ``` motoko no-repl
     func twiceF() { f(); f() };  // no need to write ": ()"
     ```
 
--   Omit type annotations on functions when they are passed as arguments.
+- Omit type annotations on functions when they are passed as arguments.
 
     ``` motoko no-repl
     Array.map<Nat, Nat>(func n {n + 1}, a);
     ```
 
--   Put type annotations on definitions that involve numeric types other than [`Nat`](../base/Nat.md) or [`Int`](../base/Int.md), to resolve the overloading between arithmetic operators and constants.
+- Put type annotations on definitions that involve numeric types other than [`Nat`](../old-docs/base/Nat.md) or [`Int`](../old-docs/base/Int.md), to resolve the overloading between arithmetic operators and constants.
 
     ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
@@ -718,31 +742,31 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Picking types
 
--   Use [`Nat`](../base/Nat.md) for any integral value that cannot be negative.
+- Use [`Nat`](../old-docs/base/Nat.md) for any integral value that cannot be negative.
 
--   Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits or when matching types imposed by external requirements, such as other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
+- Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits, or when matching types imposed by external requirements such as other canisters.
 
--   Avoid proliferation of option types, and therefore `null`.
+- Avoid proliferation of option types, and therefore `null`.
 
     Limit their use to as small a scope as possible. Rule out the `null` case and use non-option types wherever possible.
 
--   Consider using records instead of tuples when there are more than 2 or 3 components. Records are just simple objects with named fields.
+- Consider using records instead of tuples when there are more than 2 or 3 components. Records are just simple objects with named fields.
 
-    Note that [record](/docs/motoko/fundamentals/types/records) types need not be declared but can be used in place.
+    Note that record types can be used in place and do not need to be declared.
 
     ``` motoko no-repl
       func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
     ```
 
--   Consider using variants instead of [`Bool`](../base/Bool.md) to represent binary choices.
+- Consider using variants instead of [`Bool`](../old-docs/base/Bool.md) to represent binary choices.
 
-    Note that variant types need not be declared but can be used in place.
+    Note that variant types can be used in place and do not need to be declared.
 
     ``` motoko no-repl
     func capitalization(word : Text) : {#upper; #lower} { ... }
     ```
 
--   Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
+- Where possible, use return type `()` for functions whose primary purpose is to mutate state or cause other side effects.
 
     ``` motoko no-repl
     class Set<X>() {
@@ -752,7 +776,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     };
     ```
 
--   Consider using a [record](/docs/motoko/fundamentals/types/records) (an object with just data) as argument for long parameter lists.
+- Consider using a record (an object with just data) as argument for long parameter lists.
 
     ``` motoko no-repl
     func process({seed : Float; delta : Float; data : [Record]; config : Config}) : Thing {
@@ -764,11 +788,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: This expresses named parameters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
 
--   Higher-order functions, such as functions that take a callback argument, should put the function parameter last.
+- Higher-order functions, such as functions that take a callback argument, should put the function parameter last.
 
-    Rationale: Makes call sites more readable, and in the absence of currying, there is no point in putting the function first, like you often would in functional languages.
+    Rationale: This makes call sites more readable, and in the absence of currying, there is no point in putting the function first, like you often would in functional languages.
 
--   Do not use sentinel values, such as `-1`, to represent invalid values.
+- Do not use sentinel values, such as `-1`, to represent invalid values.
 
     Use the option type instead.
 
@@ -776,7 +800,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     func lookup(x : key) : ?Nat { ... }
     ```
 
--   Data is immutable in Motoko unless explicitly stated otherwise.
+- Data is immutable in Motoko unless explicitly stated otherwise.
 
     Use mutability types and definitions (`var`) with care and only where needed.
 
@@ -786,16 +810,16 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Statements
 
--   Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
+- Use `for` loops instead of `while` loops for iterating over a numeric range or a container.
 
     ``` motoko no-repl
     for (i in Iter.range(1, 10)) { ... };
-    for (x in array.vals()) { ... };
+    for (x in array.values()) { ... };
     ```
 
     Rationale: For loops are less error-prone and easier to read.
 
--   Use `if` or `switch` as expressions where appropriate.
+- Use `if` or `switch` as expressions where appropriate.
 
     ``` motoko no-repl
     func abs(i : Int) : Int { if (i < 0) -i else i };
@@ -803,7 +827,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let delta = switch mode { case (#up) +1; case (#dn) -1 };
     ```
 
--   Motoko requires that all expressions in a block have type `()`, in order to prevent accidentally dropped results.
+- Motoko requires that all expressions in a block have type `()` to prevent accidentally dropped results.
 
     Use `ignore` to explicitly drop results. Do *not* use `ignore` when it’s not needed.
 
@@ -811,9 +835,9 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     ignore async f();  // fire of a computation
     ```
 
--   Motoko allows to omit the `return` at the end of a function, because a block evaluates to its last expression.
+- Motoko allows omitting the `return` at the end of a function because a block evaluates to its last expression.
 
-    Use this when a function is short and in "functional" style, that is, the function does not contain complex control flow or side effects.
+    Omit `return` when a function is short and in "functional" style, that is, the function does not contain complex control flow or side effects.
 
     Use explicit `return` at the end when the function contains other `return` statements or imperative control flow.
 
@@ -837,39 +861,39 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
         a := b;
         b := c % b;
       };
-      return a;
+      a;
     };
     ```
 
 ### Objects and records
 
--   Use the short-hand object syntax `{x1 = e1; …​ ; xN = eN}` when using objects as simple records, i.e., data structures with no private state and no methods.
+- Use the short-hand object syntax `{x1 = e1; …​ ; xN = eN}` when using objects as simple records, i.e., data structures with no private state and no methods.
 
--   Use `object` when creating singleton objects.
+- Use `object` when creating singleton objects.
 
--   Limit the use of objects to records where possible.
+- Limit the use of objects to records where possible.
 
     Rationale: Only records can be sent as message parameters or results and can be stored in stable variables. Objects with methods are also more expensive to create and represent in memory.
 
--   Use full objects only as a means for encapsulating state or behavior.
+- Use full objects only as a means for encapsulating state or behavior.
 
 ### Classes
 
--   Use `class` to create multiple objects of the same shape.
+- Use `class` to create multiple objects of the same shape.
 
--   Name classes after their conceptual functionality, not their implementation, except when having to distinguish multiple different implementations of the same concept. For example, `OrderedMap` vs `HashMap`).
+- Name classes after their conceptual functionality, not their implementation, except when having to distinguish multiple different implementations of the same concept. For example, `OrderedMap` vs `HashMap`.
 
--   Classes are both type definitions and factory functions for objects.
+- Classes are both type definitions and factory functions for objects.
 
     Do not use classes unless both these roles are intended; use plain type aliases or functions returning an object in other cases.
 
--   Do not overuse classes.
+- Do not overuse classes.
 
     Use a module defining a plain type and functions on it where appropriate. Use classes only as a means for encapsulating state or behavior.
 
-    Rationale: Objects with methods have disadvantages over simple [record](/docs/motoko/fundamentals/types/records) types with separate functions (see above).
+    Rationale: Objects with methods have disadvantages over simple record types with separate functions (see above).
 
--   If values of a class are meant to be sendable (shared), the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, for example, as a [record](/docs/motoko/fundamentals/types/records).
+- If values of a class are meant to be shared, the class needs to provide a pair of `share`/`unshare` methods that convert to/from a sharable representation, for example, as a record.
 
     :::note
 
@@ -877,22 +901,483 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::
 
--   For the time being, avoid overloading classes with too many methods, since that is currently expensive.
+- Avoid overloading classes with too many methods, since that is expensive.
 
-    Restrict to a sufficiently small set of canonical methods and make less essential ones that can be implemented on top of those into functions in the enclosing module.
+    Restrict to a sufficiently small set of canonical methods. Make less essential methods that can be implemented on top of the canonical methods into functions in the enclosing module.
 
--   Use modules for "static" classes or methods.
+- Use modules for "static" classes or methods.
 
 ### Modules
 
--   Use `module` to group definitions, including types, and create a name spae for them.
+- Use `module` to group definitions, including types, and create a name space for them.
 
--   Where applicable, name modules after the main type or class they implement or provide functions for.
+- Where applicable, name modules after the main type or class they implement or provide functions for.
 
--   Limit each module to a single main concept/type/class or closely entangled family of concepts/types/classes.
+- Limit each module to a single main concept/type/class or closely entangled family of concepts/types/classes.
 
-<!--
-=== To be extended
--->
+### Error handling
+
+- Use `Result` for error handling where applicable.
+  - Use `Result<Ok, Err>` rather than exceptions for recoverable errors.
+  - Use meaningful error types instead of generic `Text`.
+
+    ```motoko no-repl
+    type MyError = { #NotFound; #InvalidInput; #PermissionDenied };
+
+    func safeDivide(a : Int, b : Int) : Result.Result<Int, MyError> {
+      if (b == 0) { return #err (#InvalidInput) };
+      #ok (a / b);
+    };
+    ```
+
+- Use `assert` only for programming errors.
+  - `assert` should be reserved for conditions that should never fail if the program is correct.
+
+    ```motoko no-repl
+    assert x > 0;  // Only use if x should never be <= 0
+    ```
+
+- Use `debug assert` for development-time checks.
+  - `debug assert` is like `assert`, but only runs in non-release builds.
+  - Useful for checking internal assumptions or invariants without impacting production performance.
+  - All `debug` expressions are ignored when compiled with `moc --release`.
+
+    ```motoko no-repl
+    debug assert balance >= 0;  // Ensure balance is never negative during development
+    ```
+
+### Concurrency
+
+- Use `await` judiciously.
+  - Minimize the number of `await` calls in a function to avoid unnecessary suspensions.
+
+    ```motoko no-repl
+    let user = await db.getUser(id); // Good ~4s
+    let orders = await db.getOrders(user); // Bad: sequential calls introduce high latency ~6s
+    ```
+
+- Use `async*` and `await*` for same-canister calls.
+  - When calling an async function **within the same canister**, use `async*` to declare the function and `await*` to call it. This avoids unnecessary inter-canister message overhead.
+
+  ```motoko no-repl
+  func internalLogic(): async* () {
+    //Some internal logic
+  };
+
+  public func intraCall(): async (){
+    await* internalLogic()
+  }
+  ```
+
+- Use composite queries where applicable.
+
+Example:
+
+```motoko no-repl
+// This is an unecessary update call :
+public func couldBeQuery() : async () {
+  await queryFunction();
+}
+```
+
+This can be optimized with a composite query:
+
+```motoko no-repl
+// Composite queries can await other queries without becoming an update call
+public composite query func betterQuery() : async () {
+  await queryFunction();
+}
+```
+
+:::note
+Composite queries cannot perform or persist state changes. Any modifications made during a composite query will be rolled back automatically. Use them only when no mutation is required.
+:::
+
+### Pattern matching
+
+- Prefer `let-else` when one path returns or traps.
+  When destructuring a `Result` or `Option` where the failure case immediately exits the function (e.g. via `return`, or `trap`), use `let-else` to avoid deep nesting and improve readability.
+
+  ```motoko no-repl
+  // Extract a value from an Option type
+  func extractUserName(userOpt: ?Text) : Text {
+    // Without let-else (verbose)
+    // switch (userOpt) {
+    //   case (null) { return "Guest"; };
+    //   case (?name) { return "User: " # name; };
+    // };
+    // With let-else (concise)
+    let ?name = userOpt else return "Guest";
+    return "User: " # name;
+  }
+  ```
+
+- Use `switch` instead of manual conditionals for variants.
+  - Prefer exhaustive pattern matching to avoid missing cases.
+  - Exhaust all cases before using the wildcard pattern.
+
+    ```motoko no-repl
+    switch (response) {
+      case (#possiblity1) { processPossibility1() };
+      case (#possiblity2) { processPossibility2() }
+      case (#possiblity3) { processPossibility3() };
+      case (_) { handleExecption(err) };;
+    };
+    ```
+
+### Data structures
+
+- Prefer `List` over dynamic array resizing.
+  - `Array` in Motoko is immutable, so if dynamic resizing is needed, `List` is a better choice.
+
+    ```motoko no-repl
+    let list = List.empty<Nat>()
+    List.add(list, 1);;
+    let arr = List.toArray(list);
+    ```
+
+## Motoko grammar
+
+This section describes the concrete syntax (grammar) of Motoko. The specification is auto-generated with a tool. This grammar is in the [Extended Backus–Naur form(EBNF)](https://tomassetti.me/ebnf/).
+
+```EBNF
+<list(X, SEP)> ::= 
+    <empty>
+    X
+    X SEP <list(X, SEP)>
+
+<list1(X, SEP)> ::= 
+    X
+    X SEP <list(X, SEP)>
+
+<typ_obj_sort> ::= 
+    'object'
+    'actor'
+    'module'
+
+<obj_sort> ::= 
+    'object'
+    'persistent'? 'actor'
+    'module'
+
+<query> ::= 
+    'query'
+    'composite' 'query'
+
+<func_sort_opt> ::= 
+    <empty>
+    'shared' <query>?
+    <query>
+
+<shared_pat_opt> ::= 
+    <empty>
+    'shared' <query>? <pat_plain>?
+    <query> <pat_plain>?
+
+<typ_obj> ::= 
+    '{' <list(<typ_field>, ';')> '}'
+
+<typ_variant> ::= 
+    '{' '#' '}'
+    '{' <list1(<typ_tag>, ';')> '}'
+
+<typ_nullary> ::= 
+    '(' <list(<typ_item>, ',')> ')'
+    <id> ('.' <id>)* <typ_args>?
+    '[' 'var'? <typ> ']'
+    <typ_obj>
+    <typ_variant>
+
+<typ_un> ::= 
+    <typ_nullary>
+    '?' <typ_un>
+
+<typ_pre> ::= 
+    <typ_un>
+    'async' <typ_pre>
+    'async*' <typ_pre>
+    <typ_obj_sort> <typ_obj>
+
+<typ_nobin> ::= 
+    <typ_pre>
+    <func_sort_opt> <typ_params_opt> <typ_un> '->' <typ_nobin>
+
+<typ> ::= 
+    <typ_nobin>
+    <typ> 'and' <typ>
+    <typ> 'or' <typ>
+
+<typ_item> ::= 
+    <id> ':' <typ>
+    <typ>
+
+<typ_args> ::= 
+    '<' <list(<typ>, ',')> '>'
+
+<inst> ::= 
+    <empty>
+    '<' <list(<typ>, ',')> '>'
+    '<' 'system' (',' <typ>)* '>'
+
+<typ_params_opt> ::= 
+    ('<' <list(<typ_bind>, ',')> '>')?
+    '<' 'system' (',' <typ_bind>)* '>'
+
+<typ_field> ::= 
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
+    'var'? <id> ':' <typ>
+    <id> <typ_params_opt> <typ_nullary> ':' <typ>
+
+<typ_tag> ::= 
+    '#' <id> (':' <typ>)?
+
+<typ_bind> ::= 
+    <id> '<:' <typ>
+    <id>
+
+<lit> ::= 
+    'null'
+    <bool>
+    <nat>
+    <float>
+    <char>
+    <text>
+
+<unop> ::= 
+    '+'
+    '-'
+    '^'
+
+<binop> ::= 
+    '+'
+    '-'
+    '*'
+    '/'
+    '%'
+    '**'
+    '+%'
+    '-%'
+    '*%'
+    '**%'
+    '&'
+    '|'
+    '^'
+    '<<'
+    ' >>'
+    '<<>'
+    '<>>'
+    '#'
+
+<relop> ::= 
+    '=='
+    '!='
+    ' < '
+    '<='
+    ' > '
+    '>='
+
+<unassign> ::= 
+    '+='
+    '-='
+    '^='
+
+<binassign> ::= 
+    '+='
+    '-='
+    '*='
+    '/='
+    '%='
+    '**-'
+    '+%='
+    '-%='
+    '*%='
+    '**%='
+    '&='
+    '|='
+    '^='
+    '<<='
+    '>>='
+    '<<>='
+    '<>>='
+    '@='
+
+<exp_obj> ::= 
+    '{' <list(<exp_field>, ';')> '}'
+    '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
+    '{' <exp_post> ('and' <exp_post>)* 'with' <list1(<exp_field>, ';')> '}'
+
+<exp_plain> ::= 
+    <lit>
+    '(' <list(<exp>, ',')> ')'
+
+<exp_nullary> ::= 
+    <exp_obj>
+    <exp_plain>
+    <id>
+    '_'
+
+<exp_post> ::= 
+    <exp_nullary>
+    '[' 'var'? <list(<exp_nonvar>, ',')> ']'
+    <exp_post> '[' <exp> ']'
+    <exp_post> '.'<nat>
+    <exp_post> '.' <id>
+    <exp_post> <inst> <exp_nullary>
+    <exp_post> '!'
+    '(' 'system' <exp_post> '.' <id> ')'
+
+<exp_un> ::= 
+    <exp_post>
+    '#' <id>
+    '#' <id> <exp_nullary>
+    '?' <exp_un>
+    <unop> <exp_un>
+    <unassign> <exp_un>
+    'actor' <exp_plain>
+    'not' <exp_un>
+    'debug_show' <exp_un>
+    'to_candid' '(' <list(<exp>, ',')> ')'
+    'from_candid' <exp_un>
+
+<exp_bin> ::= 
+    <exp_un>
+    <exp_bin> <binop> <exp_bin>
+    <exp_bin> <relop> <exp_bin>
+    <exp_bin> 'and' <exp_bin>
+    <exp_bin> 'or' <exp_bin>
+    <exp_bin> ':' <typ_nobin>
+    <exp_bin> '|>' <exp_bin>
+
+<exp_nondec> ::= 
+    <exp_bin>
+    <exp_bin> ':=' <exp>
+    <exp_bin> <binassign> <exp>
+    'return' <exp>?
+    'async' <exp_nest>
+    'async*' <exp_nest>
+    'await' <exp_nest>
+    'await*' <exp_nest>
+    'assert' <exp_nest>
+    'label' <id> (':' <typ>)? <exp_nest>
+    'break' <id> <exp_nullary>?
+    'continue' <id>
+    'debug' <exp_nest>
+    'if' <exp_nullary> <exp_nest>
+    'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
+    'try' <exp_nest> <catch>
+    'try' <exp_nest> <catch> 'finally' <exp_nest>
+    'try' <exp_nest> 'finally' <exp_nest>
+    'throw' <exp_nest>
+    'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
+    'while' <exp_nullary> <exp_nest>
+    'loop' <exp_nest>
+    'loop' <exp_nest> 'while' <exp_nest>
+    'for' '(' <pat> 'in' <exp> ')' <exp_nest>
+    'ignore' <exp_nest>
+    'do' <block>
+    'do' '?' <block>
+
+<exp_nonvar> ::= 
+    <exp_nondec>
+    <dec_nonvar>
+
+<exp> ::= 
+    <exp_nonvar>
+    <dec_var>
+
+<exp_nest> ::= 
+    <block>
+    <exp>
+
+<block> ::= 
+    '{' <list(<dec>, ';')> '}'
+
+<case> ::= 
+    'case' <pat_nullary> <exp_nest>
+
+<catch> ::= 
+    'catch' <pat_nullary> <exp_nest>
+
+<exp_field> ::= 
+    'var'? <id> (':' <typ>)?
+    'var'? <id> (':' <typ>)? '=' <exp>
+
+<dec_field> ::= 
+    <vis> <stab> <dec>
+
+<vis> ::= 
+    <empty>
+    'private'
+    'public'
+    'system'
+
+<stab> ::= 
+    <empty>
+    'flexible'
+    'stable'
+    'transient'
+
+<pat_plain> ::= 
+    '_'
+    <id>
+    <lit>
+    '(' <list(<pat_bin>, ',')> ')'
+
+<pat_nullary> ::= 
+    <pat_plain>
+    '{' <list(<pat_field>, ';')> '}'
+
+<pat_un> ::= 
+    <pat_nullary>
+    '#' <id>
+    '#' <id> <pat_nullary>
+    '?' <pat_un>
+    <unop> <lit>
+
+<pat_bin> ::= 
+    <pat_un>
+    <pat_bin> 'or' <pat_bin>
+    <pat_bin> ':' <typ>
+
+<pat> ::= 
+    <pat_bin>
+
+<pat_field> ::= 
+    <id> (':' <typ>)?
+    <id> (':' <typ>)? '=' <pat>
+
+<dec_var> ::= 
+    'var' <id> (':' <typ>)? '=' <exp>
+
+<dec_nonvar> ::= 
+    'let' <pat> '=' <exp>
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
+    <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+
+<dec> ::= 
+    <dec_var>
+    <dec_nonvar>
+    <exp_nondec>
+    'let' <pat> '=' <exp> 'else' <exp_nest>
+
+<func_body> ::= 
+    '=' <exp>
+    <block>
+
+<obj_body> ::= 
+    '{' <list(<dec_field>, ';')> '}'
+
+<class_body> ::= 
+    '=' <id>? <obj_body>
+    <obj_body>
+
+<imp> ::= 
+    'import' <pat_nullary> '='? <text>
+
+<prog> ::= 
+    <list(<imp>, ';')> <list(<dec>, ';')>
+```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
