@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/motoko-packages/utilities.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/motoko-packages/utilities.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#utilities" id="toc-utilities">Utilities</a>
+<ul>
+<li><a href="#mops-packages-for-utility-functions"
+id="toc-mops-packages-for-utility-functions">Mops packages for utility
+functions</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="utilities">Utilities</h1>
+<h2 id="mops-packages-for-utility-functions">Mops packages for utility
+functions</h2>
+<p><a href="https://mops.one/">Mops</a> is an onchain package manager
+for Motoko. Here are some Mops packages for utility functions:</p>
+<ul>
+<li><p><a href="https://mops.one/backup"><code>backup</code></a>:
+Library for backup restore.</p></li>
+<li><p><a href="https://mops.one/bench"><code>bench</code></a>:
+Benchmarking library.</p></li>
+<li><p><a
+href="https://mops.one/cycles-simple"><code>cycles-simple</code></a>:
+Manage the cycles balance of child canisters.</p></li>
+<li><p><a
+href="https://mops.one/dao-proposal-engine"><code>dao-proposal-engine</code></a>:
+DAO proposal module.</p></li>
+<li><p><a href="https://mops.one/datetime"><code>datetime</code></a>:
+<code>DateTime</code> values and manipulation.</p></li>
+<li><p><a href="https://mops.one/ekvm"><code>ekvm</code></a>: Infinitely
+scalable elastic key-value store.</p></li>
+<li><p><a href="https://mops.one/fuzz"><code>fuzz</code></a>: Random
+data generation.</p></li>
+<li><p><a href="https://mops.one/itertools"><code>itertools</code></a>:
+Utility functions and data types for creating efficient
+iterators.</p></li>
+<li><p><a href="https://mops.one/lru-cache"><code>lru-cache</code></a>:
+Least recently used cache implementation.</p></li>
+<li><p><a href="https://mops.one/json.mo"><code>json.mo</code></a>: A
+library for JSON formatting.</p></li>
+<li><p><a href="https://mops.one/math"><code>math</code></a>: Linear
+algebra and mathematical calculus library.</p></li>
+<li><p><a
+href="https://mops.one/make-rules"><code>make-rules</code></a>: Library
+for using GNU make.</p></li>
+<li><p><a
+href="https://mops.one/motoko-crc"><code>motoko-crc</code></a>: Cyclic
+redundancy checks for Motoko.</p></li>
+<li><p><a href="https://mops.one/neuro"><code>neuro</code></a>: Basic
+staking and neuron management.</p></li>
+<li><p><a
+href="https://mops.one/passport-client"><code>passport-client</code></a>:
+Use Gitcoin Passport anti-Sybil information.</p></li>
+<li><p><a
+href="https://mops.one/principal-ext"><code>principal-ext</code></a>:
+Principal utility module.</p></li>
+<li><p><a href="https://mops.one/prng"><code>prng</code></a>:
+Statistical pseudo-random number generators.</p></li>
+<li><p><a href="https://mops.one/random"><code>random</code></a>:
+Generate random data.</p></li>
+<li><p><a
+href="https://mops.one/random-class"><code>random-class</code></a>:
+Random number generator objects.</p></li>
+<li><p><a href="https://mops.one/tecdsa"><code>tecdsa</code></a>:
+Generate and manage tECDSA identities.</p></li>
+<li><p><a href="https://mops.one/test"><code>test</code></a>: Motoko
+testing library.</p></li>
+<li><p><a href="https://mops.one/time"><code>time</code></a>: Timestamps
+in nano, micro, millis, and seconds to string <code>date</code> or
+<code>DateType</code>.</p></li>
+<li><p><a
+href="https://mops.one/timer-tool"><code>timer-tool</code></a>: Module
+for creating timers.</p></li>
+<li><p><a
+href="https://mops.one/time-consts"><code>time-consts</code></a>: Time
+constants for Motoko.</p></li>
+<li><p><a href="https://mops.one/utilities"><code>utilities</code></a>:
+Class objects.</p></li>
+<li><p><a href="https://mops.one/uuid"><code>uuid</code></a>:
+Universally unique identifier library.</p></li>
+<li><p><a
+href="https://mops.one/xtended-numbers"><code>xtended-numbers</code></a>:
+Extended functionality for number types, such as byte encoding.</p></li>
+<li><p><a
+href="https://mops.one/xtended-random"><code>xtended-random</code></a>:
+Extended library for random number generation.</p></li>
+<li><p><a
+href="https://mops.one/xtended-text"><code>xtended-text</code></a>: Text
+manipulation.</p></li>
+</ul>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
