@@ -63,9 +63,12 @@ and src = {depr : string option; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
+(* Position of generic type parameter for stable functions/classes, by considering nested generic declarations.
+   This is used for checking compatibility of stable closures if they refer to values of generic type parameters. *)
+and generic_position = int option
 and kind =
   | Def of bind list * typ
-  | Abs of bind list * typ * int option
+  | Abs of bind list * typ * generic_position
 
 val empty_src : src
 
@@ -251,7 +254,7 @@ val glb : typ -> typ -> typ
 val subst : typ ConEnv.t -> typ -> typ
 
 val close : con list -> typ -> typ
-val close_binds : con list -> bind list -> bool -> bind list
+val close_binds : con list -> bind list -> bind list
 
 val open_ : typ list -> typ -> typ
 val open_binds : bind list -> typ list

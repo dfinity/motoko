@@ -836,7 +836,7 @@ and check_typ' env typ : T.typ =
           "shared function has non-async result type%a"
           display_typ_expand (T.seq ts2)
       end;
-    T.Func (sort.it, c, T.close_binds cs tbs stable_scope, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort.it, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | OptT typ ->
     T.Opt (check_typ env typ)
   | VariantT tags ->
@@ -900,7 +900,7 @@ and check_typ_def env at (id, typ_binds, typ) : T.kind =
   let cs, tbs, te, ce = check_typ_binds {env with pre = true} false typ_binds in
   let env' = adjoin_typs env te ce in
   let t = check_typ env' typ in
-  let k = T.Def (T.close_binds cs tbs false, T.close cs t) in
+  let k = T.Def (T.close_binds cs tbs, T.close cs t) in
   check_closed env id k at;
   k
 
@@ -1653,7 +1653,7 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let sort = if is_flexible && sort = T.Local T.Stable then T.Local T.Flexible else sort in
-    T.Func (sort, c, T.close_binds cs tbs (not is_flexible), List.map (T.close cs) ts1, List.map (T.close cs) ts2)
+    T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
     let t = infer_call env exp1 inst exp2 exp.at None in
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
@@ -3382,7 +3382,7 @@ and infer_dec_typdecs env dec : Scope.t =
           in_actor}
     in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it exp_opt dec_fields dec.at in
-    let k = T.Def (T.close_binds class_cs class_tbs stable_scope, T.close class_cs t) in
+    let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -3481,7 +3481,7 @@ and infer_dec_valdecs env dec : Scope.t =
       else obj_typ
     in
     let mode = if T.stable t1 && obj_sort.it = T.Object then T.Stable else T.Flexible in
-    let t = T.Func (T.Local mode, T.Returns, T.close_binds cs tbs stable_scope,
+    let t = T.Func (T.Local mode, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
       [T.close cs t2])
     in

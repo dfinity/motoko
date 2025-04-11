@@ -69,9 +69,12 @@ and src = {depr : string option; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
+(* Position of generic type parameter for stable functions/classes, by considering nested generic declarations.
+   This is used for checking compatibility of stable closures if they refer to values of generic type parameters. *)
+and generic_position = int option
 and kind =
   | Def of bind list * typ
-  | Abs of bind list * typ * int option
+  | Abs of bind list * typ * generic_position
 
 let empty_src = {depr = None; region = Source.no_region}
 
@@ -511,7 +514,7 @@ let close cs t =
   let sigma = List.fold_right2 ConEnv.add cs ts ConEnv.empty in
   subst sigma t
 
-let close_binds cs tbs is_stable =
+let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun tb -> { tb with bound = close cs tb.bound }) tbs
 
