@@ -19,16 +19,16 @@ jobs:
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
 
-    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
       uses: nixbuild/nix-quick-install-action@v30
 
-    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
       uses: nixbuild/nixbuild-action@v20
       with:
         nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
         generate_summary_for: 'job'
 
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+    - if: ${startsWith(matrix.os, 'macos-')}
       uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
@@ -42,15 +42,15 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
-    - if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
-      name: "nix build"
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
+      name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
       run: ./nixbuild -f default.nix ${{ matrix.build_type }}-systems-go
 
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+    - if: ${startsWith(matrix.os, 'macos-')}
       run: nix-env -iA nix-build-uncached -f nix/
 
-    - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
-      name: "nix-build-${{ matrix.build_type }}"
+    - if: ${startsWith(matrix.os, 'macos-')}
+      name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
       run: nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
 
     - name: Discover `test/bench` changes
@@ -121,19 +121,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
+    - uses: nixbuild/nix-quick-install-action@v30
+      uses: nixbuild/nixbuild-action@v20
+      with:
+        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+        generate_summary_for: 'job'
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
     - name: Fetch report
-      run: nix-build -A report-site -o report-site
-    - name: Resolve symlinks
-      run: cp -rL report-site report-site-copy
+      run: |
+        report_site="$(./nixbuildcopy -f default.nix report-site)"
+        cp -rL "$report_site" report-site
     - name: Push report to GitHub pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
         branch: gh-pages
-        folder: report-site-copy
+        folder: report-site
         single-commit: true
 
   artifacts:
@@ -144,16 +148,30 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
+      uses: nixbuild/nix-quick-install-action@v30
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
+      uses: nixbuild/nixbuild-action@v20
+      with:
+        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+        generate_summary_for: 'job'
+    - if: ${startsWith(matrix.os, 'macos-')}
+      uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
-    - name: nix-build
+    - if: ${startsWith(matrix.os, 'ubuntu-')}
+      name: "nix-build (${{ matrix.os }})"
       run: |
-        nix-build --arg officialRelease true -A moc
+        moc="$(./nixbuildcopy -f default.nix --arg officialRelease true moc)"
+        ln -s "$moc" moc
+    - if: ${startsWith(matrix.os, 'macos-')}
+      name: "nix-build (${{ matrix.os }})"
+      run: |
+        nix-build --arg officialRelease true -A moc -o moc
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
-    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
+    - run: echo "UPLOAD_PATH=$(readlink -f moc)" >> $GITHUB_ENV
     - name: upload artifacts
       uses: actions/upload-artifact@v4
       with:
