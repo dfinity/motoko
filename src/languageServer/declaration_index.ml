@@ -249,7 +249,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
   let is_type_def dec_field =
     match dec_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) -> Some typ_id
-    | Syntax.ClassD (_, _, _, typ_id, _, _, _, _, _) -> Some typ_id
+    | Syntax.ClassD (_, _, _, typ_id, _, _, _, _, _, _) -> Some typ_id
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in
@@ -351,6 +351,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
   in
   let package_env =
     Pipeline.chase_imports
+      []
       (fun _ -> Vfs.parse_file vfs)
       Pipeline.initial_stat_env package_paths
   in

@@ -62,6 +62,7 @@ Compatible changes for immutable types are largely analogous to the allowed Moto
 * Adding variant fields.
 * `Nat` to `Int`.
 * Shared function parameter contravariance and return type covariance.
+* With [stable functions](StableFunctions.md): Dropping captured variables or parameters, renaming captured parameters.
 
 The existing IDL-subtype functionality is reused with some adjustments to check memory compatibility: The compiler generates the type descriptor, a type table, that is recorded in the persistent metadata. Upon an upgrade, the new type descriptor is compared against the existing type descriptor, and the upgrade only succeeds for compatible changes.
 

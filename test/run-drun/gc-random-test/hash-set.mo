@@ -4,7 +4,7 @@ import Buffer "buffer";
 module {
     public type Iter<T> = { next : () -> ?T };
 
-    public class HashSet<T>(equal : (T, T) -> Bool, hash : T -> Nat) {
+    public class HashSet<T>(equal : stable (T, T) -> Bool, hash : stable T -> Nat) {
         let initialSize = 1024;
         let occupationThresholdPercentage = 85;
         let growthFactor = 2;
@@ -18,7 +18,8 @@ module {
         public func add(value : T) {
             let index = hash(value) % table.size();
             let collisionList = table[index];
-            if (not Buffer.contains(collisionList, value, equal)) {
+            let flexibleEqual : (T, T) -> Bool = equal;
+            if (not Buffer.contains(collisionList, value, flexibleEqual)) {
                 collisionList.add(value);
                 count += 1;
                 if (count * 100 / table.size() > occupationThresholdPercentage) {
@@ -41,7 +42,8 @@ module {
         public func contains(value : T) : Bool {
             let index = hash(value) % table.size();
             let collisionList = table[index];
-            Buffer.contains(collisionList, value, equal);
+            let flexibleEqual : (T, T) -> Bool = equal;
+            Buffer.contains(collisionList, value, flexibleEqual);
         };
 
         public func values() : Iter<T> {

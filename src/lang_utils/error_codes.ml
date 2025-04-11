@@ -219,4 +219,7 @@ let error_codes : (string * string option) list =
     "M0213", None; (* Parenthetical note on shared functions is disallowed *)
     "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
     "M0215", None; (* Field is lost in record used at supertype *)
+    "M0216", None; (* Stable functions are only supported with enhanced orthogonal persistence *)
+    "M0217", None; (* Stable function cannot close over a non-stable variable *)
+    "M0218", None; (* Type argument has to be of a stable type to match the type parameter *)
   ]

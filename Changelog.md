@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * Support stable functions, stable objects, and stable classes with enhanced orthogonal persistence.
+
   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
 
   * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).

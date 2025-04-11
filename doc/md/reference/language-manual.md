@@ -585,7 +585,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   [ var? <typ> ]                                Array
   Null                                          Null type
   ? <typ>                                       Option
-  <shared>? <typ-params>? <typ> -> <typ>        Function
+  <shared|stable>? <typ-params>? <typ> -> <typ> Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
   ( ((<id> :)? <typ>),* )                       Tuple
@@ -1163,6 +1163,8 @@ A type `T` is **stable** if it is:
 -   A shared function type, or
 
 -   An `actor` type.
+
+-   With enhanced orthogonal persistence: [stable functions](../canister-maintenance/orthogonal-persistence/enhanced/stable-functions.md), stable objects, and stable classes.
 
 This definition implies that every shared type is a stable type. The converse does not hold: there are types that are stable but not share, notably types with mutable components.
 
