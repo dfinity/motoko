@@ -52,7 +52,7 @@ jobs:
           --eval-store auto \
           --store ssh-ng://eu.nixbuild.net \
           -f default.nix \
-          all-systems-go
+          ${{ matrix.build_type }}-systems-go
 
     - if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
       run: nix-env -iA nix-build-uncached -f nix/
