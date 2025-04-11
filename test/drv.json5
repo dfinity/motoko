@@ -1,0 +1,19 @@
+{
+    name: "simple",
+    system: "aarch64-darwin",
+    builder: "/bin/sh",
+    inputSrcs: [],
+    inputDrvs: {},
+    env: {
+        out: ""
+    },
+    args: [
+        "-c",
+        "echo hello world > $out"
+    ],
+    outputs: {
+        out: {
+            path: "/nix/store/hpryci895mgx4cfj6dz81l6a57ih8pql-simple"
+        }
+    }
+}

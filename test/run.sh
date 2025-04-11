@@ -26,6 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
+NIX=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
@@ -36,7 +37,7 @@ ECHO=echo
 
 export WASMTIME_NEW_CLI=1
 
-while getopts "adpstirv" o; do
+while getopts "adpstirvn" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -58,6 +59,9 @@ while getopts "adpstirv" o; do
             ;;
         v)
             VIPER=yes
+            ;;
+        n)
+            NIX=yes
             ;;
     esac
 done
@@ -284,7 +288,9 @@ do
   # so that no paths leak into the output
   pushd $(dirname $file) >/dev/null
 
-  out=_out
+  if [ $NIX = no ]; then
+    out=_out
+  fi
   ok=ok
 
   $ECHO -n "$base:"
@@ -350,7 +356,7 @@ do
     tc_succeeded=$?
     normalize $out/$base.tc
 
-    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
+    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = no ]
     then
       if [ $IDL = 'yes' ]
       then
@@ -647,7 +653,7 @@ do
     diff_files="$diff_files $base.cmp"
   ;;
   *)
-    echo "Unknown extentions $ext";
+    echo "Unknown extension $ext";
     exit 1
   esac
   $ECHO ""
