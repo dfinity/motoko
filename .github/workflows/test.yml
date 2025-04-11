@@ -86,7 +86,14 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        nix-build --max-jobs auto perf-delta.nix -o perf-delta.txt \
+        nix build \
+          --print-build-logs \
+          --builders "" \
+          --max-jobs 2 \
+          --eval-store auto \
+          --store ssh-ng://eu.nixbuild.net \
+          -f perf-delta.nix \
+          -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to"
