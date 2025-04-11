@@ -331,6 +331,15 @@ rec {
     testDerivationArgs = {
       NIXBUILDNET_DEFAULT_CPU = 8;
       NIXBUILDNET_MIN_CPU = 8;
+      # The following tries to work around the following panic where the test
+      # tries to allocate 516 GiB. We set the minimum amount of memory for all
+      # tests to be a bit higher than that.
+      #
+      # thread 'main' panicked at rs/embedders/src/wasmtime_embedder/host_memory.rs:168:9:
+      # assertion `left != right` failed:
+      # mmap failed: size=554050781184 Cannot allocate memory (os error 12)
+      NIXBUILDNET_MIN_MEM = 560000;
+
       # by default, an empty source directory. how to best get an empty directory?
       src = builtins.path { name = "empty"; path = ./nix; filter = p: t: false; };
       phases = "unpackPhase checkPhase installPhase";
