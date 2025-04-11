@@ -279,7 +279,7 @@ do
   then base=$(basename $file .drun); ext=drun
   else
     echo "Unknown file extension in $file"
-    echo "Supported extensions: .mo .sh .wat .did .drun"
+    echo "Supported extensions: .mo .sh .wat .did .cmp .drun"
     failures+=("$file")
     continue
   fi
@@ -674,6 +674,12 @@ do
   else
     for diff_file in $diff_files
     do
+      if [[ $NIX = yes && $(basename $out/$diff_file) =~ .*\.drun-run.* ]]; then
+        echo $out
+        if [ -f $ok/$diff_file.ok ]; then cp $ok/$diff_file.ok $out/$diff_file.ok; fi
+        continue
+      fi
+
       if [ -e $ok/$diff_file.ok -o -e $out/$diff_file ]
       then
         diff -a -u -N --label "$diff_file (expected)" $ok/$diff_file.ok --label "$diff_file (actual)" $out/$diff_file

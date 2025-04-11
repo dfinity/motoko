@@ -24,14 +24,14 @@ fi
 export LANG=C.UTF-8
 
 DRUN=drun
-SCRIPT=/dev/null
+#SCRIPT=/dev/null
 
 # if we run under `nix`, then `out` envvar is set,
 # we shall build a JSON derivation instead of running `drun`
-if [ -v out ]; then
+if [[ $out =~ /nix/store/ ]]; then
   DRUN=echo
-  SCRIPT=${out}/$(basename $1)
-  echo $SCRIPT
+  #SCRIPT=
+  #echo $SCRIPT $1
 fi
 
 # this could be used to delay drun to make it more deterministic, but
@@ -57,7 +57,7 @@ then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,\$ID,'$ID',g; s,\$PRINCIPAL,'$PRINCIPAL',g' $1
-  ) | tee /dev/tty | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | tee $SCRIPT | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
@@ -65,5 +65,9 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | tee $SCRIPT | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) > $1.script
+
+  $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES $1.script
+
+    # | tee $SCRIPT | $DRUN -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
