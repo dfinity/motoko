@@ -1,0 +1,7 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID migrate-stable-function/old-version.wasm ""
+upgrade $ID migrate-stable-function/new-version.mo ""
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID migrate-stable-function/new-version.mo ""
+ingress $ID __motoko_destabilize_after_upgrade "DIDL\x00\x00"
+upgrade $ID migrate-stable-function/new-version.mo ""

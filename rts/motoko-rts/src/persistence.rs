@@ -7,6 +7,7 @@ mod name_resolution;
 pub mod stable_functions;
 
 use compatibility::MemoryCompatibilityTest;
+use core::str::from_utf8;
 use motoko_rts_macros::ic_mem_fn;
 use stable_functions::{register_stable_functions, StableFunctionState};
 
@@ -97,12 +98,15 @@ impl PersistentMetadata {
 
     unsafe fn check_version(self: *const Self) {
         if (*self).version != VERSION {
-            panic!(
+            let buffer = format!(
+                400,
                 "Incompatible persistent memory version: {} instead of {}. Use graph copy stabilization to upgrade: {}",
                 (*self).version,
                 VERSION,
                 GRAPH_COPY_DOCUMENTATION_LINK
             );
+            let message = from_utf8(&buffer).unwrap();
+            rts_trap_with(message);
         }
     }
 
