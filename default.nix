@@ -525,12 +525,12 @@ rec {
 
   in fix_names {
       run        = test_subdir "run"        [ moc ] ;
-      run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-debug  = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
       run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-debug = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -789,33 +789,61 @@ rec {
       '';
   };
 
-  all-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "all-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      # TODO: Reenable when Motoko base library has been lifted to stable functions.
-      # base-src
-      # base-tests
-      # base-doc
-      # docs
-      # report-site
-      # ic-ref-run
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    builtins.attrValues tests
-    ++ builtins.attrValues js
-    ;
+  # Helper function to filter tests by type
+  filter_tests = type: tests:
+    let
+      # Get all test names that match the pattern
+      debug_tests = builtins.filter (name: 
+        builtins.match ".*-debug$" name != null
+      ) (builtins.attrNames tests);
+      
+      # Get all test names that don't match the pattern
+      release_tests = builtins.filter (name:
+        builtins.match ".*-debug$" name == null
+      ) (builtins.attrNames tests);
+      
+      # Select which set of names to use
+      selected_names = if type == "debug" then debug_tests else release_tests;
+    in
+      # Get the actual derivations for the selected names
+      builtins.map (name: tests.${name}) selected_names;
+
+  common-constituents = [
+    moc
+    mo-ide
+    mo-doc
+    didc
+    deser
+    samples
+    rts
+    # TODO: Reenable when Motoko base library has been lifted to stable functions.
+    # base-src
+    # base-tests
+    # base-doc
+    # docs
+    # report-site
+    shell
+    check-formatting
+    check-rts-formatting
+    check-generated
+    check-grammar
+    check-error-codes
+  ];
+
+  # Release version - excludes debug tests
+  release-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "release-systems-go";
+    constituents = common-constituents ++
+    filter_tests "release" tests  # Only include release tests
+    ++ builtins.attrValues js;
+  };
+
+  # Debug version - only includes debug tests
+  debug-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "debug-systems-go";
+    constituents = common-constituents ++
+    filter_tests "debug" tests  # Only include debug tests
+    ++ builtins.attrValues js;
   };
 
   viperServer = nixpkgs.fetchurl {
