@@ -31,7 +31,10 @@ const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
-const VERSION: usize = 1;
+// Versions
+// 1: Initial EOP version, without stable functions and stable closures.
+// 2: Support of stable functions and closures.
+const VERSION: usize = 2;
 /// The `Value` representation in the default-initialized Wasm memory.
 /// The GC ignores this value since it is a scalar representation.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -69,6 +72,8 @@ const METADATA_RESERVE: usize = 512 * KB;
 
 pub const HEAP_START: usize = METADATA_ADDRESS + METADATA_RESERVE;
 
+const GRAPH_COPY_DOCUMENTATION_LINK: &str = "https://internetcomputer.org/docs/motoko/main/canister-maintenance/orthogonal-persistence/enhanced#migration-path";
+
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
 
 impl PersistentMetadata {
@@ -93,9 +98,10 @@ impl PersistentMetadata {
     unsafe fn check_version(self: *const Self) {
         if (*self).version != VERSION {
             panic!(
-                "Incompatible persistent memory version: {} instead of {}.",
+                "Incompatible persistent memory version: {} instead of {}. Use graph copy stabilization to upgrade: {}",
                 (*self).version,
-                VERSION
+                VERSION,
+                GRAPH_COPY_DOCUMENTATION_LINK
             );
         }
     }
