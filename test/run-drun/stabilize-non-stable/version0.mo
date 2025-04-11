@@ -1,49 +1,29 @@
 import Prim "mo:prim";
 
-persistent actor {
-  class Wrapper(delegate: stable () -> ()) {
-    public func call() {
-      delegate();
-    }
+actor {
+  let temporary = 1;
+
+  func f() {
+    Prim.debugPrint(debug_show (temporary));
   };
 
-  public func print() {
-    Prim.debugPrint("Test");
-  }
-
-  transient let wrapper = Wrapper(print);
-
-  stable let hiddenClosure = {
-    message: Text;
+  stable let value : {
+    stableField : Text;
   } = {
-    message = "Hello";
-    nonStable = wrapper.call;
+    stableField = "Version 0";
+    nonStableField = f;
+    unreachableField = -123;
   };
 
-  type Record = {
-    number: Int;
-    nat64: Nat64;
-    text: Text;
-    blob: Blob;
-    self: var Record;
+  stable let any : Any = f;
+  stable let tuple : (Int, Any) = (0, f);
+  stable let variant : { #tag : Any } = #tag f;
+  stable let record : { lab : Any } = { lab = f };
+  stable let vector : [Any] = [f];
+  stable let array : [var Any] = [var f];
+  stable let opt : ?Any = ?f;
+
+  public func print() : async () {
+    Prim.debugPrint(debug_show (value));
   };
-
-  stable let record = {
-    number = -12345678901234567890123456789012345678901234567890123456789012345678901234567890;
-    nat64 = 0xabcd_abcd_abcd_abcd;
-    text = "Hello" # " " # "World";
-    blob = "Text" : Blob;
-    var self = null : ?Record;
-  };
-
-  record.self := record;
-
-  stable var array = [var record; var record];
 };
-
-
-//SKIP run
-//SKIP run-ir
-//SKIP run-low
-
-//CALL upgrade ""
