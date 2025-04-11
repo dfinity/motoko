@@ -97,6 +97,7 @@ jobs:
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to"
+        nix copy --from ssh-ng://eu.nixbuild.net $(readlink perf-delta.txt)
 
     - name: Read performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
