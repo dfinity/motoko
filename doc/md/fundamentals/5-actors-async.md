@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Actors & async data
 
-The actor model, introduced by Carl Hewitt in the 1970s, was designed to solve concurrency issues by encapsulating [state](/docs/motoko/fundamentals/state) and computation within independent units called **actors**.
+The actor model, introduced by Carl Hewitt in the 1970s, was designed to solve concurrency issues by encapsulating [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and computation within independent units called **actors**.
 
 The actor model is based on the following principles:
 
@@ -13,13 +13,13 @@ The actor model is based on the following principles:
 - Actors are independent of each other and can fail independently.
 - Actors are location transparent, which means that an actor can be located on any machine in a distributed system.
 
-Motoko adopts the actor model to enable scalable, non-blocking execution on the Internet Computer. Motoko actors run in a single-threaded environment but achieve high concurrency by handling requests [asynchronously](/docs/motoko/fundamentals/actors-async#async--await).
+Motoko adopts the actor model to enable scalable, non-blocking execution on the Internet Computer. Motoko actors run in a single-threaded environment but achieve high concurrency by handling requests [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await).
 
 ## Async actors
 
 To demonstrate how asynchronous actors work, consider the following example.
 
-Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
+Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 
 ```motoko no-repl
 import Array "mo:base/Array";
@@ -64,7 +64,7 @@ The `await` keyword suspends the execution of the current function until the asy
 await PizzaParlor.placeOrder("BBQ"); // Order received: BBQ
 ```
 
-This request is handled [asynchronously](/docs/motoko/fundamentals/actors-async#async--await), meaning other orders can be placed without waiting for a response. The actor remains responsive, even while executing other tasks.
+This request is handled [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), meaning other orders can be placed without waiting for a response. The actor remains responsive, even while executing other tasks.
 
 ## `async*` / `await*`
 
@@ -110,7 +110,7 @@ let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 | Feature         | `await`                      | `await*`                        |
 |---------------|-----------------------------|--------------------------------|
 | Execution     | Suspends execution until the result is available. | Does not suspend execution unless an `await` exists inside `async*`. |
-| State commit | Commits all [state](/docs/motoko/fundamentals/state) changes before resuming. | Does not commit [state](/docs/motoko/fundamentals/state) unless a proper `await` is inside. |
+| State commit | Commits all [state](https://internetcomputer.org/docs/motoko/fundamentals/state) changes before resuming. | Does not commit [state](https://internetcomputer.org/docs/motoko/fundamentals/state) unless a proper `await` is inside. |
 | Re-evaluation | Runs once, returning the same value if awaited multiple times. | Each `await*` triggers a fresh computation of `async*`. |
 
 ## `try/finally`
@@ -145,7 +145,7 @@ public shared func placeOrder(order : Text) : async Text {
 
 ## Shared types
 
-[Shared types](/docs/motoko/fundamentals/types/shared-types) allow actors to communicate with users and other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
+[Shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) allow actors to communicate with users and other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
 Motoko enforces type safety for shared communication, preventing unexpected modifications to data passed between actors.
 

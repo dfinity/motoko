@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Object declarations
 
-An object is a collection of named fields that can hold values or [functions](/docs/motoko/fundamentals/declarations/function-declarations).
+An object is a collection of named fields that can hold values or [functions](https://internetcomputer.org/docs/motoko/fundamentals/declarations/function-declarations).
 
 ## Comparing records and objects
 
@@ -12,7 +12,7 @@ An object is a collection of named fields that can hold values or [functions](/d
 |---------|--------|--------|
 | Stores data | Yes | Yes |
 | Stores functions | No | Yes |
-| Mutability | Supports [`let` (immutable) and `var` (mutable)](/docs/motoko/fundamentals/declarations/variable-declarations) | [Supports `let` (immutable) and `var` (mutable)](/docs/motoko/fundamentals/declarations/variable-declarations) |
+| Mutability | Supports [`let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) | [Supports `let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) |
 | Supports field visibility (`public`, `private`) | No | Yes |
 | Combination (`and`, `with`) | Yes | Yes |
 | Supports async behavior | No | Yes (supports `async` functions) |

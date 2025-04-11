@@ -6,18 +6,18 @@ sidebar_position: 9
 
 ## Stable declarations
 
-Stable declarations enable data to persist across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). This ensures that important [state](/docs/motoko/fundamentals/state) variables are retained, preventing unintended data loss. Without marking a variable as stable, it is considered **transient** by default, meaning it will be **reset on upgrade**.
+Stable declarations enable data to persist across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). This ensures that important [state](https://internetcomputer.org/docs/motoko/fundamentals/state) variables are retained, preventing unintended data loss. Without marking a variable as stable, it is considered **transient** by default, meaning it will be **reset on upgrade**.
 
-The declarations `let` or `var` within an [actor](/docs/motoko/fundamentals/actors-async) are used as either **stable** or **transient** variables.
+The declarations `let` or `var` within an [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) are used as either **stable** or **transient** variables.
 
 1. `stable` declarations:
    - Persist their value across canister upgrades.
    - Are automatically retained as long as they are directly or indirectly reachable from a stable variable.
-   - Should be used for core application [state](/docs/motoko/fundamentals/state), such as counters, user balances, or configuration data.
+   - Should be used for core application [state](https://internetcomputer.org/docs/motoko/fundamentals/state), such as counters, user balances, or configuration data.
 
 2. `transient` declarations:
    - Reset to default on every upgrade.
-   - Should be used for temporary [state](/docs/motoko/fundamentals/state) or high-order types (e.g., function references) that should not persist.
+   - Should be used for temporary [state](https://internetcomputer.org/docs/motoko/fundamentals/state) or high-order types (e.g., function references) that should not persist.
     <!----Not sure if flexible should be included considering its deprecated but it seems to still exist in the syntax--->
 
 The following example demonstrates a stable counter that retains its value across upgrades:
@@ -101,7 +101,7 @@ actor {
 };
 ```
 
-In this case, [`Nat`](/docs/motoko/base/Nat) is not a subtype of [`Bool`](/docs/motoko/base/Bool), meaning existing values of `x` from version 1 cannot be safely stored in version 2.
+In this case, [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is not a subtype of [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool), meaning existing values of `x` from version 1 cannot be safely stored in version 2.
 
 ### Verifying stable compatibility
 
@@ -180,9 +180,9 @@ The following changes are implicitly migrated:
 
 - Adding or removing actor fields.
 - Changing the mutability of a field.
-- Removing fields from a [record](/docs/motoko/fundamentals/types/records) type.
-- Adding new fields to a [variant](/docs/motoko/fundamentals/types/variants) type.
-- Changing [`Nat`](/docs/motoko/base/Nat) to [`Int`](/docs/motoko/base/Int) (since [`Nat`](/docs/motoko/base/Nat) is a subtype of [`Int`](/docs/motoko/base/Int).
+- Removing fields from a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
+- Adding new fields to a [variant](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) type.
+- Changing [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (since [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int).
 - Adjustments in shared function parameters and return types.
 - Any transformation allowed by Motoko’s subtyping rules.
 
@@ -190,7 +190,7 @@ If a change falls within these categories, no manual migration is required. The 
 
 ### Explicit migration  
 
-For structural changes that **are not stable-compatible**, an explicit migration must be performed. This is necessary when changing a stable variable’s type in an incompatible way, such as converting [`Int`](/docs/motoko/base/Int) to [`Float`](/docs/motoko/base/Float).
+For structural changes that **are not stable-compatible**, an explicit migration must be performed. This is necessary when changing a stable variable’s type in an incompatible way, such as converting [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to [`Float`](https://internetcomputer.org/docs/motoko/base/Float).
 
 Explicit migration follows a three-step approach:
 
@@ -198,7 +198,7 @@ Explicit migration follows a three-step approach:
 2. Transfer data from the old variables to the new ones during the upgrade.
 3. Remove the old variables once all data has been migrated.
 
-Attempting to change `state: Int` directly to [`Float`](/docs/motoko/base/Float) is incompatible, so a new variable `newState` is introduced:
+Attempting to change `state: Int` directly to [`Float`](https://internetcomputer.org/docs/motoko/base/Float) is incompatible, so a new variable `newState` is introduced:
 
 ```motoko no-repl
 import Debug "mo:base/Debug";

@@ -30,7 +30,7 @@ var age : Nat = 21
 let identity : Text = if (x == 1) "x is 1" else "x is not 1"; // Produces a value
 ```
 
-The result of the `if` block is assigned to `identity`. Both branches must return a matching type ([`Text`](/docs/motoko/base/Text) in this case).
+The result of the `if` block is assigned to `identity`. Both branches must return a matching type ([`Text`](https://internetcomputer.org/docs/motoko/base/Text) in this case).
 
 ## `if` statement
 

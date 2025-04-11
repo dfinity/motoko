@@ -1,5 +1,6 @@
 ---
 sidebar_position: 6
+hide_table_of_contents: true
 ---
 
 # Literals
@@ -20,8 +21,8 @@ You can use literals directly in expressions.
 100 + 50
 ```
 
-## References
+## Resources
 
-- [Literals](/docs/motoko/language-manual#literals)
+- [Literals](https://internetcomputer.org/docs/motoko/language-manual#literals)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

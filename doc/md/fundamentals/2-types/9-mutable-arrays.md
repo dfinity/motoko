@@ -4,9 +4,16 @@ sidebar_position: 9
 
 # Mutable arrays
 
-Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](/docs/motoko/fundamentals/types/immutable-arrays), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
+Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
 
-## Immutable arrays vs mutable arrays  
+## When to use mutable arrays
+
+Mutable arrays are beneficial when:
+
+- Frequent modifications are required without the overhead of creating a new array.
+- Dynamic algorithms need in place operations, such as sorting or shuffling.
+
+## Immutable arrays vs mutable arrays
 
 | Feature          | Immutable arrays                          | Mutable arrays                        |
 |-----------------|------------------------------------------|---------------------------------------|
@@ -36,7 +43,7 @@ mutableArray[0] := 10;  // Updates the first element to 10
 
 ## Accessing and modifying elements
 
-Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](/docs/motoko/fundamentals/basic-syntax/traps).
+Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps).
 
 ```motoko no-repl
 let numbers: [var Nat] = [var 10, 20, 30];
@@ -46,9 +53,9 @@ numbers[0] := 100;  // updating first element
 Debug.print(debug_show(numbers[0]));  // 100
 ```
 
-## Converting a mutable array to an immutable array  
+## Converting a mutable array to an immutable array
 
-You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](/docs/motoko/fundamentals/types/functions) or [actors](/docs/motoko/fundamentals/actors-async) to ensure immutability.
+You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
 
 
 ```motoko no-repl
@@ -57,29 +64,6 @@ import Array "mo:base/Array";
 let mutableArray: [var Nat] = [var 1, 2, 3];
 
 let immutableArray: [Nat] = Array.freeze<Nat>(mutableArray);
-```
-
-## When to use mutable arrays  
-
-Mutable arrays are beneficial when:
-
-- Frequent modifications are required without the overhead of creating a new array.
-- Dynamic algorithms need in place operations, such as sorting or shuffling.
-
-```motoko no-repl
-import Array "mo:base/Array";
-
-let rivers: [var Text] = ["Nile", "Rio Cobre", "Yangtze"];
-
-// Create a mutable array with an additional element
-let updatedRivers: [var Text] = Array.tabulateVar<Text>(4, func i =
-    if (i < rivers.size()) rivers[i] else "Mississippi"
-);
-
-updatedRivers[2] := "Amazon";  // Update the third element
-
-Debug.print(debug_show(updatedRivers));  
-// ["Nile", "Rio Cobre", "Amazon", "Mississippi"]
 ```
 
 ## Nested mutable arrays example: Tic-tac-toe
@@ -144,8 +128,8 @@ _ O _
 _ _ X
 ```
 
-## References
+## Resources
 
-- [`Array`](https://internetcomputer.org/docs/current/motoko/main/base/Array)
+- [`Array`](https://internetcomputer.org/docs/current/motoko/base/Array)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

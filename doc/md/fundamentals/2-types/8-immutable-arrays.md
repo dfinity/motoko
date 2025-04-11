@@ -4,7 +4,19 @@ sidebar_position: 8
 
 # Immutable arrays
 
-Immutable arrays in are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](/docs/motoko/fundamentals/types/mutable-arrays), they cannot be modified after creation, ensuring data integrity and predictable behavior.
+Immutable arrays in are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays), they cannot be modified after creation, ensuring data integrity and predictable behavior.
+
+## When to use immutable arrays
+
+Immutable arrays in Motoko are best used when:
+
+- Fixed-size storage is required: The number of elements is known in advance and will not change.
+- Performance optimization is needed: They provide efficient index access without dynamic resizing overhead.
+- Data integrity must be preserved: Immutability ensures that no accidental modifications occur.
+
+Immutable arrays do not allow in-place modifications, making them suitable when stability and performance are priorities.
+
+If the number of elements may change, collections like `List` or `Buffer` are a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
 
 ## Defining an immutable array
 
@@ -16,7 +28,7 @@ let immutableArray: [Nat] = [1, 2, 3, 4, 5];
 
 ## Accessing and modifying elements
 
-Attempting to access an array's index that does not exist will cause a [trap](/docs/motoko/fundamentals/basic-syntax/traps). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
+Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
 ```motoko no-repl
 let numbers: [Nat] = [10, 20, 30];
@@ -72,37 +84,66 @@ mutableCopy[0] := 10;
 //
 ```
 
-## When to use immutable arrays
 
-Immutable arrays in Motoko are best used when:
+## Passing a variable number of arguments
 
-- Fixed-size storage is required: The number of elements is known in advance and will not change.
-- Performance optimization is needed: They provide efficient index access without dynamic resizing overhead.
-- Data integrity must be preserved: Immutability ensures that no accidental modifications occur.
+Motoko supports passing collections to a function., ensuring that all arguments are handled as a collection rather than individual parameters.
 
-Immutable arrays do not allow in-place modifications, making them suitable when stability and performance are priorities.
+```motoko no-repl
+let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
+    
+func printAllStrings(strings: [Text]) {
+    for (s in strings.vals()) {
+        Debug.print(s);
+    }
+}
+```
 
-If the number of elements may change, collections like `List` or `Buffer` are a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
+:::info
+
+Mutable arrays cannot be shared publicly; they can only be passed and modified within the [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) privately.
+
+:::
+
+## Comparing arrays
+
+Comparing arrays requires element-wise comparison. The `Array.equal` function can be used to check whether two arrays contain the same elements in the same order.
+
+Unlike some languages, Motoko does not compare arrays by reference when using `Array.equal`, ensuring a proper element-by-element comparison.
 
 ```motoko no-repl
 import Array "mo:base/Array";
 
-let rivers: [Text] = ["Nile", "Rio Cobre", "Yangtze"];
+func compareArrays() : () {
+    let arr1 : [Nat] = [1, 2, 3];
+    let arr2 : [Nat] = [1, 2, 3];
+    let arr3 : [Nat] = [3, 2, 1];
 
-// Create an immutable array with an additional element using `tabulate`
-let updatedRivers: [Text] = Array.tabulate<Text>(4, func i =
-    if (i < rivers.size()) rivers[i] else "Mississippi"
-);
+    Debug.print(debug_show(Array.equal<Nat>(arr1, arr2, func(x, y) { x == y }))); // true
+    Debug.print(debug_show(Array.equal<Nat>(arr1, arr3, func(x, y) { x == y }))); // false
+    }
+```
 
-Debug.print(debug_show(updatedRivers));
-// ["Nile", "Rio Cobre", "Yangtze", "Mississippi"]
+## Transforming arrays  
+
+Motoko's base library [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
+
+```motoko no-repl
+import Array "mo:base/Array";
+
+func transformArray() : async () {
+    let numbers : [Nat] = [1, 2, 3];
+    let doubled : [Nat] = Array.map<Nat, Nat>(numbers, func(x) { x * 2 });
+
+    Debug.print(debug_show(doubled)); // [2, 4, 6]
+}
 ```
 
 ## Nested immutable arrays example: Chessboard
 
 To demonstrate nested immutable arrays, consider the following:
 
-A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](/docs/motoko/fundamentals/state).
+A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](https://internetcomputer.org/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 
 ```motoko no-repl
@@ -112,7 +153,7 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
     let board : [[Text]] = Array.tabulate<[Text]>(size, func(r : Nat) : [Text] {
         Array.tabulate<Text>(size, func(c : Nat) : Text {
             switch (r, c) {
-              case (0, 0) {"♜"}; case (0, 1) {"♞"}; case (0, 2) {"♝"}; case (0, 3) {"♛"}; case (0, 4) { "♚"}; 
+              case (0, 0) {"♜"}; case (0, 1) {"♞"}; case (0, 2) {"♝"}; case (0, 3) {"♛"}; case (0, 4) { "♚"};
               case (0, 5) {"♝"}; case (0, 6) {"♞"}; case (0, 7) {"♜"}; case (1, _) {"♟"}; // Pawns on row 1
               case (6, _) {"♙"}; // Pawns on row 6
               case (7, 0) {"♖"}; case (7, 1) {"♘"}; case (7, 2) {"♗"}; case (7, 3) {"♕"};
@@ -148,63 +189,10 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
 ```
 
-## Passing a variable number of arguments
 
-Motoko supports passing collections to a function., ensuring that all arguments are handled as a collection rather than individual parameters.
+## Resources
 
-```motoko no-repl
-let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
-    
-func printAllStrings(strings: [Text]) {
-    for (s in strings.vals()) {
-        Debug.print(s);
-    }
-}
-```
-
-:::info
-
-Mutable arrays cannot be shared publicly; they can only be passed and modified within the [actor](/docs/motoko/fundamentals/actors-async) privately.
-
-:::
-
-## Comparing arrays
-
-Comparing arrays requires element-wise comparison. The `Array.equal` function can be used to check whether two arrays contain the same elements in the same order.
-
-Unlike some languages, Motoko does not compare arrays by reference when using `Array.equal`, ensuring a proper element-by-element comparison.
-
-```motoko no-repl
-import Array "mo:base/Array";
-
-func compareArrays() : () {
-    let arr1 : [Nat] = [1, 2, 3];
-    let arr2 : [Nat] = [1, 2, 3];
-    let arr3 : [Nat] = [3, 2, 1];
-
-    Debug.print(debug_show(Array.equal<Nat>(arr1, arr2, func(x, y) { x == y }))); // true
-    Debug.print(debug_show(Array.equal<Nat>(arr1, arr3, func(x, y) { x == y }))); // false
-    }
-```
-
-## Transforming arrays  
-
-Motoko's base library [`Array`](/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
-
-```motoko no-repl
-import Array "mo:base/Array";
-
-func transformArray() : async () {
-    let numbers : [Nat] = [1, 2, 3];
-    let doubled : [Nat] = Array.map<Nat, Nat>(numbers, func(x) { x * 2 });
-
-    Debug.print(debug_show(doubled)); // [2, 4, 6]
-}
-```
-
-## References
-
-- [`Array`](/docs/motoko/base/Array)
-- [`Iter`](/docs/motoko/base/Iter)
+- [`Array`](https://internetcomputer.org/docs/motoko/base/Array)
+- [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

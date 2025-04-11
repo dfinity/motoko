@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## Objects
 
-An object, similar to a [record](/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
+An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
 
 ```motoko no-repl
 object Account {
@@ -27,7 +27,7 @@ object Account {
 
 ## Classes
 
-A class acts as a blueprint for creating multiple objects with independent [state](/docs/motoko/fundamentals/state).
+A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
 class Account(initialBalance: Nat) {
@@ -73,7 +73,7 @@ object class Account(initialBalance: Nat) {
 
 ## Modules
 
-A module provides reusable utility functions and encapsulates both [state](/docs/motoko/fundamentals/state) and behavior, module [state](/docs/motoko/fundamentals/state) is not persistent unless explicitly stored. It supports [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) operations, making it suitable for managing complex functionality across different parts of a program.
+A module provides reusable utility functions and encapsulates both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior, module [state](https://internetcomputer.org/docs/motoko/fundamentals/state) is not persistent unless explicitly stored. It supports [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) operations, making it suitable for managing complex functionality across different parts of a program.
 
 ```motoko no-repl
 module CurrencyConverter {
@@ -149,6 +149,6 @@ withdrawFromAccount(standardAccount); // Fails (missing withdraw)
 withdrawFromAccount(basicAccount);    // Fails (missing withdraw)
 ```
 
-[Learn more about subtyping](/docs/motoko/fundamentals/types/subtyping).
+[Learn more about subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping).
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

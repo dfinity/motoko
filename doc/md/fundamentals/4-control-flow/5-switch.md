@@ -1,10 +1,11 @@
 ---
 sidebar_position: 5
+hide_table_of_contents: true
 ---
 
 # Switch
 
-A switch expression is a selection control structure used for [pattern matching](/docs/motoko/fundamentals/pattern-matching). They can be used to evaluate a value and execute a corresponding block of code based on the match. It simplifies multiple conditional checks, making the code more readable and efficient by selecting one of several possible execution paths.
+A switch expression is a selection control structure used for [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching). They can be used to evaluate a value and execute a corresponding block of code based on the match. It simplifies multiple conditional checks, making the code more readable and efficient by selecting one of several possible execution paths.
 
 A `switch` statement simplifies conditional checks by replacing multiple `if-else` statements. It only executes if the passed argument matches a value, and that value corresponds to a defined case. Importantly, the order of cases matters. If `_` appears first, it will match any input and prevent further cases from being evaluated. Execution stops as soon as a match is found, making `switch` a structured and efficient way to handle multiple conditions.
 

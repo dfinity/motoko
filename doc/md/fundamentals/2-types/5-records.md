@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Records  
 
-Records provide a structured way to group related values using named fields. Unlike [tuples](/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability.
+Records provide a structured way to group related values using named fields. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability.
 
 ## Defining a record
 
@@ -15,7 +15,7 @@ let person = {
   };
 ```
 
-`person` is a record with two labeled fields, `name` of type [`Text`](/docs/motoko/base/Text) and `age` of type [`Nat`](/docs/motoko/base/Nat).
+`person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
 The values of the fields are `"Motoko"` and `25` respectively.
 
@@ -88,7 +88,7 @@ let individual: Individual = {
 
 ## Pattern matching on records
 
-Records can be destructured using [`switch`](/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
+Records can be destructured using [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
 
 ```motoko no-repl

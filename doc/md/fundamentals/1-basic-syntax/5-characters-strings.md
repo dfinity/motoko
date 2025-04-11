@@ -16,13 +16,9 @@ let symbol: Char = '✮';
 'I' == 'i' // False
 ```
 
-### References
-
-- [Char](/docs/motoko/base/Char)
-
 ## Strings
 
-Sequences of characters are handled using the [`Text`](/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
+Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko no-repl
 let greeting: Text = "Hello, world!";
@@ -32,8 +28,9 @@ let greeting: Text = "Hello, world!";
 "ICP" # "x" # "Motoko" // ICP x Motoko
 ```
 
-### References
+### Resources
 
-- [Text](/docs/motoko/base/Text)
+- [`Char`](https://internetcomputer.org/docs/motoko/base/Char)
+- [`Text`](https://internetcomputer.org/docs/motoko/base/Text)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

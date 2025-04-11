@@ -19,7 +19,7 @@ An option is defined using `?` followed by the type of the value it can hold.
 var username: ?Text = null;
 ```
 
-`username` is an optional [`Text`](/docs/motoko/base/Text) value that starts as `null` (no username set).
+`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
 
 ### Checking for presence
 
@@ -34,11 +34,11 @@ if (Option.isSome(value)) {
 }
 ```
 
-By leveraging the `Option` module, handling optional values becomes more concise and expressive, reducing the need for explicit [`switch`](/docs/motoko/fundamentals/control-flow/switch) statements.
+By leveraging the `Option` module, handling optional values becomes more concise and expressive, reducing the need for explicit [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) statements.
 
 ### Providing default values
 
-Instead of manually handling `null` cases with [pattern matching](/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
+Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
 ```motoko no-repl
 import Option "mo:base/Option";
@@ -49,7 +49,7 @@ let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 
 ### Using options for error handling
 
-Options can be used to catch expected failures instead of calling a [`trap`](/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
+Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
 
 ```motoko no-repl
 func safeDivide(a: Int, b: Int): ?Int {
@@ -156,9 +156,9 @@ func divide(a: Nat, b: Nat): Result.Result<Nat, Text> {
 };
 ```
 
-## References
+## Resources
 
-- [`Option`](/docs/motokobase/Option)
+- [`Option`](/docs/motoko/base/Option)
 
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

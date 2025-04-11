@@ -98,7 +98,7 @@ With [Vessel](https://github.com/dfinity/vessel), add the package to `vessel.dha
 
 ## Importing actor classes
 
-When imported, an [actor](/docs/motoko/fundamentals/actors-async) class provides a type definition describing the class interface and a function that returns an instance of the class.
+When imported, an [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) class provides a type definition describing the class interface and a function that returns an instance of the class.
 
 For example, if you define the following actor class:
 
@@ -135,7 +135,7 @@ persistent actor CountToTen {
 };
 ```
 
-`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the [actor](/docs/motoko/fundamentals/actors-async) class is not named, it will result in a bad import error because [actor](/docs/motoko/fundamentals/actors-async) class imports cannot be anonymous.
+`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) class is not named, it will result in a bad import error because [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) class imports cannot be anonymous.
 
 ## Importing from another canister
 

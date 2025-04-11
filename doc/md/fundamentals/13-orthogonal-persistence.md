@@ -11,7 +11,7 @@ Motoko features two implementations for orthogonal persistence:
 | Upgrade process | Retains entire WebAssembly (Wasm) memory. | Serializes and deserializes stable data. |
 | Scalability | Scales beyond 4GiB. | Limited to 2GiB. |
 |Performance | No serialization overhead. | Serialization impacts performance. |
-| [State](/docs/motoko/fundamentals/state) management | All variables are stable by default. | Stable variables must be explicitly declared using `stable`. |
+| [State](https://internetcomputer.org/docs/motoko/fundamentals/state) management | All variables are stable by default. | Stable variables must be explicitly declared using `stable`. |
 | Handling non-persistent data | `transient` keyword used for exceptions. | Requires manual migration logic (`preupgrade`/`postupgrade`). |
 
 **Note: Enhanced orthogonal persistence is in beta**.
@@ -44,11 +44,11 @@ moc --enhanced-orthogonal-persistence
 
 Before an upgrade, the system verifies that the new program version is **memory-compatible** with the old one. The following changes are allowed:
 
-- Adding or removing [actor](/docs/motoko/fundamentals/actors-async) fields.
+- Adding or removing [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) fields.
 - Changing mutability (`let` ↔ `var`).
 - Removing object fields.
 - Adding variant fields.
-- Changing [`Nat`](/docs/motoko/base/Nat) to [`Int`](/docs/motoko/base/Int).
+- Changing [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) to [`Int`](https://internetcomputer.org/docs/motoko/base/Int).
 - Adjustments to shared function parameters and return types.
 
 If an upgrade is incompatible, the system **automatically rolls it back** to prevent data loss. More complex changes require explicit migration.
@@ -82,7 +82,7 @@ During an upgrade, the classical orthogonal persistence mechanism serializes all
 
 This process occurs through post-upgrade and pre-upgrade hooks, which:
 
-- Must copy the entire heap [state](/docs/motoko/fundamentals/state) during upgrades regardless of what actually changed.
+- Must copy the entire heap [state](https://internetcomputer.org/docs/motoko/fundamentals/state) during upgrades regardless of what actually changed.
 
 - Force developers to serialize and deserialize all stable data, even when only small portions are modified.
 
@@ -92,7 +92,7 @@ This approach has several significant downsides:
 
 - A maximum of 2GiB of heap data can be persisted across upgrades due to implementation restrictions. In practice, the actual supported amount of stable data may be lower.
 
-- Shared immutable heap objects can be duplicated, potentially causing [state](/docs/motoko/fundamentals/state) explosion during upgrades.
+- Shared immutable heap objects can be duplicated, potentially causing [state](https://internetcomputer.org/docs/motoko/fundamentals/state) explosion during upgrades.
 
 - Deeply nested data structures can lead to call stack overflows during serialization/deserialization.
 

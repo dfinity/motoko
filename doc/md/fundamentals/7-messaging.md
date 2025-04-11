@@ -13,7 +13,7 @@ ICP enforces rules on when and how [canisters](https://internetcomputer.org/docs
 | A canister cannot send messages during installation. | Prevents execution errors at deployment. |
 | A query function cannot send messages. | Query functions run locally and do not trigger updates. |
 | Shared functions cannot be called in a synchronous context. | Shared calls require `async` execution. |
-| Only async contexts support [error handling](/docs/motoko/fundamentals/error-handling) (`try/catch`). | Messaging errors only occur in async contexts. |
+| Only async contexts support [error handling](https://internetcomputer.org/docs/motoko/fundamentals/error-handling) (`try/catch`). | Messaging errors only occur in async contexts. |
 
 In Motoko, an expression is in an async context if it appears in an `async` function. Query functions are 'ready only' functions, so they do not create an async context and cannot use `await` or send messages.
 

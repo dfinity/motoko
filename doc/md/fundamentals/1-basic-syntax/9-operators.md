@@ -99,7 +99,7 @@ Bounded integers **trap** on overflow, but **wrapping versions** allow overflow 
 
 | Operator | Description | Example |
 |----------|------------|------------|
-| `#`      | Concatenates two [`Text`](/docs/motoko/base/Text) values | `a # b` |
+| `#`      | Concatenates two [`Text`](https://internetcomputer.org/docs/motoko/base/Text) values | `a # b` |
 
 ## Assignment operators
 
@@ -112,7 +112,7 @@ Assignment operators modify variables in place. Only mutable variables `var` can
 | `-=`     | Subtract and assign | `a -= b` |
 | `*=`     | Multiply and assign | `a *= b` |
 | `/=`     | Divide and assign | `a /= b` |
-| `#=`     | Concatenate and assign (for [`Text`](/docs/motoko/base/Text)) | `a #= b` |
+| `#=`     | Concatenate and assign (for [`Text`](https://internetcomputer.org/docs/motoko/base/Text)) | `a #= b` |
 
 ## Operator precedence
 

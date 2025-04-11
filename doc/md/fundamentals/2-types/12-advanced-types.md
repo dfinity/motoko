@@ -8,7 +8,7 @@ Advanced type features enable more flexible and expressive type definitions, inc
 
 ## Structural equality
 
-Structural equality determines whether two values are equal based on their contents. This applies to immutable data structures, such as [records](/docs/motoko/fundamentals/types/records) and [variants](/docs/motoko/fundamentals/types/variants), but does not apply to mutable structures for safety reasons.
+Structural equality determines whether two values are equal based on their contents. This applies to immutable data structures, such as [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and [variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants), but does not apply to mutable structures for safety reasons.
 
 ```motoko no-repl
 type Point = { x : Int; y : Int };
@@ -23,7 +23,7 @@ Even though `p1` and `p2` are distinct objects, they are considered equal becaus
 
 ## Generic types
 
-Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](/docs/motoko/fundamentals/types/functions), [classes](/docs/motoko/fundamentals/types/objects-classes), and data structures.
+Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions), [classes](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes), and data structures.
 
 ```motoko no-repl
 // Generic function
@@ -100,7 +100,7 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](/docs/motoko/fundamentals/types/records) `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
 
 Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a basic type.
 
@@ -112,8 +112,8 @@ func addIfInt<T <: Int>(x : T, y : T) : Int {
 let result = addIfInt(5, -10);  // Allowed because both are of type Int.
 ```
 
-Here, `T <: Int` constrains `T` to be a subtype of [`Int`](/docs/motoko/base/Int). Since [`Int`](/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
+Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
 
-The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](/docs/motoko/base/Int) or [`Float`](/docs/motoko/base/Float), it restricts `T` to that type.
+The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](https://internetcomputer.org/docs/motoko/base/Int) or [`Float`](https://internetcomputer.org/docs/motoko/base/Float), it restricts `T` to that type.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

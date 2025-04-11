@@ -28,7 +28,7 @@ func greet(name: Username, age: Age) : Text {
 
 ## Record types
 
-A type can represent a structured [record](/docs/motoko/fundamentals/types/records) with labeled fields.
+A type can represent a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) with labeled fields.
 
 ```motoko no-repl
 // A reusable record
@@ -121,9 +121,9 @@ type Seq<T> = ?(T, Seq<[T]>);
 
 Expands by wrapping `T` inside `[T]`, growing the type. This is expansive and not allowed.
 
-## References
+## Resources
 
-- [`Record`](/docs/motoko/fundamentals/types/records)
-- [`Variant`](/docs/motoko/fundamentals/types/variants)
+- [`Record`](https://internetcomputer.org/docs/motoko/fundamentals/types/records)
+- [`Variant`](https://internetcomputer.org/docs/motoko/fundamentals/types/variants)
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

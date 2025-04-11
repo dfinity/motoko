@@ -8,12 +8,12 @@ _stable variables_, whose persistence mechanism also uses (real) IC stable memor
 It is also fully compatible with existing uses of the `ExperimentalStableMemory` library, which has a similar interface, but,
 only supported a single memory region, without isolation between different applications.
 
-The `Region` type is stable and can be used in stable data structures.
+The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type is stable and can be used in stable data structures.
 
-A new, empty `Region` is allocated using function `new()`.
+A new, empty [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is allocated using function `new()`.
 
 Regions are stateful objects and can be distinguished by the numeric identifier returned by function `id(region)`.
-Every region owns an initially empty, but growable sequence of virtual IC stable memory pages. 
+Every region owns an initially empty, but growable sequence of virtual IC stable memory pages.
 The current size, in pages, of a region is returned by function `size(region)`.
 The size of a region determines the range, [ 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of `load`/`store` operations on the region.
 
@@ -22,7 +22,7 @@ A call to `grow` may succeed, returning the previous size of the region, or fail
 
 A size of a region can only grow and never shrink.
 In addition, the stable memory pages allocated to a region will *not* be reclaimed by garbage collection, even
-if the region object itself becomes unreachable. 
+if the region object itself becomes unreachable.
 
 Growth is capped by a soft limit on physical page count controlled by compile-time flag
 `--max-stable-pages <n>` (the default is 65536, or 4GiB).
@@ -50,13 +50,13 @@ Usage:
 import Region "mo:base/Region";
 ```
 
-## Type `Region`
+## Type [`Region`](https://internetcomputer.org/docs/motoko/base/Region)
 ``` motoko no-repl
 type Region = Prim.Types.Region
 ```
 
 A stateful handle to an isolated region of IC stable memory.
-`Region` is a stable type and regions can be stored in stable variables.
+[`Region`](https://internetcomputer.org/docs/motoko/base/Region) is a stable type and regions can be stored in stable variables.
 
 ## Value `new`
 ``` motoko no-repl
@@ -95,7 +95,7 @@ assert Region.id(region) == 16;
 let size : (region : Region) -> (pages : Nat64)
 ```
 
-Current size of `region`, in pages.
+Current size of [`Region`](https://internetcomputer.org/docs/motoko/base/Region), in pages.
 Each page is 64KiB (65536 bytes).
 Initially `0`.
 Preserved across upgrades, together with contents of allocated
@@ -115,7 +115,7 @@ afterSize - beforeSize // => 10
 let grow : (region : Region, newPages : Nat64) -> (oldPages : Nat64)
 ```
 
-Grow current `size` of `region` by the given number of pages.
+Grow current `size` of [`Region`](https://internetcomputer.org/docs/motoko/base/Region) by the given number of pages.
 Each page is 64KiB (65536 bytes).
 Returns the previous `size` when able to grow.
 Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages insufficient.
@@ -141,7 +141,7 @@ afterSize - beforeSize // => 10
 let loadNat8 : (region : Region, offset : Nat64) -> Nat8
 ```
 
-Within `region`, load a `Nat8` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -158,7 +158,7 @@ Region.loadNat8(region, offset) // => 123
 let storeNat8 : (region : Region, offset : Nat64, value : Nat8) -> ()
 ```
 
-Within `region`, store a `Nat8` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -175,7 +175,7 @@ Region.loadNat8(region, offset) // => 123
 let loadNat16 : (region : Region, offset : Nat64) -> Nat16
 ```
 
-Within `region`, load a `Nat16` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Nat16` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -192,7 +192,7 @@ Region.loadNat16(region, offset) // => 123
 let storeNat16 : (region : Region, offset : Nat64, value : Nat16) -> ()
 ```
 
-Within `region`, store a `Nat16` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Nat16` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -209,7 +209,7 @@ Region.loadNat16(region, offset) // => 123
 let loadNat32 : (region : Region, offset : Nat64) -> Nat32
 ```
 
-Within `region`, load a `Nat32` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Nat32` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -226,7 +226,7 @@ Region.loadNat32(region, offset) // => 123
 let storeNat32 : (region : Region, offset : Nat64, value : Nat32) -> ()
 ```
 
-Within `region`, store a `Nat32` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Nat32` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -243,7 +243,7 @@ Region.loadNat32(region, offset) // => 123
 let loadNat64 : (region : Region, offset : Nat64) -> Nat64
 ```
 
-Within `region`, load a `Nat64` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Nat64` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -260,7 +260,7 @@ Region.loadNat64(region, offset) // => 123
 let storeNat64 : (region : Region, offset : Nat64, value : Nat64) -> ()
 ```
 
-Within `region`, store a `Nat64` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Nat64` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -277,7 +277,7 @@ Region.loadNat64(region, offset) // => 123
 let loadInt8 : (region : Region, offset : Nat64) -> Int8
 ```
 
-Within `region`, load a `Int8` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Int8` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -294,7 +294,7 @@ Region.loadInt8(region, offset) // => 123
 let storeInt8 : (region : Region, offset : Nat64, value : Int8) -> ()
 ```
 
-Within `region`, store a `Int8` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Int8` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -311,7 +311,7 @@ Region.loadInt8(region, offset) // => 123
 let loadInt16 : (region : Region, offset : Nat64) -> Int16
 ```
 
-Within `region`, load a `Int16` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Int16` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -328,7 +328,7 @@ Region.loadInt16(region, offset) // => 123
 let storeInt16 : (region : Region, offset : Nat64, value : Int16) -> ()
 ```
 
-Within `region`, store a `Int16` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Int16` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -345,7 +345,7 @@ Region.loadInt16(region, offset) // => 123
 let loadInt32 : (region : Region, offset : Nat64) -> Int32
 ```
 
-Within `region`, load a `Int32` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Int32` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -362,7 +362,7 @@ Region.loadInt32(region, offset) // => 123
 let storeInt32 : (region : Region, offset : Nat64, value : Int32) -> ()
 ```
 
-Within `region`, store a `Int32` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Int32` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -379,7 +379,7 @@ Region.loadInt32(region, offset) // => 123
 let loadInt64 : (region : Region, offset : Nat64) -> Int64
 ```
 
-Within `region`, load a `Int64` value from `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), load a `Int64` value from `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -396,7 +396,7 @@ Region.loadInt64(region, offset) // => 123
 let storeInt64 : (region : Region, offset : Nat64, value : Int64) -> ()
 ```
 
-Within `region`, store a `Int64` value at `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store a `Int64` value at `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -413,7 +413,7 @@ Region.loadInt64(region, offset) // => 123
 let loadFloat : (region : Region, offset : Nat64) -> Float
 ```
 
-Within `region`, loads a `Float` value from the given `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), loads a `Float` value from the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:
@@ -430,7 +430,7 @@ Region.loadFloat(region, offset) // => 1.25
 let storeFloat : (region : Region, offset : Nat64, value : Float) -> ()
 ```
 
-Within `region`, store float `value` at the given `offset`.
+Within [`Region`](https://internetcomputer.org/docs/motoko/base/Region), store float `value` at the given `offset`.
 Traps on an out-of-bounds access.
 
 Example:

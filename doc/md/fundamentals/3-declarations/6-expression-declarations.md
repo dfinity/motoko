@@ -13,7 +13,7 @@ An expression declaration is a statement where an expression is evaluated only f
 
 ## Basic usage
 
-Expression declarations can be used for functions or operations that produce side effects, such as printing or modifying [state](/docs/motoko/fundamentals/state).
+Expression declarations can be used for functions or operations that produce side effects, such as printing or modifying [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
 Debug.print("Hello, Motoko!");
@@ -41,6 +41,6 @@ x * 2;  // This expression produces a value but is not assigned.
 let y = 5;
 ```
 
-The expression `x * 2;` returns a value ([`Nat`](/docs/motoko/base/Nat)), but it is not assigned. Since it is not the last declaration, it must return `()`.
+The expression `x * 2;` returns a value ([`Nat`](https://internetcomputer.org/docs/motoko/base/Nat)), but it is not assigned. Since it is not the last declaration, it must return `()`.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

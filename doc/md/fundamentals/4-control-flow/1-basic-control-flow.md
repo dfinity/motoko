@@ -9,7 +9,7 @@ sidebar_position: 1
 | `return` | Exits a function and returns a value. |
 | `if` | Executes a block if the condition is `true`. |
 | `if/else` | Executes different blocks based on a condition. |
-| `switch` | [Pattern matching](/docs/motoko/fundamentals/pattern-matching) for variants, options, results, etc. |
+| `switch` | [Pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) for variants, options, results, etc. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
 | `while` | Runs while a condition is `true`. |
@@ -216,7 +216,7 @@ public func returnControlFlow() : async Int {
 
 ### Function calls
 
-A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
+A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
 ```motoko no-repl
 public func processNumbers(numbers: [Int]) : Int {

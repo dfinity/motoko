@@ -4,15 +4,15 @@ sidebar_position: 14
 
 # Type conversions
 
-Conversions are used to transform values between different types to ensure compatibility and ease of manipulation. Common conversions include numeric transformation, such as converting [`Float`](/docs/motoko/base/Float) or [`Int`](/docs/motoko/base/Int) to [`Nat`](/docs/motoko/base/Nat), and text manipulation, like converting [`Text`](/docs/motoko/base/Text) to [`Float`](/docs/motoko/base/Float) or encoding [`Text`](/docs/motoko/base/Text) as a [`Blob`](/docs/motoko/base/Blob). Arrays and tuples can be converted into structured types, such as records or hashmaps, for better organization. Additionally, time conversions enable transforming `Time.now()` (nanoseconds since 1970) into human-readable date formats, with optional timezone adjustments. These conversions provide flexibility when working with different data types.
+Conversions are used to transform values between different types to ensure compatibility and ease of manipulation. Common conversions include numeric transformation, such as converting [`Float`](https://internetcomputer.org/docs/motoko/base/Float) or [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), and text manipulation, like converting [`Text`](https://internetcomputer.org/docs/motoko/base/Text) to [`Float`](https://internetcomputer.org/docs/motoko/base/Float) or encoding [`Text`](https://internetcomputer.org/docs/motoko/base/Text) as a [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob). Arrays and tuples can be converted into structured types, such as records or hashmaps, for better organization. Additionally, time conversions enable transforming `Time.now()` (nanoseconds since 1970) into human-readable date formats, with optional timezone adjustments. These conversions provide flexibility when working with different data types.
 
 ## Converting types to `Nat`
 
-Motoko provides methods for converting both [`Float`](/docs/motoko/base/Float) and [`Int`](/docs/motoko/base/Int) to [`Nat`](/docs/motoko/base/Nat). Since [`Nat`](/docs/motoko/base/Nat) only represents non-negative integers, the conversion must handle cases where the original value is negative or contains a decimal.
+Motoko provides methods for converting both [`Float`](https://internetcomputer.org/docs/motoko/base/Float) and [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat). Since [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) only represents non-negative integers, the conversion must handle cases where the original value is negative or contains a decimal.
 
 ### `Float` to `Nat`
 
-A [`Float`](/docs/motoko/base/Float) can be converted to [`Nat`](/docs/motoko/base/Nat) using `Float.toInt`, followed by `Int.abs` to ensure a non-negative value.
+A [`Float`](https://internetcomputer.org/docs/motoko/base/Float) can be converted to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) using `Float.toInt`, followed by `Int.abs` to ensure a non-negative value.
 
 ```motoko no-repl
 import Float "mo:base/Float";
@@ -28,7 +28,7 @@ let result2 = floatToNat(-15.6);  // 15 (absolute value is taken)
 
 ### `Int` to `Nat`
 
-[`Int`](/docs/motoko/base/Int) can be directly converted to [`Nat`](/docs/motoko/base/Nat) using `Int.abs`, which removes any negative sign.
+[`Int`](https://internetcomputer.org/docs/motoko/base/Int) can be directly converted to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) using `Int.abs`, which removes any negative sign.
 
 ```motoko no-repl
 import Int "mo:base/Int";
@@ -46,9 +46,9 @@ let result4 = intToNat(-5);   // 5
 
 ### `Nat8` to `Char`
 
-Motoko allows converting a [`Nat8`](/docs/motoko/base/Nat8) value to a [`Char`](/docs/motoko/base/Char), where the [`Nat8`](/docs/motoko/base/Nat8) value represents a **unicode scalar value** in the **ASCII range**.
+Motoko allows converting a [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value to a [`Char`](https://internetcomputer.org/docs/motoko/base/Char), where the [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value represents a **unicode scalar value** in the **ASCII range**.
 
-Since [`Nat8`](/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to [`Nat32`](/docs/motoko/base/Nat32) before being converted into [`Char`](/docs/motoko/base/Char).
+Since [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32) before being converted into [`Char`](https://internetcomputer.org/docs/motoko/base/Char).
 
 ```motoko no-repl
 import Char "mo:base/Char";
@@ -78,7 +78,7 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 
 ### `Text` to an optional `Blob` for a ledger memo
 
-[`Text`](/docs/motoko/base/Text) can be converted into a [`Blob`](/docs/motoko/base/Blob) using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
+[`Text`](https://internetcomputer.org/docs/motoko/base/Text) can be converted into a [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob) using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
 
 ```motoko no-repl
 import Text "mo:base/Text";
@@ -94,7 +94,7 @@ let memo1 = textToOptionalBlob("Payment Memo");  // ?Blob
 
 <!--This was taken from my JSON library for parsing JSON floats. This could potentially be its own page-->
 
-Motoko does not have a built-in `Text.toFloat` function, so parsing [`Text`](/docs/motoko/base/Text) into [`Float`](/docs/motoko/base/Float) requires handling:
+Motoko does not have a built-in `Text.toFloat` function, so parsing [`Text`](https://internetcomputer.org/docs/motoko/base/Text) into [`Float`](https://internetcomputer.org/docs/motoko/base/Float) requires handling:
 
 - Integer and decimal parts.
 - Scientific notation (`e` or `E`).
@@ -413,7 +413,7 @@ let adjustedTime = system_time - (5 * 3600);
 
 ### `Array` to `Text`
 
-`Text.fromArray` converts a [`Char`](/docs/motoko/base/Char) into a [`Text`](/docs/motoko/base/Text). When working with different types, elements must be converted to [`Text`](/docs/motoko/base/Text) before transformation.
+`Text.fromArray` converts a [`Char`](https://internetcomputer.org/docs/motoko/base/Char) into a [`Text`](https://internetcomputer.org/docs/motoko/base/Text). When working with different types, elements must be converted to [`Text`](https://internetcomputer.org/docs/motoko/base/Text) before transformation.
 
 ```motoko no-repl
 import Text "mo:base/Text";
@@ -424,7 +424,7 @@ func arrayToText(arr: [Char]): Text {
 };
 ```
 
-For arrays containing numbers or other types, each element is converted to [`Text`](/docs/motoko/base/Text) before joining them into a single string.
+For arrays containing numbers or other types, each element is converted to [`Text`](https://internetcomputer.org/docs/motoko/base/Text) before joining them into a single string.
 
 ```motoko no-repl
 import Text "mo:base/Text";
@@ -437,7 +437,7 @@ public func arrayOfNatToText(arr: [Nat]): async Text {
 
 ### `Array` of tuples to an object
 
-Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](/docs/motoko/fundamentals/types/records) or a structured representation.
+Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) or a structured representation.
 
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
@@ -452,7 +452,7 @@ func arrayToMap(arr: [(Text, Nat)]): HashMap.HashMap<Text, Nat> {
 
 ```
 
-To convert an array of tuples `[(Text, Nat)]` into a custom [record](/docs/motoko/fundamentals/types/records) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](/docs/motoko/fundamentals/types/records).
+To convert an array of tuples `[(Text, Nat)]` into a custom [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records).
 
 ```motoko no-repl
 import Array "mo:base/Array";

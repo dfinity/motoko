@@ -4,7 +4,7 @@ sidebar: 4
 
 # Motoko Visual Studio Code extension
 
-Visual Studio (VS) Code is a [widely used](https://survey.stackoverflow.co/2022/#section-worked-with-vs-want-to-work-with-integrated-development-environment) open-source IDE that supports canister development in [Motoko](/docs/motoko/main/getting-started/motoko-introduction) and [Rust](https://www.rust-lang.org/).
+Visual Studio (VS) Code is a [widely used](https://survey.stackoverflow.co/2022/#section-worked-with-vs-want-to-work-with-integrated-development-environment) open-source IDE that supports canister development in [Motoko](https://internetcomputer.org/docs/motoko/getting-started/motoko-introduction) and [Rust](https://www.rust-lang.org/).
 
 ## Motoko
 

@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Class declarations
 
-A class in Motoko is a blueprint for creating [objects](/docs/motoko/fundamentals/declarations/object-declaration). It encapsulates [state](/docs/motoko/fundamentals/state) (fields) and behavior (methods). Instances of a class can be created with specific data. Unlike records and objects, classes support constructors, enabling each instance to have unique values upon creation.
+A class in Motoko is a blueprint for creating [objects](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declaration). It encapsulates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) (fields) and behavior (methods). Instances of a class can be created with specific data. Unlike records and objects, classes support constructors, enabling each instance to have unique values upon creation.
 
 ## Defining a class
 

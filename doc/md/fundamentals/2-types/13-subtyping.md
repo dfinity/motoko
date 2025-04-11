@@ -20,7 +20,7 @@ Subtyping is a fundamental concept in type systems that allows a value of one ty
 
 ## Numeric (`Nat <: Int`)
 
-[`Nat`](/docs/motoko/base/Nat) is a subtype of [`Int`](/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](/docs/motoko/base/Nat) (as negative numbers exist in `Int`).
+[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) (as negative numbers exist in `Int`).
 
 ```motoko no-repl
 let x : Int = 10 : Nat;  // Allowed, since Nat is a subtype of Int
@@ -29,7 +29,7 @@ let y : Nat = -5;        // Not allowed, -5 is not a Nat
 
 ## Options
 
-If `T1 <: T2`, then `?T1 <: ?T2` (option subtyping is covariant). This means an [optional value](/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
+If `T1 <: T2`, then `?T1 <: ?T2` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
 
 ```motoko no-repl
 let a : ?Nat = ?5;    // Allowed, since `Nat <: Int`, `?Nat <: ?Int`
@@ -38,7 +38,7 @@ let b : ?Int = a;     // Works because `?Nat <: ?Int`
 
 ## Records
 
-[Records](/docs/motoko/fundamentals/types/records) support structural subtyping, meaning a record with more fields can be used where a record with fewer fields is expected. A record type is a subtype of another if it has at least the same fields with matching types.
+[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) support structural subtyping, meaning a record with more fields can be used where a record with fewer fields is expected. A record type is a subtype of another if it has at least the same fields with matching types.
 
 ```motoko no-repl
 type A = { name : Text };
@@ -53,7 +53,7 @@ let b2 : B = a; // Not allowed because A lacks age.
 
 ## Variants
 
-[Variants](/docs/motoko/fundamentals/types/variants) also support structural subtyping, but only if the variant contains, at most, the same cases as expected. A variant with fewer cases can be used where a variant with more cases is expected.
+[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support structural subtyping, but only if the variant contains, at most, the same cases as expected. A variant with fewer cases can be used where a variant with more cases is expected.
 
 ```motoko no-repl
 type A = { #Dog };
@@ -66,7 +66,7 @@ let a2 : A = b; // Not allowed because b might be #Cat, which A does not support
 
 ## Immutable arrays
 
-[Immutable arrays (`[T]`)](/docs/motoko/fundamentals/types/immutable-arrays) support covariant subtyping, meaning if `T1 <: T2`, then `[T1] <: [T2]`. This means an immutable array of a subtype can be used as an immutable array of a supertype.
+[Immutable arrays (`[T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) support covariant subtyping, meaning if `T1 <: T2`, then `[T1] <: [T2]`. This means an immutable array of a subtype can be used as an immutable array of a supertype.
 
 ```motoko no-repl
 let nums : [Nat] = [1, 2, 3];
@@ -75,7 +75,7 @@ let numsAsInts : [Int] = nums;  // Allowed, since `Nat <: Int`
 
 ## Mutable arrays
 
-[Mutable arrays (`var [T]`)](/docs/motoko/fundamentals/types/mutable-arrays) do not support subtyping due to type safety risks. Allowing `var [T1] <: var [T2]` could lead to runtime type mismatches.
+[Mutable arrays (`var [T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) do not support subtyping due to type safety risks. Allowing `var [T1] <: var [T2]` could lead to runtime type mismatches.
 
 ```motoko no-repl
 let nums :  [var Nat] = [var 1, 2, 3];
@@ -84,7 +84,7 @@ let numsAsInts :  [var Int] = nums;  // Not allowed because mutable arrays are i
 
 ## Functions
 
-[Function](/docs/motoko/fundamentals/types/functions) subtyping follows two rules:
+[Function](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) subtyping follows two rules:
 
 1. Parameter types must be contravariant: `T2 <: T1` means `T1 -> R <: T2 -> R`
 2. Return types must be covariant: `R1 <: R2` means `T -> R1 <: T -> R2`
@@ -99,7 +99,7 @@ let g : (Int) -> Nat = child;   // Not allowed because the return type must be c
 
 ## Objects, modules & actors
 
-[Objects](/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped. An object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
+[Objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped. An object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
 
 ```motoko no-repl
 type Parent = { getName : () -> Text };
@@ -111,7 +111,7 @@ let p : Parent = obj;  // Allowed, since `Child` has all methods of `Parent`
 
 ## Recursive types
 
-[Recursive types](/docs/motoko/fundamentals/types/advanced-types) can be subtypes of each other **if their structure allows it**. This is useful for **self-referential structures** like linked lists.
+[Recursive types](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be subtypes of each other **if their structure allows it**. This is useful for **self-referential structures** like linked lists.
 
 ```motoko no-repl
 type ListA = ?{ head : Nat; tail : ListA };

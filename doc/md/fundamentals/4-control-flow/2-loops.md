@@ -63,7 +63,7 @@ while (condition) {
 }
 ```
 
-1. The condition must be a [`Bool`](/docs/motoko/base/Bool) (`true` or `false`).
+1. The condition must be a [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) (`true` or `false`).
 2. The loop body must have type `()` such that it doesn't return a meaningful value.
 3. The loop first evaluates the condition:
    - If it causes a trap (error), the loop stops immediately.

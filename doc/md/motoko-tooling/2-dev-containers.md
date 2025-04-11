@@ -1,5 +1,6 @@
 ---
 sidebar: 2
+hide_table_of_contents: true
 ---
 
 # Developer containers

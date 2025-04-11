@@ -4,7 +4,7 @@ sidebar_position: 11
 
 # Stable types  
 
-Stable types are essential for preserving [state](/docs/motoko/fundamentals/state) across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). Unlike shared types, which focus on [inter-canister](/docs/motoko/fundamentals/messaging) communication, stable types ensure data persistence over time.
+Stable types are essential for preserving [state](https://internetcomputer.org/docs/motoko/fundamentals/state) across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). Unlike shared types, which focus on [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) communication, stable types ensure data persistence over time.
 
 A type is stable if it can be safely stored and restored before and after an upgrade. This includes all shared types, as well as certain mutable structures that are designed for long-term storage.
 
@@ -14,7 +14,7 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 
 | Type                            | Stable | Shared |
 |---------------------------------|--------|--------|
-| Primitive types ([`Nat`](/docs/motoko/base/Nat), [`Text`](/docs/motoko/base/Text), [`Bool`](/docs/motoko/base/Bool), etc.) | Yes | Yes |
+| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool), etc.) | Yes | Yes |
 | Immutable arrays (`[T]`)     | Yes | Yes |
 | Mutable arrays (`[var T]`)   | Yes | No  |
 | Records with immutable fields | Yes | Yes |
@@ -29,7 +29,7 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 
 ### Primitive types
 
-Most [primitive types](/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
+Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
 
 ```motoko no-repl
 // Numbers, text, and booleans are stable
@@ -52,7 +52,7 @@ stable var scores: [var Nat] = [var 100, 85, 92];
 
 ### Records with mutable or immutable fields  
 
-[Records](/docs/motoko/fundamentals/types/records) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
+[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
 
 ```motoko no-repl
 // Records with immutable fields are stable
@@ -71,7 +71,7 @@ stable var settings = {
 
 ### Variants with stable type tags  
 
-[Variants](/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
+[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
 
 ```motoko no-repl
 // Variants with stable tags are stable
@@ -87,7 +87,7 @@ stable var ghostStatus: UserStatus = #busy("In a meeting");
 
 ### Option types  
 
-[Option](/docs/motoko/fundamentals/types/options-results) types are stable when they contain stable types.
+[Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) types are stable when they contain stable types.
 
 ```motoko no-repl
 // Option types with stable inner types are stable
@@ -97,7 +97,7 @@ stable var optionalMessage: ?Text = null;
 
 ### Regions  
 
-The `Region` type, which provides low-level memory management, is stable.
+The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
 // Regions are stable
@@ -106,7 +106,7 @@ stable var storage: Region = Region.new();
 
 ### Actor references  
 
-References to [actors](/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
+References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
 // Actor types are stable

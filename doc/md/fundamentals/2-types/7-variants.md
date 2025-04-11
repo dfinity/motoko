@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Variants
 
-Variants allow defining values that can take on multiple possible forms, each labeled with a distinct tag. Unlike [records](/docs/motoko/fundamentals/types/records), where all fields exist at once, a variant holds exactly one of its possible values at any given time. This makes variants useful for representing states, actions, or categorized data.
+Variants allow defining values that can take on multiple possible forms, each labeled with a distinct tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a variant holds exactly one of its possible values at any given time. This makes variants useful for representing states, actions, or categorized data.
 
 
 ## Defining a variant
@@ -17,7 +17,7 @@ type Status = {
 };
 ```
 
-`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a [`Text`](/docs/motoko/base/Text) value, such as the reason for the ban.
+`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.
 
 ## Assigning variants
 
@@ -30,7 +30,7 @@ let bannedUser: Status = #Banned("Violation of rules");
 
 ## Accessing a variant's value
 
-To work with a variant, use a [`switch`](/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
+To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
 ```motoko no-repl
 let activeUser: Status = #Active;
@@ -58,7 +58,7 @@ A traffic light cycles between three distinct states:
 - Yellow: Vehicles should prepare to stop.
 - Green: Vehicles may proceed.
 
-Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid [state](/docs/motoko/fundamentals/state), as every possible value is explicitly defined. The transitions are controlled and predictable.
+Since the traffic light can only be in one of these states at a time, a variant is well-suited to model it. There is no invalid [state](https://internetcomputer.org/docs/motoko/fundamentals/state), as every possible value is explicitly defined. The transitions are controlled and predictable.
 
 ### Defining the traffic light state
 
@@ -73,7 +73,7 @@ type TrafficLight = {
 
 ### Transitioning between states
 
-A function can define how the traffic light cycles from one [state](/docs/motoko/fundamentals/state) to the next.
+A function can define how the traffic light cycles from one [state](https://internetcomputer.org/docs/motoko/fundamentals/state) to the next.
 
 ```motoko no-repl
 func nextState(light: TrafficLight): TrafficLight {
@@ -139,7 +139,7 @@ type Tree = {
 
 This example contains two variants:
 
-1. `#node` contains a value of type [`Nat`](/docs/motoko/base/Nat) and two child trees (`left` and `right`).
+1. `#node` contains a value of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) and two child trees (`left` and `right`).
 2. `#leaf` represents an empty node.
 
 ### Building the tree
@@ -203,7 +203,7 @@ func traverseInOrder(t : Tree) {
 
 ### Using generic types
 
-Currently, the example tree only supports [`Nat`](/docs/motoko/base/Nat) values. To allow it to store any type of data, a [generic type](/docs/motoko/fundamentals/types/advanced-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
+Currently, the example tree only supports [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) values. To allow it to store any type of data, a [generic type](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
 
 ```motoko no-repl
 type Tree<T> = {
@@ -216,6 +216,6 @@ type Tree<T> = {
 };
 ```  
 
-With this change, the tree can store any type, such as [`Text`](/docs/motoko/base/Text), [`Nat`](/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
+With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -4,9 +4,9 @@ sidebar_position: 3
 
 # Caller identification
 
-[Principals](https://internetcomputer.org/docs/building-apps/canister-management/control) serve as unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister will have a principal which acts as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps. 
+[Principals](https://internetcomputer.org/docs/building-apps/canister-management/control) serve as unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister will have a principal which acts as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps.
 
-When a shared function is called, the caller’s [principal](https://internetcomputer.org/docs/building-apps/canister-management/control) is automatically provided, allowing the canister to identify who initiated the request. This enables **access control** for canisters to restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions. The following sections explore how to use caller identification to implement access control in Motoko.
+When a shared function is called, the caller’s [principal](https://internetcomputer.org/docs/building-apps/canister-management/control) is provided alongside the call to identify who initiated the request. This enables canisters to implement access control and restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions.
 
 The `shared` keyword is used to declare a shared function. A shared function can also declare an optional parameter of type `{caller : Principal}` to identify and verify request origins.
 
@@ -16,7 +16,7 @@ shared(msg) func inc() : async () {
 }
 ```
 
-The caller’s principal is provided automatically and cannot be forged. This also applies to actor class constructors, where the installer's principal can be stored for access control.  
+The caller’s principal is provided automatically and cannot be forged. This also applies to actor class constructors, where the installer's principal can be stored for access control.
 
 ```motoko no-repl
 shared(msg) persistent actor class Counter(init : Nat) {
@@ -24,29 +24,6 @@ shared(msg) persistent actor class Counter(init : Nat) {
 }
 ```
 
-## Basic access control
-
-A simple way to implement [access control](https://internetcomputer.org/docs/building-apps/canister-management/control) is by storing the caller’s principal when the canister is first deployed, then only allowing that principal to make modifications. Then, an `update` function can verify that the caller of the function matches the stored principal before executing the message. This ensures that only the original deployer of the canister can update critical data while others have read-only access. The following example defines a restricted message board where only the principal that deployed the canister can update the message, while any user can read it:
-
-```motoko no-repl
-import Error "mo:base/Error";
-
-shared(msg) persistent actor class MessageBoard(initMessage : Text) {
-  let owner = msg.caller;
-  stable var message : Text = initMessage;
-
-  public shared query func read() : async Text {
-    message;
-  };
-
-  public shared(msg) func update(newMessage : Text) : async () {
-    if (msg.caller != owner) {
-      throw Error.reject("Unauthorized: Only the creator can update the message.");
-    };
-    message := newMessage;
-  };
-}
-```
 
 ## Access control models
 
@@ -65,7 +42,9 @@ Caller identification is used to authenticate and authorize data access and modi
 
 ### Discretionary access control
 
-Discretionary access control (DAC) allows the [controller](https://internetcomputer.org/docs/building-apps/canister-management/control) of a canister to manage an allow list, granting or revoking access dynamically. This approach is useful for whitelisting specific users or canisters for privileged actions while maintaining flexibility in managing permissions. The following example implements a canister-controlled whitelist, where only authorized principals can execute restricted actions:
+Discretionary access control (DAC) allows the [controller](https://internetcomputer.org/docs/building-apps/canister-management/control) of a canister to manage an allow list, granting or revoking access dynamically. This approach is useful for whitelisting specific users or canisters for privileged actions while maintaining flexibility in managing permissions.
+
+The following example implements a canister-controlled whitelist, where only authorized principals can execute restricted actions.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -112,7 +91,9 @@ shared(msg) persistent actor class WhitelistAccess() {
 
 ### Role based access control
 
-Role-based access control (RBAC) assigns permissions based on roles rather than individual users. This allows for structured authorization, where users can be grouped into predefined roles with different access levels. In this example, the canister assigns roles dynamically, allowing its controller to manage administrators and members, each with different permissions:
+Role-based access control (RBAC) assigns permissions based on roles rather than individual users. This allows for structured authorization, where users can be grouped into predefined roles with different access levels.
+
+In this example, the canister assigns roles dynamically, allowing its controller to manage administrators and members, each with different permissions.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -222,7 +203,9 @@ shared(msg) persistent actor class MandatoryAccess() {
 
 ### Access control list
 
-An access control list (ACL) defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike role-based access control (RBAC) which groups users into roles, ACLs require manual management of user access for each function. ACLs are flexible but can become difficult to scale in larger applications. The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users:
+An access control list (ACL) defines explicit per-user permissions for specific actions, allowing fine-grained control over function access. Unlike role-based access control (RBAC) which groups users into roles, ACLs require manual management of user access for each function. ACLs are flexible but can become difficult to scale in larger applications.
+
+The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -299,7 +282,9 @@ shared(msg) persistent actor class ACLAccess() {
 
 ### Attribute-based access control
 
-Attribute-based access control (ABAC) grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include token balances, reputation scores, or other onchain data, making ABAC ideal for Web3 environments. This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
+Attribute-based access control (ABAC) grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, attributes can include token balances, reputation scores, or other onchain data, making ABAC ideal for Web3 environments.
+
+This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";
@@ -342,7 +327,9 @@ shared(msg) persistent actor class AttributeBasedAccess(tokenThreshold : Nat) {
 
 ### Policy-based access control
 
-Policy-based access control (PBAC) enforces access rules dynamically based on contextual conditions rather than predefined roles or attributes. Policies can include time-based restrictions, geographical constraints, or  multi-factor conditions. This model is useful for governance, scheduled access, and automated compliance rules. The following example implements a time-based policy, where access is only granted within a specific time window (9AM- 5PM UTC):
+Policy-based access control (PBAC) enforces access rules dynamically based on contextual conditions rather than predefined roles or attributes. Policies can include time-based restrictions, geographical constraints, or  multi-factor conditions. This model is useful for governance, scheduled access, and automated compliance rules.
+
+The following example implements a time-based policy, where access is only granted within a specific time window (9AM- 5PM UTC).
 
 ```motoko no-repl
 import Error "mo:base/Error";
@@ -390,13 +377,13 @@ shared(msg) actor class PolicyBasedAccess() {
     let nanosecondsSinceMidnight : Int = currentTime - (daysSinceEpoch * nanosecondsPerDay);
     let hoursSinceMidnight : Int = nanosecondsSinceMidnight / (3600 * 1000 * 1000 * 1000);
 
-    return "Current time: " # Int.toText(currentTime) # 
+    return "Current time: " # Int.toText(currentTime) #
            "\nHours since midnight (UTC): " # Int.toText(hoursSinceMidnight);
   };
 }
 ```
 
-## References
+## Resources
 
-- [Principal](https://internetcomputer.org/docs/motoko/main/base/Principal)
-- [Principal specification](https://internetcomputer.org/docs/references/ic-interface-spec/#principal)
+- [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal)
+- [`Principal` specification](https://internetcomputer.org/docs/references/ic-interface-spec/#principal)
