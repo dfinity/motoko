@@ -49,18 +49,23 @@ and typ_meth (tb : typ_meth)
 and mode m = Atom (string_of_mode m)
 
 and typ t = match t.it with
-  | VarT s        -> "VarT" $$ [id s]
-  | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
-  | RecordT ts        -> "RecordT" $$ List.map typ_field ts
-  | VecT t       -> "VecT" $$ [typ t]
-  | BlobT -> Atom "BlobT"
-  | OptT t              -> "OptT" $$ [typ t]
-  | VariantT cts        -> "VariantT" $$ List.map typ_field cts
-  | FuncT (ms, s, t) -> "FuncT" $$ List.map typ s @ List.map typ t @ List.map mode ms
-  | ServT ts -> "ServT" $$ List.map typ_meth ts
-  | ClassT (ts, t) -> "ClassT" $$ List.map typ ts @ [typ t]
-  | PrincipalT -> Atom "PrincipalT"
-  | PreT -> Atom "PreT"
+  | VarT s           -> "VarT" $$ [id s]
+  | PrimT p          -> "PrimT" $$ [Atom (string_of_prim p)]
+  | RecordT ts       -> "RecordT" $$ List.map typ_field ts
+  | VecT t           -> "VecT" $$ [typ t]
+  | BlobT            -> Atom "BlobT"
+  | OptT t           -> "OptT" $$ [typ t]
+  | VariantT cts     -> "VariantT" $$ List.map typ_field cts
+  | FuncT (ms, s, t) -> "FuncT" $$ List.map arg_typ s @ List.map arg_typ t @ List.map mode ms
+  | ServT ts         -> "ServT" $$ List.map typ_meth ts
+  | ClassT (ts, t)   -> "ClassT" $$ List.map arg_typ ts @ [typ t]
+  | PrincipalT       -> Atom "PrincipalT"
+  | PreT             -> Atom "PreT"
+
+and arg_typ t =
+  match t.it.name with
+  | Some name -> "Named" $$ [Atom name.it; typ t.it.typ]
+  | None ->  typ t.it.typ
 
 and dec d = match d.it with
   | TypD (x, t) ->
@@ -158,7 +163,10 @@ module Make (Cfg : Config) = struct
     let n = List.length fs in
     str ppf "(";
     List.iteri (fun i f ->
-        pp_typ ppf f;
+        (match f.it.name with
+          Some name -> (text ppf name.it; kwd ppf ":")
+        | None -> ());
+        pp_typ ppf f.it.typ;
         if i < n-1 then
           kwd ppf ",";
       ) fs;

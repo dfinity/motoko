@@ -86,7 +86,7 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let generic_parse_with mode lexer parser name : _ Diag.result =
+let generic_parse_with ?(recovery=false) mode lexer parser name : _ Diag.result =
   phase "Parsing" name;
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
@@ -96,28 +96,29 @@ let generic_parse_with mode lexer parser name : _ Diag.result =
   let* mk_syntax =
     try
       Parser_lib.triv_table := triv_table;
-      Parsing.parse mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
+      Parsing.parse ~recovery mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let phrase = mk_syntax name in
   Diag.return phrase
 
-let parse_with mode lexer parser name : Syntax.prog Diag.result =
+let parse_with ?(recovery=false) mode lexer parser name : Syntax.prog Diag.result =
   let open Diag.Syntax in
-  let* prog = generic_parse_with mode lexer parser name in
+  let* prog = generic_parse_with ~recovery mode lexer parser name in
   dump_prog Flags.dump_parse prog;
   Diag.return prog
 
-let parse_string' mode name s : parse_result =
+let parse_string' ?(recovery=false) mode name s : parse_result =
   let open Diag.Syntax in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
-  let* prog = parse_with mode lexer parse name in
+  let* prog = parse_with ~recovery mode lexer parse name in
   Diag.return (prog, name)
 
 let parse_string = parse_string' Lexer.mode
+let parse_string_with_recovery = parse_string' ~recovery:true Lexer.mode
 
-let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
+let parse_file' ?(recovery=false) mode at filename : (Syntax.prog * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
@@ -127,11 +128,13 @@ let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
         messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
-    let* prog = parse_with mode lexer parse filename in
+    let* prog = parse_with ~recovery mode lexer parse filename in
     Diag.return (prog, filename)
   )
 
 let parse_file = parse_file' Lexer.mode
+let parse_file_with_recovery = parse_file' ~recovery:true Lexer.mode
+
 let parse_verification_file = parse_file' Lexer.mode_verification
 
 (* Import file name resolution *)
@@ -277,6 +280,7 @@ let stable_compatible pre post : unit Diag.result =
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Stability.match_stab_sig s1 s2
 
+(* basic sanity checking of emitted stable signatures *)
 let validate_stab_sig s : unit Diag.result =
   let open Diag.Syntax in
   let name = "stable-types" in
@@ -286,9 +290,11 @@ let validate_stab_sig s : unit Diag.result =
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Type.(match s1, s2 with
   | Single s1, Single s2 ->
+    (* check we can self-upgrade *)
     Stability.match_stab_sig (Single s1) (Single s2)
   | PrePost (pre1, post1), PrePost (pre2, post2) ->
-    let* () = Stability.match_stab_sig (Single pre1) (Single pre2) in
+    (* check we can at least self-upgrade,
+       with a possibly different or no migration function *)
     Stability.match_stab_sig (Single post1) (Single post2)
   | _, _ -> assert false)
 
@@ -563,8 +569,12 @@ type check_result = unit Diag.result
 let check_files' parsefn files : check_result =
   Diag.map ignore (load_progs parsefn files initial_stat_env)
 
-let check_files files : check_result =
-  check_files' parse_file files
+let check_files ?(enable_recovery=false) files : check_result =
+  let parsefn = if enable_recovery
+    then parse_file_with_recovery
+    else parse_file
+  in
+  check_files' parsefn files
 
 (* Generate Viper *)
 
@@ -825,7 +835,7 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
-  (* validate any stable type signature *)
+  (* validate any stable type signature, as a sanity check *)
   let* () =
     match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
     | Some (_, ss) -> validate_stab_sig ss
