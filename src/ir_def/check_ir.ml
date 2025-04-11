@@ -494,6 +494,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | IdxBlobPrim, [exp1; exp2] ->
+      typ exp1 <: T.blob;
+      typ exp2 <: T.nat;
+      T.(Prim Nat8) <: t
     | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore

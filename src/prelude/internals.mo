@@ -75,8 +75,16 @@ func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
     let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
-func @blob_size(xs : Blob) : () -> Nat =
-  func () : Nat = (prim "blob_size" : Blob -> Nat) xs;
+func @blob_size(b : Blob) : () -> Nat =
+  func () : Nat = (prim "blob_size" : Blob -> Nat) b;
+func @blob_keys(b : Blob) : () -> @Iter<Nat> =
+  func () : @Iter<Nat> = object {
+    var i = 0;
+    let l = (prim "blob_size" : Blob -> Nat) b;
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  };
+func @blob_get(b : Blob) : Nat -> Nat8 =
+  func (n : Nat) : Nat8 = b[n];
 func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
   func () : @Iter<Nat8> = object {
     type BlobIter = Any; // not exposed
