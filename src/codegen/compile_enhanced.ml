@@ -5314,12 +5314,13 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
 
-  let cost_create_canister env =
-    match E.mode env with
-    | Flags.(ICMode | RefMode) ->
-      system_call env "cost_create_canister"
-    | _ ->
-      E.trap_with env "cannot get cost of create canister when running locally"
+  (* Cost *)
+  let cost_call = ic_system_call "cost_call"
+  let cost_create_canister = ic_system_call "cost_create_canister"
+  let cost_http_request = ic_system_call "cost_http_request"
+  let cost_sign_with_ecdsa = ic_system_call "cost_sign_with_ecdsa"
+  let cost_sign_with_schnorr = ic_system_call "cost_sign_with_schnorr"
+  let cost_vetkd_derive_encrypted_key = ic_system_call "cost_vetkd_derive_encrypted_key"
 
   let set_certified_data env =
     match E.mode env with

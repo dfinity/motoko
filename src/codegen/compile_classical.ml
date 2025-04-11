@@ -5080,7 +5080,7 @@ module IC = struct
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
       E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
-      E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
+      E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; i] [];
       E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
 
       (* Cost *)
