@@ -87,7 +87,7 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        nix build \
+        out=$(nix build \
           --print-build-logs \
           --builders "" \
           --max-jobs 2 \
@@ -97,8 +97,9 @@ jobs:
           -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
-          --argstr to "$to"
-        nix copy --from ssh-ng://eu.nixbuild.net ./perf-delta.txt
+          --argstr to "$to" \
+          --json | jq '.outputs.out' -r)
+        nix copy --from ssh-ng://eu.nixbuild.net "$out"
 
     - name: Read performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
