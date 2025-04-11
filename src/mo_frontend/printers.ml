@@ -169,6 +169,8 @@ let string_of_symbol = function
   | X (N N_exp_plain) -> "<exp_plain>"
   | X (N N_exp_post_bl_) -> "<exp_post(bl)>"
   | X (N N_exp_post_ob_) -> "<exp_post(ob)>"
+  | X (N N_obj_or_class_dec) -> "<obj_or_class_dec>"
+  | X (N N_option_exp_post_ob__) -> "<exp_post(ob)>?"
   | X (N N_exp_un_bl_) -> "<exp_un(bl)>"
   | X (N N_exp_un_ob_) -> "<exp_un(ob)>"
   | X (N N_func_body) -> "<func_body>"
@@ -214,6 +216,7 @@ let string_of_symbol = function
   | X (N N_list_preceded_COMMA_typ_bind__) -> "(, <typ_bind>)*"
   | X (N N_seplist_typ_field_semicolon_) -> "seplist(<typ_field>,<semicolon>)"
   | X (N N_seplist_stab_field_semicolon_) -> "seplist(<stab_field>,<semicolon>)"
+  | X (N N_seplist_pre_stab_field_semicolon_) -> "seplist(<pre_stab_field>,<semicolon>)"
   | X (N N_seplist_typ_item_COMMA_) -> "seplist(<typ_item>,,)"
   | X (N N_seplist_typ_tag_semicolon_) -> "seplist(<typ_tag>,<semicolon>)"
   | X (N N_seplist1_typ_tag_semicolon_) -> "seplist1(<typ_tag>,<semicolon>)"
@@ -234,6 +237,7 @@ let string_of_symbol = function
   | X (N N_vis) -> "<vis>"
   | X (N N_stab) -> "<stab>"
   | X (N N_stab_field) -> "<stab_field>"
+  | X (N N_pre_stab_field) -> "<pre_stab_field>"
   | X (N N_start) -> "<start>" (* dummy non-terminal, don't display *)
 
 (* In order to print a view of the stack that includes semantic values,

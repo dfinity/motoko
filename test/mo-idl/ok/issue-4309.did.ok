@@ -1,0 +1,39 @@
+type Snoc = 
+ opt record {
+       Cons;
+       nat;
+     };
+type Result_1 = 
+ variant {
+   err: text;
+   ok;
+ };
+type Result = 
+ variant {
+   err;
+   ok;
+ };
+type List2 = 
+ opt record {
+       nat32;
+       List;
+     };
+type List = 
+ opt record {
+       nat32;
+       List2;
+     };
+type Foo = variant {bla;};
+type Credit = nat;
+type Cons = 
+ opt record {
+       nat;
+       Snoc;
+     };
+service : {
+  consful: (snoc: Snoc) -> (Cons);
+  erroring: () -> (Result_1);
+  get: () -> (Credit, Credit, Credit);
+  listful: (list: List2) -> (List);
+  silly: (Foo, Foo, Foo, Foo) -> (Result);
+}

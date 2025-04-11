@@ -1131,6 +1131,8 @@ module RTS = struct
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "assign_stable_type" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "has_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -4714,6 +4716,7 @@ module IC = struct
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
       E.add_func_import env "ic0" "call_new" (i64s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
@@ -4722,7 +4725,10 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
+      E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
       E.add_func_import env "ic0" "is_controller" (i64s 2) [I32Type];
+      E.add_func_import env "ic0" "subnet_self_copy" (i64s 3) [];
+      E.add_func_import env "ic0" "subnet_self_size" [] [I64Type];
       E.add_func_import env "ic0" "debug_print" (i64s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i64s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I64Type];
@@ -4866,6 +4872,10 @@ module IC = struct
 
   let is_controller env =
     ic_system_call "is_controller" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
+  let replicated_execution env =
+    ic_system_call "in_replicated_execution" env ^^ 
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let canister_version env = ic_system_call "canister_version" env
@@ -5067,6 +5077,18 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
 
+  let get_subnet_reference env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "canister_subnet" [I64Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size")
+          (fun env -> system_call env "subnet_self_copy")
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get actor-subnet-reference when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5143,7 +5165,8 @@ module IC = struct
          "system_transient", 2L;
          "destination_invalid", 3L;
          "canister_reject", 4L;
-         "canister_error", 5L]
+         "canister_error", 5L;
+         "system_unknown", 6L]
         (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
@@ -8689,8 +8712,11 @@ end
 
 (* Enhanced orthogonal persistence *)
 module EnhancedOrthogonalPersistence = struct
+
+  let has_stable_actor env = E.call_import env "rts" "has_stable_actor"
+
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
-    
+
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
@@ -8705,6 +8731,10 @@ module EnhancedOrthogonalPersistence = struct
   let register_stable_type env actor_type =
     create_type_descriptor env actor_type ^^
     E.call_import env "rts" "register_stable_type"
+
+  let assign_stable_type env actor_type =
+    create_type_descriptor env actor_type ^^
+    E.call_import env "rts" "assign_stable_type"
 
   let load_old_field env field get_old_actor =
     if field.Type.typ = Type.(Opt Any) then
@@ -8745,6 +8775,7 @@ module EnhancedOrthogonalPersistence = struct
     free_stable_actor env
 
   let save env actor_type =
+    assign_stable_type env actor_type ^^
     IC.get_actor_to_persist env ^^
     save_stable_actor env ^^
     NewStableMemory.backup env ^^
@@ -8763,6 +8794,7 @@ module EnhancedOrthogonalPersistence = struct
 
   let initialize env actor_type =
     register_stable_type env actor_type
+
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -9628,7 +9660,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         TaggedSmallWord.msb_adjust Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9697,7 +9729,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         TaggedSmallWord.lsb_adjust Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -9993,12 +10025,12 @@ module IncrementalGraphStabilization = struct
   let partial_destabilization_on_upgrade env actor_type =
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
+    GraphCopyStabilization.start_graph_destabilization env actor_type.Ir.pre ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
       begin
-        destabilization_increment env actor_type ^^
+        destabilization_increment env actor_type.Ir.pre ^^
         get_destabilized_actor env ^^
         (E.if0
           G.nop
@@ -10030,7 +10062,7 @@ module IncrementalGraphStabilization = struct
       })
     | _ -> ()
     end
-  
+
   let load env =
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
@@ -10038,14 +10070,14 @@ module IncrementalGraphStabilization = struct
     get_destabilized_actor env
     (* Upgrade costs are already record in RTS for graph-copy-based (de-)stabilization. *)
 
-  let define_methods env actor_type =
+  let define_methods env (actor_type : Ir.stable_actor_typ) =
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
-    export_stabilize_before_upgrade_method env actor_type;
+    export_stabilize_before_upgrade_method env actor_type.Ir.post;
     define_async_destabilization_reply_callback env;
     define_async_destabilization_reject_callback env;
-    export_async_destabilization_method env actor_type;
+    export_async_destabilization_method env actor_type.Ir.pre;
     export_destabilize_after_upgrade_method env;
 
 end (* IncrementalGraphStabilization *)
@@ -10122,6 +10154,27 @@ module Persistence = struct
           end
       end) ^^
     StableMem.region_init env
+
+  let in_upgrade env =
+    use_enhanced_orthogonal_persistence env ^^
+    (E.if1 I64Type
+      begin
+       EnhancedOrthogonalPersistence.has_stable_actor env ^^
+       Bool.from_rts_int32
+      end
+      begin
+        use_graph_destabilization env ^^
+        E.if1 I64Type
+          begin
+            Bool.lit true
+          end
+          begin
+            use_candid_destabilization env ^^
+            E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            StableMem.stable64_size env ^^
+            Bool.from_int64
+          end
+      end)
 
   let save env actor_type =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
@@ -11690,6 +11743,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_in_upgrade", [] -> (* EOP specific *)
+    assert (!Flags.enhanced_orthogonal_persistence);
+    SR.Vanilla,
+    Persistence.in_upgrade env
+
   (* Regions *)
 
   | OtherPrim "regionNew", [] ->
@@ -11829,6 +11887,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     get_principal ^^
     Blob.len env ^^
     IC.is_controller env
+
+  | OtherPrim "replicated_execution", [] ->
+    SR.Vanilla,
+    IC.replicated_execution env
 
   | OtherPrim "canister_version", [] ->
     SR.UnboxedWord64 Type.Nat64,
@@ -12116,7 +12178,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_self_reference env ^^
     IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
-  (* Other prims, binary*)
+  | OtherPrim "canister_subnet", [] ->
+    SR.Vanilla, IC.get_subnet_reference env
+
+  (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
@@ -12237,6 +12302,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12282,6 +12348,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12595,7 +12668,7 @@ and compile_lit_pat env l =
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     compile_lit_as env SR.Vanilla l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^

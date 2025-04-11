@@ -7,7 +7,8 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13 ]
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -17,24 +18,24 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v30
+    - uses: cachix/install-nix-action@v31
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
     # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v15
+    - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
-      uses: insightsengineering/disk-space-reclaimer@v1
+      uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
       with:
         # this might remove tools that are actually needed,
         # if set to "true" but frees about 6 GB
-        tools-cache: false
+        tool-cache: false
 
         # all of these default to true, but feel free to set to
         # "false" if necessary for your workflow
@@ -50,35 +51,48 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "pre-build `drun`"
-      if: startsWith(github.head_ref, 'update/ic-')
-      run: |
-        nix-build --max-jobs 1 -A drun
-        nix-store --gc --print-roots | grep /motoko/
+    - name: "nix-build-${{ matrix.build_type }}"
+      run: nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
 
-    - name: "nix-build"
-      run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
+    - name: Discover `test/bench` changes
+      if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+      run: |
+        git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
+        git switch ${{ github.event.pull_request.head.ref }}
+        git branch --show-current
+
+    - name: Commit `test/bench` changes
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+      uses: EndBug/add-and-commit@v9
+      with:
+        default_author: github_actions
+        author_name: Cycle and memory benchmark updater
+        github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
+        committer_name: GitHub Actions
+        committer_email: actions@github.com
+        message: "Updating `test/bench` numbers"
+        commit: -- test/bench/ok
 
     - name: Calculate performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       run: |
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
+        nix-build --max-jobs auto perf-delta.nix -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to"
 
     - name: Read performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       id: perf
       uses: juliangruber/read-file-action@v1
       with:
         path: ./perf-delta.txt
 
     - name: Find performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       uses: peter-evans/find-comment@v3
       id: fc
       with:
@@ -89,7 +103,7 @@ jobs:
     # Forks can't add comments so this job does not run on forks, see
     # motoko#2864.
     - name: Create or update performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && matrix.build_type == 'release'
       uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -106,8 +120,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v30
-    - uses: cachix/cachix-action@v15
+    - uses: cachix/install-nix-action@v31
+    - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
     - name: Fetch report
@@ -125,12 +139,12 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13 ]
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v30
-    - uses: cachix/cachix-action@v15
+    - uses: cachix/install-nix-action@v31
+    - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
     - name: nix-build

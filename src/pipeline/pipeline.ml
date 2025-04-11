@@ -86,7 +86,7 @@ type parse_result = (Syntax.prog * rel_path) Diag.result
 type no_region_parse_fn = string -> parse_result
 type parse_fn = Source.region -> no_region_parse_fn
 
-let generic_parse_with mode lexer parser name : _ Diag.result =
+let generic_parse_with ?(recovery=false) mode lexer parser name : _ Diag.result =
   phase "Parsing" name;
   let open Diag.Syntax in
   lexer.Lexing.lex_curr_p <-
@@ -96,28 +96,29 @@ let generic_parse_with mode lexer parser name : _ Diag.result =
   let* mk_syntax =
     try
       Parser_lib.triv_table := triv_table;
-      Parsing.parse mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
+      Parsing.parse ~recovery mode (!Flags.error_detail) (parser lexer.Lexing.lex_curr_p) tokenizer lexer
     with Lexer.Error (at, msg) -> Diag.error at"M0002" "syntax" msg
   in
   let phrase = mk_syntax name in
   Diag.return phrase
 
-let parse_with mode lexer parser name : Syntax.prog Diag.result =
+let parse_with ?(recovery=false) mode lexer parser name : Syntax.prog Diag.result =
   let open Diag.Syntax in
-  let* prog = generic_parse_with mode lexer parser name in
+  let* prog = generic_parse_with ~recovery mode lexer parser name in
   dump_prog Flags.dump_parse prog;
   Diag.return prog
 
-let parse_string' mode name s : parse_result =
+let parse_string' ?(recovery=false) mode name s : parse_result =
   let open Diag.Syntax in
   let lexer = Lexing.from_string s in
   let parse = Parser.Incremental.parse_prog in
-  let* prog = parse_with mode lexer parse name in
+  let* prog = parse_with ~recovery mode lexer parse name in
   Diag.return (prog, name)
 
 let parse_string = parse_string' Lexer.mode
+let parse_string_with_recovery = parse_string' ~recovery:true Lexer.mode
 
-let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
+let parse_file' ?(recovery=false) mode at filename : (Syntax.prog * rel_path) Diag.result =
   let ic, messages = Lib.FilePath.open_in filename in
   Diag.finally (fun () -> close_in ic) (
     let open Diag.Syntax in
@@ -127,11 +128,13 @@ let parse_file' mode at filename : (Syntax.prog * rel_path) Diag.result =
         messages in
     let lexer = Lexing.from_channel ic in
     let parse = Parser.Incremental.parse_prog in
-    let* prog = parse_with mode lexer parse filename in
+    let* prog = parse_with ~recovery mode lexer parse filename in
     Diag.return (prog, filename)
   )
 
 let parse_file = parse_file' Lexer.mode
+let parse_file_with_recovery = parse_file' ~recovery:true Lexer.mode
+
 let parse_verification_file = parse_file' Lexer.mode_verification
 
 (* Import file name resolution *)
@@ -277,6 +280,7 @@ let stable_compatible pre post : unit Diag.result =
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
   Stability.match_stab_sig s1 s2
 
+(* basic sanity checking of emitted stable signatures *)
 let validate_stab_sig s : unit Diag.result =
   let open Diag.Syntax in
   let name = "stable-types" in
@@ -284,7 +288,15 @@ let validate_stab_sig s : unit Diag.result =
   let* p2 = parse_stab_sig s name in
   let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
   let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
-  Stability.match_stab_sig s1 s2
+  Type.(match s1, s2 with
+  | Single s1, Single s2 ->
+    (* check we can self-upgrade *)
+    Stability.match_stab_sig (Single s1) (Single s2)
+  | PrePost (pre1, post1), PrePost (pre2, post2) ->
+    (* check we can at least self-upgrade,
+       with a possibly different or no migration function *)
+    Stability.match_stab_sig (Single post1) (Single post2)
+  | _, _ -> assert false)
 
 (* The prim module *)
 
@@ -322,7 +334,6 @@ let check_prim () : Syntax.lib * stat_env =
       let senv1 = Scope.adjoin senv0 sscope in
       lib, senv1
 
-
 (* Imported file loading *)
 
 (*
@@ -334,6 +345,13 @@ When we load a declaration (i.e from the REPL), we also care about the type
 and the newly added scopes, so these are returned separately.
 *)
 
+type scope_cache = Scope.t Type.Env.t
+
+type load_result_cached =
+    ( Syntax.lib list
+    * (Syntax.prog * string list) list
+    * Scope.t
+    * scope_cache ) Diag.result
 
 type load_result =
   (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
@@ -341,7 +359,16 @@ type load_result =
 type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
-let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
+let resolved_import_name ri =
+  match ri.Source.it with
+  | Syntax.Unresolved -> "/* unresolved */"
+  | Syntax.LibPath { Syntax.package = _; path }
+  | Syntax.IDLPath (path, _) -> path
+  | Syntax.PrimPath -> "@prim"
+
+let chase_imports_cached parsefn senv0 imports scopes_map
+    : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
+  =
   (*
   This function loads and type-checkes the files given in `imports`,
   including any further dependencies.
@@ -353,14 +380,27 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   * To avoid duplicates, i.e. load each file at most once, we check the
     senv.
   * We accumulate the resulting libraries in reverse order, for O(1) appending.
+  * There is a cache that can be queried to avoid recomputing unchanged dependencies.
   *)
+
+  let open Diag.Syntax in
 
   let open ResolveImport.S in
   let pending = ref empty in
   let senv = ref senv0 in
   let libs = ref [] in
+  let cache = ref scopes_map in
 
-  let rec go pkg_opt ri = match ri.Source.it with
+  let rec go_cached pkg_opt ri =
+    match Type.Env.find_opt (resolved_import_name ri) !cache with
+    | None -> go pkg_opt ri
+    | Some sscope ->
+      senv := Scope.adjoin !senv sscope;
+      Diag.return ()
+  and go pkg_opt ri =
+    let it = ri.Source.it in
+    let ri_name = resolved_import_name ri in
+    match it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -369,20 +409,20 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let lib, sscope = check_prim () in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
+        cache := Type.Env.add ri_name sscope !cache;
         Diag.return ()
     | Syntax.Unresolved -> assert false
     | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
-      else if mem ri.Source.it !pending then
+      else if mem it !pending then
         Diag.error
           ri.Source.at
           "M0003"
           "import"
           (Printf.sprintf "file %s must not depend on itself" f)
       else begin
-        pending := add ri.Source.it !pending;
-        let open Diag.Syntax in
+        pending := add it !pending;
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
@@ -392,11 +432,14 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
-        pending := remove ri.Source.it !pending;
+        cache := Type.Env.add ri_name sscope !cache;
+        pending := remove it !pending;
         Diag.return ()
       end
     | Syntax.IDLPath (f, _) ->
-      let open Diag.Syntax in
+      (* TODO: [Idllib.Pipeline.check_file] will perform a similar pipeline,
+         going recursively through imports of the IDL path to parse and
+         typecheck them. We should extend the cache system to it as well. *)
       let* prog, idl_scope, actor_opt = Idllib.Pipeline.check_file f in
       if actor_opt = None then
         Diag.error
@@ -417,21 +460,45 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         | actor ->
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
+          cache := Type.Env.add ri_name sscope !cache;
           Diag.return ()
-  and go_set pkg_opt todo = Diag.traverse_ (go pkg_opt) todo
+  and go_set pkg_opt todo = Diag.traverse_ (go_cached pkg_opt) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
+  Diag.map (fun () -> List.rev !libs, !senv, !cache) (go_set None imports)
 
-let load_progs ?(viper_mode=false) ?(check_actors=false) parsefn files senv : load_result =
+let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
+  let open Diag.Syntax in
+  let cache = Type.Env.empty in
+  let* libs, senv, _cache = chase_imports_cached parsefn senv0 imports cache in
+  Diag.return (libs, senv)
+
+let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache : load_result_cached =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
-  let progs' = List.map fst rs in
+  let progs = List.map fst rs in
   let libs = List.concat_map snd rs in
-  let* libs, senv' = chase_imports parsefn senv libs in
-  let* () = Typing.check_actors ~viper_mode ~check_actors senv' progs' in
-  let* senv'' = check_progs ~viper_mode senv' progs' in
-  Diag.return (libs, progs', senv'')
+  let* libs, senv, scope_cache =
+    chase_imports_cached parsefn senv libs scope_cache
+  in
+  let* () = Typing.check_actors ?viper_mode ?check_actors senv progs in
+  (* [infer_prog] seems to annotate the AST with types by mutating some of its
+     nodes, therefore, we always run the type checker for programs. *)
+  let* senv = check_progs ?viper_mode senv progs in
+  Diag.return
+    ( libs
+    , List.map (fun (prog, rims) -> prog, List.map resolved_import_name rims) rs
+    , senv
+    , scope_cache )
+
+let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
+  let open Diag.Syntax in
+  let scope_cache = Type.Env.empty in
+  let* libs, rs, senv, _scope_cache =
+    load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache
+  in
+  let progs = List.map fst rs in
+  Diag.return (libs, progs, senv)
 
 let load_decl parse_one senv : load_decl_result =
   let open Diag.Syntax in
@@ -502,8 +569,12 @@ type check_result = unit Diag.result
 let check_files' parsefn files : check_result =
   Diag.map ignore (load_progs parsefn files initial_stat_env)
 
-let check_files files : check_result =
-  check_files' parse_file files
+let check_files ?(enable_recovery=false) files : check_result =
+  let parsefn = if enable_recovery
+    then parse_file_with_recovery
+    else parse_file
+  in
+  check_files' parsefn files
 
 (* Generate Viper *)
 
@@ -682,7 +753,7 @@ let load_as_rts () =
   let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity, !Flags.gc_strategy) with
     | (true, false, Flags.Incremental) -> Rts.wasm_eop_release
     | (true, true, Flags.Incremental) -> Rts.wasm_eop_debug
-    | (false, false, Flags.Copying) 
+    | (false, false, Flags.Copying)
     | (false, false, Flags.MarkCompact)
     | (false, false, Flags.Generational) -> Rts.wasm_non_incremental_release
     | (false, true, Flags.Copying)
@@ -764,7 +835,7 @@ let compile_files mode do_link files : compile_result =
   let* libs, progs, senv = load_progs ~check_actors:true parse_file files initial_stat_env in
   let idl = Mo_idl.Mo_to_idl.prog (progs, senv) in
   let ext_module = compile_progs mode do_link libs progs in
-  (* validate any stable type signature *)
+  (* validate any stable type signature, as a sanity check *)
   let* () =
     match Wasm_exts.CustomModule.(ext_module.motoko.stable_types) with
     | Some (_, ss) -> validate_stab_sig ss

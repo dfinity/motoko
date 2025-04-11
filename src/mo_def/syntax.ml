@@ -165,7 +165,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjBlockE of obj_sort * (id option * typ option) * dec_field list  (* object block *)
+  | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
@@ -173,8 +173,8 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp * inst * exp                  (* function call *)
-  | BlockE of dec list                         (* block (with type after avoidance)*)
+  | CallE of exp option * exp * inst * exp     (* function call *)
+  | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
@@ -189,7 +189,7 @@ and exp' =
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
-  | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
+  | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
   | AwaitE of async_sort * exp                 (* await *)
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
@@ -223,7 +223,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      sort_pat * typ_id * typ_bind list * pat * typ option * obj_sort * id * dec_field list
+      exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 
 (* Program (pre unit detection) *)
@@ -235,7 +235,12 @@ and prog' = dec list
 (* Signatures (stable variables) *)
 
 type stab_sig = (stab_sig', prog_note) Source.annotated_phrase
-and stab_sig' = (dec list * typ_field list)      (* type declarations & stable actor fields *)
+and stab_sig' = (dec list * stab_body)      (* type declarations & stable actor fields *)
+and stab_body = stab_body' Source.phrase    (* type declarations & stable actor fields *)
+and stab_body' =
+  | Single of typ_field list
+  | PrePost of (req * typ_field) list * typ_field list
+and req = bool Source.phrase
 
 (* Compilation units *)
 
@@ -245,10 +250,10 @@ and import' = pat * string * resolved_import ref
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of id option * dec_field list      (* main IC actor *)
+ | ActorU of exp option * id option * dec_field list      (* main IC actor *)
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+     exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
@@ -301,6 +306,15 @@ open Source
 let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
 let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
 
+let is_privileged name =
+  String.length name > 0 && name.[0] = '@'
+
+let is_underscored name =
+  String.length name > 0 && name.[0] = '_'
+
+let is_scope name =
+  String.length name > 0 && name.[0] = '$'
+
 (* Types & Scopes *)
 
 let arity t =
@@ -320,11 +334,11 @@ let scopeT at =
 (* Expressions *)
 
 let asyncE sort tbs e =
-  AsyncE (sort, tbs, e) @? e.at
+  AsyncE (None, sort, tbs, e) @? e.at
 
 let ignore_asyncE tbs e =
   IgnoreE (
-    AnnotE (AsyncE (Type.Fut, tbs, e) @? e.at,
+    AnnotE (AsyncE (None, Type.Fut, tbs, e) @? e.at,
       AsyncT (Type.Fut, scopeT e.at, TupT [] @! e.at) @! e.at) @? e.at ) @? e.at
 
 let is_asyncE e =
@@ -335,7 +349,7 @@ let is_asyncE e =
 let is_ignore_asyncE e =
   match e.it with
   | IgnoreE
-      {it = AnnotE ({it = AsyncE (Type.Fut, _, _); _},
+      {it = AnnotE ({it = AsyncE (None, Type.Fut, _, _); _},
         {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false

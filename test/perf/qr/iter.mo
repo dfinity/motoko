@@ -73,7 +73,7 @@ module {
   };
 
   public func fromList<A>(xs : List.List<A>) : Iter<A> {
-    List.toArray<A>(xs).vals();
+    List.toArray<A>(xs).values();
   };
 
   public func toArray<A>(xs : Iter<A>) : [A] {

@@ -1,5 +1,170 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase.
+
+    EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
+    
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ...
+    ```
+
+  * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
+
+  * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
+
+## 0.14.7 (2025-04-04)
+
+* motoko (`moc`)
+
+  * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
+    The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
+
+    For example,
+    ``` motoko
+    func add(x : Int, y : Int) : (res : Int) = x + y;
+    ```
+    now has inferred type:
+    ``` motoko
+    (x : Int, y: Int) -> (res : Int)
+    ```
+    Previously, the type would be inferred as:
+    ``` motoko
+    (Int, Int) -> Int
+    ```
+
+  * Refine the `*.most` stable signature file format to distinguish stable variables that are strictly required by the migration function rather than propagated from the actor body (#4991).
+    This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
+    Required fields are declared `in`, not `stable`, in the actor's pre-signature.
+
+  * Added improved LSP cache for typechecking (thanks to Serokell) (#4931).
+
+  * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
+
+* motoko-base
+
+  * Deprecated `ExperimentalCycles.add`, use a parenthetical `(with cycles = <amount>) <send>` instead (dfinity/motoko-base#703).
+
+## 0.14.6 (2025-04-01)
+
+* motoko (`moc`)
+
+  * To prevent implicit data loss due to upgrades, stable fields may no longer be dropped or promoted to lossy supertypes (#4970).
+    Removing a stable variable, or promoting its type to a lossy supertype by, for example, dropping nested record fields,
+    now requires an explicit migration expression.
+    Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
+
+  * Now we detect (and warn for) fields in literal objects and record extensions,
+    (as well as `public` fields or types in `object` and `class`) that are inaccessible
+    due to a user-specified type constraint (#4978, #4981).
+
+  * We now provide release artefacts for `Darwin-arm64` and `Linux-aarch64` platforms (#4952).
+
+## 0.14.5 (2025-03-25)
+
+* motoko (`moc`)
+
+  * Performance improvements to the default timer mechanism (#3872, #4967).
+
+* documentation (`mo-doc`)
+
+  * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
+
+## 0.14.4 (2025-03-18)
+
+* motoko (`moc`)
+
+  * Added `canisterSubnet` primitive (#4857).
+
+* motoko-base
+
+  * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
+
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
+
+## 0.14.3 (2025-03-04)
+
+* motoko (`moc`)
+
+  * Added primitive predicate `isReplicatedExecution` (#4929).
+
+* motoko-base
+
+  * Added `isRetryPossible : Error -> Bool` to `Error` (dfinity/motoko-base⁠#692).
+
+  * Made `ExperimentalInternetComputer.replyDeadline` to return
+    an optional return type (dfinity/motoko-base⁠#693).
+    _Caveat_: Breaking change (minor).
+
+  * Added `isReplicated : () -> Bool` to `ExperimentalInternetComputer` (dfinity/motoko-base#694).
+
+## 0.14.2 (2025-02-26)
+
+* motoko (`moc`)
+
+  * Added support for sending `cycles` and setting a `timeout` in parentheticals.
+    This is an **experimental feature**, with new syntax, and now also allowing best-effort
+    message sends. The legacy call `Cycles.add<system>` is still supported (#4608).
+
+    For example, if one wants to attach cycles to a message send, one can prefix it with a parenthetical
+    ``` motoko
+    (with cycles = 5_000) Coins.mine(forMe);
+    ```
+    Similarly a timeout for _best-effort_ execution (also called _bounded-wait_) can be specified like
+    ``` motoko
+    let worker = (with timeout = 15) async { /* worker loop */ };
+    ```
+    A common base for fields optionally goes before the `with` and can be customised with both fields
+    after it. Please consult the documentation for more usage information.
+
+  * bugfix: `mo-doc` will now generate documentation for `actor`s and `actor class`es (#4905).
+
+  * bugfix: Error messages now won't suggest privileged/internal names (#4916).
+
+## 0.14.1 (2025-02-13)
+
+* motoko (`moc`)
+
+  * bugfix: Be more precise when reporting type errors in `migration` fields (#4888).
+
+## 0.14.0 (2025-02-05)
+
+* motoko (`moc`)
+
+  * Add `.values()` as an alias to `.vals()` for arrays and `Blob`s (#4876).
+
+  * Support explicit, safe migration of persistent data allowing arbitrary
+    transformations on a selected subset of stable variables.
+    Additional static checks warn against possible data loss (#4812).
+
+    As a very simple example:
+    ``` motoko
+    import Nat32 "mo:base/Nat32";
+
+    (with migration =
+      func (old : { var size : Nat32 }) : { var length : Nat } =
+        { var length = Nat32.toNat(old.size) }
+    )
+    persistent actor {
+      var length : Nat = 0;
+    }
+    ```
+    may be used during an upgrade to rename the stable field `size` to `length`,
+    and change its type from `Nat32` to `Nat`.
+
+    See the documentation for full details.
+
+## 0.13.7 (2025-02-03)
+
+* motoko (`moc`)
+
+  * Support passing cycles in primitive `call_raw` (resp. `ExperimentalInternetComputer.call`) (#4868).
+
 ## 0.13.6 (2025-01-21)
 
 * motoko (`moc`)

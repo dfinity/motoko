@@ -35,15 +35,13 @@ actor a {
     assert (cs == 1000_000);
     assert (Cycles.refunded() == 1000_000);
   };
-  do {
-    // check cycles reset to zero on send
+  do { // check cycles reset to zero on send
     let cs = await wallet.available();
     assert (cs == 0);
     assert (Cycles.refunded() == 0);
   };
 
-  do {
-    // check cycles additive to zero on send
+  do { // check cycles additive to zero on send
     Cycles.add<system>(1000_000);
     Cycles.add<system>(2000_000);
     let cs = await wallet.available();

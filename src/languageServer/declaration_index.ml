@@ -60,7 +60,6 @@ module Index = Map.Make (String)
 
 type declaration_index = {
   modules : ide_decl list Index.t;
-  actors : ide_decl list Index.t;
   package_map : Pipeline.ResolveImport.package_map;
   ic_aliases : Pipeline.ResolveImport.aliases;
   actor_idl_path : Pipeline.ResolveImport.actor_idl_path;
@@ -193,7 +192,6 @@ let empty : string -> t =
   in
   {
     modules = Index.empty;
-    actors = Index.empty;
     package_map =
       Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages;
     ic_aliases = resolved_flags.aliases;
@@ -251,7 +249,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
   let is_type_def dec_field =
     match dec_field.it.Syntax.dec.it with
     | Syntax.TypD (typ_id, _, _) -> Some typ_id
-    | Syntax.ClassD (_, typ_id, _, _, _, _, _, _) -> Some typ_id
+    | Syntax.ClassD (_, _, _, typ_id, _, _, _, _, _) -> Some typ_id
     | _ -> None
   in
   let extract_binders env (pat : Syntax.pat) = gather_pat env pat in

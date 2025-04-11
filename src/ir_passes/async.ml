@@ -208,6 +208,7 @@ let transform prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
+    | Named _ -> assert false (* removed by erase_typ_field *)
 
   and t_bind tb =
     { tb with bound = t_typ tb.bound }
@@ -452,7 +453,7 @@ let transform prog =
          inspect = t_exp inspect;
          low_memory = t_exp low_memory;
          stable_record = t_exp stable_record;
-         stable_type = t_typ stable_type;
+         stable_type = {pre = t_typ stable_type.pre; post = t_typ stable_type.post};
         },
         t_typ typ)
     | NewObjE (sort, ids, t) ->
@@ -534,7 +535,10 @@ let transform prog =
           inspect = t_exp inspect;
           low_memory = t_exp low_memory;
           stable_record = t_exp stable_record;
-          stable_type = t_typ stable_type;
+          stable_type = {
+            pre = t_typ stable_type.pre;
+            post = t_typ stable_type.post
+          }
         },
         t_typ t)
 

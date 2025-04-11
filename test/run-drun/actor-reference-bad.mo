@@ -14,7 +14,7 @@ actor a {
       "5h74t-uga73-7nadi", // wrong checksum
     ];
 
-    for (t in tests.vals()) {
+    for (t in tests.values()) {
       Prim.debugPrint(debug_show t # ":");
       try (await async ignore (actor(t) : actor {}))
       catch (e) Prim.debugPrint(Prim.errorMessage(e))
