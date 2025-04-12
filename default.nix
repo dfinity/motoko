@@ -391,22 +391,35 @@ rec {
 
 
 
-    afterburner = for: stdenv.mkDerivation rec {
-      name = "afterburner";
-      phases = "buildPhase installPhase";
-      buildInputs = [ for nixpkgs.drun nixpkgs.diffutils nixpkgs.which ];
-      buildPhase = ''
-        ls -l ${builtins.elemAt buildInputs 0}/4611.wasm
-        mkdir -p $out
-        ls $out $(which sed)
-        drun $(cat ${builtins.elemAt buildInputs 0}/4611.drun-run) < ${builtins.elemAt buildInputs 0}/4611.wasm.script \
-        |& sed -e 's/^.*UTC\: \[Canister .*cai\]/debug.print:/g' > $out/4611.drun-run.ok
-        diff -u ${builtins.elemAt buildInputs 0}/4611.drun-run.ok $out/4611.drun-run.ok
-      '';
-      installPhase = ''
-        touch $out/bla
-      '';
-    };
+    afterburner = for:
+
+      let content = builtins.readDir "${for}";
+          commands = nixpkgs.lib.filterAttrs (name: kind: kind == "regular" && builtins.match ".*\.drun-run" name != null) content;
+          #c = builtins.warn (builtins.toString (builtins.attrNames commands)) commands;
+      in
+        nixpkgs.releaseTools.aggregate {
+    name = "afterburner";
+    constituents = builtins.attrValues 
+      (builtins.mapAttrs (base: value: 
+          let stem = builtins.elemAt (builtins.match "(.*)\.drun-run" base) 0; in
+
+        stdenv.mkDerivation rec {
+          name = "test-${stem}-afterburner";
+          phases = "buildPhase installPhase";
+          buildInputs = [ for nixpkgs.drun nixpkgs.diffutils nixpkgs.which ];
+          buildPhase = ''
+            ls -l ${for}/${stem}.wasm
+            mkdir -p $out
+            ls $out $(which sed)
+            drun $(cat ${for}/${base}) < ${for}/${stem}.wasm.script \
+            |& sed -e 's/^.*UTC\: \[Canister .*cai\]/debug.print:/g' > $out/${stem}.drun-run.ok
+            diff -u ${for}/${stem}.drun-run.ok $out/${stem}.drun-run.ok
+          '';
+          installPhase = ''
+            touch $out/bla
+          '';
+        }) commands);
+        };
 
     test_subdir = acceptable_subdir false;
 
