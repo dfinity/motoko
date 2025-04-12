@@ -11,7 +11,7 @@ Enhanced orthogonal persistence implements the vision of efficient and scalable 
 As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
 ### Activation
-Enhanced orthogonal persistence is currently offered for **beta testing** via the compiler flag `--enhanced-orthogonal-persistence`.
+Enhanced orthogonal persistence is offered via the compiler flag `--enhanced-orthogonal-persistence`.
 
 To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
 
