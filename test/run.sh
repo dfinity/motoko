@@ -674,8 +674,7 @@ do
   else
     for diff_file in $diff_files
     do
-      if [[ $NIX = yes && $(basename $out/$diff_file) =~ .*\.drun-run.* ]]; then
-        echo $out
+      if [[ $NIX = yes && ($(basename $out/$diff_file) =~ .*\.drun-run$ || $(basename $out/$diff_file) =~ .*\.drun$) ]]; then
         if [ -f $ok/$diff_file.ok ]; then cp $ok/$diff_file.ok $out/$diff_file.ok; fi
         continue
       fi

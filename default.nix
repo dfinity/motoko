@@ -363,7 +363,7 @@ rec {
       };
 
     acceptable_subdir = accept: dir: deps:
-      testDerivation ({
+      testDerivation ({name = dir;
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
 
@@ -380,9 +380,35 @@ rec {
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
+      } // nixpkgs.lib.optionalAttrs (dir == "run-drun") {
+        postInstall = ''
+          ls $out/*.drun-run
+
+        '';
       });
 
-    test_subdir = dir: deps: acceptable_subdir false dir deps;
+
+
+
+
+    afterburner = for: stdenv.mkDerivation rec {
+      name = "afterburner";
+      phases = "buildPhase installPhase";
+      buildInputs = [ for nixpkgs.drun nixpkgs.diffutils nixpkgs.which ];
+      buildPhase = ''
+        ls -l ${builtins.elemAt buildInputs 0}/4611.wasm
+        mkdir -p $out
+        ls $out $(which sed)
+        drun $(cat ${builtins.elemAt buildInputs 0}/4611.drun-run) < ${builtins.elemAt buildInputs 0}/4611.wasm.script \
+        |& sed -e 's/^.*UTC\: \[Canister .*cai\]/debug.print:/g' > $out/4611.drun-run.ok
+        diff -u ${builtins.elemAt buildInputs 0}/4611.drun-run.ok $out/4611.drun-run.ok
+      '';
+      installPhase = ''
+        touch $out/bla
+      '';
+    };
+
+    test_subdir = acceptable_subdir false;
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
@@ -523,7 +549,7 @@ rec {
       '';
     };
 
-  in fix_names {
+  in fix_names rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
@@ -550,6 +576,7 @@ rec {
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
+      drun-afterburner = afterburner drun;
     }
     // nixpkgs.lib.optionalAttrs
          (system == accept-bench)
