@@ -1,6 +1,7 @@
 {
   replay ? 0,
   system ? builtins.currentSystem,
+  accept-bench ? "x86_64-linux",
   officialRelease ? false,
 }:
 
@@ -80,6 +81,8 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.findlib
     pkgs.ocamlPackages.menhir
     pkgs.ocamlPackages.menhirLib
+    pkgs.ocamlPackages.menhirSdk
+    pkgs.ocamlPackages.ocaml-recovery-parser
     pkgs.ocamlPackages.cow
     pkgs.ocamlPackages.num
     pkgs.ocamlPackages.stdint
@@ -90,6 +93,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.ppx_expect
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
     pkgs.obelisk
@@ -358,8 +362,8 @@ rec {
         name = "test-${dir}-src";
       };
 
-    test_subdir = dir: deps:
-      testDerivation {
+    acceptable_subdir = accept: dir: deps:
+      testDerivation ({
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
 
@@ -369,9 +373,16 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
           '';
-      };
+      } // nixpkgs.lib.optionalAttrs accept {
+        installPhase = nixpkgs.lib.optionalString accept ''
+            mkdir -p $out/share
+            cp -v ${dir}/ok/*.ok $out/share
+          '';
+      });
+
+    test_subdir = dir: deps: acceptable_subdir false dir deps;
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
@@ -404,8 +415,8 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
       };
 
-    perf_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+    perf_subdir = accept: dir: deps:
+      (acceptable_subdir accept dir deps).overrideAttrs (args: {
         checkPhase = ''
           mkdir -p $out
           export PERF_OUT=$out/stats.csv
@@ -514,12 +525,12 @@ rec {
 
   in fix_names {
       run        = test_subdir "run"        [ moc ] ;
-      run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-debug  = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
       run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-debug = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -535,14 +546,14 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      perf       = perf_subdir false "perf" [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }
     // nixpkgs.lib.optionalAttrs
-         (system == "aarch64-darwin")
-         (fix_names { bench = perf_subdir "bench" [ moc nixpkgs.drun ic-wasm ];})
+         (system == accept-bench)
+         (fix_names { bench = perf_subdir true "bench" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -776,32 +787,60 @@ rec {
       '';
   };
 
-  all-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "all-systems-go";
-    constituents = [
-      moc
-      mo-ide
-      mo-doc
-      didc
-      deser
-      samples
-      rts
-      base-src
-      base-tests
-      base-doc
-      docs
-      report-site
-      # ic-ref-run
-      shell
-      check-formatting
-      check-rts-formatting
-      check-generated
-      check-grammar
-      check-error-codes
-    ] ++
-    builtins.attrValues tests
-    ++ builtins.attrValues js
-    ;
+  # Helper function to filter tests by type
+  filter_tests = type: tests:
+    let
+      # Get all test names that match the pattern
+      debug_tests = builtins.filter (name: 
+        builtins.match ".*-debug$" name != null
+      ) (builtins.attrNames tests);
+      
+      # Get all test names that don't match the pattern
+      release_tests = builtins.filter (name:
+        builtins.match ".*-debug$" name == null
+      ) (builtins.attrNames tests);
+      
+      # Select which set of names to use
+      selected_names = if type == "debug" then debug_tests else release_tests;
+    in
+      # Get the actual derivations for the selected names
+      builtins.map (name: tests.${name}) selected_names;
+
+  common-constituents = [
+    moc
+    mo-ide
+    mo-doc
+    didc
+    deser
+    samples
+    rts
+    base-src
+    base-tests
+    base-doc
+    docs
+    report-site
+    shell
+    check-formatting
+    check-rts-formatting
+    check-generated
+    check-grammar
+    check-error-codes
+  ];
+
+  # Release version - excludes debug tests
+  release-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "release-systems-go";
+    constituents = common-constituents ++
+    filter_tests "release" tests  # Only include release tests
+    ++ builtins.attrValues js;
+  };
+
+  # Debug version - only includes debug tests
+  debug-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "debug-systems-go";
+    constituents = common-constituents ++
+    filter_tests "debug" tests  # Only include debug tests
+    ++ builtins.attrValues js;
   };
 
   viperServer = nixpkgs.fetchurl {

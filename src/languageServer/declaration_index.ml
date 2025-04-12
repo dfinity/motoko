@@ -60,7 +60,6 @@ module Index = Map.Make (String)
 
 type declaration_index = {
   modules : ide_decl list Index.t;
-  actors : ide_decl list Index.t;
   package_map : Pipeline.ResolveImport.package_map;
   ic_aliases : Pipeline.ResolveImport.aliases;
   actor_idl_path : Pipeline.ResolveImport.actor_idl_path;
@@ -193,7 +192,6 @@ let empty : string -> t =
   in
   {
     modules = Index.empty;
-    actors = Index.empty;
     package_map =
       Flags.M.map (Lib.FilePath.make_absolute cwd) resolved_flags.packages;
     ic_aliases = resolved_flags.aliases;

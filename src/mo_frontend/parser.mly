@@ -321,6 +321,17 @@ and objblock eo s id ty dec_fields =
 %type<Mo_def.Syntax.typ_field list> seplist(stab_field,semicolon)
 %type<Mo_def.Syntax.typ_field> stab_field
 
+(* recovery comment: force recovery to emit less tokens *)
+%[@recover.default_cost_of_symbol     1000]
+%[@recover.default_cost_of_production 1]
+
+%[@recover.prelude
+    open Mo_def.Syntax
+
+    (* mk_stub_expr loc = VarE ("__error_recovery_var__" @~ loc) @? loc *)
+    let mk_stub_expr loc = LoopE (BlockE [] @? loc, None) @? loc
+ ]
+
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
@@ -332,9 +343,10 @@ and objblock eo s id ty dec_fields =
 
 (* Helpers *)
 
+(* recovery comment: force to insert ";" rather immediate reduction *)
 seplist(X, SEP) :
   | (* empty *) { [] }
-  | x=X { [x] }
+  | x=X { [x] } [@recover.cost inf]
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist1(X, SEP) :
@@ -607,7 +619,8 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
-exp_nullary(B) :
+(* recovery comment: force to emit special variable instead of "_" to filter spurious errors *)
+exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | e=B
   | e=exp_plain
     { e }
@@ -769,7 +782,8 @@ exp_nonvar(B) :
   | d=dec_nonvar
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp(B) :
+(* recovery comment: force to emit special variable rather than "return" *)
+exp [@recover.expr mk_stub_expr loc] (B) :
   | e=exp_nonvar(B)
     { e }
   | d=dec_var
@@ -1005,6 +1019,14 @@ stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
 
+pre_stab_field :
+  | r=req mut=var_opt x=id COLON t=typ
+    { (r, ValF (x, t, mut) @@ at $sloc) }
+
+%inline req :
+  | STABLE { false @@ at $sloc }
+  | IN { true @@ at $sloc }
+
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
@@ -1015,7 +1037,7 @@ parse_stab_sig :
           note = { filename; trivia } }
     }
   | start ds=seplist(typ_dec, semicolon)
-       ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
+       ACTOR LPAR LCURLY sfs_pre=seplist(pre_stab_field, semicolon) RCURLY COMMA
              LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
     { let trivia = !triv_table in
       let sigs = PrePost(sfs_pre, sfs_post) in

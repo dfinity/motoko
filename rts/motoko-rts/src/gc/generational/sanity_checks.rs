@@ -95,7 +95,7 @@ unsafe fn verify_field(current_field: *mut Value) {
 }
 
 unsafe fn recorded(value: usize) -> bool {
-    match &REMEMBERED_SET {
+    match REMEMBERED_SET.as_ref() {
         None => panic!("No remembered set"),
         Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
     }

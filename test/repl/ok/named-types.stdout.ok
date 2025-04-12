@@ -1,0 +1,11 @@
+Motoko compiler (source XXX)
+> <func> : {#tag : Nat} -> ()
+> <func> : {#tag : Nat} -> ()
+> <func> : {x : Nat} -> ()
+> <func> : {x : Nat} -> ()
+> <func> : ?Nat -> ()
+> <func> : (x : Nat) -> ()
+> <func> : (x : Nat, y : Nat, z : Nat) -> ()
+> <func> : ?(x : Nat, y : Nat, z : Nat) -> ()
+> <func> : ?Nat -> ()
+> 
