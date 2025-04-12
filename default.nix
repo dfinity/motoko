@@ -402,7 +402,7 @@ rec {
                   buildPhase = ''
                     mkdir -p $out
                     drun $(cat ${for}/${name}) < ${for}/${stem}.wasm.script \
-                    |& sed -e 's/^.*UTC\: \[Canister .*cai\]/debug.print:/g' \
+                    |& sed -E 's/^.*UTC\: \[Canister [0-9a-z-]+\]/debug.print:/1' \
                     > $out/drun-run
                     diff -u ${for}/${stem}.drun-run.ok $out/drun-run
                   '';
