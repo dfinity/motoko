@@ -395,11 +395,14 @@ rec {
             constituents = builtins.attrValues 
               (builtins.mapAttrs (name: _:
                 let stem = builtins.elemAt (builtins.match "(.*)\.drun-run" name) 0;
+                    wasmHash = with builtins; convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+               wasm = with builtins; fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
                 in stdenv.mkDerivation {
                   name = "test-${stem}-afterburner";
                   phases = "buildPhase";
                   buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
                   buildPhase = ''
+                    echo ${wasmHash} : ${wasm}
                     mkdir -p $out
                     drun $(cat ${for}/${name}) < ${for}/${stem}.wasm.script \
                     |& sed -E \
