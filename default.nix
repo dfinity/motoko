@@ -403,18 +403,17 @@ rec {
               phases = "buildPhase";
               buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
-                cat <<EOFxxx
-${script}
-EOFxxx
-                echo ${wasmHash} : ${wasm}
                 mkdir -p $out
-                drun $(cat ${for}/${name}) < ${for}/${stem}.wasm.script \
+                echo ${wasmHash} : ${wasm}
+                <<EOscript drun $(cat ${for}/${name}) \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                      -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
                 | sed \
                      -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
                 > $out/drun-run
+${script}
+EOscript
                 diff -u ${for}/${stem}.drun-run.ok $out/drun-run
               '';
             }) commands);
