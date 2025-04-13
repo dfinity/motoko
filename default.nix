@@ -405,6 +405,8 @@ rec {
                     |& sed -E \
                          -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                          -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+                    | sed \
+                         -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
                     > $out/drun-run
                     diff -u ${for}/${stem}.drun-run.ok $out/drun-run
                   '';
