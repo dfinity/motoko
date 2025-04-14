@@ -404,7 +404,6 @@ rec {
               buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
-                echo ${wasmHash} : ${wasm}
                 <<EOscript drun $(cat ${for}/${name}) \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
