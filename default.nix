@@ -414,8 +414,8 @@ rec {
                 > $out/drun-run
 ${script}
 EOscript
-                <<'EOgolden' diff -u - $out/drun-run
-${with builtins; substring 0 (stringLength golden - 1) golden}
+                <<'EOgolden' head -c -1 | diff -u - $out/drun-run
+${golden}
 EOgolden
               '';
             }) commands);
