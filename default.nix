@@ -399,13 +399,14 @@ rec {
                 wasm = with builtins; fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
                 script = builtins.replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (builtins.readFile "${for}/${stem}.wasm.script");
                 golden = builtins.readFile "${for}/${stem}.drun-run.ok";
+                options = builtins.readFile "${for}/${name}";
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
               phases = "buildPhase";
               buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
-                <<'EOscript' drun $(cat ${for}/${name}) \
+                <<'EOscript' drun $(echo ${options}) \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                      -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
