@@ -362,6 +362,14 @@ rec {
         name = "test-${dir}-src";
       };
 
+    test_files =
+      with nixpkgs.lib;
+      cleanSourceWith {
+        filter = path: type: type == "regular";
+        src = subpath ./test;
+        name = "test-files-src";
+      };
+
     acceptable_subdir = accept: dir: deps:
       testDerivation ({name = dir;
         src = test_src dir;
@@ -401,13 +409,16 @@ rec {
                 script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
                 golden = readFile "${for}/${stem}.drun-run.ok";
                 options = readFile "${for}/${name}";
+                configHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm.json5"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                config = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm.json5"); sha256 = "sha256:${configHash}"; };
+                options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) [(toString config)] options;
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
               phases = "buildPhase";
               buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
-                <<'EOscript' drun $(echo ${options}) \
+                <<'EOscript' drun $(echo ${options-subst}) \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                      -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
