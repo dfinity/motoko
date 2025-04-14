@@ -1,0 +1,303 @@
+{
+  "nodes": {
+    "all-cabal-hashes": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1638479299,
+        "narHash": "sha256-35MHlCVx/YWMmUll2I9PMsiAb9aasNZahZu12eF9zPg=",
+        "owner": "commercialhaskell",
+        "repo": "all-cabal-hashes",
+        "rev": "d859530d8342c52d09a73d1d125c144725b5945d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "commercialhaskell",
+        "repo": "all-cabal-hashes",
+        "rev": "d859530d8342c52d09a73d1d125c144725b5945d",
+        "type": "github"
+      }
+    },
+    "candid-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1741177080,
+        "narHash": "sha256-lFzDOHdEt19G8L5urzWXKuUaZGToHWC0sPwgmKubrAQ=",
+        "owner": "dfinity",
+        "repo": "candid",
+        "rev": "30c388671462aecdc4a3a9753d50dc2e8208c200",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "candid",
+        "rev": "30c388671462aecdc4a3a9753d50dc2e8208c200",
+        "type": "github"
+      }
+    },
+    "esm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 499162500,
+        "narHash": "sha256-OP2ddzMmLhqXrcKsJlS9d4oqcx+9vZWevd+DnTAI04Q=",
+        "type": "tarball",
+        "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz"
+      }
+    },
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "ic-hs-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1691648848,
+        "narHash": "sha256-1umgwySz98CPeU1m2SqGsE15nsGdDTtgAoMEyMQRUmo=",
+        "owner": "dfinity",
+        "repo": "ic-hs",
+        "rev": "a5f89cf508b0c80b633e3f0c152e3406fb750189",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "ic-hs",
+        "rev": "a5f89cf508b0c80b633e3f0c152e3406fb750189",
+        "type": "github"
+      }
+    },
+    "ic-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1741682252,
+        "narHash": "sha256-MRAswfpUiwpH1B9MUvoubCFJHl9Kn4oPQ96Sox90sZQ=",
+        "owner": "luc-blaeser",
+        "repo": "ic",
+        "rev": "12fec30a322fa5c39d97ea9385f2cdcaa22f6696",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luc-blaeser",
+        "repo": "ic",
+        "rev": "12fec30a322fa5c39d97ea9385f2cdcaa22f6696",
+        "type": "github"
+      }
+    },
+    "ic-wasm-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1738072422,
+        "narHash": "sha256-Cq84lk78FscMOJECyo1EEiC8892LK9gMakSEMh2vfXU=",
+        "owner": "dfinity",
+        "repo": "ic-wasm",
+        "rev": "4c52e75c12bb730e795d8a4c2862987f4a9524a3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "ic-wasm",
+        "rev": "4c52e75c12bb730e795d8a4c2862987f4a9524a3",
+        "type": "github"
+      }
+    },
+    "libtommath-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1571737484,
+        "narHash": "sha256-zpnCm1EpaoeMzdJVYMS2LARSJn5eqtQhipAcBFfrRDI=",
+        "owner": "libtom",
+        "repo": "libtommath",
+        "rev": "6ca6898bf37f583c4cc9943441cd60dd69f4b8f2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "libtom",
+        "ref": "v1.2.0",
+        "repo": "libtommath",
+        "type": "github"
+      }
+    },
+    "motoko-base-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744210752,
+        "narHash": "sha256-Ao8gFe4n4+jqURuRgGtEFuwophEuo8TwX18oJh27Soo=",
+        "owner": "dfinity",
+        "repo": "motoko-base",
+        "rev": "d8896730c77f4ba58fe2f30ef289ba976f1fca0e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "motoko-base",
+        "rev": "d8896730c77f4ba58fe2f30ef289ba976f1fca0e",
+        "type": "github"
+      }
+    },
+    "motoko-matchers-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1613148285,
+        "narHash": "sha256-dBhdVBCzgDBb/S8Ax21JgEZteslku5/9WFfSszAPm00=",
+        "owner": "kritzcreek",
+        "repo": "motoko-matchers",
+        "rev": "cb838c192df3328ff9ae172e2dc7338cf55e74bf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kritzcreek",
+        "repo": "motoko-matchers",
+        "rev": "cb838c192df3328ff9ae172e2dc7338cf55e74bf",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1735651292,
+        "narHash": "sha256-YLbzcBtYo1/FEzFsB3AnM16qFc6fWPMIoOuSoDwvg9g=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "0da3c44a9460a26d2025ec3ed2ec60a895eb1114",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "0da3c44a9460a26d2025ec3ed2ec60a895eb1114",
+        "type": "github"
+      }
+    },
+    "nixpkgs-mozilla": {
+      "locked": {
+        "lastModified": 1690837595,
+        "narHash": "sha256-7QTMhW4xdubmcmRBoTwmA4XUjLSV2vcIIEVPEzsN3Tg=",
+        "owner": "mozilla",
+        "repo": "nixpkgs-mozilla",
+        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mozilla",
+        "repo": "nixpkgs-mozilla",
+        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
+        "type": "github"
+      }
+    },
+    "ocaml-recovery-parser-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1742444578,
+        "narHash": "sha256-RFRI7VoHd7GceIQnzN1FQYfR/5nbrU/t1pLTbURE6PY=",
+        "owner": "serokell",
+        "repo": "ocaml-recovery-parser",
+        "rev": "b8207b0c919b84d5096486e59985d0137c0c4d82",
+        "type": "github"
+      },
+      "original": {
+        "owner": "serokell",
+        "repo": "ocaml-recovery-parser",
+        "rev": "b8207b0c919b84d5096486e59985d0137c0c4d82",
+        "type": "github"
+      }
+    },
+    "ocaml-vlq-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1521803009,
+        "narHash": "sha256-Aym/KqFkhEex6vkebkNbPI8UVCeKsUVtvxwLK2B8TSY=",
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "type": "github"
+      },
+      "original": {
+        "owner": "flowtype",
+        "repo": "ocaml-vlq",
+        "rev": "115bf0fef38018f31ac6386fef17a00bd8307218",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "all-cabal-hashes": "all-cabal-hashes",
+        "candid-src": "candid-src",
+        "esm": "esm",
+        "flake-utils": "flake-utils",
+        "ic-hs-src": "ic-hs-src",
+        "ic-src": "ic-src",
+        "ic-wasm-src": "ic-wasm-src",
+        "libtommath-src": "libtommath-src",
+        "motoko-base-src": "motoko-base-src",
+        "motoko-matchers-src": "motoko-matchers-src",
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-mozilla": "nixpkgs-mozilla",
+        "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
+        "ocaml-vlq-src": "ocaml-vlq-src",
+        "viper-server": "viper-server",
+        "wasm-spec-src": "wasm-spec-src"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "viper-server": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-lP7CFmug2kecogQ+qFS2GzxNQEzBVODw7xXmTHmxblQ=",
+        "type": "file",
+        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar"
+      }
+    },
+    "wasm-spec-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1588580907,
+        "narHash": "sha256-7Ew7V63uzGhwrPLUa6+4OG4GwkuggmtJiuaESbYX584=",
+        "owner": "WebAssembly",
+        "repo": "spec",
+        "rev": "65a37e19b4aa4ffb76034ad6727bab74b071df9d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "WebAssembly",
+        "ref": "opam-1.1.1",
+        "repo": "spec",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

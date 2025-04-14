@@ -3,7 +3,7 @@ pkgs:
     pkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "drun";
 
-      src = pkgs.sources.ic;
+      src = pkgs.ic-src;
 
       # update this after bumping the dfinity/ic pin.
       # 1. change the hash to something arbitrary (e.g. flip one digit to 0 or use `pkgs.lib.fakeSha256`)
@@ -16,7 +16,7 @@ pkgs:
       # the command therein manually.
 
       cargoLock = {
-        lockFile = "${pkgs.sources.ic}/Cargo.lock";
+        lockFile = "${pkgs.ic-src}/Cargo.lock";
         outputHashes = {
           "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
           "cloudflare-0.12.0" = "sha256-FxCAK7gUKp/63fdvzI5Ufsy4aur74fO4R/K3YFiUw0Y=";
@@ -37,7 +37,7 @@ pkgs:
          config.flag("-Wno-invalid-offsetof");
 +        if target.contains("darwin") {
 +            config.flag("-faligned-allocation");
-+        }    
++        }
      }
 
      for file in lib_sources {

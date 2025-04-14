@@ -45,7 +45,7 @@ jobs:
 
     - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
       name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
-      run: ./nixbuild -f default.nix ${{ matrix.build_type }}-systems-go
+      run: ./nixbuild --impure .#${{ matrix.build_type }}-systems-go
 
     - if: ${{ startsWith(matrix.os, 'macos-') }}
       run: nix-env -iA nix-build-uncached -f nix/
