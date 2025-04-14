@@ -1,9 +1,17 @@
 (unknown location): Compatibility error [M0170], stable variable ln of previous type
-  List<Int> = ?(Int, List<Int>)
+  List__0__files2Flist2Dint2Emost<Int__0__prelude> = ?(Int__0__prelude,
+                                                       List__0__files2Flist2Dint2Emost<
+                                                       Int__0__prelude>)
 cannot be consumed at new type
-  List__1<Nat> = ?(Nat, List__1<Nat>) without data loss. Use an explicit migration function.
+  List__0__files2Flist2Dnat2Emost<Nat__0__prelude> = ?(Nat__0__prelude,
+                                                       List__0__files2Flist2Dnat2Emost<
+                                                       Nat__0__prelude>) without data loss. Use an explicit migration function.
 (unknown location): Compatibility error [M0170], stable variable lnn of previous type
-  List<(Int, Int)> = ?((Int, Int), List<(Int, Int)>)
+  List__0__files2Flist2Dint2Emost<(Int__0__prelude, Int__0__prelude)> = 
+  ?((Int__0__prelude, Int__0__prelude),
+    List__0__files2Flist2Dint2Emost<(Int__0__prelude, Int__0__prelude)>)
 cannot be consumed at new type
-  List__1<(Nat, Nat)> = ?((Nat, Nat), List__1<(Nat, Nat)>) without data loss. Use an explicit migration function.
+  List__0__files2Flist2Dnat2Emost<(Nat__0__prelude, Nat__0__prelude)> = 
+  ?((Nat__0__prelude, Nat__0__prelude),
+    List__0__files2Flist2Dnat2Emost<(Nat__0__prelude, Nat__0__prelude)>) without data loss. Use an explicit migration function.
 FALSE

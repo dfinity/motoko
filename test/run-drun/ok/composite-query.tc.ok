@@ -1,8 +1,8 @@
 composite-query.mo:31.11-31.13: warning [M0145], this pattern of type
-  ?Class__1
+  ?Class__1__composite2Dquery2FClass2Emo
 does not cover value
   null
 composite-query.mo:36.11-36.13: warning [M0145], this pattern of type
-  ?Class__1
+  ?Class__1__composite2Dquery2FClass2Emo
 does not cover value
   null

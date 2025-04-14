@@ -9,4 +9,4 @@ cannot produce expected type
 pipe-ill-typed.mo:16.33-16.34: type error [M0096], expression of type
   {#A}
 cannot produce expected type
-  (x1 : A__9, x2 : B)
+  (x1 : A__0__pipe2Dill2Dtyped2Emo, x2 : B__0__pipe2Dill2Dtyped2Emo)

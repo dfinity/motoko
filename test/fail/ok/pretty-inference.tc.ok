@@ -81,53 +81,94 @@ where
     ()
 so that no valid instantiation exists
 pretty-inference.mo:28.1-28.5: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   Nat
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  Nat  <:  T  <:  C<C<C<C<Nat>>>>
+  Nat  <: 
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
-  Nat  </:  C<C<C<C<Nat>>>>
+  Nat  </: 
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:30.1-30.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  (Nat, Bool)  <:  T  <:  C<C<C<C<Nat>>>>
+  (Nat, Bool)  <: 
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
-  (Nat, Bool)  </:  C<C<C<C<Nat>>>>
+  (Nat, Bool)  </: 
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:32.1-32.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  ((Nat, Bool), (Nat, Bool))  <:  T  <:  C<C<C<C<Nat>>>>
+  ((Nat, Bool), (Nat, Bool))  <: 
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
-  ((Nat, Bool), (Nat, Bool))  </:  C<C<C<C<Nat>>>>
+  ((Nat, Bool), (Nat, Bool))  </: 
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:34.1-34.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
-    T  <:  C<C<C<C<Nat>>>>
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </: 
-    C<C<C<C<Nat>>>>
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:36.1-36.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -136,14 +177,22 @@ to produce result of type
 because implicit instantiation of type parameter T is over-constrained with
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
-    T  <:  C<C<C<C<Nat>>>>
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
-    C<C<C<C<Nat>>>>
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:38.1-38.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
+  <T <: C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                                C__0__pretty2Dinference2Emo<
+                                                                Nat__0__prelude>>>>>
+    (x : T) -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -156,60 +205,67 @@ because implicit instantiation of type parameter T is over-constrained with
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
-    T  <:  C<C<C<C<Nat>>>>
+    T  <: 
+      C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                              C__0__pretty2Dinference2Emo<
+                                                              Nat__0__prelude>>>>
 where
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
-    C<C<C<C<Nat>>>>
+    C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<C__0__pretty2Dinference2Emo<
+                                                            C__0__pretty2Dinference2Emo<
+                                                            Nat__0__prelude>>>>
 so that no valid instantiation exists
 pretty-inference.mo:42.1-42.7: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   (Nat, Nat)
 to produce result of type
   ()
-because no instantiation of T__42, U__12 makes
-  (Nat, Nat)  <:  (x : T__42, u : U__12)
+because no instantiation of T__26__pretty2Dinference2Emo, U__12__pretty2Dinference2Emo makes
+  (Nat, Nat)  <: 
+    (x : T__26__pretty2Dinference2Emo, u : U__12__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()
 pretty-inference.mo:44.1-44.9: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
   ()
-because no instantiation of T__43, U__13 makes
-  ((Nat, Bool), (Nat, Bool))  <:  (x : T__43, u : U__13)
+because no instantiation of T__27__pretty2Dinference2Emo, U__13__pretty2Dinference2Emo makes
+  ((Nat, Bool), (Nat, Bool))  <: 
+    (x : T__27__pretty2Dinference2Emo, u : U__13__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()
 pretty-inference.mo:46.1-46.9: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
   ()
-because no instantiation of T__44, U__14 makes
+because no instantiation of T__28__pretty2Dinference2Emo, U__14__pretty2Dinference2Emo makes
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
-    (x : T__44, u : U__14)
+    (x : T__28__pretty2Dinference2Emo, u : U__14__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()
 pretty-inference.mo:48.1-48.9: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
 to produce result of type
   ()
-because no instantiation of T__45, U__15 makes
+because no instantiation of T__29__pretty2Dinference2Emo, U__15__pretty2Dinference2Emo makes
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
-    (x : T__45, u : U__15)
+    (x : T__29__pretty2Dinference2Emo, u : U__15__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()
 pretty-inference.mo:50.1-50.9: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -217,16 +273,16 @@ to argument of type
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
 to produce result of type
   ()
-because no instantiation of T__46, U__16 makes
+because no instantiation of T__30__pretty2Dinference2Emo, U__16__pretty2Dinference2Emo makes
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
-    (x : T__46, u : U__16)
+    (x : T__30__pretty2Dinference2Emo, u : U__16__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()
 pretty-inference.mo:52.1-52.9: type error [M0098], cannot implicitly instantiate function of type
-  <T, U>(x : T, u : U) -> Nat
+  <T, U>(x : T, u : U) -> Nat__0__prelude
 to argument of type
   ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -238,7 +294,7 @@ to argument of type
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))
 to produce result of type
   ()
-because no instantiation of T__47, U__17 makes
+because no instantiation of T__31__pretty2Dinference2Emo, U__17__pretty2Dinference2Emo makes
   ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
@@ -247,6 +303,6 @@ because no instantiation of T__47, U__17 makes
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))  <: 
-    (x : T__47, u : U__17)
+    (x : T__31__pretty2Dinference2Emo, u : U__17__pretty2Dinference2Emo)
 and
-  Nat  <:  ()
+  Nat__0__prelude  <:  ()

@@ -2,16 +2,16 @@ type-combine.mo:421.16-421.39: warning [M0166], this intersection results in typ
   None
 because operand types are inconsistent,
 left operand is
-  [var Nat]
+  [var Nat__0__prelude]
 right operand is
-  [var Int]
+  [var Int__0__prelude]
 type-combine.mo:422.16-422.35: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
 left operand is
-  [var Nat]
+  [var Nat__0__prelude]
 right operand is
-  [Nat]
+  [Nat__0__prelude]
 type-combine.mo:424.16-424.25: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
@@ -23,37 +23,37 @@ type-combine.mo:427.22-427.29: warning [M0166], this intersection results in typ
   None
 because operand types are inconsistent,
 left operand is
-  A__68
+  A__59__type2Dcombine2Emo
 right operand is
-  B__38
+  B__38__type2Dcombine2Emo
 type-combine.mo:430.32-430.39: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
 left operand is
-  A__71
+  A__62__type2Dcombine2Emo
 right operand is
-  B__41
+  B__41__type2Dcombine2Emo
 type-combine.mo:432.16-432.53: warning [M0166], this intersection results in type
   None
 because operand types are inconsistent,
 left operand is
-  <A <: Nat>() -> ()
+  <A <: Nat__0__prelude>() -> ()
 right operand is
-  <A <: Int>() -> ()
+  <A <: Int__0__prelude>() -> ()
 type-combine.mo:447.16-447.38: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
 left operand is
-  [var Nat]
+  [var Nat__0__prelude]
 right operand is
-  [var Int]
+  [var Int__0__prelude]
 type-combine.mo:448.16-448.34: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
 left operand is
-  [var Nat]
+  [var Nat__0__prelude]
 right operand is
-  [Nat]
+  [Nat__0__prelude]
 type-combine.mo:450.16-450.24: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
@@ -65,16 +65,16 @@ type-combine.mo:453.22-453.28: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
 left operand is
-  A__99
+  A__90__type2Dcombine2Emo
 right operand is
-  B__60
+  B__60__type2Dcombine2Emo
 type-combine.mo:458.16-458.52: warning [M0167], this union results in type
   Any
 because operand types are inconsistent,
 left operand is
-  <A <: Nat>() -> ()
+  <A <: Nat__0__prelude>() -> ()
 right operand is
-  <A <: Int>() -> ()
+  <A <: Int__0__prelude>() -> ()
 type-combine.mo:252.6-252.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
 type-combine.mo:426.44-426.45: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
 type-combine.mo:427.50-427.51: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

@@ -1,11 +1,11 @@
 bad-actor.mo:3.1-3.23: type error [M0140], actor classes with type parameters are not supported yet
 bad-actor.mo:4.1-4.25: type error [M0140], actor classes with type parameters are not supported yet
 bad-actor.mo:6.15-6.28: type error [M0034], shared constructor has non-shared parameter type
-  (c : [var Int])
+  (c : [var Int__0__prelude])
 type
-  (c : [var Int])
+  (c : [var Int__0__prelude])
 is or contains non-shared type
-  var Int
+  var Int__0__prelude
 bad-actor.mo:8.1-8.38: type error [M0134], class body of type
   actor {}
 does not match expected type

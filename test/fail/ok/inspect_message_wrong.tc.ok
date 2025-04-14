@@ -9,6 +9,6 @@ instead of expected type
         #inc : () -> ();
         #read : () -> ();
         #reset : () -> ();
-        #set : () -> (n : Nat)
+        #set : () -> (n : Nat__0__prelude)
       }
   } -> Bool

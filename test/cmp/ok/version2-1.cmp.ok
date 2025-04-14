@@ -1,4 +1,4 @@
 (unknown location): Compatibility error [M0169], stable variable four of previous type
-  var [var (Nat, Text)]
+  var [var (Nat__0__prelude, Text__0__prelude)]
  cannot be implicitly discarded. This may cause data loss. Use an explicit migration function.
 FALSE

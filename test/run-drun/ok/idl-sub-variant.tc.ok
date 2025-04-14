@@ -1,4 +1,4 @@
 idl-sub-variant.mo:29.13-29.19: warning [M0145], this pattern of type
-  Enum1 = {#A : Int; #B}
+  Enum1__0__idl2Dsub2Dvariant2Emo = {#A : Int__0__prelude; #B}
 does not cover value
   #B

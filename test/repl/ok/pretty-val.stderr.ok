@@ -1,2 +1,2 @@
 stdin:72.30-72.43: warning [M0215], field `hidden` is provided but not expected in record of type
-  {a : Nat}
+  {a : Nat__0__prelude}

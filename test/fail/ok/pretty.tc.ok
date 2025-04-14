@@ -1,25 +1,25 @@
 pretty.mo:22.20-22.21: type error [M0096], expression of type
   {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
+    aaaaaaaaaaaaaaaaaaa : Nat__0__prelude;
+    bbbbbbbbbbbbbbbbbbb : Nat__0__prelude;
+    ccccccccccccccccccc : Nat__0__prelude;
+    ddddddddddddddddddd : Nat__0__prelude;
+    eeeeeeeeeeeeeeeeeee : Nat__0__prelude
   }
 cannot produce expected type
   {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
+    aaaaaaaaaaaaaaaaaaa : Nat__0__prelude;
+    bbbbbbbbbbbbbbbbbbb : Nat__0__prelude;
+    ccccccccccccccccccc : Nat__0__prelude;
+    ddddddddddddddddddd : Nat__0__prelude;
+    eeeeeeeeeeeeeeeeeee : Nat__0__prelude
   } ->
     {
-      aaaaaaaaaaaaaaaaaaa : Nat;
-      bbbbbbbbbbbbbbbbbbb : Nat;
-      ccccccccccccccccccc : Nat;
-      ddddddddddddddddddd : Nat;
-      eeeeeeeeeeeeeeeeeee : Nat
+      aaaaaaaaaaaaaaaaaaa : Nat__0__prelude;
+      bbbbbbbbbbbbbbbbbbb : Nat__0__prelude;
+      ccccccccccccccccccc : Nat__0__prelude;
+      ddddddddddddddddddd : Nat__0__prelude;
+      eeeeeeeeeeeeeeeeeee : Nat__0__prelude
     }
 pretty.mo:24.25-24.26: type error [M0096], expression of type
   Int
@@ -29,19 +29,19 @@ pretty.mo:26.23-26.24: type error [M0096], expression of type
   Int
 cannot produce expected type
   {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
+    aaaaaaaaaaaaaaaaaaa : Nat__0__prelude;
+    bbbbbbbbbbbbbbbbbbb : Nat__0__prelude;
+    ccccccccccccccccccc : Nat__0__prelude;
+    ddddddddddddddddddd : Nat__0__prelude;
+    eeeeeeeeeeeeeeeeeee : Nat__0__prelude
   }
 pretty.mo:28.23-28.24: type error [M0096], expression of type
   {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
+    aaaaaaaaaaaaaaaaaaa : Nat__0__prelude;
+    bbbbbbbbbbbbbbbbbbb : Nat__0__prelude;
+    ccccccccccccccccccc : Nat__0__prelude;
+    ddddddddddddddddddd : Nat__0__prelude;
+    eeeeeeeeeeeeeeeeeee : Nat__0__prelude
   }
 cannot produce expected type
   Nat

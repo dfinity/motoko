@@ -62,24 +62,24 @@ coverage.mo:41.3-41.61: warning [M0145], this switch of type
 does not cover value
   {a = 1 or 2 or _; b = 1 or 2 or _}
 coverage.mo:45.3-45.74: warning [M0145], this switch of type
-  {#a : Nat; #b : Nat}
+  {#a : Nat__0__prelude; #b : Nat__0__prelude}
 does not cover value
   #b(0 or 1 or _)
 coverage.mo:46.63-46.69: warning [M0146], this pattern is never matched
 coverage.mo:47.3-47.58: warning [M0145], this switch of type
-  {#a : Nat; #b : Nat}
+  {#a : Nat__0__prelude; #b : Nat__0__prelude}
 does not cover value
   #b(_)
 coverage.mo:48.3-48.58: warning [M0145], this switch of type
-  {#a : Nat; #b : Nat}
+  {#a : Nat__0__prelude; #b : Nat__0__prelude}
 does not cover value
   #a(_)
 coverage.mo:49.3-49.62: warning [M0145], this switch of type
-  {#a : Nat; #b : Nat; #c}
+  {#a : Nat__0__prelude; #b : Nat__0__prelude; #c}
 does not cover value
   #a(_) or #c
 coverage.mo:50.3-50.42: warning [M0145], this switch of type
-  {#a : Nat; #b : Nat}
+  {#a : Nat__0__prelude; #b : Nat__0__prelude}
 does not cover value
   _
 coverage.mo:61.27-61.28: warning [M0146], this pattern is never matched
@@ -90,7 +90,10 @@ coverage.mo:65.41-65.42: warning [M0146], this pattern is never matched
 coverage.mo:66.40-66.41: warning [M0146], this pattern is never matched
 coverage.mo:77.10-77.27: warning [M0146], this pattern is never matched
 coverage.mo:74.3-78.4: warning [M0145], this switch of type
-  {#branch : (Tree, Tree); #leaf : Int}
+  {
+    #branch : (Tree__0__coverage2Emo, Tree__0__coverage2Emo);
+    #leaf : Int__0__prelude
+  }
 does not cover value
   #leaf(0 or 1 or _)
 coverage.mo:109.8-109.47: warning [M0146], this pattern is never matched

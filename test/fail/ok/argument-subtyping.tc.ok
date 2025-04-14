@@ -1,4 +1,4 @@
 argument-subtyping.mo:12.61-12.62: type error [M0096], expression of type
-  shared Nat -> ()
+  shared Nat__0__prelude -> ()
 cannot produce expected type
-  shared Text -> ()
+  shared Text__0__prelude -> ()

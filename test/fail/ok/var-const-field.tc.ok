@@ -1,3 +1,3 @@
 var-const-field.mo:1.26-1.31: type error [M0149], expected mutable 'var' field x of type
-  Nat
+  Nat__0__prelude
 but found immutable field (insert 'var'?)

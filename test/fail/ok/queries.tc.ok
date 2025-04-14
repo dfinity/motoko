@@ -8,6 +8,6 @@ queries.mo:22.11-22.20: type error [M0188], send capability required, but not av
   (cannot call a `shared` function from a `query` function)
 queries.mo:26.5-26.14: type error [M0037], misplaced async expression; a query cannot contain an async expression
 queries.mo:26.5-26.14: type error [M0096], expression of type
-  async<$bogus> ()
+  async<$bogus__0> ()
 cannot produce expected type
   ()

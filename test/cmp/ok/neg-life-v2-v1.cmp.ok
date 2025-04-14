@@ -1,5 +1,9 @@
 (unknown location): Compatibility error [M0170], stable variable state of previous type
-  var {#v1 : [[Cell]]; #v2 : {bits : [Nat64]; size : Nat}}
+  var
+   {
+     #v1 : [[Cell__0__files2Flife2Dv22Emost]];
+     #v2 : {bits : [Nat64__0__prelude]; size : Nat__0__prelude}
+   }
 cannot be consumed at new type
-  var {#v1 : [[Cell__1]]} without data loss. Use an explicit migration function.
+  var {#v1 : [[Cell__0__files2Flife2Dv12Emost]]} without data loss. Use an explicit migration function.
 FALSE

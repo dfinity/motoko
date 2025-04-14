@@ -1,7 +1,7 @@
 (unknown location): Compatibility error [M0169], stable variable config_royalty_address of previous type
-  var Text
+  var Text__0__prelude
  cannot be implicitly discarded. This may cause data loss. Use an explicit migration function.
 (unknown location): Compatibility error [M0169], stable variable config_royalty_fee of previous type
-  var Nat64
+  var Nat64__0__prelude
  cannot be implicitly discarded. This may cause data loss. Use an explicit migration function.
 FALSE

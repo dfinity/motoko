@@ -4,35 +4,46 @@ to argument of type
   ()
 to produce result of type
   ()
-because no instantiation of A__10 makes
-  ()  <:  (g : A__10 -> async ())
+because no instantiation of A__1__pretty_scoped2Emo makes
+  ()  <:  (g : A__1__pretty_scoped2Emo -> async ())
 pretty_scoped.mo:4.1-4.45: type error [M0098], cannot implicitly instantiate function of type
   <A, B>(g : (A, B) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-because no instantiation of A__12, B__1 makes
-  ()  <:  (g : (A__12, B__1) -> async ())
+because no instantiation of A__3__pretty_scoped2Emo, B__1__pretty_scoped2Emo makes
+  ()  <: 
+    (g : (A__3__pretty_scoped2Emo, B__1__pretty_scoped2Emo) -> async ())
 pretty_scoped.mo:6.1-6.50: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : (A, B, C) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-because no instantiation of A__14, B__3, C__1 makes
-  ()  <:  (g : (A__14, B__3, C__1) -> async ())
+because no instantiation of A__5__pretty_scoped2Emo, B__3__pretty_scoped2Emo, C__1__pretty_scoped2Emo makes
+  ()  <: 
+    (g : (A__5__pretty_scoped2Emo, B__3__pretty_scoped2Emo,
+          C__1__pretty_scoped2Emo) -> async ())
 pretty_scoped.mo:8.1-8.55: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : <D>(A, B, C, D) -> async ()) -> ()
 to argument of type
   ()
 to produce result of type
   ()
-because no instantiation of A__16, B__5, C__3 makes
-  ()  <:  (g : <D>(A__16, B__5, C__3, D) -> async ())
+because no instantiation of A__7__pretty_scoped2Emo, B__5__pretty_scoped2Emo, C__3__pretty_scoped2Emo makes
+  ()  <: 
+    (g : <D>(A__7__pretty_scoped2Emo, B__5__pretty_scoped2Emo,
+             C__3__pretty_scoped2Emo, D) ->
+           async ())
 pretty_scoped.mo:10.1-10.69: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : <D <: C, E <: D>(A, B, C, D, E) -> async ()) -> ()
 to argument of type
   ()
-because no instantiation of A__18, B__7, C__5 makes
-  ()  <:  (g : <D <: C__5, E <: D>(A__18, B__7, C__5, D, E) -> async ())
+because no instantiation of A__9__pretty_scoped2Emo, B__7__pretty_scoped2Emo, C__5__pretty_scoped2Emo makes
+  ()  <: 
+    (g : <D <: C__5__pretty_scoped2Emo, E <: D>(A__9__pretty_scoped2Emo,
+                                                B__7__pretty_scoped2Emo,
+                                                C__5__pretty_scoped2Emo, D,
+                                                E) ->
+           async ())
