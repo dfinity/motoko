@@ -229,8 +229,8 @@
 
       haskellPackages = pkgs.haskellPackages.override {
         overrides = _hself: hsuper: {
-          qc-motoko = hsuper.callCabal2nix "qc-motoko" ./test/random {};
-          lsp-int = hsuper.callCabal2nix "lsp-int" ./test/lsp-int {};
+          qc-motoko = hsuper.callCabal2nix "qc-motoko" ./test/random { };
+          lsp-int = hsuper.callCabal2nix "lsp-int" ./test/lsp-int { };
         };
       };
 
