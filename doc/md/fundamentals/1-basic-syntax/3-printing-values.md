@@ -19,7 +19,7 @@ import Debug "mo:base/Debug";
 Debug.print(debug_show(42)); // "42"
 ```
 
-Printing values modify return output, therefore functions like `Debug.print("Hello, World!")` are considered [**impure functions**](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) because they cause a side effect by printing to the console.
+Functions like `Debug.print("Hello, World!")` are considered [**impure functions**](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) because they cause a side effect by printing to the console.
 
 In contrast, [**pure functions**](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) return values that do not modify output or have other side effects. `debug_show(42)` is pure because it always returns `"42"` without affecting anything outside the function.
 
@@ -27,4 +27,4 @@ In contrast, [**pure functions**](https://internetcomputer.org/docs/motoko/funda
 
 - [Debug](https://internetcomputer.org/docs/motoko/base/Debug)
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

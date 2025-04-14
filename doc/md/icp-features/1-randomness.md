@@ -12,17 +12,7 @@ The VRF generates 256-bit random `Blob`s in each execution round. Your canister 
 
 <!--PRNG to be mentioned here when the new base library is published? -->
 
-Motoko provides multiple options for incorporating randomness into your code, each suited for different scenarios:
-
-1. Calling the `raw_rand` method of the management canister directly.
-
-2. Using the [`Random`](https://internetcomputer.org/docs/motoko/base/Random) module in the base library offers an interface to work with random values derived from `raw_rand`, including finite sources of randomness for efficient computations.
-
-3. For applications that do not require strong cryptographic guarantees, **time-based randomness** can be generated using the [`fuzz` package](https://mops.one/fuzz), which provides a lightweight alternative without relying on network calls.
-
-4. For generating **unique identifiers**, the [`idempotency-keys` package](https://mops.one/idempotency-keys) offers UUID v4 generation, ensuring globally unique values for transactions and distributed systems.
-
-The right method for your application depends on its security, performance, and reproducibility requirements.
+Motoko provides multiple options for incorporating randomness into your code, each suited for different scenarios. The right method for your application depends on its security, performance, and reproducibility requirements.
 
 | Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|

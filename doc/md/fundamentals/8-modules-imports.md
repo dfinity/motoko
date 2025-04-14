@@ -135,7 +135,7 @@ persistent actor CountToTen {
 };
 ```
 
-`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) class is not named, it will result in a bad import error because [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) class imports cannot be anonymous.
+`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
 
 ## Importing from another canister
 
@@ -147,7 +147,7 @@ import BigMap "canister:BigMap";
 import Connectd "canister:Connectd";
 ```
 
-`BigMap` and `Connectd` are separate [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
+`BigMap` and `Connectd` are separate canisters defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
 
 Unlike a Motoko module, an imported canister:
 
@@ -166,4 +166,4 @@ import L "mo:base/List";
 
 `List` from Motoko's base library remains `List`. `List` from another package is renamed `Sequence`. `List` is also imported as `L` for convenience.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

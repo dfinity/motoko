@@ -40,19 +40,19 @@ Debug.print(debug_show(first));
 Debug.print(debug_show(second));
 ```
 
-## Iterating through an array  
+## Iterating through an array
 
-There are two primary ways to iterate through the elements in an array in Motoko: 
+There are two primary ways to iterate through the elements in an array in Motoko:
 
 1. Using `Array.vals`, which provides an iterator.
 
-2. Using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.  
+2. Using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.
 
 Both methods achieve the same result, but `Array.vals` is often preferred for its readability and simplicity.
 
-### Using `Array.vals`  
+### Using `Array.vals`
 
-The `Array.vals` function returns an iterator that is used to iterate over the array's elements without manually managing indices.  
+The `Array.vals` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
 
 ```motoko no-repl
 let arr = [1, 2, 3, 4, 5];
@@ -62,7 +62,7 @@ for (val in arr.vals()) {
 }
 ```
 
-### Using a `for` loop  
+### Using a `for` loop
 
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
 
@@ -91,7 +91,7 @@ Motoko supports passing collections to a function., ensuring that all arguments 
 
 ```motoko no-repl
 let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
-    
+
 func printAllStrings(strings: [Text]) {
     for (s in strings.vals()) {
         Debug.print(s);
@@ -124,7 +124,7 @@ func compareArrays() : () {
     }
 ```
 
-## Transforming arrays  
+## Transforming arrays
 
 Motoko's base library [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
@@ -195,4 +195,4 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 - [`Array`](https://internetcomputer.org/docs/motoko/base/Array)
 - [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter)
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

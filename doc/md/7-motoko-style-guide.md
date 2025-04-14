@@ -564,7 +564,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let result = traverse(graph);
     ```
 
-- The name of predicate functions returning [`Bool`](../old-docs/base/Bool.md) should use an `is` or `has` prefix or a similar description of the tested property.
+- The name of predicate functions returning [`Bool`](./base/Bool.md) should use an `is` or `has` prefix or a similar description of the tested property.
 
     ``` motoko no-repl
     class Set<X>() {
@@ -640,7 +640,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::note
 
-    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type [`Int`](../old-docs/base/Int.md) instead of [`Nat`](../old-docs/base/Nat.md), if desired.
+    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type [`Int`](./base/Int.md) instead of [`Nat`](./base/Nat.md), if desired.
 
     :::
 
@@ -649,7 +649,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let offset = +1;   // type Int
     ```
 
-- Similarly, put inline type annotations on arithmetic expressions with types other than [`Nat`](../old-docs/base/Nat.md) or [`Int`](../old-docs/base/Int.md).
+- Similarly, put inline type annotations on arithmetic expressions with types other than [`Nat`](./base/Nat.md) or [`Int`](./base/Int.md).
 
     ``` motoko no-repl
     if (x & mask == (1 : Nat32)) { ... };
@@ -686,7 +686,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     var obj : Class = foo();
     ```
 
-    Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type [`Nat`](../base/Nat.md) without the annotation, ruling out assignments of integers.
+    Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type [`Nat`](../motoko/base/Nat.md) without the annotation, ruling out assignments of integers.
 
 - Put type annotations on all public fields in a class.
 
@@ -709,7 +709,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     Array.map<Nat, Nat>(func n {n + 1}, a);
     ```
 
-- Put type annotations on definitions that involve numeric types other than [`Nat`](../old-docs/base/Nat.md) or [`Int`](../old-docs/base/Int.md), to resolve the overloading between arithmetic operators and constants.
+- Put type annotations on definitions that involve numeric types other than [`Nat`](./base/Nat.md) or [`Int`](./base/Int.md), to resolve the overloading between arithmetic operators and constants.
 
     ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
@@ -718,7 +718,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Picking types
 
-- Use [`Nat`](../old-docs/base/Nat.md) for any integral value that cannot be negative.
+- Use [`Nat`](./base/Nat.md) for any integral value that cannot be negative.
 
 - Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits, or when matching types imposed by external requirements such as other canisters.
 
@@ -734,7 +734,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
     ```
 
-- Consider using variants instead of [`Bool`](../old-docs/base/Bool.md) to represent binary choices.
+- Consider using variants instead of [`Bool`](./base/Bool.md) to represent binary choices.
 
     Note that variant types can be used in place and do not need to be declared.
 
@@ -983,101 +983,101 @@ public composite query func betterQuery() : async () {
 This section describes the concrete syntax (grammar) of Motoko. The specification is auto-generated with a tool. This grammar is in the [Extended Backus–Naur form(EBNF)](https://tomassetti.me/ebnf/).
 
 ```EBNF
-<list(X, SEP)> ::= 
+<list(X, SEP)> ::=
     <empty>
     X
     X SEP <list(X, SEP)>
 
-<list1(X, SEP)> ::= 
+<list1(X, SEP)> ::=
     X
     X SEP <list(X, SEP)>
 
-<typ_obj_sort> ::= 
+<typ_obj_sort> ::=
     'object'
     'actor'
     'module'
 
-<obj_sort> ::= 
+<obj_sort> ::=
     'object'
     'persistent'? 'actor'
     'module'
 
-<query> ::= 
+<query> ::=
     'query'
     'composite' 'query'
 
-<func_sort_opt> ::= 
+<func_sort_opt> ::=
     <empty>
     'shared' <query>?
     <query>
 
-<shared_pat_opt> ::= 
+<shared_pat_opt> ::=
     <empty>
     'shared' <query>? <pat_plain>?
     <query> <pat_plain>?
 
-<typ_obj> ::= 
+<typ_obj> ::=
     '{' <list(<typ_field>, ';')> '}'
 
-<typ_variant> ::= 
+<typ_variant> ::=
     '{' '#' '}'
     '{' <list1(<typ_tag>, ';')> '}'
 
-<typ_nullary> ::= 
+<typ_nullary> ::=
     '(' <list(<typ_item>, ',')> ')'
     <id> ('.' <id>)* <typ_args>?
     '[' 'var'? <typ> ']'
     <typ_obj>
     <typ_variant>
 
-<typ_un> ::= 
+<typ_un> ::=
     <typ_nullary>
     '?' <typ_un>
 
-<typ_pre> ::= 
+<typ_pre> ::=
     <typ_un>
     'async' <typ_pre>
     'async*' <typ_pre>
     <typ_obj_sort> <typ_obj>
 
-<typ_nobin> ::= 
+<typ_nobin> ::=
     <typ_pre>
     <func_sort_opt> <typ_params_opt> <typ_un> '->' <typ_nobin>
 
-<typ> ::= 
+<typ> ::=
     <typ_nobin>
     <typ> 'and' <typ>
     <typ> 'or' <typ>
 
-<typ_item> ::= 
+<typ_item> ::=
     <id> ':' <typ>
     <typ>
 
-<typ_args> ::= 
+<typ_args> ::=
     '<' <list(<typ>, ',')> '>'
 
-<inst> ::= 
+<inst> ::=
     <empty>
     '<' <list(<typ>, ',')> '>'
     '<' 'system' (',' <typ>)* '>'
 
-<typ_params_opt> ::= 
+<typ_params_opt> ::=
     ('<' <list(<typ_bind>, ',')> '>')?
     '<' 'system' (',' <typ_bind>)* '>'
 
-<typ_field> ::= 
+<typ_field> ::=
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
     <id> <typ_params_opt> <typ_nullary> ':' <typ>
 
-<typ_tag> ::= 
+<typ_tag> ::=
     '#' <id> (':' <typ>)?
 
-<typ_bind> ::= 
+<typ_bind> ::=
     <id> '<:' <typ>
     <id>
 
-<lit> ::= 
+<lit> ::=
     'null'
     <bool>
     <nat>
@@ -1085,12 +1085,12 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     <char>
     <text>
 
-<unop> ::= 
+<unop> ::=
     '+'
     '-'
     '^'
 
-<binop> ::= 
+<binop> ::=
     '+'
     '-'
     '*'
@@ -1110,7 +1110,7 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     '<>>'
     '#'
 
-<relop> ::= 
+<relop> ::=
     '=='
     '!='
     ' < '
@@ -1118,12 +1118,12 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     ' > '
     '>='
 
-<unassign> ::= 
+<unassign> ::=
     '+='
     '-='
     '^='
 
-<binassign> ::= 
+<binassign> ::=
     '+='
     '-='
     '*='
@@ -1143,22 +1143,22 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     '<>>='
     '@='
 
-<exp_obj> ::= 
+<exp_obj> ::=
     '{' <list(<exp_field>, ';')> '}'
     '{' <exp_post> 'and' <exp_post> ('and' <exp_post>)* '}'
     '{' <exp_post> ('and' <exp_post>)* 'with' <list1(<exp_field>, ';')> '}'
 
-<exp_plain> ::= 
+<exp_plain> ::=
     <lit>
     '(' <list(<exp>, ',')> ')'
 
-<exp_nullary> ::= 
+<exp_nullary> ::=
     <exp_obj>
     <exp_plain>
     <id>
     '_'
 
-<exp_post> ::= 
+<exp_post> ::=
     <exp_nullary>
     '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
@@ -1168,7 +1168,7 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
-<exp_un> ::= 
+<exp_un> ::=
     <exp_post>
     '#' <id>
     '#' <id> <exp_nullary>
@@ -1181,7 +1181,7 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     'to_candid' '(' <list(<exp>, ',')> ')'
     'from_candid' <exp_un>
 
-<exp_bin> ::= 
+<exp_bin> ::=
     <exp_un>
     <exp_bin> <binop> <exp_bin>
     <exp_bin> <relop> <exp_bin>
@@ -1190,7 +1190,7 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     <exp_bin> ':' <typ_nobin>
     <exp_bin> '|>' <exp_bin>
 
-<exp_nondec> ::= 
+<exp_nondec> ::=
     <exp_bin>
     <exp_bin> ':=' <exp>
     <exp_bin> <binassign> <exp>
@@ -1219,105 +1219,105 @@ This section describes the concrete syntax (grammar) of Motoko. The specificatio
     'do' <block>
     'do' '?' <block>
 
-<exp_nonvar> ::= 
+<exp_nonvar> ::=
     <exp_nondec>
     <dec_nonvar>
 
-<exp> ::= 
+<exp> ::=
     <exp_nonvar>
     <dec_var>
 
-<exp_nest> ::= 
+<exp_nest> ::=
     <block>
     <exp>
 
-<block> ::= 
+<block> ::=
     '{' <list(<dec>, ';')> '}'
 
-<case> ::= 
+<case> ::=
     'case' <pat_nullary> <exp_nest>
 
-<catch> ::= 
+<catch> ::=
     'catch' <pat_nullary> <exp_nest>
 
-<exp_field> ::= 
+<exp_field> ::=
     'var'? <id> (':' <typ>)?
     'var'? <id> (':' <typ>)? '=' <exp>
 
-<dec_field> ::= 
+<dec_field> ::=
     <vis> <stab> <dec>
 
-<vis> ::= 
+<vis> ::=
     <empty>
     'private'
     'public'
     'system'
 
-<stab> ::= 
+<stab> ::=
     <empty>
     'flexible'
     'stable'
     'transient'
 
-<pat_plain> ::= 
+<pat_plain> ::=
     '_'
     <id>
     <lit>
     '(' <list(<pat_bin>, ',')> ')'
 
-<pat_nullary> ::= 
+<pat_nullary> ::=
     <pat_plain>
     '{' <list(<pat_field>, ';')> '}'
 
-<pat_un> ::= 
+<pat_un> ::=
     <pat_nullary>
     '#' <id>
     '#' <id> <pat_nullary>
     '?' <pat_un>
     <unop> <lit>
 
-<pat_bin> ::= 
+<pat_bin> ::=
     <pat_un>
     <pat_bin> 'or' <pat_bin>
     <pat_bin> ':' <typ>
 
-<pat> ::= 
+<pat> ::=
     <pat_bin>
 
-<pat_field> ::= 
+<pat_field> ::=
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
 
-<dec_var> ::= 
+<dec_var> ::=
     'var' <id> (':' <typ>)? '=' <exp>
 
-<dec_nonvar> ::= 
+<dec_nonvar> ::=
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
-<dec> ::= 
+<dec> ::=
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
     'let' <pat> '=' <exp> 'else' <exp_nest>
 
-<func_body> ::= 
+<func_body> ::=
     '=' <exp>
     <block>
 
-<obj_body> ::= 
+<obj_body> ::=
     '{' <list(<dec_field>, ';')> '}'
 
-<class_body> ::= 
+<class_body> ::=
     '=' <id>? <obj_body>
     <obj_body>
 
-<imp> ::= 
+<imp> ::=
     'import' <pat_nullary> '='? <text>
 
-<prog> ::= 
+<prog> ::=
     <list(<imp>, ';')> <list(<dec>, ';')>
 ```

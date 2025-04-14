@@ -22,7 +22,7 @@ Each [`Region`](https://internetcomputer.org/docs/motoko/base/Region) has a star
 
 ### Pages
 
-A **page** is the fundamental unit of allocation in stable memory, serving as the building block for memory management. Each page has a fixed size of 64 KiB (65_536 bytes) and is zero-initialized upon allocation, ensuring a clean state before use. Pages are accessed using [byte offsets,](https://en.wikipedia.org/wiki/Offset_(computer_science)) for precise control over memory operations.
+A **page** is the fundamental unit of allocation in stable memory, serving as the building block for memory management. Each page has a fixed size of 64 KiB (`65_536` bytes) and is zero-initialized upon allocation, ensuring a clean state before use. Pages are accessed using [byte offsets](https://en.wikipedia.org/wiki/Offset_(computer_science)) for precise control over memory operations.
 
 ### Blocks
 
@@ -36,7 +36,7 @@ Since stable memory does not inherently manage layout, it is the developer’s r
 
 ## Using a `Region`
 
-It is the developer's responsibility to properly manipulate and interpret the data within a [`Region`](https://internetcomputer.org/docs/motoko/base/Region)s structure, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable [`Region`](https://internetcomputer.org/docs/motoko/base/Region) content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
+It is the developer's responsibility to properly manipulate and interpret the data within a regions structure, which may be error-prone. However, the safety of Motoko's native value heap objects is always guaranteed, independent of the stable [`Region`](https://internetcomputer.org/docs/motoko/base/Region) content. The cost of accessing stable regions is significantly higher than using Motoko's native memory.
 
 ### Creation and allocation
 
@@ -115,7 +115,7 @@ Region.storeFloat(myRegion, 200, 3.14159);
 let pi = Region.loadFloat(myRegion, 200);  // Returns 3.14159
 ```
 
-[`Region`](https://internetcomputer.org/docs/motoko/base/Region)s can be used for storing and retrieving binary data as `Blob`s. This is useful for handling arbitrary sequences of bytes, such as serialized objects or encoded information.
+regions can be used for storing and retrieving binary data as `Blob`s. This is useful for handling arbitrary sequences of bytes, such as serialized objects or encoded information.
 
 `Blob`s can be stored at any offset, but their size must be considered when choosing a starting position. Retrieving the correct number of bytes ensures that data integrity is maintained when working with binary storage in a [`Region`](https://internetcomputer.org/docs/motoko/base/Region).
 
@@ -130,7 +130,7 @@ Region.storeBlob(myRegion, 300, myData);
 let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 ```
 
-### Mops packages for `Regions`
+### Mops packages for Regions
 
 - [`memory-region`](https://mops.one/memory-region]): A library for abstraction over the [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type that supports reusing deallocated memory.
 
@@ -139,9 +139,9 @@ let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 - [`stable-buffer`](https://mops.one/stable-buffer): Buffers implemented in stable regions.
 
 
-## Memory layout strategies for using `Region`s
+## Memory layout strategies for using regions
 
-While the basic operations above demonstrate how to store and retrieve individual values in a [`Region`](https://internetcomputer.org/docs/motoko/base/Region), real-world applications typically require more organized approaches to memory management. The following memory layout strategies build upon these fundamental operations to create structured patterns for data organization. These strategies provide systematic ways to allocate, track, and access data within [`Region`](https://internetcomputer.org/docs/motoko/base/Region)s, allowing developers to implement more complex data structures while maintaining efficient memory usage.
+While the basic operations above demonstrate how to store and retrieve individual values in a [`Region`](https://internetcomputer.org/docs/motoko/base/Region), real-world applications typically require more organized approaches to memory management. The following memory layout strategies build upon these fundamental operations to create structured patterns for data organization. These strategies provide systematic ways to allocate, track, and access data within regions, allowing developers to implement more complex data structures while maintaining efficient memory usage.
 
 Each strategy offers different trade-offs between simplicity, flexibility, and performance depending on your application's specific requirements.
 
@@ -193,7 +193,7 @@ func readEntry(index : Nat64, size : Nat) : Blob {
 
 ### Index-based
 
-For variable-sized data, an index [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is used to track where each entry is stored within a separate data [`Region`](https://internetcomputer.org/docs/motoko/base/Region). This method maintains two separate memory [`Region`](https://internetcomputer.org/docs/motoko/base/Region)s: one for **indexes** that store positions and sizes and one for **actual data**. Using an index allows efficient access to variable-length data while avoiding fragmentation issues.
+For variable-sized data, an index [`Region`](https://internetcomputer.org/docs/motoko/base/Region) is used to track where each entry is stored within a separate data [`Region`](https://internetcomputer.org/docs/motoko/base/Region). This method maintains two separate memory regions: one for **indexes** that store positions and sizes and one for **actual data**. Using an index allows efficient access to variable-length data while avoiding fragmentation issues.
 
 ```motoko no-repl
 // Two regions: one for index, one for data
@@ -304,7 +304,7 @@ func appendToLog(data : Blob) {
 
 ## `Regions` comprehensive example
 
-This example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable, `state`, to keep track of the two [`Region`](https://internetcomputer.org/docs/motoko/base/Region)s and their size in bytes, but stores the contents of the log directly in stable memory.
+This example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable, `state`, to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
 
 ```motoko no-repl
 import Nat64 "mo:base/Nat64";

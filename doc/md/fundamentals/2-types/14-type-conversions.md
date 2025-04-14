@@ -19,7 +19,7 @@ import Float "mo:base/Float";
 import Int "mo:base/Int";
 
 func floatToNat(f: Float): Nat {
-    return Nat.Int(Float.toInt(f));  
+    return Nat.Int(Float.toInt(f));
 };
 
 let result1 = floatToNat(42.9);   // 42
@@ -375,12 +375,12 @@ actor {
             remainingDays -= daysInMonth;
             month += 1;
         };
-        
+
         let day = remainingDays + 1;
-        
+
         return (year, month, day);
     };
-    
+
     func daysInYear(year : Int) : Int {
         if (isLeapYear(year)) { 366 } else { 365 };
     };
@@ -388,15 +388,15 @@ actor {
     func system_time() : Int {
         Time.now() / 1_000_000_000;
     };
-    
+
     func isLeapYear(year : Int) : Bool {
         (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0);
     };
-    
+
     func getMonthLengths(year : Int) : [Int] {
         [ 31, if (isLeapYear(year)) { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, ];
     };
-    
+
     func formatNumber(n : Int) : Text {
         if (n < 10) { "0" # Int.toText(n) } else { Int.toText(n) };
     };
@@ -468,4 +468,4 @@ func tuplesToUsers(arr: [(Text, Nat)]): [User] {
 };
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

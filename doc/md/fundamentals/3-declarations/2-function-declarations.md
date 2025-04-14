@@ -6,7 +6,7 @@ sidebar_position: 2
 
 A function in Motoko is a reusable block of code that takes inputs, processes them, then returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
 
-## Declaring a function  
+## Declaring a function
 
 Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse.
 
@@ -20,9 +20,9 @@ func add(a: Int, b: Int) : Int {
 }
 ```
 
-## Calling a function  
+## Calling a function
 
-To execute a function, pass the required arguments:  
+To execute a function, pass the required arguments:
 
 ```motoko no-repl
 func add(a: Int, b: Int) : Int {
@@ -31,7 +31,7 @@ func add(a: Int, b: Int) : Int {
 add(3, 5);
 ```
 
-## Functions as values  
+## Functions as values
 
 Functions in Motoko are first-class values. They can be assigned to variables, stored in data structures, and passed as arguments.
 
@@ -56,7 +56,7 @@ multiply(4, 2);
 The function is assigned to `multiply` instead of being named directly. `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.
 
 
-## Recursive functions  
+## Recursive functions
 
 A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops.
 
@@ -65,12 +65,12 @@ func factorial(n: Nat) : Nat {
     if (n == 0) {
         return 1;
     };
-// Calls itself with factorial(n - 1), reducing n until reaching 0.  
+// Calls itself with factorial(n - 1), reducing n until reaching 0.
     return n * factorial(n - 1);
 }
 ```
 
-## Shared functions in actors  
+## Shared functions in actors
 
 In actors, functions can be marked as `shared` to allow [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) communication.
 
@@ -103,4 +103,4 @@ actor Example {
 }
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

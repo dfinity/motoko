@@ -104,4 +104,4 @@ let firstUserName: Text = switch (users[0]) {
 
 The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) age. `users[0]` retrieves the first tuple in the array. The `switch` expression extracts only the name while ignoring the second element using the wildcard pattern (`_`). This ensures clarity and type safety when working with tuples inside collections.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

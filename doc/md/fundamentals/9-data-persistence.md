@@ -13,11 +13,11 @@ The declarations `let` or `var` within an [actor](https://internetcomputer.org/d
 1. `stable` declarations:
    - Persist their value across canister upgrades.
    - Are automatically retained as long as they are directly or indirectly reachable from a stable variable.
-   - Should be used for core application [state](https://internetcomputer.org/docs/motoko/fundamentals/state), such as counters, user balances, or configuration data.
+   - Should be used for core application state, such as counters, user balances, or configuration data.
 
 2. `transient` declarations:
    - Reset to default on every upgrade.
-   - Should be used for temporary [state](https://internetcomputer.org/docs/motoko/fundamentals/state) or high-order types (e.g., function references) that should not persist.
+   - Should be used for temporary state or high-order types (e.g., function references) that should not persist.
     <!----Not sure if flexible should be included considering its deprecated but it seems to still exist in the syntax--->
 
 The following example demonstrates a stable counter that retains its value across upgrades:
@@ -188,7 +188,7 @@ The following changes are implicitly migrated:
 
 If a change falls within these categories, no manual migration is required. The system ensures that stable variables persist correctly across upgrades.
 
-### Explicit migration  
+### Explicit migration
 
 For structural changes that **are not stable-compatible**, an explicit migration must be performed. This is necessary when changing a stable variable’s type in an incompatible way, such as converting [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to [`Float`](https://internetcomputer.org/docs/motoko/base/Float).
 
@@ -256,4 +256,4 @@ persistent actor Counter_v2 {
 
 Alternatively, to retain compatibility while indicating that a variable is no longer in use, the type of `state` can be changed to `Any`. It can hold any value but requires explicit downcasting to retrieve data.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

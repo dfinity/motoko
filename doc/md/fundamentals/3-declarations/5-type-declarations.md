@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# Type declarations 
+# Type declarations
 
 A type declaration are used for defining custom types that improve readability, reusability, and structure in the code. They can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed, valid types.
 
@@ -126,4 +126,4 @@ Expands by wrapping `T` inside `[T]`, growing the type. This is expansive and no
 - [`Record`](https://internetcomputer.org/docs/motoko/fundamentals/types/records)
 - [`Variant`](https://internetcomputer.org/docs/motoko/fundamentals/types/variants)
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

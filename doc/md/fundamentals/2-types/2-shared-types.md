@@ -13,9 +13,9 @@ A shared type must be immutable and [Candid](https://internetcomputer.org/docs/b
 Shareability is essential for several reasons:
 
 - Shared types ensure data can be safely serialized and deserialized across network boundaries.
-- Restricting sharing to immutable data prevents synchronization issues between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
-- Shared types map directly to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), enabling interaction between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) written in different languages.
-- Web and mobile [frontends](https://internetcomputer.org/docs/building-apps/frontends/using-an-asset-canister) communicate with [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) using shared types.
+- Restricting sharing to immutable data prevents synchronization issues between canisters.
+- Shared types map directly to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), enabling interaction between canisters written in different languages.
+- Web and mobile frontends communicate with canisters using shared types.
 
 ## Common shared types
 
@@ -139,4 +139,4 @@ let complex = {
 };
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

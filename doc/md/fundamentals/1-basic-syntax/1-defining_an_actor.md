@@ -7,7 +7,7 @@ hide_table_of_contents: true
 
 In Motoko, an actor is a unit of computation that encapsulates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and interact with each other through [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging.
 
-Actors are objects with special system-level capabilities. An actor supports [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) operations and can persist [state](https://internetcomputer.org/docs/motoko/fundamentals/state) across calls. Unlike modules, actors cannot be instantiated on their own using `actor()`. Each actor runs independently with its own message queue, allowing concurrent execution.
+Actors are objects with special system-level capabilities. An actor supports asynchronous operations and can persist state across calls. Unlike modules, actors cannot be instantiated on their own using `actor()`. Each actor runs independently with its own message queue, allowing concurrent execution.
 
 A Motoko program typically starts by defining an actor.
 
@@ -20,7 +20,7 @@ actor Main {
   };
 };
 
-// Actors in Motoko communicate [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await). await ensures the result is retrieved once the function completes.
+// Actors in Motoko communicate asynchronously. await ensures the result is retrieved once the function completes.
 await Main.hello();
 ```
 
@@ -31,4 +31,4 @@ A Motoko actor always presents its interface as a suite of named [functions](htt
 
 - [Actors](https://internetcomputer.org/docs/motoko/fundamentals/async-actors)
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

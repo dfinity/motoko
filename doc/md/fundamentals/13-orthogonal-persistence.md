@@ -25,15 +25,15 @@ Enhanced orthogonal persistence improves upgrade efficiency by **retaining the W
 - **64-bit address space**: Expands beyond the 2GiB limit of classical persistence.
 - **No explicit stable memory**: Developers work directly with Motoko’s object structures, which persist automatically.
 
-Enhanced persistence is currently in beta and must be manually enabled.
+Enhanced orthogonal persistence has finished beta testing and is blessed for use in production.
 
-**Using `moc`**  
+**Using `moc`**
 
 ```sh
 moc --enhanced-orthogonal-persistence
 ```
 
-**Enabling in `dfx.json`**  
+**Enabling in `dfx.json`**
 
 ```json
 {
@@ -55,7 +55,7 @@ If an upgrade is incompatible, the system **automatically rolls it back** to pre
 
 When switching to enhanced persistence, the system performs one final deserialization from stable memory before transitioning fully to memory retention. Once a canister is using enhanced persistence, it cannot be downgraded back to classical persistence. Legacy stable memory remains accessible as secondary storage, allowing developers to combine stable regions with orthogonal persistence if needed.
 
-ICP provides options for Wasm memory retention during upgrades:  
+ICP provides options for Wasm memory retention during upgrades:
 
 1. `wasm_memory_persistence = opt keep`
 
@@ -65,7 +65,7 @@ ICP provides options for Wasm memory retention during upgrades:
 2. `wasm_memory_persistence = null`
 
    - Uses classical persistence.
-   - Replaces Wasm memory on upgrade.  
+   - Replaces Wasm memory on upgrade.
 
 3. `wasm_memory_persistence = opt replace`
 
@@ -76,7 +76,7 @@ For new projects, **enhanced persistence is recommended** for efficiency, scalab
 
 ## Classical orthogonal persistence
 
-Classical orthogonal persistence is the original implementation of Motoko's orthogonal persistence system. It remains the default option while enhanced orthogonal persistence is developed.
+Classical orthogonal persistence is the original implementation of Motoko's orthogonal persistence system.
 
 During an upgrade, the classical orthogonal persistence mechanism serializes all stable data to stable memory and deserializes it back to main memory after the upgrade.
 
@@ -102,4 +102,4 @@ This approach has several significant downsides:
 
 These issues can result in a "stuck" canister that becomes impossible to upgrade further. Therefore it is absolutely necessary to thoroughly test the upgrade capacity of your application and conservatively limit the data held by each canister. Implementing backup mechanisms is strongly recommended to rescue data even when upgrades fail, such as controller-privileged data query calls.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -16,9 +16,7 @@ sidebar_position: 1
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
 | `let-else` | Conditionally binds values. |
 
-## `return`
-
-A return statement immediately exits a function and provides a result.
+A return statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
 ```motoko no-repl
 func add(a: Nat, b: Nat): Nat {
@@ -196,24 +194,6 @@ public func continueControlFlow() : async Int {
 }
 ```
 
-### `return`
-
-The `return` statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
-
-```motoko no-repl
-public func returnControlFlow() : async Int {
-    let numbers : [Int] = [3, 0, 5, -1, -2, 7];
-    var sum : Int = 0;
-        for (num in numbers.vals()) {
-            if (num < 0) {
-                return sum; // Immediately exit the function
-            };
-            sum += num;
-        };
-    return sum; // Only reached if no negative numbers are found
-}
-```
-
 ### Function calls
 
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
@@ -238,4 +218,4 @@ public func functionCallControlFlow() : async Int {
 
 Execution begins in `functionCallExample()`, where the function `processNumbers()` is invoked, shifting control to its execution. Within `processNumbers()`, numbers are processed sequentially. If a negative number is encountered, `return` halts execution immediately and returns the current sum. Control then transfers back to `functionCallExample()`, which receives and returns the final result. Function calls disrupt the normal sequential flow by directing execution to a separate block of logic.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -33,13 +33,12 @@ For scenarios requiring fixed-size integers, Motoko offers bounded integer types
 - [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32) (32-bit signed integer)
 - [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64) (64-bit signed integer)
 
-Bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling)
+Bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
 ```motoko
 let overflowInt: Int8 = 128; // Error: literal out of range Int8
 ```
 
--------
 
 ## Natural numbers
 
@@ -84,7 +83,6 @@ let overflowNat8: Nat8 = 256; // Error: literal out of range Nat8
 | Bounded variants      | [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32)...| [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)...|
 | Overflow possibility  | Yes (for bounded types)    | Yes (for bounded types)  |
 
---------
 
 ## Floats
 
@@ -110,4 +108,4 @@ let exp: Float = 2.71828;
 - [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
 
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

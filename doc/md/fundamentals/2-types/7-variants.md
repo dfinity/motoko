@@ -50,7 +50,7 @@ Debug.print(getStatusMessage(bannedUser));
 
 ## Variants example: traffic lights
 
-To demonstrate variants, consider the following example. 
+To demonstrate variants, consider the following example.
 
 A traffic light cycles between three distinct states:
 
@@ -164,11 +164,11 @@ let tree : Tree = #node {
 
 ### Traversing the tree
 
-A tree can be traversed in multiple ways. One common approach is in-order traversal, where nodes are visited in the order:  
+A tree can be traversed in multiple ways. One common approach is in-order traversal, where nodes are visited in the order:
 
-1. Left subtree  
-2. Root node  
-3. Right subtree  
+1. Left subtree
+2. Root node
+3. Right subtree
 
 The following example recursively traverses the tree in order and prints each value as it is visited.
 
@@ -214,8 +214,8 @@ type Tree<T> = {
     };
     #leaf;
 };
-```  
+```
 
 With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

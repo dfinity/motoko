@@ -6,7 +6,7 @@ sidebar_position: 4
 
 A block expression is a sequence of statements enclosed in `{ ... }`. They can be used for grouping multiple operations, defining local variables, and structuring code logically. Blocks are essential to functions, as they define the function body and determine the return value. They follow these guidelines:
 
-1. A block contains a series of expressions and statements.  
+1. A block contains a series of expressions and statements.
 2. The last evaluated expression determines the block’s result.
 3. If no meaningful final expression is present, the block returns `()`.
 
@@ -27,7 +27,7 @@ public func add(x: Nat, y: Nat) : Nat {
 Block expressions support conditionals, loops, and other control structures. The type of the values must match across possible expressions.
 
 ```motoko no-repl
-// The block contains an if-else structure.  
+// The block contains an if-else structure.
 public func classifyNumber(n: Int) : Text {
     if (n > 0) {
         "Positive"
@@ -41,7 +41,7 @@ public func classifyNumber(n: Int) : Text {
 
 ### Block assignments
 
-Blocks are not limited to functions; they can be used anywhere an expression is expected.  
+Blocks are not limited to functions; they can be used anywhere an expression is expected.
 
 ```motoko no-repl
 // The block is evaluated as an expression.
@@ -66,4 +66,4 @@ do {
 };
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Motoko compiler reference
@@ -62,7 +62,7 @@ You can use the following options with the `moc` command.
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (only supported with classical persistence, default 32).                               |
-| `--trap-on-call-error`                    | Trap, don't throw an [`Error`](../base/Error.md), when an IC call fails due to destination queue full or freezing threshold is crossed.               |
+| `--trap-on-call-error`                    | Trap, don't throw an [`Error`](./base/Error.md), when an IC call fails due to destination queue full or freezing threshold is crossed.               |
 |                                           | Emulates behaviour of moc versions < 0.8.0.                                                                                                           |
 | `-t`                                      | Activates tracing in interpreter.                                                                                                                     |
 | `-v`                                      | Generates verbose output.                                                                                                                             |
@@ -70,4 +70,4 @@ You can use the following options with the `moc` command.
 | `-wasi-system-api`                        | Uses the WASI system API (`wasmtime`).                                                                                                                |
 
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
