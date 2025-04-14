@@ -695,6 +695,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
     (* Cost *)
     | SystemCostCreateCanisterPrim, [] ->
       T.nat <: t
+    | SystemCostHttpRequestPrim, [e1; e2] ->
+      typ e1 <: T.nat64;
+      typ e2 <: T.nat64;
+      T.nat <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;

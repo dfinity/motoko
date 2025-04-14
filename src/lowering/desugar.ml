@@ -195,7 +195,9 @@ and exp' at note = function
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costCreateCanister";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemCostCreateCanisterPrim, [])
-  
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costHttpRequest";_},_);_}, _, {it=S.TupE es;_}) ->
+    assert (List.length es = 2);
+    I.PrimE (I.SystemCostHttpRequestPrim, List.map exp es)
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])

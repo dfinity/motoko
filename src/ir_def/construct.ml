@@ -109,7 +109,8 @@ let primE prim es =
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim
     | SystemCyclesBurnPrim
-    | SystemCostCreateCanisterPrim -> T.nat
+    | SystemCostCreateCanisterPrim
+    | SystemCostHttpRequestPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non

@@ -4685,6 +4685,7 @@ end (* Lifecycle *)
 module IC = struct
 
   (* IC-specific stuff: System imports, databufs etc. *)
+  let i = I64Type
 
   let register_globals env =
     (* result of last ic0.call_perform  *)
@@ -4713,7 +4714,6 @@ module IC = struct
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
-      let i = I64Type in
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
@@ -5470,6 +5470,21 @@ module Cost = struct
         Cycles.from_word128_ptr env
       )
     )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.cost_http_request env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
 end
 
 (* Low-level, almost raw access to IC stable memory.
@@ -12382,6 +12397,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   (* Cost *)
   | SystemCostCreateCanisterPrim, [] ->
     SR.Vanilla, Cost.create_canister env
+  | SystemCostHttpRequestPrim, [request_size; max_res_bytes] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
+    Cost.http_request env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit,

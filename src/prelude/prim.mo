@@ -364,6 +364,8 @@ func cyclesBurn<system>(amount : Nat) : Nat {
 
 func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
 
+func costHttpRequest(requestSize : Nat64, maxResBytes : Nat64) : Nat = (prim "costHttpRequest" : (Nat64, Nat64) -> Nat)(requestSize, maxResBytes);
+
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob)();

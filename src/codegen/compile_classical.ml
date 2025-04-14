@@ -5028,6 +5028,8 @@ module IC = struct
 
   (* IC-specific stuff: System imports, databufs etc. *)
 
+  let i = I32Type
+
   let register_globals env =
     (* result of last ic0.call_perform  *)
     E.add_global32 env "__call_perform_status" Mutable 0l;
@@ -5056,7 +5058,6 @@ module IC = struct
     G.i (Call (nr (E.built_in env get_actor_to_persist_function_name)))
 
   let import_ic0 env =
-      let i = I32Type in
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
@@ -5724,7 +5725,7 @@ end (* Cycles *)
 
 module Cost = struct
   let create_canister env =
-    Func.share_code0 Func.Always env "cost_create_canister" [I32Type] (fun env ->
+    Func.share_code0 Func.Always env "cost_create_canister" [IC.i] (fun env ->
       Stack.with_words env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cost_create_canister env ^^
@@ -5732,6 +5733,21 @@ module Cost = struct
         Cycles.from_word128_ptr env
       )
     )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.cost_http_request env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
 end
 
 (* Low-level, almost raw access to IC stable memory.
@@ -12269,6 +12285,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   (* Cost *)
   | SystemCostCreateCanisterPrim, [] ->
     SR.Vanilla, Cost.create_canister env
+  | SystemCostHttpRequestPrim, [request_size; max_res_bytes] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
+    Cost.http_request env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"

@@ -29,31 +29,29 @@ actor client {
   };
 
   public func go() : async () {
-    // print(debug_show (Prim.costHttpGet()) # " -- http get cost");
-
-    if (Cycles.balance() == 0) {
-      await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
-      print("top up; balance = " # debug_show (Cycles.balance()));
-    } else {
-      print("already topped up; balance = " # debug_show (Cycles.balance()));
-    };
-
-    // let before = Cycles.balance();
-    printCycles();
-    let response = await (with cycles = 200_000_000_000) ic00.http_request({
+    let request = {
       url = "https://ic0.app";
       method = #get;
       headers = [];
       body = null;
       transform = null;
       max_response_bytes = null;
-    });
+    };
+    let requestSize : Nat64 = 0;
+    let defaultMaxResBytes : Nat64 = 2_000_000; // default when max_response_bytes is null
+    print(debug_show (Prim.costHttpRequest(requestSize, defaultMaxResBytes)) # " -- http cost request");
+
+    if (Cycles.balance() < 200_000_000_000) {
+      await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
+      print("top up; balance = " # debug_show (Cycles.balance()));
+    } else {
+      print("already topped up; balance = " # debug_show (Cycles.balance()));
+    };
+
+    printCycles();
+    let response = await (with cycles = 200_000_000_000) ic00.http_request(request);
     print("response: " # debug_show (response));
     printCycles();
-
-    // print(debug_show (before) # " -- Cycles.balance() before");
-    // print(debug_show (after) # " -- Cycles.balance() after");
-    // print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
   };
 
   func printCycles() {
