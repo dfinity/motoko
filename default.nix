@@ -398,13 +398,14 @@ rec {
                 wasmHash = with builtins; convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
                 wasm = with builtins; fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
                 script = builtins.replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (builtins.readFile "${for}/${stem}.wasm.script");
+                golden = builtins.readFile "${for}/${stem}.drun-run.ok";
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
               phases = "buildPhase";
               buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
-                <<EOscript drun $(cat ${for}/${name}) \
+                <<'EOscript' drun $(cat ${for}/${name}) \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                      -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
@@ -413,7 +414,9 @@ rec {
                 > $out/drun-run
 ${script}
 EOscript
-                diff -u ${for}/${stem}.drun-run.ok $out/drun-run
+                <<'EOgolden' diff -u - $out/drun-run
+${with builtins; substring 0 (stringLength golden - 1) golden}
+EOgolden
               '';
             }) commands);
       };
