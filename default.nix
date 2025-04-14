@@ -362,14 +362,6 @@ rec {
         name = "test-${dir}-src";
       };
 
-    test_files =
-      with nixpkgs.lib;
-      cleanSourceWith {
-        filter = path: type: type == "regular";
-        src = subpath ./test;
-        name = "test-files-src";
-      };
-
     acceptable_subdir = accept: dir: deps:
       testDerivation ({name = dir;
         src = test_src dir;
