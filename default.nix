@@ -388,22 +388,23 @@ rec {
       });
 
     afterburner = for:
-      let content = builtins.readDir "${for}";
-          commands = nixpkgs.lib.filterAttrs (name: kind: kind == "regular" && builtins.match ".*\.drun-run" name != null) content;
+      with builtins;
+      let content = readDir "${for}";
+          commands = with nixpkgs.lib; filterAttrs (name: kind: kind == "regular" && hasSuffix ".drun-run" name) content;
       in nixpkgs.releaseTools.aggregate {
         name = "afterburners";
-        constituents = builtins.attrValues 
-          (builtins.mapAttrs (name: _:
-            let stem = builtins.elemAt (builtins.match "(.*)\.drun-run" name) 0;
-                wasmHash = with builtins; convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
-                wasm = with builtins; fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
-                script = builtins.replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (builtins.readFile "${for}/${stem}.wasm.script");
-                golden = builtins.readFile "${for}/${stem}.drun-run.ok";
-                options = builtins.readFile "${for}/${name}";
+        constituents = attrValues 
+          (mapAttrs (name: _:
+            let stem = elemAt (match "(.*)\.drun-run" name) 0;
+                wasmHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                wasm = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
+                script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
+                golden = readFile "${for}/${stem}.drun-run.ok";
+                options = readFile "${for}/${name}";
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
               phases = "buildPhase";
-              buildInputs = [ for nixpkgs.drun nixpkgs.diffutils ];
+              buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
                 <<'EOscript' drun $(echo ${options}) \
