@@ -90,6 +90,9 @@ $(SOURCE_ID):
 unit-tests: $(SOURCE_ID)
 	dune runtest $(DUNE_OPTS)
 
+unit-tests-accept: $(SOURCE_ID)
+	dune runtest $(DUNE_OPTS) --auto-promote
+
 format:
 	ocamlformat --inplace \
 	  docs/*.mli \
