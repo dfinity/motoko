@@ -134,8 +134,30 @@ actor Bank {
 await Bank.doubleBalance();
 ```
 
-**Example use case:** Efficiently combining multiple queries while avoiding [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) update calls.
+::: info[Constraints for composite queries]
 
+Composite queries can only be invoked via ingress messages.
+
+:::: note[Allowed usage]
+
+Composite queries **can** be called by:
+
+- External users using `dfx` command-line tool with the `--query` flag
+- External agents such as browser front-ends (JavaScript libraries)
+- Users through applications that send ingress messages to backend actors
+::::
+
+:::: warning[Restricted usage]
+
+Composite queries **cannot** be called by:
+
+- Other canisters (they cannot be initiated from an actor)
+- Update methods (update calls cannot call composite query methods)
+::::
+These constraints are fundamental to the security and execution model of the Internet Computer. Attempting to call composite queries from disallowed contexts will result in runtime errors.
+:::
+
+**Example use case:** Efficiently combining multiple queries while avoiding [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) update calls.
 
 ## Update functions
 

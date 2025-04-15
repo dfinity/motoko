@@ -120,51 +120,100 @@ actor Subscriber {
 
 ```
 
-### Actor type annotation
+### Actor type annotations
 
 Actor type annotations provide flexibility when interacting with external [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) but require ensuring function signatures match at runtime. If they do not, calls will fail.
 
+Actor interfaces are declared using a `module`, then applied using a type annotation when calling an actor by its principal.
+
+Consider the following actor type annotation when interacting with the [management canister](https://internetcomputer.org/docs/references/system-canisters/management-canister/) to check the status of a canister.
+
 ```motoko no-repl
-import Array "mo:base/Array";
+// ic.mo
+module {
+  public type canister_id = Principal;
 
-actor Publisher {
-    stable var subscribers: [Principal] = [];
-
-    public shared func subscribe(subscriber: Principal): async () {
-        if (Array.find<Principal>(subscribers, func(s) { s == subscriber }) == null) {
-            let newSubscribers = Array.tabulate<Principal>(
-                subscribers.size() + 1,
-                func(i) { if (i < subscribers.size()) subscribers[i] else subscriber }
-            );
-            subscribers := newSubscribers;
-        };
+  public type definite_canister_settings = {
+    controllers : [Principal];
+    compute_allocation : Nat;
+    memory_allocation : Nat;
+    freezing_threshold : Nat;
+    reserved_cycles_limit : Nat;
+    log_visibility : {
+      #controllers;
+      #public;
+      #allowed_viewers : [Principal];
     };
+    wasm_memory_limit : Nat;
+    wasm_memory_threshold : Nat;
+  };
 
-    public shared func publish(message: Text): async () {
-        for (sub in subscribers) {
-            let subActor = actor(sub) : actor { notify: (Text) -> async () };
-            ignore await subActor.notify(message);
-        };
+  public type canister_status_args = {
+    canister_id : canister_id;
+  };
+
+  public type canister_status_result = {
+    status : { #running; #stopping; #stopped };
+    settings : definite_canister_settings;
+    module_hash : ?Blob;
+    memory_size : Nat;
+    memory_metrics : {
+      wasm_memory_size : Nat;
+      stable_memory_size : Nat;
+      global_memory_size : Nat;
+      wasm_binary_size : Nat;
+      custom_sections_size : Nat;
+      canister_history_size : Nat;
+      wasm_chunk_store_size : Nat;
+      snapshots_size : Nat;
     };
+    cycles : Nat;
+    reserved_cycles : Nat;
+    idle_cycles_burned_per_day : Nat;
+    query_stats: {
+      num_calls_total: Nat;
+      num_instructions_total: Nat;
+      request_payload_bytes_total: Nat;
+      response_payload_bytes_total: Nat;
+    };
+  };
+
+  public type Self = actor {
+    canister_status : shared query canister_status_args -> async canister_status_result;
+  };
 };
 ```
 
-### Advanced inter-canister calls
-
-When the method name or input types are unknown at compile time, the `ExperimentalInternetComputer` module can facilitate dynamic inter-canister communication.
+To use the interface, instantiate the actor using its principal and call the desired method defined in the annotated type.
 
 ```motoko no-repl
-import IC "mo:base/ExperimentalInternetComputer";
-import Debug "mo:base/Debug";
+// checker.mo
+import IC "ic.mo";
 
-actor DynamicCaller {
-    public shared func callMethod(canisterId: Principal, methodName: Text, arg: Nat): async Nat {
-        let encodedArgs = to_candid(arg);
-        let encodedResult = await IC.call(canisterId, methodName, encodedArgs);
-        let ?result : ?Nat = from_candid encodedResult else Debug.trap("Invalid return");
-        return result;
-    };
+actor StatusChecker {
+  public shared func getStatus(canisterId: Principal): async IC.canister_status_result {
+    let ic : IC.Self = actor "aaaaa-aa";
+    let result = await ic.canister_status({ canister_id = canisterId });
+    return result;
+  };
 };
 ```
+
+::::note Considerations
+
+:::note [Caller authorization]
+To query a canister’s status using `canister_status`, the caller must be a **controller** of that canister. Otherwise, the call will be rejected with an authorization error.
+:::
+
+:::note [API changes]
+The interface of system canisters—like the Management Canister—can evolve over time. Always refer to the [IC interface spec](https://github.com/dfinity/portal/blob/39cee0c2f44ba3b39c5c935ee4de7b36ea7b69ac/docs/references/_attachments/ic.did#L4) to ensure your type annotations remain accurate.
+:::
+
+:::tip [Extending the interface]
+This interface defines the types and arguments required to call the `canister_status()` function.
+To call additional functions exposed by the actor, simply extend the `Self` type with the corresponding function signatures.
+:::
+
+::::
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

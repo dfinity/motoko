@@ -15,6 +15,22 @@ The actor model is based on the following principles:
 
 Motoko adopts the actor model to enable scalable, non-blocking execution on the Internet Computer. Motoko actors run in a single-threaded environment but achieve high concurrency by handling requests [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await).
 
+## Async model
+
+Although the actor model allows actors to receive and process messages concurrently, it’s important to understand what that means in the context of Motoko’s execution model. The use of `async` in Motoko **does not** imply multithreaded or parallel execution within the canister.
+
+Motoko canisters operate in a **single-threaded environment**. This has several important implications:
+
+- Each canister processes only one message at a time creating deterministic execution.
+- When a canister makes an `async` call to another canister :
+  - The current computation yields control while waiting for a response.
+  - The canister can then begin processing another incoming message.
+  - Once the awaited response arrives([future](https://en.wikipedia.org/wiki/Futures_and_promises)), the original computation resumes.
+  
+:::note [`async*` usage]
+`async*` and `await*` is recommended for operations within the same canister. Functions declared with `async*` do not suspend execution.
+:::
+
 ## Async actors
 
 To demonstrate how asynchronous actors work, consider the following example.
@@ -25,8 +41,8 @@ Customers place orders at a pizza restaurant, but the chef can only make one piz
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 
-actor PizzaParlor {
-    stable var orders: [Text] = [];
+persistent actor PizzaParlor {
+     var orders: [Text] = [];
 
     public shared func placeOrder(order: Text): async Text {
         // Use Array.tabulate to create a new array with the additional element
@@ -34,12 +50,12 @@ actor PizzaParlor {
             if (i < orders.size()) { orders[i] } else { order }
         });
         orders := newOrders;
-        return "Order received: " # order;
+        "Order received: " # order;
     };
 
     public shared func makePizza(): async Text {
         if (orders.size() == 0) {
-            return "No orders to make.";
+            "No orders to make.";
         };
 
         let currentOrder = orders[0];
@@ -47,11 +63,11 @@ actor PizzaParlor {
         orders := Array.filter<Text>(orders, func(o) {
             not Text.equal(o, currentOrder)
         });
-        return "Made a delicious " # currentOrder # " pizza!";
+        "Made a delicious " # currentOrder # " pizza!";
     };
 
     public query func getOrders(): async [Text] {
-        return orders;
+        orders;
     };
 }
 ```
@@ -74,13 +90,13 @@ Customers can place multiple orders at the same time. However, when they ask for
 // async* function to calculate delivery time on demand
 func checkDelivery(order: Text): async* Text {
         let estimatedTime = 15 + (orders.size() * 5); // Base time + 5 mins per pending order
-        return "Your " # order # " will arrive in " # Nat.toText(estimatedTime) # " minutes.";
+        "Your " # order # " will arrive in " # Nat.toText(estimatedTime) # " minutes.";
     };
 
     // Multiple users can check their delivery status asynchronously
     public shared func getDeliveryStatus(order: Text): async Text {
         let status = await* checkDelivery(order);
-        return status;
+        status;
     };
 ```
 
