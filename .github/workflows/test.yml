@@ -79,7 +79,7 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        out=$(./nixbuildcopy -f perf-delta.nix \
+        out=$(./nixbuildcopy --impure -f perf-delta.nix \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to")
