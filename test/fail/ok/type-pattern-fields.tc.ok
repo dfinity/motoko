@@ -1,0 +1,7 @@
+type-pattern-fields.mo:22.8-22.44: type error [M0189], mismatched types for type N in patterns
+type-pattern-fields.mo:34.8-34.44: type error [M0189], mismatched types for type N in patterns
+type-pattern-fields.mo:42.8-42.37: type error [M0189], different set of type bindings in pattern alternatives
+type-pattern-fields.mo:75.21-75.23: type error [M0050], literal of type
+  Nat
+does not have expected type
+  Text
