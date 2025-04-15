@@ -1064,6 +1064,7 @@
         "release" = buildableReleasePackages;
         "debug" = buildableDebugPackages;
         inherit release-systems-go debug-systems-go;
+        inherit (pkgs) nix-build-uncached;
         default = release-systems-go;
       };
 
