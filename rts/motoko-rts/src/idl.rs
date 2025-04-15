@@ -157,7 +157,7 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
 /// * traps if the type description is not well-formed. In particular, it traps if any index into
 ///   the type description table is out of bounds, so that subsequent code can trust these values
 ///
-/// * returns a pointer to the first byte after the IDL header
+/// * advances `buf` until the first byte after the IDL header
 ///
 /// * allocates a type description table, and returns it
 ///   (via pointer argument, for lack of multi-value returns in C ABI)
