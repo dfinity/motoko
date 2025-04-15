@@ -10,5 +10,4 @@ shared(v) actor class C(v : Bool) = {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run
 //SKIP drun-run

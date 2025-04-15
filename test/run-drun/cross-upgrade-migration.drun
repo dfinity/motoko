@@ -1,9 +1,7 @@
 # CLASSICAL-PERSISTENCE-ONLY
 # DEFAULT-GC-ONLY
-# SKIP ic-ref-run
 
 # classical to eop, with migration function
-# SKIP ic-ref-run
 install $ID cross-upgrade-migration/version0-classic.mo ""
 ingress $ID check "DIDL\x00\x00"
 upgrade $ID cross-upgrade-migration/version1-enhanced.mo ""

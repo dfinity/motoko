@@ -31,5 +31,4 @@ actor This {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run
 //CALL ingress go "DIDL\x00\x00"
