@@ -597,7 +597,7 @@
           candid-tests = ocaml_exe "candid-tests" "candid-tests" null;
 
           # executable built with coverage:
-          coverage_bins = builtins.listToAttrs (nixpkgs.lib.flip map [ moc mo-ld didc deser ] (drv:
+          coverage_bins = builtins.listToAttrs (pkgs.lib.flip map [ moc mo-ld didc deser ] (drv:
             {
               name = drv.name;
               value = drv.overrideAttrs (old: {
