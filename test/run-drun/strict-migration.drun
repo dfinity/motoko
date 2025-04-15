@@ -1,5 +1,4 @@
 # ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-# SKIP ic-ref-run
 install $ID strict-migration/version0.mo ""
 # should fail:
 upgrade $ID strict-migration/version1.mo ""

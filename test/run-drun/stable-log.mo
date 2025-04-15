@@ -74,8 +74,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
-//SKIP comp-ref
 
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"
