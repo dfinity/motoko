@@ -109,6 +109,7 @@ let primE prim es =
     | SystemCyclesAvailablePrim
     | SystemCyclesAcceptPrim
     | SystemCyclesBurnPrim
+    | SystemCostCallPrim
     | SystemCostCreateCanisterPrim
     | SystemCostHttpRequestPrim -> T.nat
     | DeserializePrim ts -> T.seq ts

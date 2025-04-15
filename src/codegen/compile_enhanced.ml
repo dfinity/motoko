@@ -5461,6 +5461,21 @@ module Cycles = struct
 end (* Cycles *)
 
 module Cost = struct
+  let call env =
+    Func.share_code2 Func.Always env "cost_call"
+      (("method_name_size", I64Type), ("payload_size", I64Type))
+      [IC.i]
+      (fun env get_method_name_size get_payload_size ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_method_name_size ^^
+          get_payload_size ^^
+          get_dst ^^
+          IC.cost_call env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
   let create_canister env =
     Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
       Stack.with_words env "dst" 2L (fun get_dst ->
@@ -12395,6 +12410,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   (* Cost *)
+  | SystemCostCallPrim, [method_name_size; payload_size] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
+    Cost.call env
   | SystemCostCreateCanisterPrim, [] ->
     SR.Vanilla, Cost.create_canister env
   | SystemCostHttpRequestPrim, [request_size; max_res_bytes] ->

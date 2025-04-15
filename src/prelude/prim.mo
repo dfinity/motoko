@@ -362,6 +362,8 @@ func cyclesBurn<system>(amount : Nat) : Nat {
   (prim "cyclesBurn" : Nat -> Nat) amount;
 };
 
+func costCall(methodNameSize : Nat64, payloadSize : Nat64) : Nat = (prim "costCall" : (Nat64, Nat64) -> Nat)(methodNameSize, payloadSize);
+
 func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
 
 func costHttpRequest(requestSize : Nat64, maxResBytes : Nat64) : Nat = (prim "costHttpRequest" : (Nat64, Nat64) -> Nat)(requestSize, maxResBytes);

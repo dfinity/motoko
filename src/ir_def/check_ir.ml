@@ -693,6 +693,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ e1 <: T.nat32;
       T.unit <: t
     (* Cost *)
+    | SystemCostCallPrim, [e1; e2] ->
+      typ e1 <: T.nat64;
+      typ e2 <: T.nat64;
+      T.nat <: t
     | SystemCostCreateCanisterPrim, [] ->
       T.nat <: t
     | SystemCostHttpRequestPrim, [e1; e2] ->
