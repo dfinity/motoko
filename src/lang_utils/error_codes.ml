@@ -224,4 +224,5 @@ let error_codes : (string * string option) list =
     "M0218", None; (* Redundant `stable` *)
     "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
+    "M0221", None; (* Can't infer type pattern fields *)
   ]

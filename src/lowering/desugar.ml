@@ -1018,9 +1018,12 @@ and lit = function
   | S.BlobLit x -> I.BlobLit x
   | S.PreLit _ -> assert false
 
-and pat_fields pfs = List.map pat_field pfs
+and pat_fields pfs = List.filter_map pat_field pfs
 
-and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
+(* and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf *)
+and pat_field pf = match pf.it with
+  | S.VarPF(id, p) -> Some { pf with it = I.{name=id.it; pat=pat p} }
+  | S.TypPF(_) -> None
 
 and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.control * T.typ list =
 
