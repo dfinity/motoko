@@ -57,7 +57,7 @@ module Make (Cfg : Config) = struct
   let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
   let annot note = annot_typ note.note_typ
 
-  let id i = Atom i.it
+  let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
   let rec exp e = source e.at (annot e.note (match e.it with
