@@ -501,8 +501,8 @@ and check_typ_path' env path : T.con =
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type%a%s"
-          id.it display_typ_expand (T.Obj (s, fs))
+        error env id.at "M0030" "type field %s does not exist in %a%s"
+          id.it display_obj (s, fs)
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
