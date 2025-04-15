@@ -9,8 +9,8 @@
 { ref, from, to }:
 let
   flake = builtins.getFlake (toString ./.);
-  pkgs = import flake.inputs.nixpkgs {};
   system = builtins.currentSystem;
+  pkgs = import flake.inputs.nixpkgs {inherit system;};
 
   # Wrap in a derivation to fix path to perl in shebang
   diff-stats = pkgs.stdenvNoCC.mkDerivation {
