@@ -3,15 +3,19 @@ queue_rules:
     queue_conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
-      - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-13)
+      - status-success=tests (ubuntu-24.04-arm, debug)
+      - status-success=tests (ubuntu-24.04-arm, release)
+      - status-success=tests (ubuntu-latest, debug)
+      - status-success=tests (ubuntu-latest, release)
       - base=master
       - label=automerge-squash
     merge_conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
-      - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-13)
+      - status-success=tests (ubuntu-24.04-arm, debug)
+      - status-success=tests (ubuntu-24.04-arm, release)
+      - status-success=tests (ubuntu-latest, debug)
+      - status-success=tests (ubuntu-latest, release)
     merge_method: squash
     commit_message_template: |
       {{ title }} (#{{ number }})
@@ -24,8 +28,10 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
-      - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-13)
+      - status-success=tests (ubuntu-24.04-arm, debug)
+      - status-success=tests (ubuntu-24.04-arm, release)
+      - status-success=tests (ubuntu-latest, debug)
+      - status-success=tests (ubuntu-latest, release)
       - base=master
       - label=automerge-squash
     actions:
@@ -33,8 +39,10 @@ pull_request_rules:
       queue:
   - name: Automatically closing successful trials
     conditions:
-      - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-13)
+      - status-success=tests (ubuntu-24.04-arm, debug)
+      - status-success=tests (ubuntu-24.04-arm, release)
+      - status-success=tests (ubuntu-latest, debug)
+      - status-success=tests (ubuntu-latest, release)
       - label=autoclose
     actions:
       close:
