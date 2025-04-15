@@ -58,22 +58,34 @@ let%expect_test "test1" =
               Actor
               _
               (DecField
-                (LetD (VarP x) (AnnotE (LitE (PreLit 1 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID x))
+                  (AnnotE (LitE (PreLit 1 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP z) (AnnotE (LitE (PreLit 3 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID z))
+                  (AnnotE (LitE (PreLit 3 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP t) (AnnotE (LitE (PreLit 4 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID t))
+                  (AnnotE (LitE (PreLit 4 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -222,17 +234,20 @@ let%expect_test "test2" =
               _
               (DecField
                 (LetD
-                  (VarP x)
+                  (VarP (ID x))
                   (AnnotE
                     (BinE ??? (LitE (PreLit 1 Nat)) AddOp (LoopE (BlockE)))
-                    (PathT (IdH Int))
+                    (PathT (IdH (ID Int)))
                   )
                 )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -274,7 +289,7 @@ let%expect_test "test3" =
                     ???
                     Local
                     @anon-func-2.11
-                    (TupP (VarP a) (VarP Int))
+                    (TupP (VarP (ID a)) (VarP (ID Int)))
                     _
 
                     (BlockE (ExpD (RetE (TupE))))
@@ -285,13 +300,13 @@ let%expect_test "test3" =
               )
               (DecField
                 (LetD
-                  (VarP bar)
+                  (VarP (ID bar))
                   (FuncE
                     ???
                     Local
                     bar
-                    (ParP (AnnotP (VarP y) (PathT (IdH Int))))
-                    (PathT (IdH Int))
+                    (ParP (AnnotP (VarP (ID y)) (PathT (IdH (ID Int)))))
+                    (PathT (IdH (ID Int)))
 
                     (BlockE (ExpD (RetE (LitE (PreLit 2 Nat)))))
                   )
@@ -300,7 +315,10 @@ let%expect_test "test3" =
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -340,9 +358,9 @@ actor Main {
   Printf.printf "%s" @@ show (parse_from_string s);
   [%expect{|
     Ok: (Prog
-      (LetD (ObjP (print (VarP print))) (ImportE mo:base/Debug))
+      (LetD (ObjP (print (VarP (ID print)))) (ImportE mo:base/Debug))
       (LetD
-        (VarP Main)
+        (VarP (ID Main))
         (AwaitE
           (AsyncE
             _
@@ -351,16 +369,16 @@ actor Main {
               _
               Actor
               Main
-              (DecField (LetD (VarP x) (LitE (PreLit 1 Nat))) Private Flexible)
+              (DecField (LetD (VarP (ID x)) (LitE (PreLit 1 Nat))) Private Flexible)
               (DecField
                 (ExpD
                   (FuncE
                     ???
-                    (Query (VarP test))
+                    (Query (VarP (ID test)))
                     @anon-func-7.12
                     ($ (PrimT Any))
                     (TupP)
-                    (AsyncT (PathT (IdH $)) (PathT (IdH Nat)))
+                    (AsyncT (PathT (IdH (ID $))) (PathT (IdH (ID Nat))))
 
                     (AsyncE
                       _
@@ -493,16 +511,16 @@ let%expect_test "test5" =
           _
           Module
           _
-          (DecField (LetD (VarP x) (LoopE (BlockE))) Private (Flexible))
+          (DecField (LetD (VarP (ID x)) (LoopE (BlockE))) Private (Flexible))
           (DecField
             (ExpD
               (FuncE
                 ???
-                (Query (VarP test))
+                (Query (VarP (ID test)))
                 @anon-func-5.12
                 ($ (PrimT Any))
                 (TupP)
-                (AsyncT (PathT (IdH $)) (PathT (IdH Nat)))
+                (AsyncT (PathT (IdH (ID $))) (PathT (IdH (ID Nat))))
 
                 (AsyncE
                   _
