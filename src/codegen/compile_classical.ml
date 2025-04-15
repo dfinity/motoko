@@ -12298,6 +12298,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   (* Cost *)
+  | SystemCostCallPrim, [method_name_size; payload_size] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
+    Cost.call env
   | SystemCostCreateCanisterPrim, [] ->
     SR.Vanilla, Cost.create_canister env
   | SystemCostHttpRequestPrim, [request_size; max_res_bytes] ->
