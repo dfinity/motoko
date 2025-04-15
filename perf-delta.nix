@@ -8,28 +8,26 @@
 
 { ref, from, to }:
 let
-  nixpkgs = import ./nix { };
-
-  subpath = p: import ./nix/gitSource.nix p;
+  flake = builtins.getFlake (toString ./.);
+  pkgs = import flake.inputs.nixpkgs {};
+  system = builtins.currentSystem;
 
   # Wrap in a derivation to fix path to perl in shebang
-  diff-stats = nixpkgs.stdenvNoCC.mkDerivation {
+  diff-stats = pkgs.stdenvNoCC.mkDerivation {
     name = "diff-stats";
     src = ./test/diff-stats.pl;
     phases = [ "installPhase fixupPhase" ];
-    buildInputs = [ nixpkgs.perl ];
+    buildInputs = [ pkgs.perl ];
     installPhase = ''
       mkdir -p $out/bin
       cp $src $out/bin/diff-stats
     '';
   };
 
-  test-data = subpath ./test;
-
   wasm-hash-for = moc:
-    nixpkgs.stdenvNoCC.mkDerivation {
+    pkgs.stdenvNoCC.mkDerivation {
       name = "wasm-hash";
-      src = test-data;
+      src = ./test;
       buildInputs = [ moc ];
       buildPhase = ''
         moc --version
@@ -54,21 +52,29 @@ let
       '';
     };
 
-  baseJobs = import (builtins.fetchGit {url = ./.; ref = ref; rev = from;}) {};
-  prJobs = import (builtins.fetchGit {url = ./.; ref = ref; rev = to;}) {};
+  flakeOf = rev:
+    let
+      checkout = builtins.fetchGit {url = ./.; ref = ref; inherit rev;};
+      flakePath = builtins.unsafeDiscardStringContext "${checkout}";
+    in builtins.getFlake flakePath;
+
+  baseFlake = flakeOf from;
+  prFlake = flakeOf to;
 
   # NB: We run both compilers on the new PR’s set of tests
-  wasm-hash-base = wasm-hash-for baseJobs.moc;
-  wasm-hash-pr = wasm-hash-for prJobs.moc;
+  wasm-hash-base = wasm-hash-for baseFlake.packages.${system}.debug.moc;
+  wasm-hash-pr = wasm-hash-for prFlake.packages.${system}.debug.moc;
 in
-nixpkgs.runCommandNoCC "perf-delta" {
-  nativeBuildInputs = [ nixpkgs.coreutils diff-stats ];
+pkgs.runCommandNoCC "perf-delta" {
+  nativeBuildInputs = [ pkgs.coreutils diff-stats ];
 } ''
   echo "Comparing from ${from} to ${to}:" > $out
   if cmp -s ${wasm-hash-base} ${wasm-hash-pr}
   then
     echo "The produced WebAssembly code seems to be completely unchanged." >> $out
   else
-    diff-stats ${baseJobs.tests.perf}/stats.csv ${prJobs.tests.perf}/stats.csv >> $out;
+    diff-stats \
+      ${baseFlake.checks.${system}.perf}/stats.csv \
+      ${prFlake.checks.${system}.perf}/stats.csv >> $out;
   fi
 ''

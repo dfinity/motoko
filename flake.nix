@@ -1018,7 +1018,11 @@
           base-doc
           docs
           report-site
-          shell
+          shell;
+      };
+
+      checks = {
+        inherit
           check-formatting
           check-rts-formatting
           check-grammar
@@ -1043,6 +1047,7 @@
         name = "release-systems-go";
         constituents =
           pkgs.lib.attrValues common-constituents ++
+          pkgs.lib.attrValues checks ++
           pkgs.lib.attrValues buildableReleasePackages ++
           filter_tests "release" tests  # Only include release tests
           ++ builtins.attrValues js;
@@ -1053,6 +1058,7 @@
         name = "debug-systems-go";
         constituents =
           pkgs.lib.attrValues common-constituents ++
+          pkgs.lib.attrValues checks ++
           pkgs.lib.attrValues buildableDebugPackages ++
           filter_tests "debug" tests  # Only include debug tests
           ++ builtins.attrValues js;
@@ -1068,8 +1074,9 @@
         default = release-systems-go;
       };
 
+      checks = checks // tests;
+
       devShells.default = shell;
-      devShells.generate = import nix/generate.nix { inherit pkgs; };
 
       formatter = pkgs.writeShellScriptBin "formatter" ''
         if [[ $# = 0 ]]; then set -- .; fi
