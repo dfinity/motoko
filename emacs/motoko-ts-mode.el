@@ -23,8 +23,7 @@
       "private" "public" "return" "shared"
       "try" "throw" "query" "switch" "type"
       "var" "while" "with" "stable" "flexible" "system"
-      "assert" "ignore" "async" "persistent" "transient"
-      ]
+      "assert" "ignore" "async" "persistent" "transient"]
      @font-lock-keyword-face)
 
    :language 'motoko
@@ -65,9 +64,19 @@
    '((dec_func function_name: (name) @font-lock-function-name-face))
    ))
 
-;; (defvar motoko-ts-indent-rules
-;;   `((motoko
-;;      ((parent-is "block_expr") column-0 0))))
+
+(defvar motoko-ts-indent 2)
+
+;; For debugging
+; (setq treesit--indent-verbose t)
+(defvar motoko-ts-indent-rules
+  `((motoko
+     ((node-is "}") parent-bol 0)
+     ((parent-is "object") parent-bol motoko-ts-indent)
+     ((parent-is "block") parent-bol motoko-ts-indent)
+     ((parent-is "dec_obj") parent-bol motoko-ts-indent)
+     ((parent-is "dec_let") parent-bol motoko-ts-indent)
+     )))
 
 (defun motoko-ts-setup ()
   "Setup treesit for motoko-ts-mode."
@@ -79,8 +88,7 @@
 
   (setq-local treesit-font-lock-settings (motoko-ts-font-lock-rules))
 
-  ;; This handles indentation -- again, more on that below.
-  ;; (setq-local treesit-simple-indent-rules motoko-ts-indent-rules)
+  (setq-local treesit-simple-indent-rules motoko-ts-indent-rules)
 
   (treesit-major-mode-setup))
 
@@ -91,6 +99,9 @@
     (motoko-ts-setup)))
 
 (add-to-list 'auto-mode-alist '("\\.mo\\'" . motoko-ts-mode))
-(add-to-list 'treesit-language-source-alist '(motoko "https://github.com/christoph-dfinity/tree-sitter-motoko"))
+
+(when 'treesit-language-source-alist
+  (add-to-list 'treesit-language-source-alist '(motoko "https://github.com/christoph-dfinity/tree-sitter-motoko")))
+
 
 (provide 'motoko-ts-mode)
