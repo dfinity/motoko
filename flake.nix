@@ -180,7 +180,7 @@
 
       is_static = !pkgs.stdenv.isDarwin;
 
-      staticpkgs = if is_static then pkgs.pkgsMusl else nixpkgs;
+      staticpkgs = if is_static then pkgs.pkgsMusl else pkgs;
 
       commonBuildInputs = pkgs:
         [
