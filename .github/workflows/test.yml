@@ -65,9 +65,7 @@ jobs:
 
     - uses: cachix/install-nix-action@v31
 
-    # We are using the ic-hs-test cachix cache that is also used by
-    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
-    # cache), but also to get the ic-ref-test binary without rebuilding
+    # We are using the `ic-hs-test` Cachix cache for hysterical raisins
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
