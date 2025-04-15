@@ -363,7 +363,7 @@ rec {
       };
 
     acceptable_subdir = accept: dir: deps:
-      testDerivation ({
+      testDerivation ({name = dir;
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
 
@@ -373,16 +373,60 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}${nixpkgs.lib.optionalString (dir == "run-drun") " RUNFLAGS=-dn"}
           '';
       } // nixpkgs.lib.optionalAttrs accept {
         installPhase = nixpkgs.lib.optionalString accept ''
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
+      } // nixpkgs.lib.optionalAttrs (dir == "run-drun") {
+        postInstall = ''
+          ls $out/*.drun-run
+
+        '';
       });
 
-    test_subdir = dir: deps: acceptable_subdir false dir deps;
+    afterburner = for:
+      with builtins;
+      let content = readDir "${for}";
+          commands = with nixpkgs.lib; filterAttrs (name: kind: kind == "regular" && hasSuffix ".drun-run" name) content;
+      in nixpkgs.releaseTools.aggregate {
+        name = "afterburners";
+        constituents = attrValues 
+          (mapAttrs (name: _:
+            let stem = elemAt (match "(.*)\.drun-run" name) 0;
+                wasmHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                wasm = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
+                script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
+                golden = readFile "${for}/${stem}.drun-run.ok";
+                options = readFile "${for}/${name}";
+                configHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm.json5"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                config = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm.json5"); sha256 = "sha256:${configHash}"; };
+                options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) [(toString config)] options;
+            in stdenv.mkDerivation {
+              name = "test-${stem}-afterburner";
+              phases = "buildPhase";
+              buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
+              buildPhase = ''
+                mkdir -p $out
+                <<'EOscript' drun $(echo ${options-subst}) \
+                |& sed -E \
+                     -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
+                     -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+                | sed \
+                     -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
+                > $out/drun-run
+${script}
+EOscript
+                <<'EOgolden' head -c -1 | diff -u - $out/drun-run
+${golden}
+EOgolden
+              '';
+            }) commands);
+      };
+
+    test_subdir = acceptable_subdir false;
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
@@ -523,7 +567,7 @@ rec {
       '';
     };
 
-  in fix_names {
+  in fix_names rec {
       run        = test_subdir "run"        [ moc ] ;
       run-debug  = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
@@ -550,6 +594,7 @@ rec {
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
+      drun-afterburner = afterburner drun;
     }
     // nixpkgs.lib.optionalAttrs
          (system == accept-bench)
