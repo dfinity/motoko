@@ -22,4 +22,3 @@ actor a {
 
 a.foo(); //OR-CALL ingress foo "DIDL\x00\x00"
 //SKIP comp
-//SKIP comp-ref

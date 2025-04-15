@@ -21,10 +21,6 @@
       url = "github:luc-blaeser/ic/12fec30a322fa5c39d97ea9385f2cdcaa22f6696";
       flake = false;
     };
-    ic-hs-src = {
-      url = "github:dfinity/ic-hs/a5f89cf508b0c80b633e3f0c152e3406fb750189";
-      flake = false;
-    };
     ic-wasm-src = {
       url = "github:dfinity/ic-wasm/4c52e75c12bb730e795d8a4c2862987f4a9524a3";
       flake = false;
@@ -72,7 +68,6 @@
     , candid-src
     , esm
     , ic-src
-    , ic-hs-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
