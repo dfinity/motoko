@@ -1,6 +1,5 @@
 # CLASSICAL-PERSISTENCE-ONLY
 # DEFAULT-GC-ONLY
-# SKIP ic-ref-run
 install $ID map-mixed-upgrades/map0.mo ""
 ingress $ID go "DIDL\x00\x00"
 upgrade $ID map-mixed-upgrades/map0.mo ""

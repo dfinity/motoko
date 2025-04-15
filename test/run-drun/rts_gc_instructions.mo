@@ -43,5 +43,4 @@ actor a {
 await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
 
 // too slow in ic-ref
-//SKIP ic-ref-run
 
