@@ -30,7 +30,7 @@ in a check-out of the `motoko` repository.
 
 To enter a shell with the necessary dependencies available, use
 ```
-$ nix-shell
+$ nix develop
 ```
 (The first shell start may take several minutes, afterwards being much faster.)
 
@@ -48,7 +48,7 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 
 A good way to check that everything is fine, i.e. if this will pass CI, is to run
 ```
-$ nix-build --no-out-link
+$ nix build --impure --no-link
 ```
 
 For more details on our CI and CI setup, see `CI.md`.
