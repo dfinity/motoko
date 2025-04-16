@@ -150,7 +150,7 @@ jobs:
     - name: "nix-build-debug"
       run: nix-build-uncached --max-jobs auto -A debug-systems-go --build-flags -L
 
-  release-tests:
+  tests:
     needs: [common-tests, gc-tests]
     strategy:
       matrix:
