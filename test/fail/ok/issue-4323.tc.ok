@@ -1,4 +1,4 @@
 issue-4323.mo:4.1-6.2: type error [M0192], body of type
   actor {}
 does not match expected type
-  Main__877594275 = actor {beep : shared () -> async ()}
+  Main = actor {beep : shared () -> async ()}

@@ -1,1 +1,1 @@
-cyclic-bound3.mo:3.8-3.14: type error [M0043], type parameter A__582780772 has cyclic bounds B__582780772 <: A__582780772 <: C__582780772 <: B__582780772
+cyclic-bound3.mo:3.8-3.14: type error [M0043], type parameter A has cyclic bounds B <: A <: C <: B

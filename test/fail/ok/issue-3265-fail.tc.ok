@@ -9,12 +9,12 @@ issue-3265-fail.mo:4.29-4.46: type error [M0150], expected immutable field x of 
   Int
 but found mutable 'var' field (delete 'var'?)
 issue-3265-fail.mo:10.57-10.67: type error [M0096], expression of type
-  List__157833016<Nat> = ?(Nat, List__157833016<Nat>)
+  List<Nat> = ?(Nat, List<Nat>)
 cannot produce expected type
-  ?(None, List__157833016<None>)
+  ?(None, List<None>)
 issue-3265-fail.mo:11.40-11.64: type error [M0150], expected immutable field myList of type
-  List__157833016<Nat>
+  List<Nat>
 but found mutable 'var' field (delete 'var'?)
 issue-3265-fail.mo:12.44-12.64: type error [M0149], expected mutable 'var' field myList of type
-  List__157833016<Nat>
+  List<Nat>
 but found immutable field (insert 'var'?)

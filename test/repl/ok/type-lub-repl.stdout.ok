@@ -24,6 +24,6 @@ Motoko compiler (source XXX)
 > [<func>, <func>] : [(a : Nat) -> Int]
 > 25 : Int
 > 42 : Int
->   <func> : (c : C__137252952, d : D__137252952) -> [C__137252952]
-> [async (?4), async (?(-42))] : [async<$top-level__543159235> ?Int]
+>   <func> : (c : C, d : D) -> [C]
+> [async (?4), async (?(-42))] : [async ?Int]
 > 

@@ -81,62 +81,53 @@ where
     ()
 so that no valid instantiation exists
 pretty-inference.mo:28.1-28.5: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   Nat
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  Nat  <:  T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  Nat  <:  T  <:  C<C<C<C<Nat>>>>
 where
-  Nat  </:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  Nat  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:30.1-30.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   (Nat, Bool)
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  (Nat, Bool)  <: 
-    T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  (Nat, Bool)  <:  T  <:  C<C<C<C<Nat>>>>
 where
-  (Nat, Bool)  </: 
-    C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  (Nat, Bool)  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:32.1-32.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  ((Nat, Bool), (Nat, Bool))  <: 
-    T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  ((Nat, Bool), (Nat, Bool))  <:  T  <:  C<C<C<C<Nat>>>>
 where
-  ((Nat, Bool), (Nat, Bool))  </: 
-    C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+  ((Nat, Bool), (Nat, Bool))  </:  C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:34.1-34.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
-    T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    T  <:  C<C<C<C<Nat>>>>
 where
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  </: 
-    C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:36.1-36.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
@@ -145,15 +136,14 @@ to produce result of type
 because implicit instantiation of type parameter T is over-constrained with
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
-    T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    T  <:  C<C<C<C<Nat>>>>
 where
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  </: 
-    C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:38.1-38.6: type error [M0098], cannot implicitly instantiate function of type
-  <T <: C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>>(x : T) ->
-    ()
+  <T <: C<C<C<C<Nat>>>>>(x : T) -> ()
 to argument of type
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
@@ -166,13 +156,13 @@ because implicit instantiation of type parameter T is over-constrained with
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
-    T  <:  C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    T  <:  C<C<C<C<Nat>>>>
 where
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  </: 
-    C__476037289<C__476037289<C__476037289<C__476037289<Nat>>>>
+    C<C<C<C<Nat>>>>
 so that no valid instantiation exists
 pretty-inference.mo:42.1-42.7: type error [M0098], cannot implicitly instantiate function of type
   <T, U>(x : T, u : U) -> Nat
@@ -180,8 +170,8 @@ to argument of type
   (Nat, Nat)
 to produce result of type
   ()
-because no instantiation of T__805832104, U__297200523 makes
-  (Nat, Nat)  <:  (x : T__805832104, u : U__297200523)
+because no instantiation of T, U makes
+  (Nat, Nat)  <:  (x : T, u : U)
 and
   Nat  <:  ()
 pretty-inference.mo:44.1-44.9: type error [M0098], cannot implicitly instantiate function of type
@@ -190,8 +180,8 @@ to argument of type
   ((Nat, Bool), (Nat, Bool))
 to produce result of type
   ()
-because no instantiation of T__921711466, U__918735215 makes
-  ((Nat, Bool), (Nat, Bool))  <:  (x : T__921711466, u : U__918735215)
+because no instantiation of T, U makes
+  ((Nat, Bool), (Nat, Bool))  <:  (x : T, u : U)
 and
   Nat  <:  ()
 pretty-inference.mo:46.1-46.9: type error [M0098], cannot implicitly instantiate function of type
@@ -200,9 +190,9 @@ to argument of type
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))
 to produce result of type
   ()
-because no instantiation of T__81678855, U__729406443 makes
+because no instantiation of T, U makes
   (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))  <: 
-    (x : T__81678855, u : U__729406443)
+    (x : T, u : U)
 and
   Nat  <:  ()
 pretty-inference.mo:48.1-48.9: type error [M0098], cannot implicitly instantiate function of type
@@ -212,10 +202,10 @@ to argument of type
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))
 to produce result of type
   ()
-because no instantiation of T__342027358, U__1005033902 makes
+because no instantiation of T, U makes
   ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
    (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))  <: 
-    (x : T__342027358, u : U__1005033902)
+    (x : T, u : U)
 and
   Nat  <:  ()
 pretty-inference.mo:50.1-50.9: type error [M0098], cannot implicitly instantiate function of type
@@ -227,12 +217,12 @@ to argument of type
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))
 to produce result of type
   ()
-because no instantiation of T__371879661, U__1036433400 makes
+because no instantiation of T, U makes
   (((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
    ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
     (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))))  <: 
-    (x : T__371879661, u : U__1036433400)
+    (x : T, u : U)
 and
   Nat  <:  ()
 pretty-inference.mo:52.1-52.9: type error [M0098], cannot implicitly instantiate function of type
@@ -248,7 +238,7 @@ to argument of type
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))
 to produce result of type
   ()
-because no instantiation of T__255529828, U__555225893 makes
+because no instantiation of T, U makes
   ((((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
@@ -257,6 +247,6 @@ because no instantiation of T__255529828, U__555225893 makes
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool)))),
     ((((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))),
      (((Nat, Bool), (Nat, Bool)), ((Nat, Bool), (Nat, Bool))))))  <: 
-    (x : T__255529828, u : U__555225893)
+    (x : T, u : U)
 and
   Nat  <:  ()

@@ -100,7 +100,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
     error : (message : Text) -> Error;
-    errorCode : (e : Error) -> ErrorCode__39918315;
+    errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;
     exists : <T>(f : T -> Bool) -> Bool;
     exp : (f : Float) -> Float;

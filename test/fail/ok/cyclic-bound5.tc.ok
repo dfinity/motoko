@@ -1,1 +1,1 @@
-cyclic-bound5.mo:7.8-7.17: type error [M0043], type parameter U__701993123 has cyclic bounds U__701993123 <: U__701993123
+cyclic-bound5.mo:7.8-7.17: type error [M0043], type parameter U has cyclic bounds U <: U

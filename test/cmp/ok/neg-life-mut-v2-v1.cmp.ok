@@ -1,5 +1,5 @@
 (unknown location): Compatibility error [M0170], stable variable state of previous type
-  var {#v1 : [[var Cell__779389051]]; #v2 : {bits : [var Nat64]; size : Nat}}
+  var {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
 cannot be consumed at new type
-  var {#v1 : [[var Cell__771147887]]} without data loss. Use an explicit migration function.
+  var {#v1 : [[var Cell]]} without data loss. Use an explicit migration function.
 FALSE

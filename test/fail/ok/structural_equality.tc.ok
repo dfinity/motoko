@@ -23,12 +23,12 @@ and
 at common supertype
   Any
 structural_equality.mo:12.37-12.43: warning [M0061], comparing abstract type
-  A__649453650
+  A
 to itself at supertype
   Any
 structural_equality.mo:13.41-13.47: warning [M0062], comparing incompatible types
-  A__178750942
+  A
 and
-  B__665907999
+  B
 at common supertype
   Any

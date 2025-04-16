@@ -1,9 +1,9 @@
 (unknown location): Compatibility error [M0170], stable variable ln of previous type
-  List__621496280<Int> = ?(Int, List__621496280<Int>)
+  List<Int> = ?(Int, List<Int>)
 cannot be consumed at new type
-  List__283907943<Nat> = ?(Nat, List__283907943<Nat>) without data loss. Use an explicit migration function.
+  List<Nat> = ?(Nat, List<Nat>) without data loss. Use an explicit migration function.
 (unknown location): Compatibility error [M0170], stable variable lnn of previous type
-  List__621496280<(Int, Int)> = ?((Int, Int), List__621496280<(Int, Int)>)
+  List<(Int, Int)> = ?((Int, Int), List<(Int, Int)>)
 cannot be consumed at new type
-  List__283907943<(Nat, Nat)> = ?((Nat, Nat), List__283907943<(Nat, Nat)>) without data loss. Use an explicit migration function.
+  List<(Nat, Nat)> = ?((Nat, Nat), List<(Nat, Nat)>) without data loss. Use an explicit migration function.
 FALSE

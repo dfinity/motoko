@@ -99,7 +99,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
     error : (message : Text) -> Error;
-    errorCode : (e : Error) -> ErrorCode__39918315;
+    errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;
     exists : <T>(f : T -> Bool) -> Bool;
     exp : (f : Float) -> Float;

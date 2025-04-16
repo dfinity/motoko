@@ -90,7 +90,7 @@ coverage.mo:65.41-65.42: warning [M0146], this pattern is never matched
 coverage.mo:66.40-66.41: warning [M0146], this pattern is never matched
 coverage.mo:77.10-77.27: warning [M0146], this pattern is never matched
 coverage.mo:74.3-78.4: warning [M0145], this switch of type
-  {#branch : (Tree__467035177, Tree__467035177); #leaf : Int}
+  {#branch : (Tree, Tree); #leaf : Int}
 does not cover value
   #leaf(0 or 1 or _)
 coverage.mo:109.8-109.47: warning [M0146], this pattern is never matched
