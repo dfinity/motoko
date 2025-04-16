@@ -1959,7 +1959,7 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-include MakePretty(ShowStamps)
+include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
 
