@@ -1,4 +1,4 @@
 scope-example.mo:12.13-12.27: type error [M0096], expression of type
-  async<$@anon-async-10.12__0__scope2Dexample2Emo> Int__0__prelude
+  async Int
 cannot produce expected type
-  async<$@anon-async-6.60__0__scope2Dexample2Emo> Int__0__prelude
+  async Int
