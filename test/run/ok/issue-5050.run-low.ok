@@ -1,5 +1,5 @@
 Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-internals:55.3-59.4: IR type error [M0000], subtype violation:
+issue-5050.mo:1.39-1.49: IR type error [M0000], subtype violation:
   ()
-  () -> @Iter<Nat>
+  () -> {}
 
