@@ -82,6 +82,5 @@ actor self {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run
 
 //await self.go(); //OR-CALL ingress go "DIDL\x00\x00"

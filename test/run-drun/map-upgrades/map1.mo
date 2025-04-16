@@ -74,7 +74,7 @@ actor a {
   stable var k = 0;
   // add 2 next keys on each call
   public func go() : async () {
-    // To get lots of cycles in both drun and ic-ref-run
+    // To get lots of cycles in drun
     if (Cycles.balance() == 0)
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
