@@ -1,7 +1,7 @@
 name: "build"
 on:
   push:
-     branches: [ master ]
+    branches: [ master ]
   pull_request: {}
 jobs:
   common-tests:
@@ -24,7 +24,7 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Free up disk space on Ubuntu
+    # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
@@ -73,7 +73,7 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Free up disk space on Ubuntu
+    # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
@@ -123,7 +123,7 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Free up disk space on Ubuntu
+    # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
@@ -148,7 +148,7 @@ jobs:
     - name: "nix-build-debug"
       run: nix-build-uncached --max-jobs auto -A debug-systems-go --build-flags -L
 
-  tests:
+  release-tests:
     needs: [common-tests, gc-tests]
     strategy:
       matrix:
@@ -172,7 +172,7 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Free up disk space on Ubuntu
+    # Free up disk space on Ubuntu
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
       if: startsWith(matrix.os, 'ubuntu-')
@@ -198,7 +198,7 @@ jobs:
       run: nix-build-uncached --max-jobs auto -A release-systems-go --build-flags -L
 
     - name: Discover `test/bench` changes
-      if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request'
+      if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64'
       run: |
         git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ github.event.pull_request.head.ref }}
