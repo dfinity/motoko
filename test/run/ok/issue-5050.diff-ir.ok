@@ -1,0 +1,8 @@
+--- issue-5050.run
++++ issue-5050.run-ir
+@@ -0,0 +1,5 @@
++Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
++internals:55.3-59.4: IR type error [M0000], subtype violation:
++  ()
++  () -> @Iter<Nat>
++
