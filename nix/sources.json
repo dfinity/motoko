@@ -32,19 +32,6 @@
         "url": "https://github.com/luc-blaeser/ic/archive/12fec30a322fa5c39d97ea9385f2cdcaa22f6696.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "ic-hs": {
-        "branch": "master",
-        "builtin": false,
-        "description": "A haskell toolbox for the Internet Computer",
-        "homepage": "",
-        "owner": "dfinity",
-        "repo": "ic-hs",
-        "rev": "a5f89cf508b0c80b633e3f0c152e3406fb750189",
-        "sha256": "0sjj272ch14309h3n3cxq6g7jkdhhqmdjrjdg67w1xxk4k1s1sfn",
-        "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/a5f89cf508b0c80b633e3f0c152e3406fb750189.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "ic-wasm": {
         "branch": "main",
         "description": "A collection of libraries and tools for transforming Wasm canisters running on the Internet Computer",

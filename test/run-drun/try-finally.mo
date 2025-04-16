@@ -353,7 +353,6 @@ actor A {
     }
 };
 
-//SKIP ic-ref-run
 
 A.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //CALL ingress go2 "DIDL\x00\x00"

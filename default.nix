@@ -15,14 +15,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
-let ic-ref-run =
-  # copy out the binary, to remove dependencies on the libraries
-  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
-      mkdir -p $out/bin
-      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
-  ''; in
-
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -324,8 +316,6 @@ rec {
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
-
-  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {

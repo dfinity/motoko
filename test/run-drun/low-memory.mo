@@ -56,6 +56,5 @@ actor Self {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//SKIP ic-ref-run
 
 //CALL ingress run "DIDL\x00\x00"
