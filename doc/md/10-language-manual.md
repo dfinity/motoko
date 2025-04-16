@@ -2129,20 +2129,22 @@ If `var` is absent from `var? T` then the value `w` is just the value `v` of imm
 
 The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, and `U`,`<id>` and `T` are related by a row of the following table:
 
-|            |         |                         |                                              |
-| ---------- | ------- | ----------------------- | -------------------------------------------- |
-| U          | `<id>`  | T                       | Description                                  |
-| [`Text`](../base/Text.md)     | `size`  | [`Nat`](../base/Nat.md)                   | Size (or length) in characters               |
-| [`Text`](../base/Text.md)     | `chars` | `{ next: () -> Char? }` | Character iterator, first to last            |
-|            |         |                         |                                              |
-| [`Blob`](../base/Blob.md)     | `size`  | [`Nat`](../base/Nat.md)                   | Size in bytes                                |
-| [`Blob`](../base/Blob.md)     | `vals`  | `{ next: () -> Nat8? }` | Byte iterator, first to last                 |
-|            |         |                         |                                              |
-| `[var? T]` | `size`  | [`Nat`](../base/Nat.md)                   | Number of elements                           |
-| `[var? T]` | `get`   | `Nat -> T`              | Indexed read function                        |
-| `[var? T]` | `keys`  | `{ next: () -> Nat? }`  | Index iterator, by ascending index           |
-| `[var? T]` | `vals`  | `{ next: () -> T? }`    | Value iterator, by ascending index           |
-| `[var T]`  | `put`   | `(Nat, T) -> ()`        | Indexed write function (mutable arrays only) |
+|            |                 |                         |                                                 |
+| ---------- | --------------- | ----------------------- | ----------------------------------------------- |
+| U          | `<id>`          | T                       | Description                                     |
+| [`Text`](../base/Text.md)    | `size`  | [`Nat`](../base/Nat.md) | Size (or length) in characters        |
+| [`Text`](../base/Text.md)    | `chars` | `{ next: () -> Char? }` | Character iterator, first to last     |
+|            |                 |                         |                                                 |
+| [`Blob`](../base/Blob.md)    | `size`  | [`Nat`](../base/Nat.md) | Size in bytes                         |
+| [`Blob`](../base/Blob.md)    | `get`   | `Nat -> Nat8`           | Indexed read function                 |
+| [`Blob`](../base/Blob.md)    | `keys`  | `{ next: () -> Nat? }`  | Index iterator, by ascending index    |
+| [`Blob`](../base/Blob.md)    | `vals`, `values` | `{ next: () -> Nat8? }` | Byte iterator, first to last |
+|            |                 |                         |                                                 |
+| `[var? T]` | `size`          | [`Nat`](../base/Nat.md) | Number of elements                              |
+| `[var? T]` | `get`           | `Nat -> T`              | Indexed read function                           |
+| `[var? T]` | `keys`          | `{ next: () -> Nat? }`  | Index iterator, by ascending index              |
+| `[var? T]` | `vals`, `values`| `{ next: () -> T? }`    | Value iterator, by ascending index              |
+| `[var T]`  | `put`           | `(Nat, T) -> ()`        | Indexed write function (mutable arrays only)    |
 
 The projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a value of type `U` and the result of the projection is a value of type `T` whose semantics is given by the Description column of the previous table.
 
