@@ -11099,14 +11099,6 @@ and compile_array_index env ae e1 e2 =
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env
 
-(* Code for blob[e] as exp.
-Traps or pushes the value of the element on the stack
-*)
-and compile_blob_index env ae e1 e2 =
-    compile_exp_vanilla env ae e1 ^^ (* offset to blob payload *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Blob.idx_bigint env
-
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
   let const_sr sr inst = sr, G.concat_map (compile_exp_as env ae sr) es ^^ inst in
@@ -11295,7 +11287,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | IdxBlobPrim, [e1; e2] ->
     SR.Vanilla,
-    compile_blob_index env ae e1 e2
+    compile_exp_vanilla env ae e1 ^^ (* offset to blob payload *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Blob.idx_bigint env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in
