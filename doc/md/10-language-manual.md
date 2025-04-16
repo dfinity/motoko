@@ -2132,13 +2132,13 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 |            |         |                         |                                              |
 | ---------- | ------- | ----------------------- | -------------------------------------------- |
 | U          | `<id>`  | T                       | Description                                  |
-| [`Text`](./base/Text.md)     | `size`  | [`Nat`](./base/Nat.md)                   | Size (or length) in characters               |
-| [`Text`](./base/Text.md)     | `chars` | `{ next: () -> Char? }` | Character iterator, first to last            |
+| [`Text`](../base/Text.md)     | `size`  | [`Nat`](../base/Nat.md)                   | Size (or length) in characters               |
+| [`Text`](../base/Text.md)     | `chars` | `{ next: () -> Char? }` | Character iterator, first to last            |
 |            |         |                         |                                              |
-| [`Blob`](./base/Blob.md)     | `size`  | [`Nat`](./base/Nat.md)                   | Size in bytes                                |
-| [`Blob`](./base/Blob.md)     | `vals`  | `{ next: () -> Nat8? }` | Byte iterator, first to last                 |
+| [`Blob`](../base/Blob.md)     | `size`  | [`Nat`](../base/Nat.md)                   | Size in bytes                                |
+| [`Blob`](../base/Blob.md)     | `vals`  | `{ next: () -> Nat8? }` | Byte iterator, first to last                 |
 |            |         |                         |                                              |
-| `[var? T]` | `size`  | [`Nat`](./base/Nat.md)                   | Number of elements                           |
+| `[var? T]` | `size`  | [`Nat`](../base/Nat.md)                   | Number of elements                           |
 | `[var? T]` | `get`   | `Nat -> T`              | Indexed read function                        |
 | `[var? T]` | `keys`  | `{ next: () -> Nat? }`  | Index iterator, by ascending index           |
 | `[var? T]` | `vals`  | `{ next: () -> T? }`    | Value iterator, by ascending index           |

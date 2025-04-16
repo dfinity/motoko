@@ -1,6 +1,3 @@
-# too slow for ic-ref:
-# SKIP ic-ref-run
-
 install $ID life/life-v1.mo ""
 ingress $ID advance "DIDL\x00\x01\x7d\x0F"
 query $ID show "DIDL\x00\x00"

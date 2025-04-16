@@ -4436,6 +4436,37 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
+  (* Dynamic blob index access. Returns the value of the element.
+     Does bounds checking *)
+  let idx env =
+    Func.share_code2 Func.Never env "Blob.idx" (("blob", I32Type), ("idx", I32Type)) [I32Type] (fun env get_blob get_idx ->
+      (* No need to check the lower bound, we interpret idx as unsigned *)
+      (* Check the upper bound *)
+      get_idx ^^
+      get_blob ^^ len env ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+      E.else_trap_with env "Blob index out of bounds" ^^
+
+      get_idx ^^
+      compile_add_const Int32.(mul (header_size env) Heap.word_size |> add ptr_unskew) ^^
+      get_blob ^^
+      Tagged.load_forwarding_pointer env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
+      TaggedSmallWord.msb_adjust Type.Nat8 ^^
+      TaggedSmallWord.tag env Type.Nat8
+    )
+
+  (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
+  let idx_bigint env =
+    Func.share_code2 Func.Never env "Blob.idx_bigint" (("blob", I32Type), ("idx", I32Type)) [I32Type] (fun env get_blob get_idx ->
+      get_blob ^^
+      get_idx ^^
+      lit env Tagged.T "Blob index out of bounds" ^^
+      BigNum.to_word32_with env ^^
+      idx env
+  )
+
   let dyn_alloc_scratch env =
     let (set_len, get_len) = new_local env "len" in
     set_len ^^
@@ -7178,13 +7209,13 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
-        get_x ^^ size env (Prim Blob)
+        get_x ^^ size env blob
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
          size_alias (fun () ->
           inc_data_size (compile_unboxed_const 12l) ^^ (* |id| + |page_count| = 8 + 4 *)
-          get_x ^^ Region.vec_pages env ^^ size env (Prim Blob))
+          get_x ^^ Region.vec_pages env ^^ size env blob)
       | Mut t ->
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -7348,7 +7379,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
-        get_x ^^ write env (Prim Blob)
+        get_x ^^ write env blob
       | Non ->
         E.trap_with env "serializing value of type None"
       | Mut t ->
@@ -10893,7 +10924,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
 Traps or pushes the pointer to the element on the stack
 *)
 and compile_array_index env ae e1 e2 =
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e1 ^^ (* offset to array payload *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env
 
@@ -11081,6 +11112,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Arr.len env ^^
     compile_sub_const 1l ^^
     BigNum.from_signed_word_compact env
+
+  | IdxBlobPrim, [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^ (* offset to blob payload *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Blob.idx_bigint env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in
