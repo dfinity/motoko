@@ -1,1 +1,1 @@
-cyclic-bound4.mo:7.8-7.17: type error [M0043], type parameter A__0__cyclic2Dbound42Emo has cyclic bounds B__0__cyclic2Dbound42Emo <: A__0__cyclic2Dbound42Emo <: C__1__cyclic2Dbound42Emo <: B__0__cyclic2Dbound42Emo
+cyclic-bound4.mo:7.8-7.17: type error [M0043], type parameter A__468920109 has cyclic bounds B__468920109 <: A__468920109 <: C__254131561 <: B__468920109

@@ -1,23 +1,23 @@
 object-extend.mo:46.16-46.21: warning [M0215], field `l` is provided but not expected in record of type
   {}
 object-extend.mo:71.67-71.75: warning [M0215], field `bur` is provided but not expected in record extension of type
-  {bar : Nat__0__prelude; next : () -> ?Text__0__prelude}
+  {bar : Nat; next : () -> ?Text}
 object-extend.mo:72.48-72.61: warning [M0215], field `quux` is provided but not expected in record of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:73.77-73.81: warning [M0215], public field `quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:74.71-74.75: warning [M0215], public field `quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:75.47-75.51: warning [M0215], public field `quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:78.88-78.92: warning [M0215], public type `Quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:80.100-80.104: warning [M0215], public field `Quux` is provided but not expected in object of type
-  {type Quux = Text__0__prelude; foo : Text__0__prelude}
+  {type Quux = Text; foo : Text}
 object-extend.mo:82.77-82.81: warning [M0215], public type `Quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:83.66-83.70: warning [M0215], public type `Quux` is provided but not expected in object of type
-  {foo : Text__0__prelude}
+  {foo : Text}
 object-extend.mo:56.6-56.9: warning [M0194], unused identifier mix (delete or rename to wildcard `_` or `_mix`)
 object-extend.mo:59.6-59.9: warning [M0194], unused identifier mox (delete or rename to wildcard `_` or `_mox`)
 object-extend.mo:62.6-62.9: warning [M0194], unused identifier mux (delete or rename to wildcard `_` or `_mux`)

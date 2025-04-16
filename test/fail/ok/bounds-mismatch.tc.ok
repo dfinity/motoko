@@ -7,21 +7,21 @@ bounds-mismatch.mo:18.5-18.17: type error [M0096], expression of type
 cannot produce expected type
   () -> ()
 bounds-mismatch.mo:23.5-23.24: type error [M0096], expression of type
-  <A <: Nat__0__prelude>() -> ()
+  <A <: Nat>() -> ()
 cannot produce expected type
   <A>() -> ()
 bounds-mismatch.mo:28.5-28.17: type error [M0096], expression of type
   <A>() -> ()
 cannot produce expected type
-  <A <: Nat__0__prelude>() -> ()
+  <A <: Nat>() -> ()
 bounds-mismatch.mo:33.5-33.24: type error [M0096], expression of type
-  <A <: Nat__0__prelude>() -> ()
+  <A <: Nat>() -> ()
 cannot produce expected type
-  <A <: Int__0__prelude>() -> ()
+  <A <: Int>() -> ()
 bounds-mismatch.mo:38.5-38.24: type error [M0096], expression of type
-  <A <: Int__0__prelude>() -> ()
+  <A <: Int>() -> ()
 cannot produce expected type
-  <A <: Nat__0__prelude>() -> ()
+  <A <: Nat>() -> ()
 bounds-mismatch.mo:50.11-50.36: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
@@ -34,15 +34,15 @@ because elements have inconsistent types
 bounds-mismatch.mo:75.21-75.22: type error [M0096], expression of type
   <X>X -> X
 cannot produce expected type
-  <Y <: Nat__0__prelude>Y -> Y
+  <Y <: Nat>Y -> Y
 bounds-mismatch.mo:81.21-81.22: type error [M0096], expression of type
-  <X <: Int__0__prelude, Y <: {}>X -> Y
+  <X <: Int, Y <: {}>X -> Y
 cannot produce expected type
-  <X <: Int__0__prelude, Y <: {x : Nat__0__prelude}>X -> Y
+  <X <: Int, Y <: {x : Nat}>X -> Y
 bounds-mismatch.mo:87.21-87.22: type error [M0096], expression of type
-  <X <: Nat__0__prelude, Y>X -> Y
+  <X <: Nat, Y>X -> Y
 cannot produce expected type
-  <Y <: Nat__0__prelude, X <: Y>Y -> X
+  <Y <: Nat, X <: Y>Y -> X
 bounds-mismatch.mo:93.21-93.22: type error [M0096], expression of type
   <X, Y>X -> X
 cannot produce expected type
@@ -52,17 +52,17 @@ bounds-mismatch.mo:99.21-99.22: type error [M0096], expression of type
 cannot produce expected type
   <X, Y <: X, Z <: Y>X -> X
 bounds-mismatch.mo:106.21-106.22: type error [M0096], expression of type
-  <X <: {x : Int__0__prelude}>X -> X
+  <X <: {x : Int}>X -> X
 cannot produce expected type
-  <X <: C__0__bounds2Dmismatch2Emo>X -> X
+  <X <: C__196586159>X -> X
 bounds-mismatch.mo:113.21-113.22: type error [M0096], expression of type
   <X, Y <: {f : () -> X}>X -> X
 cannot produce expected type
-  <X <: Nat__0__prelude, Y <: C__1__bounds2Dmismatch2Emo<X>>X -> X
+  <X <: Nat, Y <: C__1065547786<X>>X -> X
 bounds-mismatch.mo:120.21-120.22: type error [M0096], expression of type
-  <X, Y <: {f : () -> Nat__0__prelude}>X -> X
+  <X, Y <: {f : () -> Nat}>X -> X
 cannot produce expected type
-  <X <: Nat__0__prelude, Y <: C__2__bounds2Dmismatch2Emo<X>>X -> X
+  <X <: Nat, Y <: C__790412934<X>>X -> X
 bounds-mismatch.mo:125.21-128.4: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types

@@ -1,2 +1,2 @@
 data-params.mo:57.41-57.47: warning [M0215], field `z` is provided but not expected in record of type
-  {x : Nat__0__prelude; y : Nat__0__prelude}
+  {x : Nat; y : Nat}

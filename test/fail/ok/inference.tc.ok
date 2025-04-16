@@ -1,21 +1,21 @@
 inference.mo:61.14-61.45: type error [M0096], expression of type
-  (x : None__0__prelude) -> Any__0__prelude
+  (x : None) -> Any
 cannot produce expected type
-  None__0__prelude -> None__0__prelude
+  None -> None
 inference.mo:62.13-62.44: type error [M0096], expression of type
-  (x : None__0__prelude) -> Any__0__prelude
+  (x : None) -> Any
 cannot produce expected type
-  Any__0__prelude -> Any__0__prelude
+  Any -> Any
 inference.mo:67.1-67.40: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : T -> T) -> ()
 to argument of type
-  (x : None__0__prelude) -> Any__0__prelude
+  (x : None) -> Any
 to produce result of type
   ()
 because implicit instantiation of type parameter T is over-constrained with
-  Any__0__prelude  <:  T  <:  None__0__prelude
+  Any  <:  T  <:  None
 where
-  Any__0__prelude  </:  None__0__prelude
+  Any  </:  None
 so that no valid instantiation exists
 inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
 inference.mo:94.8-94.20: type error [M0098], cannot implicitly instantiate function of type
@@ -25,16 +25,16 @@ to argument of type
 to produce result of type
   Any
 because type parameter T has an open bound
-  U__12__inference2Emo
+  U__831539801
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:95.8-95.26: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
-  (Nat, Int__0__prelude)
+  (Nat, Int)
 to produce result of type
   Any
 because type parameter T has an open bound
-  U__13__inference2Emo
+  U__224588488
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:96.8-96.23: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
@@ -43,21 +43,21 @@ to argument of type
 to produce result of type
   Any
 because type parameter T has an open bound
-  U__14__inference2Emo
+  U__549090484
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
 inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
-  <T <: Int__0__prelude>(x : T) -> T
+  <T <: Int>(x : T) -> T
 to argument of type
   Bool
 to produce result of type
   Any
 because implicit instantiation of type parameter T is over-constrained with
-  Bool  <:  T  <:  Int__0__prelude
+  Bool  <:  T  <:  Int
 where
-  Bool  </:  Int__0__prelude
+  Bool  </:  Int
 so that no valid instantiation exists
 inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
-  <T <: Int__0__prelude>(x : T) -> T
+  <T <: Int>(x : T) -> T
 to argument of type
   Bool
 to produce result of type
@@ -73,34 +73,34 @@ to argument of type
   <V>(x : V) -> V
 to produce result of type
   ()
-because no instantiation of T__89__inference2Emo makes
-  <V>(x : V) -> V  <:  (f : <U>T__89__inference2Emo -> U)
+because no instantiation of T__205103989 makes
+  <V>(x : V) -> V  <:  (f : <U>T__205103989 -> U)
 inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>U -> T) -> ()
 to argument of type
   <V>(x : V) -> V
 to produce result of type
   ()
-because no instantiation of T__90__inference2Emo makes
-  <V>(x : V) -> V  <:  (f : <U>U -> T__90__inference2Emo)
+because no instantiation of T__904533273 makes
+  <V>(x : V) -> V  <:  (f : <U>U -> T__904533273)
 inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [T]) -> T
 to argument of type
   [var Nat]
 to produce result of type
   Any
-because no instantiation of T__93__inference2Emo makes
-  [var Nat]  <:  (x : [T__93__inference2Emo])
+because no instantiation of T__429055060 makes
+  [var Nat]  <:  (x : [T__429055060])
 inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
   [Nat]
 to produce result of type
   ()
-because no instantiation of T__94__inference2Emo makes
-  [Nat]  <:  (x : [var T__94__inference2Emo])
+because no instantiation of T__540670714 makes
+  [Nat]  <:  (x : [var T__540670714])
 and
-  T__94__inference2Emo  <:  ()
+  T__540670714  <:  ()
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
@@ -115,43 +115,43 @@ so that no valid instantiation exists
 inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
   <U <: {}>(y : U) -> ()
 to argument of type
-  T__23__inference2Emo
+  T__95163192
 to produce result of type
   ()
 because implicit instantiation of type parameter U is over-constrained with
-  T__23__inference2Emo  <:  U  <:  {}
+  T__95163192  <:  U  <:  {}
 where
-  T__23__inference2Emo  </:  {}
+  T__95163192  </:  {}
 so that no valid instantiation exists
 inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
-  <U <: T__26__inference2Emo>(y : U) -> U
+  <U <: T__584248747>(y : U) -> U
 to argument of type
-  T__26__inference2Emo
+  T__584248747
 to produce result of type
   None
 because implicit instantiation of type parameter U is over-constrained with
-  T__26__inference2Emo  <:  U  <:  None
+  T__584248747  <:  U  <:  None
 where
-  T__26__inference2Emo  </:  None
+  T__584248747  </:  None
 so that no valid instantiation exists
 inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
-  <T>(b : Bool__0__prelude, x : [var T], y : [var T]) -> [var T]
+  <T>(b : Bool, x : [var T], y : [var T]) -> [var T]
 to argument of type
-  (Bool, [var Nat__0__prelude], [var Int__0__prelude])
+  (Bool, [var Nat], [var Int])
 to produce result of type
   Any
 because implicit instantiation of type parameter T is over-constrained with
-  Int__0__prelude  <:  T  <:  Nat__0__prelude
+  Int  <:  T  <:  Nat
 where
-  Int__0__prelude  </:  Nat__0__prelude
+  Int  </:  Nat
 so that no valid instantiation exists
 inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
   <T>(o : {x : T}) -> T
 to argument of type
-  {type x = Nat__0__prelude}
+  {type x = Nat}
 to produce result of type
   Any
-because no instantiation of T__104__inference2Emo makes
-  {type x = Nat__0__prelude}  <:  (o : {x : T__104__inference2Emo})
+because no instantiation of T__771663078 makes
+  {type x = Nat}  <:  (o : {x : T__771663078})
 inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
 inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0

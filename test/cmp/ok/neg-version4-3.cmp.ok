@@ -1,5 +1,5 @@
 (unknown location): Compatibility error [M0170], stable variable four of previous type
-  var [var (Text__0__prelude, Nat__0__prelude, Bool__0__prelude)]
+  var [var (Text, Nat, Bool)]
 cannot be consumed at new type
-  var [var (Nat__0__prelude, Text__0__prelude)] without data loss. Use an explicit migration function.
+  var [var (Nat, Text)] without data loss. Use an explicit migration function.
 FALSE

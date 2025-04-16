@@ -49,7 +49,7 @@ let kind c = !(c.kind)
 let unsafe_set_kind c k = c.kind := k
 
 let name c = c.name
-
+(*
 let to_string show_stamps sep c =
   (* Filepaths may have non-parseable characters, so we convert them to hex. *)
   let escape_char c =
@@ -76,6 +76,12 @@ let to_string show_stamps sep c =
       (match snd c.stamp with
       | None -> ""
       | Some scope -> sep ^ escape_filepath scope)
+*)
+
+let to_string show_stamps sep c =
+  if not show_stamps || c.stamp = (0, Some "prelude")
+  then c.name else Printf.sprintf "%s%s%i" c.name sep (Hashtbl.hash c.stamp)
+
 
 let eq c1 c2 = c1.stamp = c2.stamp && c1.name = c2.name
 

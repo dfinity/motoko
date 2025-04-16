@@ -1,13 +1,13 @@
 migration.mo:10.7-10.22: warning [M0215], field `unused` is provided but not expected in record of type
-  {var three : Text__0__prelude; unstable2 : () -> (); var versoin : ()}
+  {var three : Text; unstable2 : () -> (); var versoin : ()}
 migration.mo:3.7-13.7: type error [M0201], expected stable type, but migration expression produces non-stable type
-  {var three : Text__0__prelude; unstable2 : () -> (); var versoin : ()}
+  {var three : Text; unstable2 : () -> (); var versoin : ()}
 migration.mo:3.7-13.7: type error [M0201], expected stable type, but migration expression consumes non-stable type
   {unstable1 : () -> ()}
 migration.mo:3.7-13.7: type error [M0204], migration expression produces field `three` of type
-  var Text__0__prelude
+  var Text
 , not the expected type
-  var [var (Nat__0__prelude, Text__0__prelude)]
+  var [var (Nat, Text)]
 migration.mo:3.7-13.7: type error [M0205], migration expression produces unexpected field `unstable2` of type
   () -> ()
 
