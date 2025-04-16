@@ -518,7 +518,6 @@ rec {
       run-debug  = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
       run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun-release       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-debug = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
