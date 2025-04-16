@@ -524,12 +524,12 @@ rec {
     };
 
   in fix_names {
-      run        = test_subdir "run"        [ moc ] ;
+      run-release        = test_subdir "run"        [ moc ] ;
       run-debug  = snty_subdir "run"        [ moc ] ;
       run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
       run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-release       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-debug = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -787,24 +787,48 @@ rec {
       '';
   };
 
-  # Helper function to filter tests by type
+  # Helper function to filter tests by type.
   filter_tests = type: tests:
     let
-      # Get all test names that match the pattern
+      # Get all test names that match "-debug".
       debug_tests = builtins.filter (name: 
         builtins.match ".*-debug$" name != null
       ) (builtins.attrNames tests);
       
-      # Get all test names that don't match the pattern
+      # Get all test names that match "-release".
       release_tests = builtins.filter (name:
-        builtins.match ".*-debug$" name == null
+        builtins.match ".*-release$" name != null
       ) (builtins.attrNames tests);
       
-      # Select which set of names to use
+      # Select which set of names to use.
       selected_names = if type == "debug" then debug_tests else release_tests;
     in
-      # Get the actual derivations for the selected names
+      # Get the actual derivations for the selected names.
       builtins.map (name: tests.${name}) selected_names;
+
+  # Helper function to filter GC tests.
+  filter_gc_tests = tests:
+    let
+      # Get all test names that contain "gc" in their name
+      gc_tests = builtins.filter (name:
+        builtins.match ".*-gc$" name != null
+      ) (builtins.attrNames tests);
+    in
+      # Get the actual derivations for the selected names.
+      builtins.map (name: tests.${name}) gc_tests;
+
+  # Helper function to filter common tests (non-GC, non-release/debug specific).
+  filter_common_tests = tests:
+    let
+      # Get all test names that don't contain "gc" and don't end with -debug or -release.
+      common_tests = builtins.filter (name:
+        builtins.match ".*-gc$" name == null &&
+        builtins.match ".*-debug$" name == null &&
+        builtins.match ".*-release$" name == null
+      ) (builtins.attrNames tests);
+    in
+      # Get the actual derivations for the selected names
+      builtins.map (name: tests.${name}) common_tests;
 
   common-constituents = [
     moc
@@ -827,19 +851,35 @@ rec {
     check-error-codes
   ];
 
-  # Release version - excludes debug tests
-  release-systems-go = nixpkgs.releaseTools.aggregate {
-    name = "release-systems-go";
+  # Common tests version - includes non-GC, non-release/debug specific tests.
+  common-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "common-systems-go";
     constituents = common-constituents ++
-    filter_tests "release" tests  # Only include release tests
+    filter_common_tests tests  # Only include common tests.
     ++ builtins.attrValues js;
   };
 
-  # Debug version - only includes debug tests
+  # GC tests version - only includes GC tests.
+  gc-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "gc-systems-go";
+    constituents = common-constituents ++
+    filter_gc_tests tests  # Only include GC tests
+    ++ builtins.attrValues js;
+  };
+
+  # Release version - excludes debug tests and the others.
+  release-systems-go = nixpkgs.releaseTools.aggregate {
+    name = "release-systems-go";
+    constituents = common-constituents ++
+    filter_tests "release" tests  # Only include release tests.
+    ++ builtins.attrValues js;
+  };
+
+  # Debug version - only includes debug tests.
   debug-systems-go = nixpkgs.releaseTools.aggregate {
     name = "debug-systems-go";
     constituents = common-constituents ++
-    filter_tests "debug" tests  # Only include debug tests
+    filter_tests "debug" tests  # Only include debug tests.
     ++ builtins.attrValues js;
   };
 
