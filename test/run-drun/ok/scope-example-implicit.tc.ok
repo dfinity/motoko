@@ -1,4 +1,4 @@
 scope-example-implicit.mo:10.12-10.19: type error [M0096], expression of type
-  async Int
+  async<$@anon-async-8.12> Int
 cannot produce expected type
-  async Int
+  async<$f> Int

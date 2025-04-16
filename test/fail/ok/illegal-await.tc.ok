@@ -32,6 +32,6 @@ illegal-await.mo:40.1: info, end of scope $Rec mentioned in error at illegal-awa
 illegal-await.mo:33.1: info, start of scope $ mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:40.1: info, end of scope $ mentioned in error at illegal-await.mo:35.5-35.12
 illegal-await.mo:38.20-38.21: type error [M0096], expression of type
-  async ()
+  async<$> ()
 cannot produce expected type
-  async ()
+  async<$Rec> ()
