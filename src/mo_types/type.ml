@@ -1574,24 +1574,28 @@ let string_of_func_sort = function
 
 module type PrettyConfig = sig
   val show_stamps : bool
+  val show_scopes : bool
   val con_sep : string
   val par_sep : string
 end
 
 module ShowStamps = struct
   let show_stamps = true
+  let show_scopes = true
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
 end
 
 module ElideStamps = struct
   let show_stamps = false
+  let show_scopes = true
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
 end
 
 module ParseableStamps = struct
   let show_stamps = true
+  let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
 end
@@ -1710,7 +1714,7 @@ and pp_typ_pre vs ppf t =
   match t with
   (* No case for grammar production `PRIM s` *)
   | Async (s, t1, t2) ->
-    if Cfg.show_stamps then
+    if Cfg.show_scopes then
       match t1 with
       | Var(_, n) when fst (List.nth vs n) = "" ->
         fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
