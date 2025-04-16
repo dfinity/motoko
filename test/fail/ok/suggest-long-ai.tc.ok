@@ -2,18 +2,17 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
   module {
     type ErrorCode =
       {
-        #call_error : {err_code : Nat32__0__prelude};
+        #call_error : {err_code : Nat32};
         #canister_error;
         #canister_reject;
         #destination_invalid;
-        #future : Nat32__0__prelude;
+        #future : Nat32;
         #system_fatal;
         #system_transient;
         #system_unknown
       };
-    Array_init : <T>(len : Nat__0__prelude, x : T) -> [var T];
-    Array_tabulate :
-      <T>(len : Nat__0__prelude, gen : Nat__0__prelude -> T) -> [T];
+    Array_init : <T>(len : Nat, x : T) -> [var T];
+    Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Ret : <T>() -> T;
     Types :
       module {
@@ -39,316 +38,228 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
         type Region = Region;
         type Text = Text
       };
-    abs : (x : Int__0__prelude) -> Nat__0__prelude;
-    arccos : (f : Float__0__prelude) -> Float__0__prelude;
-    arcsin : (f : Float__0__prelude) -> Float__0__prelude;
-    arctan : (f : Float__0__prelude) -> Float__0__prelude;
-    arctan2 :
-      (y : Float__0__prelude, x : Float__0__prelude) -> Float__0__prelude;
-    arrayMutToBlob : (a : [var Nat8__0__prelude]) -> Blob__0__prelude;
-    arrayToBlob : (a : [Nat8__0__prelude]) -> Blob__0__prelude;
-    blobCompare :
-      (b1 : Blob__0__prelude, b2 : Blob__0__prelude) -> Int8__0__prelude;
-    blobOfPrincipal : (id : Principal__0__prelude) -> Blob__0__prelude;
-    blobToArray : (b : Blob__0__prelude) -> [Nat8__0__prelude];
-    blobToArrayMut : (b : Blob__0__prelude) -> [var Nat8__0__prelude];
-    btstInt16 :
-      (w : Int16__0__prelude, amount : Int16__0__prelude) -> Bool__0__prelude;
-    btstInt32 :
-      (w : Int32__0__prelude, amount : Int32__0__prelude) -> Bool__0__prelude;
-    btstInt64 :
-      (w : Int64__0__prelude, amount : Int64__0__prelude) -> Bool__0__prelude;
-    btstInt8 :
-      (w : Int8__0__prelude, amount : Int8__0__prelude) -> Bool__0__prelude;
-    btstNat16 :
-      (w : Nat16__0__prelude, amount : Nat16__0__prelude) -> Bool__0__prelude;
-    btstNat32 :
-      (w : Nat32__0__prelude, amount : Nat32__0__prelude) -> Bool__0__prelude;
-    btstNat64 :
-      (w : Nat64__0__prelude, amount : Nat64__0__prelude) -> Bool__0__prelude;
-    btstNat8 :
-      (w : Nat8__0__prelude, amount : Nat8__0__prelude) -> Bool__0__prelude;
-    call_raw :
-      (p : Principal__0__prelude, m : Text__0__prelude, a : Blob__0__prelude) ->
-        async Blob__0__prelude;
-    cancelTimer : (id : Nat__0__prelude) -> ();
-    canisterSubnet : () -> Principal__0__prelude;
-    canisterVersion : () -> Nat64__0__prelude;
-    charIsAlphabetic : (c : Char__0__prelude) -> Bool__0__prelude;
-    charIsLowercase : (c : Char__0__prelude) -> Bool__0__prelude;
-    charIsUppercase : (c : Char__0__prelude) -> Bool__0__prelude;
-    charIsWhitespace : (c : Char__0__prelude) -> Bool__0__prelude;
-    charToLower : (c : Char__0__prelude) -> Char__0__prelude;
-    charToNat32 : (c : Char__0__prelude) -> Nat32__0__prelude;
-    charToText : (c : Char__0__prelude) -> Text__0__prelude;
-    charToUpper : (c : Char__0__prelude) -> Char__0__prelude;
-    clzInt16 : (w : Int16__0__prelude) -> Int16__0__prelude;
-    clzInt32 : (w : Int32__0__prelude) -> Int32__0__prelude;
-    clzInt64 : (w : Int64__0__prelude) -> Int64__0__prelude;
-    clzInt8 : (w : Int8__0__prelude) -> Int8__0__prelude;
-    clzNat16 : (w : Nat16__0__prelude) -> Nat16__0__prelude;
-    clzNat32 : (w : Nat32__0__prelude) -> Nat32__0__prelude;
-    clzNat64 : (w : Nat64__0__prelude) -> Nat64__0__prelude;
-    clzNat8 : (w : Nat8__0__prelude) -> Nat8__0__prelude;
-    cos : (f : Float__0__prelude) -> Float__0__prelude;
-    createActor :
-      (wasm : Blob__0__prelude, argument : Blob__0__prelude) ->
-        async Principal__0__prelude;
-    ctzInt16 : (w : Int16__0__prelude) -> Int16__0__prelude;
-    ctzInt32 : (w : Int32__0__prelude) -> Int32__0__prelude;
-    ctzInt64 : (w : Int64__0__prelude) -> Int64__0__prelude;
-    ctzInt8 : (w : Int8__0__prelude) -> Int8__0__prelude;
-    ctzNat16 : (w : Nat16__0__prelude) -> Nat16__0__prelude;
-    ctzNat32 : (w : Nat32__0__prelude) -> Nat32__0__prelude;
-    ctzNat64 : (w : Nat64__0__prelude) -> Nat64__0__prelude;
-    ctzNat8 : (w : Nat8__0__prelude) -> Nat8__0__prelude;
-    cyclesAccept : <system>(amount : Nat__0__prelude) -> Nat__0__prelude;
-    cyclesAdd : <system>(amount : Nat__0__prelude) -> ();
-    cyclesAvailable : () -> Nat__0__prelude;
-    cyclesBalance : () -> Nat__0__prelude;
-    cyclesBurn : <system>(amount : Nat__0__prelude) -> Nat__0__prelude;
-    cyclesRefunded : () -> Nat__0__prelude;
-    debugPrint : (x : Text__0__prelude) -> ();
-    debugPrintChar : (x : Char__0__prelude) -> ();
-    debugPrintInt : (x : Int__0__prelude) -> ();
-    debugPrintNat : (x : Nat__0__prelude) -> ();
-    decodeUtf8 : (b : Blob__0__prelude) -> ?Text__0__prelude;
-    encodeUtf8 : (t : Text__0__prelude) -> Blob__0__prelude;
-    error : (message : Text__0__prelude) -> Error__0__prelude;
-    errorCode : (e : Error__0__prelude) -> ErrorCode__0__40prim;
-    errorMessage : (e : Error__0__prelude) -> Text__0__prelude;
-    exists : <T>(f : T -> Bool__0__prelude) -> Bool__0__prelude;
-    exp : (f : Float__0__prelude) -> Float__0__prelude;
-    floatAbs : (f : Float__0__prelude) -> Float__0__prelude;
-    floatCeil : (f : Float__0__prelude) -> Float__0__prelude;
-    floatCopySign :
-      (f : Float__0__prelude, g : Float__0__prelude) -> Float__0__prelude;
-    floatFloor : (f : Float__0__prelude) -> Float__0__prelude;
-    floatMax :
-      (f : Float__0__prelude, g : Float__0__prelude) -> Float__0__prelude;
-    floatMin :
-      (f : Float__0__prelude, g : Float__0__prelude) -> Float__0__prelude;
-    floatNearest : (f : Float__0__prelude) -> Float__0__prelude;
-    floatSqrt : (f : Float__0__prelude) -> Float__0__prelude;
-    floatToFormattedText :
-      (f : Float__0__prelude, prec : Nat8__0__prelude,
-       mode : Nat8__0__prelude) -> Text__0__prelude;
-    floatToInt : (f : Float__0__prelude) -> Int__0__prelude;
-    floatToInt64 : (f : Float__0__prelude) -> Int64__0__prelude;
-    floatToText : (x : Float__0__prelude) -> Text__0__prelude;
-    floatTrunc : (f : Float__0__prelude) -> Float__0__prelude;
-    forall : <T>(f : T -> Bool__0__prelude) -> Bool__0__prelude;
+    abs : (x : Int) -> Nat;
+    arccos : (f : Float) -> Float;
+    arcsin : (f : Float) -> Float;
+    arctan : (f : Float) -> Float;
+    arctan2 : (y : Float, x : Float) -> Float;
+    arrayMutToBlob : (a : [var Nat8]) -> Blob;
+    arrayToBlob : (a : [Nat8]) -> Blob;
+    blobCompare : (b1 : Blob, b2 : Blob) -> Int8;
+    blobOfPrincipal : (id : Principal) -> Blob;
+    blobToArray : (b : Blob) -> [Nat8];
+    blobToArrayMut : (b : Blob) -> [var Nat8];
+    btstInt16 : (w : Int16, amount : Int16) -> Bool;
+    btstInt32 : (w : Int32, amount : Int32) -> Bool;
+    btstInt64 : (w : Int64, amount : Int64) -> Bool;
+    btstInt8 : (w : Int8, amount : Int8) -> Bool;
+    btstNat16 : (w : Nat16, amount : Nat16) -> Bool;
+    btstNat32 : (w : Nat32, amount : Nat32) -> Bool;
+    btstNat64 : (w : Nat64, amount : Nat64) -> Bool;
+    btstNat8 : (w : Nat8, amount : Nat8) -> Bool;
+    call_raw : (p : Principal, m : Text, a : Blob) -> async Blob;
+    cancelTimer : (id : Nat) -> ();
+    canisterSubnet : () -> Principal;
+    canisterVersion : () -> Nat64;
+    charIsAlphabetic : (c : Char) -> Bool;
+    charIsLowercase : (c : Char) -> Bool;
+    charIsUppercase : (c : Char) -> Bool;
+    charIsWhitespace : (c : Char) -> Bool;
+    charToLower : (c : Char) -> Char;
+    charToNat32 : (c : Char) -> Nat32;
+    charToText : (c : Char) -> Text;
+    charToUpper : (c : Char) -> Char;
+    clzInt16 : (w : Int16) -> Int16;
+    clzInt32 : (w : Int32) -> Int32;
+    clzInt64 : (w : Int64) -> Int64;
+    clzInt8 : (w : Int8) -> Int8;
+    clzNat16 : (w : Nat16) -> Nat16;
+    clzNat32 : (w : Nat32) -> Nat32;
+    clzNat64 : (w : Nat64) -> Nat64;
+    clzNat8 : (w : Nat8) -> Nat8;
+    cos : (f : Float) -> Float;
+    createActor : (wasm : Blob, argument : Blob) -> async Principal;
+    ctzInt16 : (w : Int16) -> Int16;
+    ctzInt32 : (w : Int32) -> Int32;
+    ctzInt64 : (w : Int64) -> Int64;
+    ctzInt8 : (w : Int8) -> Int8;
+    ctzNat16 : (w : Nat16) -> Nat16;
+    ctzNat32 : (w : Nat32) -> Nat32;
+    ctzNat64 : (w : Nat64) -> Nat64;
+    ctzNat8 : (w : Nat8) -> Nat8;
+    cyclesAccept : <system>(amount : Nat) -> Nat;
+    cyclesAdd : <system>(amount : Nat) -> ();
+    cyclesAvailable : () -> Nat;
+    cyclesBalance : () -> Nat;
+    cyclesBurn : <system>(amount : Nat) -> Nat;
+    cyclesRefunded : () -> Nat;
+    debugPrint : (x : Text) -> ();
+    debugPrintChar : (x : Char) -> ();
+    debugPrintInt : (x : Int) -> ();
+    debugPrintNat : (x : Nat) -> ();
+    decodeUtf8 : (b : Blob) -> ?Text;
+    encodeUtf8 : (t : Text) -> Blob;
+    error : (message : Text) -> Error;
+    errorCode : (e : Error) -> ErrorCode;
+    errorMessage : (e : Error) -> Text;
+    exists : <T>(f : T -> Bool) -> Bool;
+    exp : (f : Float) -> Float;
+    floatAbs : (f : Float) -> Float;
+    floatCeil : (f : Float) -> Float;
+    floatCopySign : (f : Float, g : Float) -> Float;
+    floatFloor : (f : Float) -> Float;
+    floatMax : (f : Float, g : Float) -> Float;
+    floatMin : (f : Float, g : Float) -> Float;
+    floatNearest : (f : Float) -> Float;
+    floatSqrt : (f : Float) -> Float;
+    floatToFormattedText : (f : Float, prec : Nat8, mode : Nat8) -> Text;
+    floatToInt : (f : Float) -> Int;
+    floatToInt64 : (f : Float) -> Int64;
+    floatToText : (x : Float) -> Text;
+    floatTrunc : (f : Float) -> Float;
+    forall : <T>(f : T -> Bool) -> Bool;
     getCandidLimits :
-      <system>() ->
-        {
-          bias : Nat32__0__prelude;
-          denominator : Nat32__0__prelude;
-          numerator : Nat32__0__prelude
-        };
-    getCertificate : () -> ?Blob__0__prelude;
-    hashBlob : (b : Blob__0__prelude) -> Nat32__0__prelude;
-    idlHash : (x : Text__0__prelude) -> Nat32__0__prelude;
-    int16ToInt : (n : Int16__0__prelude) -> Int__0__prelude;
-    int16ToInt32 : (n : Int16__0__prelude) -> Int32__0__prelude;
-    int16ToInt8 : (n : Int16__0__prelude) -> Int8__0__prelude;
-    int16ToNat16 : (n : Int16__0__prelude) -> Nat16__0__prelude;
-    int32ToInt : (n : Int32__0__prelude) -> Int__0__prelude;
-    int32ToInt16 : (n : Int32__0__prelude) -> Int16__0__prelude;
-    int32ToInt64 : (n : Int32__0__prelude) -> Int64__0__prelude;
-    int32ToNat32 : (n : Int32__0__prelude) -> Nat32__0__prelude;
-    int64ToFloat : (n : Int64__0__prelude) -> Float__0__prelude;
-    int64ToInt : (n : Int64__0__prelude) -> Int__0__prelude;
-    int64ToInt32 : (n : Int64__0__prelude) -> Int32__0__prelude;
-    int64ToNat64 : (n : Int64__0__prelude) -> Nat64__0__prelude;
-    int8ToInt : (n : Int8__0__prelude) -> Int__0__prelude;
-    int8ToInt16 : (n : Int8__0__prelude) -> Int16__0__prelude;
-    int8ToNat8 : (n : Int8__0__prelude) -> Nat8__0__prelude;
-    intToFloat : (n : Int__0__prelude) -> Float__0__prelude;
-    intToInt16 : (n : Int__0__prelude) -> Int16__0__prelude;
-    intToInt16Wrap : (n : Int__0__prelude) -> Int16__0__prelude;
-    intToInt32 : (n : Int__0__prelude) -> Int32__0__prelude;
-    intToInt32Wrap : (n : Int__0__prelude) -> Int32__0__prelude;
-    intToInt64 : (n : Int__0__prelude) -> Int64__0__prelude;
-    intToInt64Wrap : (n : Int__0__prelude) -> Int64__0__prelude;
-    intToInt8 : (n : Int__0__prelude) -> Int8__0__prelude;
-    intToInt8Wrap : (n : Int__0__prelude) -> Int8__0__prelude;
-    intToNat16Wrap : (n : Int__0__prelude) -> Nat16__0__prelude;
-    intToNat32Wrap : (n : Int__0__prelude) -> Nat32__0__prelude;
-    intToNat64Wrap : (n : Int__0__prelude) -> Nat64__0__prelude;
-    intToNat8Wrap : (n : Int__0__prelude) -> Nat8__0__prelude;
-    isController : (p : Principal__0__prelude) -> Bool__0__prelude;
-    isReplicatedExecution : () -> Bool__0__prelude;
-    log : (f : Float__0__prelude) -> Float__0__prelude;
-    nat16ToInt16 : (n : Nat16__0__prelude) -> Int16__0__prelude;
-    nat16ToNat : (n : Nat16__0__prelude) -> Nat__0__prelude;
-    nat16ToNat32 : (n : Nat16__0__prelude) -> Nat32__0__prelude;
-    nat16ToNat8 : (n : Nat16__0__prelude) -> Nat8__0__prelude;
-    nat32ToChar : (w : Nat32__0__prelude) -> Char__0__prelude;
-    nat32ToInt32 : (n : Nat32__0__prelude) -> Int32__0__prelude;
-    nat32ToNat : (n : Nat32__0__prelude) -> Nat__0__prelude;
-    nat32ToNat16 : (n : Nat32__0__prelude) -> Nat16__0__prelude;
-    nat32ToNat64 : (n : Nat32__0__prelude) -> Nat64__0__prelude;
-    nat64ToInt64 : (n : Nat64__0__prelude) -> Int64__0__prelude;
-    nat64ToNat : (n : Nat64__0__prelude) -> Nat__0__prelude;
-    nat64ToNat32 : (n : Nat64__0__prelude) -> Nat32__0__prelude;
-    nat8ToInt8 : (n : Nat8__0__prelude) -> Int8__0__prelude;
-    nat8ToNat : (n : Nat8__0__prelude) -> Nat__0__prelude;
-    nat8ToNat16 : (n : Nat8__0__prelude) -> Nat16__0__prelude;
-    natToNat16 : (n : Nat__0__prelude) -> Nat16__0__prelude;
-    natToNat32 : (n : Nat__0__prelude) -> Nat32__0__prelude;
-    natToNat64 : (n : Nat__0__prelude) -> Nat64__0__prelude;
-    natToNat8 : (n : Nat__0__prelude) -> Nat8__0__prelude;
-    performanceCounter : (counter : Nat32__0__prelude) -> Nat64__0__prelude;
-    popcntInt16 : (w : Int16__0__prelude) -> Int16__0__prelude;
-    popcntInt32 : (w : Int32__0__prelude) -> Int32__0__prelude;
-    popcntInt64 : (w : Int64__0__prelude) -> Int64__0__prelude;
-    popcntInt8 : (w : Int8__0__prelude) -> Int8__0__prelude;
-    popcntNat16 : (w : Nat16__0__prelude) -> Nat16__0__prelude;
-    popcntNat32 : (w : Nat32__0__prelude) -> Nat32__0__prelude;
-    popcntNat64 : (w : Nat64__0__prelude) -> Nat64__0__prelude;
-    popcntNat8 : (w : Nat8__0__prelude) -> Nat8__0__prelude;
-    principalOfActor : (act : actor {}) -> Principal__0__prelude;
-    principalOfBlob : (act : Blob__0__prelude) -> Principal__0__prelude;
-    regionGrow :
-      (r : Region__0__prelude, pages : Nat64__0__prelude) ->
-        Nat64__0__prelude;
-    regionId : (r : Region__0__prelude) -> Nat__0__prelude;
-    regionLoadBlob :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       size : Nat__0__prelude) -> Blob__0__prelude;
-    regionLoadFloat :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Float__0__prelude;
-    regionLoadInt16 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Int16__0__prelude;
-    regionLoadInt32 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Int32__0__prelude;
-    regionLoadInt64 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Int64__0__prelude;
-    regionLoadInt8 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Int8__0__prelude;
-    regionLoadNat16 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Nat16__0__prelude;
-    regionLoadNat32 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Nat32__0__prelude;
-    regionLoadNat64 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Nat64__0__prelude;
-    regionLoadNat8 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude) ->
-        Nat8__0__prelude;
-    regionNew : () -> Region__0__prelude;
-    regionSize : (r : Region__0__prelude) -> Nat64__0__prelude;
-    regionStoreBlob :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Blob__0__prelude) -> ();
-    regionStoreFloat :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Float__0__prelude) -> ();
-    regionStoreInt16 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Int16__0__prelude) -> ();
-    regionStoreInt32 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Int32__0__prelude) -> ();
-    regionStoreInt64 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Int64__0__prelude) -> ();
-    regionStoreInt8 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Int8__0__prelude) -> ();
-    regionStoreNat16 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Nat16__0__prelude) -> ();
-    regionStoreNat32 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Nat32__0__prelude) -> ();
-    regionStoreNat64 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Nat64__0__prelude) -> ();
-    regionStoreNat8 :
-      (r : Region__0__prelude, offset : Nat64__0__prelude,
-       val : Nat8__0__prelude) -> ();
-    replyDeadline : () -> Nat64__0__prelude;
-    rts_callback_table_count : () -> Nat__0__prelude;
-    rts_callback_table_size : () -> Nat__0__prelude;
-    rts_collector_instructions : () -> Nat__0__prelude;
-    rts_heap_size : () -> Nat__0__prelude;
-    rts_logical_stable_memory_size : () -> Nat__0__prelude;
-    rts_max_live_size : () -> Nat__0__prelude;
-    rts_max_stack_size : () -> Nat__0__prelude;
-    rts_memory_size : () -> Nat__0__prelude;
-    rts_mutator_instructions : () -> Nat__0__prelude;
-    rts_reclaimed : () -> Nat__0__prelude;
-    rts_stable_memory_size : () -> Nat__0__prelude;
-    rts_total_allocation : () -> Nat__0__prelude;
-    rts_upgrade_instructions : () -> Nat__0__prelude;
-    rts_version : () -> Text__0__prelude;
+      <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
+    getCertificate : () -> ?Blob;
+    hashBlob : (b : Blob) -> Nat32;
+    idlHash : (x : Text) -> Nat32;
+    int16ToInt : (n : Int16) -> Int;
+    int16ToInt32 : (n : Int16) -> Int32;
+    int16ToInt8 : (n : Int16) -> Int8;
+    int16ToNat16 : (n : Int16) -> Nat16;
+    int32ToInt : (n : Int32) -> Int;
+    int32ToInt16 : (n : Int32) -> Int16;
+    int32ToInt64 : (n : Int32) -> Int64;
+    int32ToNat32 : (n : Int32) -> Nat32;
+    int64ToFloat : (n : Int64) -> Float;
+    int64ToInt : (n : Int64) -> Int;
+    int64ToInt32 : (n : Int64) -> Int32;
+    int64ToNat64 : (n : Int64) -> Nat64;
+    int8ToInt : (n : Int8) -> Int;
+    int8ToInt16 : (n : Int8) -> Int16;
+    int8ToNat8 : (n : Int8) -> Nat8;
+    intToFloat : (n : Int) -> Float;
+    intToInt16 : (n : Int) -> Int16;
+    intToInt16Wrap : (n : Int) -> Int16;
+    intToInt32 : (n : Int) -> Int32;
+    intToInt32Wrap : (n : Int) -> Int32;
+    intToInt64 : (n : Int) -> Int64;
+    intToInt64Wrap : (n : Int) -> Int64;
+    intToInt8 : (n : Int) -> Int8;
+    intToInt8Wrap : (n : Int) -> Int8;
+    intToNat16Wrap : (n : Int) -> Nat16;
+    intToNat32Wrap : (n : Int) -> Nat32;
+    intToNat64Wrap : (n : Int) -> Nat64;
+    intToNat8Wrap : (n : Int) -> Nat8;
+    isController : (p : Principal) -> Bool;
+    isReplicatedExecution : () -> Bool;
+    log : (f : Float) -> Float;
+    nat16ToInt16 : (n : Nat16) -> Int16;
+    nat16ToNat : (n : Nat16) -> Nat;
+    nat16ToNat32 : (n : Nat16) -> Nat32;
+    nat16ToNat8 : (n : Nat16) -> Nat8;
+    nat32ToChar : (w : Nat32) -> Char;
+    nat32ToInt32 : (n : Nat32) -> Int32;
+    nat32ToNat : (n : Nat32) -> Nat;
+    nat32ToNat16 : (n : Nat32) -> Nat16;
+    nat32ToNat64 : (n : Nat32) -> Nat64;
+    nat64ToInt64 : (n : Nat64) -> Int64;
+    nat64ToNat : (n : Nat64) -> Nat;
+    nat64ToNat32 : (n : Nat64) -> Nat32;
+    nat8ToInt8 : (n : Nat8) -> Int8;
+    nat8ToNat : (n : Nat8) -> Nat;
+    nat8ToNat16 : (n : Nat8) -> Nat16;
+    natToNat16 : (n : Nat) -> Nat16;
+    natToNat32 : (n : Nat) -> Nat32;
+    natToNat64 : (n : Nat) -> Nat64;
+    natToNat8 : (n : Nat) -> Nat8;
+    performanceCounter : (counter : Nat32) -> Nat64;
+    popcntInt16 : (w : Int16) -> Int16;
+    popcntInt32 : (w : Int32) -> Int32;
+    popcntInt64 : (w : Int64) -> Int64;
+    popcntInt8 : (w : Int8) -> Int8;
+    popcntNat16 : (w : Nat16) -> Nat16;
+    popcntNat32 : (w : Nat32) -> Nat32;
+    popcntNat64 : (w : Nat64) -> Nat64;
+    popcntNat8 : (w : Nat8) -> Nat8;
+    principalOfActor : (act : actor {}) -> Principal;
+    principalOfBlob : (act : Blob) -> Principal;
+    regionGrow : (r : Region, pages : Nat64) -> Nat64;
+    regionId : (r : Region) -> Nat;
+    regionLoadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
+    regionLoadFloat : (r : Region, offset : Nat64) -> Float;
+    regionLoadInt16 : (r : Region, offset : Nat64) -> Int16;
+    regionLoadInt32 : (r : Region, offset : Nat64) -> Int32;
+    regionLoadInt64 : (r : Region, offset : Nat64) -> Int64;
+    regionLoadInt8 : (r : Region, offset : Nat64) -> Int8;
+    regionLoadNat16 : (r : Region, offset : Nat64) -> Nat16;
+    regionLoadNat32 : (r : Region, offset : Nat64) -> Nat32;
+    regionLoadNat64 : (r : Region, offset : Nat64) -> Nat64;
+    regionLoadNat8 : (r : Region, offset : Nat64) -> Nat8;
+    regionNew : () -> Region;
+    regionSize : (r : Region) -> Nat64;
+    regionStoreBlob : (r : Region, offset : Nat64, val : Blob) -> ();
+    regionStoreFloat : (r : Region, offset : Nat64, val : Float) -> ();
+    regionStoreInt16 : (r : Region, offset : Nat64, val : Int16) -> ();
+    regionStoreInt32 : (r : Region, offset : Nat64, val : Int32) -> ();
+    regionStoreInt64 : (r : Region, offset : Nat64, val : Int64) -> ();
+    regionStoreInt8 : (r : Region, offset : Nat64, val : Int8) -> ();
+    regionStoreNat16 : (r : Region, offset : Nat64, val : Nat16) -> ();
+    regionStoreNat32 : (r : Region, offset : Nat64, val : Nat32) -> ();
+    regionStoreNat64 : (r : Region, offset : Nat64, val : Nat64) -> ();
+    regionStoreNat8 : (r : Region, offset : Nat64, val : Nat8) -> ();
+    replyDeadline : () -> Nat64;
+    rts_callback_table_count : () -> Nat;
+    rts_callback_table_size : () -> Nat;
+    rts_collector_instructions : () -> Nat;
+    rts_heap_size : () -> Nat;
+    rts_logical_stable_memory_size : () -> Nat;
+    rts_max_live_size : () -> Nat;
+    rts_max_stack_size : () -> Nat;
+    rts_memory_size : () -> Nat;
+    rts_mutator_instructions : () -> Nat;
+    rts_reclaimed : () -> Nat;
+    rts_stable_memory_size : () -> Nat;
+    rts_total_allocation : () -> Nat;
+    rts_upgrade_instructions : () -> Nat;
+    rts_version : () -> Text;
     setCandidLimits :
-      <system>{
-                bias : Nat32__0__prelude;
-                denominator : Nat32__0__prelude;
-                numerator : Nat32__0__prelude
-              } ->
-        ();
-    setCertifiedData : (data : Blob__0__prelude) -> ();
+      <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
+    setCertifiedData : (data : Blob) -> ();
     setTimer :
-      <system>(delayNanos : Nat64__0__prelude, recurring : Bool__0__prelude,
-               job : () -> async ()) ->
-        (id : Nat__0__prelude);
-    shiftLeft :
-      (x : Nat__0__prelude, shift : Nat32__0__prelude) -> Nat__0__prelude;
-    shiftRight :
-      (x : Nat__0__prelude, shift : Nat32__0__prelude) -> Nat__0__prelude;
-    sin : (f : Float__0__prelude) -> Float__0__prelude;
-    stableMemoryGrow : (pages : Nat64__0__prelude) -> Nat64__0__prelude;
-    stableMemoryLoadBlob :
-      (offset : Nat64__0__prelude, size : Nat__0__prelude) ->
-        Blob__0__prelude;
-    stableMemoryLoadFloat : (offset : Nat64__0__prelude) -> Float__0__prelude;
-    stableMemoryLoadInt16 : (offset : Nat64__0__prelude) -> Int16__0__prelude;
-    stableMemoryLoadInt32 : (offset : Nat64__0__prelude) -> Int32__0__prelude;
-    stableMemoryLoadInt64 : (offset : Nat64__0__prelude) -> Int64__0__prelude;
-    stableMemoryLoadInt8 : (offset : Nat64__0__prelude) -> Int8__0__prelude;
-    stableMemoryLoadNat16 : (offset : Nat64__0__prelude) -> Nat16__0__prelude;
-    stableMemoryLoadNat32 : (offset : Nat64__0__prelude) -> Nat32__0__prelude;
-    stableMemoryLoadNat64 : (offset : Nat64__0__prelude) -> Nat64__0__prelude;
-    stableMemoryLoadNat8 : (offset : Nat64__0__prelude) -> Nat8__0__prelude;
-    stableMemorySize : () -> Nat64__0__prelude;
-    stableMemoryStoreBlob :
-      (offset : Nat64__0__prelude, val : Blob__0__prelude) -> ();
-    stableMemoryStoreFloat :
-      (offset : Nat64__0__prelude, val : Float__0__prelude) -> ();
-    stableMemoryStoreInt16 :
-      (offset : Nat64__0__prelude, val : Int16__0__prelude) -> ();
-    stableMemoryStoreInt32 :
-      (offset : Nat64__0__prelude, val : Int32__0__prelude) -> ();
-    stableMemoryStoreInt64 :
-      (offset : Nat64__0__prelude, val : Int64__0__prelude) -> ();
-    stableMemoryStoreInt8 :
-      (offset : Nat64__0__prelude, val : Int8__0__prelude) -> ();
-    stableMemoryStoreNat16 :
-      (offset : Nat64__0__prelude, val : Nat16__0__prelude) -> ();
-    stableMemoryStoreNat32 :
-      (offset : Nat64__0__prelude, val : Nat32__0__prelude) -> ();
-    stableMemoryStoreNat64 :
-      (offset : Nat64__0__prelude, val : Nat64__0__prelude) -> ();
-    stableMemoryStoreNat8 :
-      (offset : Nat64__0__prelude, val : Nat8__0__prelude) -> ();
-    stableVarQuery :
-      () -> shared query () -> async {size : Nat64__0__prelude};
-    tan : (f : Float__0__prelude) -> Float__0__prelude;
-    textCompare :
-      (t1 : Text__0__prelude, t2 : Text__0__prelude) -> Int8__0__prelude;
-    textLowercase : (t : Text__0__prelude) -> Text__0__prelude;
-    textUppercase : (t : Text__0__prelude) -> Text__0__prelude;
-    time : () -> Nat64__0__prelude;
-    trap : (x : Text__0__prelude) -> None__0__prelude
+      <system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) ->
+        (id : Nat);
+    shiftLeft : (x : Nat, shift : Nat32) -> Nat;
+    shiftRight : (x : Nat, shift : Nat32) -> Nat;
+    sin : (f : Float) -> Float;
+    stableMemoryGrow : (pages : Nat64) -> Nat64;
+    stableMemoryLoadBlob : (offset : Nat64, size : Nat) -> Blob;
+    stableMemoryLoadFloat : (offset : Nat64) -> Float;
+    stableMemoryLoadInt16 : (offset : Nat64) -> Int16;
+    stableMemoryLoadInt32 : (offset : Nat64) -> Int32;
+    stableMemoryLoadInt64 : (offset : Nat64) -> Int64;
+    stableMemoryLoadInt8 : (offset : Nat64) -> Int8;
+    stableMemoryLoadNat16 : (offset : Nat64) -> Nat16;
+    stableMemoryLoadNat32 : (offset : Nat64) -> Nat32;
+    stableMemoryLoadNat64 : (offset : Nat64) -> Nat64;
+    stableMemoryLoadNat8 : (offset : Nat64) -> Nat8;
+    stableMemorySize : () -> Nat64;
+    stableMemoryStoreBlob : (offset : Nat64, val : Blob) -> ();
+    stableMemoryStoreFloat : (offset : Nat64, val : Float) -> ();
+    stableMemoryStoreInt16 : (offset : Nat64, val : Int16) -> ();
+    stableMemoryStoreInt32 : (offset : Nat64, val : Int32) -> ();
+    stableMemoryStoreInt64 : (offset : Nat64, val : Int64) -> ();
+    stableMemoryStoreInt8 : (offset : Nat64, val : Int8) -> ();
+    stableMemoryStoreNat16 : (offset : Nat64, val : Nat16) -> ();
+    stableMemoryStoreNat32 : (offset : Nat64, val : Nat32) -> ();
+    stableMemoryStoreNat64 : (offset : Nat64, val : Nat64) -> ();
+    stableMemoryStoreNat8 : (offset : Nat64, val : Nat8) -> ();
+    stableVarQuery : () -> shared query () -> async {size : Nat64};
+    tan : (f : Float) -> Float;
+    textCompare : (t1 : Text, t2 : Text) -> Int8;
+    textLowercase : (t : Text) -> Text;
+    textUppercase : (t : Text) -> Text;
+    time : () -> Nat64;
+    trap : (x : Text) -> None
   }
 The field stableM is not available. Try something else?

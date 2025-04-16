@@ -150,7 +150,7 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
 // Run interpreter
 assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
   stdout: "`ys6dh-5cjiq-5dc` :\n" +
-    "  actor {main : shared query () -> async A__0__actor2Emo<Text__0__prelude>}\n",
+    "  actor {main : shared query () -> async A<Text>}\n",
   stderr: "",
   result: { error: null },
 });

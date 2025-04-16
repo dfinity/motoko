@@ -1,5 +1,5 @@
 (unknown location): Compatibility error [M0170], stable variable z of previous type
-  Text__0__prelude
+  Text
 cannot be consumed at new type
-  Bool__0__prelude without data loss. Use an explicit migration function.
+  Bool without data loss. Use an explicit migration function.
 FALSE
