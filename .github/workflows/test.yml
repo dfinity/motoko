@@ -48,7 +48,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
     - name: "Run common tests"
       id: common
-      run: nix-build-uncached --max-jobs auto -A common-systems-go --build-flags -L
+      run: nix-build-uncached --max-jobs auto -A common-systems-go -build-flags -L
     - name: Set status
       id: status
       run: echo "result=success" >> $GITHUB_OUTPUT
@@ -97,7 +97,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
     - name: "Run GC tests"
       id: gc
-      run: nix-build-uncached --max-jobs auto -A gc-systems-go --build-flags -L
+      run: nix-build-uncached --max-jobs auto -A gc-systems-go -build-flags -L
     - name: Set status
       id: status
       run: echo "result=success" >> $GITHUB_OUTPUT
@@ -146,7 +146,7 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
     - name: "nix-build-debug"
-      run: nix-build-uncached --max-jobs auto -A debug-systems-go --build-flags -L
+      run: nix-build-uncached --max-jobs auto -A debug-systems-go -build-flags -L
 
   release-tests:
     needs: [common-tests, gc-tests]
@@ -195,7 +195,7 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
     - name: "nix-build-release"
-      run: nix-build-uncached --max-jobs auto -A release-systems-go --build-flags -L
+      run: nix-build-uncached --max-jobs auto -A release-systems-go -build-flags -L
 
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64'
