@@ -98,10 +98,10 @@ When working with multiple optional values, using `Option.chain` processes them 
 ```motoko no-repl
 import Option "mo:base/Option";
 
-let firstName: ?Text = ?"Motoko";
-let lastName: ?Text = ?"Ghost";
+let firstName : ?Text = ?"Motoko";
+let lastName : ?Text = ?"Ghost";
 
-func combineNames(f: Text, l: Text): Text {
+func combineNames(f : Text, l : Text) : Text {
     f # " " # l;
 };
 
@@ -148,7 +148,7 @@ The `Result` type can hold:
 import Result "mo:base/Result";
 import Nat "mo:base/Nat";
 
-func divide(a : Nat, b : Nat): Result.Result<Nat, Text> {
+func divide(a : Nat, b : Nat) : Result.Result<Nat, Text> {
     if (b == 0) {
         return #err("Cannot divide by zero");
     };

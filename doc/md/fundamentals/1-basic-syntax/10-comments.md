@@ -18,7 +18,7 @@ Use `///` for function or module documentation (also known as "doc comments"). M
 
 ```motoko no-repl
 /// Returns the sum of two integers.
-func add(a: Int, b: Int): Int {
+func add(a : Int, b : Int) : Int {
   a + b
 }
 ```

@@ -16,7 +16,7 @@ Every function in Motoko contains a block expression that defines its behavior.
 
 ```motoko no-repl
 // The function body is a block expression: { let sum = x + y; sum }
-public func add(x: Nat, y : Nat) : Nat {
+public func add(x : Nat, y : Nat) : Nat {
     let sum : Nat = x + y;
     sum // The last expression is returned as the function's result
 }

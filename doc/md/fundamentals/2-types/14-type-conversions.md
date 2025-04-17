@@ -18,8 +18,8 @@ A [`Float`](https://internetcomputer.org/docs/motoko/base/Float) can be converte
 import Float "mo:base/Float";
 import Int "mo:base/Int";
 
-func floatToNat(f: Float): Nat {
-    return Nat.Int(Float.toInt(f));
+func floatToNat(f : Float) : Nat {
+    return Int.abs(Float.toInt(f));
 };
 
 let result1 = floatToNat(42.9);   // 42
@@ -33,7 +33,7 @@ let result2 = floatToNat(-15.6);  // 15 (absolute value is taken)
 ```motoko no-repl
 import Int "mo:base/Int";
 
-func intToNat(i: Int): Nat {
+func intToNat(i : Int) : Nat {
     return Int.abs(i);
 };
 
@@ -119,7 +119,7 @@ import Iter "mo:base/Iter";
     var integer : Int = 0;
     var fraction : Float = 0;
     var isNegative = false;
-    var position: Nat = 0;
+    var position : Nat = 0;
     let chars = text.chars();
 
     if (Text.size(text) == 0) {

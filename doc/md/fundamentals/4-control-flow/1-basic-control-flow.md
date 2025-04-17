@@ -19,7 +19,7 @@ sidebar_position: 1
 A return statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
 ```motoko no-repl
-func add(a : Nat, b : Nat): Nat {
+func add(a : Nat, b : Nat) : Nat {
     return a + b;
 }
     if (n > 0) {

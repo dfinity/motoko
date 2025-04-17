@@ -24,7 +24,7 @@ Traps immediately stop execution and roll back [state](https://internetcomputer.
 ```motoko no-repl
 import Debug "mo:base/Debug";
 
-func divide(a: Nat, b: Nat): Nat {
+func divide(a : Nat, b : Nat) : Nat {
     if (b == 0) {
         Debug.trap("Cannot divide by zero");
     };
@@ -37,7 +37,7 @@ func divide(a: Nat, b: Nat): Nat {
 Assertions enforce expected conditions. If the condition is false, they introduce a trap but are not errors themselves.
 
 ```motoko no-repl
-func validateAge(age: Nat) : () {
+func validateAge(age : Nat) : () {
     assert(age >= 18);  // Traps if age is below 18
 };
 ```

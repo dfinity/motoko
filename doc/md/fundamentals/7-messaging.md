@@ -70,7 +70,7 @@ The following methods can be used for inter-canister calls:
 | Method | Usage scenario | Example |
 |--------|--------------|---------|
 | Direct import | When the canister is part of the same project and explicitly imported. | `import Subscriber "canister:subscriber";` |
-| Actor type annotation | When calling an external canister that is part of the project but deployed separately. | `let sub = actor(canisterId) : actor { notify: (Text) -> async () };` |
+| Actor type annotation | When calling an external canister that is part of the project but deployed separately. | `let sub = actor(canisterId) : actor { notify : Text -> async () };` |
 | Dynamic calls | When calling unknown functions or passing dynamic arguments. | `await IC.call(canisterId, methodName, encodedArgs);` |
 
 ### Canister imports
@@ -158,7 +158,7 @@ import IC "mo:base/ExperimentalInternetComputer";
 import Debug "mo:base/Debug";
 
 actor DynamicCaller {
-    public shared func callMethod(canisterId : Principal, methodName : Text, arg : Nat): async Nat {
+    public shared func callMethod(canisterId : Principal, methodName : Text, arg : Nat) : async Nat {
         let encodedArgs = to_candid(arg);
         let encodedResult = await IC.call(canisterId, methodName, encodedArgs);
         let ?result : ?Nat = from_candid encodedResult else Debug.trap("Invalid return");
