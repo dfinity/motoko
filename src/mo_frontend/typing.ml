@@ -1209,6 +1209,61 @@ let error_bin_op env at t1 t2 =
     display_typ_expand t1
     display_typ_expand t2
 
+let compare_pat_field (pf1 : pat_field) (pf2 : pat_field) =
+  compare pf1.it.id.it pf2.it.id.it
+
+let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
+  match tfs, pfs with
+  | _, [] | [], _ -> ()
+  | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
+    combine_pat_fields_srcs env t tfs' pfs
+  | T.{lab; typ; src}::tfs', pf::pfs' ->
+    match compare pf.it.id.it lab with
+    | -1 -> combine_pat_fields_srcs env t [] pfs
+    | +1 -> combine_pat_fields_srcs env t tfs' pfs
+    | _ ->
+      combine_pat_srcs env typ pf.it.pat;
+      combine_pat_fields_srcs env t tfs' pfs';
+
+and combine_id_srcs env t id : unit =
+  match T.Env.find_opt id.it env.vals with
+  | None -> ()
+  | Some (t', _, _, _) ->
+    (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
+       of the other. *)
+    try ignore (T.sub t t') with T.Undecided | T.PreEncountered -> ()
+
+and combine_pat_srcs env t pat : unit =
+  match pat.it with
+  | WildP -> ()
+  | VarP id -> combine_id_srcs env t id
+  | LitP _ -> ()
+  | SignP _ -> ()
+  | TupP pats ->
+    let ts = T.as_tup_sub (List.length pats) t in
+    List.iter2 (combine_pat_srcs env) ts pats
+  | ObjP pfs ->
+    let pfs' = List.stable_sort compare_pat_field pfs in
+    let _s, tfs =
+      T.as_obj_sub (List.map (fun (pf : pat_field) -> pf.it.id.it) pfs') t
+    in
+    combine_pat_fields_srcs env t tfs pfs'
+  | OptP pat1 ->
+    let t1 = T.as_opt_sub t in
+    combine_pat_srcs env t1 pat1
+  | TagP (id, pat1) ->
+    let t1 =
+      match T.lookup_val_field_opt id.it (T.as_variant_sub id.it t) with
+      | Some t1 -> t1
+      | None -> T.Non
+    in
+    combine_pat_srcs env t1 pat1
+  | AltP (pat1, pat2) ->
+    combine_pat_srcs env t pat1;
+    combine_pat_srcs env t pat2;
+  | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
+  | ParP pat1 -> combine_pat_srcs env t pat1
+
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
 
@@ -2501,8 +2556,6 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
         error env pf'.at "M0121" "duplicate field %s in object pattern" lab
       | _ -> check_pat_fields env t tfs' pfs' ve' at
 
-and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
-
 (* Objects *)
 
 and pub_fields dec_fields : visibility_env =
@@ -2952,13 +3005,23 @@ and infer_dec env dec : T.typ =
       match pat.it with
       | VarP id -> use_identifier env id.it
       | _ -> ());
-    infer_exp env exp
-  | LetD (_, exp, Some fail) ->
+    let t = infer_exp env exp in
+    if !Flags.typechecker_combine_srcs then
+      combine_pat_srcs env t pat;
+    t
+  | LetD (pat, exp, Some fail) ->
     if not env.pre then
       check_exp env T.Non fail;
-    infer_exp env exp
-  | VarD (_, exp) ->
-    if not env.pre then ignore (infer_exp env exp);
+    let t = infer_exp env exp in
+    if !Flags.typechecker_combine_srcs then
+      combine_pat_srcs env t pat;
+    t
+  | VarD (id, exp) ->
+    if not env.pre then begin
+      let t = infer_exp env exp in
+      if !Flags.typechecker_combine_srcs then
+        combine_id_srcs env t id
+    end;
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields) ->
     let (t, _, _, _) = T.Env.find id.it env.vals in
@@ -3324,7 +3387,6 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-
 
 (* Programs *)
 
