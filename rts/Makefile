@@ -1,4 +1,3 @@
-# Some change to trigger a big build on nixbuild.net. I'll remove this later.
 SHELL:=bash -O globstar
 
 CLANG ?= clang-18
