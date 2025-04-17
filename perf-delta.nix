@@ -10,7 +10,7 @@
 let
   flake = builtins.getFlake (toString ./.);
   system = builtins.currentSystem;
-  pkgs = import flake.inputs.nixpkgs {inherit system;};
+  pkgs = import flake.inputs.nixpkgs { inherit system; };
 
   # Wrap in a derivation to fix path to perl in shebang
   diff-stats = pkgs.stdenvNoCC.mkDerivation {
@@ -52,29 +52,61 @@ let
       '';
     };
 
-  flakeOf = rev:
+  checkout = rev: builtins.fetchGit { url = ./.; ref = ref; inherit rev; };
+
+  baseCheckout = checkout from;
+
+  isBaseFlake = builtins.hasAttr "flake.nix" (builtins.readDir baseCheckout);
+
+  flakeOf = dir:
     let
-      checkout = builtins.fetchGit {url = ./.; ref = ref; inherit rev;};
-      flakePath = builtins.unsafeDiscardStringContext "${checkout}";
-    in builtins.getFlake flakePath;
+      flakePath = builtins.unsafeDiscardStringContext "${dir}";
+    in
+    builtins.getFlake flakePath;
 
-  baseFlake = flakeOf from;
-  prFlake = flakeOf to;
+  # TODO: This is only needed for the transition from default.nix to flake.nix.
+  # After https://github.com/dfinity/motoko/pull/5040 is merged we can remove the if-then-else and just use flakes.
+  baseArgs =
+    if isBaseFlake
+    then
+      let
+        baseFlake = flakeOf baseCheckout;
+      in
+      {
+        baseMoc = baseFlake.packages.${system}.debug.moc;
+        basePerf = baseFlake.checks.${system}.perf;
+      }
+    else
+      let
+        baseJobs = import baseCheckout { };
+      in
+      {
+        baseMoc = baseJobs.moc;
+        basePerf = baseJobs.tests.perf;
+      };
+  inherit (baseArgs) baseMoc basePerf;
 
-  # NB: We run both compilers on the new PR’s set of tests
-  wasm-hash-base = wasm-hash-for baseFlake.packages.${system}.debug.moc;
-  wasm-hash-pr = wasm-hash-for prFlake.packages.${system}.debug.moc;
+  prCheckout = checkout to;
+
+  prFlake = flakeOf prCheckout;
+  prMoc = prFlake.packages.${system}.debug.moc;
+
+  baseWasm = wasm-hash-for baseMoc;
+  prWasm = wasm-hash-for prMoc;
+
+  prPerf = prFlake.checks.${system}.perf;
 in
-pkgs.runCommandNoCC "perf-delta" {
+pkgs.runCommandNoCC "perf-delta"
+{
   nativeBuildInputs = [ pkgs.coreutils diff-stats ];
 } ''
   echo "Comparing from ${from} to ${to}:" > $out
-  if cmp -s ${wasm-hash-base} ${wasm-hash-pr}
+  if cmp -s ${baseWasm} ${prWasm}
   then
     echo "The produced WebAssembly code seems to be completely unchanged." >> $out
   else
     diff-stats \
-      ${baseFlake.checks.${system}.perf}/stats.csv \
-      ${prFlake.checks.${system}.perf}/stats.csv >> $out;
+      ${basePerf}/stats.csv \
+      ${prPerf}/stats.csv >> $out;
   fi
 ''
