@@ -47,6 +47,27 @@
         "url": "https://registry.npmjs.org/esm/-/esm-3.2.25.tgz"
       }
     },
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nix-update-flake",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1743550720,
+        "narHash": "sha256-hIshGgKZCgWh6AYJpJmRgFdR3WUbkY04o82X05xqQiY=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "c621e8422220273271f52058f618c94e405bb0f5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -150,6 +171,28 @@
         "type": "github"
       }
     },
+    "nix-update-flake": {
+      "inputs": {
+        "flake-parts": "flake-parts",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "treefmt-nix": "treefmt-nix"
+      },
+      "locked": {
+        "lastModified": 1744836744,
+        "narHash": "sha256-/D6yxUQ80Czv4h02jF12uivIR5BlAvj1IY2MMyQ3Dws=",
+        "owner": "Mic92",
+        "repo": "nix-update",
+        "rev": "d3a58c41034c788e7917ea09fe051acbe56dc5c4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "nix-update",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1735651292,
@@ -227,6 +270,7 @@
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
         "motoko-matchers-src": "motoko-matchers-src",
+        "nix-update-flake": "nix-update-flake",
         "nixpkgs": "nixpkgs",
         "nixpkgs-mozilla": "nixpkgs-mozilla",
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
@@ -247,6 +291,28 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "treefmt-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-update-flake",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1744795442,
+        "narHash": "sha256-aRmUh0AMwcbdjJHnytg1e5h5ECcaWtIFQa6d9gI85AI=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "81e3ad1094549a1a32d4ebbe3c1beb01b0b0adc6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "ref": "mypy-globbing",
+        "repo": "treefmt-nix",
         "type": "github"
       }
     },

@@ -6,6 +6,9 @@
     nixpkgs.url = "github:nixos/nixpkgs/0da3c44a9460a26d2025ec3ed2ec60a895eb1114";
     flake-utils.url = "github:numtide/flake-utils";
 
+    nix-update-flake.url = "github:/Mic92/nix-update";
+    nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
+
     # TODO: Switch to just: nixpkgs-mozilla.url = "github:mozilla/nixpkgs-mozilla";
     nixpkgs-mozilla.url = "github:mozilla/nixpkgs-mozilla/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6";
 
@@ -64,6 +67,7 @@
     { self
     , nixpkgs
     , flake-utils
+    , nix-update-flake
     , nixpkgs-mozilla
     , candid-src
     , esm
@@ -166,6 +170,8 @@
           (self: super: { inherit all-cabal-hashes; })
         ];
       };
+
+      nix-update = nix-update-flake.packages.${system}.default;
 
       # The following were previously arguments to default.nix but flakes don't accept options yet.
       # This will be the case when we get Configurable Flakes:
@@ -309,9 +315,10 @@
 
       ic-wasm =
         pkgs.rustPlatform_moz_stable.buildRustPackage {
-          name = "ic-wasm";
+          pname = "ic-wasm";
+          version = builtins.substring 0 7 ic-wasm-src.rev;
           src = ic-wasm-src;
-          cargoSha256 = "sha256-NejNcKaEgteBy5zQ60xHPuskRfj8u1g6qdHocuQkE+U=";
+          cargoSha256 = "sha256-0tLz0REgnFPzEyTp4XKGlT91hjMXBQOBfsJqq+ny/KE=";
           doCheck = false;
         };
 
@@ -948,6 +955,7 @@
             check-rts-formatting.buildInputs ++
             #builtins.concatMap (d: d.buildInputs or [ ]) (builtins.attrValues tests) ++
             [
+              nix-update
               pkgs.ncurses
               pkgs.ocamlPackages.merlin
               pkgs.ocamlPackages.utop
@@ -955,7 +963,6 @@
               pkgs.ocamlPackages.ocaml-lsp
               pkgs.fswatch
               pkgs.niv
-              pkgs.nix-update
               pkgs.rlwrap # for `rlwrap moc`
               pkgs.openjdk
               pkgs.z3_4_12 # for viper dev
@@ -1054,8 +1061,8 @@
       packages = common-constituents // {
         "release" = buildableReleasePackages;
         "debug" = buildableDebugPackages;
-        inherit release-systems-go debug-systems-go;
-        inherit (pkgs) nix-build-uncached;
+        inherit release-systems-go debug-systems-go nix-update ic-wasm;
+        inherit (pkgs) nix-build-uncached drun;
         default = release-systems-go;
       };
 
