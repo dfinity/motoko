@@ -164,6 +164,8 @@ func explodeNat16(n : Nat16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Nat16" 
 func explodeInt16(n : Int16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Int16" : Int16 -> (Nat8, Nat8)) n;
 func explodeNat32(n : Nat32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Nat32" : Nat32 -> (Nat8, Nat8, Nat8, Nat8)) n;
 func explodeInt32(n : Int32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int32" : Int32 -> (Nat8, Nat8, Nat8, Nat8)) n;
+func explodeNat64(n : Nat64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Nat64" : Nat64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
+func explodeInt64(n : Int64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int64" : Int64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
 
 
 // Char conversion and properties
