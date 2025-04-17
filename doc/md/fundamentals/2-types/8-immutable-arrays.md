@@ -72,9 +72,9 @@ for (i in Iter.range(0, arr.size() - 1)) {
 You can convert an immutable array into a mutable array using `Array.thaw` which is useful when working with data that needs to be modified in place after initially being immutable.
 
 ```motoko no-repl
-let immutableArray: [Nat] = [1, 2, 3, 4, 5];
+let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
-let mutableCopy: [var Nat] = Array.thaw<Nat>(immutableArray);
+let mutableCopy : [var Nat] = Array.thaw<Nat>(immutableArray);
 mutableCopy[0] := 10;
 //
 ```
