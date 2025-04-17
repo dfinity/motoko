@@ -48,13 +48,11 @@ actor {
     name : Text;
   };
   
-    public func serializeUser(user: User) : async Blob {
-        let encodedData : Blob = to_candid(user);
-        
-        Debug.print("User data serialized successfully.");
-
-        return encodedData;
-    };
+  public func serializeUser(user : User) : async Blob {
+    let encodedData : Blob = to_candid(user);
+    Debug.print("User data serialized successfully.");
+    return encodedData;
+  };
 }
 ```
 
