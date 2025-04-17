@@ -2,11 +2,10 @@
   description = "The Motoko compiler";
 
   inputs = {
-    # TODO: switch to: nixpkgs.url = "github:nixos/nixpkgs/release-24.11";
-    nixpkgs.url = "github:nixos/nixpkgs/0da3c44a9460a26d2025ec3ed2ec60a895eb1114";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
     flake-utils.url = "github:numtide/flake-utils";
 
-    nix-update-flake.url = "github:/Mic92/nix-update";
+    nix-update-flake.url = "github:Mic92/nix-update";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -56,11 +55,6 @@
       url = "github:serokell/ocaml-recovery-parser/b8207b0c919b84d5096486e59985d0137c0c4d82";
       flake = false;
     };
-    all-cabal-hashes = {
-      # TODO: switch to: url = "github:commercialhaskell/all-cabal-hashes/hackage";
-      url = "github:commercialhaskell/all-cabal-hashes/d859530d8342c52d09a73d1d125c144725b5945d";
-      flake = false;
-    };
   };
 
   outputs =
@@ -80,7 +74,6 @@
     , viper-server
     , wasm-spec-src
     , ocaml-recovery-parser-src
-    , all-cabal-hashes
     }: flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs {
@@ -146,9 +139,6 @@
 
           # drun
           (self: super: import ./nix/drun.nix self)
-
-          # to allow picking up more recent Haskell packages from Hackage
-          (self: super: { inherit all-cabal-hashes; })
         ];
       };
 
@@ -218,7 +208,7 @@
 
       base-src = pkgs.symlinkJoin {
         name = "base-src";
-        paths = "${motoko-base-src}/src";
+        paths = [ "${motoko-base-src}/src" ];
       };
 
       base-tests = pkgs.stdenv.mkDerivation {
@@ -299,7 +289,9 @@
           pname = "ic-wasm";
           version = builtins.substring 0 7 ic-wasm-src.rev;
           src = ic-wasm-src;
-          cargoSha256 = "sha256-0tLz0REgnFPzEyTp4XKGlT91hjMXBQOBfsJqq+ny/KE=";
+          cargoLock = {
+            lockFile = "${ic-wasm-src}/Cargo.lock";
+          };
           doCheck = false;
         };
 
@@ -309,7 +301,9 @@
           cargoVendorTools = pkgs.rustPlatform.buildRustPackage rec {
             name = "cargo-vendor-tools";
             src = ./rts/${name};
-            cargoSha256 = "sha256-E6GTFvmZMjGsVlec7aH3QaizqIET6Dz8Csh0N1jeX+M=";
+            cargoLock = {
+              lockFile = ./rts/${name}/Cargo.lock;
+            };
           };
 
           # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
@@ -336,21 +330,8 @@
           };
 
           # Vendor tarball of the RTS
-          rtsDeps = pkgs.rustPlatform.fetchCargoTarball {
-            name = "motoko-rts-deps";
-            src = ./rts;
-            sourceRoot = "rts/motoko-rts-tests";
-            sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
-            copyLockfile = true;
-          };
-
-          # Unpacked RTS deps
-          rtsDepsUnpacked = pkgs.stdenvNoCC.mkDerivation {
-            name = rtsDeps.name + "-unpacked";
-            buildCommand = ''
-              tar xf ${rtsDeps}
-              mv *.tar.gz $out
-            '';
+          rtsDeps = pkgs.rustPlatform.importCargoLock {
+            lockFile = ./rts/motoko-rts-tests/Cargo.lock;
           };
 
           # All dependencies needed to build the RTS, including Rust std deps, to
@@ -358,7 +339,7 @@
           allDeps = pkgs.symlinkJoin {
             name = "merged-rust-deps";
             paths = [
-              rtsDepsUnpacked
+              rtsDeps
               rustStdDeps
             ];
           };
@@ -1038,10 +1019,10 @@
 
     in
     {
-      packages = common-constituents // {
+      packages = checks // common-constituents // {
         "release" = buildableReleasePackages;
         "debug" = buildableDebugPackages;
-        inherit release-systems-go debug-systems-go nix-update ic-wasm;
+        inherit release-systems-go debug-systems-go nix-update ic-wasm tests;
         inherit (pkgs) nix-build-uncached drun;
         default = release-systems-go;
       };
