@@ -11514,6 +11514,25 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_shl_const 8l ^^
     TaggedSmallWord.tag env Type.Nat8
 
+  | OtherPrim ("explode_Nat32" | "explode_Int32" as pr), [e] ->
+    SR.UnboxedTuple 4,
+    let set, get = new_local env "e" in
+    compile_exp_as env ae (SR.UnboxedWord32 Type.(if pr = "explode_Nat32" then Nat32 else Int32)) e ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF000000l ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shrU_const 16l ^^
+    compile_shl_const 24l ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shrU_const 8l ^^
+    compile_shl_const 24l ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shl_const 24l ^^
+    TaggedSmallWord.tag env Type.Nat8
+
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
