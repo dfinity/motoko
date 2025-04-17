@@ -26,7 +26,7 @@ import Array "mo:base/Array";
 import Text "mo:base/Text";
 
 actor PizzaParlor {
-    stable var orders: [Text] = [];
+    stable var orders : [Text] = [];
 
     public shared func placeOrder(order : Text) : async Text {
         // Use Array.tabulate to create a new array with the additional element
@@ -72,13 +72,13 @@ Customers can place multiple orders at the same time. However, when they ask for
 
 ```motoko no-repl
 // async* function to calculate delivery time on demand
-func checkDelivery(order : Text): async* Text {
+func checkDelivery(order : Text) : async* Text {
         let estimatedTime = 15 + (orders.size() * 5); // Base time + 5 mins per pending order
         return "Your " # order # " will arrive in " # Nat.toText(estimatedTime) # " minutes.";
     };
 
     // Multiple users can check their delivery status asynchronously
-    public shared func getDeliveryStatus(order: Text) : async Text {
+    public shared func getDeliveryStatus(order : Text) : async Text {
         let status = await* checkDelivery(order);
         return status;
     };

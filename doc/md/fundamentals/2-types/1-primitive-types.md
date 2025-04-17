@@ -48,10 +48,10 @@ let y = Nat32.bitshiftLeft(x, 2); // 0x28 (40 in decimal)
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
 ```motoko no-repl
-let letter: Char = 'A';
+let letter : Char = 'A';
 let codePoint = Char.toNat32(letter); // 65
 
-let word: Text = "Motoko";
+let word : Text = "Motoko";
 let uppercase = Text.toUppercase(word); // "MOTOKO"
 
 let modified = Text.replace("hello world", "world", "Motoko"); // "hello Motoko"

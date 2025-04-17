@@ -38,7 +38,7 @@ let second = ghost.1; // 25
 Tuples are useful for returning multiple values from a function without requiring a separate data structure.
 
 ```motoko no-repl
-func getUserInfo(): (Text, Nat) {
+func getUserInfo() : (Text, Nat) {
     ("Ghost", 30);
 }
 
@@ -58,7 +58,7 @@ Using nested tuples, this can be implemented in Motoko as follows:
 ```motoko no-repl
 // Points is a nested tuple
 
-func calculateGradient(points: ((Float, Float), (Float, Float))): ?Float {
+func calculateGradient(points : ((Float, Float), (Float, Float))) : ?Float {
     switch (points) {
         case ((x1, y1), (x2, y2)) {
             if (x1 == x2) {

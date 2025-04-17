@@ -43,8 +43,8 @@ By default, record fields are immutable. To create a mutable field, use `var`.
 
 ```motoko
 let person = {
-    var name: Text = "Motoko";
-    var age: Nat = 25;
+    var name : Text = "Motoko";
+    var age : Nat = 25;
 };
 ```
 

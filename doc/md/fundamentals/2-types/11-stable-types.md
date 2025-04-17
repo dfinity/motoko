@@ -33,9 +33,9 @@ Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/typ
 
 ```motoko no-repl
 // Numbers, text, and booleans are stable
-stable var counter: Nat = 0;
-stable var greeting: Text = "Welcome";
-stable var isActive: Bool = true;
+stable var counter : Nat = 0;
+stable var greeting : Text = "Welcome";
+stable var isActive : Bool = true;
 ```
 
 ### Immutable and mutable collections
@@ -44,10 +44,10 @@ Both immutable and mutable collections of stable types are stable.
 
 ```motoko no-repl
 // Immutable arrays are stable
-stable var usernames: [Text] = ["Motoko", "Ghost"];
+stable var usernames : [Text] = ["Motoko", "Ghost"];
 
 // Mutable arrays are also stable (unlike shared types)
-stable var scores: [var Nat] = [var 100, 85, 92];
+stable var scores : [var Nat] = [var 100, 85, 92];
 ```
 
 ### Records with mutable or immutable fields

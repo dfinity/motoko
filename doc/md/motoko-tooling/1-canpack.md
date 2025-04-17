@@ -78,7 +78,7 @@ Then, to write a Motoko canister that imports Rust crates, import `Rust` from th
 import Rust "canister:motoko_rust";
 
 actor {
-    public composite query func hello(name: Text) : async Text {
+    public composite query func hello(name : Text) : async Text {
         await Rust.canpack_example_hello(name)
     }
 }
@@ -92,7 +92,7 @@ To add Canpack support to a Rust crate, export a Rust function with `canpack::ex
 
 ```rust
 canpack::export! {
-    pub fn canpack_example_hello(name: String) -> String {
+    pub fn canpack_example_hello(name : String) -> String {
         format!("Hello, {name}!")
     }
 }
@@ -107,12 +107,12 @@ You can also reference local data, such as methods and constants:
 ```rust
 const WELCOME: &str = "Welcome";
 
-fn hello(salutation: &str, name: String) -> String {
+fn hello(salutation : &str, name : String) -> String {
     format!("{salutation}, {name}!")
 }
 
 canpack::export! {
-    pub fn canpack_example_hello(name: String) -> String {
+    pub fn canpack_example_hello(name : String) -> String {
         hello(WELCOME, name)
     }
 }
@@ -125,7 +125,7 @@ To configure an automatically generated Candid method for a function, use the `#
 ```rust
 canpack::export! {
     #[canpack(composite_query, rename = "canpack_example_hello")]
-    pub fn hello(name: String) -> String {
+    pub fn hello(name : String) -> String {
         format!("Hello, {name}!")
     }
 }
@@ -134,7 +134,7 @@ canpack::export! {
 Alternatively, you can manually define a Candid method through the `canpack!` macro:
 
 ```rust
-pub fn hello(name: String) -> String {
+pub fn hello(name : String) -> String {
     format!("Hello, {name}!")
 }
 
@@ -143,7 +143,7 @@ macro_rules! canpack {
     () => {
         #[ic_cdk::query]
         #[candid::candid_method(query)]
-        fn canpack_example_hello(name: String) -> String {
+        fn canpack_example_hello(name : String) -> String {
             $crate::hello(name)
         }
     };

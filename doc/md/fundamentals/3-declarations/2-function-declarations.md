@@ -37,7 +37,7 @@ Functions in Motoko are first-class values. They can be assigned to variables, s
 
 ```motoko no-repl
 let double = func (x : Int) : Int { x * 2 };
-let applyFunction = func (f : (Int) -> Int, value: Int) : Int { f(value) };
+let applyFunction = func (f : (Int) -> Int, value : Int) : Int { f(value) };
 
 applyFunction(double, 10);
 ```

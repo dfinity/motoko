@@ -76,7 +76,7 @@ Shared functions can be called from outside the canister (e.g., by users or othe
 
 ```motoko
 actor Bank {
-    stable var balance: Nat = 100;
+    stable var balance : Nat = 100;
 
     public query func getBalance() : async Nat {
         return balance;

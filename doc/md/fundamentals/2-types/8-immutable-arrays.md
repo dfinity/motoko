@@ -23,7 +23,7 @@ If the number of elements may change, collections like `List` or `Buffer` are a 
 Immutable arrays are declared using square brackets `[T]`. The type of the array is specified within the square brackets, e.g., `[Nat]` declares an immutable array of natural numbers.
 
 ```motoko no-repl
-let immutableArray: [Nat] = [1, 2, 3, 4, 5];
+let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 ```
 
 ## Accessing and modifying elements
@@ -31,10 +31,10 @@ let immutableArray: [Nat] = [1, 2, 3, 4, 5];
 Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
 ```motoko no-repl
-let numbers: [Nat] = [10, 20, 30];
+let numbers : [Nat] = [10, 20, 30];
 
-let first: Nat = numbers[0];  // 10
-let second: Nat = numbers[1]; // 20
+let first : Nat = numbers[0];  // 10
+let second : Nat = numbers[1]; // 20
 
 Debug.print(debug_show(first));
 Debug.print(debug_show(second));

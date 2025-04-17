@@ -60,8 +60,8 @@ type Status = {
     #Banned : Text;
 };
 
-let userStatus: Status = #Active;
-let bannedUser: Status = #Banned("Violation of rules");
+let userStatus : Status = #Active;
+let bannedUser : Status = #Banned("Violation of rules");
 ```
 
 ## Parameterized (generic) types
@@ -75,8 +75,8 @@ type Box<T> = {
 };
 
 // numberBox stores a Nat and textBox stores a Text.
-let numberBox: Box<Nat> = { value = 42 };
-let textBox: Box<Text> = { value = "Hello" };
+let numberBox : Box<Nat> = { value = 42 };
+let textBox : Box<Text> = { value = "Hello" };
 ```
 
 This ensures flexibility while keeping type safety.
