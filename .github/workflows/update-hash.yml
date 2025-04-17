@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      uses: nixbuild/nix-quick-install-action@v30
-      uses: nixbuild/nixbuild-action@v20
+    - uses: nixbuild/nix-quick-install-action@v30
+    - uses: nixbuild/nixbuild-action@v20
       with:
         nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
     - uses: cachix/cachix-action@v16
