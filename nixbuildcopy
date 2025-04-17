@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 out="$(./nixbuild $@ --json | jq '.[0].outputs.out' -r)"
 nix copy --from ssh-ng://eu.nixbuild.net "$out"
 echo "$out"
