@@ -89,7 +89,7 @@ import UUID "mo:idempotency-keys/UUID";
 import Random "mo:base/Random";
 
 actor {
-  public func generate_uuid() : async Text {
+  public func generateUUID() : async Text {
     let seed = await Random.blob();
     UUID.v4(seed);
   };
