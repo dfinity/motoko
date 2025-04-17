@@ -86,7 +86,7 @@
       pkgs = import nixpkgs {
         inherit system;
         overlays = [
-          (self: suoer: { inherit ic-src; })
+          (self: super: { inherit ic-src; })
 
           # Selecting the ocaml version
           # Also update ocaml-version in src/*/.ocamlformat!
