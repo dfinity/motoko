@@ -1,17 +1,18 @@
 # Motoko compiler changelog
 
+## 0.14.8 (FUTURE)
+
 * motoko (`moc`)
+
+  * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
 
   * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase.
 
     EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
-    
     ```
-    ...
       "type" : "motoko"
       ...
       "args" : "--enhanced-orthogonal-persistence"
-    ...
     ```
 
   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
