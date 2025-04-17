@@ -19,7 +19,8 @@
 
   * We now provide a proper `motoko-mode` for `emacs` (#5043).
 
-  * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
+  * bugfix: Avoid generating new Candid `type`s arising from equal homonymous Motoko `type` (if possible)
+    in service definitions (#4309, #5013).
 
   * bugfix: Provide a more consistent framework for dealing with internally generated type indentifiers,
     fixing caching bugs, e.g. in the VSCode plugin (#5055).
