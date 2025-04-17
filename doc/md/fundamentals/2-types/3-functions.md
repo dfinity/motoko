@@ -30,11 +30,11 @@ Motoko provides different types of functions based on where in the program they 
 Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They do not make calls to other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are processed fast and synchronously.
 
 ```motoko no-repl
-func add(a: Nat, b: Nat): Nat {
+func add(a : Nat, b : Nat) : Nat {
     a + b
 };
 
-let sum: Nat = add(5, 3); // Synchronous execution
+let sum : Nat = add(5, 3); // Synchronous execution
 ```
 
 **Example use case:** Simple computations that do not require network calls.
@@ -44,12 +44,10 @@ let sum: Nat = add(5, 3); // Synchronous execution
 Generic functions allow the use of type parameters, making them more flexible for using different data types.
 
 ```motoko no-repl
-func identity<T>(x: T): T {
-    x
-};
+func identity<T>(x : T) : T = x;
 
-let num: Nat = identity<Nat>(42);
-let text: Text = identity<Text>("Hello");
+let num : Nat = identity<Nat>(42);
+let text : Text = identity<Text>("Hello");
 ```
 
 ## Shared functions
@@ -57,7 +55,7 @@ let text: Text = identity<Text>("Hello");
 Shared functions can be called from outside the canister (e.g., by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters)). These are processed [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) because they interact with the network.
 
 ```motoko no-repl
-  public shared func getBalance(): async Nat {
+  public shared func getBalance() : async Nat {
     return 100;
   };
 ```
@@ -80,7 +78,7 @@ Shared functions can be called from outside the canister (e.g., by users or othe
 actor Bank {
     stable var balance: Nat = 100;
 
-    public query func getBalance(): async Nat {
+    public query func getBalance() : async Nat {
         return balance;
     };
 };
@@ -96,6 +94,7 @@ await Bank.getBalance();
 
 ```motoko no-repl
 import Nat "mo:base/Nat";
+
 actor Counter {
   stable var count : Nat = 0;
   public query func getCount() : async Nat {
@@ -120,14 +119,14 @@ actor Counter {
 
 ```motoko no-repl
 actor Bank {
-    stable var balance: Nat = 100;
+    stable var balance : Nat = 100;
 
-    public query func getBalance(): async Nat {
+    public query func getBalance() : async Nat {
         return balance;
     };
 
-    public composite query func doubleBalance(): async Nat {
-        let b: Nat = await getBalance();
+    public composite query func doubleBalance() : async Nat {
+        let b : Nat = await getBalance();
         return b * 2;
     };
 };
@@ -153,9 +152,9 @@ await Bank.doubleBalance();
 
 ```motoko
 actor Bank {
-    stable var balance: Nat = 0;
+    stable var balance : Nat = 0;
 
-    public shared func deposit(amount: Nat): async () {
+    public shared func deposit(amount : Nat) : async () {
         balance += amount;
     };
 };
@@ -172,7 +171,7 @@ An argument is a value passed to a function when called. Arguments enable functi
 A function can take a single argument of a specific type.
 
 ```motoko no-repl
-  public func increment(amount: Nat) : async Nat {
+  public func increment(amount : Nat) : async Nat {
     count += amount;
     return count;
   }
@@ -183,7 +182,7 @@ A function can take a single argument of a specific type.
 Functions can accept multiple arguments by separating them with commas.
 
 ```motoko no-repl
-  public func add(x: Nat, y: Nat) : async Nat {
+  public func add(x : Nat, y : Nat) : async Nat {
     return x + y;
   }
 ```
@@ -193,8 +192,8 @@ Functions can accept multiple arguments by separating them with commas.
 Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
-type UserData = { name: Text; age: Nat };
-  public func createUser(userData: UserData) : async Text {
+type UserData = { name : Text; age : Nat };
+  public func createUser(userData : UserData) : async Text {
     return userData.name;
   }
 ```
@@ -204,7 +203,7 @@ type UserData = { name: Text; age: Nat };
 A collection of values can be passed as a single array argument.
 
 ```motoko no-repl
-  public func sum(numbers: [Nat]) : async Nat {
+  public func sum(numbers : [Nat]) : async Nat {
     var total : Nat = 0;
     for (num in numbers.vals()) { total += num };
     return total;

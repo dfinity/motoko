@@ -10,15 +10,15 @@ A switch expression is a selection control structure used for [pattern matching]
 A `switch` statement simplifies conditional checks by replacing multiple `if-else` statements. It only executes if the passed argument matches a value, and that value corresponds to a defined case. Importantly, the order of cases matters. If `_` appears first, it will match any input and prevent further cases from being evaluated. Execution stops as soon as a match is found, making `switch` a structured and efficient way to handle multiple conditions.
 
 ```motoko no-repl
-public func getDayOfWeek(day: Nat) : async Text {
-    switch (day) {
-        case (1) "Monday";
-        case (2) "Tuesday";
-        case (3) "Wednesday";
-        case (4) "Thursday";
-        case (5) "Friday";
-        case (6) "Saturday";
-        case (7) "Sunday";
+public func getDayOfWeek(day : Nat) : async Text {
+    switch day {
+        case 1 "Monday";
+        case 2 "Tuesday";
+        case 3 "Wednesday";
+        case 4 "Thursday";
+        case 5 "Friday";
+        case 6 "Saturday";
+        case 7 "Sunday";
         case _ "Invalid day"; // Default case for numbers outside 1-7
     }
 }

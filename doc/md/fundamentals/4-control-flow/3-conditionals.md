@@ -14,14 +14,14 @@ sidebar_position: 3
 An `if-else` expression allows a program to make decisions based on a condition. It evaluates a boolean expression and selects one of two possible execution paths.
 
 ```motoko no-repl
-var age : Nat = 21
-  if (age < 18) {
-    "You are a minor."
-  } else if (age >= 18 and age < 65) {
-      "You are an adult."
-    } else {
-      "You are a senior citizen."
-    }
+var age = 21;
+if (age < 18) {
+  "You are a minor."
+} else if (age >= 18 and age < 65) {
+    "You are an adult."
+} else {
+  "You are a senior citizen."
+};
 ```
 
 ## `if` expression

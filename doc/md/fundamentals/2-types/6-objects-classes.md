@@ -10,14 +10,14 @@ An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundam
 
 ```motoko no-repl
 object Account {
-    var balance: Nat = 1000;
+    var balance : Nat = 1000;
 
-    func deposit(amount: Nat): Nat {
+    func deposit(amount : Nat) : Nat {
         balance += amount;
         balance
     };
 
-    func withdraw(amount: Nat): ?Nat {
+    func withdraw(amount : Nat) : ?Nat {
         if (amount > balance) { return null };
         balance -= amount;
         ?balance
@@ -30,15 +30,15 @@ object Account {
 A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
-class Account(initialBalance: Nat) {
-    var balance: Nat = initialBalance;
+class Account(initialBalance : Nat) {
+    var balance = initialBalance;
 
-    public func deposit(amount: Nat): async Nat {
+    public func deposit(amount : Nat) : async Nat {
         balance += amount;
         balance
     };
 
-    public func withdraw(amount: Nat): ?Nat {
+    public func withdraw(amount : Nat) : ?Nat {
         if (amount > balance) { return null };
         balance -= amount;
         ?balance
@@ -55,15 +55,15 @@ let account2 = Account(1000);
 An object class defines a blueprint for multiple objects.
 
 ```motoko no-repl
-object class Account(initialBalance: Nat) {
-    var balance: Nat = initialBalance;
+object class Account(initialBalance : Nat) {
+    var balance = initialBalance;
 
-    public func deposit(amount: Nat): Nat {
+    public func deposit(amount : Nat) : Nat {
         balance += amount;
         balance
     };
 
-    public func withdraw(amount: Nat): ?Nat {
+    public func withdraw(amount : Nat) : ?Nat {
         if (amount > balance) { return null };
         balance -= amount;
         ?balance
@@ -77,7 +77,7 @@ A module provides reusable utility functions and encapsulates both [state](https
 
 ```motoko no-repl
 module CurrencyConverter {
-    public func toUSD(amount: Nat): Float {
+    public func toUSD(amount : Nat) : Float {
         return Float.fromInt(amount) * 1.1;
     };
 }
@@ -89,8 +89,8 @@ module CurrencyConverter {
 A module class can be used to produce multiple modules with different configurations.
 
 ```motoko no-repl
-module class ExchangeRate(baseRate: Float) {
-    public func convert(amount: Nat): Float {
+module class ExchangeRate(baseRate : Float) {
+    public func convert(amount : Nat) : Float {
         return Float.fromInt(amount) * baseRate;
     };
 }
@@ -127,7 +127,7 @@ A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `b
 However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three objects.
 
 ```motoko no-repl
-func printBalance(account: { getBalance : () -> Nat }) {
+func printBalance(account : { getBalance : () -> Nat }) {
   Debug.print("Balance: " # Nat.toText(account.getBalance()));
 };
 
@@ -138,7 +138,7 @@ printBalance(premiumAccount);
 ```
 
 ```motoko no-repl
-func withdrawFromAccount(account: { withdraw : Nat -> Bool }) {
+func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);
   Debug.print(if success then "Withdrawal successful" else "Insufficient funds");
 };

@@ -26,14 +26,14 @@ The following actor maintains a private mutable counter that can only be modifie
 
 ```motoko no-repl
 actor Counter {
-    stable var count: Nat = 0; // Private mutable state
+    stable var count : Nat = 0; // Private mutable state
 
-    public shared func increment(): async Nat {
+    public shared func increment() : async Nat {
         count += 1;
         return count;
     };
 
-    public query func getCount(): async Nat {
+    public query func getCount() : async Nat {
         return count;
     };
 };

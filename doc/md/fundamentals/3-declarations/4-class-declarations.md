@@ -16,7 +16,7 @@ A class is declared using the `class` keyword. It includes:
 
 ```motoko no-repl
 // Define parameters that initialize the instance.
-class Ghost(name: Text, age: Nat) {
+class Ghost(name : Text, age : Nat) {
 
     // Returns a message
     public func greet() : Text {
@@ -30,7 +30,7 @@ class Ghost(name: Text, age: Nat) {
 To create an instance of a class, call the **constructor** using the class name.
 
 ```motoko no-repl
-class Ghost(name: Text, age: Nat) {
+class Ghost(name : Text, age : Nat) {
     public func greet() : Text {
         "Hello, my name is " # name # " and I am " # Nat.toText(age) # " years old."
     };

@@ -78,11 +78,11 @@ stable var settings = {
 type UserStatus = {
     #online;
     #offline;
-    #busy: Text;
+    #busy : Text;
 };
 
-stable var motokoStatus: UserStatus = #online;
-stable var ghostStatus: UserStatus = #busy("In a meeting");
+stable var motokoStatus : UserStatus = #online;
+stable var ghostStatus : UserStatus = #busy("In a meeting");
 ```
 
 ### Option types
@@ -91,8 +91,8 @@ stable var ghostStatus: UserStatus = #busy("In a meeting");
 
 ```motoko no-repl
 // Option types with stable inner types are stable
-stable var optionalDeadline: ?Nat = ?1640995200000;
-stable var optionalMessage: ?Text = null;
+stable var optionalDeadline : ?Nat = ?1640995200000;
+stable var optionalMessage : ?Text = null;
 ```
 
 ### Regions
@@ -101,7 +101,7 @@ The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which
 
 ```motoko no-repl
 // Regions are stable
-stable var storage: Region = Region.new();
+stable var storage : Region = Region.new();
 ```
 
 ### Actor references
@@ -111,10 +111,10 @@ References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/act
 ```motoko no-repl
 // Actor types are stable
 type LoggerActor = actor {
-    log: shared (message: Text) -> async ();
+    log : shared (message : Text) -> async ();
 };
 
-stable var logger: ?LoggerActor = null;
+stable var logger : ?LoggerActor = null;
 ```
 
 ### Mutable arrays
@@ -122,7 +122,7 @@ stable var logger: ?LoggerActor = null;
 Mutable arrays are stable but not shared.
 
 ```motoko no-repl
-stable var counters: [var Nat] = [var 0, 0, 0];
+stable var counters : [var Nat] = [var 0, 0, 0];
 ```
 
 ### Objects with mutable fields
@@ -143,23 +143,23 @@ Declaring a variable as `stable` ensures its persistence across canister upgrade
 ```motoko no-repl
 actor Counter {
     // This value persists across upgrades
-    stable var count: Nat = 0;
+    stable var count : Nat = 0;
 
     // This value resets after each upgrade
-    var tempCount: Nat = 0;
+    var tempCount : Nat = 0;
 
-    public func increment(): async Nat {
+    public func increment() : async Nat {
         count += 1;
         tempCount += 1;
-        return count;
+        count
     };
 
-    public query func getCount(): async Nat {
-        return count;
+    public query func getCount() : async Nat {
+        count
     };
 
-    public query func getTempCount(): async Nat {
-        return tempCount;
+    public query func getTempCount() : async Nat {
+        tempCount
     };
 }
 ```

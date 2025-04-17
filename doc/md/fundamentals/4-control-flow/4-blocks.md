@@ -16,19 +16,10 @@ Every function in Motoko contains a block expression that defines its behavior.
 
 ```motoko no-repl
 // The function body is a block expression: { let sum = x + y; sum }
-public func add(x: Nat, y: Nat) : Nat {
+public func add(x: Nat, y : Nat) : Nat {
     let sum : Nat = x + y;
     sum // The last expression is returned as the function's result
 }
-```
-
-### Blocks with control flow
-
-Block expressions support conditionals, loops, and other control structures. The type of the values must match across possible expressions.
-
-```motoko no-repl
-// The block contains an if-else structure.
-public func classifyNumber(n: Int) : Text {
     if (n > 0) {
         "Positive"
     } else if (n < 0) {
@@ -49,7 +40,7 @@ let result : Nat = {
     let x : Nat = 10;
     let y : Nat = 5;
     x * y // This value is assigned to `result`
-    };
+};
 ```
 
 ## `do` block
@@ -62,7 +53,7 @@ do {
     let y : Nat = 5;
     Debug.print("Adding " # debug_show(x) # " and " # debug_show(y));
     let sum : Nat = x + y;
-    Debug.print("Result: " # debug_show(sum)); // () return type
+    Debug.print("Result: " # debug_show(sum)); // unit `()` return type
 };
 ```
 

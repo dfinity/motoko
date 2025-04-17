@@ -19,38 +19,9 @@ sidebar_position: 1
 A return statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
 ```motoko no-repl
-func add(a: Nat, b: Nat): Nat {
+func add(a : Nat, b : Nat): Nat {
     return a + b;
 }
-```
-
-Functions implicitly return the last evaluated expression if `return` is not used.
-
-```motoko no-repl
-func multiply(a: Nat, b: Nat): Nat {
-    a * b  // Implicit return
-}
-```
-
-## `if`
-
-Conditional execution is controlled using `if`.
-
-```motoko no-repl
-func checkEven(n: Nat): Bool {
-    if (n % 2 == 0) {
-        return true;
-    };
-    return false;
-}
-```
-
-## `if/else`
-
-Executes one block if the condition is `true`, otherwise executes another.
-
-```motoko no-repl
-func checkSign(n: Int): Text {
     if (n > 0) {
         return "Positive";
     } else {
@@ -69,20 +40,12 @@ type HttpRequestStatus = {
     #err: Nat;
 };
 
-func checkStatus(r: HttpRequestStatus): Text {
+func checkStatus(r : HttpRequestStatus) : Text {
     switch (r) {
-        case (#ok(successCode)) { "Success: " # Nat.toText(value) } //eg. 200
-        case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) } //eg. 404
+        case (#ok(successCode)) { "Success: " # Nat.toText(value) } // e.g. 200
+        case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) } // e.g. 404
     }
 }
-```
-
-## `do ?`
-
-The `do ?` syntax attempts to unwrap an optional value inside a block; if any expression inside evaluates to `null`, the entire block returns `null`.
-
-```motoko no-repl
-func getUserAge(user: ?Nat): ?Nat {
     do ? {
         let age = user!;  // If user is null, exit with null
         if (age < 18) null!; // null break to exit early if age is too low
@@ -103,7 +66,7 @@ public func labelControlFlow() : async Int {
       let numbers : [Int] = [3, -1, 0, 5, -2, 7];
       var sum : Int = 0;
 
-      for (number in numbers.vals()) {
+      for (number in numbers.values()) {
         sum += number
       };
       sum // The final result of the block
@@ -121,7 +84,7 @@ public func breakControlFlow() : async Int {
         let numbers : [Int] = [3, -1, 0, 5, -2, 7];
         var sum : Int = 0;
 
-        for (num in numbers.vals()) {
+        for (num in numbers.values()) {
             if (num < 0) {
                 break processNumbers sum; // Exits early with current sum
             };
@@ -178,7 +141,7 @@ A `continue` statement skips the rest of the current iteration in a loop and mov
 public func continueControlFlow() : async Int {
 
     // Labeled block
-    label processNumbers: Int {
+    label processNumbers : Int {
         let numbers : [Int] = [3, -1, 0, 5, -2, 7];
         var sum : Int = 0;
 
@@ -199,9 +162,9 @@ public func continueControlFlow() : async Int {
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
 ```motoko no-repl
-public func processNumbers(numbers: [Int]) : Int {
+public func processNumbers(numbers : [Int]) : Int {
     var sum : Int = 0;
-        for (num in numbers.vals()) {
+        for (num in numbers.values()) {
             if (num < 0) {
                 return sum;
             };

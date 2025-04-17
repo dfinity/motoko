@@ -92,7 +92,7 @@ For Vessel, use `"vessel sources"`.
 
 ### Installing a package with a package manager
 
-With [Mops](https://mops.one/), add the mops package with `mops add`, then import the package into your Motoko code `import Vec "mo:vector";`.
+With [Mops](https://mops.one/), add the package to your project's dependencies with `mops add`, then import the package into your Motoko code `import Vec "mo:vector";`.
 
 With [Vessel](https://github.com/dfinity/vessel), add the package to `vessel.dhall`.
 
@@ -126,10 +126,10 @@ import Nat "mo:base/Nat";
 
 persistent actor CountToTen {
   public func countToTen() : async () {
-    let C : Counters.Counter = await Counters.Counter(1);
-    while ((await C.read()) < 10) {
-      Debug.print(Nat.toText(await C.read()));
-      await C.inc();
+    let counterActor = await Counters.Counter(1);
+    while ((await counterActor.read()) < 10) {
+      Debug.print(Nat.toText(await counterActor.read()));
+      await counterActor.inc();
     };
   }
 };
@@ -160,10 +160,7 @@ While the imported module name usually matches the file name, custom names can b
 
 ```motoko no-repl
 import List "mo:base/List";
-import Sequence "mo:collections/List";
 import L "mo:base/List";
-```
-
-`List` from Motoko's base library remains `List`. `List` from another package is renamed `Sequence`. `List` is also imported as `L` for convenience.
+import PureList "mo:base/pure/List";
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

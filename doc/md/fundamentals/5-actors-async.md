@@ -28,7 +28,7 @@ import Text "mo:base/Text";
 actor PizzaParlor {
     stable var orders: [Text] = [];
 
-    public shared func placeOrder(order: Text): async Text {
+    public shared func placeOrder(order : Text) : async Text {
         // Use Array.tabulate to create a new array with the additional element
         let newOrders = Array.tabulate<Text>(orders.size() + 1, func(i) {
             if (i < orders.size()) { orders[i] } else { order }
@@ -37,7 +37,7 @@ actor PizzaParlor {
         return "Order received: " # order;
     };
 
-    public shared func makePizza(): async Text {
+    public shared func makePizza() : async Text {
         if (orders.size() == 0) {
             return "No orders to make.";
         };
@@ -50,7 +50,7 @@ actor PizzaParlor {
         return "Made a delicious " # currentOrder # " pizza!";
     };
 
-    public query func getOrders(): async [Text] {
+    public query func getOrders() : async [Text] {
         return orders;
     };
 }
@@ -72,13 +72,13 @@ Customers can place multiple orders at the same time. However, when they ask for
 
 ```motoko no-repl
 // async* function to calculate delivery time on demand
-func checkDelivery(order: Text): async* Text {
+func checkDelivery(order : Text): async* Text {
         let estimatedTime = 15 + (orders.size() * 5); // Base time + 5 mins per pending order
         return "Your " # order # " will arrive in " # Nat.toText(estimatedTime) # " minutes.";
     };
 
     // Multiple users can check their delivery status asynchronously
-    public shared func getDeliveryStatus(order: Text): async Text {
+    public shared func getDeliveryStatus(order: Text) : async Text {
         let status = await* checkDelivery(order);
         return status;
     };
@@ -122,7 +122,7 @@ In the `placeOrder` function below:
 - The `try` block processes an order and appends it to the `orders` array.
 - The `finally` block logs that the order has been processed, ensuring that this message is always printed, whether the function succeeds or fails.
 
-``` motoko no-repl
+```motoko no-repl
 public shared func placeOrder(order : Text) : async Text {
     try {
       Debug.print("Processing order: " # order);

@@ -44,21 +44,16 @@ Debug.print(debug_show(second));
 
 There are two primary ways to iterate through the elements in an array in Motoko:
 
-1. Using `Array.vals`, which provides an iterator.
+1. Using `array.values()`, which provides an iterator.
 
 2. Using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.
 
-Both methods achieve the same result, but `Array.vals` is often preferred for its readability and simplicity.
+Both methods achieve the same result, but `array.values()` is often preferred for its readability and simplicity.
 
-### Using `Array.vals`
+### Using `array.values()`
 
-The `Array.vals` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
+The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
 
-```motoko no-repl
-let arr = [1, 2, 3, 4, 5];
-
-for (val in arr.vals()) {
-    Debug.print(debug_show(val));
 }
 ```
 
@@ -87,12 +82,12 @@ mutableCopy[0] := 10;
 
 ## Passing a variable number of arguments
 
-Motoko supports passing collections to a function., ensuring that all arguments are handled as a collection rather than individual parameters.
+Motoko supports passing collections to a function, ensuring that all arguments are handled as a collection rather than individual parameters.
 
 ```motoko no-repl
 let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
 
-func printAllStrings(strings: [Text]) {
+func printAllStrings(strings : [Text]) {
     for (s in strings.vals()) {
         Debug.print(s);
     }
@@ -119,8 +114,8 @@ func compareArrays() : () {
     let arr2 : [Nat] = [1, 2, 3];
     let arr3 : [Nat] = [3, 2, 1];
 
-    Debug.print(debug_show(Array.equal<Nat>(arr1, arr2, func(x, y) { x == y }))); // true
-    Debug.print(debug_show(Array.equal<Nat>(arr1, arr3, func(x, y) { x == y }))); // false
+    assert Array.equal<Nat>(arr1, arr2, func(x, y) { x == y });
+    assert not Array.equal<Nat>(arr1, arr3, func(x, y) { x == y });
     }
 ```
 
@@ -170,7 +165,7 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
   let chessboard : [[Text]] = generateChessboard();
 
   // Display the board
-  for (row in chessboard.vals()) {
+  for (row in chessboard.values()) {
     let rowText = Array.foldLeft<Text, Text>(row, "", func(acc, square) = acc # square # " ");
     Debug.print(rowText)
   }

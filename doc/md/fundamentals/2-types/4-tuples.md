@@ -28,7 +28,7 @@ Elements are accessed using `.n` where `n` is the index (0-based indexing).
 
 ```motoko no-repl
 // Ghost is a tuple of length 2
-let ghost : (firstName: Text, age: Nat) = ("Motoko", 25);
+let ghost : (firstName : Text, age : Nat) = ("Motoko", 25);
 let first = ghost.0; // "Motoko"
 let second = ghost.1; // 25
 ```
@@ -70,9 +70,9 @@ func calculateGradient(points: ((Float, Float), (Float, Float))): ?Float {
     }
 };
 
-let coordinates: ((Float, Float), (Float, Float)) = ((2.0, 3.0), (5.0, 7.0));
+let coordinates : ((Float, Float), (Float, Float)) = ((2.0, 3.0), (5.0, 7.0));
 
-let gradient: ?Float = calculateGradient(coordinates);
+let gradient : ?Float = calculateGradient(coordinates);
 
 Debug.print(switch (gradient) {
     case (?m) "Gradient: " # debug_show(m);
@@ -85,7 +85,7 @@ Debug.print(switch (gradient) {
 Tuples can be stored in arrays or other data structures. Tuples can be structured with named types, improving readability and type safety. By naming the tuple types in the collection, the intent of each field is clear, reducing ambiguity when accessing values.
 
 ```motoko no-repl
-let users: [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
+let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
 This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
@@ -95,9 +95,9 @@ This structure efficiently represents a collection of key-value pairs without re
 To access the name of the first [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) in the tuple using best practices, a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression should be used.
 
 ```motoko no-repl
-let users: [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
+let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 
-let firstUserName: Text = switch (users[0]) {
+let firstUserName : Text = switch (users[0]) {
     case (name, _) name; // Motoko
 };
 ```

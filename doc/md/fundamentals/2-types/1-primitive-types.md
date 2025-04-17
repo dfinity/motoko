@@ -18,28 +18,28 @@ The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https
 While [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can be implicitly converted to [`Int`](https://internetcomputer.org/docs/motoko/base/Int), the reverse is not always true. [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). In other words, a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) value can be used anywhere an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is expected because [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is always a valid [`Int`](https://internetcomputer.org/docs/motoko/base/Int). This is why implicit conversions from [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) are allowed.
 
 ```motoko no-repl
-let x: Nat = 5;
-let y: Int = x; // Allowed
+let x : Nat = 5;
+let y : Int = x; // Allowed
 ```
 
 However, an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) if it holds a negative value, as [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) only supports non-negative numbers.
 
 ```motoko no-repl
-let x: Int = -5;
-let y: Nat = x; // Error
+let x : Int = -5;
+let y : Nat = x; // Error
 ```
 
 To convert a negative [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), the absolute value must be taken explicitly.
 
 ```motoko no-repl
-let x: Int = -5;
-let y: Nat = Int.abs(x); // Allowed, y = 5
+let x : Int = -5;
+let y : Nat = Int.abs(x); // Allowed, y = 5
 ```
 
 Fixed-size numeric types ([`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32), etc.) support additional operations, including bitwise shifts.
 
 ```motoko no-repl
-let x: Nat32 = 0xA; // 10 in hexadecimal
+let x : Nat32 = 0xA; // 10 in hexadecimal
 let y = Nat32.bitshiftLeft(x, 2); // 0x28 (40 in decimal)
 ```
 
@@ -63,7 +63,7 @@ let words = Text.split("apple,banana,cherry", ","); // ["apple", "banana", "cher
 The [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) type represents boolean values, `true` or `false`, and supports logical operations.
 
 ```motoko no-repl
-let flag: Bool = Bool.logor(true, false); // true
+let flag : Bool = Bool.logor(true, false); // true
 let opposite = Bool.lognot(flag); // false
 
 let isEqual = Bool.equal(true, false); // false
@@ -77,7 +77,7 @@ let comparison = Bool.compare(true, false); // #greater
 ```motoko no-repl
 import Float "mo:base/Float
 let pi = Float.pi;
-let radius: Float = 2.5;
+let radius : Float = 2.5;
 let area = Float.pow(radius, 2) * pi; // Area of a circle
 
 let rounded = Float.floor(4.8); // 4.0

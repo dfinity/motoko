@@ -10,8 +10,9 @@ An object is a collection of named fields that can hold values or [functions](ht
 
 | Feature | Record | Object |
 |---------|--------|--------|
-| Stores data | Yes | Yes |
-| Stores functions | No | Yes |
+| Named fields | Yes | Yes |
+| Private fields | No | Yes |
+| Recursively defined fields | No | Yes |
 | Mutability | Supports [`let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) | [Supports `let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) |
 | Supports field visibility (`public`, `private`) | No | Yes |
 | Combination (`and`, `with`) | Yes | Yes |
@@ -19,7 +20,7 @@ An object is a collection of named fields that can hold values or [functions](ht
 
 ### Record example
 
-Records only store data; they do not contain functions. Fields are always accessible using [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming). Records do not support visibility modifiers (`public`, `private`). However, they do support `and` and `with` for combination and modification.
+Records are typically used to store structured data. Fields are always accessible using [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming). Records do not support visibility modifiers (`public`, `private`). However, they do support `and` and `with` for combination and modification.
 
 ```motoko no-repl
 let ghost = {
@@ -40,7 +41,7 @@ let motoko = object {
     public let name = "Motoko";
     public var age = 30;
 
-    public func greet() : async Text {
+    public func greet() : Text {
         "Hello, my name is " # name # "!"
     };
 };
@@ -60,7 +61,7 @@ let motoko = object {
     public func greet() : Text {
         "Hello, my name is " # name # "!"
     };
-    public func birthday(): Text{
+    public func birthday() : Text{
       age += 1;
       "It's my birthday, I'm now " # debug_show(age) # "years old!"
     }

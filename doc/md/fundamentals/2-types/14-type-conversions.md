@@ -55,7 +55,7 @@ import Char "mo:base/Char";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 
-func nat8ToChar(n: Nat8): Char {
+func nat8ToChar(n : Nat8) : Char {
     return Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
 };
 
@@ -69,7 +69,7 @@ Motoko provides a built-in function `Text.toLowercase`, which converts all chara
 ```motoko no-repl
 import Text "mo:base/Text";
 
-func toLowercaseExample(s: Text): Text {
+func toLowercaseExample(s : Text) : Text {
     return Text.toLowercase(s);
 };
 
@@ -83,7 +83,7 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 ```motoko no-repl
 import Text "mo:base/Text";
 
-func textToOptionalBlob(s: Text): ?Blob {
+func textToOptionalBlob(s : Text) : ?Blob {
     return ?Text.encodeUtf8(s);
 };
 
@@ -111,7 +111,7 @@ import Float "mo:base/Float";
 import Int "mo:base/Int";
 import Int32 "mo:base/Int32";
 import Iter "mo:base/Iter";
-  func charToInt(c: Char): Int {
+  func charToInt(c : Char) : Int {
     Int32.toInt(Int32.fromNat32(Char.toNat32(c) - 48));
   }
 
@@ -419,7 +419,7 @@ let adjustedTime = system_time - (5 * 3600);
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 
-func arrayToText(arr: [Char]): Text {
+func arrayToText(arr : [Char]) : Text {
     return Text.fromArray(arr);
 };
 ```
@@ -430,8 +430,8 @@ For arrays containing numbers or other types, each element is converted to [`Tex
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 
-public func arrayOfNatToText(arr: [Nat]): async Text {
-    return Text.join(" ", Array.map<Nat, Text>(arr, Nat.toText).vals());
+public func arrayOfNatToText(arr : [Nat]) : async Text {
+    Text.join(" ", Array.map<Nat, Text>(arr, Nat.toText).values())
 };
 ```
 
@@ -442,7 +442,7 @@ Motoko lacks support for dynamic objects, so an array of tuples is converted int
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
 
-func arrayToMap(arr: [(Text, Nat)]): HashMap.HashMap<Text, Nat> {
+func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
     let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
     for ((key, value) in arr.vals()) {
         map.put(key, value);
@@ -457,11 +457,11 @@ To convert an array of tuples `[(Text, Nat)]` into a custom [record](https://int
 ```motoko no-repl
 import Array "mo:base/Array";
 type User = {
-    name: Text;
-    age: Nat;
+    name : Text;
+    age : Nat;
 };
 
-func tuplesToUsers(arr: [(Text, Nat)]): [User] {
+func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
     return Array.map<(Text, Nat), User>(arr, func((name, age)) {
         { name = name; age = age }
     });

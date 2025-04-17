@@ -12,7 +12,7 @@ Records provide a structured way to group related values using named fields. Unl
 let person = {
    name : Text = "Motoko";
    age : Nat = 25;
-  };
+};
 ```
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
@@ -70,17 +70,17 @@ Records can contain other records, allowing for hierarchical data structures tha
 
 ```motoko no-repl
 type Address = {
-    city: Text;
-    street: Text;
-    zip: Nat;
+    city : Text;
+    street : Text;
+    zip : Nat;
 };
 
 type Individual = {
-    name: Text;
-    address: Address;
+    name : Text;
+    address : Address;
 };
 
-let individual: Individual = {
+let individual : Individual = {
     name = "Diana";
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
@@ -93,22 +93,22 @@ Records can be destructured using [`switch`](https://internetcomputer.org/docs/m
 
 ```motoko no-repl
 type Address = {
-    city: Text;
-    street: Text;
-    zip: Nat;
+    city : Text;
+    street : Text;
+    zip : Nat;
 };
 
 type Individual = {
-    name: Text;
-    address: Address;
+    name : Text;
+    address : Address;
 };
 
-let individual: Individual = {
+let individual : Individual = {
     name = "Diana";
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
 
-let cityName: Text = switch (individual) {
+let cityName : Text = switch (individual) {
     case ({ address = { city } }) city; //New York
 };
 ```
@@ -119,17 +119,17 @@ Records are commonly used in arrays and other collections for structured data st
 
 ```motoko no-repl
 type Product = {
-    name: Text;
-    price: Float;
+    name : Text;
+    price : Float;
 };
 
-let inventory: [Product] = [
+let inventory : [Product] = [
     { name = "Laptop"; price = 999.99 },
     { name = "Smartphone"; price = 599.99 }
 ];
 
-let firstProduct: Product = inventory[0];
-let productName: Text = firstProduct.name;
+let firstProduct : Product = inventory[0];
+let productName : Text = firstProduct.name;
 ```
 
 
@@ -142,8 +142,8 @@ Since records are immutable by default, updating a record requires creating a mo
 The `and` keyword merges multiple records when they have no conflicting fields.
 
 ```motoko no-repl
-let contact = { email: Text = "alice@example.com"; };
-let person = { name: Text = "Motoko"; age: Nat =  25; };
+let contact = { email : Text = "alice@example.com"; };
+let person = { name : Text = "Motoko"; age : Nat =  25; };
 
 let profile = { person and contact };
 
@@ -181,7 +181,11 @@ let contact = {email : Text = "alice@example.com"};
 // profile and contact merge with and since they have unique fields.
 // age = 26; updates the age field from profile.
 // location = "New York"; adds a new field.
-let fullProfile = {person and contact with age = 26; location : Text = "New York"};
+let fullProfile = {
+  person and contact with
+  age = 26;
+  location : Text = "New York";
+};
 Debug.print(debug_show (fullProfile));
 ```
 
@@ -201,21 +205,13 @@ Tuples and records both allow grouping values, but they have key differences in 
 
 ```motoko no-repl
 type User = {
-    name: Text;
-    age: Nat;
+    name : Text;
+    age : Nat;
 };
 
-let user: User = { name = "Motoko"; age = 25 };
+let user : User = { name = "Motoko"; age = 25 };
 
-let username: Text = user.name;
-```
-
-### Example of a tuple
-
-```motoko no-repl
-let user: (Text, Nat) = ("Motoko", 25);
-
-let username: Text = switch (user) {
+let username : Text = user.name;
     case (name, _) name;
 };
 ```

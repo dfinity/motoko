@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Type declarations
 
-A type declaration are used for defining custom types that improve readability, reusability, and structure in the code. They can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed, valid types.
+Type declarations are used for defining custom types that improve readability, reusability, and structure of the code. They can represent records, variants, objects, or parameterized (generic) types. Motoko enforces productivity and non-expansiveness in type declarations to ensure well-formed, valid types.
 
 ## Defining a type
 
@@ -21,7 +21,7 @@ type Username = Text;
 These types can then be used in function definitions.
 
 ```motoko no-repl
-func greet(name: Username, age: Age) : Text {
+func greet(name : Username, age : Age) : Text {
     "Hello, " # name # "! You are " # Nat.toText(age) # " years old."
 }
 ```
@@ -33,13 +33,13 @@ A type can represent a structured [record](https://internetcomputer.org/docs/mot
 ```motoko no-repl
 // A reusable record
 type Ghost = {
-    firstName: Text;
-    lastName: Text;
-    age: Nat;
+    firstName : Text;
+    lastName : Text;
+    age : Nat;
 };
 
 // An instance of Ghost
-let motoko: Ghost = {
+let motoko : Ghost = {
     firstName = "Motoko";
     lastName = "Sentinels";
     age = 30;
@@ -83,7 +83,7 @@ This ensures flexibility while keeping type safety.
 
 ## Recursive types and productivity
 
-Motoko allows recursive type definitions, provided they are productive.
+Motoko allows recursive type definitions, provided they are productive (i.e., recursion in types must go through a constructor — like ?, variant, or a record field — before referencing itself again).
 
 ### Productive recursive type
 

@@ -24,8 +24,8 @@ type Status = {
 To assign a variant value, use one of the defined tags.
 
 ```motoko no-repl
-let activeUser: Status = #Active;
-let bannedUser: Status = #Banned("Violation of rules");
+let activeUser : Status = #Active;
+let bannedUser : Status = #Banned("Violation of rules");
 ```
 
 ## Accessing a variant's value
@@ -33,10 +33,10 @@ let bannedUser: Status = #Banned("Violation of rules");
 To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
 ```motoko no-repl
-let activeUser: Status = #Active;
-let bannedUser: Status = #Banned("Violation of rules");
+let activeUser : Status = #Active;
+let bannedUser : Status = #Banned("Violation of rules");
 
-func getStatusMessage(status: Status) : Text {
+func getStatusMessage(status : Status) : Text {
     switch (status) {
         case (#Active) "User is active";
         case (#Inactive) "User is inactive";
@@ -76,7 +76,7 @@ type TrafficLight = {
 A function can define how the traffic light cycles from one [state](https://internetcomputer.org/docs/motoko/fundamentals/state) to the next.
 
 ```motoko no-repl
-func nextState(light: TrafficLight): TrafficLight {
+func nextState(light : TrafficLight) : TrafficLight {
     switch (light) {
         case (#red)    #green;
         case (#green)  #yellow;

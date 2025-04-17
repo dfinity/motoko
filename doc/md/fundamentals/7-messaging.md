@@ -6,7 +6,7 @@ sidebar_position: 7
 
 ## Messaging restrictions
 
-ICP enforces rules on when and how [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) communicate. These restrictions prevent execution errors statically in Motoko.
+ICP enforces rules on when and how [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) communicate. Motoko has static (compile-time) messaging restrictions to prevent certain execution errors.
 
 | Restriction | Reason |
 |-------------|--------|
@@ -19,13 +19,13 @@ In Motoko, an expression is in an async context if it appears in an `async` func
 
 ```motoko no-repl
 actor Counter {
-    stable var count: Nat = 0;
+    stable var count : Nat = 0;
 
-    public shared func increment(): async () {
+    public shared func increment() : async () {
         count += 1;
     };
 
-    public query func getCount(): async Nat {
+    public query func getCount() : async Nat {
         return count;  // Allowed: No state change
     };
 
@@ -43,13 +43,13 @@ Canisters can inspect and filter incoming messages before execution to prevent s
 import Principal "mo:base/Principal";
 
 actor Counter {
-    stable var count: Nat = 0;
+    stable var count : Nat = 0;
 
-    public shared func increment(): async () { count += 1; };
-    public shared func reset(): async () { count := 0; };
-    public query func getCount(): async Nat { count; };
+    public shared func increment() : async () { count += 1 };
+    public shared func reset() : async () { count := 0 };
+    public query func getCount() : async Nat { count };
 
-    system func inspect({ caller: Principal; arg: Blob; msg: { #increment: (); #reset: (); #getCount: () } }) : Bool {
+    system func inspect({ caller : Principal; arg : Blob; msg : { #increment : (); #reset : (); #getCount : () } }) : Bool {
         if (Principal.isAnonymous(caller)) return false;  // Reject anonymous calls
         if (arg.size() > 512) return false;  // Reject large requests
         switch (msg) {
@@ -86,9 +86,9 @@ import Subscriber "canister:subscriber";
 import Array "mo:base/Array";
 
 actor Publisher {
-    stable var subscribers: [Subscriber.Subscriber] = [];
+    stable var subscribers : [Subscriber.Subscriber] = [];
 
-    public shared func subscribe(subscriber: Subscriber.Subscriber): async () {
+    public shared func subscribe(subscriber : Subscriber.Subscriber) : async () {
         if (Array.find<Subscriber.Subscriber>(subscribers, func(s) { s == subscriber }) == null) {
             let newSubscribers = Array.tabulate<Subscriber.Subscriber>(
                 subscribers.size() + 1,
@@ -98,7 +98,7 @@ actor Publisher {
         };
     };
 
-    public shared func publish(message: Text): async () {
+    public shared func publish(message : Text) : async () {
         for (sub in subscribers) {
             ignore await sub.notify(message);
         };
@@ -113,7 +113,7 @@ actor Publisher {
 import Debug "mo:base/Debug";
 
 actor Subscriber {
-    public shared func notify(message: Text): async () {
+    public shared func notify(message : Text) : async () {
         Debug.print("Received message: " # message);
     };
 };
@@ -122,15 +122,15 @@ actor Subscriber {
 
 ### Actor type annotation
 
-Actor type annotations provide flexibility when interacting with external [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) but require ensuring function signatures match at runtime. If they do not, calls will fail.
+Actor type annotations provide flexibility when interacting with external [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) but there is no guarantee that function signatures will match at runtime. If they do not, calls will fail.
 
 ```motoko no-repl
 import Array "mo:base/Array";
 
 actor Publisher {
-    stable var subscribers: [Principal] = [];
+    stable var subscribers : [Principal] = [];
 
-    public shared func subscribe(subscriber: Principal): async () {
+    public shared func subscribe(subscriber : Principal) : async () {
         if (Array.find<Principal>(subscribers, func(s) { s == subscriber }) == null) {
             let newSubscribers = Array.tabulate<Principal>(
                 subscribers.size() + 1,
@@ -140,9 +140,9 @@ actor Publisher {
         };
     };
 
-    public shared func publish(message: Text): async () {
+    public shared func publish(message : Text) : async () {
         for (sub in subscribers) {
-            let subActor = actor(sub) : actor { notify: (Text) -> async () };
+            let subActor = actor(sub) : actor { notify : (Text) -> async () };
             ignore await subActor.notify(message);
         };
     };
@@ -158,7 +158,7 @@ import IC "mo:base/ExperimentalInternetComputer";
 import Debug "mo:base/Debug";
 
 actor DynamicCaller {
-    public shared func callMethod(canisterId: Principal, methodName: Text, arg: Nat): async Nat {
+    public shared func callMethod(canisterId : Principal, methodName : Text, arg : Nat): async Nat {
         let encodedArgs = to_candid(arg);
         let encodedResult = await IC.call(canisterId, methodName, encodedArgs);
         let ?result : ?Nat = from_candid encodedResult else Debug.trap("Invalid return");

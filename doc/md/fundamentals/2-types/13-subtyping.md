@@ -93,8 +93,8 @@ let numsAsInts :  [var Int] = nums;  // Not allowed because mutable arrays are i
 func parent(x : Int) : Nat { 10 };
 func child(x : Nat) : Int { 20 };
 
-let f : (Nat) -> Int = parent;  // Allowed (contravariant param, covariant return)
-let g : (Int) -> Nat = child;   // Not allowed because the return type must be covariant
+let f : Nat -> Int = parent;  // Allowed (contravariant param, covariant return)
+let g : Int -> Nat = child;   // Not allowed because the return type must be covariant
 ```
 
 ## Objects, modules & actors

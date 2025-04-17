@@ -4,17 +4,17 @@ sidebar_position: 2
 
 # Functions declarations
 
-A function in Motoko is a reusable block of code that takes inputs, processes them, then returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
+A function in Motoko is a block of code that takes inputs, processes them, then (optionally) returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
 
 ## Declaring a function
 
-Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse.
+Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse. Anonymous functions do not have a name (e.g., lambda functions or function expressions). They can be defined inline and usually assigned to variables or passed as arguments.
 
 ```motoko no-repl
 // The function is named 'add'
-// 'a: Int' and 'b: Int' are parameters with types.
+// 'a : Int' and 'b : Int' are parameters with types.
 // 'Int' is the return type.
-func add(a: Int, b: Int) : Int {
+func add(a : Int, b : Int) : Int {
     // Exits the function and provides a result.
     return a + b;
 }
@@ -25,31 +25,31 @@ func add(a: Int, b: Int) : Int {
 To execute a function, pass the required arguments:
 
 ```motoko no-repl
-func add(a: Int, b: Int) : Int {
+func add(a : Int, b : Int) : Int {
     return a + b;
 };
 add(3, 5);
 ```
 
-## Functions as values
+## Functions as values (anonymous functions)
 
-Functions in Motoko are first-class values. They can be assigned to variables, stored in data structures, and passed as arguments.
+Functions in Motoko are first-class values. They can be assigned to variables, stored in data structures, and passed as parameters.
 
 ```motoko no-repl
-let double = func (x: Int) : Int { x * 2 };
-let applyFunction = func (f: (Int) -> Int, value: Int) : Int { f(value) };
+let double = func (x : Int) : Int { x * 2 };
+let applyFunction = func (f : (Int) -> Int, value: Int) : Int { f(value) };
 
 applyFunction(double, 10);
 ```
 
-`applyFunction` takes a function `f` and applies it to `value`.  `double` is passed as an argument, demonstrating higher-order functions.
+`applyFunction` takes a function `f` and applies it to `value`.  `double` is passed as an parameter, allowing to construct higher-order functions.
 
 ## Anonymous functions
 
 Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
 ```motoko no-repl
-let multiply = func (x: Int, y: Int) : Int { x * y };
+let multiply = func (x : Int, y : Int) : Int { x * y };
 multiply(4, 2);
 ```
 
@@ -58,10 +58,10 @@ The function is assigned to `multiply` instead of being named directly. `{ x * y
 
 ## Recursive functions
 
-A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops.
+A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops. Note that recursion implies allocating stack frames, which allocates additional memory on the (relatively small) program stack. Excessive recursion can lead to out-of-memory errors.
 
 ```motoko no-repl
-func factorial(n: Nat) : Nat {
+func factorial(n : Nat) : Nat {
     if (n == 0) {
         return 1;
     };
@@ -76,7 +76,7 @@ In actors, functions can be marked as `shared` to allow [asynchronous](https://i
 
 ```motoko no-repl
 actor Counter {
-    stable var count: Nat = 0;
+    stable var count : Nat = 0;
 
     public func inc() : async () {
         count += 1;
@@ -92,11 +92,11 @@ await Counter.getCount();
 
 ### Accessing the caller identity
 
-One key advantage of `shared` functions is that they can access the caller's `Principal`, which represents the entity (user or canister) making the request. This allows functions to enforce access control or record who invoked them.
+One key advantage of `shared` functions is that they can access the caller's `Principal`, which represents the entity (user or canister) making the request. This enables actors to enforce access control or record who invoked them.
 
 ```motoko
 actor Example {
-// msg.caller retrieves the Principal of the caller.
+    // msg.caller retrieves the Principal of the caller.
     public shared(msg) func whoAmI() : async Principal {
         return msg.caller;
     }

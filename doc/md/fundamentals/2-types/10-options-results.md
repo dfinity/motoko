@@ -16,7 +16,7 @@ Options provide a structured way to represent values that may or may not be pres
 An option is defined using `?` followed by the type of the value it can hold.
 
 ```motoko no-repl
-var username: ?Text = null;
+var username : ?Text = null;
 ```
 
 `username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
@@ -28,7 +28,7 @@ To determine if an option contains a value, `Option.isSome` returns `true` if it
 ```motoko no-repl
 import Option "mo:base/Option";
 
-let value: ?Nat = ?5;
+let value : ?Nat = ?5;
 if (Option.isSome(value)) {
     Debug.print("Value is present.");
 }
@@ -43,7 +43,7 @@ Instead of manually handling `null` cases with [pattern matching](https://intern
 ```motoko no-repl
 import Option "mo:base/Option";
 
-let username: ?Text = null;
+let username : ?Text = null;
 let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
@@ -52,7 +52,7 @@ let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
 
 ```motoko no-repl
-func safeDivide(a: Int, b: Int): ?Int {
+func safeDivide(a : Int, b : Int) : ?Int {
     if (b == 0) null else ?(a / b);
 }
 
@@ -69,8 +69,8 @@ The `Option.map` function applies a transformation only if the value is present.
 ```motoko no-repl
 import Option "mo:base/Option";
 
-  let number: ?Nat = ?10;
-  let doubled = Option.map<Nat, Nat>(number, func (x : Nat) = x * 2); // ?20
+let number : ?Nat = ?10;
+let doubled = Option.map<Nat, Nat>(number, func(x : Nat) = x * 2); // ?20
 ```
 
 In this example, if `number` is `null`, `map` ensures the result remains `null` instead of performing an invalid operation.
@@ -82,10 +82,10 @@ Sometimes, both the function and value are optional. `Option.apply` calls a func
 ```motoko no-repl
 import Option "mo:base/Option";
 
-let maybeIncrement: ?(Nat -> Nat) = ?(func x: Nat = x + 1);
-let maybeValue: ?Nat = ?10;
+let maybeIncrement : ?(Nat -> Nat) = ?(func x: Nat = x + 1);
+let maybeValue : ?Nat = ?10;
 
-let result = Option.apply<Nat,Nat>(maybeValue, maybeIncrement); // ?11
+let result = Option.apply<Nat, Nat>(maybeValue, maybeIncrement); // ?11
 ```
 
 If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
@@ -105,8 +105,8 @@ func combineNames(f: Text, l: Text): Text {
     f # " " # l;
 };
 
-let fullName = Option.chain<Text, Text>(firstName, func (f: Text) {
-    Option.map<Text, Text>(lastName, func (l: Text) { combineNames(f, l) });
+let fullName = Option.chain<Text, Text>(firstName, func (first : Text) {
+    Option.map<Text, Text>(lastName, func(last : Text) { combineNames(first, last) });
 });
 
 // ?("Motoko Ghost")
@@ -118,7 +118,7 @@ If either `firstName` or `lastName` is `null`, the result remains `null`.
 
 ```motoko
 actor App {
-  var username: ?Text = ?Motoko;
+  var username : ?Text = ?Motoko;
 
   public func getUsername() : async Text {
       switch (username) {
@@ -148,7 +148,7 @@ The `Result` type can hold:
 import Result "mo:base/Result";
 import Nat "mo:base/Nat";
 
-func divide(a: Nat, b: Nat): Result.Result<Nat, Text> {
+func divide(a : Nat, b : Nat): Result.Result<Nat, Text> {
     if (b == 0) {
         return #err("Cannot divide by zero");
     };

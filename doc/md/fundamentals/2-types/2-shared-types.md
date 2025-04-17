@@ -25,9 +25,9 @@ Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/typ
 
 ```motoko no-repl
 // Numbers, text, and booleans are shared
-let number: Nat = 42;
-let message: Text = "Hello IC";
-let flag: Bool = true;
+let number : Nat = 42;
+let message : Text = "Hello IC";
+let flag : Bool = true;
 ```
 
 ### Immutable collections
@@ -36,10 +36,10 @@ Collections that cannot be modified after creation are shared, including [immuta
 
 ```motoko no-repl
 // Immutable arrays are shared
-let names: [Text] = ["Motoko", "Ghost", "Astronaut"];
+let names : [Text] = ["Motoko", "Ghost", "Astronaut"];
 
 // Tuples of shared types are shared
-let person: (Text, Nat) = ("Motoko", 25);
+let person : (Text, Nat) = ("Motoko", 25);
 ```
 
 ### Records with immutable fields
@@ -62,12 +62,12 @@ let user = {
 ```motoko no-repl
 // Variant types with shared tags are shared
 type Result = {
-    #ok: Nat;
-    #error: Text;
+    #ok : Nat;
+    #error : Text;
 };
 
-let success: Result = #ok(200);
-let failure: Result = #error("Operation failed");
+let success : Result = #ok(200);
+let failure : Result = #error("Operation failed");
 ```
 
 ### Option types
@@ -76,8 +76,8 @@ let failure: Result = #error("Operation failed");
 
 ```motoko no-repl
 // Option types with shared inner types are shared
-let maybeGreeting: ?Text = ?"Hello";
-let nothing: ?Nat = null;
+let maybeGreeting : ?Text = ?"Hello";
+let nothing : ?Nat = null;
 ```
 
 ### Actor references
@@ -87,8 +87,8 @@ References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/act
 ```motoko no-repl
 // Actor types are shared
 type CounterActor = actor {
-    increment: shared () -> async Nat;
-    getValue: shared query () -> async Nat;
+    increment : shared () -> async Nat;
+    getValue : shared query () -> async Nat;
 };
 ```
 
@@ -109,7 +109,7 @@ Certain types cannot be shared between [canisters](https://internetcomputer.org/
 
 ```motoko no-repl
 // Mutable arrays are NOT shared
-let mutableArray: [var Nat] = [var 1, 2, 3];
+let mutableArray : [var Nat] = [var 1, 2, 3];
 ```
 
 ### Objects with mutable fields
@@ -126,7 +126,7 @@ let mutableUser = {
 
 ```motoko no-repl
 // The Error type is NOT shared
-let err: Error = Error.reject("Something went wrong");
+let err : Error = Error.reject("Something went wrong");
 ```
 
 ### Objects containing non-shared types

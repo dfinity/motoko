@@ -36,7 +36,7 @@ Unlike other programming languages that support append methods for arrays, Motok
 Mutable arrays use the `var` keyword inside the square brackets `[var T]`. The type of the array is also specified within the square brackets, e.g., `[var Nat]` declares a mutable array of natural numbers. In place element modification is supported in mutable arrays.
 
 ```motoko no-repl
-let mutableArray: [var Nat] = [var 1, 2, 3, 4, 5];
+let mutableArray : [var Nat] = [var 1, 2, 3, 4, 5];
 
 mutableArray[0] := 10;  // Updates the first element to 10
 ```
@@ -46,7 +46,7 @@ mutableArray[0] := 10;  // Updates the first element to 10
 Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps).
 
 ```motoko no-repl
-let numbers: [var Nat] = [var 10, 20, 30];
+let numbers : [var Nat] = [var 10, 20, 30];
 
 numbers[0] := 100;  // updating first element
 
@@ -61,9 +61,9 @@ You can convert a mutable array into an immutable array using `Array.freeze`, en
 ```motoko no-repl
 import Array "mo:base/Array";
 
-let mutableArray: [var Nat] = [var 1, 2, 3];
+let mutableArray : [var Nat] = [var 1, 2, 3];
 
-let immutableArray: [Nat] = Array.freeze<Nat>(mutableArray);
+let immutableArray : [Nat] = Array.freeze<Nat>(mutableArray);
 ```
 
 ## Nested mutable arrays example: Tic-tac-toe

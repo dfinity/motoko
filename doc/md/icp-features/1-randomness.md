@@ -37,7 +37,7 @@ actor {
     raw_rand() : async Blob;
   } = actor "aaaaa-aa";
 
-  public func random_bytes() : async Blob {
+  public func randomBytes() : async Blob {
     await SubnetManager.raw_rand();
   };
 }
