@@ -53,7 +53,7 @@ Below is an example demonstrating how to generate a random boolean using `Random
 import Random "mo:base/Random";
 
 actor {
-  public func random_boolean() : async ?Bool {
+  public func randomBoolean() : async ?Bool {
     let entropy = await Random.blob();
     let finite = Random.Finite(entropy);
     // Consumes 1 byte of entropy
