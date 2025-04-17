@@ -73,7 +73,7 @@ import Fuzz "mo:fuzz";
 
   let fuzz = Fuzz.Fuzz();
 
-  public query func random_nat() : async Nat {
+  public query func randomNat() : async Nat {
     fuzz.nat.random();
   };
 ```
