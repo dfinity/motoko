@@ -65,6 +65,8 @@ for (val in arr.vals()) {
 ### Using a `for` loop
 
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
+The [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter) module provides utilities for creating and working with iterators.
+`Iter.range(0, arr.size() - 1)` specifically creates an iterator over the range of indices from 0 to the last element of the array.
 
 ```motoko no-repl
 for (i in Iter.range(0, arr.size() - 1)) {

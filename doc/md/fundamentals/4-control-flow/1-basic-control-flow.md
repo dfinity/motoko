@@ -16,6 +16,8 @@ sidebar_position: 1
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
 | `let-else` | Conditionally binds values. |
 
+## `return` keyword
+
 A return statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
 ```motoko no-repl
@@ -25,6 +27,11 @@ func add(a: Nat, b: Nat): Nat {
 ```
 
 Functions implicitly return the last evaluated expression if `return` is not used.
+::: tip[Motoko best practice]
+
+Prefer implicit returns for simple functions, and only use explicit return statements when you need to break the control flow (such as early returns from conditional branches).
+
+:::
 
 ```motoko no-repl
 func multiply(a: Nat, b: Nat): Nat {
@@ -39,9 +46,9 @@ Conditional execution is controlled using `if`.
 ```motoko no-repl
 func checkEven(n: Nat): Bool {
     if (n % 2 == 0) {
-        return true;
+        true;
     };
-    return false;
+    false;
 }
 ```
 
@@ -52,9 +59,9 @@ Executes one block if the condition is `true`, otherwise executes another.
 ```motoko no-repl
 func checkSign(n: Int): Text {
     if (n > 0) {
-        return "Positive";
+        "Positive";
     } else {
-        return "Negative or Zero";
+        "Negative or Zero";
     };
 }
 ```
@@ -93,6 +100,7 @@ func getUserAge(user: ?Nat): ?Nat {
 <!--- this contains a null break usage example, we should point a reader here for a search for null break--->
 
 ## `label`
+
 A label assigns a name to a block of code that executes like any other, but its result can be accessed directly. Labels enable more control over execution, making it possible to define clear exit points and structure complex logic effectively.
 
 When a labeled block runs, it evaluates its contents and produces a result. If no specific result is required, it defaults to an empty value. Labels do not alter how a block executes but provide a way to reference and control its flow. A labeled block is required to define an exit point.
@@ -160,15 +168,21 @@ for (num in numbers.vals()) {
 `let-else` allows conditional binding.
 
 ```motoko no-repl
-let age = 18;
-let authorized : Bool = if (age > 18) {true} else {false};
+func divideNumbers(a: Float, b: Float) : Float {
+  // Catch division by zero
+  let #ok(result) = if (b == 0) #err("Division by zero") else #ok(a / b)
+    else return 0;
+   result;
+}
 ```
 
+::: tip[Pattern matching]
+`let-else` provides a more concise alternative to switch expressions when handling optional values or results.
+:::
 
 ## Program flows
 
 In Motoko, code follows sequential execution, running one statement after another. However, certain constructs allow altering this flow, including exiting a block early, skipping part of a loop, returning a value from a function or calling a function.
-
 
 ### `continue`
 
@@ -194,6 +208,24 @@ public func continueControlFlow() : async Int {
 }
 ```
 
+### `return` statement
+
+The `return` statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
+
+```motoko no-repl
+public func returnControlFlow() : async Int {
+    let numbers : [Int] = [3, 0, 5, -1, -2, 7];
+    var sum : Int = 0;
+        for (num in numbers.vals()) {
+            if (num < 0) {
+                return sum; // Immediately exit the function
+            };
+            sum += num;
+        };
+    sum; // Only reached if no negative numbers are found
+}
+```
+
 ### Function calls
 
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls may involve synchronous execution within a canister or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
@@ -201,21 +233,22 @@ A function call executes a function by passing arguments and receiving a result.
 ```motoko no-repl
 public func processNumbers(numbers: [Int]) : Int {
     var sum : Int = 0;
-        for (num in numbers.vals()) {
-            if (num < 0) {
-                return sum;
-            };
-            sum += num;
+    for (num in numbers.vals()) {
+        if (num < 0) {
+            return sum;
         };
-    return sum;
+        sum += num;
+    };
+    sum;
 }
 
 public func functionCallControlFlow() : async Int {
     let numbers : [Int] = [3, 1, 5, -1, -2, 7];
-    return processNumbers(numbers); // Function call
+    let result = processNumbers(numbers); // Function call
+    result;
 }
 ```
 
-Execution begins in `functionCallExample()`, where the function `processNumbers()` is invoked, shifting control to its execution. Within `processNumbers()`, numbers are processed sequentially. If a negative number is encountered, `return` halts execution immediately and returns the current sum. Control then transfers back to `functionCallExample()`, which receives and returns the final result. Function calls disrupt the normal sequential flow by directing execution to a separate block of logic.
+Execution begins in `functionCallControlFlow()`, where the function `processNumbers()` is invoked, shifting control to its execution. Within `processNumbers()`, numbers are processed sequentially. If a negative number is encountered, return halts execution immediately and returns the current sum. Control then transfers back to `functionCallControlFlow()`, which receives and returns the final result. Function calls disrupt the normal sequential flow by directing execution to a separate block of logic.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
