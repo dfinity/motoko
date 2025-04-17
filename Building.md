@@ -48,7 +48,7 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 
 A good way to check that everything is fine, i.e. if this will pass CI, is to run
 ```
-$ nix build --impure --no-link
+$ nix build --no-link
 ```
 
 For more details on our CI and CI setup, see `CI.md`.

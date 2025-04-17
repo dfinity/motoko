@@ -9,8 +9,8 @@
     nix-update-flake.url = "github:/Mic92/nix-update";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
-    # TODO: Switch to just: nixpkgs-mozilla.url = "github:mozilla/nixpkgs-mozilla";
-    nixpkgs-mozilla.url = "github:mozilla/nixpkgs-mozilla/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
     candid-src = {
       url = "github:dfinity/candid/30c388671462aecdc4a3a9753d50dc2e8208c200";
@@ -68,7 +68,7 @@
     , nixpkgs
     , flake-utils
     , nix-update-flake
-    , nixpkgs-mozilla
+    , rust-overlay
     , candid-src
     , esm
     , ic-src
@@ -125,40 +125,21 @@
           }
           )
 
-          # Mozilla overlay for Rust
-          # TODO: why introduce this moz_overlay name and not just have nixpkgs-mozilla.overlay?
-          (self: super: { moz_overlay = nixpkgs-mozilla.overlay self super; })
+          # Rust Nightly & Stable
+          rust-overlay.overlays.default
+          (self: super: {
+            rust-nightly = pkgs.rust-bin.nightly."2024-07-28".default.override {
+              extensions = [ "rust-src" ];
+              targets = [ "wasm32-wasip1" ];
+            };
 
-          # Rust nightly
-          (self: super:
-            let
-              rust-channel = self.moz_overlay.rustChannelOf { date = "2024-07-28"; channel = "nightly"; };
-            in
-            rec {
-              rustc-nightly = rust-channel.rust.override {
-                targets = [
-                  "wasm32-wasi"
-                ];
-                extensions = [ "rust-src" ];
-              };
-              cargo-nightly = rustc-nightly;
-              rustPlatform-nightly = self.makeRustPlatform {
-                rustc = rustc-nightly;
-                cargo = cargo-nightly;
-              };
-            })
+            rust-stable = pkgs.rust-bin.stable."1.85.0".default;
 
-          # Rust stable
-          (self: super:
-            let
-              rust-channel = self.moz_overlay.rustChannelOf { version = "1.85.0"; channel = "stable"; };
-            in
-            {
-              rustPlatform_moz_stable = self.makeRustPlatform rec {
-                rustc = rust-channel.rust;
-                cargo = rustc;
-              };
-            })
+            rustPlatform-stable = self.makeRustPlatform {
+              rustc = self.rust-stable;
+              cargo = self.rust-stable;
+            };
+          })
 
           # wasm-profiler
           (self: super: import ./nix/wasm-profiler.nix self)
@@ -314,7 +295,7 @@
       };
 
       ic-wasm =
-        pkgs.rustPlatform_moz_stable.buildRustPackage {
+        pkgs.rustPlatform-stable.buildRustPackage {
           pname = "ic-wasm";
           version = builtins.substring 0 7 ic-wasm-src.rev;
           src = ic-wasm-src;
@@ -346,7 +327,7 @@
             buildCommand = ''
               mkdir $out
               cd $out
-              ${vendorRustStdDeps} ${pkgs.rustc-nightly} .
+              ${vendorRustStdDeps} ${pkgs.rust-nightly} .
             '';
 
             outputHash = rustStdDepsHash;
@@ -393,8 +374,7 @@
           buildInputs = with pkgs; [
             llvmPackages_18.clang
             llvmPackages_18.bintools
-            rustc-nightly
-            cargo-nightly
+            rust-nightly
             wasmtime
             rust-bindgen
             python3
@@ -442,17 +422,17 @@
           # message.
           preFixup = ''
             remove-references-to \
-              -t ${pkgs.rustc-nightly} \
+              -t ${pkgs.rust-nightly} \
               -t ${rtsDeps} \
               -t ${rustStdDeps} \
               $out/rts/mo-rts-non-incremental.wasm $out/rts/mo-rts-non-incremental-debug.wasm
             remove-references-to \
-              -t ${pkgs.rustc-nightly} \
+              -t ${pkgs.rust-nightly} \
               -t ${rtsDeps} \
               -t ${rustStdDeps} \
               $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
             remove-references-to \
-              -t ${pkgs.rustc-nightly} \
+              -t ${pkgs.rust-nightly} \
               -t ${rtsDeps} \
               -t ${rustStdDeps} \
               $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
@@ -630,7 +610,7 @@
 
       check-rts-formatting = pkgs.stdenv.mkDerivation {
         name = "check-rts-formatting";
-        buildInputs = [ pkgs.cargo-nightly pkgs.rustfmt ];
+        buildInputs = [ pkgs.rust-nightly pkgs.rustfmt ];
         src = ./rts;
         doCheck = true;
         phases = "unpackPhase checkPhase installPhase";

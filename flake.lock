@@ -209,22 +209,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-mozilla": {
-      "locked": {
-        "lastModified": 1690837595,
-        "narHash": "sha256-7QTMhW4xdubmcmRBoTwmA4XUjLSV2vcIIEVPEzsN3Tg=",
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mozilla",
-        "repo": "nixpkgs-mozilla",
-        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
-        "type": "github"
-      }
-    },
     "ocaml-recovery-parser-src": {
       "flake": false,
       "locked": {
@@ -272,11 +256,31 @@
         "motoko-matchers-src": "motoko-matchers-src",
         "nix-update-flake": "nix-update-flake",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-mozilla": "nixpkgs-mozilla",
         "ocaml-recovery-parser-src": "ocaml-recovery-parser-src",
         "ocaml-vlq-src": "ocaml-vlq-src",
+        "rust-overlay": "rust-overlay",
         "viper-server": "viper-server",
         "wasm-spec-src": "wasm-spec-src"
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1744857263,
+        "narHash": "sha256-M4X/CnquHozzgwDk+CbFb8Sb4rSGJttfNOKcpRwziis=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "9f3d63d569536cd661a4adcf697e32eb08d61e31",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
       }
     },
     "systems": {

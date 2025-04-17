@@ -44,7 +44,7 @@ jobs:
 
     - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
       name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
-      run: ./nixbuild --impure .#${{ matrix.build_type }}-systems-go
+      run: ./nixbuild .#${{ matrix.build_type }}-systems-go
 
     - if: ${{ startsWith(matrix.os, 'macos-') }}
       run: nix-env -i -E '_arg:(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.nix-build-uncached'
@@ -81,7 +81,7 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        out=$(./nixbuildcopy --impure -f perf-delta.nix \
+        out=$(./nixbuildcopy -f perf-delta.nix \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to")

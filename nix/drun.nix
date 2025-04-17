@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform_moz_stable.buildRustPackage {
+    pkgs.rustPlatform-stable.buildRustPackage {
       pname = "drun";
       version = builtins.substring 0 7 pkgs.ic-src.rev;
 
