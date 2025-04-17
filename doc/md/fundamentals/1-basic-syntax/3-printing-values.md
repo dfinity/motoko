@@ -16,6 +16,7 @@ For debugging purposes, `debug_show` converts most Motoko values into [`Text`](h
 
 ```motoko
 import Debug "mo:base/Debug";
+
 Debug.print(debug_show(42)); // "42"
 ```
 

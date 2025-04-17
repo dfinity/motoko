@@ -9,8 +9,8 @@ sidebar_position: 5
 The `Char` type in Motoko represents a single unicode character delimited with a single quotation mark (`'`).
 
 ```motoko no-repl
-let letter: Char = 'A';
-let symbol: Char = '✮';
+let letter : Char = 'A';
+let symbol : Char = '✮';
 
 // Comparing characters
 'I' == 'i' // False
@@ -21,7 +21,7 @@ let symbol: Char = '✮';
 Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko no-repl
-let greeting: Text = "Hello, world!";
+let greeting : Text = "Hello, world!";
 
 // Concatenating text
 

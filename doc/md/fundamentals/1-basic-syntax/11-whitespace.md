@@ -16,7 +16,7 @@ actor Counter{public func inc(x:Int): async Int{return x+=1}} await Counter.inc(
 
 ```motoko no-repl
 actor Counter {
-  public func inc(x: Int) : async Int {
+  public func inc(x : Int) : async Int {
     return x+=1;
   };
 };

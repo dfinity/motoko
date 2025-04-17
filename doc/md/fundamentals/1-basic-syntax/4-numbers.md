@@ -11,9 +11,9 @@ sidebar_position: 4
 For scenarios requiring fixed-size integers, Motoko offers bounded variants with specific bit-widths ([`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32), [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64)). These types can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
 ```motoko no-repl
-let a: Int = -42;
-let b: Int = 0;
-let c: Int = 12345;
+let a : Int = -42;
+let b : Int = 0;
+let c : Int = 12345;
 ```
 
 ### Unbounded integers
@@ -21,7 +21,7 @@ let c: Int = 12345;
 By default, [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning it can grow as large (or as small) as needed without causing overflow.
 
 ```motoko no-repl
-let bigNumber: Int = 999_999_999_999_999;
+let bigNumber : Int = 999_999_999_999_999;
 ```
 
 ### Bounded integers
@@ -36,7 +36,7 @@ For scenarios requiring fixed-size integers, Motoko offers bounded integer types
 Bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
 ```motoko
-let overflowInt: Int8 = 128; // Error: literal out of range Int8
+let overflowInt : Int8 = 128; // Error: literal out of range Int8
 ```
 
 
@@ -45,9 +45,9 @@ let overflowInt: Int8 = 128; // Error: literal out of range Int8
 The [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type represents natural numbers, which are all non-negative integers (i.e., `0` and positive numbers).
 
 ```motoko no-repl
-let n: Nat = 42;
-let zero: Nat = 0;
-// let negative: Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
+let n : Nat = 42;
+let zero : Nat = 0;
+// let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
 ```
 
 ### Unbounded natural numbers
@@ -55,7 +55,7 @@ let zero: Nat = 0;
 Like [`Int`](https://internetcomputer.org/docs/motoko/base/Int), the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type is unbounded by default, allowing extremely large values without overflow.
 
 ```motoko no-repl
-let hugeNat: Nat = 1_000_000_000_000_000;
+let hugeNat : Nat = 1_000_000_000_000_000;
 ```
 
 ### Bounded natural numbers
@@ -70,7 +70,7 @@ Motoko also provides bounded natural number types.
 Bounded [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types are ideal when working with binary protocols, embedded systems, or hardware where size constraints matter.
 
 ```motoko
-let overflowNat8: Nat8 = 256; // Error: literal out of range Nat8
+let overflowNat8 : Nat8 = 256; // Error: literal out of range Nat8
 ```
 
 
@@ -89,8 +89,8 @@ let overflowNat8: Nat8 = 256; // Error: literal out of range Nat8
 Floating-point numbers in Motoko are represented using the [`Float`](https://internetcomputer.org/docs/motoko/base/Float) type, which corresponds to a 64-bit double-precision floating-point number.
 
 ```motoko no-repl
-let pi: Float = 3.14159;
-let exp: Float = 2.71828;
+let pi : Float = 3.14159;
+let exp : Float = 2.71828;
 ```
 
 ### Resources

@@ -10,7 +10,8 @@ Identifiers are names used for variables, functions, and other entities. They mu
 ```motoko no-repl
 let name = "Motoko";
 let a1 = 123;
-let my_Motoko_identifier = "Hello, world!"
+let camelCaseIdentifier = "best practice";
+let snake_case_identifier = "for compatibility with other languages";
 ```
 
 ## Reserved syntax keywords

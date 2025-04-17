@@ -143,8 +143,8 @@ let result = (10 + 5) * 2; // result = 30
 Pipes (`|>`) chain together function calls in a readable way. Instead of nesting function calls, pipes pass the result of one expression as an argument to the next function. The value of the left side of the pipe is referenced on the right side using an underscore (`_`).
 
 ```motoko
-func double(n: Int): Int { n * 2 };
-func increment(n: Int): Int { n + 1 };
+func double(n : Int): Int { n * 2 };
+func increment(n : Int): Int { n + 1 };
 
 let result = 5 |> double(_) |> increment(_); // (5 * 2) + 1 = 11
 ```

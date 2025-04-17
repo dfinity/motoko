@@ -21,11 +21,11 @@ Motoko supports several types of patterns:
 The wildcard pattern `_` matches any value but does not bind to a variable. It is useful for handling cases where the specific value does not matter.
 
 ```motoko no-repl
-func processNumber(n: Nat): Text {
+func processNumber(n : Nat): Text {
     switch (n) {
-        case (0) { "Zero" };
-        case (1) { "One" };
-        case (_) { "Other" };  // Matches any other number
+        case 0 { "Zero" };
+        case 1 { "One" };
+        case _ { "Other" };  // Matches any other number
     };
 };
 ```
@@ -35,10 +35,10 @@ func processNumber(n: Nat): Text {
 A literal pattern matches specific constant values, such as numbers, booleans, or text.
 
 ```motoko no-repl
-func describeBool(b: Bool): Text {
-    switch (b) {
-        case (true) { "It's true" };
-        case (false) { "It's false" };
+func describeBool(b : Bool): Text {
+    switch b {
+        case true { "It's true" };
+        case false { "It's false" };
     };
 };
 ```
@@ -50,10 +50,11 @@ Option patterns allow destructuring of `?T` values, matching either `null` or `?
 ```motoko no-repl
 import Nat "mo:base/Nat";
 
-func getValue(opt: ?Nat): Text {
-    switch (opt) {
+func getValue(opt : ?Nat): Text {
+    switch opt {
+        // Parentheses required around `?n` 
         case (?n) { "Value: " # Nat.toText(n) };
-        case (null) { "No value" };
+        case null { "No value" };
     };
 };
 ```
@@ -63,9 +64,9 @@ func getValue(opt: ?Nat): Text {
 Objects with named fields can be matched to extract specific properties.
 
 ```motoko no-repl
-type Person = { name: Text; age: Nat };
+type Person = { name : Text; age : Nat };
 
-func describePerson(person: Person): Text {
+func describePerson(person : Person): Text {
     switch (person) {
         case ({ name; age }) { name # " is " # Nat.toText(age) # " years old." };
     };
@@ -77,12 +78,12 @@ func describePerson(person: Person): Text {
 Variants represent tagged union types, allowing structured handling of multiple possible cases.
 
 ```motoko no-repl
-type Status = { #ok; #error: Text };
+type Status = { #ok; #error : Text };
 
-func processStatus(status: Status): Text {
-    switch (status) {
+func processStatus(status : Status): Text {
+    switch status {
         case (#ok) { "Success" };
-        case (#error (msg)) { "Error: " # msg };
+        case (#error message) { "Error: " # message };
     };
 };
 ```
