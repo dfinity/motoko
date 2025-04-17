@@ -11503,6 +11503,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e2 ^^
     BigNum.compile_rsh env
 
+  | OtherPrim ("explode_Nat16" | "explode_Int16"), [e] ->
+    SR.UnboxedTuple 2,
+    let set, get = new_local env "e" in
+    compile_exp_vanilla env ae e ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF000000l ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shl_const 8l ^^
+    TaggedSmallWord.tag env Type.Nat8
+
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
