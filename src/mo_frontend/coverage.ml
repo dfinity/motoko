@@ -300,16 +300,18 @@ and match_tup ctxt descs_r descs pats ts sets =
     match_pat (InTup (ctxt, descs_r, descs', pats', ts')) desc pat t sets
   | _ ->
     assert false
-    
+
 and match_obj ctxt ldescs (pat_fields : pat_field list) tfs sets =
   match pat_fields with
   | [] -> succeed ctxt (Obj ldescs) sets
-  | pat_field::pat_fields' ->
-    let l = pat_field.it.id.it in
+  | {it = VarPF(id, p); _}::pat_fields' ->
+    let l = id.it in
     let tf = List.find (fun tf -> tf.T.lab = l) tfs in
     let desc = LabMap.find l ldescs in
     match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs))
-      desc pat_field.it.pat tf.T.typ sets
+      desc p tf.T.typ sets
+  | {it = TypPF(_); _}::pat_fields' ->
+     match_obj ctxt ldescs pat_fields' tfs sets
 
 and succeed ctxt desc sets : bool =
   match ctxt with

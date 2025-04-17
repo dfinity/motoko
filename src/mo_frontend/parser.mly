@@ -886,9 +886,11 @@ pat :
 
 pat_field :
   | x=id t=annot_opt
-    { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
+    { VarPF(x, annot_pat (VarP x @! x.at) t) @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
-    { {id = x; pat = annot_pat p t} @@ at $sloc }
+    { VarPF(x, annot_pat p t) @@ at $sloc }
+  | TYPE x=id
+    { TypPF(x) @@ at $sloc }
 
 pat_opt :
   | p=pat_plain

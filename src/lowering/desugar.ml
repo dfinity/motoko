@@ -1017,7 +1017,9 @@ and lit = function
 
 and pat_fields pfs = List.map pat_field pfs
 
-and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf
+(* and pat_field pf = phrase (fun S.{id; pat=p} -> I.{name=id.it; pat=pat p}) pf *)
+and pat_field pf = phrase (function
+                       | S.VarPF(id, p) -> I.{name=id.it; pat=pat p}) pf
 
 and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) * T.control * T.typ list =
 
