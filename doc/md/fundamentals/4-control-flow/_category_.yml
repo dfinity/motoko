@@ -1,5 +1,4 @@
-position: 8
-label: 'Motoko base library'
+position: 4
+label: 'Control flow'
 collapsible: true # make the category collapsible
 collapsed: true 
-

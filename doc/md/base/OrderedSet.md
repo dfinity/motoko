@@ -53,7 +53,7 @@ actor {
     usedIds := natSet.put(usedIds, id);
   };
   
-  public func idIsUsed(id: Nat) : async Bool {
+  public func idIsUsed(id : Nat) : async Bool {
      natSet.contains(usedIds, id)
   }
 }
