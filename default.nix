@@ -363,9 +363,12 @@ rec {
       };
 
     acceptable_subdir = accept: dir: deps:
-      testDerivation ({name = dir;
+      let drun-dir = dir == "run-drun"; in
+      testDerivation ({
+        name = dir;
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
+        __contentAddressed = drun-dir;
 
         checkPhase = ''
             patchShebangs .
@@ -373,17 +376,16 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}${nixpkgs.lib.optionalString (dir == "run-drun") " RUNFLAGS=-dn"}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}${nixpkgs.lib.optionalString drun-dir " RUNFLAGS=-dn"}
           '';
       } // nixpkgs.lib.optionalAttrs accept {
         installPhase = nixpkgs.lib.optionalString accept ''
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
-      } // nixpkgs.lib.optionalAttrs (dir == "run-drun") {
+      } // nixpkgs.lib.optionalAttrs drun-dir {
         postInstall = ''
           ls $out/*.drun-run
-
         '';
       });
 
