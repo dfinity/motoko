@@ -28,10 +28,26 @@ in a check-out of the `motoko` repository.
 
 ## Development using Nix
 
-To enter a shell with the necessary dependencies available, use
+To enter a shell with the necessary dependencies available,
+either run:
+
 ```
-$ nix-shell
+$ nix develop
 ```
+
+Or use `direnv` by:
+
+* Installing: [direnv](https://direnv.net/).
+
+* Installing: [nix-direnv](https://github.com/nix-community/nix-direnv).
+
+* `cd` to this directory.
+
+* `direnv allow` (only needs to be done once).
+
+Then all tools to develop Motoko will be loaded automatically everytime you `cd`
+to this directory or everytime you update `flake.{nix,lock}`.
+
 (The first shell start may take several minutes, afterwards being much faster.)
 
 Within this shell you can run
@@ -48,7 +64,7 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 
 A good way to check that everything is fine, i.e. if this will pass CI, is to run
 ```
-$ nix-build --no-out-link
+$ nix build --no-link
 ```
 
 For more details on our CI and CI setup, see `CI.md`.

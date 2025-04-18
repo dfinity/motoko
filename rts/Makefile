@@ -238,8 +238,8 @@ $(RTS_RUST_DEBUG_WASM_64_A): $(RTS_DEPENDENCIES_64)
 #
 
 TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS_32)
-TEST_BUILD_32=cd motoko-rts-tests && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target=wasm32-wasi
-TEST_RUN_32=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_BUILD_32=cd motoko-rts-tests && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target=wasm32-wasip1
+TEST_RUN_32=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasip1/debug/motoko-rts-tests.wasm
 
 TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS_64)
 TEST_BUILD_64=cd motoko-rts-tests && RUSTFLAGS="${RTS_COMPILE_FLAGS}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
