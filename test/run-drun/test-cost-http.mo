@@ -43,7 +43,7 @@ actor client {
   // Cycles.refunded()  = 0
   // 20_855_101_978 -- Cycles.balance() diff
   public func go() : async () {
-    let request = {
+    let request : http_request = {
       url = "https://ic0.app";
       method = #get;
       headers = [];
@@ -59,7 +59,29 @@ actor client {
       print("already topped up; balance = " # debug_show (Cycles.balance()));
     };
 
+    let headers = [{ name = "x-test"; value = "test" }];
+    let body = ?[1, 2, 3] : ?[Nat8];
+    let max_response_bytes = ?1_000 : ?Nat64;
+    let transform = ?{
+      function = transformFunction;
+      context = [23, 41, 13, 6, 17] : [Nat8];
+    };
+
     await test(request);
+    await test({ request with headers });
+    await test({ request with body });
+    await test({ request with max_response_bytes });
+    await test({ request with headers; body; max_response_bytes });
+    // await test({ request with transform }); // TODO: This is not working
+    // await test({ request with headers; body; max_response_bytes; transform });
+  };
+
+  public shared query func transformFunction({
+    context : [Nat8];
+    response : http_response;
+  }) : async http_response {
+    ignore context;
+    { response with body = []; headers = []; status = 200 };
   };
 
   func printCycles() {
@@ -69,7 +91,14 @@ actor client {
   };
 
   func test(request : http_request) : async () {
-    print("test request:\n" # debug_show ({ url = request.url; method = request.method; headers = request.headers; body = request.body; max_response_bytes = request.max_response_bytes }));
+    let transformToPrint = switch (request.transform) {
+      case (?{ function; context }) ?{
+        function = to_candid (function);
+        context;
+      };
+      case null null;
+    };
+    print("test request:\n" # debug_show ({ url = request.url; method = request.method; headers = request.headers; body = request.body; max_response_bytes = request.max_response_bytes; transform = transformToPrint }));
 
     let requestSize : Nat64 = calculateRequestSize(request);
     print(debug_show (requestSize) # " -- calculated request size");
@@ -122,7 +151,7 @@ actor client {
     switch (request.transform) {
       case (?transform) {
         size += Prim.natToNat64(transform.context.size());
-        let blob = to_candid(transform.function); // How to get the method name length otherwise?
+        let blob = to_candid (transform.function); // How to get the method name length otherwise?
         size += Prim.natToNat64(blob.size());
       };
       case null {};
