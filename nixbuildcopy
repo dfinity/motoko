@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+out="$(./nixbuild $@ --json | jq '.[0].outputs.out' -r)"
+nix copy --from ssh-ng://eu.nixbuild.net "$out"
+echo "$out"
