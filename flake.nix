@@ -2,7 +2,11 @@
   description = "The Motoko compiler";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
+    # This is a recent commit from release-24.11. The reason we don't just specify release-24.11 is
+    # that Hydra hasn't built all packages for darwin yet. So we manually use a slightly older
+    # commit where things like LLVM have been built already. See:
+    # https://hydra.nixos.org/job/nixpkgs/nixpkgs-24.11-darwin/llvm.aarch64-darwin
+    nixpkgs.url = "github:NixOS/nixpkgs/5051ae6744b993fcfab221e8bd38f8bc26f88393";
     flake-utils.url = "github:numtide/flake-utils";
 
     nix-update-flake.url = "github:Mic92/nix-update";
