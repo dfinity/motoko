@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/getting-started/dev-env.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/getting-started/dev-env.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#developer-environment"
+id="toc-developer-environment">Developer environment</a>
+<ul>
+<li><a href="#cloud-environments" id="toc-cloud-environments">Cloud
+environments</a></li>
+<li><a href="#container-environments"
+id="toc-container-environments">Container environments</a></li>
+<li><a href="#motoko-playground" id="toc-motoko-playground">Motoko
+playground</a></li>
+<li><a href="#local-developer-environment"
+id="toc-local-developer-environment">Local developer
+environment</a></li>
+<li><a href="#motoko-version" id="toc-motoko-version">Motoko
+version</a></li>
+<li><a href="#custom-developer-environment"
+id="toc-custom-developer-environment">Custom developer environment</a>
+<ul>
+<li><a href="#specifying-a-custom-version-of-the-compiler"
+id="toc-specifying-a-custom-version-of-the-compiler">Specifying a custom
+version of the compiler</a></li>
+</ul></li>
+<li><a href="#specifying-a-custom-version-of-the-base-library"
+id="toc-specifying-a-custom-version-of-the-base-library">Specifying a
+custom version of the base library</a>
+<ul>
+<li><a href="#specifying-a-custom-version-of-dfx"
+id="toc-specifying-a-custom-version-of-dfx">Specifying a custom version
+of <code>dfx</code></a></li>
+<li><a href="#pass-flags-to-moc-in-dfxjson"
+id="toc-pass-flags-to-moc-in-dfxjson">Pass flags to <code>moc</code> in
+<code>dfx.json</code></a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="developer-environment">Developer environment</h1>
+<p>To develop and deploy Motoko canister smart contracts, you will need
+a developer environment that contains the Motoko compiler and base
+library. It is recommended to use the <a
+href="https://github.com/dfinity/sdk#readme">IC SDK</a>, which includes
+Motoko, along with <code>dfx</code>, a command-line tool used to create,
+build, and deploy canisters on ICP.</p>
+<p>Developer environments come in several types and formats, making
+developing flexible and accessible.</p>
+<h2 id="cloud-environments">Cloud environments</h2>
+<p><a href="https://www.gitpod.io/">Gitpod</a> and <a
+href="https://github.com/features/codespaces">GitHub Codespaces</a> are
+browser-based development environments that can be used to build, test,
+and run Motoko smart contracts.</p>
+<p>Here are some starter projects for online Motoko canister
+development:</p>
+<ul>
+<li><a
+href="https://github.com/dfinity/icp-hello-world-motoko#readme">ICP
+Hello World Motoko</a></li>
+<li><a href="https://github.com/rvanasa/vite-react-motoko#readme">Vite +
+React + Motoko</a></li>
+</ul>
+<p>Learn more about <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/gitpod">Gitpod</a>
+and <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/codespaces">GitHub
+Codespaces</a> for Motoko development.</p>
+<h2 id="container-environments">Container environments</h2>
+<p>Developers may want to setup a containerized environment for Motoko
+and other ICP-related development. Container environments are especially
+useful for Windows-based systems, since <code>dfx</code> is not natively
+supported on Windows.</p>
+<p>Learn more about <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/dev-containers">developer
+containers</a> and <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/dev-containers#using-docker-directly">Docker
+containers</a> for Motoko development.</p>
+<h2 id="motoko-playground">Motoko playground</h2>
+<p><a href="https://play.motoko.org/">Motoko playground</a> is a
+browser-based developer environment that allows for temporary deployment
+and testing of canister smart contracts. Motoko playground can also be
+utilized through the <code>dfx deploy --playground</code> command via
+the CLI.</p>
+<p>Canisters deployed to the Motoko playground use borrowed resources
+from a canister pool and are limited to a deployment length of 20
+minutes. Therefore, the playground is not recommended for long-term
+development.</p>
+<p>Learn more about the <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/ide/playground">Motoko
+playground</a>.</p>
+<h2 id="local-developer-environment">Local developer environment</h2>
+<p>Before you start developing Motoko, verify the following:</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" checked="" />You have an internet
+connection and access to a shell terminal on your local macOS or Linux
+computer.</label></p></li>
+<li><p><label><input type="checkbox" checked="" />You have a command
+line interface (CLI) window open. This window is also referred to as the
+'terminal' window.</label></p></li>
+<li><p><label><input type="checkbox" checked="" />You have downloaded
+and installed the IC SDK package as described in the <a
+href="https://internetcomputer.org/docs/current/developer-docs/getting-started/install">installing
+the IC SDK</a> page.</label></p></li>
+<li><p><label><input type="checkbox" checked="" />You have a code editor
+installed. The <a href="https://code.visualstudio.com/download">VS Code
+IDE</a> (with the <a
+href="https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko">Motoko
+extension</a>) is a popular choice.</label></p></li>
+<li><p><label><input type="checkbox" checked="" />You have downloaded
+and installed <a
+href="https://git-scm.com/downloads">git</a>.</label></p></li>
+<li><p><label><input type="checkbox" checked="" />Assure that all
+packages and tools above are updated to the latest release
+versions.</label></p></li>
+</ul>
+<h2 id="motoko-version">Motoko version</h2>
+<p>The following table details which version of Motoko shipped with each
+major version of the IC SDK.</p>
+<table>
+<thead>
+<tr class="header">
+<th>IC SDK version</th>
+<th>Motoko version</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.20.0</td>
+<td>0.11.1</td>
+</tr>
+<tr class="even">
+<td>0.19.0</td>
+<td>0.11.1</td>
+</tr>
+<tr class="odd">
+<td>0.18.0</td>
+<td>0.11.0</td>
+</tr>
+<tr class="even">
+<td>0.17.0</td>
+<td>0.10.4</td>
+</tr>
+<tr class="odd">
+<td>0.16.0</td>
+<td>0.10.4</td>
+</tr>
+<tr class="even">
+<td>0.15.0</td>
+<td>0.9.7</td>
+</tr>
+<tr class="odd">
+<td>0.14.0</td>
+<td>0.8.7</td>
+</tr>
+<tr class="even">
+<td>0.13.0</td>
+<td>0.7.6</td>
+</tr>
+<tr class="odd">
+<td>0.12.0</td>
+<td>0.7.3</td>
+</tr>
+<tr class="even">
+<td>0.11.0</td>
+<td>0.6.29</td>
+</tr>
+<tr class="odd">
+<td>0.10.0</td>
+<td>0.6.26</td>
+</tr>
+<tr class="even">
+<td>0.9.0</td>
+<td>0.6.20</td>
+</tr>
+<tr class="odd">
+<td>0.8.0</td>
+<td>0.6.5</td>
+</tr>
+<tr class="even">
+<td>0.7.0</td>
+<td>0.6.1</td>
+</tr>
+</tbody>
+</table>
+<p>You can find out which version of Motoko shipped with a version of
+the IC SDK through the following file:</p>
+<pre><code>https://github.com/dfinity/sdk/blob/&lt;VERSION&gt;/nix/sources.json#L144</code></pre>
+<p>Replace <code>&lt;VERSION&gt;</code> with the IC SDK release version,
+such as <code>0.14.2</code>.</p>
+<h2 id="custom-developer-environment">Custom developer environment</h2>
+<h3 id="specifying-a-custom-version-of-the-compiler">Specifying a custom
+version of the compiler</h3>
+<p>To specify a custom version of the Motoko compiler to be used with
+<code>dfx</code>, you can use the package manager <code>mops</code> or
+<code>vessel</code>.</p>
+<p>For <code>mops</code>, use the following command to download a
+different version of the Motoko compiler (<code>moc</code>):</p>
+<pre><code>mops toolchain use moc 0.10.3</code></pre>
+<p>For <code>vessel</code>, set the following environment variable:</p>
+<pre><code>DFX_MOC_PATH=&quot;$(vessel bin)/moc&quot; dfx deploy</code></pre>
+<h2 id="specifying-a-custom-version-of-the-base-library">Specifying a
+custom version of the base library</h2>
+<p>To specify a custom version of the Motoko base library to be used
+with <code>dfx</code>, you can use the package manager <code>mops</code>
+with the following command:</p>
+<pre><code>mops add base@&lt;VERSION&gt;</code></pre>
+<p>For example, to use base library version <code>0.9.0</code>, use the
+command:</p>
+<pre><code>mops add base@0.9.0</code></pre>
+<h3 id="specifying-a-custom-version-of-dfx">Specifying a custom version
+of <code>dfx</code></h3>
+<p>To specify a custom version of <code>dfx</code>, you can use the <a
+href="https://internetcomputer.org/docs/current/developer-docs/developer-tools/cli-tools/dfxvm/docs/cli-reference/dfxvm/dfxvm-default"><code>dfxvm</code>
+tool</a>. To set a default <code>dfx</code> version to be used in your
+project, run the command:</p>
+<pre><code>$ dfxvm default 0.7.2
+...
+info: installed dfx 0.7.2
+info: set default version to dfx 0.7.2</code></pre>
+<h3 id="pass-flags-to-moc-in-dfxjson">Pass flags to <code>moc</code> in
+<code>dfx.json</code></h3>
+<p>You can pass flags directly to <code>moc</code> by adding an
+<code>args</code> field in your Motoko canister's description in your
+project's <code>dfx.json</code> file:</p>
+<p>Here is an example <code>dfx.json</code> canister configuration that
+uses <code>args</code>:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="er">...</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="er">&quot;canisters&quot;:</span> <span class="fu">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;hello&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;type&quot;</span><span class="fu">:</span> <span class="st">&quot;motoko&quot;</span><span class="fu">,</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;main&quot;</span><span class="fu">:</span> <span class="st">&quot;src/hello/main.mo&quot;</span><span class="fu">,</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;args&quot;</span><span class="fu">:</span> <span class="st">&quot;-v --incremental-gc&quot;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">},</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="er">...</span></span></code></pre></div>
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+</body>
+</html>
