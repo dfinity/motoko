@@ -69,7 +69,7 @@ actor client {
   };
 
   func test(request : http_request) : async () {
-    print("test request: " # debug_show ({ url = request.url; method = request.method; headers = request.headers; body = request.body; max_response_bytes = request.max_response_bytes }));
+    print("test request:\n" # debug_show ({ url = request.url; method = request.method; headers = request.headers; body = request.body; max_response_bytes = request.max_response_bytes }));
 
     let requestSize : Nat64 = calculateRequestSize(request);
     print(debug_show (requestSize) # " -- calculated request size");
@@ -82,11 +82,21 @@ actor client {
 
     let before = Cycles.balance();
     printCycles();
-    let response = await (with cycles = cost) ic00.http_request(request);
+    let response = await (with cycles = cost) ic00.http_request(request); // This call should succeed, it should be enough cycles
     let after = Cycles.balance();
     print("response: " # debug_show (response));
     printCycles();
     print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
+
+    // Try the same request with less cycles, it should fail
+    try {
+      let _ = await (with cycles = cost - 1) ic00.http_request(request);
+      assert false; // Should not happen
+    } catch (e) {
+      print("error code: " # debug_show (Prim.errorCode(e)));
+      print("error message: " # debug_show (Prim.errorMessage(e)));
+    };
+    print("---");
   };
 
   /// [Source](https://github.com/dfinity/cdk-rs/pull/570/files#diff-c415c9ec7f29503dcb76e31fcac3062b0311cc0705f9159c1dfe3cd3308957b7R425)
