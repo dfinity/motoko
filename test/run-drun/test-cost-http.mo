@@ -30,21 +30,18 @@ actor client {
   };
 
   // Local replica output:
+  // already topped up; balance = 2_958_813_055_523
+  // test request: {body = null; headers = []; max_response_bytes = null; method = #get; url = "https://ic0.app"}
   // 15 -- calculated request size
-  // 1_603_066_000 -- http cost request
-  // 1_603_060_000 -- http cost request (with requestSize = 0)
-  // 1_603_260_000 -- http cost request (with requestSize = 500)
-  // 1_603_660_000 -- http cost request (with requestSize = 1500)
-  // 2_003_060_000 -- http cost request (with requestSize = 1_000_000)
-  // already topped up; balance = 3_058_372_523_503
-  // Cycles.balance()   = 3_058_372_523_503
+  // 20_849_218_000 -- http cost request
+  // Cycles.balance()   = 2_916_705_501_695
   // Cycles.available() = 0
   // Cycles.refunded()  = 0
-  // response: {body = []; headers = [{name = "location"; value = "https://dashboard.internetcomputer.org/"}, {name = "strict-transport-security"; value = "max-age=31536000; includeSubDomains"}, {name = "x-request-id"; value = "019633af-09b9-78e2-bb9e-92fd2d3c0a95"}, {name = "content-length"; value = "0"}, {name = "date"; value = "Mon, 14 Apr 2025 09:43:50 GMT"}]; status = 307}
-  // Cycles.balance()   = 3_056_768_993_225
+  // response: {body = []; headers = [{name = "location"; value = "https://dashboard.internetcomputer.org/"}, {name = "strict-transport-security"; value = "max-age=31536000; includeSubDomains"}, {name = "x-request-id"; value = "01964982-51da-77a0-8904-8ee869ccc1ec"}, {name = "content-length"; value = "0"}, {name = "date"; value = "Fri, 18 Apr 2025 15:26:38 GMT"}]; status = 307}
+  // Cycles.balance()   = 2_895_850_399_717
   // Cycles.available() = 0
-  // Cycles.refunded()  = 198_396_934_000
-  // 1_603_530_278 -- Cycles.balance() diff
+  // Cycles.refunded()  = 0
+  // 20_855_101_978 -- Cycles.balance() diff
   public func go() : async () {
     let request = {
       url = "https://ic0.app";
@@ -54,14 +51,6 @@ actor client {
       transform = null;
       max_response_bytes = null;
     };
-    let requestSize : Nat64 = calculateRequestSize(request);
-    print(debug_show (requestSize) # " -- calculated request size");
-    let defaultMaxResBytes : Nat64 = 2_000_000; // default when max_response_bytes is null
-    print(debug_show (Prim.costHttpRequest(requestSize, defaultMaxResBytes)) # " -- http cost request");
-    print(debug_show (Prim.costHttpRequest(0, defaultMaxResBytes)) # " -- http cost request (with requestSize = 0)");
-    print(debug_show (Prim.costHttpRequest(500, defaultMaxResBytes)) # " -- http cost request (with requestSize = 500)");
-    print(debug_show (Prim.costHttpRequest(1500, defaultMaxResBytes)) # " -- http cost request (with requestSize = 1500)");
-    print(debug_show (Prim.costHttpRequest(1_000_000, defaultMaxResBytes)) # " -- http cost request (with requestSize = 1_000_000)");
 
     if (Cycles.balance() < 200_000_000_000) {
       await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
@@ -70,13 +59,7 @@ actor client {
       print("already topped up; balance = " # debug_show (Cycles.balance()));
     };
 
-    let before = Cycles.balance();
-    printCycles();
-    let response = await (with cycles = 200_000_000_000) ic00.http_request(request);
-    let after = Cycles.balance();
-    print("response: " # debug_show (response));
-    printCycles();
-    print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
+    await test(request);
   };
 
   func printCycles() {
@@ -85,34 +68,57 @@ actor client {
     print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
   };
 
+  func test(request : http_request) : async () {
+    print("test request: " # debug_show ({ url = request.url; method = request.method; headers = request.headers; body = request.body; max_response_bytes = request.max_response_bytes }));
+
+    let requestSize : Nat64 = calculateRequestSize(request);
+    print(debug_show (requestSize) # " -- calculated request size");
+    let defaultMaxResBytes : Nat64 = switch (request.max_response_bytes) {
+      case (?max_response_bytes) max_response_bytes;
+      case null 2_000_000;
+    };
+    let cost = Prim.costHttpRequest(requestSize, defaultMaxResBytes);
+    print(debug_show (cost) # " -- http cost request");
+
+    let before = Cycles.balance();
+    printCycles();
+    let response = await (with cycles = cost) ic00.http_request(request);
+    let after = Cycles.balance();
+    print("response: " # debug_show (response));
+    printCycles();
+    print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
+  };
+
   /// [Source](https://github.com/dfinity/cdk-rs/pull/570/files#diff-c415c9ec7f29503dcb76e31fcac3062b0311cc0705f9159c1dfe3cd3308957b7R425)
   func calculateRequestSize(request : http_request) : Nat64 {
     var size : Nat64 = 0;
-    
+
     // Add URL byte length
     size += Prim.natToNat64(request.url.size());
-    
+
     // Add headers byte length (sum of all names and values)
     for (header in request.headers.vals()) {
       size += Prim.natToNat64(header.name.size());
       size += Prim.natToNat64(header.value.size());
     };
-    
+
     // Add body length if present
     switch (request.body) {
       case (?body) { size += Prim.natToNat64(body.size()) };
       case null {};
     };
-    
+
     // Add transform context length if present
     switch (request.transform) {
       case (?transform) {
         size += Prim.natToNat64(transform.context.size());
+        let blob = to_candid(transform.function); // How to get the method name length otherwise?
+        size += Prim.natToNat64(blob.size());
       };
       case null {};
     };
-    
-    size
+
+    size;
   };
 };
 
