@@ -21,6 +21,12 @@ var username : ?Text = null;
 
 `username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
 
+:::info [Null semantics]
+
+`null` is only valid as a value of an optional type (`?T`). This makes it closer to `None` in Rust, Scala, or Haskell — where the compiler enforces explicit handling of missing values.
+
+:::
+
 ### Checking for presence
 
 To determine if an option contains a value, `Option.isSome` returns `true` if it is not `null`.
@@ -60,7 +66,21 @@ let result1 = safeDivide(10, 2); // ?5
 let result2 = safeDivide(10, 0); // null
 ```
 
-This example prevents division errors from interrupting program execution.
+To safely extract values from options, use the `let ... else` pattern. This is often preferred and encoraged over nested `switch` expressions when a fallback is needed.
+
+For example, here’s a simple implementation of an option helper:
+
+```motoko no-repl
+func get<T>(option : ?T, defaultValue : T) : T {
+  let ?value = option else return defaultValue;
+  return value;
+};
+
+assert get(?"A", "B") == "A";
+assert get(null, "B") == "B";
+```
+
+This idiom improves readability and ensures fallback logic is always handled.
 
 ### Applying transformations to options
 
@@ -150,9 +170,9 @@ import Nat "mo:base/Nat";
 
 func divide(a : Nat, b : Nat) : Result.Result<Nat, Text> {
     if (b == 0) {
-        return #err("Cannot divide by zero");
+        #err("Cannot divide by zero");
     };
-    return #ok(a / b);
+    #ok(a / b);
 };
 ```
 

@@ -22,6 +22,10 @@ The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is
 let ghost : (Text, Nat) = ("Motoko", 25);
 ```
 
+:::info [Support for one length tuples]
+Motoko **does not** support length-one tuples. This is in contrast to languages such as Python, where a trailing comma differentiates a single-element tuple from a simple parenthesized value. In Motoko, `(x)` is always just `x`.
+:::
+
 ## Accessing elements
 
 Elements are accessed using `.n` where `n` is the index (0-based indexing).

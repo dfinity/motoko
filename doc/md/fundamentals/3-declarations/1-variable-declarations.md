@@ -11,9 +11,9 @@ In Motoko, variables are declared using either `let` (immutable) or `var` (mutab
 | Reassignment           | Not allowed | Allowed |
 | Value modification     | Cannot be updated after assignment. | Can be updated after assignment. |
 
-| Persistence in actors  | Retained unless assigned a mutable value. | Allowed with `stable var`. |
-| Upgrade behavior       | Persists unless holding a `var` reference. | Must be explicitly marked `stable` to persist. |
-| Compiler optimization  | More optimal | Less optimal |
+In `persistent` actors, the values of `let` and `var` declarations are automatically preserved across upgrades, unless explicitly marked as `transient`. In non-`persistent` actors, these values are not retained unless marked as `stable`.  
+The `persistent` keyword simply treats all `let` and `var` declarations as `stable` by default.  
+Motoko encourages a programming style that favours immutability(using `let` over `var`), aligning with functional programming principles.
 
 ## Immutable variables
 
@@ -24,8 +24,6 @@ let x = 10;
 x := 20; // Error: Cannot assign to immutable variable
 ```
 
-
-
 ## Mutable variables
 
 A `var` declaration refers to a variable whose value can be updated. Unlike `let`, `var` allows reassignment.
@@ -35,3 +33,17 @@ var y = 10;
 y := 20; // Allowed, updates the value of y
 ```
 
+:::info
+Mutable variables declared with `var` do not support pattern matching. For example, the following is invalid:
+
+```motoko no-repl
+var (a, b) = (1, 2); // Not supported
+```
+
+In contrast, `let` bindings do support pattern matching:
+
+```motoko
+let (a, b) = (1, 2); // Supported
+```
+
+:::
