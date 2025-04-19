@@ -8,39 +8,48 @@ A class in Motoko is a blueprint for creating [objects](https://internetcomputer
 
 ## Defining a class
 
-A class is declared using the `class` keyword. It includes:
+A class in Motoko defines both:
 
-- Fields to store data.
-- Methods to perform operations.
-- A constructor to initialize instance values.
+- A constructor for creating instances.
+  - Fields to store data.
+  - Methods to perform operations.
+- A type describing the instance’s methods.
+
+Generic classes can be used to abstract over types, enabling reusable and type-safe definitions.
 
 ```motoko no-repl
-// Define parameters that initialize the instance.
-class Ghost(name : Text, age : Nat) {
+// A generic comparator class for ordering elements
+class Comparator<T>(compare : (T, T) -> O.Order) {
 
-    // Returns a message
-    public func greet() : Text {
-        "Hello, my name is " # name # " and I am " # Nat.toText(age) # " years old."
-    };
+  public func lessThan(a : T, b : T) : Bool {
+    compare(a, b) == #less;
+  };
+
+  public func equal(a : T, b : T) : Bool {
+    compare(a, b) == #equal;
+  };
+
+  public func greaterThan(a : T, b : T) : Bool {
+    compare(a, b) == #greater;
+  };
 };
 ```
 
+This declaration creates:
+
+- A constructor: `Comparator : ((K, K) -> Order) -> Comparator<K>`.
+- A generic type: `Comparator<K>` that provides comparison methods.
+
 ## Creating instances
 
-To create an instance of a class, call the **constructor** using the class name.
-
 ```motoko no-repl
-class Ghost(name : Text, age : Nat) {
-    public func greet() : Text {
-        "Hello, my name is " # name # " and I am " # Nat.toText(age) # " years old."
-    };
-};
+import Nat "mo:base/Nat";
 
-// Creates a new instance of Ghost
-let motoko = Ghost("Motoko", 30);
+let natComp = Comparator.Comparator<Nat>(Nat.compare);
 
-// Called on the instance motoko
-Debug.print(motoko.greet());
+assert natComp.lessThan(3, 5);
+assert natComp.equal(4, 4);
+assert not natComp.greaterThan(1, 2);
 ```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

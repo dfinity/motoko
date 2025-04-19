@@ -54,9 +54,6 @@ Both methods achieve the same result, but `array.values()` is often preferred fo
 
 The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
 
-}
-```
-
 ### Using a `for` loop
 
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
@@ -173,6 +170,10 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
 
 The function `Array.foldLeft` combines the squares in the row into a single text string, which can then be printed.
 
+:::note
+`Array.foldRight` is also available.
+:::
+
 ``` md
 ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
 ♟ ♟ ♟ ♟ ♟ ♟ ♟ ♟
@@ -183,7 +184,6 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 ♙ ♙ ♙ ♙ ♙ ♙ ♙ ♙
 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
 ```
-
 
 ## Resources
 

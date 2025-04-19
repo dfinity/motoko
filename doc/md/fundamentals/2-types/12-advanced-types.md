@@ -63,9 +63,9 @@ let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
 func reverse(l : List.List<Nat>) : List.List<Nat> {
     var current = l;
-    var rev = List.nil<Nat>();
+    var rev = List.empty<Nat>();
 
-    while(not List.isNil(current)){
+    while(not List.isEmpty(current)){
       switch(current) {
         case(?(h, t)) {
           rev := ?(h, rev);

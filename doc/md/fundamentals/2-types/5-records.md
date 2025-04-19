@@ -142,7 +142,7 @@ Since records are immutable by default, updating a record requires creating a mo
 The `and` keyword merges multiple records when they have no conflicting fields.
 
 ```motoko no-repl
-let contact = { email : Text = "alice@example.com"; };
+let contact = { email : Text = "motoko@example.com"; };
 let person = { name : Text = "Motoko"; age : Nat =  25; };
 
 let profile = { person and contact };
@@ -176,7 +176,7 @@ If `person` contained a mutable (`var`) field, `with` must redefine it, preventi
 
 ```motoko no-repl
 let person = {name : Text = "Motoko"; age : Nat = 25};
-let contact = {email : Text = "alice@example.com"};
+let contact = {email : Text = "motoko@example.com"};
 
 // profile and contact merge with and since they have unique fields.
 // age = 26; updates the age field from profile.

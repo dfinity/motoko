@@ -89,6 +89,7 @@ let trigValue = Float.sin(Float.pi / 2); // 1.0
 - [`Int`](https://internetcomputer.org/docs/motoko/base/int)
 - [`Nat`](https://internetcomputer.org/docs/motoko/base/nat)
 - [`Bool`](https://internetcomputer.org/docs/motoko/base/bool)
+- [`Blob`](https://internetcomputer.org/docs/motoko/base/blob)
 - [`Char`](https://internetcomputer.org/docs/motoko/base/char)
 - [`Text`](https://internetcomputer.org/docs/motoko/base/text)
 - [`Float`](https://internetcomputer.org/docs/motoko/base/float)

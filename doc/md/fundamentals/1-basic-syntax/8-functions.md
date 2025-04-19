@@ -27,6 +27,18 @@ public func exampleFunction(x : Nat) : Nat {
 };
 ```
 
+:::info [Understanding function types]
+
+Motoko functions vary by access and behaviour:
+
+- `private` – not exposed outside the namespace(actor, class, module).
+- `public` – makes the function externally callable; can be query or update.
+- `shared` – used to support inter-canister or external calls.
+- `query` – reads data without modifying state.
+- `composite query` – reads state, can call other queries.
+
 [Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
+
+:::
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

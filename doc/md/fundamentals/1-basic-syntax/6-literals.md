@@ -15,6 +15,8 @@ Literals are fixed values written directly in the code.
 
 - **Text literals**: `"Hello"`
 
+- **Blob literals**: Byte sequences using the same syntax as `Text`, such as: `"Motoko"` (interpreted as [UTF-8](https://en.wikipedia.org/wiki/UTF-8) when converted)
+
 You can use literals directly in expressions.
 
 ```motoko

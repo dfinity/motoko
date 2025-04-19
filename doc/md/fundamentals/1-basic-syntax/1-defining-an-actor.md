@@ -24,8 +24,7 @@ actor Main {
 await Main.hello();
 ```
 
-A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) with defined argument and return types. When Motoko code is compiled, this interface is automatically generated in **[Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts)**, an interface description language.
-
+A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically generated in **[Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts)**, an interface description language.
 
 ## Resources
 
