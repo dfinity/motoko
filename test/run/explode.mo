@@ -44,7 +44,3 @@ do {
     let (m, a, b, c, d, e, f, l) = explodeInt64 (-0x1122334455667788);
   assert m == 0xee and a == 0xdd and b == 0xcc and c == 0xbb and d == 0xaa and e == 0x99 and f == 0x88 and l == 0x78
 };
-
-//SKIP run
-//SKIP run-ir
-//SKIP run-low
