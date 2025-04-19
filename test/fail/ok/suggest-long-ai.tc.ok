@@ -104,6 +104,16 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     errorMessage : (e : Error) -> Text;
     exists : <T>(f : T -> Bool) -> Bool;
     exp : (f : Float) -> Float;
+    explodeInt16 : (n : Int16) -> (msb : Nat8, lsb : Nat8);
+    explodeInt32 : (n : Int32) -> (msb : Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeInt64 :
+      (n : Int64) ->
+        (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeNat16 : (n : Nat16) -> (msb : Nat8, lsb : Nat8);
+    explodeNat32 : (n : Nat32) -> (msb : Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeNat64 :
+      (n : Nat64) ->
+        (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8);
     floatAbs : (f : Float) -> Float;
     floatCeil : (f : Float) -> Float;
     floatCopySign : (f : Float, g : Float) -> Float;
