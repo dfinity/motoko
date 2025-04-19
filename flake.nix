@@ -1026,7 +1026,7 @@
       packages = checks // common-constituents // {
         "release" = buildableReleasePackages;
         "debug" = buildableDebugPackages;
-        inherit release-systems-go debug-systems-go nix-update ic-wasm tests;
+        inherit release-systems-go debug-systems-go nix-update ic-wasm tests js;
         inherit (pkgs) nix-build-uncached drun;
         default = release-systems-go;
       };
