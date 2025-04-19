@@ -221,19 +221,19 @@ let prim trap =
   | "explode_Nat32" -> fun _ v k ->
     let n, ff = as_nat32 v, Nat32.(of_int 0xFF) in
     let byte_at p = Nat8 (Nat32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
-    k (Tup [byte_at 24; byte_at 16; byte_at 8; byte_at 0])
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
   | "explode_Int32" -> fun _ v k ->
     let n, ff = as_int32 v, Int_32.(of_int 0xFF) in
     let byte_at p = Nat8 (Int_32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
-    k (Tup [byte_at 24; byte_at 16; byte_at 8; byte_at 0])
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
   | "explode_Nat64" -> fun _ v k ->
     let n, ff = as_nat64 v, Nat64.(of_int 0xFF) in
     let byte_at p = Nat8 (Nat64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
-    k (Tup [byte_at 56; byte_at 48; byte_at 40; byte_at 32; byte_at 24; byte_at 16; byte_at 8; byte_at 0])
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
   | "explode_Int64" -> fun _ v k ->
     let n, ff = as_int64 v, Int_64.(of_int 0xFF) in
     let byte_at p = Nat8 (Int_64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
-    k (Tup [byte_at 56; byte_at 48; byte_at 40; byte_at 32; byte_at 24; byte_at 16; byte_at 8; byte_at 0])
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
 
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
