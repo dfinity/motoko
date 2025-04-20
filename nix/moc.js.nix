@@ -1,4 +1,4 @@
-pkgs: commonBuildInputs: rts:
+{ pkgs, commonBuildInputs, rts }:
 let
   mk = n:
     pkgs.stdenv.mkDerivation {

@@ -1,4 +1,4 @@
-nixpkgs: system: rust-overlay: sources: import nixpkgs {
+{ nixpkgs, system, rust-overlay, sources }: import nixpkgs {
   inherit system;
   overlays = [
     (self: super: { inherit sources; })

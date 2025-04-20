@@ -97,7 +97,7 @@
           wasm-spec-src
           ocaml-recovery-parser-src;
       };
-      pkgs = import ./nix/pkgs.nix nixpkgs system rust-overlay sources;
+      pkgs = import ./nix/pkgs.nix { inherit nixpkgs system rust-overlay sources; };
 
       nix-update = nix-update-flake.packages.${system}.default;
 
@@ -224,7 +224,7 @@
         '';
       };
 
-      rts = import ./nix/rts.nix pkgs llvmEnv;
+      rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
 
       samples = pkgs.stdenv.mkDerivation {
         name = "samples";
@@ -239,9 +239,11 @@
         '';
       };
 
-      js = import ./nix/moc.js.nix pkgs commonBuildInputs rts;
+      js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
-      moPackages = officialRelease: import ./nix/mo-packages.nix pkgs commonBuildInputs rts officialRelease;
+      moPackages = officialRelease: import ./nix/mo-packages.nix {
+        inherit pkgs commonBuildInputs rts officialRelease;
+      };
       releaseMoPackages = moPackages true;
       debugMoPackages = moPackages false;
 
@@ -365,13 +367,15 @@
           ++ builtins.attrValues js;
       };
 
-      filterTests = type:
-        pkgs.lib.filterAttrs (name: _drv:
-          let matchDebug = builtins.match ".*-debug$" name;
-          in {
-            "debug" = matchDebug != null;
-            "release" = matchDebug == null;
-          }.${type});
+      filterTests = type: tests:
+        pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
+          (name: _drv:
+            let matchDebug = builtins.match ".*-debug$" name;
+            in {
+              "debug" = matchDebug != null;
+              "release" = matchDebug == null;
+            }.${type})
+          tests);
 
     in
     {

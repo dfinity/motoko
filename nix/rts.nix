@@ -1,4 +1,4 @@
-pkgs: llvmEnv:
+{ pkgs, llvmEnv }:
 let
   # Build Rust package cargo-vendor-tools
   cargoVendorTools = pkgs.rustPlatform.buildRustPackage rec {

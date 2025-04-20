@@ -1,4 +1,4 @@
-pkgs: commonBuildInputs: rts: officialRelease:
+{ pkgs, commonBuildInputs, rts, officialRelease }:
 let
   is_static = !pkgs.stdenv.isDarwin;
 
