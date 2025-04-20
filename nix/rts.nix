@@ -83,7 +83,7 @@ pkgs.stdenv.mkDerivation {
 
 
     ${llvmEnv}
-    export TOMMATHSRC=${pkgs.libtommath-src}
+    export TOMMATHSRC=${pkgs.sources.libtommath-src}
   '';
 
   doCheck = true;

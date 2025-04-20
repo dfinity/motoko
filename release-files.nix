@@ -14,9 +14,10 @@ let
   releaseVersion = import nix/releaseVersion.nix { pkgs = nixpkgs; inherit officialRelease; };
 
   as_tarball = dir: derivations:
-    nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz" {
-      allowedRequisites = [];
-    } ''
+    nixpkgs.runCommandNoCC "motoko-${releaseVersion}.tar.gz"
+      {
+        allowedRequisites = [ ];
+      } ''
       tmp=$(mktemp -d)
       ${nixpkgs.lib.concatMapStringsSep "\n" (d: "cp -v ${d}/bin/* $tmp") derivations}
       chmod 0755 $tmp/*
@@ -24,14 +25,15 @@ let
     '';
 
   as_js = name: derivation:
-    nixpkgs.runCommandNoCC "${name}-${releaseVersion}.js" {
-      allowedRequisites = [];
-    } ''
+    nixpkgs.runCommandNoCC "${name}-${releaseVersion}.js"
+      {
+        allowedRequisites = [ ];
+      } ''
       cp -v ${derivation}/bin/*.min.js $out
     '';
 
   release =
-    nixpkgs.runCommandNoCC "motoko-release-${releaseVersion}" {} ''
+    nixpkgs.runCommandNoCC "motoko-release-${releaseVersion}" { } ''
       mkdir $out
       cp ${as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-Linux-x86_64-${releaseVersion}.tar.gz
       cp ${as_tarball "aarch64-linux" (with linuxArm; [ mo-ide mo-doc moc ])} $out/motoko-Linux-aarch64-${releaseVersion}.tar.gz
