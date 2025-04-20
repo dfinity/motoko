@@ -4,7 +4,7 @@
   inputs = {
     # Check the following to see how up-to-date Hydra is:
     # https://hydra.nixos.org/job/nixpkgs/nixpkgs-24.11-darwin/llvm.aarch64-darwin
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
     flake-utils.url = "github:numtide/flake-utils";
 
     nix-update-flake.url = "github:Mic92/nix-update";
