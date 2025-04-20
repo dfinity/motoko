@@ -99,7 +99,23 @@
       };
       pkgs = import ./nix/pkgs.nix { inherit nixpkgs system rust-overlay sources; };
 
-      nix-update = nix-update-flake.packages.${system}.default;
+      llvmEnv = ''
+        # When compiling to wasm, we want to have more control over the flags,
+        # so we do not use the nix-provided wrapper in clang
+        export WASM_CLANG="clang-18"
+        export WASM_LD=wasm-ld
+        # because we use the unwrapped clang, we have to pass in some flags/paths
+        # that otherwise the wrapped clang would take care for us
+        export WASM_CLANG_LIB="${pkgs.llvmPackages_18.clang-unwrapped.lib}"
+
+        # When compiling natively, we want to use `clang` (which is a nixpkgs
+        # provided wrapper that sets various include paths etc).
+        # But for some reason it does not handle building for Wasm well, so
+        # there we use plain clang-18. There is no stdlib there anyways.
+        export CLANG="${pkgs.clang_18}/bin/clang"
+      '';
+
+      rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
 
       commonBuildInputs = pkgs: with pkgs; [ dune_3 obelisk perl removeReferencesTo ] ++ (with ocamlPackages; [
         ocaml
@@ -125,53 +141,33 @@
         uucp
       ]);
 
-      llvmEnv = ''
-        # When compiling to wasm, we want to have more control over the flags,
-        # so we do not use the nix-provided wrapper in clang
-        export WASM_CLANG="clang-18"
-        export WASM_LD=wasm-ld
-        # because we use the unwrapped clang, we have to pass in some flags/paths
-        # that otherwise the wrapped clang would take care for us
-        export WASM_CLANG_LIB="${pkgs.llvmPackages_18.clang-unwrapped.lib}"
-
-        # When compiling natively, we want to use `clang` (which is a nixpkgs
-        # provided wrapper that sets various include paths etc).
-        # But for some reason it does not handle building for Wasm well, so
-        # there we use plain clang-18. There is no stdlib there anyways.
-        export CLANG="${pkgs.clang_18}/bin/clang"
-      '';
-
-      base-src = pkgs.symlinkJoin {
-        name = "base-src";
-        paths = [ "${motoko-base-src}/src" ];
-      };
-
-      rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
-
-      js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
-
       moPackages = officialRelease: import ./nix/mo-packages.nix { inherit pkgs commonBuildInputs rts officialRelease; };
       releaseMoPackages = moPackages true;
       debugMoPackages = moPackages false;
+      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-ide mo-doc didc deser; };
+      buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
+      buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      tests = import ./nix/tests.nix
-        { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
+      tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
 
-      shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages;
-        inherit (checks) check-rts-formatting;
-        inherit (common-constituents) docs;
+      testsFor = type:
+        pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
+          (name: _drv:
+            let matchDebug = builtins.match ".*-debug$" name;
+            in {
+              "debug" = matchDebug != null;
+              "release" = matchDebug == null;
+            }.${type})
+          tests);
+
+      base-src = pkgs.symlinkJoin {
+        name = "base-src";
+        paths = [ "${pkgs.sources.motoko-base-src}/src" ];
       };
 
-      common-constituents = rec {
-        samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-        base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
-        report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
-        docs = import ./nix/docs.nix { inherit pkgs js base-src; };
+      js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
-        inherit rts base-src shell;
-      };
+      docs = import ./nix/docs.nix { inherit pkgs js base-src; };
 
       checks = {
         check-formatting = import ./nix/check-formatting.nix { inherit pkgs; };
@@ -180,10 +176,21 @@
         check-error-codes = import ./nix/check-error-codes.nix { inherit pkgs; };
       };
 
-      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-ide mo-doc didc deser; };
+      nix-update = nix-update-flake.packages.${system}.default;
 
-      buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
-      buildableDebugMoPackages = buildableMoPackages debugMoPackages;
+      shell = import ./nix/shell.nix {
+        inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
+        inherit (checks) check-rts-formatting;
+      };
+
+      common-constituents = rec {
+        samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
+        report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
+
+        inherit rts base-src docs shell;
+      };
 
       # Release version - excludes debug tests
       release-systems-go = pkgs.releaseTools.aggregate {
@@ -192,7 +199,7 @@
           pkgs.lib.attrValues common-constituents ++
           pkgs.lib.attrValues checks ++
           pkgs.lib.attrValues buildableReleaseMoPackages ++
-          filterTests "release" tests  # Only include release tests
+          testsFor "release" # Only include release tests
           ++ builtins.attrValues js;
       };
 
@@ -203,19 +210,9 @@
           pkgs.lib.attrValues common-constituents ++
           pkgs.lib.attrValues checks ++
           pkgs.lib.attrValues buildableDebugMoPackages ++
-          filterTests "debug" tests  # Only include debug tests
+          testsFor "debug"  # Only include debug tests
           ++ builtins.attrValues js;
       };
-
-      filterTests = type: tests:
-        pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
-          (name: _drv:
-            let matchDebug = builtins.match ".*-debug$" name;
-            in {
-              "debug" = matchDebug != null;
-              "release" = matchDebug == null;
-            }.${type})
-          tests);
 
     in
     {
