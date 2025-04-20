@@ -2,11 +2,9 @@
   description = "The Motoko compiler";
 
   inputs = {
-    # This is a recent commit from release-24.11. The reason we don't just specify release-24.11 is
-    # that Hydra hasn't built all packages for darwin yet. So we manually use a slightly older
-    # commit where things like LLVM have been built already. See:
+    # Check the following to see how up-to-date Hydra is:
     # https://hydra.nixos.org/job/nixpkgs/nixpkgs-24.11-darwin/llvm.aarch64-darwin
-    nixpkgs.url = "github:NixOS/nixpkgs/5051ae6744b993fcfab221e8bd38f8bc26f88393";
+    nixpkgs.url = "github:NixOS/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
 
     nix-update-flake.url = "github:Mic92/nix-update";
@@ -16,7 +14,7 @@
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
     candid-src = {
-      url = "github:dfinity/candid/30c388671462aecdc4a3a9753d50dc2e8208c200";
+      url = "github:dfinity/candid";
       flake = false;
     };
     esm = {
@@ -24,11 +22,11 @@
       flake = false;
     };
     ic-src = {
-      url = "github:luc-blaeser/ic/12fec30a322fa5c39d97ea9385f2cdcaa22f6696";
+      url = "github:luc-blaeser/ic/drun/2025-02-27_03";
       flake = false;
     };
     ic-wasm-src = {
-      url = "github:dfinity/ic-wasm/4c52e75c12bb730e795d8a4c2862987f4a9524a3";
+      url = "github:dfinity/ic-wasm";
       flake = false;
     };
     libtommath-src = {
@@ -36,15 +34,15 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/d8896730c77f4ba58fe2f30ef289ba976f1fca0e";
+      url = "github:dfinity/motoko-base/next-moc";
       flake = false;
     };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers/cb838c192df3328ff9ae172e2dc7338cf55e74bf";
+      url = "github:kritzcreek/motoko-matchers";
       flake = false;
     };
     ocaml-vlq-src = {
-      url = "github:flowtype/ocaml-vlq/115bf0fef38018f31ac6386fef17a00bd8307218";
+      url = "github:flowtype/ocaml-vlq";
       flake = false;
     };
     viper-server = {
@@ -56,7 +54,7 @@
       flake = false;
     };
     ocaml-recovery-parser-src = {
-      url = "github:serokell/ocaml-recovery-parser/b8207b0c919b84d5096486e59985d0137c0c4d82";
+      url = "github:serokell/ocaml-recovery-parser";
       flake = false;
     };
   };
