@@ -4,7 +4,7 @@ set -e
 set -o pipefail
 
 # workaround until https://github.com/Lelio-Brun/Obelisk/issues/15
-TEMP_FILE="/tmp/$(basename $1)"
+TEMP_FILE=$(mktemp $(basename $1).XXX)
 cp $1 ${TEMP_FILE}
 sed -i 's/\[@recover\.cost.*\]//' ${TEMP_FILE}
 
