@@ -101,34 +101,29 @@
 
       nix-update = nix-update-flake.packages.${system}.default;
 
-      commonBuildInputs = pkgs:
-        [
-          pkgs.dune_3
-          pkgs.ocamlPackages.ocaml
-          pkgs.ocamlPackages.atdgen
-          pkgs.ocamlPackages.checkseum
-          pkgs.ocamlPackages.findlib
-          pkgs.ocamlPackages.menhir
-          pkgs.ocamlPackages.menhirLib
-          pkgs.ocamlPackages.menhirSdk
-          pkgs.ocamlPackages.ocaml-recovery-parser
-          pkgs.ocamlPackages.cow
-          pkgs.ocamlPackages.num
-          pkgs.ocamlPackages.stdint
-          pkgs.ocamlPackages.wasm_1
-          pkgs.ocamlPackages.vlq
-          pkgs.ocamlPackages.zarith
-          pkgs.ocamlPackages.yojson
-          pkgs.ocamlPackages.ppxlib
-          pkgs.ocamlPackages.ppx_blob
-          pkgs.ocamlPackages.ppx_inline_test
-          pkgs.ocamlPackages.ppx_expect
-          pkgs.ocamlPackages.bisect_ppx
-          pkgs.ocamlPackages.uucp
-          pkgs.obelisk
-          pkgs.perl
-          pkgs.removeReferencesTo
-        ];
+      commonBuildInputs = pkgs: with pkgs; [ dune_3 obelisk perl removeReferencesTo ] ++ (with ocamlPackages; [
+        ocaml
+        atdgen
+        checkseum
+        findlib
+        menhir
+        menhirLib
+        menhirSdk
+        ocaml-recovery-parser
+        cow
+        num
+        stdint
+        wasm_1
+        vlq
+        zarith
+        yojson
+        ppxlib
+        ppx_blob
+        ppx_inline_test
+        ppx_expect
+        bisect_ppx
+        uucp
+      ]);
 
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
@@ -151,196 +146,41 @@
         paths = [ "${motoko-base-src}/src" ];
       };
 
-      base-tests = pkgs.stdenv.mkDerivation {
-        name = "base-tests";
-        src = motoko-base-src;
-        phases = "unpackPhase checkPhase installPhase";
-        doCheck = true;
-        installPhase = "touch $out";
-        checkInputs = [
-          pkgs.wasmtime
-          debugMoPackages.moc
-        ];
-        checkPhase = ''
-          make MOC=moc VESSEL_PKGS="--package matchers ${motoko-matchers-src}/src" -C test
-        '';
-      };
-
-      base-doc = pkgs.stdenv.mkDerivation {
-        name = "base-doc";
-        src = motoko-base-src;
-        phases = "unpackPhase buildPhase installPhase";
-        doCheck = true;
-        buildInputs = [ debugMoPackages.mo-doc ];
-        buildPhase = ''
-          mo-doc
-        '';
-        installPhase = ''
-          mkdir -p $out
-          cp -rv docs/* $out/
-
-          mkdir -p $out/nix-support
-          echo "report docs $out index.html" >> $out/nix-support/hydra-build-products
-        '';
-      };
-
-      report-site = pkgs.runCommandNoCC "report-site"
-        {
-          buildInputs = [ pkgs.tree ];
-        } ''
-        mkdir -p $out
-        ln -s ${base-doc} $out/base-doc
-        ln -s ${docs} $out/docs
-        ln -s ${tests.coverage} $out/coverage
-        cd $out;
-        # generate a simple index.html, listing the entry points
-        ( echo docs/overview-slides.html;
-          echo docs/html/motoko.html;
-          echo base-doc/
-          echo coverage/ ) | \
-          tree -H . -l --fromfile -T "Motoko build reports" > index.html
-      '';
-
-      docs = pkgs.stdenv.mkDerivation {
-        name = "docs";
-        src = ./doc;
-        buildInputs = with pkgs; [ pandoc bash gitMinimal ];
-
-        buildPhase = ''
-          patchShebangs .
-          export HOME=$PWD
-          export MOC_JS=${js.moc}/bin/moc.js
-          export MOTOKO_BASE=${base-src}
-          make
-        '';
-
-        installPhase = ''
-          mkdir -p $out
-          mv overview-slides.html $out/
-          mv html $out/
-          mkdir -p $out/nix-support
-          echo "report guide $out html/motoko.html" >> $out/nix-support/hydra-build-products
-          echo "report slides $out overview-slides.html" >> $out/nix-support/hydra-build-products
-        '';
-      };
-
       rts = import ./nix/rts.nix { inherit pkgs llvmEnv; };
-
-      samples = pkgs.stdenv.mkDerivation {
-        name = "samples";
-        src = ./samples;
-        buildInputs = [ debugMoPackages.moc ];
-        buildPhase = ''
-          patchShebangs .
-          make all
-        '';
-        installPhase = ''
-          touch $out
-        '';
-      };
 
       js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
-      moPackages = officialRelease: import ./nix/mo-packages.nix {
-        inherit pkgs commonBuildInputs rts officialRelease;
-      };
+      moPackages = officialRelease: import ./nix/mo-packages.nix { inherit pkgs commonBuildInputs rts officialRelease; };
       releaseMoPackages = moPackages true;
       debugMoPackages = moPackages false;
-
-      check-formatting = pkgs.stdenv.mkDerivation {
-        name = "check-formatting";
-        buildInputs = [ pkgs.ocamlformat ];
-        src = ./src;
-        doCheck = true;
-        phases = "unpackPhase checkPhase installPhase";
-        installPhase = "touch $out";
-        checkPhase = ''
-          ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
-        '';
-      };
-
-      check-rts-formatting = pkgs.stdenv.mkDerivation {
-        name = "check-rts-formatting";
-        buildInputs = [ pkgs.rust-nightly pkgs.rustfmt ];
-        src = ./rts;
-        doCheck = true;
-        phases = "unpackPhase checkPhase installPhase";
-        checkPhase = ''
-          echo "If this fails, run `make -C rts format`"
-          cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml -- --check
-          cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml -- --check
-        '';
-        installPhase = "touch $out";
-      };
-
-      # Checks that doc/md/examples/grammar.txt is up-to-date
-      check-grammar = pkgs.stdenv.mkDerivation {
-        name = "check-grammar";
-        src = ./src/gen-grammar;
-        phases = "unpackPhase buildPhase installPhase";
-        buildInputs = [ pkgs.diffutils pkgs.bash pkgs.obelisk ];
-        buildPhase = ''
-          patchShebangs .
-          ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
-          echo "If the following fails, please run:"
-          echo "nix-shell --command 'make -C src grammar'"
-          diff -r -U 3 ${./doc/md/examples/grammar.txt} expected
-          echo "ok, all good"
-        '';
-        installPhase = ''
-          touch $out
-        '';
-      };
-
-      check-error-codes = pkgs.stdenv.mkDerivation {
-        name = "check-error-codes";
-        src = ./test;
-        phases = "unpackPhase buildPhase installPhase";
-        buildInputs = [ pkgs.python3 ];
-        buildPhase = ''
-          patchShebangs .
-          ./check-error-codes.py ${./src/lang_utils/error_codes.ml}
-        '';
-        installPhase = ''
-          touch $out
-        '';
-      };
 
       tests = import ./nix/tests.nix
         { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
 
-      shell = import ./nix/shell.nix
-        { inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js docs check-rts-formatting debugMoPackages; };
+      shell = import ./nix/shell.nix {
+        inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages;
+        inherit (checks) check-rts-formatting;
+        inherit (common-constituents) docs;
+      };
 
-      common-constituents = {
-        inherit
-          samples
-          rts
-          base-src
-          base-tests
-          base-doc
-          docs
-          report-site
-          shell;
+      common-constituents = rec {
+        samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
+        report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
+        docs = import ./nix/docs.nix { inherit pkgs js base-src; };
+
+        inherit rts base-src shell;
       };
 
       checks = {
-        inherit
-          check-formatting
-          check-rts-formatting
-          check-grammar
-          check-error-codes;
+        check-formatting = import ./nix/check-formatting.nix { inherit pkgs; };
+        check-rts-formatting = import ./nix/check-rts-formatting.nix { inherit pkgs; };
+        check-grammar = import ./nix/check-grammar.nix { inherit pkgs; };
+        check-error-codes = import ./nix/check-error-codes.nix { inherit pkgs; };
       };
 
-      buildableMoPackages = moPackages: {
-        inherit (moPackages)
-          moc
-          mo-ld
-          mo-ide
-          mo-doc
-          didc
-          deser;
-      };
+      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-ide mo-doc didc deser; };
 
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
