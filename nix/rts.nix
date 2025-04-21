@@ -107,19 +107,23 @@ pkgs.stdenv.mkDerivation {
   preFixup = ''
     remove-references-to \
       -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-non-incremental.wasm $out/rts/mo-rts-non-incremental-debug.wasm
-    remove-references-to \
-      -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
-    remove-references-to \
-      -t ${pkgs.rust-nightly} \
-      -t ${rtsDeps} \
-      -t ${rustStdDeps} \
-      $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
+      $out/rts/mo-rts-non-incremental.wasm \
+      $out/rts/mo-rts-non-incremental-debug.wasm \
+      $out/rts/mo-rts-incremental.wasm \
+      $out/rts/mo-rts-incremental-debug.wasm \
+      $out/rts/mo-rts-eop.wasm \
+      $out/rts/mo-rts-eop-debug.wasm
+
+    for rtsDep in $(find ${rtsDeps} -type l -exec readlink {} +); do
+      remove-references-to \
+        -t "$rtsDep" \
+        $out/rts/mo-rts-non-incremental.wasm \
+        $out/rts/mo-rts-non-incremental-debug.wasm \
+        $out/rts/mo-rts-incremental.wasm \
+        $out/rts/mo-rts-incremental-debug.wasm \
+        $out/rts/mo-rts-eop.wasm \
+        $out/rts/mo-rts-eop-debug.wasm
+    done
   '';
 
   allowedRequisites = [ ];
