@@ -51,7 +51,7 @@ jobs:
 
     - name: "nix-build-${{ matrix.build_type }}"
       run: |
-        nix-build-uncached --max-jobs auto
+        nix-build-uncached --max-jobs auto \
           -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ matrix.build_type }}-systems-go'
 
     - name: Discover `test/bench` changes
