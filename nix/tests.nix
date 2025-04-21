@@ -8,9 +8,6 @@ let
   replay = 0;
 
   testDerivationArgs = {
-    NIXBUILDNET_DEFAULT_CPU = 8;
-    NIXBUILDNET_MIN_CPU = 8;
-
     # by default, an empty source directory. how to best get an empty directory?
     src = builtins.path { name = "empty"; path = ./.; filter = p: t: false; };
     phases = "unpackPhase checkPhase installPhase";

@@ -64,8 +64,8 @@ let
     in
     builtins.getFlake flakePath;
 
-  # TODO: This is only needed for the transition from default.nix to flake.nix.
-  # After https://github.com/dfinity/motoko/pull/5040 is merged we can remove the if-then-else and just use flakes.
+  # TODO: This if-then-else is only needed for the transition from default.nix to flake.nix.
+  # After https://github.com/dfinity/motoko/pull/5067 is merged we can remove it and just use flakes.
   baseArgs =
     if isBaseFlake
     then
