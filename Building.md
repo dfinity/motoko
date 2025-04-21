@@ -7,6 +7,12 @@ running, as a normal user with `sudo` permissions,
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
+This repository is also a Nix Flake which means you need to
+allow this feature by making sure the following is present in `/etc/nix/nix.conf`:
+```
+extra-experimental-features = nix-command flakes
+```
+
 You should also enable a nix cache to get all dependencies pre-built.
 
 The `cachix` command also requires `sudo` permissions.
@@ -22,7 +28,7 @@ dependencies manually, which can take several hours.
 If you want just to _use_ `moc`, you can install the `moc` binary into your `nix`
 environment by running
 ```
-$ nix-env -i -f . -A moc
+$ nix profile install .#release.moc
 ```
 in a check-out of the `motoko` repository.
 
@@ -150,7 +156,7 @@ and then use `bisect-ppx-report html` to produce a report.
 
 The full report can be built with
 ```
-nix-build -A tests.coverage
+nix build .#tests.coverage
 ```
 and the report for latest `master` can be viewed at
 [https://dfinity.github.io/motoko/coverage/](https://dfinity.github.io/motoko/coverage/).
@@ -182,16 +188,3 @@ build system.)
 
 Specifically some advanced techniques to obtain performance deltas for the
 GC can be found in `rts/Benchmarking.md`.
-
-## Updating Haskell Packages
-
-When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
-```
-nix-shell nix/generate.nix
-```
-to update.
-
-Don't worry if you forget to update the `default.nix` file, the CI job
-`check-generated` checks if these files are in sync and fail with a diff if
-they aren't.

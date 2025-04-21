@@ -47,7 +47,7 @@ jobs:
       run: ./nixbuild .#${{ matrix.build_type }}-systems-go
 
     - if: ${{ startsWith(matrix.os, 'macos-') }}
-      run: nix-env -i -E '_arg:(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.nix-build-uncached'
+      run: nix profile install .#nix-build-uncached
 
     - if: ${{ startsWith(matrix.os, 'macos-') }}
       name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
