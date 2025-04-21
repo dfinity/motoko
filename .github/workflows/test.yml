@@ -18,19 +18,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      uses: nixbuild/nix-quick-install-action@v30
-
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      uses: nixbuild/nixbuild-action@v20
-      with:
-        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
-        generate_summary_for: 'job'
-        settings-from-drv-env: true
-
-    - if: ${{ startsWith(matrix.os, 'macos-') }}
-      uses: cachix/install-nix-action@v31
+    - uses: cachix/install-nix-action@v31
 
     # We are using the `ic-hs-test` Cachix cache for hysterical raisins
     - uses: cachix/cachix-action@v16
@@ -38,27 +26,38 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+      # Free up disk space on Ubuntu
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      if: startsWith(matrix.os, 'ubuntu-')
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    # TODO: disable pushing to the cache since it's currently failing. Probably because it's full.
-    # - run: cachix watch-store ic-hs-test &
+    - run: cachix watch-store ic-hs-test &
 
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
-      run: ./nixbuild .#${{ matrix.build_type }}-systems-go
+    - run: nix profile install .#nix-build-uncached
 
-    - if: ${{ startsWith(matrix.os, 'macos-') }}
-      run: nix profile install .#nix-build-uncached
-
-    - if: ${{ startsWith(matrix.os, 'macos-') }}
-      name: "nix-build-${{ matrix.build_type }} (${{ matrix.os }})"
+    - name: "nix-build-${{ matrix.build_type }}"
       run: |
-        nix-build-uncached --max-jobs auto -build-flags -L \
+        nix-build-uncached --max-jobs auto -L
           -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ matrix.build_type }}-systems-go'
 
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       run: |
-        git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
+        git diff --no-index $(nix build .#tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ github.event.pull_request.head.ref }}
         git branch --show-current
 
@@ -77,15 +76,13 @@ jobs:
     - name: Calculate performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       run: |
-        set -euo pipefail -x
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        out=$(./nixbuildcopy -f perf-delta.nix \
+        nix build -f perf-delta.nix -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
-          --argstr to "$to")
-        ln -s "$out" ./perf-delta.txt
+          --argstr to "$to"
 
     - name: Read performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
@@ -123,23 +120,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: nixbuild/nix-quick-install-action@v30
-    - uses: nixbuild/nixbuild-action@v20
-      with:
-        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
-        generate_summary_for: 'job'
+    - uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
     - name: Fetch report
-      run: |
-        report_site="$(./nixbuildcopy -f default.nix report-site)"
-        cp -rL "$report_site" report-site
+      run: nix build .#report-site -o report-site
+    - name: Resolve symlinks
+      run: cp -rL report-site report-site-copy
     - name: Push report to GitHub pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
         branch: gh-pages
-        folder: report-site
+        folder: report-site-copy
         single-commit: true
 
   artifacts:
@@ -150,30 +143,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      uses: nixbuild/nix-quick-install-action@v30
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      uses: nixbuild/nixbuild-action@v20
-      with:
-        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
-        generate_summary_for: 'job'
-    - if: ${{ startsWith(matrix.os, 'macos-') }}
-      uses: cachix/install-nix-action@v31
+    - uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
-    - if: ${{ startsWith(matrix.os, 'ubuntu-') }}
-      name: "nix-build (${{ matrix.os }})"
+    - name: nix-build
       run: |
-        moc="$(./nixbuildcopy -f default.nix --arg officialRelease true moc)"
-        ln -s "$moc" moc
-    - if: ${{ startsWith(matrix.os, 'macos-') }}
-      name: "nix-build (${{ matrix.os }})"
-      run: |
-        nix-build --arg officialRelease true -A moc -o moc
+        nix build .#release.moc
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
-    - run: echo "UPLOAD_PATH=$(readlink -f moc)" >> $GITHUB_ENV
+    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
     - name: upload artifacts
       uses: actions/upload-artifact@v4
       with:
