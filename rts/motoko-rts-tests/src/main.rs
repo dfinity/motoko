@@ -1,3 +1,6 @@
+// See: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html
+#![allow(static_mut_refs)]
+
 #![feature(proc_macro_hygiene)]
 
 use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};

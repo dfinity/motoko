@@ -43,7 +43,7 @@
     # Rust Nightly & Stable
     rust-overlay.overlays.default
     (self: super: {
-      rust-nightly = self.rust-bin.nightly."2024-07-28".default.override {
+      rust-nightly = self.rust-bin.nightly.latest.default.override {
         extensions = [ "rust-src" ];
         targets = [ "wasm32-wasip1" ];
       };

@@ -13,7 +13,7 @@ let
   vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
   # SHA256 of Rust std deps
-  rustStdDepsHash = "sha256-U4BTr1CzFuOMdyLuhw5ry3/u8bkRiPmnMr4pLo3IdOQ=";
+  rustStdDepsHash = "sha256-s9k7NSnMCuP7mwGG2oaJlxxPEWZLLFMAdE9hiX0fvus=";
 
   # Vendor directory for Rust std deps
   rustStdDeps = pkgs.stdenvNoCC.mkDerivation {
@@ -73,7 +73,7 @@ pkgs.stdenv.mkDerivation {
     mkdir -p $CARGO_HOME
     echo "Using vendored sources from ${rtsDeps}"
     unpackFile ${allDeps}
-    cat > $CARGO_HOME/config <<__END__
+    cat > $CARGO_HOME/config.toml <<__END__
       [source."crates-io"]
       "replace-with" = "vendored-sources"
 
