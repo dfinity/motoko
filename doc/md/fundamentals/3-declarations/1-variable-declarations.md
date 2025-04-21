@@ -13,7 +13,7 @@ In Motoko, variables are declared using either `let` (immutable) or `var` (mutab
 
 In `persistent` actors, the values of `let` and `var` declarations are automatically preserved across upgrades, unless explicitly marked as `transient`. In non-`persistent` actors, these values are not retained unless marked as `stable`.  
 The `persistent` keyword simply treats all `let` and `var` declarations as `stable` by default.  
-Motoko encourages a programming style that favours immutability(using `let` over `var`), aligning with functional programming principles.
+Motoko encourages a programming style that favours immutability (using `let` over `var`), aligning with functional programming principles.
 
 ## Immutable variables
 

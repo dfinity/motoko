@@ -153,7 +153,7 @@ Unlike a Motoko module, an imported canister:
 - Can be implemented in any language that emits a Candid interface.
 - Has its type derived from a `.did` file, not from Motoko itself.
 
-:::tip [Don't forget]
+:::danger
 When importing from another canister, the canister must be listed as a dependency in the importing canister's `dfx.json`. These must both:
 
 1. Be listed in the `dependencies` array of `my_canister`.

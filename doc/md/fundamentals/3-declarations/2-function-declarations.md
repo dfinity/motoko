@@ -71,7 +71,7 @@ func factorial(n : Nat) : Nat {
 
 ## Generic functions
 
-Motoko supports generic functions, which allow you to write reusable logic that works with any type.
+Generic functions are used to write reusable logic that works with any type.
 
 For example, the following function applies a given function twice to a value:
 

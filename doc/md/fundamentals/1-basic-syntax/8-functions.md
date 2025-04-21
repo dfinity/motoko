@@ -31,11 +31,11 @@ public func exampleFunction(x : Nat) : Nat {
 
 Motoko functions vary by access and behaviour:
 
-- `private` – not exposed outside the namespace(actor, class, module).
-- `public` – makes the function externally callable; can be query or update.
-- `shared` – used to support inter-canister or external calls.
-- `query` – reads data without modifying state.
-- `composite query` – reads state, can call other queries.
+- `private`: Not exposed outside the namespace(actor, class, module).
+- `public`: Makes the function externally callable; can be query or update.
+- `shared`: Used to support inter-canister or external calls.
+- `query`: Reads data without modifying state.
+- `composite query`: Reads state, can call other queries.
 
 [Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
 

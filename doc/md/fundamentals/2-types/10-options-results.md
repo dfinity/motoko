@@ -23,7 +23,7 @@ var username : ?Text = null;
 
 :::info [Null semantics]
 
-`null` is only valid as a value of an optional type (`?T`). This makes it closer to `None` in Rust, Scala, or Haskell — where the compiler enforces explicit handling of missing values.
+`null` is only valid as a value of an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, or Haskell where the compiler enforces explicit handling of missing values.
 
 :::
 
@@ -66,7 +66,10 @@ let result1 = safeDivide(10, 2); // ?5
 let result2 = safeDivide(10, 0); // null
 ```
 
-To safely extract values from options, use the `let ... else` pattern. This is often preferred and encoraged over nested `switch` expressions when a fallback is needed.
+
+### Let / else
+
+To safely extract values from options, use the `let ... else` pattern. This is often preferred and encoraged over nested `switch` expressions when a fallback is needed, as it improves readability and ensures fallbacks are handled.
 
 For example, here’s a simple implementation of an option helper:
 
@@ -80,7 +83,6 @@ assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
 ```
 
-This idiom improves readability and ensures fallback logic is always handled.
 
 ### Applying transformations to options
 
