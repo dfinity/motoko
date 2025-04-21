@@ -10,6 +10,25 @@ An expression declaration is a statement where an expression is evaluated only f
 
 1. The expression must have a valid type `T`, and evaluates normally.
 2. If it appears in a sequence of declarations but is not the last declaration, then `T` must be `()` (i.e., it must not return a value).
+3. If an expression returns a value other than `()`, but it appears in a position where a value is not allowed (e.g., not the last declaration in a block), you can use the `ignore` keyword to discard the result.
+
+Example:
+
+```motoko no-repl
+var n : Nat  = 0;
+
+func regUser(name : Text) : Text {
+  ignore bumpUsers(); // Returns Nat, but result is not needed
+  let greeting = "Welcome, " # name # "!";
+  greeting
+};
+
+func bumpUsers() : Nat {
+   n += 1;
+   n
+};
+
+```
 
 ## Basic usage
 

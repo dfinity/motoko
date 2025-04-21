@@ -41,8 +41,7 @@ Functions can also be renamed at import.
 import { map; find; foldLeft = fold } "mo:base/Array";
 ```
 
-
-## Importing local files
+## Importing from another directory
 
 Projects may split code into multiple files for better organization, such as:
 
@@ -60,7 +59,7 @@ import Types "types";
 import Utils "utils";
 ```
 
-## Importing from another package or directory
+## Importing from another package
 
 Modules can also be imported from other packages or subdirectories.
 
@@ -154,6 +153,24 @@ Unlike a Motoko module, an imported canister:
 - Can be implemented in any language that emits a Candid interface.
 - Has its type derived from a `.did` file, not from Motoko itself.
 
+:::danger
+When importing from another canister, the canister must be listed as a dependency in the importing canister's `dfx.json`. These must both:
+
+1. Be listed in the `dependencies` array of `my_canister`.
+2. Have their own canister definitions specified elsewhere in the same file.
+
+```json
+{
+  "canisters": {
+    "my_canister": {
+      "main": "src/my_canister/main.mo",
+      "type": "motoko",
+      "dependencies": ["BigMap", "Connectd"]
+    }
+  }
+}
+```
+
 ## Naming imported modules
 
 While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
@@ -162,5 +179,6 @@ While the imported module name usually matches the file name, custom names can b
 import List "mo:base/List";
 import L "mo:base/List";
 import PureList "mo:base/pure/List";
+```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

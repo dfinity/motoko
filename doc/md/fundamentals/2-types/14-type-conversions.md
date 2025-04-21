@@ -19,7 +19,7 @@ import Float "mo:base/Float";
 import Int "mo:base/Int";
 
 func floatToNat(f : Float) : Nat {
-    return Int.abs(Float.toInt(f));
+    Int.abs(Float.toInt(f));
 };
 
 let result1 = floatToNat(42.9);   // 42
@@ -34,13 +34,19 @@ let result2 = floatToNat(-15.6);  // 15 (absolute value is taken)
 import Int "mo:base/Int";
 
 func intToNat(i : Int) : Nat {
-    return Int.abs(i);
+    Int.toNat(i);
 };
 
 // Example usage
 let result3 = intToNat(10);   // 10
 let result4 = intToNat(-5);   // 5
 ```
+
+:::note [`Nat` to `Int` conversions functions]
+
+`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the upcoming new base library.
+
+:::
 
 ## Modifying types
 
@@ -56,7 +62,7 @@ import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 
 func nat8ToChar(n : Nat8) : Char {
-    return Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
+    Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
 };
 
 let charA = nat8ToChar(65);  // 'A'
@@ -84,7 +90,7 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 import Text "mo:base/Text";
 
 func textToOptionalBlob(s : Text) : ?Blob {
-    return ?Text.encodeUtf8(s);
+    ?Text.encodeUtf8(s);
 };
 
 let memo1 = textToOptionalBlob("Payment Memo");  // ?Blob
@@ -149,14 +155,14 @@ import Iter "mo:base/Iter";
             fraction := 0.1 * Float.fromInt(charToInt(d));
             position += 1
           };
-          case (_) {return null}
+          case (_) { null }
         }
       };
       case (?d) if (Char.isDigit(d)) {
         integer := charToInt(d);
         position += 1
       };
-      case (_) {return null}
+      case (_) { null }
     };
 
     var hasDigits = position > 0;
@@ -190,14 +196,14 @@ import Iter "mo:base/Iter";
               }
             }
           } else {
-            return null
+            null
           }
         };
         case (null) {
           if (not hasDigits) {
             return null;
           };
-          return ?(Float.fromInt(if (isNegative) -integer else integer))
+          ?(Float.fromInt(if (isNegative) -integer else integer))
         }
       }
     };
@@ -420,7 +426,7 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 
 func arrayToText(arr : [Char]) : Text {
-    return Text.fromArray(arr);
+    Text.fromArray(arr);
 };
 ```
 
@@ -447,7 +453,7 @@ func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
     for ((key, value) in arr.vals()) {
         map.put(key, value);
     };
-    return map;
+    map;
 };
 
 ```
@@ -462,7 +468,7 @@ type User = {
 };
 
 func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
-    return Array.map<(Text, Nat), User>(arr, func((name, age)) {
+    Array.map<(Text, Nat), User>(arr, func((name, age)) {
         { name = name; age = age }
     });
 };

@@ -10,7 +10,7 @@ sidebar_position: 3
 
 Download `mo-doc` from Motoko's [GitHub releases page](https://github.com/dfinity/motoko/releases) or simply use the binary included in your [dfx](https://internetcomputer.org/docs/current/developer-docs/setup/install) installation:
 
-```
+``` bash
 $(dfx cache show)/mo-doc [options]
 ```
 

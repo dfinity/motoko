@@ -55,7 +55,6 @@ multiply(4, 2);
 
 The function is assigned to `multiply` instead of being named directly. `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.
 
-
 ## Recursive functions
 
 A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops. Note that recursion implies allocating stack frames, which allocates additional memory on the (relatively small) program stack. Excessive recursion can lead to out-of-memory errors.
@@ -66,8 +65,30 @@ func factorial(n : Nat) : Nat {
         return 1;
     };
 // Calls itself with factorial(n - 1), reducing n until reaching 0.
-    return n * factorial(n - 1);
+    n * factorial(n - 1);
 }
+```
+
+## Generic functions
+
+Generic functions are used to write reusable logic that works with any type.
+
+For example, the following function applies a given function twice to a value:
+
+```motoko no-repl
+func twice<T>(f : T -> T) : T -> T = func (x : T) {
+  f(f(x))
+};
+```
+
+You can use it with different types:
+
+```motoko no-repl
+let double = twice<Nat>(func x = x * 2);
+assert double(2) == 8;
+
+let echoTwice = twice<Text>(func s = s # "!");
+assert echoTwice("Hello") == "Hello!!";
 ```
 
 ## Shared functions in actors

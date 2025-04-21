@@ -57,7 +57,6 @@ Debug.print(debug_show(numbers[0]));  // 100
 
 You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
 
-
 ```motoko no-repl
 import Array "mo:base/Array";
 
@@ -72,7 +71,7 @@ To demonstrate nested mutable arrays, consider the following.
 
 A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
 
-`Array.tabulateVar` is used to create a mutable board initialized with `"_"` (empty space).
+`VarArray.tabulate` is used with `VarArray.reapeat` to create a mutable board initialized with `"_"` (empty space).
 
 ```motoko no-repl
 import Array "mo:base/Array";
@@ -82,13 +81,14 @@ func createTicTacToeBoard() : [var [var Text]] {
     let size : Nat = 3;
 
     // Initialize a 3x3 board with empty spaces
-    Array.tabulateVar<[var Text]>(
-      size,
-      func(_ : Nat) : [var Text] {
-        Array.tabulateVar<Text>(size, func(_ : Nat) : Text {"_"}) // Fill with "_"
-      }
-    )
-  };
+    // Use tabulate and repeat to construct the board
+    VarArray.tabulate<[var Text]>(
+    size,
+    func(_) {
+      VarArray.repeat("_", size)
+    }
+  )
+};
 
   // Create a mutable Tic-tac-toe board
   let board : [var [var Text]] = createTicTacToeBoard();
@@ -105,7 +105,8 @@ func createTicTacToeBoard() : [var [var Text]] {
   // Function to print the board
   func printBoard() {
     for (row in board.vals()) {
-      let rowText = Array.foldLeft<Text, Text>(Array.freeze<Text>(row), "", func(acc, cell) = acc # cell # " ");
+      let frozenRow = Array.fromVarArray(row);
+      let rowText = Array.foldLeft<Text, Text>(frozenRow, "", func(acc, cell) = acc # cell # " ");
       Debug.print(rowText)
     }
   };
@@ -120,7 +121,6 @@ func createTicTacToeBoard() : [var [var Text]] {
 ```
 
 Since both the outer and inner arrays are mutable, players can update the board in place. The array must be frozen before `foldLeft()` can be applied to the rows as `foldleft()` expects an immutable array as an argument.
-
 
 ```md
 X _ _
