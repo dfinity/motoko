@@ -63,12 +63,12 @@ const config = {
           src: 'img/motoko.png',
         },
         items: [
-          {
-            type: 'doc',
-            docId: 'writing-motoko/writing-intro',
-            position: 'left',
-            label: 'Doc',
-          },
+          // {
+          //   type: 'doc',
+          //   docId: 'writing-motoko/writing-intro',
+          //   position: 'left',
+          //   label: 'Doc',
+          // },
           {
             type: 'doc',
             docId: 'base/index',
