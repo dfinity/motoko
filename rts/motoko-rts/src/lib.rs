@@ -5,7 +5,6 @@
 #![no_std]
 #![feature(
     arbitrary_self_types,
-    arbitrary_self_types_pointers,
     core_intrinsics,
     proc_macro_hygiene,
     // // We do not need simd but this flag enables `core::arch:wasm64`.
