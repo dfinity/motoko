@@ -29,7 +29,7 @@ html:
 
 # for building inside nix using a locally built interpreter
 preview:
-	make -C ../src moc_interpreter.js
+	make -C ../src DUNE_OPTS="--profile=release" moc_interpreter.js
 	cp -f ../src/moc_interpreter.js docusaurus/static
 	cd docusaurus; npm install; npm run clear; npm start
 
