@@ -139,7 +139,7 @@ Press the "Run workflow" button, filling in
 - Open PR against this sdk branch: `master`
 
 and then hitting the green button. This will create a PR with all necessary hash changes against that branch. There is no
-need to do this immediately, you can let the release soak a few days. Use your own jugdement w.r.t. risk, urgency etc.
+need to do this immediately, you can leave the release soaking a few days. Use your own jugdement w.r.t. risk, urgency etc.
 
 If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
 
