@@ -67,13 +67,15 @@ actor client {
       context = [23, 41, 13, 6, 17] : [Nat8];
     };
 
-    await test(request);
-    await test({ request with headers });
-    await test({ request with body });
-    await test({ request with max_response_bytes });
-    await test({ request with headers; body; max_response_bytes });
-    // await test({ request with transform }); // TODO: This is not working
-    // await test({ request with headers; body; max_response_bytes; transform });
+    await test(request, true);
+    await test({ request with headers }, true);
+    await test({ request with body }, true);
+    await test({ request with max_response_bytes }, true);
+    await test({ request with headers; body; max_response_bytes }, true);
+
+    // Not precise cases: For now there is no way to assess the exact cost of the transform function
+    await test({ request with transform }, false);
+    await test({ request with headers; body; max_response_bytes; transform }, false);
   };
 
   public shared query func transformFunction({
@@ -90,7 +92,7 @@ actor client {
     print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
   };
 
-  func test(request : http_request) : async () {
+  func test(request : http_request, isPrecise : Bool) : async () {
     let transformToPrint = switch (request.transform) {
       case (?{ function; context }) ?{
         function = to_candid (function);
@@ -118,12 +120,14 @@ actor client {
     print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
 
     // Try the same request with less cycles, it should fail
-    try {
-      let _ = await (with cycles = cost - 1) ic00.http_request(request);
-      assert false; // Should not happen
-    } catch (e) {
-      print("error code: " # debug_show (Prim.errorCode(e)));
-      print("error message: " # debug_show (Prim.errorMessage(e)));
+    if (isPrecise) {
+      try {
+        let _ = await (with cycles = cost - 1) ic00.http_request(request);
+        assert false; // Should not happen
+      } catch (e) {
+        print("error code: " # debug_show (Prim.errorCode(e)));
+        print("error message: " # debug_show (Prim.errorMessage(e)));
+      };
     };
     print("---");
   };
@@ -151,7 +155,9 @@ actor client {
     switch (request.transform) {
       case (?transform) {
         size += Prim.natToNat64(transform.context.size());
-        let blob = to_candid (transform.function); // How to get the method name length otherwise?
+        // How to get the method name length otherwise?
+        // This gets us both the method name and the actor
+        let blob = to_candid (transform.function);
         size += Prim.natToNat64(blob.size());
       };
       case null {};

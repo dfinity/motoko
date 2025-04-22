@@ -1,12 +1,10 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: client: already topped up; balance = 100_000_000_000_000
+debug.print: client: test request:
+{body = null; headers = []; max_response_bytes = null; method = #get; transform = null; url = "https://ic0.app"}
 debug.print: client: 15 -- calculated request size
 debug.print: client: 0 -- http cost request
-debug.print: client: 0 -- http cost request (with requestSize = 0)
-debug.print: client: 0 -- http cost request (with requestSize = 500)
-debug.print: client: 0 -- http cost request (with requestSize = 1500)
-debug.print: client: 0 -- http cost request (with requestSize = 1_000_000)
-debug.print: client: already topped up; balance = 100_000_000_000_000
 debug.print: client: Cycles.balance()   = 100_000_000_000_000
 debug.print: client: Cycles.available() = 0
 debug.print: client: Cycles.refunded()  = 0
