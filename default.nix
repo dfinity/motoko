@@ -388,14 +388,12 @@ rec {
         constituents = attrValues 
           (mapAttrs (name: _:
             let stem = elemAt (match "(.*)\.drun-run" name) 0;
-                wasmHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
-                wasm = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
-                script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
+                #wasmHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                #wasm = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm"); sha256 = "sha256:${wasmHash}"; };
+                #script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
+                #script = readFile "${for}/${stem}.wasm.script";
                 golden = readFile "${for}/${stem}.drun-run.ok";
                 options = readFile "${for}/${name}";
-                #configHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm.json5"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
-                #config = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm.json5"); sha256 = "sha256:${configHash}"; };
-                #options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) [(toString config)] options;
                 options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) ["${for}/${stem}.wasm.json5"] options;
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
@@ -403,15 +401,13 @@ rec {
               buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
                 mkdir -p $out
-                <<'EOscript' drun $(echo ${options-subst}) \
+                drun $(echo ${options-subst}) < ${for}/${stem}.wasm.script \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
                      -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
                 | sed \
                      -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
                 > $out/drun-run
-${script}
-EOscript
                 <<'EOgolden' head -c -1 | diff -u - $out/drun-run
 ${golden}
 EOgolden
