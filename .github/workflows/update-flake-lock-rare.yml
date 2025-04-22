@@ -1,0 +1,34 @@
+name: Update flake.lock (weekly)
+on:
+  # Manual override, one can start the workflow by running:
+  # curl -H "Accept: application/vnd.github.everest-preview+json" \
+  #  -H "Authorization: token <your-token-here>" \
+  #  --request POST \
+  #  --data '{"event_type": "flake-updater-nudge", "client_payload": {}}' \
+  #  https://api.github.com/repos/dfinity/motoko/dispatches
+  # https://help.github.com/en/actions/reference/events-that-trigger-workflows#external-events-repository_dispatch
+  repository_dispatch:
+    types: flake-updater-nudge
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # Run every Monday at midnight
+    - cron: '0 0 * * 1'
+jobs:
+  flake-updater:
+    name: 'Update flake.lock (weekly)'
+    timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@main
+        with:
+          inputs: |
+            ic-wasm-src
+          pr-title: "flake.lock: Update (weekly)"
+          pr-labels: |
+            automerge-squash
+          token: ${{ secrets.NIV_UPDATER_TOKEN }}
