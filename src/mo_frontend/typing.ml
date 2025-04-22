@@ -2464,7 +2464,7 @@ and check_pats env ts pats ve at : Scope.val_env =
 
 and check_pat_fields (env : env) (t : T.typ) (tfs : T.field list) (pfs : pat_field list) (ve : Scope.val_env) (te : Scope.typ_env) (at : Source.region) : Scope.val_env * Scope.typ_env =
   match tfs, pfs with
-  | _, [] -> ve, T.Env.empty
+  | _, [] -> ve, te
   | [], { it = VarPF(id, _); at; _ } ::_ ->
     error env at "M0119"
       "object field %s is not contained in expected type%a"
@@ -3200,6 +3200,10 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
        | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
+  | LetD (pat, exp, fail) when is_import dec ->
+     let t = infer_exp {env with pre = true; check_unused = false} exp in
+     let ve', te' = check_pat_aux {env with pre = true} t pat Scope.Declaration in
+     Scope.{empty with val_env = ve'; typ_env = te'}
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
   | TypD (id, typ_binds, typ) ->
@@ -3277,10 +3281,6 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
-  | LetD (pat, exp, fail) when is_import dec ->
-     let t = infer_exp {env with pre = true; check_unused = false} exp in
-     let ve', te' = check_pat_aux env t pat Scope.Declaration in
-     Scope.{empty with val_env = ve'; typ_env = te'}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
