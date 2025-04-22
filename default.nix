@@ -395,7 +395,7 @@ rec {
               phases = "buildPhase";
               buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
               buildPhase = ''
-                mkdir -p $out
+                touch $out
                 drun $(echo ${options-subst}) < ${for}/${stem}.wasm.script \
                 |& sed -E \
                      -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
