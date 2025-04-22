@@ -384,7 +384,7 @@ rec {
       let content = readDir "${for}";
           commands = with nixpkgs.lib; filterAttrs (name: kind: kind == "regular" && hasSuffix ".drun-run" name) content;
       in nixpkgs.releaseTools.aggregate {
-        name = "afterburners";
+        name = "afterburner-${for.name}";
         constituents = attrValues 
           (mapAttrs (name: _:
             let stem = elemAt (match "(.*)\.drun-run" name) 0;
@@ -572,9 +572,15 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir false "perf" [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
-      # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
+      # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and supports neither passive data segments nor memory64.
       inherit qc lsp unit candid coverage;
       drun-afterburner = afterburner drun;
+      drun-debug-afterburner = afterburner drun-debug;
+      drun-compacting-gc-afterburner = afterburner drun-compacting-gc;
+      drun-generational-gc-afterburner = afterburner drun-generational-gc;
+      drun-incremental-gc-afterburner = afterburner drun-incremental-gc;
+      drun-eop-release-afterburner = afterburner drun-eop-release;
+      drun-eop-debug-afterburner = afterburner drun-eop-debug;
     }
     // nixpkgs.lib.optionalAttrs
          (system == accept-bench)
