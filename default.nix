@@ -393,9 +393,10 @@ rec {
                 script = replaceStrings ["${for}/${stem}.wasm"] ["${wasm}"] (readFile "${for}/${stem}.wasm.script");
                 golden = readFile "${for}/${stem}.drun-run.ok";
                 options = readFile "${for}/${name}";
-                configHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm.json5"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
-                config = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm.json5"); sha256 = "sha256:${configHash}"; };
-                options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) [(toString config)] options;
+                #configHash = convertHash { hash = hashFile "sha256" "${for}/${stem}.wasm.json5"; hashAlgo = "sha256"; toHashFormat = "nix32"; };
+                #config = fetchurl { url = (unsafeDiscardStringContext "file://${for}/${stem}.wasm.json5"); sha256 = "sha256:${configHash}"; };
+                #options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) [(toString config)] options;
+                options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) ["${for}/${stem}.wasm.json5"] options;
             in stdenv.mkDerivation {
               name = "test-${stem}-afterburner";
               phases = "buildPhase";
