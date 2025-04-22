@@ -213,7 +213,6 @@
           testsFor "debug"  # Only include debug tests
           ++ builtins.attrValues js;
       };
-
     in
     {
       packages = checks // common-constituents // {
@@ -221,6 +220,7 @@
         "debug" = buildableDebugMoPackages;
         inherit release-systems-go debug-systems-go nix-update tests js;
         inherit (pkgs) nix-build-uncached drun ic-wasm;
+        release-files = import ./nix/release-files.nix { inherit self pkgs; };
         default = release-systems-go;
       };
 
