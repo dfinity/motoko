@@ -137,6 +137,7 @@ https://github.com/dfinity/sdk/actions/workflows/update-motoko.yml
 Press the "Run workflow" button, filling in
 - Motoko version: `latest`
 - Open PR against this sdk branch: `master`
+
 and then hitting the green button. This will create a PR with all necessary hash changes against that branch. There is no
 need to do this immediately, you can let the release soak a few days. Use your own jugdement w.r.t. risk, urgency etc.
 
