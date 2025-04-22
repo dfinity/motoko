@@ -193,36 +193,40 @@
 
         inherit rts base-src docs shell;
       };
-
-      # Release version - excludes debug tests
-      release-systems-go = pkgs.releaseTools.aggregate {
-        name = "release-systems-go";
-        constituents =
-          pkgs.lib.attrValues common-constituents ++
-          pkgs.lib.attrValues checks ++
-          pkgs.lib.attrValues buildableReleaseMoPackages ++
-          testsFor "release" # Only include release tests
-          ++ builtins.attrValues js;
-      };
-
-      # Debug version - only includes debug tests
-      debug-systems-go = pkgs.releaseTools.aggregate {
-        name = "debug-systems-go";
-        constituents =
-          pkgs.lib.attrValues common-constituents ++
-          pkgs.lib.attrValues checks ++
-          pkgs.lib.attrValues buildableDebugMoPackages ++
-          testsFor "debug"  # Only include debug tests
-          ++ builtins.attrValues js;
-      };
     in
     {
-      packages = checks // common-constituents // {
+      packages = checks // common-constituents // rec {
         "release" = buildableReleaseMoPackages;
         "debug" = buildableDebugMoPackages;
-        inherit release-systems-go debug-systems-go nix-update tests js;
+
+        inherit nix-update tests js;
+
         inherit (pkgs) nix-build-uncached drun ic-wasm;
+
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
+
+        # Release version - excludes debug tests
+        release-systems-go = pkgs.releaseTools.aggregate {
+          name = "release-systems-go";
+          constituents =
+            pkgs.lib.attrValues common-constituents ++
+              pkgs.lib.attrValues checks ++
+              pkgs.lib.attrValues buildableReleaseMoPackages ++
+              testsFor "release" # Only include release tests
+              ++ builtins.attrValues js;
+        };
+
+        # Debug version - only includes debug tests
+        debug-systems-go = pkgs.releaseTools.aggregate {
+          name = "debug-systems-go";
+          constituents =
+            pkgs.lib.attrValues common-constituents ++
+              pkgs.lib.attrValues checks ++
+              pkgs.lib.attrValues buildableDebugMoPackages ++
+              testsFor "debug"  # Only include debug tests
+              ++ builtins.attrValues js;
+        };
+
         default = release-systems-go;
       };
 
