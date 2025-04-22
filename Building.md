@@ -129,6 +129,7 @@ There are a few dependent actions to follow-up the release, e.g.
 - `vessel` package set
 - `vscode` plugin
 - ICP Ninja
+
 These are generally triggered by mentioning the release in Slack.
 
 Announcing the release towards SDK happens by triggering this GitHub action:
