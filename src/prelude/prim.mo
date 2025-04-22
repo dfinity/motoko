@@ -368,6 +368,24 @@ func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
 
 func costHttpRequest(requestSize : Nat64, maxResBytes : Nat64) : Nat = (prim "costHttpRequest" : (Nat64, Nat64) -> Nat)(requestSize, maxResBytes);
 
+func costSignWithECDSA(keyName : Text, curve : ecdsaCurve) : (Nat32, Nat) {
+  let curveVal : Nat32 = switch curve {
+    case (#secp256k1) 0;
+  };
+  (prim "costSignWithECDSA" : (Text, Nat32) -> (Nat32, Nat))(keyName, curveVal);
+  // let (costOrEmpty, resultCode) = (prim "costSignWithECDSA" : (Text, Nat32) -> (Nat, Nat32))(keyName, curveVal);
+  // assert resultCode == 0 or resultCode == 1 or resultCode == 2; // FIXME: remove this once the prim is fixed
+  // if (resultCode == 0) {
+  //   ?costOrEmpty
+  // } else {
+  //   null
+  // };
+};
+
+type ecdsaCurve = {
+  #secp256k1;
+};
+
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob)();

@@ -5,10 +5,11 @@ import Cycles "cycles/cycles";
 actor client {
   func print(t : Text) = Prim.debugPrint("client: " # t);
 
-  public type ecdsa_curve = { #secp256k1 };
+  type Key = { name : Text; curve : ecdsa_curve };
+  type ecdsa_curve = { #secp256k1 };
   let ic00 = actor "aaaaa-aa" : actor {
     sign_with_ecdsa : shared {
-      key_id : { name : Text; curve : ecdsa_curve };
+      key_id : Key;
       derivation_path : [[Nat8]];
       message_hash : [Nat8];
     } -> async { signature : [Nat8] };
@@ -16,7 +17,8 @@ actor client {
 
   public shared ({ caller }) func go() : async () {
     let fakeMessageHash : [Nat8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
-    // print(debug_show (Prim.costSignWithECDSA()) # " -- sign with ecdsa cost");
+    let key : Key = { name = "test_key_1"; curve = #secp256k1 };
+    print(debug_show (Prim.costSignWithECDSA(key.name, key.curve)) # " -- sign with ecdsa cost");
 
     if (Cycles.balance() == 0) {
       await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
@@ -30,7 +32,7 @@ actor client {
     let { signature } = await (with cycles = 500_000_000_000) ic00.sign_with_ecdsa({
       message_hash = fakeMessageHash;
       derivation_path = [Prim.blobToArray(Prim.blobOfPrincipal(caller))];
-      key_id = { name = "dfx_test_key"; curve = #secp256k1 };
+      key_id = key;
     });
     let after = Cycles.balance();
     print("signature: " # debug_show (signature));

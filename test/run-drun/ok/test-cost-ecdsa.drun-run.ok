@@ -1,7 +1,8 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: client: (1, 39_413_977_479_851_216_027_556_402) -- sign with ecdsa cost
 debug.print: client: already topped up; balance = 100_000_000_000_000
 debug.print: client: Cycles.balance()   = 100_000_000_000_000
 debug.print: client: Cycles.available() = 0
 debug.print: client: Cycles.refunded()  = 0
-ingress Completed: Reject: Unable to route management canister request sign_with_ecdsa: ChainKeyError("Requested unknown or disabled threshold key: ecdsa:Secp256k1:dfx_test_key, existing enabled keys: []")
+ingress Completed: Reject: Unable to route management canister request sign_with_ecdsa: ChainKeyError("Requested unknown or disabled threshold key: ecdsa:Secp256k1:test_key_1, existing enabled keys: []")

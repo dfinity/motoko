@@ -5763,6 +5763,21 @@ module Cost = struct
           Cycles.from_word128_ptr env
         )
       )
+  
+  let sign_with_ecdsa env =
+    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
+      (("key_name", IC.i), ("curve", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_curve ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_curve ^^
+          get_dst ^^
+          IC.cost_sign_with_ecdsa env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
 end
 
 (* Low-level, almost raw access to IC stable memory.
@@ -12310,6 +12325,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
     Cost.http_request env
+  | SystemCostSignWithEcdsaPrim, [key_name; curve] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) curve ^^
+    Cost.sign_with_ecdsa env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"

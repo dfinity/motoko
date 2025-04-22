@@ -112,6 +112,7 @@ let primE prim es =
     | SystemCostCallPrim
     | SystemCostCreateCanisterPrim
     | SystemCostHttpRequestPrim -> T.nat
+    | SystemCostSignWithEcdsaPrim -> T.Tup [T.nat32; T.nat]
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
