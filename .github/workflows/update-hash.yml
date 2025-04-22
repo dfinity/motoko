@@ -24,9 +24,6 @@ jobs:
     - name: Update drun cargo hash
       run: |
         nix run .#nix-update -- --flake --version=skip drun
-    - name: Update ic-wasm cargo hash
-      run: |
-        nix run .#nix-update -- --flake --version=skip ic-wasm
     - name: Commit changes
       uses: EndBug/add-and-commit@v9
       with:
