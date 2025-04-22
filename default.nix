@@ -573,7 +573,6 @@ rec {
       perf       = perf_subdir false "perf" [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and supports neither passive data segments nor memory64.
-      inherit qc lsp unit candid coverage;
       drun-afterburner = afterburner drun;
       drun-debug-afterburner = afterburner drun-debug;
       drun-compacting-gc-afterburner = afterburner drun-compacting-gc;
@@ -581,6 +580,7 @@ rec {
       drun-incremental-gc-afterburner = afterburner drun-incremental-gc;
       drun-eop-release-afterburner = afterburner drun-eop-release;
       drun-eop-debug-afterburner = afterburner drun-eop-debug;
+      inherit qc lsp unit candid coverage;
     }
     // nixpkgs.lib.optionalAttrs
          (system == accept-bench)
