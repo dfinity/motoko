@@ -17,7 +17,7 @@ tested_codes = set()
 # This list should only contain errors that are impossible or hard to
 # exercise in our test suite (or defunct)
 known_untested_codes = {
-    "M0000", # internal compiler error
+    # See issue 5050... "M0000", # internal compiler error
     "M0005", # case mismatch, hard to test on linux
     "M0020", # unresolved import, seems to be an internal error?
     "M0021", # infer forwart import type. internal, because imports are topologically sorted?
@@ -60,10 +60,9 @@ def populate_error_codes():
 
 def populate_tested_codes():
     tc_ok = glob.glob("./**/*.tc.ok", recursive=True)
-    comp_ref_ok = glob.glob("./**/*.comp-ref.ok", recursive=True)
     comp_ok = glob.glob("./**/*.comp.ok", recursive=True)
     cmp_ok = glob.glob("./**/*.cmp.ok", recursive=True)
-    paths = tc_ok + comp_ref_ok + comp_ok + cmp_ok
+    paths = tc_ok + comp_ok + cmp_ok
     for path in paths:
         with open(path) as fp:
             for line in fp:

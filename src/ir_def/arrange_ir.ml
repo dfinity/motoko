@@ -73,6 +73,7 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
+  | IdxBlobPrim       -> Atom "IdxBlobPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
   | EqArrayOffset     -> Atom "EqArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
