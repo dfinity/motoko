@@ -85,19 +85,21 @@
     , ocaml-recovery-parser-src
     }: flake-utils.lib.eachDefaultSystem (system:
     let
-      sources = {
-        inherit
-          candid-src
-          ic-src
-          ic-wasm-src
-          libtommath-src
-          motoko-base-src
-          motoko-matchers-src
-          ocaml-vlq-src
-          wasm-spec-src
-          ocaml-recovery-parser-src;
+      pkgs = import ./nix/pkgs.nix {
+        inherit nixpkgs system rust-overlay;
+        sources = {
+          inherit
+            candid-src
+            ic-src
+            ic-wasm-src
+            libtommath-src
+            motoko-base-src
+            motoko-matchers-src
+            ocaml-vlq-src
+            wasm-spec-src
+            ocaml-recovery-parser-src;
+        };
       };
-      pkgs = import ./nix/pkgs.nix { inherit nixpkgs system rust-overlay sources; };
 
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
