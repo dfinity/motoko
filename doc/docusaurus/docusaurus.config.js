@@ -65,7 +65,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'writing-motoko/writing-intro',
+            docId: 'home',
             position: 'left',
             label: 'Doc',
           },

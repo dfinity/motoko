@@ -13,7 +13,7 @@ MOC_JS_TARGET = _build/default/js/moc_js.bc.js
 MOC_INTERPRETER_TARGET = _build/default/js/moc_interpreter.bc.js
 DIDC_JS_TARGET = _build/default/js/didc_js.bc.js
 
-DUNE_OPTS ?=
+DUNE_OPTS ?= --profile=release
 
 NATIVE_TARGETS = $(MO_IDE_TARGET) $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(DIDC_TARGET) $(DESER_TARGET) $(CANDID_TESTS_TARGET)
 JS_TARGETS = $(MOC_JS_TARGET) $(DIDC_JS_TARGET) $(MOC_INTERPRETER_TARGET)
