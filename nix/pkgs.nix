@@ -63,16 +63,6 @@
     (self: super: { drun = import ./drun.nix self; })
 
     # ic-wasm
-    (self: super: {
-      ic-wasm = self.rustPlatform-stable.buildRustPackage {
-        pname = "ic-wasm";
-        version = builtins.substring 0 7 self.sources.ic-wasm-src.rev;
-        src = self.sources.ic-wasm-src;
-        cargoLock = {
-          lockFile = "${self.sources.ic-wasm-src}/Cargo.lock";
-        };
-        doCheck = false;
-      };
-    })
+    (self: super: { ic-wasm = import ./ic-wasm.nix self; })
   ];
 }
