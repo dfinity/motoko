@@ -2,14 +2,7 @@
   description = "The Motoko compiler";
 
   inputs = {
-    # The following is a recent commit on the release-24.11 branch. The reason we specify a commit
-    # here instead of "release-24.11" is that nixpkgs' CI system (Hydra) runs a bit behind on darwin
-    # which means that not all packages we depend on have been cached if we would use the HEAD of
-    # the branch. So we look at some important jobs on Hydra like the following to figure out the
-    # best commit to use:
-    # https://hydra.nixos.org/job/nixpkgs/nixpkgs-24.11-darwin/llvm.aarch64-darwin/latest
-    # Then click on the Part of: "evaluation ..."  -> Inputs -> nixpkgs Revision.
-    nixpkgs.url = "github:NixOS/nixpkgs/5051ae6744b993fcfab221e8bd38f8bc26f88393";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
 
     flake-utils.url = "github:numtide/flake-utils";
 
