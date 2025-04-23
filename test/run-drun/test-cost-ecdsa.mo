@@ -18,7 +18,7 @@ actor client {
   public shared ({ caller }) func go() : async () {
     let fakeMessageHash : [Nat8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
     let key : Key = { name = "test_key_1"; curve = #secp256k1 };
-    print(debug_show (Prim.costSignWithECDSA(key.name, key.curve)) # " -- sign with ecdsa cost");
+    print(debug_show (Prim.costSignWithEcdsa(key.name, key.curve)) # " -- sign with ecdsa cost");
 
     if (Cycles.balance() == 0) {
       await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
