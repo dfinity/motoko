@@ -26,6 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
+NIX=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -35,7 +36,7 @@ ECHO=echo
 
 export WASMTIME_NEW_CLI=1
 
-while getopts "adpstirv" o; do
+while getopts "adpstirvn" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -57,6 +58,9 @@ while getopts "adpstirv" o; do
             ;;
         v)
             VIPER=yes
+            ;;
+        n)
+            NIX=yes
             ;;
     esac
 done
@@ -254,7 +258,7 @@ do
   then base=$(basename $file .drun); ext=drun
   else
     echo "Unknown file extension in $file"
-    echo "Supported extensions: .mo .sh .wat .did .drun"
+    echo "Supported extensions: .mo .sh .wat .did .cmp .drun"
     failures+=("$file")
     continue
   fi
@@ -263,7 +267,9 @@ do
   # so that no paths leak into the output
   pushd $(dirname $file) >/dev/null
 
-  out=_out
+  if [ $NIX = no ]; then
+    out=_out
+  fi
   ok=ok
 
   $ECHO -n "$base:"
@@ -329,7 +335,7 @@ do
     tc_succeeded=$?
     normalize $out/$base.tc
 
-    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = "no" ]
+    if [ "$tc_succeeded" -eq 0 -a "$ONLY_TYPECHECK" = no ]
     then
       if [ $IDL = 'yes' ]
       then
@@ -621,7 +627,7 @@ do
     diff_files="$diff_files $base.cmp"
   ;;
   *)
-    echo "Unknown extentions $ext";
+    echo "Unknown extension $ext";
     exit 1
   esac
   $ECHO ""
@@ -642,6 +648,11 @@ do
   else
     for diff_file in $diff_files
     do
+      if [[ $NIX = yes && ($(basename $out/$diff_file) =~ .*\.drun-run$ || $(basename $out/$diff_file) =~ .*\.drun$) ]]; then
+        if [ -f $ok/$diff_file.ok ]; then cp $ok/$diff_file.ok $out/$diff_file.ok; fi
+        continue
+      fi
+
       if [ -e $ok/$diff_file.ok -o -e $out/$diff_file ]
       then
         diff -a -u -N --label "$diff_file (expected)" $ok/$diff_file.ok --label "$diff_file (actual)" $out/$diff_file

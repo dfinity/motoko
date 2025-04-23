@@ -353,9 +353,11 @@ rec {
       };
 
     acceptable_subdir = accept: dir: deps:
+      let drun-dir = dir == "run-drun"; in
       testDerivation ({
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
+        __contentAddressed = drun-dir;
 
         checkPhase = ''
             patchShebangs .
@@ -363,16 +365,48 @@ rec {
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
-            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}
+            make -C ${dir}${nixpkgs.lib.optionalString accept " accept"}${nixpkgs.lib.optionalString drun-dir " RUNFLAGS=-dn"}
           '';
       } // nixpkgs.lib.optionalAttrs accept {
         installPhase = nixpkgs.lib.optionalString accept ''
             mkdir -p $out/share
             cp -v ${dir}/ok/*.ok $out/share
           '';
+      } // nixpkgs.lib.optionalAttrs drun-dir {
+        postInstall = ''
+          ls $out/*.drun-run
+        '';
       });
 
-    test_subdir = dir: deps: acceptable_subdir false dir deps;
+    afterburner = for:
+      with builtins;
+      let content = readDir "${for}";
+          commands = with nixpkgs.lib; filterAttrs (name: kind: kind == "regular" && hasSuffix ".drun-run" name) content;
+      in nixpkgs.releaseTools.aggregate {
+        name = "afterburner-${for.name}";
+        constituents = attrValues 
+          (mapAttrs (name: _:
+            let stem = elemAt (match "(.*)\.drun-run" name) 0;
+                options = readFile "${for}/${name}";
+                options-subst = replaceStrings (nixpkgs.lib.match ".* (/nix/store/.*\.json5) .*" options) ["${for}/${stem}.wasm.json5"] options;
+            in stdenv.mkDerivation {
+              name = "test-${stem}-afterburner";
+              phases = "buildPhase";
+              buildInputs = [ nixpkgs.drun nixpkgs.diffutils ];
+              buildPhase = ''
+                touch $out
+                drun $(echo ${options-subst}) < ${for}/${stem}.wasm.script \
+                |& sed -E \
+                     -e 's/^.*UTC\: \[Canister [0-9a-z-]*\]/debug.print:/1' \
+                     -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+                | sed \
+                     -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
+                | diff -u ${for}/${stem}.drun-run.ok -
+              '';
+            }) commands);
+      };
+
+    test_subdir = acceptable_subdir false;
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
@@ -482,8 +516,7 @@ rec {
     #  '';
     #};
 
-
-    fix_names = builtins.mapAttrs (name: deriv:
+    fix-names = builtins.mapAttrs (name: deriv:
       deriv.overrideAttrs { name = "test-${name}"; }
     );
 
@@ -513,11 +546,7 @@ rec {
       '';
     };
 
-  in fix_names {
-      run        = test_subdir "run"        [ moc ] ;
-      run-debug  = snty_subdir "run"        [ moc ] ;
-      run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
-      run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
+    drun-tests = fix-names {
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-debug = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -525,6 +554,16 @@ rec {
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+    };
+
+  in fix-names {
+      run        = test_subdir "run"        [ moc ] ;
+      run-debug  = snty_subdir "run"        [ moc ] ;
+      run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
+      run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
+
+      inherit (drun-tests) drun drun-debug drun-compacting-gc drun-generational-gc drun-incremental-gc drun-eop-release drun-eop-debug;
+
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -537,12 +576,22 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir false "perf" [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
-      # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
+      # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and supports neither passive data segments nor memory64.
       inherit qc lsp unit candid coverage;
+    }
+    // drun-tests
+    // {
+      drun-afterburner = afterburner drun-tests.drun;
+      drun-debug-afterburner = afterburner drun-tests.drun-debug;
+      drun-compacting-gc-afterburner = afterburner drun-tests.drun-compacting-gc;
+      drun-generational-gc-afterburner = afterburner drun-tests.drun-generational-gc;
+      drun-incremental-gc-afterburner = afterburner drun-tests.drun-incremental-gc;
+      drun-eop-release-afterburner = afterburner drun-tests.drun-eop-release;
+      drun-eop-debug-afterburner = afterburner drun-tests.drun-eop-debug;
     }
     // nixpkgs.lib.optionalAttrs
          (system == accept-bench)
-         (fix_names { bench = perf_subdir true "bench" [ moc nixpkgs.drun ic-wasm ];})
+         (fix-names { bench = perf_subdir true "bench" [ moc nixpkgs.drun ic-wasm ];})
     // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
