@@ -181,8 +181,6 @@ let
   #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
   #  '';
   #};
-
-
   fix_names = builtins.mapAttrs (name: deriv:
     deriv.overrideAttrs { name = "test-${name}"; }
   );
