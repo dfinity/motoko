@@ -300,5 +300,7 @@ module Make (Cfg : Config) = struct
   and prog p = "Prog" $$ List.map dec p.it
 end
 
+module type S = module type of Make (Default)
+
 (* Defaults *)
 include Make (Default)
