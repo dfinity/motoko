@@ -7,7 +7,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ dind-large] #, macos-13, ubuntu-24.04-arm, macos-latest ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -18,6 +18,51 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Install xz
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y xz-utils
+
+    - name: Set USER environment variable
+      run: echo "USER=runner" >> $GITHUB_ENV
+
+    - name: Set TMPDIR
+      run: echo "TMPDIR=/tmp" >> $GITHUB_ENV
+
+    - name: Set Nix permissions
+      run: |
+        sudo mkdir -p /nix
+        sudo chown -R runner:runner /nix
+        sudo chmod -R 755 /nix
+    
+
+    - name: Set Nix store permissions
+      run: |
+        # Create Nix store directory if it doesn't exist
+        sudo mkdir -p /nix/store
+        # Set ownership
+        sudo chown -R runner:runner /nix/store
+        # Set permissions
+        sudo chmod -R 755 /nix/store
+        # Ensure parent directory is also owned by runner
+        sudo chown runner:runner /nix
+
+    - name: Configure Nix
+      run: |
+        sudo mkdir -p /etc/nix
+        echo "build-users-group =" | sudo tee -a /etc/nix/nix.conf
+        echo "sandbox = false" | sudo tee -a /etc/nix/nix.conf
+        # Add these lines to allow writing to the store
+        echo "store = /nix/store" | sudo tee -a /etc/nix/nix.conf
+        echo "build-users-group = runner" | sudo tee -a /etc/nix/nix.conf
+        echo "download-buffer-size = 104857600" | sudo tee -a /etc/nix/nix.conf
+    
+    - name: Set work directory permissions
+      run: |
+        sudo chown -R runner:runner /home/runner/_work
+        sudo chmod -R 755 /home/runner/_work
+        sudo chmod -R 777 /home/runner/_work/_temp
+
     - uses: cachix/install-nix-action@v31
 
     # We are using the `ic-hs-test` Cachix cache for hysterical raisins
@@ -115,7 +160,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     needs: tests
     concurrency: ci-${{ github.ref }}
-    runs-on: ubuntu-latest
+    runs-on: dind-large
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
@@ -137,7 +182,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ dind-large] #, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
