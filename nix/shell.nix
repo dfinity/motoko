@@ -50,8 +50,24 @@ pkgs.mkShell {
     ));
 
   shellHook = llvmEnv + ''
-    # Include our wrappers in the PATH
-    export PATH="${toString ../bin}:$PATH"
+    # We need to add the ./bin directory to PATH however `nix develop` or direnv
+    # might be invoked from a subdirectory of the motoko repository. So we need
+    # to find the top-level directory of the motoko repository. We do this by
+    # checking for the file flake.nix in the current directory or any
+    # higher-level directory:
+    dir="$PWD"
+    while [ "$dir" != "/" ]; do
+      if [ -e "$dir/flake.nix" ]; then
+        break
+      fi
+      dir="$(dirname "$dir")"
+    done
+    if [ ! -e "$dir/flake.nix" ]; then
+      echo "Could not find flake.nix in the motoko repository!" 1>&2
+      exit 1
+    fi
+    export PATH="$dir/bin:$PATH"
+
     # some cleanup of environment variables otherwise set by nix-shell
     # that would be confusing in interactive use
     unset XDG_DATA_DIRS
