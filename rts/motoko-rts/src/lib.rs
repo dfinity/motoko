@@ -1,5 +1,7 @@
 //! Implements Motoko runtime system
 
+// See: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html
+#![allow(static_mut_refs)]
 #![no_std]
 #![feature(
     arbitrary_self_types,
@@ -7,7 +9,7 @@
     proc_macro_hygiene,
     // // We do not need simd but this flag enables `core::arch:wasm64`.
     // // See https://github.com/rust-lang/rust/issues/90599
-    simd_wasm64
+    simd_wasm64,
 )]
 #![allow(internal_features)]
 
