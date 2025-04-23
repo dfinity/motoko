@@ -9,6 +9,7 @@ on:
   # https://help.github.com/en/actions/reference/events-that-trigger-workflows#external-events-repository_dispatch
   repository_dispatch:
     types: flake-updater-nudge
+  workflow_dispatch:
   schedule:
     # * is a special character in YAML so you have to quote this string
     # Run every Sunday at midnight
