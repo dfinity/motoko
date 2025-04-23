@@ -17,7 +17,7 @@ You should also enable a nix cache to get all dependencies pre-built.
 
 The `cachix` command also requires `sudo` permissions.
 ```
-nix-env -iA cachix -f https://cachix.org/api/v1/install
+nix profile install --accept-flake-config nixpkgs#cachix
 cachix use ic-hs-test
 ```
 Technically, this is optional, but without this you will build lots of build
@@ -87,7 +87,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    with today’s date.
 
  * Make sure the markdown doc for base is up-to-date:
-   For now, in a nix-shell (preferably _re-entering_):
+   For now, in a nix shell (preferably _re-entering_):
 
    ```bash
       make -C rts
