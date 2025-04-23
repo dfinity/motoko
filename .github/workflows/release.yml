@@ -53,16 +53,16 @@ jobs:
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: cachix watch-store ic-hs-test &
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
-        nix build --max-jobs 1 -L \
-          .#release.moc \
-          .#release.mo-ide \
-          .#release.mo-doc \
-          .#js.moc \
-          .#js.moc_interpreter
+        cachix watch-exec ic-hs-test -- \
+          nix build --max-jobs 1 -L \
+            .#release.moc \
+            .#release.mo-ide \
+            .#release.mo-doc \
+            .#js.moc \
+            .#js.moc_interpreter
 
         echo "## checks"
         uname -s -m
