@@ -26,8 +26,8 @@ and the resulting status is visible (at derivation granularity) to developers.
 **Implementation:**
 All pushes to any branch are built by a Github Action job, on Linux and Darwin.
 
-The build status is visible via the Github status (coarsly: only evaluation,
-`all-systems-go` and `all-jobs`).
+The build status is visible via the Github status (coarsely: only evaluation,
+`{debug,release}-systems-go`).
 
 This includes linux and darwin builds.
 
