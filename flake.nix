@@ -114,7 +114,6 @@
 
       commonBuildInputs = pkgs: with pkgs; [ dune_3 obelisk perl removeReferencesTo ] ++ (with ocamlPackages; [
         ocaml
-        atdgen
         checkseum
         findlib
         menhir
@@ -139,7 +138,7 @@
       moPackages = officialRelease: import ./nix/mo-packages.nix { inherit pkgs commonBuildInputs rts officialRelease; };
       releaseMoPackages = moPackages true;
       debugMoPackages = moPackages false;
-      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-ide mo-doc didc deser; };
+      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-doc didc deser; };
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
