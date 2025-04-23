@@ -42,7 +42,6 @@ pkgs.mkShell {
         pkgs.ocamlformat
         pkgs.ocamlPackages.ocaml-lsp
         pkgs.fswatch
-        pkgs.niv
         pkgs.rlwrap # for `rlwrap moc`
         pkgs.openjdk
         pkgs.z3_4_12 # for viper dev
