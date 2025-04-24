@@ -16,7 +16,7 @@ on:
     - cron: '0 0 * * *'
 jobs:
   flake-updater:
-    name: 'Update flake.lock (daily)'
+    name: 'Update flake.lock'
     timeout-minutes: 2 # if this takes more than 2 minutes then something's wrong
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +40,15 @@ jobs:
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src
-          pr-title: "flake.lock: Update (daily)"
+          pr-title: "chore: daily flake.lock update"
           pr-labels: |
             automerge-squash
+          pr-body: |
+            Automated changes by the [update-flake-lock](https://github.com/DeterminateSystems/update-flake-lock) GitHub Action.
+            as defined in [.github/workflows/update-flake-lock.yml]({{ env.GITHUB_SERVER_URL }}/{{ env.GITHUB_REPOSITORY }}/blob/master/.github/workflows/update-flake-lock.yml)
+            and run in: {{ env.GITHUB_SERVER_URL }}/{{ env.GITHUB_REPOSITORY }}/actions/runs/{{ env.GITHUB_RUN_ID }}/attempts/{{ env.GITHUB_RUN_ATTEMPT }}:
+
+            ```
+            {{ env.GIT_COMMIT_MESSAGE }}
+            ```
           token: ${{ secrets.NIV_UPDATER_TOKEN }}
