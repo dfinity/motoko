@@ -208,6 +208,7 @@ let transform prog =
     | Non -> Non
     | Pre -> Pre
     | Typ c -> Typ (t_con c)
+    | Named _ -> assert false (* removed by erase_typ_field *)
 
   and t_bind tb =
     { tb with bound = t_typ tb.bound }

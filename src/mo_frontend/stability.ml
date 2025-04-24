@@ -29,6 +29,14 @@ let error_sub s tf1 tf2 =
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
 
+let error_required s tf =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0169" cat
+      (Format.asprintf "stable variable %s of previous type%a\n is required but not provided."
+        tf.lab
+        display_typ tf.typ))
+
+
 (* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
    - Mutability of stable fields can be changed because they are never aliased.
    - Stable fields can be dropped, however, with a warning of potential data loss.
@@ -47,12 +55,14 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
-        Some () (* new fields ok *)
+         List.iter (fun (required, tf) ->
+           if required then error_required s tf) tfs2;
+         Some () (* new fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropped field rejected, recurse on tfs1' *)
         error_discard s tf1;
         go tfs1' []
-      | tf1::tfs1', tf2::tfs2' ->
+      | tf1::tfs1', (is_required, tf2)::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
             if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
@@ -63,6 +73,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
            error_discard s tf1;
            go tfs1' tfs2
          | _ ->
+            (if is_required then error_required s tf2);
            go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
         )
     in go tfs1 tfs2)

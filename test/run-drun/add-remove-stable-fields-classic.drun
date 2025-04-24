@@ -1,4 +1,3 @@
-# SKIP ic-ref-run
 # CLASSICAL-PERSISTENCE-ONLY
 # behaviour differs from EOP due to more relaxed extended candid checks
 install $ID add-remove-stable-fields-classic/version0.mo ""

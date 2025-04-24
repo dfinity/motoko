@@ -343,5 +343,12 @@
 <prog> ::= 
     <list(<imp>, ';')> <list(<dec>, ';')> 
 
+<pre_stab_field> ::= 
+    <req> 'var'? <id> ':' <typ>
+
+<req> ::= 
+    'stable'
+    'in'
+ ')'
 
 

@@ -43,4 +43,3 @@ Alice.test(); //OR-CALL ingress test "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-//SKIP ic-ref-run

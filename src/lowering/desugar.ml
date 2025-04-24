@@ -111,6 +111,7 @@ and exp' at note = function
   | S.ArrayE (m, es) ->
     let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
+  | S.IdxE (e1, e2) when e1.note.S.note_typ = T.blob -> I.PrimE (I.IdxBlobPrim, [exp e1; exp e2])
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
@@ -598,8 +599,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       let (_dom_sort, dom_fields) = T.as_obj (T.normalize dom) in
       let (_rng_sort, rng_fields) = T.as_obj (T.promote rng) in
       let stab_fields_pre =
-        List.sort T.compare_field
-          (dom_fields @
+        List.sort (fun (r1, tf1) (r2, tf2) -> T.compare_field tf1 tf2)
+          ((List.map (fun tf -> (true, tf)) dom_fields) (* required *) @
             (List.filter_map
               (fun tf ->
                 match T.lookup_val_field_opt tf.T.lab dom_fields,
@@ -609,12 +610,12 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                   None
                 | None, None ->
                   (* retain others *)
-                  Some tf)
+                  Some (false, tf)) (* optional *)
               stab_fields))
       in
       let mem_fields_pre =
         List.map
-          (fun tf -> { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
+          (fun (is_required, tf) -> { tf with T.typ = T.Opt (T.as_immut tf.T.typ) })
           stab_fields_pre
       in
       let mem_ty_pre = T.Obj (T.Memory, mem_fields_pre) in
@@ -862,8 +863,8 @@ and array_dotE array_ty proj e =
     | true,  "get"  -> call "@mut_array_get"    [T.nat] [varA]
     | false, "get"  -> call "@immut_array_get"  [T.nat] [varA]
     | true,  "put"  -> call "@mut_array_put"    [T.nat; varA] []
-    | true,  "keys" -> call "@mut_array_keys"   [] [T.iter_obj T.nat]
-    | false, "keys" -> call "@immut_array_keys" [] [T.iter_obj T.nat]
+    | true,  "keys" -> call "@mut_array_keys"   [] T.[iter_obj nat]
+    | false, "keys" -> call "@immut_array_keys" [] T.[iter_obj nat]
     | true,  ("vals" | "values") -> call "@mut_array_vals"   [] [T.iter_obj varA]
     | false, ("vals" | "values") -> call "@immut_array_vals" [] [T.iter_obj varA]
     | _, _ -> assert false
@@ -874,8 +875,10 @@ and blob_dotE proj e =
     let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE (varE f) [] e in
   match proj with
-    | "size"   -> call "@blob_size"   [] [T.nat]
-    | "vals" | "values" -> call "@blob_vals" [] [T.iter_obj T.(Prim Nat8)]
+    | "size" -> call "@blob_size" [] [T.nat]
+    | "keys" -> call "@blob_keys" [] T.[iter_obj nat]
+    | "vals" | "values" -> call "@blob_vals" [] T.[iter_obj (Prim Nat8)]
+    | "get" -> call "@blob_get" [T.nat] T.[Prim Nat8]
     |  _ -> assert false
 
 and text_dotE proj e =

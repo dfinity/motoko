@@ -501,8 +501,8 @@ and check_typ_path' env path : T.con =
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type%a%s"
-          id.it display_typ_expand (T.Obj (s, fs))
+        error env id.at "M0030" "type field %s does not exist in %a%s"
+          id.it display_obj (s, fs)
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
@@ -523,8 +523,8 @@ let error_shared env t at code fmt =
 
 let as_domT t =
   match t.Source.it with
-  | TupT tis -> List.map snd tis
-  | _ -> [t]
+  | TupT tis -> tis
+  | _ -> [(None, t)]
 
 let as_codomT sort t =
   match sort, t.Source.it with
@@ -683,6 +683,11 @@ let rec check_typ env (typ : typ) : T.typ =
   typ.note <- t;
   t
 
+and check_typ_item env typ_item =
+  match typ_item with
+  | (None, typ) -> check_typ env typ
+  | (Some id, typ) -> T.Named (id.it, check_typ env typ)
+
 and check_typ' env typ : T.typ =
   match typ.it with
   | PathT (path, typs) ->
@@ -701,15 +706,15 @@ and check_typ' env typ : T.typ =
   | ArrayT (mut, typ) ->
     let t = check_typ env typ in
     T.Array (infer_mut mut t)
-  | TupT typs ->
-    T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
+  | TupT typ_items ->
+    T.Tup (List.map (check_typ_item env) typ_items)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
     let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
-    let ts1 = List.map (check_typ env') typs1 in
-    let ts2 = List.map (check_typ env') typs2 in
+    let ts1 = List.map (check_typ_item env') typs1 in
+    let ts2 = List.map (check_typ_item env') typs2 in
     check_shared_return env typ2.at sort.it c ts2;
     if not env.pre && Type.is_shared_sort sort.it then begin
       check_shared_binds env typ.at tbs;
@@ -788,8 +793,8 @@ and check_typ' env typ : T.typ =
     t
   | ParT typ ->
     check_typ env typ
-  | NamedT (_, typ) ->
-    check_typ env typ
+  | NamedT (name, typ) ->
+    T.Named (name.it, check_typ env typ)
 
 and check_typ_def env at (id, typ_binds, typ) : T.kind =
   let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in
@@ -1164,9 +1169,11 @@ let array_obj t =
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+  [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [Prim Nat8]); src = empty_src};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+    {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
   ]
 
 let text_obj () =
@@ -1435,15 +1442,20 @@ and infer_exp'' env exp : T.typ =
     T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let t = T.as_array_sub t1 in
+    begin match t1 with
+    | T.(Prim Blob) ->
       if not env.pre then check_exp_strong env T.nat exp2;
-      t
-    with Invalid_argument _ ->
-      error env exp1.at "M0075"
-        "expected array type, but expression produces type%a"
-        display_typ_expand t1
-    )
+      T.(Prim Nat8)
+    | _ ->
+      try
+        let t = T.as_array_sub t1 in
+        if not env.pre then check_exp_strong env T.nat exp2;
+        t
+      with Invalid_argument _ ->
+        error env exp1.at "M0075"
+          "expected array type or Blob, but expression produces type%a"
+          display_typ_expand t1
+    end
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
@@ -1469,7 +1481,7 @@ and infer_exp'' env exp : T.typ =
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
-    let ts2 = List.map (check_typ env') ts2 in
+    let ts2 = List.map (check_typ_item env') ts2 in
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -1864,8 +1876,8 @@ and check_exp' env0 t exp : T.typ =
     check_exp env (T.Prim T.Blob) exp1;
     t
   | FromCandidE _, t ->
-      error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
-        display_typ_expand t
+    error env exp.at "M0174" "from_candid produces an optional shared type, not type%a"
+      display_typ_expand t
   | TupE exps, T.Tup ts when List.length exps = List.length ts ->
     List.iter2 (check_exp env) ts exps;
     t
@@ -2197,19 +2209,19 @@ and inconsistent t ts =
 (* Patterns *)
 
 and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
-  let t, ve = infer_pat env pat in
+  let t, ve = infer_pat true env pat in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   t, ve
 
-and infer_pat env pat : T.typ * Scope.val_env =
+and infer_pat name_types env pat : T.typ * Scope.val_env =
   assert (pat.note = T.Pre);
-  let t, ve = infer_pat' env pat in
+  let t, ve = infer_pat' name_types env pat in
   if not env.pre then
     pat.note <- T.normalize t;
   t, ve
 
-and infer_pat' env pat : T.typ * Scope.val_env =
+and infer_pat' name_types env pat : T.typ * Scope.val_env =
   match pat.it with
   | WildP ->
     error env pat.at "M0102" "cannot infer type of wildcard"
@@ -2231,10 +2243,10 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
     T.Obj (s, tfs), ve
   | OptP pat1 ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve = infer_pat false env pat1 in
     T.Opt t1, ve
   | TagP (id, pat1) ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve = infer_pat false env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; src = empty_src}], ve
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
@@ -2251,17 +2263,20 @@ and infer_pat' env pat : T.typ * Scope.val_env =
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
+  | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
+    let t = check_typ env typ in
+    T.Named (id.it, t),  check_pat env t pat1
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
   | ParP pat1 ->
-    infer_pat env pat1
+    infer_pat name_types env pat1
 
 and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   match pats with
   | [] -> List.rev ts, ve
   | pat::pats' ->
-    let t, ve1 = infer_pat env pat in
+    let t, ve1 = infer_pat true env pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
@@ -2269,7 +2284,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   match pfs with
   | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
-    let typ, ve1 = infer_pat env pf.it.pat in
+    let typ, ve1 = infer_pat false env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; src = empty_src }::ts) ve'
 
@@ -2308,7 +2323,7 @@ and check_pat env t pat : Scope.val_env =
 
 and check_pat_aux env t pat val_kind : Scope.val_env =
   assert (pat.note = T.Pre);
-  if t = T.Pre then snd (infer_pat env pat) else
+  if t = T.Pre then snd (infer_pat false env pat) else
   let t' = T.normalize t in
   let ve = check_pat_aux' env t' pat val_kind in
   if not env.pre then pat.note <- t';
@@ -3177,7 +3192,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
-    let _, ve = infer_pat env' pat in
+    let _, ve = infer_pat true env' pat in
     let in_actor = obj_sort.it = T.Actor in
     let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
@@ -3268,7 +3283,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
-    let t1, _ = infer_pat {env' with pre = true} pat in
+    let t1, _ = infer_pat true {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let class_tbs, _,  class_cs = infer_class_cap env obj_sort.it tbs cs in
     let obj_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
@@ -3427,8 +3442,13 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
             List.sort T.compare_field fs
           in
           match sfs.it with
-          | Single sfs -> T.Single (check_fields sfs)
-          | PrePost (pre,post) ->
-             T.PrePost (check_fields pre, check_fields post)
+          | Single sfs -> T.Single (List.sort T.compare_field (check_fields sfs))
+          | PrePost (pre, post) ->
+            let reqs = List.map (fun f -> (fst f).it) pre in
+            let pres = List.map snd pre in
+            T.PrePost (List.sort
+                         (fun (r1, tf1) (r2, tf2) -> T.compare_field tf1 tf2)
+                         (List.combine reqs (check_fields pres)),
+                       List.sort T.compare_field (check_fields post))
         ) sig_.it
     )

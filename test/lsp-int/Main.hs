@@ -154,7 +154,7 @@ main = do
     putStrLn "Starting the session"
     runSession
       serverCommand
-      fullCaps
+      fullLatestClientCaps
       "." $ do
         log "Initializing"
         initRes <- initializeResponse
@@ -163,11 +163,11 @@ main = do
           hoverTestCase
             doc
             (Position 14 11)
-            (Just "push : <T>(T, List<T>) -> List<T>")
+            (Just "push : <T>(x : T, l : List<T>) -> List<T>")
           hoverTestCase
             doc
             (Position 17 11)
-            (Just "pop : <T>List<T> -> (?T, List<T>)")
+            (Just "pop : <T>(l : List<T>) -> (?T, List<T>)")
           hoverTestCase
             doc
             (Position 50 50)
@@ -176,7 +176,7 @@ main = do
           hoverTestCase
             doc
             (Position 8 39)
-            (Just "natToNat8 : Nat -> Nat8")
+            (Just "natToNat8 : (n : Nat) -> Nat8")
 
         log "Definition tests"
         withDoc "definitions.mo" \doc -> do
@@ -201,21 +201,21 @@ main = do
             doc
             (Position 8 15)
             [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
-          
+
           log "Definition for an imported module alias"
           definitionsTestCase
             project
             doc
             (Position 1 7)
             [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
-          
+
           log "Definition for an imported field"
           definitionsTestCase
             project
             doc
             (Position 2 9)
             [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
-          
+
           log "Definition for an imported field alias"
           definitionsTestCase
             project
@@ -240,7 +240,7 @@ main = do
             doc
           -- 15 | List.pus|
             (Position 14 14)
-            (`shouldMatchList` [("push",Just "<T>(T, List<T>) -> List<T>", Just "Documentation for `push`")])
+            (`shouldMatchList` [("push",Just "<T>(x : T, l : List<T>) -> List<T>", Just "Documentation for `push`")])
 
         log "Completing primitives"
         withDoc "ListClient.mo" \doc -> do
@@ -251,7 +251,7 @@ main = do
             (shouldBe
              (mapMaybe (\c -> guard (c^.label == "nat32ToNat")
                          *> pure (c^.label, c^.detail)) actual)
-             ([("nat32ToNat", Just "Nat32 -> Nat")]))
+             ([("nat32ToNat", Just "(n : Nat32) -> Nat")]))
 
         log "Completing not-yet-imported modules"
         withDoc "ListClient.mo" \doc -> do
