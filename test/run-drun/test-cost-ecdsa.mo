@@ -9,37 +9,37 @@ actor client {
   type EcdsaCurve = { #secp256k1 };
   type Args = {
     key_id : Key;
-    derivation_path : [[Nat8]];
-    message_hash : [Nat8];
+    derivation_path : [Blob];
+    message_hash : Blob;
   };
   let ic00 = actor "aaaaa-aa" : actor {
-    sign_with_ecdsa : shared Args -> async { signature : [Nat8] };
+    sign_with_ecdsa : shared Args -> async { signature : Blob };
   };
   func encodeCurve(curve : EcdsaCurve) : Nat32 = switch curve {
     case (#secp256k1) 0;
   };
 
   public shared ({ caller }) func go() : async () {
-    let fakeMessageHash : [Nat8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+    let fakeMessageHash = Prim.arrayToBlob([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
     let key : Key = { name = "test_key_1"; curve = #secp256k1 };
     let args : Args = {
       message_hash = fakeMessageHash;
-      derivation_path = [Prim.blobToArray(Prim.blobOfPrincipal(caller))];
+      derivation_path = [Prim.blobOfPrincipal(caller)];
       key_id = key;
     };
 
     // Local Output:
     // client: test args:
-    // {derivation_path = [[191, 235, 175, 59, 48, 178, 170, 114, 99, 211, 183, 152, 77, 161, 198, 129, 22, 97, 67, 213, 112, 208, 58, 98, 224, 28, 43, 71, 2]]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]}
+    // {derivation_path = ["\BF\EB\AF\3B\30\B2\AA\72\63\D3\B7\98\4D\A1\C6\81\16\61\43\D5\70\D0\3A\62\E0\1C\2B\47\02"]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = "\01\02\03\04\05\06\07\08\09\0A\0B\0C\0D\0E\0F\10\11\12\13\14\15\16\17\18\19\1A\1B\1C\1D\1E\1F\20"}
     // client: (0, 26_153_846_153) -- sign with ecdsa cost
-    // client: Cycles.balance()   = 2_916_762_209_195
+    // client: Cycles.balance()   = 2_916_759_689_901
     // client: Cycles.available() = 0
     // client: Cycles.refunded()  = 0
-    // client: signature: [1, 74, 96, 177, 200, 15, 166, 139, 132, 158, 253, 124, 73, 75, 101, 0, 70, 109, 150, 128, 92, 190, 37, 129, 251, 243, 179, 15, 84, 174, 166, 188, 23, 59, 224, 149, 183, 58, 233, 112, 62, 133, 63, 108, 135, 100, 227, 31, 92, 166, 7, 219, 83, 115, 95, 41, 116, 101, 205, 127, 15, 214, 255, 6]
-    // client: Cycles.balance()   = 2_890_602_540_395
+    // client: signature: "\01\4A\60\B1\C8\0F\A6\8B\84\9E\FD\7C\49\4B\65\00\46\6D\96\80\5C\BE\25\81\FB\F3\B3\0F\54\AE\A6\BC\17\3B\E0\95\B7\3A\E9\70\3E\85\3F\6C\87\64\E3\1F\5C\A6\07\DB\53\73\5F\29\74\65\CD\7F\0F\D6\FF\06"
+    // client: Cycles.balance()   = 2_890_600_025_727
     // client: Cycles.available() = 0
     // client: Cycles.refunded()  = 0
-    // client: 26_159_668_800 -- Cycles.balance() diff
+    // client: 26_159_664_174 -- Cycles.balance() diff
     // client: error message: "sign_with_ecdsa request sent with 26_153_846_152 cycles, but 26_153_846_153 cycles are required."
     await test(args);
   };
