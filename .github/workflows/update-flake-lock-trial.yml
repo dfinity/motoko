@@ -34,4 +34,15 @@ jobs:
           pr-title: "chore: weekly flake.lock update"
           pr-labels: |
             autoclose
+          pr-body: |
+            Automated changes by the [update-flake-lock](https://github.com/DeterminateSystems/update-flake-lock) GitHub Action
+            as defined in [.github/workflows/update-flake-lock-trial.yml](https://github.com/dfinity/motoko/blob/master/.github/workflows/update-flake-lock-trial.yml).
+
+            ```
+            {{ env.GIT_COMMIT_MESSAGE }}
+            ```
+
+            This PR is just to test if the above dependency bumps cause issues.
+            If checks fail this PR remains open so we can investigate.
+            If all checks succeed this PR is automatically closed.
           token: ${{ secrets.NIV_UPDATER_TOKEN }}

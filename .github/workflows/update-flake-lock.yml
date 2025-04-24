@@ -43,4 +43,11 @@ jobs:
           pr-title: "chore: daily flake.lock update"
           pr-labels: |
             automerge-squash
+          pr-body: |
+            Automated changes by the [update-flake-lock](https://github.com/DeterminateSystems/update-flake-lock) GitHub Action.
+            as defined in [.github/workflows/update-flake-lock.yml](https://github.com/dfinity/motoko/blob/master/.github/workflows/update-flake-lock.yml).
+
+            ```
+            {{ env.GIT_COMMIT_MESSAGE }}
+            ```
           token: ${{ secrets.NIV_UPDATER_TOKEN }}
