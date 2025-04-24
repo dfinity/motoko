@@ -210,37 +210,27 @@
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-systems-go = pkgs.releaseTools.aggregate {
           name = "common-systems-go";
-          constituents =
-            pkgs.lib.attrValues common-constituents ++
-            pkgs.lib.attrValues checks ++
-            pkgs.lib.attrValues buildableReleaseMoPackages ++
-            filter_tests "common"  # Only include common tests
-            ++ builtins.attrValues js;
+          constituents = filter_tests "common";  # Only include common tests.
         };
 
         # GC tests version - only includes GC tests.
         gc-systems-go = pkgs.releaseTools.aggregate {
           name = "gc-systems-go";
-          constituents =
-            pkgs.lib.attrValues common-constituents ++
-            pkgs.lib.attrValues checks ++
-            pkgs.lib.attrValues buildableReleaseMoPackages ++
-            filter_tests "gc"  # Only include GC tests
-            ++ builtins.attrValues js;
+          constituents = filter_tests "gc";  # Only include GC tests.
         };
 
-        # Release version - excludes debug tests
+        # Release version - excludes debug tests.
         release-systems-go = pkgs.releaseTools.aggregate {
           name = "release-systems-go";
           constituents =
             pkgs.lib.attrValues common-constituents ++
               pkgs.lib.attrValues checks ++
               pkgs.lib.attrValues buildableReleaseMoPackages ++
-              filter_tests "release" # Only include release tests
+              filter_tests "release" # Only include release tests.
               ++ builtins.attrValues js;
         };
 
-        # Debug version - only includes debug tests
+        # Debug version - only includes debug tests.
         debug-systems-go = pkgs.releaseTools.aggregate {
           name = "debug-systems-go";
           constituents =
