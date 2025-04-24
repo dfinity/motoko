@@ -707,6 +707,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ e1 <: T.text;
       typ e2 <: T.nat32;
       T.Tup [T.nat32; T.nat] <: t
+    | SystemCostSignWithSchnorrPrim, [e1; e2] ->
+      typ e1 <: T.text;
+      typ e2 <: T.nat32;
+      T.Tup [T.nat32; T.nat] <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;

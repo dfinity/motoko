@@ -5515,6 +5515,21 @@ module Cost = struct
           Cycles.from_word128_ptr env
         )
       )
+
+  let sign_with_schnorr env =
+    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
+      (("key_name", IC.i), ("algorithm", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_algorithm ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_algorithm ^^
+          get_dst ^^
+          IC.cost_sign_with_schnorr env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
 end
 
 (* Low-level, almost raw access to IC stable memory.
@@ -12443,6 +12458,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) curve ^^
     TaggedSmallWord.lsb_adjust Type.Nat32 ^^
     Cost.sign_with_ecdsa env
+  | SystemCostSignWithSchnorrPrim, [key_name; algorithm] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) algorithm ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Cost.sign_with_schnorr env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit,
