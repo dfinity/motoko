@@ -43,6 +43,8 @@ pkgs.mkShell {
         pkgs.ocamlPackages.ocaml-lsp
         pkgs.fswatch
         pkgs.rlwrap # for `rlwrap moc`
+        pkgs.moreutils # `chronic` for `make -C test quick`
+        pkgs.wabt # `wasm-validate` for `test/run.sh`
         pkgs.openjdk
         pkgs.z3_4_12 # for viper dev
         pkgs.difftastic
