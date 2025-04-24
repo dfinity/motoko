@@ -25,10 +25,10 @@ Customers place orders at a pizza restaurant, but the chef can only make one piz
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 
-actor PizzaParlor {
-    stable var orders : [Text] = [];
+persistent actor PizzaParlor {
+    var orders : [Text] = [];
 
-    public shared func placeOrder(order : Text) : async Text {
+    public func placeOrder(order : Text) : async Text {
         // Use Array.tabulate to create a new array with the additional element
         let newOrders = Array.tabulate<Text>(orders.size() + 1, func(i) {
             if (i < orders.size()) { orders[i] } else { order }
@@ -37,7 +37,7 @@ actor PizzaParlor {
         return "Order received: " # order;
     };
 
-    public shared func makePizza() : async Text {
+    public func makePizza() : async Text {
         if (orders.size() == 0) {
             return "No orders to make.";
         };
@@ -78,7 +78,7 @@ func checkDelivery(order : Text) : async* Text {
     };
 
     // Multiple users can check their delivery status asynchronously
-    public shared func getDeliveryStatus(order : Text) : async Text {
+    public func getDeliveryStatus(order : Text) : async Text {
         let status = await* checkDelivery(order);
         return status;
     };
@@ -117,31 +117,34 @@ let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 
 The `try/finally` construct ensures that a block of code in the `finally` clause executes regardless of whether an exception occurs in the `try` block. This is particularly useful for cleanup operations, such as logging or finalizing an action, ensuring that necessary steps are taken even if an error interrupts execution.
 
-In the `placeOrder` function below:
-
-- The `try` block processes an order and appends it to the `orders` array.
-- The `finally` block logs that the order has been processed, ensuring that this message is always printed, whether the function succeeds or fails.
-
 ```motoko no-repl
-public shared func placeOrder(order : Text) : async Text {
-    try {
-      Debug.print("Processing order: " # order);
-
-      let newOrders = Array.tabulate<Text>(
-        orders.size() + 1,
-        func(i) {
-          if (i < orders.size()) {orders[i]} else {order}
-        }
-      );
-
-      orders := newOrders;
-      return "Order received: " # order
-    } finally {
-      Debug.print("Order processed : " # order)
-    };
-
-};
+public func testOrder() : async Text {
+  try {
+    await makePizza();
+  }
+  catch(err) {
+    throw err;  // Re-throw the caught error
+  } finally {
+    Debug.print("Order requested ");
+  };
+}
 ```
+
+:::warning [`assert` behavior in try/catch blocks]
+`assert` statements won't be caught in a try/catch block. When an assertion fails, it causes a trap which is different from throwing an error and will not be caught.
+:::
+
+::: note [Optional `catch`]
+The catch clause may be omitted if only the `finally` functionality is desired. Any uncaught error will be propagated after the finally block has executed.
+:::
+
+:::note [`try-catch` usage constraint]
+Error handling can only be done in asynchronous contexts. Errors can only be thrown or caught in the body of a shared function or async expression.
+:::
+
+:::tip
+A finally clause can be used within a try/catch error handling expression to facilitate control flow. The finally block always executes regardless of whether an error occurs.
+:::
 
 ## Shared types
 

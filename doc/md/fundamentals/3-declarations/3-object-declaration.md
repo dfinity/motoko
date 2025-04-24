@@ -37,16 +37,26 @@ ghost.age += 1; // Updates age
 Objects extend records by supporting functions. Fields can have explicit visibility modifiers, such as `public` or `private`. Objects support async functions and structured behavior.
 
 ```motoko no-repl
-let motoko = object {
-    public let name = "Motoko";
-    public var age = 30;
+import List "mo:base/List";
+import Debug "mo:base/Debug";
 
-    public func greet() : Text {
-        "Hello, my name is " # name # "!"
+let logger = object {
+    private var logs = List.empty<Text>()
+    
+    public func add(message : Text) : () {
+        List.add(logs, message);
+        Debug.print("New entry: " # message);
+    };
+    
+    public func clear() : () {
+        logs.clear();
+        Debug.print("Logs cleared");
+    };
+    
+    public func size() : Nat {
+        logs.size();
     };
 };
-
-Debug.print(motoko.greet()); // "Hello, my name is Motoko!"
 ```
 
 ### Accessing object fields
@@ -54,20 +64,30 @@ Debug.print(motoko.greet()); // "Hello, my name is Motoko!"
 Fields and methods of an object are accessed using [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming).
 
 ```motoko no-repl
-let motoko = object {
-    public let name = "Motoko";
-    public var age = 30;
+import List "mo:base/List";
+import Debug "mo:base/Debug";
 
-    public func greet() : Text {
-        "Hello, my name is " # name # "!"
+let logger = object {
+    private var logs = List.empty<Text>()
+    
+    public func add(message : Text) : () {
+        List.add(logs, message);
+        Debug.print("New entry: " # message);
     };
-    public func birthday() : Text{
-      age += 1;
-      "It's my birthday, I'm now " # debug_show(age) # "years old!"
-    }
+    
+    public func clear() : () {
+        List.clear(logs);
+        Debug.print("Logs cleared");
+    };
+    
+    public func size() : Nat {
+        logs.size();
+    };
 };
-Debug.print(motoko.greet());
-Debug.print(motoko.birthday());
+logger.add("System initialized");
+logger.add("User logged in");
+Debug.print("Number of logs: " # Nat.toText(logger.size()));
+logger.clear();
 ```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

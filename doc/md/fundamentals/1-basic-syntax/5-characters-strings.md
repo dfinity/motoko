@@ -28,6 +28,23 @@ let greeting : Text = "Hello, world!";
 "ICP" # "x" # "Motoko" // ICP x Motoko
 ```
 
+`t.size()` returns the number of characters in the text `t`.
+
+```motoko no-repl
+"abc".size() == 3
+```
+
+`t.chars()` returns an iterator enumerating the characters in `t`. For example:
+
+```motoko no-repl
+import Char "mo:base/Char";
+for (c in "abc".chars()) {
+  Debug.print(Char.toText(c));
+}
+```
+
+Text values can be compared using "==",  "<" and all the other relational operators.
+
 ### Resources
 
 - [`Char`](https://internetcomputer.org/docs/motoko/base/Char)

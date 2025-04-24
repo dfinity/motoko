@@ -5,7 +5,7 @@ hide_table_of_contents: true
 
 # Identifiers
 
-Identifiers are names used for variables, functions, and other entities. They must start with a letter and can contain letters, digits, and underscores.
+Identifiers are names used for variables, functions, types, and other entities. They must start with a letter or an underscore and can contain letters, digits, and underscores.
 
 ```motoko no-repl
 let name = "Motoko";

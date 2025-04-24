@@ -18,7 +18,7 @@ let c : Int = 12345;
 
 ### Unbounded integers
 
-By default, [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning it can grow as large (or as small) as needed without causing overflow.
+The  [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning its values can grow as large (or as small) as needed without causing over- or underflow.
 
 ```motoko no-repl
 let bigNumber : Int = 999_999_999_999_999;
@@ -33,12 +33,11 @@ For scenarios requiring fixed-size integers, Motoko offers bounded integer types
 - [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32) (32-bit signed integer)
 - [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64) (64-bit signed integer)
 
-Bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
+Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
 ```motoko
 let overflowInt : Int8 = 128; // Error: literal out of range Int8
 ```
-
 
 ## Natural numbers
 
@@ -73,6 +72,7 @@ Bounded [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types are ide
 let overflowNat8 : Nat8 = 256; // Error: literal out of range Nat8
 ```
 
+Dynamic overflow causes execution to fault or trap.
 
 ## Comparing `Int` and `Nat`
 
@@ -106,6 +106,5 @@ let exp : Float = 2.71828;
 - [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)
 - [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64)
 - [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
-
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

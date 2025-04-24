@@ -61,8 +61,8 @@ Reversing a linked list involves iterating through the list and prepending each 
 ``` motoko no-repl
 let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
-func reverse(l : List.List<Nat>) : List.List<Nat> {
-    var current = l;
+func reverse(list : List.List<Nat>) : List.List<Nat> {
+    var current = list;
     var rev = List.empty<Nat>();
 
     while(not List.isEmpty(current)){
@@ -76,7 +76,7 @@ func reverse(l : List.List<Nat>) : List.List<Nat> {
     };
     rev
   };
-reverse(numbers); // 3-> 2-> 1
+reverse(numbers); // 3 -> 2 -> 1
 ```
 
 ## Type bounds

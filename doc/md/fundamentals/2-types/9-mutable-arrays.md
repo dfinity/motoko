@@ -71,7 +71,7 @@ To demonstrate nested mutable arrays, consider the following.
 
 A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
 
-`VarArray.tabulate` is used with `VarArray.reapeat` to create a mutable board initialized with `"_"` (empty space).
+`VarArray.tabulate` is used with `VarArray.repeat` to create a mutable board initialized with `"_"` (empty space).
 
 ```motoko no-repl
 import Array "mo:base/Array";

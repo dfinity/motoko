@@ -5,6 +5,10 @@ hide_table_of_contents: true
 
 # Imports
 
+In Motoko, libraries of related code modules are collected into packages.
+A module can be imported from the file system using a relative path, or from a named package.
+The location of a package on the file system is determined by a command line argument to the compiler.
+
 Package imports should be at the top of the source file. Imports allow you to reuse code from external libraries or modules, making code easier to maintain and manage. You can import from:
 
 **1. Standard modules provided by the base library.**
@@ -13,16 +17,16 @@ Package imports should be at the top of the source file. Imports allow you to re
 import Text "mo:base/Text";
 ```
 
-**2. Third-party packages installed via the Mops package manager.**
+**2. Third-party packages installed via the Mops package manager or other means.**
 
 ```motoko no-repl
-import Package "mo:packagename";
+import Package "mo:itertools\Iter";
 ```
 
 **3. Files within the current project.**
 
 ```motoko no-repl
-import Utils "utils";
+import Utils "Utils";
 ```
 
 You can also import specific functions from a module:
@@ -30,6 +34,8 @@ You can also import specific functions from a module:
 ```motoko no-repl
 import { compare } "mo:base/Nat";
 ```
+
+Other forms of imports can be used to reference actor classes and other actors.
 
 Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/modules-imports).
 

@@ -64,7 +64,7 @@ actor {
 
 ## `fuzz`
 
-The [`fuzz` package](https://mops.one/fuzz) is a random data generator designed primarily for testing, but it can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, `Blob`s, and principals. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random `Blob` for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies.
+The [`fuzz` package](https://mops.one/fuzz) is a random data generator designed primarily for testing, but it can also be used for generating random account IDs, unique values, and randomized inputs. It supports various data types, including numbers, text, arrays, `Blob`s, and `Principal`'s. The randomness source is customizable, allowing initialization with a time-based seed, a fixed seed for reproducibility, a random `Blob` for stronger entropy, or a custom generator function. By default, `fuzz` uses `Time.now()` as a seed, providing immediate access to pseudo-random values without external dependencies.
 
 The following example demonstrates initialization with the default seed and generating a random `Nat`.
 
