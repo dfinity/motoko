@@ -11595,6 +11595,55 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e2 ^^
     BigNum.compile_rsh env
 
+  | OtherPrim ("explode_Nat16" | "explode_Int16" as pr), [e] ->
+    SR.UnboxedTuple 2,
+    let set, get = new_local env "e" in
+    compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.untag env Type.(if pr = "explode_Nat16" then Nat16 else Int16) ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shl_const 8L ^^
+    TaggedSmallWord.tag env Type.Nat8
+
+  | OtherPrim ("explode_Nat32" | "explode_Int32" as pr), [e] ->
+    SR.UnboxedTuple 4,
+    let set, get = new_local env "e" in
+    let byte_at_bit b =
+      get ^^
+      compile_shrU_const b ^^
+      compile_shl_const 56L ^^
+      TaggedSmallWord.tag env Type.Nat8 in
+    compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.untag env Type.(if pr = "explode_Nat32" then Nat32 else Int32) ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    byte_at_bit 48L ^^
+    byte_at_bit 40L ^^
+    byte_at_bit 32L
+
+  | OtherPrim ("explode_Nat64" | "explode_Int64" as pr), [e] ->
+    SR.UnboxedTuple 8,
+    let set, get = new_local env "e" in
+    let byte_at_bit b =
+      get ^^
+      (if b = 0L then G.nop else compile_shrU_const b) ^^
+      compile_shl_const 56L ^^
+      TaggedSmallWord.tag env Type.Nat8 in
+    compile_exp_as env ae (SR.UnboxedWord64 Type.(if pr = "explode_Nat64" then Nat64 else Int64)) e ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    byte_at_bit 48L ^^
+    byte_at_bit 40L ^^
+    byte_at_bit 32L ^^
+    byte_at_bit 24L ^^
+    byte_at_bit 16L ^^
+    byte_at_bit 8L ^^
+    byte_at_bit 0L
+ 
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
