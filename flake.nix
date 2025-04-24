@@ -208,14 +208,14 @@
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.
-        common-systems-go = pkgs.releaseTools.aggregate {
-          name = "common-systems-go";
+        common-tests = pkgs.releaseTools.aggregate {
+          name = "common-tests";
           constituents = filter_tests "common";  # Only include common tests.
         };
 
         # GC tests version - only includes GC tests.
-        gc-systems-go = pkgs.releaseTools.aggregate {
-          name = "gc-systems-go";
+        gc-tests = pkgs.releaseTools.aggregate {
+          name = "gc-tests";
           constituents = filter_tests "gc";  # Only include GC tests.
         };
 
