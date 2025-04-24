@@ -3,7 +3,5 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: client: test args:
 {derivation_path = [[4]]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]}
 debug.print: client: (1, 4_040_675_730_465_372_995_972_512_129_071) -- sign with ecdsa cost
-debug.print: client: Cycles.balance()   = 100_000_000_000_000
-debug.print: client: Cycles.available() = 0
-debug.print: client: Cycles.refunded()  = 0
-ingress Completed: Reject: IC0504: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai is out of cycles
+ingress Completed: Reject: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at test-cost-ecdsa.mo:51.5-51.34'.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
