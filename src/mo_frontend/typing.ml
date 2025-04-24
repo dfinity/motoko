@@ -500,8 +500,8 @@ and check_typ_path' env path : T.con =
         check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
-        error env id.at "M0030" "type field %s does not exist in type%a%s"
-          id.it display_typ_expand (T.Obj (s, fs))
+        error env id.at "M0030" "type field %s does not exist in %a%s"
+          id.it display_obj (s, fs)
           (Suggest.suggest_id "type field" id.it
              (List.filter_map
                (function { T.lab; T.typ=T.Typ _;_ } -> Some lab
@@ -1170,9 +1170,11 @@ let array_obj t =
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+  [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [Prim Nat8]); src = empty_src};
+    {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "values"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
     {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+    {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
   ]
 
 let text_obj () =
@@ -1441,15 +1443,20 @@ and infer_exp'' env exp : T.typ =
     T.Array (match mut.it with Const -> t1 | Var -> T.Mut t1)
   | IdxE (exp1, exp2) ->
     let t1 = infer_exp_promote env exp1 in
-    (try
-      let t = T.as_array_sub t1 in
+    begin match t1 with
+    | T.(Prim Blob) ->
       if not env.pre then check_exp_strong env T.nat exp2;
-      t
-    with Invalid_argument _ ->
-      error env exp1.at "M0075"
-        "expected array type, but expression produces type%a"
-        display_typ_expand t1
-    )
+      T.(Prim Nat8)
+    | _ ->
+      try
+        let t = T.as_array_sub t1 in
+        if not env.pre then check_exp_strong env T.nat exp2;
+        t
+      with Invalid_argument _ ->
+        error env exp1.at "M0075"
+          "expected array type or Blob, but expression produces type%a"
+          display_typ_expand t1
+    end
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"

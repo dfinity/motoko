@@ -8,28 +8,26 @@
 
 { ref, from, to }:
 let
-  nixpkgs = import ./nix { };
-
-  subpath = p: import ./nix/gitSource.nix p;
+  flake = builtins.getFlake (toString ./.);
+  system = builtins.currentSystem;
+  pkgs = import flake.inputs.nixpkgs { inherit system; };
 
   # Wrap in a derivation to fix path to perl in shebang
-  diff-stats = nixpkgs.stdenvNoCC.mkDerivation {
+  diff-stats = pkgs.stdenvNoCC.mkDerivation {
     name = "diff-stats";
     src = ./test/diff-stats.pl;
     phases = [ "installPhase fixupPhase" ];
-    buildInputs = [ nixpkgs.perl ];
+    buildInputs = [ pkgs.perl ];
     installPhase = ''
       mkdir -p $out/bin
       cp $src $out/bin/diff-stats
     '';
   };
 
-  test-data = subpath ./test;
-
   wasm-hash-for = moc:
-    nixpkgs.stdenvNoCC.mkDerivation {
+    pkgs.stdenvNoCC.mkDerivation {
       name = "wasm-hash";
-      src = test-data;
+      src = ./test;
       buildInputs = [ moc ];
       buildPhase = ''
         moc --version
@@ -54,21 +52,61 @@ let
       '';
     };
 
-  baseJobs = import (builtins.fetchGit {url = ./.; ref = ref; rev = from;}) {};
-  prJobs = import (builtins.fetchGit {url = ./.; ref = ref; rev = to;}) {};
+  checkout = rev: builtins.fetchGit { url = ./.; ref = ref; inherit rev; };
 
-  # NB: We run both compilers on the new PR’s set of tests
-  wasm-hash-base = wasm-hash-for baseJobs.moc;
-  wasm-hash-pr = wasm-hash-for prJobs.moc;
+  baseCheckout = checkout from;
+
+  isBaseFlake = builtins.hasAttr "flake.nix" (builtins.readDir baseCheckout);
+
+  flakeOf = dir:
+    let
+      flakePath = builtins.unsafeDiscardStringContext "${dir}";
+    in
+    builtins.getFlake flakePath;
+
+  # TODO: This if-then-else is only needed for the transition from default.nix to flake.nix.
+  # After https://github.com/dfinity/motoko/pull/5067 is merged we can remove it and just use flakes.
+  baseArgs =
+    if isBaseFlake
+    then
+      let
+        baseFlake = flakeOf baseCheckout;
+      in
+      {
+        baseMoc = baseFlake.packages.${system}.debug.moc;
+        basePerf = baseFlake.checks.${system}.perf;
+      }
+    else
+      let
+        baseJobs = import baseCheckout { };
+      in
+      {
+        baseMoc = baseJobs.moc;
+        basePerf = baseJobs.tests.perf;
+      };
+  inherit (baseArgs) baseMoc basePerf;
+
+  prCheckout = checkout to;
+
+  prFlake = flakeOf prCheckout;
+  prMoc = prFlake.packages.${system}.debug.moc;
+
+  baseWasm = wasm-hash-for baseMoc;
+  prWasm = wasm-hash-for prMoc;
+
+  prPerf = prFlake.checks.${system}.perf;
 in
-nixpkgs.runCommandNoCC "perf-delta" {
-  nativeBuildInputs = [ nixpkgs.coreutils diff-stats ];
+pkgs.runCommandNoCC "perf-delta"
+{
+  nativeBuildInputs = [ pkgs.coreutils diff-stats ];
 } ''
   echo "Comparing from ${from} to ${to}:" > $out
-  if cmp -s ${wasm-hash-base} ${wasm-hash-pr}
+  if cmp -s ${baseWasm} ${prWasm}
   then
     echo "The produced WebAssembly code seems to be completely unchanged." >> $out
   else
-    diff-stats ${baseJobs.tests.perf}/stats.csv ${prJobs.tests.perf}/stats.csv >> $out;
+    diff-stats \
+      ${basePerf}/stats.csv \
+      ${prPerf}/stats.csv >> $out;
   fi
 ''

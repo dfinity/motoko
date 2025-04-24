@@ -154,7 +154,7 @@ main = do
     putStrLn "Starting the session"
     runSession
       serverCommand
-      fullCaps
+      fullLatestClientCaps
       "." $ do
         log "Initializing"
         initRes <- initializeResponse
@@ -201,21 +201,21 @@ main = do
             doc
             (Position 8 15)
             [("lib/list.mo", Range (Position 56 14) (Position 56 18))]
-          
+
           log "Definition for an imported module alias"
           definitionsTestCase
             project
             doc
             (Position 1 7)
             [("lib/list.mo", Range (Position 0 0) (Position 0 0))]
-          
+
           log "Definition for an imported field"
           definitionsTestCase
             project
             doc
             (Position 2 9)
             [("lib/list.mo", Range (Position 31 14) (Position 31 17))]
-          
+
           log "Definition for an imported field alias"
           definitionsTestCase
             project

@@ -19,4 +19,3 @@ actor {
 //SKIP run-low
 //SKIP run
 //SKIP run-ir
-//SKIP ic-ref-run
