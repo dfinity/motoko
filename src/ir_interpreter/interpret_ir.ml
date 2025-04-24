@@ -477,7 +477,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         k (V.Nat64 (Numerics.Nat64.of_int 42))
       | SystemCyclesRefundedPrim, [] -> (* faking it *)
         k (V.Nat64 (Numerics.Nat64.of_int 0))
-      (* TODO: do we need SystemCost* logic here? *)
       | _ ->
         trap exp.at "Unknown prim or wrong number of arguments (%d given):\n  %s"
           (List.length es) (Wasm.Sexpr.to_string 80 (Arrange_ir.prim p))

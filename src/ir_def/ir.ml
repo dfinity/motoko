@@ -164,7 +164,6 @@ and prim =
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
   (* Cost *)
-  (* TODO: Consider a single constructor `SystemCostPrim of system_cost_prim` *)
   | SystemCostCallPrim
   | SystemCostCreateCanisterPrim
   | SystemCostHttpRequestPrim
