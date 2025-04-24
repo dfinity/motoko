@@ -1,8 +1,9 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: client: (1, 39_413_977_479_851_216_027_556_402) -- sign with ecdsa cost
-debug.print: client: already topped up; balance = 100_000_000_000_000
+debug.print: client: test args:
+{derivation_path = [[4]]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]}
+debug.print: client: (1, 4_040_675_730_539_159_972_284_530_204_723) -- sign with ecdsa cost
 debug.print: client: Cycles.balance()   = 100_000_000_000_000
 debug.print: client: Cycles.available() = 0
 debug.print: client: Cycles.refunded()  = 0
-ingress Completed: Reject: Unable to route management canister request sign_with_ecdsa: ChainKeyError("Requested unknown or disabled threshold key: ecdsa:Secp256k1:test_key_1, existing enabled keys: []")
+ingress Completed: Reject: IC0504: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai is out of cycles
