@@ -1,8 +1,0 @@
-type Time = int;
-service : {
-  decrement: () -> ();
-  increment: () -> ();
-  lastAccess: () -> (Time) query;
-  read: () -> (int) query;
-  readFloat: () -> (float64) query;
-}

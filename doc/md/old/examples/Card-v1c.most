@@ -1,8 +1,0 @@
-// Version: 3.0.0
-type Card = {description : Text; title : Text};
-type OldCard = {title : Text};
-actor ({
-  in var map : [(Nat32, OldCard)]
-}, {
-  stable var map : [(Nat32, Card)]
-}) ;

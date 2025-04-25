@@ -1,6 +1,0 @@
-service : {
-  decrement: () -> ();
-  increment: () -> ();
-  read: () -> (int) query;
-  readFloat: () -> (float64) query;
-}

@@ -1,5 +1,0 @@
-service : {
-  decrement: () -> ();
-  increment: () -> ();
-  read: () -> (int) query;
-}
