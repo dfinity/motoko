@@ -18,7 +18,7 @@ let c : Int = 12345;
 
 ### Unbounded integers
 
-By default, [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning it can grow as large (or as small) as needed without causing overflow.
+The  [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning its values can grow as large (or as small) as needed without causing over- or underflow.
 
 ```motoko no-repl
 let bigNumber : Int = 999_999_999_999_999;
