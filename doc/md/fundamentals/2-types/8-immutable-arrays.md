@@ -90,8 +90,6 @@ Motoko supports passing collections to a function, ensuring that all arguments a
 Arrays can be useful when writing functions that take a variable number of arguments, allowing you to condense multiple arguments into a single array:  
 
 ```motoko no-repl
-let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
-
 func printAllStrings(strings : [Text]) {
   for (s in strings.values()) {
     Debug.print(s);
