@@ -1,4 +1,5 @@
 # APPLICATION-SUBNET
+# CLASSICAL-PERSISTENCE-ONLY
 
 install $ID check-app-subnet/check-app-subnet.mo ""
 ingress $ID test "DIDL\x00\x00"
