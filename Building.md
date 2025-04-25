@@ -7,11 +7,17 @@ running, as a normal user with `sudo` permissions,
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
+This repository is also a Nix Flake which means you need to
+allow this feature by making sure the following is present in `/etc/nix/nix.conf`:
+```
+extra-experimental-features = nix-command flakes
+```
+
 You should also enable a nix cache to get all dependencies pre-built.
 
 The `cachix` command also requires `sudo` permissions.
 ```
-nix-env -iA cachix -f https://cachix.org/api/v1/install
+nix profile install --accept-flake-config nixpkgs#cachix
 cachix use ic-hs-test
 ```
 Technically, this is optional, but without this you will build lots of build
@@ -22,16 +28,32 @@ dependencies manually, which can take several hours.
 If you want just to _use_ `moc`, you can install the `moc` binary into your `nix`
 environment by running
 ```
-$ nix-env -i -f . -A moc
+$ nix profile install .#release.moc
 ```
 in a check-out of the `motoko` repository.
 
 ## Development using Nix
 
-To enter a shell with the necessary dependencies available, use
+To enter a shell with the necessary dependencies available,
+either run:
+
 ```
-$ nix-shell
+$ nix develop
 ```
+
+Or use `direnv` by:
+
+* Installing: [direnv](https://direnv.net/).
+
+* Installing: [nix-direnv](https://github.com/nix-community/nix-direnv).
+
+* `cd` to this directory.
+
+* `direnv allow` (only needs to be done once).
+
+Then all tools to develop Motoko will be loaded automatically everytime you `cd`
+to this directory or everytime you update `flake.{nix,lock}`.
+
 (The first shell start may take several minutes, afterwards being much faster.)
 
 Within this shell you can run
@@ -48,7 +70,7 @@ This invokes `dune` under the hood, which will, as a side effect, also create
 
 A good way to check that everything is fine, i.e. if this will pass CI, is to run
 ```
-$ nix-build --no-out-link
+$ nix build --no-link
 ```
 
 For more details on our CI and CI setup, see `CI.md`.
@@ -65,7 +87,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    with today’s date.
 
  * Make sure the markdown doc for base is up-to-date:
-   For now, in a nix-shell (preferably _re-entering_):
+   For now, in a nix shell (preferably _re-entering_):
 
    ```bash
       make -C rts
@@ -76,7 +98,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `export MOC_MINOR=1`
+ * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
@@ -122,6 +144,25 @@ Finally tag the base release (so the documentation interpreter can do the right 
 * `git tag moc-0.14.$MOC_MINOR`
 * `git push origin moc-0.14.$MOC_MINOR`
 
+### Downstream
+
+There are a few dependent actions to follow-up the release, e.g.
+- `motoko` NPM package
+- `vessel` package set
+- `vscode` plugin
+- ICP Ninja
+
+These are generally triggered by mentioning the release in Slack.
+
+Announcing the release towards SDK happens by triggering this GitHub action:
+https://github.com/dfinity/sdk/actions/workflows/update-motoko.yml
+Press the "Run workflow" button, filling in
+- Motoko version: `latest`
+- Open PR against this sdk branch: `master`
+
+and then hitting the green button. This will create a PR with all necessary hash changes against that branch. There is no
+need to do this immediately, you can leave the release soaking a few days. Use your own jugdement w.r.t. risk, urgency etc.
+
 If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
 
 ## Coverage report
@@ -134,7 +175,7 @@ and then use `bisect-ppx-report html` to produce a report.
 
 The full report can be built with
 ```
-nix-build -A tests.coverage
+nix build .#tests.coverage
 ```
 and the report for latest `master` can be viewed at
 [https://dfinity.github.io/motoko/coverage/](https://dfinity.github.io/motoko/coverage/).
@@ -166,16 +207,3 @@ build system.)
 
 Specifically some advanced techniques to obtain performance deltas for the
 GC can be found in `rts/Benchmarking.md`.
-
-## Updating Haskell Packages
-
-When the `.cabal` file of a Haskell package is changed you need to make sure the
-corresponding `.nix` file (stored in `nix/generated/`) is kept in sync with it. These files are automatically generated; run
-```
-nix-shell nix/generate.nix
-```
-to update.
-
-Don't worry if you forget to update the `default.nix` file, the CI job
-`check-generated` checks if these files are in sync and fail with a diff if
-they aren't.

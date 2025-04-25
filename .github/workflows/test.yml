@@ -1,9 +1,55 @@
 name: "build"
 on:
   push:
-     branches: [ master ]
+    branches: [ master ]
   pull_request: {}
 jobs:
+  common-tests:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+
+      # We are using the `ic-hs-test` Cachix cache for historical reasons.
+      - uses: cachix/cachix-action@v16
+        with:
+          name: ic-hs-test
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - run: nix profile install .#nix-build-uncached
+      - name: "Run common tests"
+        run: |
+          cachix watch-exec ic-hs-test -- \
+            nix-build-uncached --max-jobs auto \
+              -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.common-tests'
+
+  gc-tests:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+
+      # We are using the `ic-hs-test` Cachix cache for historical reasons.
+      - uses: cachix/cachix-action@v16
+        with:
+          name: ic-hs-test
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - run: nix profile install .#nix-build-uncached
+      - name: "Run GC tests"
+        run: |
+          cachix watch-exec ic-hs-test -- \
+            nix-build-uncached --max-jobs auto \
+              -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.gc-tests'
+
   tests:
     strategy:
       matrix:
@@ -12,126 +58,107 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-      with:
-        # fetch full history so that git merge-base works
-        fetch-depth: 0
-        # fetch PR commit, not predicted merge commit
-        ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v31
+      - uses: actions/checkout@v4
+        with:
+          # fetch full history so that git merge-base works
+          fetch-depth: 0
+          # fetch PR commit, not predicted merge commit
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: cachix/install-nix-action@v31
 
-    # We are using the `ic-hs-test` Cachix cache for hysterical raisins
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      # We are using the `ic-hs-test` Cachix cache for historical reasons.
+      - uses: cachix/cachix-action@v16
+        with:
+          name: ic-hs-test
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Free up disk space on Ubuntu
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      if: startsWith(matrix.os, 'ubuntu-')
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
+      - run: nix profile install .#nix-build-uncached
+      - name: "nix-build-${{ matrix.build_type }}"
+        run: |
+          cachix watch-exec ic-hs-test -- \
+            nix-build-uncached --max-jobs auto \
+              -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ matrix.build_type }}-systems-go'
 
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: false
+      - name: Discover `test/bench` changes
+        if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && matrix.build_type == 'release'
+        run: |
+          git diff --no-index $(nix build .#tests.bench)/share test/bench/ok | patch -p1 -R
+          git switch ${{ github.event.pull_request.head.ref }}
+          git branch --show-current
 
-    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
+      - name: Commit `test/bench` changes
+        if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+        uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          author_name: Cycle and memory benchmark updater
+          github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
+          committer_name: GitHub Actions
+          committer_email: actions@github.com
+          message: "Updating `test/bench` numbers"
+          commit: -- test/bench/ok
 
-    - run: nix-env -iA nix-build-uncached -f nix/
+      - name: Calculate performance delta
+        if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+        run: |
+          from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
+          to="${{ github.event.pull_request.head.sha }}"
+          echo "Comparing changes from $from to $to"
+          nix build -f perf-delta.nix -o perf-delta.txt \
+            --argstr ref HEAD \
+            --argstr from "$from" \
+            --argstr to "$to"
 
-    - name: "nix-build-${{ matrix.build_type }}"
-      run: nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
+      - name: Read performance delta
+        if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+        id: perf
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./perf-delta.txt
 
-    - name: Discover `test/bench` changes
-      if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
-      run: |
-        git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
-        git switch ${{ github.event.pull_request.head.ref }}
-        git branch --show-current
+      - name: Find performance comment
+        if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- perf comment -->'
 
-    - name: Commit `test/bench` changes
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
-      uses: EndBug/add-and-commit@v9
-      with:
-        default_author: github_actions
-        author_name: Cycle and memory benchmark updater
-        github_token: ${{ secrets.NIV_UPDATER_TOKEN }}
-        committer_name: GitHub Actions
-        committer_email: actions@github.com
-        message: "Updating `test/bench` numbers"
-        commit: -- test/bench/ok
-
-    - name: Calculate performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
-      run: |
-        from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
-        to="${{ github.event.pull_request.head.sha }}"
-        echo "Comparing changes from $from to $to"
-        nix-build --max-jobs auto perf-delta.nix -o perf-delta.txt \
-          --argstr ref HEAD \
-          --argstr from "$from" \
-          --argstr to "$to"
-
-    - name: Read performance delta
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
-      id: perf
-      uses: juliangruber/read-file-action@v1
-      with:
-        path: ./perf-delta.txt
-
-    - name: Find performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
-      uses: peter-evans/find-comment@v3
-      id: fc
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: '<!-- perf comment -->'
-
-    # Forks can't add comments so this job does not run on forks, see
-    # motoko#2864.
-    - name: Create or update performance comment
-      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && matrix.build_type == 'release'
-      uses: peter-evans/create-or-update-comment@v4
-      with:
-        comment-id: ${{ steps.fc.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          <!-- perf comment -->
-          ${{ steps.perf.outputs.content }}
-        edit-mode: replace
+      # Forks can't add comments so this job does not run on forks, see
+      # motoko#2864.
+      - name: Create or update performance comment
+        if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && matrix.build_type == 'release'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- perf comment -->
+            ${{ steps.perf.outputs.content }}
+          edit-mode: replace
 
   reports:
     if: github.ref == 'refs/heads/master'
-    needs: tests
+    needs: [tests]
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-    - name: Fetch report
-      run: nix-build -A report-site -o report-site
-    - name: Resolve symlinks
-      run: cp -rL report-site report-site-copy
-    - name: Push report to GitHub pages
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        branch: gh-pages
-        folder: report-site-copy
-        single-commit: true
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: ic-hs-test
+      - name: Fetch report
+        run: nix build .#report-site -o report-site
+      - name: Resolve symlinks
+        run: cp -rL report-site report-site-copy
+      - name: Push report to GitHub pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: report-site-copy
+          single-commit: true
 
   artifacts:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
@@ -140,20 +167,37 @@ jobs:
         os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-    - name: nix-build
-      run: |
-        nix-build --arg officialRelease true -A moc
-    # upload-artifact doesn't work for symlink dir
-    # https://github.com/actions/upload-artifact/issues/92
-    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
-    - name: upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: moc-${{ matrix.os }}
-        path: ${{ env.UPLOAD_PATH }}
-        retention-days: 5
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: ic-hs-test
+      - name: nix-build
+        run: |
+          nix build .#release.moc
+      # upload-artifact doesn't work for symlink dir
+      # https://github.com/actions/upload-artifact/issues/92
+      - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: moc-${{ matrix.os }}
+          path: ${{ env.UPLOAD_PATH }}
+          retention-days: 5
+
+  verify-common-gc:
+    needs: [common-tests, gc-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Common and GC tests passed
+        run: echo "Common and GC tests completed successfully"
+
+  verify-main-tests:
+    needs: tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Main tests passed
+        run: echo "Main tests completed successfully on ${{ matrix.os }}"

@@ -23,16 +23,11 @@ Knowing if it is broken
 Everything is built and tested upon every push to a branch of the repository,
 and the resulting status is visible (at derivation granularity) to developers.
 
-**Implementation (external):**
+**Implementation:**
 All pushes to any branch are built by a Github Action job, on Linux and Darwin.
 
-**Implementation (internal):**
-All pushes to `master`, as well as to all branches with open PRs cause hydra to
-build the jobs described in `ci.nix` resp. `ci-pr.nix`.
-
-The build status is visible via the Github status (coarsly: only evaluation,
-`all-systems-go` and `all-jobs`) and via hydra directly (full per-job detail
-including logs).
+The build status is visible via the Github status (coarsely: only evaluation,
+`{debug,release}-systems-go`).
 
 This includes linux and darwin builds.
 

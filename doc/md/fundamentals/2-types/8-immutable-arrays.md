@@ -90,8 +90,6 @@ Motoko supports passing collections to a function, ensuring that all arguments a
 Arrays can be useful when writing functions that take a variable number of arguments, allowing you to condense multiple arguments into a single array:  
 
 ```motoko no-repl
-let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
-
 func printAllStrings(strings : [Text]) {
   for (s in strings.values()) {
     Debug.print(s);
@@ -203,6 +201,14 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
 ```
 
+## Subtyping
+
+Immutable arrays, unlike mutable arrays, also support subtyping. 
+
+For example, this means that, since `Nat` is a subtype of `Int`, the array type `[Nat]` is also a subtype of the array type `[Int]`. 
+Similarly, `[WeekDay]` <: `[Day]`, `[ {x : Nat; y: Nat; z : Nat } ] <: [ {x : Nat, y: Nat} ]` and so on.
+
+For safety reasons, mutable arrays do not support subtyping. This is because the entries of a mutable array can also be written, not just read.
 ## Resources
 
 - [`Array`](https://internetcomputer.org/docs/motoko/base/Array)
