@@ -103,7 +103,7 @@ Bounded integers **trap** on overflow, but **wrapping versions** allow overflow 
 
 ## Assignment operators
 
-Assignment operators modify variables in place. Only mutable variables `var` can be reassigned.
+Assignment operators modify variables in place. Both mutable variables declared with `var` and elements of mutable arrays can be assigned new values.
 
 | Operator | Description |Examples|
 |----------|------------|---------|
@@ -114,9 +114,18 @@ Assignment operators modify variables in place. Only mutable variables `var` can
 | `/=`     | Divide and assign | `a /= b` |
 | `#=`     | Concatenate and assign (for [`Text`](https://internetcomputer.org/docs/motoko/base/Text)) | `a #= b` |
 
+For example:  
+
+```motoko
+var done = false; done := true;
+
+let a = [var 1, 2];
+a[0] += a[1];
+```
+
 ## Operator precedence
 
-Operators follow precedence rules, meaning some operators are evaluated before others.
+Operators follow precedence rules, meaning that, in the absence of explicit parentheses, some operators are evaluated before others.
 
 1. Unary operators (`-`, `!`, `^`)
 2. Exponentiation (`**`, `**%`)

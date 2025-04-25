@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Caller identification
 
-[Principals](https://internetcomputer.org/docs/building-apps/canister-management/control) serve as unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister will have a principal which acts as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps.
+[Principals](https://internetcomputer.org/docs/building-apps/essentials/canisters#canister-id) serve as unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister will have a principal which acts as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving methods of authentication, meaning they can vary across different applications, preventing a user’s identity from being easily tracked across multiple dapps.
 
 When a shared function is called, the caller’s [principal](https://internetcomputer.org/docs/building-apps/canister-management/control) is provided alongside the call to identify who initiated the request. This enables canisters to implement access control and restrict or allow certain actions based on the caller’s identity. A canister could enforce rules such as allowing only specific users to modify data, maintaining a list of authorized accounts, or preventing anonymous interactions.
 

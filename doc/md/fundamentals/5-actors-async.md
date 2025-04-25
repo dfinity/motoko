@@ -25,8 +25,8 @@ Customers place orders at a pizza restaurant, but the chef can only make one piz
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 
-actor PizzaParlor {
-    stable var orders : [Text] = [];
+persistent actor PizzaParlor {
+    var orders : [Text] = [];
 
     public shared func placeOrder(order : Text) : async Text {
         // Use Array.tabulate to create a new array with the additional element

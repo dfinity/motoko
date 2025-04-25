@@ -4,9 +4,16 @@ sidebar_position: 2
 
 # Shared types
 
-Shared types enable safe communication between [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters), [frontends](https://internetcomputer.org/docs/building-apps/frontends/using-an-asset-canister), and users. They define what data can be passed between different systems while ensuring compatibility with [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), the interface description language of the Internet Computer.
+All Motoko types are divided into sets. The smallest is the set of shared types. Shared types are part of the larger set of [stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types).  
 
-A shared type must be immutable and [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts)-compatible.
+A shared type's value can easily be exchanged, or shared, with other actors. To avoid the problems of sharing state across actors, shared types are all immutable. This means that their values can be transmitted by simply copying data, avoiding the complexity and perils of transmitting stateful objects.  
+Motoko's shared types also have a natural translation to Candid types.
+
+Operationally, you can think of shared types as the subset of types that can be serialized to Candid.  
+
+In Motoko, shared functions are used to transmit values between actors. Unlike other functions, their arguments and results are restricted to shared types. This restriction allows the arguments and results to be translated and transmitted as Candid.  
+
+These functions are shared because they, too, are values of with shared types and can be communicated with other actors.  
 
 ## Importance of shared types
 

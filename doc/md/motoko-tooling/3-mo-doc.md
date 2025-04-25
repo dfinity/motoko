@@ -14,6 +14,36 @@ Download `mo-doc` from Motoko's [GitHub releases page](https://github.com/dfinit
 $(dfx cache show)/mo-doc [options]
 ```
 
+Generate in HTML format (default):
+
+```bash  
+$(dfx cache show)/mo-doc  
+```
+
+Generate in Markdown format:
+
+```
+$(dfx cache show)/mo-doc --format plain  
+```
+
+Generate in AsciiDoc format:
+
+```
+$(dfx cache show)/mo-doc --format adoc  
+```
+
+Use a custom source code directory (defaults to src):
+
+```
+$(dfx cache show)/mo-doc --src path/to/motoko/files  
+```
+
+Use a custom output directory (defaults to docs):
+
+```
+$(dfx cache show)/mo-doc --output path/to/custom/output  
+```
+
 ## Options
 
 - `--source <path>`: Specifies the directory to search for Motoko source files. Defaults to `src`.

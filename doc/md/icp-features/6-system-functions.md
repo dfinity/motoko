@@ -51,14 +51,14 @@ persistent actor Alarm {
 
 The [`timer()` system function](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#timers) allows canisters to schedule a single execution of a task after a specified delay. To make it repeat, the function must explicitly reset the timer using `setGlobalTimer()` within its body. It takes a single argument for resetting the global timer and returns `async ()`. 
 
-Unlike `heartbeat()`, which runs automatically on every subnet heartbeat, `timer()` requires **manual rescheduling** after execution. This gives canisters precise control over whether the [timer](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#timers) runs once or continuously, depending on when (or if) `setGlobalTimer()` is called again.
+Unlike `heartbeat()`, which runs automatically on every subnet round, `timer()` requires **manual rescheduling** after execution. This gives canisters precise control over whether the [timer](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#timers) runs once or continuously, depending on when (or if) `setGlobalTimer()` is called again.
 
 In the following example, `timer()` runs once immediately after deployment, then stops.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
 
-system func timer(_ : Nat64 -> ()) : async () {
+system func timer(setGlobalTimer : Nat64 -> ()) : async () {
   Debug.print("Timer triggered!");
   // No call to setGlobalTimer() → the timer does not repeat.
 }

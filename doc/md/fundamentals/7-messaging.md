@@ -18,10 +18,10 @@ ICP enforces rules on when and how [canisters](https://internetcomputer.org/docs
 In Motoko, an expression is in an async context if it appears in an `async` function. Query functions are 'ready only' functions, so they do not create an async context and cannot use `await` or send messages.
 
 ```motoko no-repl
-actor Counter {
-    stable var count : Nat = 0;
+persistent actor Counter {
+    var count : Nat = 0;
 
-    public shared func increment() : async () {
+    public func increment() : async () {
         count += 1;
     };
 
@@ -37,7 +37,7 @@ actor Counter {
 
 ## Message inspection
 
-Canisters can inspect and filter incoming messages before execution to prevent spam or malicious requests. This is done using the `inspect` system function, which can accept or reject messages based on criteria like caller identity, message size, or function type. Messages are filtered before execution, preventing unnecessary cycles costs. Anonymous calls can be blocked to prevent spam, and the size of a request can be checked before processing.
+Canisters can inspect and filter incoming replicated messages before execution to prevent spam or malicious requests. This is done using the `inspect` system function, which can accept or reject messages based on criteria like caller identity, message size, or function type. Messages are filtered before execution and the filtering is performed in a non-replicated fashion, preventing unnecessary cycles costs. Anonymous calls can be blocked to prevent spam, and the size of a request can be checked before processing.
 
 ```motoko no-repl
 import Principal "mo:base/Principal";

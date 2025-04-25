@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Immutable arrays
 
-Immutable arrays in are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays), they cannot be modified after creation, ensuring data integrity and predictable behavior.
+Immutable arrays are fixed-size, read-only data structures that allow efficiently storing elements of the same type. Unlike [mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays), they cannot be modified after creation, ensuring data integrity and predictable behavior.  
 
 ## When to use immutable arrays
 
@@ -28,6 +28,10 @@ let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
 ## Accessing and modifying elements
 
+The size of an array `a` is available as `a.size()`, a `Nat`. 
+
+Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.  
+
 Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
 ```motoko no-repl
@@ -50,16 +54,18 @@ There are two primary ways to iterate through the elements in an array in Motoko
 
 Both methods achieve the same result, but `array.values()` is often preferred for its readability and simplicity.
 
-### Using `array.values()`
+### Using `array.values()` and `array.keys()`  
 
-The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
+The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.  
+
+The `array.keys()` function returns an iterator that is used to iterate over the array's valid indices (in increasing order).  
 
 ### Using a `for` loop
 
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
 
 ```motoko no-repl
-for (i in Iter.range(0, arr.size() - 1)) {
+for (i in arr.keys()) {  
     Debug.print(debug_show(arr[i]));
 }
 ```
@@ -81,40 +87,50 @@ mutableCopy[0] := 10;
 
 Motoko supports passing collections to a function, ensuring that all arguments are handled as a collection rather than individual parameters.
 
+Arrays can be useful when writing functions that take a variable number of arguments, allowing you to condense multiple arguments into a single array:  
+
 ```motoko no-repl
 let greetings : [Text] = ["Hello, "Hola", "Ciao" ]
 
 func printAllStrings(strings : [Text]) {
-    for (s in strings.vals()) {
-        Debug.print(s);
-    }
-}
+  for (s in strings.values()) {
+    Debug.print(s);
+  }
+};
+
+printAllStrings(["Hello, "Hola", "Ciao"]);
 ```
 
-:::info
 
-Mutable arrays cannot be shared publicly; they can only be passed and modified within the [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) privately.
+## Comparing arrays  
 
-:::
+Arrays of  shared types can be compare directly using `==`. Two arrays are considered equal if they have the same length and their corresponding elements are equal: 
 
-## Comparing arrays
+```motoko
+let arr1 : [Nat] = [1, 2, 3];
+let arr2 : [Nat] = [1, 2, 3];
+let arr3 : [Nat] = [3, 2, 1];
 
-Comparing arrays requires element-wise comparison. The `Array.equal` function can be used to check whether two arrays contain the same elements in the same order.
+assert arr1 == arr2;
+assert not arr1 == arr3;
+```
 
-Unlike some languages, Motoko does not compare arrays by reference when using `Array.equal`, ensuring a proper element-by-element comparison.
+More generally, including for arrays of non-shared types, the `Array.equal<T>(a1, a2, eq)` function can be used to check whether two arrays are equal. It takes an additional function `eq` for comparing the elements.  
 
 ```motoko no-repl
 import Array "mo:base/Array";
+import Nat "mo:base/Nat";
 
-func compareArrays() : () {
-    let arr1 : [Nat] = [1, 2, 3];
-    let arr2 : [Nat] = [1, 2, 3];
-    let arr3 : [Nat] = [3, 2, 1];
+let arr1 : [Nat] = [1, 2, 3];
+let arr2 : [Nat] = [1, 2, 3];
+let arr3 : [Nat] = [3, 2, 1];
 
-    assert Array.equal<Nat>(arr1, arr2, func(x, y) { x == y });
-    assert not Array.equal<Nat>(arr1, arr3, func(x, y) { x == y });
-    }
+assert Array.equal(arr1, arr2, Nat.equals);
+assert not Array.equal(arr1, arr3, Nat.equal});
 ```
+
+Unlike some languages, Motoko does not compare arrays by reference using a proper element-by-element structural comparison instead.  
+
 
 ## Transforming arrays
 
@@ -167,6 +183,8 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
     Debug.print(rowText)
   }
 ```
+
+The function `Array.tabulate(size, f)` creates an array of `size` elements, populated so that element `i` contains the value of `f(i)`.  
 
 The function `Array.foldLeft` combines the squares in the row into a single text string, which can then be printed.
 

@@ -22,7 +22,7 @@ Motoko features two implementations for orthogonal persistence:
 Enhanced orthogonal persistence improves upgrade efficiency by **retaining the Wasm memory** of a canister across upgrades. This removes the need for serialization and deserialization, making upgrades faster and reducing performance overhead through:
 
 - **Stable heap**: The entire program memory persists across upgrades.
-- **64-bit address space**: Expands beyond the 2GiB limit of classical persistence.
+- **64-bit address space**: Expands beyond the 2GiB limit of classical persistence. Currently the maximum heap size is 6 GiB.
 - **No explicit stable memory**: Developers work directly with Motoko’s object structures, which persist automatically.
 
 Enhanced orthogonal persistence has finished beta testing and is blessed for use in production.

@@ -34,7 +34,7 @@ Below are the default key bindings for commonly used features supported in the e
 
 ### Other features
 
-- [Vessel](https://github.com/dfinity/vessel) and [Mops](https://mops.one/) (the two most popular Motoko package managers) are supported out-of-the-box in this extension.
+- [Mops](https://mops.one/) and [Vessel](https://github.com/dfinity/vessel) (the two most popular Motoko package managers) are supported out-of-the-box in this extension.
 - Quickly convert between Motoko types using code snippets such as `array-2-buffer` or `principal-2-text`.
 - In case you're hoping to learn Motoko without installing `dfx`, the Motoko VS Code extension works standalone on all major operating systems (including Windows).
 - This extension also provides schema validation and autocompletion for `dfx.json` config files.

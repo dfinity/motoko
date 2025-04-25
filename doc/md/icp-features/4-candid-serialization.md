@@ -34,7 +34,7 @@ Typically, explicit serialization using `to_candid` and `from_candid` isn't nece
 The `to_candid` serializes Motoko values into a Candid-encoded binary `Blob`. This is useful when explicitly encoding data for storage, transmission between canisters, or dynamic inter-canister calls. The `to_candid` function can accept one or multiple arguments separated by commas.
 
 ```motoko no-repl
-let encoding =  to_candid(true,"hello", 68,-90) //Bool, Text, Nat, Int
+let encoding =  to_candid(true, "hello", 68, -90) // (Bool, Text, Nat, Int)
 ```
 
 Each argument must be composed of sharable types. The resulting `Blob` precisely represents the original Motoko values according to Candid specifications.
@@ -51,7 +51,7 @@ actor {
   public func serializeUser(user : User) : async Blob {
     let encodedData : Blob = to_candid(user);
     Debug.print("User data serialized successfully.");
-    return encodedData;
+    encodedData;
   };
 }
 ```

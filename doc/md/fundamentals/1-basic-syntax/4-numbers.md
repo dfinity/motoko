@@ -26,17 +26,16 @@ let bigNumber : Int = 999_999_999_999_999;
 
 ### Bounded integers
 
-For scenarios requiring fixed-size integers, Motoko offers bounded integer types with specific bit-widths.
-
 - [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8)  (8-bit signed integer)
 - [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16) (16-bit signed integer)
 - [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32) (32-bit signed integer)
 - [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64) (64-bit signed integer)
 
-Bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
+
+Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
 ```motoko
-let overflowInt : Int8 = 128; // Error: literal out of range Int8
+let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 ```
 
 
@@ -70,7 +69,7 @@ Motoko also provides bounded natural number types.
 Bounded [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types are ideal when working with binary protocols, embedded systems, or hardware where size constraints matter.
 
 ```motoko
-let overflowNat8 : Nat8 = 256; // Error: literal out of range Nat8
+let trappingNat8 : Nat8 = 255+1; // trap: arithmetic overflow
 ```
 
 

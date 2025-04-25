@@ -6,13 +6,25 @@ sidebar_position: 6
 
 ## Objects
 
+In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.  
+
+A simple object containing just fields of data is like a record in a database.  
+Motoko's light-weight record syntax make it easy do construct such objects [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records).  
+
+When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  
+From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
+
+In addition to the record syntax, Motoko let's you defined objects from a block of declarations.  
+The declarations in the block can be `public` or `private`, with `private` the default.  
+The public declarations become fields of the object, all private declarations are hidden.  
+
 An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
 
 ```motoko no-repl
 object Account {
     var balance : Nat = 1000;
 
-    func deposit(amount : Nat) : Nat {
+   public  func deposit(amount : Nat) : Nat {  
         balance += amount;
         balance
     };
@@ -52,7 +64,7 @@ let account2 = Account(1000);
 
 ### Object classes
 
-An object class defines a blueprint for multiple objects.
+An object class defines a blueprint for multiple objects. The above is just short-hand for an `object` class. Motoko also support module and actor classes.  
 
 ```motoko no-repl
 object class Account(initialBalance : Nat) {
@@ -73,7 +85,7 @@ object class Account(initialBalance : Nat) {
 
 ## Modules
 
-A module provides reusable utility functions and encapsulates both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior, module [state](https://internetcomputer.org/docs/motoko/fundamentals/state) is not persistent unless explicitly stored. It supports [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) operations, making it suitable for managing complex functionality across different parts of a program.
+Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.  
 
 ```motoko no-repl
 module CurrencyConverter {
@@ -82,7 +94,6 @@ module CurrencyConverter {
     };
 }
 ```
-
 
 ### Module classes
 
@@ -110,21 +121,21 @@ Object subtyping allows objects with more fields to be treated as subtypes of ob
 
 Objects with fewer fields are more general, while objects with additional fields are subtypes of more general types.
 
-| Generality         | Object type | Relation |
-|--------------------|------------------------------------------|----------------------|
-| Most general   | `object basicAccount = { getBalance : () -> Nat }` | Subtype of `standardAccount`  |
-| Middle generality | `object standardAccount { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `premiumAccount` |
-| Least general  | `{ object premiumAccount getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Supertype |
+| Most general   | ` type basicAccount = { getBalance : () -> Nat }` | Subtype of `{}`  |  
+| Middle generality | `type standardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `basicAccount` |  
+| Least general  | `type premiumAccount = { getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Suptype of `standardAccount` |  
+
+`basicAccount` is the most general type of account, because `standardAccount` and `premiumAccount` can both be used as `basicAccount`s.  
 
 A function expecting `{ getBalance : () -> Nat }` can accept any of the above, since all contain at least that method. However, a function requiring `{ withdraw : Nat -> Bool }` cannot accept more general types that lack this method.
 
 - A subtype must be usable wherever its supertype is expected.
 - The more general object has fewer methods because it makes fewer assumptions about available functionality.
 
-`basicAccount <: standardAccount <: premiumAccount`, or equivalently:  `basicAccount` is a subtype of `standardAccount`, which is a subtype of `premiumAccount`.
+` premiumAccount <: standardAccount <: basicAccount`, or equivalently:  `premiumAccount` is a subtype of `standardAccount`, which is a subtype of `basicAccount`.  
 
 A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
-However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three objects.
+However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three type of objects.  
 
 ```motoko no-repl
 func printBalance(account : { getBalance : () -> Nat }) {
@@ -145,8 +156,8 @@ func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
 
 // Works only for premiumAccount, fails for others
 withdrawFromAccount(premiumAccount);  // Works
-withdrawFromAccount(standardAccount); // Fails (missing withdraw)
-withdrawFromAccount(basicAccount);    // Fails (missing withdraw)
+withdrawFromAccount(standardAccount); // type error: (missing withdraw)  
+withdrawFromAccount(basicAccount);    // type error: (missing withdraw)  
 ```
 
 [Learn more about subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping).

@@ -36,7 +36,7 @@ type Key<K> = Trie.Key<K>;
 // a record of type `Key<K> = { hash : Hash.Hash; key : K }`;
 // thus we define the following function that takes a value of type `K`
 // (in this case `Text`) and returns a `Key<K>` record.
-func key(t : Text) : Key<Text> { { hash = Text.hash t; key = t } };
+func key(t: Text) : Key<Text> { { hash = Text.hash t; key = t } };
 
 // we start off by creating an empty `Trie`
 let t0 : Trie<Text, Nat> = Trie.empty();
@@ -189,7 +189,7 @@ type Key<K> = Trie.Key<K>;
 
 // We have to provide `put`, `get` and `remove` with
 // a function of return type `Key<K> = { hash : Hash.Hash; key : K }`
-func key(t : Text) : Key<Text> { { hash = Text.hash t; key = t } };
+func key(t: Text) : Key<Text> { { hash = Text.hash t; key = t } };
 // We start off by creating an empty `Trie`
 var trie : Trie<Text, Nat> = Trie.empty();
 ```

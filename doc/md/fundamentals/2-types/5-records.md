@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Records
 
-Records provide a structured way to group related values using named fields. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability.
+Records provide a structured way to group related values using named fields. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability. Unlike tuples, record also support mutable fields.  
 
 ## Defining a record
 
@@ -17,7 +17,10 @@ let person = {
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
-The values of the fields are `"Motoko"` and `25` respectively.
+The values of the fields are `"Motoko"` and `25` respectively.  
+
+The type of the `persion` value is `{age : Nat; name : Text}`, or, equivalently,  `{name: Text; age : Nat}`.  
+Unlike tuples, the order of record fields is immaterial and all record types with the same field names and types are considered equivalent, regardless of field ordering. 
 
 ## Accessing fields
 
@@ -35,7 +38,7 @@ let personAge = person.age;    // 25
 Debug.print(personName # is # debug_show(personAge));
 ```
 
-If a field does not exist in the record, the program traps.
+Attempting to access a field that isn't available in the type of the record is a compile-time type error.  
 
 ## Record mutability
 
@@ -47,6 +50,8 @@ let person = {
     var age : Nat = 25;
 };
 ```
+
+This `person` has type `{var age : Nat; var name : Text}`.  
 
 `var name` and `var age` allow the values to be updated later.
 
@@ -108,10 +113,11 @@ let individual : Individual = {
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
 
-let cityName : Text = switch (individual) {
-    case ({ address = { city } }) city; //New York
-};
+let { name; address = { city = cityName }} = individual;  
 ```
+
+The pattern both defines `name` as the contents of eponymous field `individual.name` and `cityName` as the contents of field `individual.address.city`.  Irrelevant fields need not be listed in the pattern.  
+The field pattern `name` is just shorthand for `name = name`: it binds the contents of the field called `name`, to the variable called `name`.  
 
 ## Using records in collections
 
@@ -197,24 +203,17 @@ Tuples and records both allow grouping values, but they have key differences in 
 |----------------|------------------------------------------|----------------------------------------|
 | Structure      | Ordered collection of values             | Unordered collection of named fields  |
 | Projection     | By position (`.n`)                       | By field name (`.fieldName`)          |
+| Pattern matching| Complete, using ordered tuple patterns                       | Selective, using unordered record patterns  |  
 | Mutability     | Immutable after creation                 | Can have mutable fields               |
-| Naming         | Elements can be named within collections | Fields are always named               |
-| Use Case       | Temporary grouping of related values     | Defining structured data types        |
+| Naming         | Fields are anonymous  | Fields are named               |  
+| Subtyping     | Fields cannot be removed | Fields can be removed | 
+| Use Case       | Positional grouping of related values, e.g. vectors     |  structured data types        | 
 
-### Example of a record
 
-```motoko no-repl
-type User = {
-    name : Text;
-    age : Nat;
-};
+Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal. 
 
-let user : User = { name = "Motoko"; age = 25 };
+For example,, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
 
-let username : Text = user.name;
-    case (name, _) name;
-};
-```
 
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

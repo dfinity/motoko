@@ -6,6 +6,17 @@ sidebar_position: 1
 
 Motoko provides several primitive types that form the foundation of all computations. These include numeric types, characters and text, booleans, and floating-point numbers.
 
+The primitive types are supported by a large set of familiar built-in operators such `+`, `-` and so on. 
+
+More esoteric functions, not supported by dedicated operators, can be found in the corresponding libraries.  
+
+For example, the library function `Int.toText: Int -> Text`, declared in base library `Int`, returns the textual representation of its argument.  
+
+```motoko
+import Int "mo:base/Int";
+Int.toText(0); // returns "0"
+```
+
 ## Numeric types
 
 Motoko supports both signed integers and unsigned naturals. Signed numbers can represent all numbers, positive and negative, while unsigned integers can only represent 0 and positive numbers. Natural numbers are unsigned integers.
@@ -13,23 +24,26 @@ Motoko supports both signed integers and unsigned naturals. Signed numbers can r
 - Signed integers: [`Int`](https://internetcomputer.org/docs/motoko/base/Int), [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32), [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64)
 - Unsigned naturals: [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32), [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64)
 
-The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they dynamically expand or shrink as needed.
+The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.  
 
-While [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can be implicitly converted to [`Int`](https://internetcomputer.org/docs/motoko/base/Int), the reverse is not always true. [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). In other words, a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) value can be used anywhere an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is expected because [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is always a valid [`Int`](https://internetcomputer.org/docs/motoko/base/Int). This is why implicit conversions from [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) are allowed.
+Since the set of non-negative integers is a subset the integers, in Motoko [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int).  
+
+This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) without any need for conversion. The opposite is not true.  
 
 ```motoko no-repl
 let x : Nat = 5;
 let y : Int = x; // Allowed
+let y = x << 2; // 0x28 (40 in decimal)
 ```
 
-However, an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) if it holds a negative value, as [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) only supports non-negative numbers.
+An [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type only contains non-negative numbers. 
 
 ```motoko no-repl
 let x : Int = -5;
 let y : Nat = x; // Error
 ```
 
-To convert a negative [`Int`](https://internetcomputer.org/docs/motoko/base/Int) to a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), the absolute value must be taken explicitly.
+Passing an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) requires a explicit conversion, such as taking the absolute value, or apply some other conversion function. 
 
 ```motoko no-repl
 let x : Int = -5;
@@ -42,8 +56,6 @@ Fixed-size numeric types ([`Int8`](https://internetcomputer.org/docs/motoko/base
 let x : Nat32 = 0xA; // 10 in hexadecimal
 let y = Nat32.bitshiftLeft(x, 2); // 0x28 (40 in decimal)
 ```
-
-## Char and Text
 
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
@@ -62,12 +74,15 @@ let words = Text.split("apple,banana,cherry", ","); // ["apple", "banana", "cher
 
 The [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) type represents boolean values, `true` or `false`, and supports logical operations.
 
-```motoko no-repl
-let flag : Bool = Bool.logor(true, false); // true
-let opposite = Bool.lognot(flag); // false
+The logical operators `and` and `or` will only evaluate their second operand if necessary.  
 
-let isEqual = Bool.equal(true, false); // false
-let comparison = Bool.compare(true, false); // #greater
+
+```motoko no-repl
+let flag : Bool = true or false; // true
+let opposite = not flag; // false
+
+let isEqual =  true == false ; // false  
+let comparison = false <= true; // true 
 ```
 
 ## Float
@@ -75,7 +90,7 @@ let comparison = Bool.compare(true, false); // #greater
 [`Float`](https://internetcomputer.org/docs/motoko/base/Float) is a 64-bit floating-point type that provides mathematical operations.
 
 ```motoko no-repl
-import Float "mo:base/Float
+import Float "mo:base/Float"; 
 let pi = Float.pi;
 let radius : Float = 2.5;
 let area = Float.pow(radius, 2) * pi; // Area of a circle

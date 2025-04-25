@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Variants
 
-Variants allow defining values that can take on multiple possible forms, each labeled with a distinct tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a variant holds exactly one of its possible values at any given time. This makes variants useful for representing states, actions, or categorized data.
+Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.  
 
 
 ## Defining a variant
@@ -17,15 +17,15 @@ type Status = {
 };
 ```
 
-`#Active` and `#Inactive` are unit tags, meaning they do not store any extra data `()`. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.
+`#Active` and `#Inactive` are constant tags, with an implicit `()` argument, meaning they only store trivial data. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.  
 
 ## Assigning variants
 
 To assign a variant value, use one of the defined tags.
 
 ```motoko no-repl
-let activeUser : Status = #Active;
-let bannedUser : Status = #Banned("Violation of rules");
+let activeUser = #Active;
+let bannedUser = #Banned("Violation of rules");
 ```
 
 ## Accessing a variant's value
@@ -217,5 +217,16 @@ type Tree<T> = {
 ```
 
 With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
+
+## Subtyping  
+
+In Motoko, a variant with fewer tags is a subtype of a variant with more tags:  
+
+```motoko
+type WorkDay = { #mon; #tues; #wed; #thurs; #fri };
+type Day = { #sun; #mon; #tues; #wed; #thurs; #fri; #sat};
+```
+
+This means that every `WordDay` is also a `Day` and, for example,  a function on `Day` can also be applied to any `WorkDay`.  
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
