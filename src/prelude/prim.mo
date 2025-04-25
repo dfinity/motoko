@@ -339,6 +339,7 @@ func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> B
 func isReplicatedExecution() : Bool = (prim "replicated_execution" : () -> Bool) ();
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 func canisterSubnet() : Principal = (prim "canister_subnet" : () -> Principal)();
+func rootKey() : Blob = (prim "root_key" : () -> Blob)();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
