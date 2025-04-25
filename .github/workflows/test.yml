@@ -20,9 +20,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - uses: cachix/install-nix-action@v31
 
-    # We are using the ic-hs-test cachix cache that is also used by
-    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
-    # cache), but also to get the ic-ref-test binary without rebuilding
+    # We are using the `ic-hs-test` Cachix cache for hysterical raisins
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
@@ -46,13 +44,10 @@ jobs:
         docker-images: true
         swap-storage: false
 
-    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
-
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build-${{ matrix.build_type }}"
-      run: nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
+      run: cachix watch-exec ic-hs-test -- nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
 
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'

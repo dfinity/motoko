@@ -131,6 +131,7 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
+  | IdxBlobPrim                       (* blob indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
   | AwaitPrim of Type.async_sort       (* await/await* *)
@@ -294,6 +295,7 @@ let map_prim t_typ t_id p =
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
   | IdxPrim
+  | IdxBlobPrim
   | NextArrayOffset
   | EqArrayOffset
   | DerefArrayOffset
