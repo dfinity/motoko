@@ -121,11 +121,11 @@
     "motoko-base-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1744898007,
-        "narHash": "sha256-Afqo8aNjdfqdy40tcM1TwlJiuSBmRraHGMIpJYWVseY=",
+        "lastModified": 1745590419,
+        "narHash": "sha256-p+tZeuGy2sgsENol7gfmHgWbgwMJtpBX0IuS9jC8W4Y=",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "f2acfa7eca9fc735971ccd6196b894a51a13aefb",
+        "rev": "55d5368d708114795ebc776929479f425ea72261",
         "type": "github"
       },
       "original": {
@@ -160,11 +160,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1745100971,
-        "narHash": "sha256-i3eWxlG9VR0wTkY15ulPpqKw5K0VL5m08M9Kpnn1oVQ=",
+        "lastModified": 1745480145,
+        "narHash": "sha256-ctBYoy5z10dc/gsAqWBBULOm5v33MuqKNEczOgAyFGk=",
         "owner": "Mic92",
         "repo": "nix-update",
-        "rev": "ae9331f93213ed2dbeefdd3415237e02b33b8969",
+        "rev": "30ff94843c62aac027768c7c3a82d99819261b85",
         "type": "github"
       },
       "original": {
