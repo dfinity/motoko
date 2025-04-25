@@ -1,0 +1,4 @@
+position: 4
+label: 'Persistent data'
+collapsible: true # make the category collapsible
+collapsed: true 

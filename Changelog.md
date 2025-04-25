@@ -1,12 +1,19 @@
 # Motoko compiler changelog
 
-## 0.14.8 (FUTURE)
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
+
+## 0.14.8 (2025-04-17)
 
 * motoko (`moc`)
 
   * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
 
-  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase.
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase (#5035).
 
     EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
     ```
@@ -17,7 +24,13 @@
 
   * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
 
-  * bugfix: Avoid generating new Candid `type`s arising from homonymous Motoko `type` (if possible) in service definitions (#4309, #5013).
+  * We now provide a proper `motoko-mode` for `emacs` (#5043).
+
+  * bugfix: Avoid generating new Candid `type`s arising from equal homonymous Motoko `type` (if possible)
+    in service definitions (#4309, #5013).
+
+  * bugfix: Provide a more consistent framework for dealing with internally generated type indentifiers,
+    fixing caching bugs, e.g. in the VSCode plugin (#5055).
 
 ## 0.14.7 (2025-04-04)
 
