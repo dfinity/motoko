@@ -1,0 +1,8 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: client: 0 -- cost_call
+debug.print: client: 0 -- cost_create_canister
+debug.print: client: 0 -- cost_http_request
+debug.print: client: (1, 0) -- cost_sign_with_ecdsa
+debug.print: client: (1, 3_882_179_963_198_952_542_083_653_566_464) -- cost_sign_with_schnorr
+ingress Completed: Reply: 0x4449444c0000
