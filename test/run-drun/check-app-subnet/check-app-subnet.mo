@@ -7,11 +7,16 @@ import Prim "mo:⛔";
 persistent actor  {
 
     public func test() : async () {
+        let balance = Prim.cyclesBalance();
+
         var j : Nat = 0;
-        while (j < 100_000) {
+        while (j < 3) {
             j += 1;
+            await async();
         };
 
-        Prim.debugPrint("Cycle balance: " # debug_show(Prim.cyclesBalance()));
+        if (balance > Prim.cyclesBalance()) {
+            Prim.debugPrint("Application subnet");
+        };
     }
 };
