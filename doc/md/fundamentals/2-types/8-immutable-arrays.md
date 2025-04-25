@@ -203,12 +203,13 @@ The function `Array.foldLeft` combines the squares in the row into a single text
 
 ## Subtyping
 
-Immutable arrays, unlike mutable arrays, also support subtyping. 
+Immutable arrays also support subtyping. 
 
 For example, this means that, since `Nat` is a subtype of `Int`, the array type `[Nat]` is also a subtype of the array type `[Int]`. 
 Similarly, `[WeekDay]` <: `[Day]`, `[ {x : Nat; y: Nat; z : Nat } ] <: [ {x : Nat, y: Nat} ]` and so on.
 
 For safety reasons, mutable arrays do not support subtyping. This is because the entries of a mutable array can also be written, not just read.
+
 ## Resources
 
 - [`Array`](https://internetcomputer.org/docs/motoko/base/Array)
