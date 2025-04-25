@@ -145,7 +145,7 @@
 
       tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
 
-      filter_tests = type:
+      filterTests = type:
         pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
           (name: _drv:
             let
@@ -210,13 +210,13 @@
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-tests = pkgs.releaseTools.aggregate {
           name = "common-tests";
-          constituents = filter_tests "common";  # Only include common tests.
+          constituents = filterTests "common";  # Only include common tests.
         };
 
         # GC tests version - only includes GC tests.
         gc-tests = pkgs.releaseTools.aggregate {
           name = "gc-tests";
-          constituents = filter_tests "gc";  # Only include GC tests.
+          constituents = filterTests "gc";  # Only include GC tests.
         };
 
         # Release version - excludes debug tests.
@@ -226,7 +226,7 @@
             pkgs.lib.attrValues common-constituents ++
               pkgs.lib.attrValues checks ++
               pkgs.lib.attrValues buildableReleaseMoPackages ++
-              filter_tests "release" # Only include release tests.
+              filterTests "release" # Only include release tests.
               ++ builtins.attrValues js;
         };
 
@@ -237,7 +237,7 @@
             pkgs.lib.attrValues common-constituents ++
               pkgs.lib.attrValues checks ++
               pkgs.lib.attrValues buildableDebugMoPackages ++
-              filter_tests "debug"  # Only include debug tests
+              filterTests "debug"  # Only include debug tests
               ++ builtins.attrValues js;
         };
 
