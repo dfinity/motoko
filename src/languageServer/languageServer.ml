@@ -69,13 +69,15 @@ let diagnostics_of_message : Diag.message -> Lsp_t.diagnostic * string =
 type ls_state = {
   decl_index : Declaration_index.t ref;  (** Our index of known definitions *)
   vfs : Vfs.t ref;
-      (** The virtual file system. Our knowledge of opened files and their contents *)
+      (** The virtual file system. Our knowledge of opened files and their
+          contents *)
   startup_diagnostics : Diag.messages ref;
-      (** Diagnostics we encountered when building the index on startup. These need to
-       ** be cached here because we can't report them until initialization is completed  *)
+      (** Diagnostics we encountered when building the index on startup. These
+          need to ** be cached here because we can't report them until
+          initialization is completed *)
   files_with_diagnostics : Vfs.uri list ref;
-      (** All files with known diagnostics. We need to store them so that we can clear
-       ** their diagnostics once compilation succeeds *)
+      (** All files with known diagnostics. We need to store them so that we can
+          clear ** their diagnostics once compilation succeeds *)
   shutdown : bool ref;
       (** Have we received the shutdown message?, A quirk of the LSP *)
   client_capabilities : Lsp_t.client_capabilities option ref;

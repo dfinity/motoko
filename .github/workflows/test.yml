@@ -44,15 +44,18 @@ jobs:
         docker-images: true
         swap-storage: false
 
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - run: nix profile install .#nix-build-uncached
 
     - name: "nix-build-${{ matrix.build_type }}"
-      run: cachix watch-exec ic-hs-test -- nix-build-uncached --max-jobs auto -A ${{ matrix.build_type }}-systems-go -build-flags -L
+      run: |
+        cachix watch-exec ic-hs-test -- \
+          nix-build-uncached --max-jobs auto \
+            -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ matrix.build_type }}-systems-go'
 
     - name: Discover `test/bench` changes
       if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && runner.os == 'Linux' && runner.arch == 'X64' && github.event_name == 'pull_request' && matrix.build_type == 'release'
       run: |
-        git diff --no-index $(nix-build -A tests.bench)/share test/bench/ok | patch -p1 -R
+        git diff --no-index $(nix build .#tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ github.event.pull_request.head.ref }}
         git branch --show-current
 
@@ -74,7 +77,7 @@ jobs:
         from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
         to="${{ github.event.pull_request.head.sha }}"
         echo "Comparing changes from $from to $to"
-        nix-build --max-jobs auto perf-delta.nix -o perf-delta.txt \
+        nix build -f perf-delta.nix -o perf-delta.txt \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to"
@@ -120,7 +123,7 @@ jobs:
       with:
         name: ic-hs-test
     - name: Fetch report
-      run: nix-build -A report-site -o report-site
+      run: nix build .#report-site -o report-site
     - name: Resolve symlinks
       run: cp -rL report-site report-site-copy
     - name: Push report to GitHub pages
@@ -144,7 +147,7 @@ jobs:
         name: ic-hs-test
     - name: nix-build
       run: |
-        nix-build --arg officialRelease true -A moc
+        nix build .#release.moc
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
     - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
