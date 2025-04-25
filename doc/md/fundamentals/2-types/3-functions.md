@@ -284,22 +284,18 @@ A function can take a single argument of a specific type.
 Functions can accept multiple arguments and return multiple results by enclosing them in parentheses separated by commas.  
 
 ```motoko no-repl
-  public func add(x : Nat, y : Nat) : async Nat {
-    return x + y;
+  func divRem(x : Nat, y : Nat) : (Nat, Nat) {
+    (x / y, x % y)
   }
-```
 
 ### Using a record as an argument
 
 Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
-type UserData = { name : Text; age : Nat };
-  public func createUser(userData : UserData) : async Text {
-    return userData.name;
+  public func userName(user: { name : Text; age : Nat }) : Text {
+    user.name;
   }
-```
-
 ### Using an array as an argument
 
 A collection of values can be passed as a single array argument.

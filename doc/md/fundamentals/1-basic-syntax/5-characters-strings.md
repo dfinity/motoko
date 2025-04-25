@@ -16,6 +16,34 @@ let symbol : Char = '✮';
 'I' == 'i' // False
 ```
 
+You can convert type `Text` into type `Char`s using an interator:
+
+```motoko no-repl
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+import Char "mo:base/Char";
+
+actor {
+  // Internal function that works with iterators
+  func textToChars(t: Text) : Iter.Iter<Char> {
+    Text.toIter(t)
+  };
+  
+  // Public function that demonstrates using the iterator
+  public func demonstrateTextToChars(t: Text) : async Text {
+    let charIter = textToChars(t);
+    var result = "";
+    
+    // Iterate through the characters and build a result string
+    for (c in charIter) {
+      result #= Char.toText(c) # "";
+    };
+    
+    return result
+  };
+}
+```
+
 ## Strings
 
 Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
