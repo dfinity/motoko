@@ -11,6 +11,7 @@ let () =
   Flags.check_ir := false;
   Flags.debug_info := false;
   Flags.actor_idl_path := Some "idl/";
+  Flags.error_detail := 4; (* unexpected token with expected symbols and examples *)
   Js.export "Motoko"
     (object%js
       val version = js_version
