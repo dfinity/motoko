@@ -21,6 +21,13 @@ then
   exit 1
 fi
 
+# check if we have a "--subnet-type application" arg
+EXTRA_DRUN_ARGS=""
+if [[ "$@" == *"--subnet-type application"* ]]
+then
+  EXTRA_DRUN_ARGS="--subnet-type application"
+fi
+
 export LANG=C.UTF-8
 
 # this could be used to delay drun to make it more deterministic, but
@@ -46,7 +53,7 @@ then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,\$ID,'$ID',g; s,\$PRINCIPAL,'$PRINCIPAL',g' $1
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
@@ -54,5 +61,5 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
