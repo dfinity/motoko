@@ -1,0 +1,6 @@
+# APPLICATION-SUBNET
+
+install $ID check-app-subnet/check-app-subnet.mo ""
+ingress $ID test "DIDL\x00\x00"
+ingress $ID test "DIDL\x00\x00"
+
