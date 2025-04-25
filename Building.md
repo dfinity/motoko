@@ -98,13 +98,13 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `export MOC_MINOR=1`
+ * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -am "chore: Releasing 0.14."$MOC_MINOR`
+ * `git commit -am "chore: Releasing 0.14.$MOC_MINOR"`
  * Create a PR from this commit, and label it `automerge-squash`. E.g.
    with `git push origin HEAD:$USER/0.14.$MOC_MINOR`. Mergify will
    merge it into `master` without additional approval, but it will take some
