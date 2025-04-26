@@ -786,8 +786,6 @@ exp_nonvar(B) :
 exp [@recover.expr mk_stub_expr loc] (B) :
   | e=exp_nonvar(B)
     { e }
-  | d=dec_var
-    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
 %public exp_nest :
   | e=block
@@ -949,9 +947,9 @@ obj_or_class_dec :
        if s.it = Type.Actor then
           let default_stab = if persistent then Stable else Flexible in
           (List.map (share_dec_field default_stab) dfs,
-	   ensure_scope_bind "" tps,
+           ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
-	   ensure_async_typ t)
+           ensure_async_typ t)
         else (dfs, tps, t)
       in
       ClassD(eo, sp, s, xf "class" $sloc, tps', p, t', x, dfs') @? at $sloc }
