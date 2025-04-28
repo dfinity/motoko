@@ -4,7 +4,7 @@ sidebar_position: 12
 
 # Garbage collection
 
-Garbage collection is an automatic process that manages memory usage by removing unreferenced or dead objects and freeing up allocated heap memory.
+Garbage collection is an automatic process that manages memory usage by detecting unreachable objects and freeing up their allocated heap memory.
 
 Motoko’s default garbage collection method uses a copying approach that depends on the amount of heap memory currently in use. An alternative garbage collector uses a marking approach, which instead considers the amount of free heap memory. These garbage collectors are triggered when enough changes have been made to heap memory since the last collection cycle. Garbage collection can be forced to run after every message using the `--force-gc` flag in the project's `dfx.json` file:
 
