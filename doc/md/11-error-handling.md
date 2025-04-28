@@ -42,6 +42,14 @@ func validateAge(age : Nat) : () {
 };
 ```
 
+Assertions that fail inside a `try` block will **not** be caught by the `catch` clause. 
+
+If an assertion fails inside a try block, it will cause a trap that aborts the entire message execution and rolls back state changes. The caller will see the trap as an `Error` returned from the awaited future, however the callee and its error handlers will not be able to catch or mask the trap.
+
+## Exception handling restrictions
+
+Exception handling is restricted to asynchronous contexts only because Motoko error values can only be thrown and caught asynchronously. This is typically done in the body of a shared function or async expression. Non-shared functions cannot employ structured error handling. 
+
 ## Error codes
 
 | Error Code | Description | Example | Explanation |

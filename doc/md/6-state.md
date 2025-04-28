@@ -16,6 +16,12 @@ Each [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async)
 
 Immutable data, on the other hand, can be shared between actors. Actors can also interact with each other's external entry points, which serve as shareable functions for communication.
 
+:::warning 
+
+Using mutable state in an `async` context is not recommended at this time due to concurrent access inconsistencies. 
+
+:::
+
 ## Why mutable state is private
 
 A key design principle in Motoko is that mutable state is always private to the actor that allocates it. Unlike shareable data, mutable state cannot be accessed remotely. This prevents concurrency conflicts, ensuring that only the actor responsible for the data can modify it.
@@ -25,14 +31,13 @@ Motoko enforces strict control over mutable state, ensuring that concurrent exec
 The following actor maintains a private mutable counter that can only be modified through its own functions:
 
 ```motoko no-repl
-actor Counter {
-    stable var count : Nat = 0; // Private mutable state
+persistent actor Counter {
+var count : Nat = 0; // Private mutable state
 
-    public shared func increment() : async Nat {
+    public func increment() : async Nat {
         count += 1;
         return count;
     };
-
     public query func getCount() : async Nat {
         return count;
     };

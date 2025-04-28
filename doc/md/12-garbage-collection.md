@@ -6,29 +6,11 @@ sidebar_position: 12
 
 Garbage collection is an automatic process that manages memory usage by detecting unreachable objects and freeing up their allocated heap memory.
 
-Motoko’s default garbage collection method uses a copying approach that depends on the amount of heap memory currently in use. An alternative garbage collector uses a marking approach, which instead considers the amount of free heap memory. These garbage collectors are triggered when enough changes have been made to heap memory since the last collection cycle. Garbage collection can be forced to run after every message using the `--force-gc` flag in the project's `dfx.json` file:
+[Motoko’s default garbage collection](https://dl.acm.org/doi/10.1145/3623507.3627672) method uses a copying approach that depends on the amount of heap memory currently in use. Another supported garbage collector, the incremental GC, uses a marking approach, which instead considers the amount of free heap memory. These garbage collectors are triggered when enough changes have been made to heap memory since the last collection cycle. 
 
-```json
-"defaults": {
-  "build": {
-    "packtool": "",
-    "args": "--force-gc"
-  }
-}
-```
+The default garbage collector is limited by the ICP instruction limit per message, preventing it from collecting the entire heap memory pool in a single execution. Since the entire GC run needs to be performed in one message, it is too big for larger-scaled heaps (depending on the constellation of the heap). 
 
-Both garbage collectors are limited by the ICP instruction limit per message, preventing them from collecting the entire heap memory pool in a single execution. As a result, [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) cannot fully utilize the entire 4GiB memory pool, as some free space must be reserved for the garbage collector to operate.
-
-An incremental garbage collection process is available and recommended to be used for larger heaps, which distributes the workload across multiple messages as needed. This approach allows canisters to use the entire heap space (with some reserve maintained for collection). With incremental garbage collection, canisters can take advantage of the entire heap memory (4 GB for 32-bit and more with 64-bit).
-
-The incremental garbage collector is enabled by specifying the `--incremental-gc` compiler flag in the project's `dfx.json` file.
-
-:::caution
-
-This garbage collector is still in beta and should be used with caution.
-
-:::
-
+The incremental garbage collector is recommended to be used for larger heaps, which distributes the workload across multiple messages as needed. It can be enabled by specifying the `--incremental-gc` compiler flag in the project's `dfx.json` file.
 
 ```json
 {

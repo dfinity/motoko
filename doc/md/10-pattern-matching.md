@@ -10,13 +10,15 @@ Motoko supports several types of patterns:
 
 | Pattern type | Description | Example |
 |-------------|-------------|---------|
-| Wildcard (`_`) | Matches any value without binding it to a variable. | `switch (x) { case (_) { ... } }` |
-| Literal | Matches specific constant values. | `switch (x) { case (0) { ... } case (1) { ... } }` |
+| Wildcard `_` | Matches any value without binding it to a variable. | `switch x { case (_) { ... } }` |
+| Literal | Matches specific constant values. | `switch x { case (0) { ... } case (1) { ... } }` |
 | Option (`?T`) | Matches optional values. | `switch (opt) { case (?v) { ... } case (null) { ... } }` |
 | Object | Matches object fields. | `switch (obj) { case ({field}) { ... } }` |
 | Variant | Matches tagged union types. | `switch (variant) { case (#tag v) { ... } }` |
+| Let-else | Matches a pattern, otherwise executes else block and exits execution. |  `let ?x = pattern() else { ... };` |
+| Tuples |  Matches `n`-tuple value against an `n`-tuple of patterns. | `let x = ( ... , ... );` |
 
-## Wildcard (`_`)
+## Wildcard `_`
 
 The wildcard pattern `_` matches any value but does not bind to a variable. It is useful for handling cases where the specific value does not matter.
 
@@ -61,15 +63,12 @@ func getValue(opt : ?Nat) : Text {
 
 ## Object
 
-Objects with named fields can be matched to extract specific properties.
+Objects with named fields can be matched to extract specific properties. Records use the same pattern.
 
 ```motoko no-repl
-type Person = { name : Text; age : Nat };
-
 func describePerson(person : Person) : Text {
-    switch (person) {
-        case ({ name; age }) { name # " is " # Nat.toText(age) # " years old." };
-    };
+    let { name; age } = person;
+    name # " is " # Nat.toText(age) # " years old."
 };
 ```
 
@@ -87,5 +86,40 @@ func processStatus(status : Status) : Text {
     };
 };
 ```
+
+## Let-else
+
+`let-else` works similarly to the [`let` declaration](https://internetcomputer.org/docs/motoko/language-manual#let-declaration), except there is an `else` block that gets executed if the pattern match fails.
+
+```motoko
+let ?x = pattern() else { Debug.print "Pattern match failed"; return };
+```
+
+If `pattern()` returns `null` and `null` doesn't match the pattern `?x`, and `Pattern match failed` is printed. Otherwise, the `Nat` is bound to `x` and execution continues.
+
+`let-else` is useful for avoiding deeply nested switch statements. Instead, you can simply use something like:
+
+```motoko
+let ?x = pattern1() else { return #err "Pattern 1 failed" };
+let ?y = pattern2() else { return #err "Pattern 2 failed" };
+let ?z = pattern3() else { return #err "Pattern 3 failed" };
+
+return #ok x + y + x
+```
+
+## Tuples 
+
+Tuples can be used to match a `n`-tuple value against an `n`-tuple of patterns. Both the tuple and the pattern must have the same number of items.
+
+Pattern matching fails when one pattern does not match the corresponding item of the tuple. Pattern matching is successful if every pattern matches the corresponding tuple value.
+
+```
+func processData((name, age) : (Text, Nat)) : Text {
+  name # " is " # Nat.toText(age) # " years old"
+};
+
+let result = processData(("Motoko", 25));
+```
+
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

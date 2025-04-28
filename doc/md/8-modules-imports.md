@@ -47,16 +47,16 @@ Projects may split code into multiple files for better organization, such as:
 
 ```
 src/project_backend
- ├── main.mo   // Contains the main actor
- ├── types.mo  // Stores type definitions
- ├── utils.mo  // Contains helper functions
+├── Main.mo // Contains the main actor
+├── Types.mo // Stores type definitions
+├── Utils.mo // Contains helper functions
 ```
 
 A prefix is not required for local imports and the `.mo` file extension is omitted. The imported modules must be in the same directory as `main.mo`.
 
 ```motoko no-repl
-import Types "types";
-import Utils "utils";
+import Types "Types";
+import Utils "Utils";
 ```
 
 ## Importing from another package
@@ -125,7 +125,8 @@ import Nat "mo:base/Nat";
 
 persistent actor CountToTen {
   public func countToTen() : async () {
-    let counterActor = await Counters.Counter(1);
+    let counterActor = await (with cycles = 1_000_000_000) Counters.Counter(1);
+
     while ((await counterActor.read()) < 10) {
       Debug.print(Nat.toText(await counterActor.read()));
       await counterActor.inc();
@@ -134,7 +135,7 @@ persistent actor CountToTen {
 };
 ```
 
-`Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
+Cycles must be explicitly sent to create another canister. `Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
 
 ## Importing from another canister
 

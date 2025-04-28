@@ -256,4 +256,158 @@ persistent actor Counter_v2 {
 
 Alternatively, to retain compatibility while indicating that a variable is no longer in use, the type of `state` can be changed to `Any`. It can hold any value but requires explicit downcasting to retrieve data.
 
+### Explicit migration using a migration function
+
+To ease data migration, Motoko now supports explicit migration using a separate data migration function. The code for the migration function is self-contained and can be placed in its own file. It takes a record of stable fields as input and produces a record of stable fields as output.
+
+The input fields extend or override the types of any stable fields in the actor's stable signature. The output fields must be declared in the actor's stable signature and have types that can be consumed by the corresponding declaration in the stable signature.
+
+All values for the input fields must be present and of compatible type in the old actor, otherwise the upgrade traps and rolls back. The fields outputted by the migration function determine the values of the corresponding stable variables in the new actor.
+
+All other stable variables of the actor, i.e. those neither consumed nor produced by the migration function, are initialized in the usual way. They are either transferred from the upgraded actor if declared in that actor, or, if newly declared the initialization expression runs in the field's declaration.
+
+The migration function is only executed on an upgrade and ignored on a fresh installation of the actor in an empty canister. When required, it is declared using a parenthetical expression immediately preceding the actor or actor class declaration.
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Float "mo:base/Float";
+
+(with migration = // an explicit migration function
+  func (old: { var state : Int }) : { var newState : Float } {
+    { var newState = Float.fromInt(old.state) };
+  })
+
+persistent actor Counter_v7 {
+
+  var newState : Float = 0.0; // implicitly `stable`
+
+  public func increment() : async () {
+    newState += 0.5;
+  };
+
+  public func decrement() : async () {
+    newState -= 0.5;
+  };
+
+  public query func read() : async Int {
+    Debug.trap("No longer supported: Use `readFloat`");
+  };
+
+  public query func readFloat() : async Float {
+    return newState;
+  };
+};
+```
+
+The syntax employs Motoko's parenthetical expressions to modify ugrade behaviour. Other parenthetical expressions of similar form, but with different field names and types, are used to modify other aspects of Motoko's execution.
+
+Employing a migration function offers another advantage: it lets you reuse the name of an existing field even when its type has changed.
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Float "mo:base/Float";
+import {migration} "Migration";
+
+(with migration) // declare the migration function (using field punning)
+persistent actor
+  Counter_v8 {
+
+  var state : Float = 0.0; // implicitly `stable`
+
+  public func increment() : async () {
+    state += 0.5;
+  };
+
+  public func decrement() : async () {
+    state -= 0.5;
+  };
+
+  public query func read() : async Int {
+    Debug.trap("No longer supported: Use `readFloat`");
+  };
+
+  public query func readFloat() : async Float {
+    return state;
+  };
+};
+```
+
+You can also put the migration code in a separate library:
+
+```motoko no-repl
+import Float "mo:base/Float";
+
+module Migration {
+
+  public func migration(old: { var state : Int }) : { var state : Float } {
+    { var state = Float.fromInt(old.state) };
+  }
+
+}
+```
+
+The migration function can be selective and only consume or produce a subset of the old and new stable variables. Other stable variables can be declared as usual.
+
+For example, using the same migration function, you can also declare a new stable variable that records the time of the last update without having to mention that field in the migration function:
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Float "mo:base/Float";
+import Time "mo:base/Time";
+import {migration} "Migration";
+
+(with migration) // use the imported migration function
+persistent actor
+  Counter_v9 {
+
+  var state : Float = 0.0; // expicitly migrated
+
+  var lastModified : Time.Time = Time.now(); // implicitly migrated
+
+  public func increment() : async () {
+    lastModified := Time.now();
+    state += 0.5;
+  };
+
+  public func decrement() : async () {
+    lastModified := Time.now();
+    state -= 0.5;
+  };
+
+  public query func read() : async Int {
+    Debug.trap("No longer supported: Use `readFloat`");
+  };
+
+  public query func readFloat() : async Float {
+    return state;
+  };
+
+  public query func lastAccess() : async Time.Time {
+    return lastModified;
+  };
+
+};
+```
+
+The stable signature of an actor with a migration function now consists of two ordinary stable signatures, the pre-signature (before the upgrade) and the post-signature (after the upgrade).
+
+For example, this is the combined signature of the previous example:
+
+```motoko no-repl
+// Version: 2.0.0
+actor ({
+  stable var lastModified : Int;
+  stable var state : Int
+}, {
+  stable var lastModified : Int;
+  stable var state : Float
+}) ;
+```
+
+The second signature is determined solely by the actor's stable variable declarations. The first signature contains the field declarations from the migration function's input, together with any distinctly named stable variables declared in the actor.
+
+For compatibility, when performing an upgrade, the post signature of the old code must be compatible with the pre signature of the new code.
+
+The migration function can be deleted or adjusted on the next upgrade.
+
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

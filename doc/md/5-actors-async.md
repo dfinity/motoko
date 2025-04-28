@@ -28,7 +28,7 @@ import Text "mo:base/Text";
 persistent actor PizzaParlor {
     var orders : [Text] = [];
 
-    public shared func placeOrder(order : Text) : async Text {
+    public func placeOrder(order : Text) : async Text {
         // Use Array.tabulate to create a new array with the additional element
         let newOrders = Array.tabulate<Text>(orders.size() + 1, func(i) {
             if (i < orders.size()) { orders[i] } else { order }
@@ -37,7 +37,7 @@ persistent actor PizzaParlor {
         return "Order received: " # order;
     };
 
-    public shared func makePizza() : async Text {
+    public func makePizza() : async Text {
         if (orders.size() == 0) {
             return "No orders to make.";
         };
@@ -67,6 +67,8 @@ await PizzaParlor.placeOrder("BBQ"); // Order received: BBQ
 This request is handled [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), meaning other orders can be placed without waiting for a response. The actor remains responsive, even while executing other tasks.
 
 ## `async*` / `await*`
+
+In other languages, `async` gives a future and `async*` gives a stream that can yield values as defined by the stream type. Motoko does not do the latter. Instead, `async*` is used for internal processes that may be `async`. The `await*` expression works by evaluating its expression to a result. If that result is a delayed computation, it executes that computation synchronously first. It only switches to asynchronous execution when (and if) it encounters a regular `await` inside that computation. This means `await*` doesn't automatically commit state changes or suspend execution like regular `await` does. `await*` does not invoke messaging unless it is forced.
 
 Customers can place multiple orders at the same time. However, when they ask for an update on their delivery status, responses must be generated sequentially based on the preparation time. Instead of constantly tracking delivery updates, `async*` can be used to calculate the estimated delivery time only when requested.
 
@@ -113,6 +115,20 @@ let status2 = await pizzaParlor.getDeliveryStatus("margherita");
 | State commit | Commits all [state](https://internetcomputer.org/docs/motoko/fundamentals/state) changes before resuming. | Does not commit [state](https://internetcomputer.org/docs/motoko/fundamentals/state) unless a proper `await` is inside. |
 | Re-evaluation | Runs once, returning the same value if awaited multiple times. | Each `await*` triggers a fresh computation of `async*`. |
 
+### `await` example
+
+```motoko 
+let x : async Nat = read();
+let result = await x; // State is committed here, execution suspends
+```
+
+### `await*` example
+
+```motoko
+let x : async* Nat = compute();
+let result = await* x; // No state commitment here unless compute() contains an await
+```
+
 ## `try/finally`
 
 The `try/finally` construct ensures that a block of code in the `finally` clause executes regardless of whether an exception occurs in the `try` block. This is particularly useful for cleanup operations, such as logging or finalizing an action, ensuring that necessary steps are taken even if an error interrupts execution.
@@ -143,6 +159,48 @@ public shared func placeOrder(order : Text) : async Text {
 };
 ```
 
+## `try/catch/finally`
+
+A `catch` block can be inserted inside a `try/finally` expression to catch an error.
+
+```motoko no-repl
+    try {
+    // Code that might throw an error
+    } catch (e) {
+    // Handle the error
+    } finally {
+    // Cleanup code that always runs
+    }
+```
+
+When `catch` is used, the `finally` clause is optional. The `catch` block only catches errors in certain scenarios:
+
+1. Explicit throws: When code in the `try` block explicitly throws an error using the `throw` keyword:
+
+```motoko no-repl
+    try {
+        throw Error.reject("Intentional error");
+    } catch (e) {
+        // This will catch the explicitly thrown error
+    }
+```
+
+2. Errors from awaited calls: If an `await` expression in the `try` block returns an error:
+
+```motoko no-repl
+    try {
+        let result = await someAsyncFunction(); // If this returns an error
+    } catch (e) {
+        // The error will be caught here
+    }
+```
+
+`catch` blocks **do not** catch errors in the following scenarios:
+
+1. Local traps
+2. Pre-await traps in async functions
+3. Traps after `await`
+
 ## Shared types
 
 [Shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) allow actors to communicate with users and other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
@@ -157,5 +215,35 @@ actor {
     }
 }
 ```
+
+If you need to share a non-sharable type, you can serialize it into a sharable type. For example, if you want to share a `Map`, you can serialize it into an
+array:
+
+```motoko no-repl
+import Map "mo:base/OrderedMap";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  let textMap = Map.Make<Text>(Text.compare);
+  var map = textMap.empty<Nat>();
+  
+  // Initialize the non-sharable Map
+  public func initialize() : async () {
+    map := textMap.put(map, "key", 123);
+  };
+  
+  // Return entries as an array of tuples (which is a shared type)
+  public shared func getEntries() : async [(Text, Nat)] {
+    Iter.toArray(textMap.entries(map))
+  };
+  
+  // Get a specific value by key
+  public shared func getValue(key : Text) : async ?Nat {
+    textMap.get(map, key)
+  };
+}
+```
+
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

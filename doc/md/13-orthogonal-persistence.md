@@ -55,25 +55,6 @@ If an upgrade is incompatible, the system **automatically rolls it back** to pre
 
 When switching to enhanced persistence, the system performs one final deserialization from stable memory before transitioning fully to memory retention. Once a canister is using enhanced persistence, it cannot be downgraded back to classical persistence. Legacy stable memory remains accessible as secondary storage, allowing developers to combine stable regions with orthogonal persistence if needed.
 
-ICP provides options for Wasm memory retention during upgrades:
-
-1. `wasm_memory_persistence = opt keep`
-
-   - Retains Wasm memory across upgrades.
-   - Cannot be used with classical persistence.
-
-2. `wasm_memory_persistence = null`
-
-   - Uses classical persistence.
-   - Replaces Wasm memory on upgrade.
-
-3. `wasm_memory_persistence = opt replace`
-
-   - Not recommended for enhanced persistence.
-   - Completely erases Wasm memory, leading to data loss.
-
-For new projects, **enhanced persistence is recommended** for efficiency, scalability, and ease of use.
-
 ## Classical orthogonal persistence
 
 Classical orthogonal persistence is the original implementation of Motoko's orthogonal persistence system.
