@@ -521,6 +521,11 @@ do
           continue
         fi
       fi
+      if grep -q "# APPLICATION-SUBNET" $(basename $file)
+      then
+        # set drun args to use application subnet
+        EXTRA_DRUN_ARGS="--subnet-type application"
+      fi
       
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
@@ -551,7 +556,9 @@ do
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
-      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun $EXTRA_DRUN_ARGS
+      # clear EXTRA_DRUN_ARGS.
+      EXTRA_DRUN_ARGS=""
     done
 
   ;;

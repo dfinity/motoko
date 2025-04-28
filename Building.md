@@ -98,7 +98,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `export MOC_MINOR=1`
+ * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
