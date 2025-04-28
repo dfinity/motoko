@@ -54,6 +54,44 @@ numbers[0] := 100;  // updating first element
 Debug.print(debug_show(numbers[0]));  // 100
 ```
 
+The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`. 
+
+Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). 
+
+```motoko no-repl
+let numbers : [var Nat] = [var 10, 20, 30];
+let first : Nat = numbers[0];  // 10
+let second : Nat = numbers[1]; // 20
+Debug.print(debug_show(first));
+Debug.print(debug_show(second));
+```
+
+## Iterating through an array
+
+There are two primary ways to iterate through the elements in an array in Motoko:
+
+1. Using `array.values()`, which provides an iterator.
+2. Using a `for` loop that runs from `0` to `array.size() - 1`, as arrays are zero-based.
+
+Both methods achieve the same result, but `array.values()` is often preferred for its readability and simplicity.
+
+### Using `array.values()` and `array.keys()`  
+
+The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.  
+
+The `array.keys()` function returns an iterator that is used to iterate over the array's valid indices (in increasing order).  
+
+### Using a `for` loop
+
+A `for` loop can also be used to iterate over an array by accessing elements via their index.
+
+```motoko no-repl
+let arr = [var "a", "b", "c"];
+for (i in arr.keys()) {  
+    Debug.print(arr[i]);
+}
+```
+
 ## Converting a mutable array to an immutable array
 
 You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
