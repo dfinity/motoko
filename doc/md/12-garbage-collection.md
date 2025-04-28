@@ -21,7 +21,7 @@ Both garbage collectors are limited by the ICP instruction limit per message, pr
 
 An incremental garbage collection process is available and recommended to be used for larger heaps, which distributes the workload across multiple messages as needed. This approach allows canisters to use the entire heap space (with some reserve maintained for collection). With incremental garbage collection, canisters can take advantage of the entire heap memory (4 GB for 32-bit and more with 64-bit).
 
-The incremental garbage collector can be enabled by specifying the `--incremental-gc` compiler flag in the project's `dfx.json` file.
+The incremental garbage collector is enabled by specifying the `--incremental-gc` compiler flag in the project's `dfx.json` file.
 
 :::caution
 
