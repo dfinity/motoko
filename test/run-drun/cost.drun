@@ -1,0 +1,5 @@
+# APPLICATION-SUBNET
+
+install $ID cost/cost-simple.mo ""
+ingress $ID test "DIDL\x00\x00"
+
