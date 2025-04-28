@@ -38,7 +38,7 @@ Assertions enforce expected conditions. If the condition is false, they introduc
 
 ```motoko no-repl
 func validateAge(age : Nat) : () {
-    assert(age >= 18);  // Traps if age is below 18
+    assert age >= 18;  // Traps if age is below 18
 };
 ```
 
