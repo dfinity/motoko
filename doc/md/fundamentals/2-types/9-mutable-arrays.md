@@ -23,11 +23,12 @@ Mutable arrays are beneficial when:
 | Growth          | Not designed to grow.                   | Not designed to grow.                 |
 | Shareability    | Can be shared across functions and actors. | Not sharable.       |
 | Conversion      | Can be converted to mutable with `Array.thaw`. | Can be converted to immutable with `Array.freeze`. |
-| Use case        | When data should remain unchanged.       | When frequent modifications are needed. |
+| Use case        |  Tabular fixed, data       |  Iterative algorithms |
 
 :::warning
 
-Unlike other programming languages that support append methods for arrays, Motoko arrays (both mutable and immutable) are not designed to grow dynamically. Motoko arrays cannot be appended. If a dynamically growing data structure is required, `Buffer` should be used instead.
+Unlike some other programming languages that support resizable arrays, Motoko's arrays (both mutable and immutable) are fixed-size. Motoko arrays cannot shrink or grow in length, and operations like `Array.append` always construct new arrays.
+For dynamically-sized,  array-like data structures, consult the libraries in `base` (e.g. `Buffer`) or other `mops` packages (e.g. `Vector`).
 
 :::
 
@@ -127,6 +128,24 @@ X _ _
 _ O _
 _ _ X
 ```
+
+## Subtyping
+
+For safety reason, mutable arrays do not support subtyping. This means that `[var T]` is a subtype of `[var U]` only when the types `T` and `U` are, in fact, equal. It is not enough for `T` to be a subtype of `U`, as some users might expect.
+
+To see why, suppose the following was allowed: `[var Nat] <: [var Int]` (since `Nat <: Int`).
+
+Then, consider the following code:
+
+```motoko
+let ns :  [var Nat] = [var 0]
+let is  :  [var Int] = ns; // only allowed if [var Nat] <: [var Int]
+is[0] := -1;
+ns[0] // -1
+```
+
+Here, `ns` starts out as an array of non-negative `Nat`s, storing `0` in its only element. 
+Declaring `is`, of type to `[var Int]` creates an alias of `ns`, but at the super type `[var Int]`. Now since `is` can store `Int`s, we can assign `-1` to `is[0]`, and then read `-1` from `ns[0]`, breaking the promise that `ns` is an array of non-negative numbers.
 
 ## Resources
 

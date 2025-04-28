@@ -4,9 +4,11 @@ sidebar_position: 11
 
 # Stable types
 
-Stable types are essential for preserving [state](https://internetcomputer.org/docs/motoko/fundamentals/state) across [canister upgrades](https://internetcomputer.org/docs/building-apps/canister-management/upgrade). Unlike shared types, which focus on [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) communication, stable types ensure data persistence over time.
+Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as arguments and or be the result of shared functions. 
 
-A type is stable if it can be safely stored and restored before and after an upgrade. This includes all shared types, as well as certain mutable structures that are designed for long-term storage.
+**Stable types** include all shared types and are the types of values that can be stored in Motoko's stable variables. Storing a value in a stable variable ensures the value can be preserved across upgrades of the actor, allowing an application to preserve state without requiring a file system or database. The ability to safely and easily preserve data across upgrades is one the distinguishing features of Motoko that separates it from other mainstream languages.
+
+To give the user more flexibility, the set of stable types is larger than the set of shared types and includes mutable types. This means that programmers can store their application state using a wide range of imperative (stateful) as well as functional (stateless) data structures. 
 
 ## Stable vs shared types
 
@@ -20,7 +22,8 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 | Records with immutable fields | Yes | Yes |
 | Records with mutable fields   | Yes | No  |
 | Option types (`?T`)           | Yes | Yes |
-| Variants with shared types    | Yes | Yes |
+| Shared functions             | Yes | Yes |
+| Actor references              | Yes | Yes |
 | Variants with stable types    | Yes | No (if non-shared types are included) |
 | Actor references              | Yes | Yes |
 | Error type (`Error`)          | No  | No  |

@@ -16,7 +16,7 @@ let symbol : Char = '✮';
 'I' == 'i' // False
 ```
 
-You can convert type `Text` into type `Char`s using an interator:
+You can convert a `Text` value `t` to a `Char` iterator using either `t.chars()` or, equivalently, `Text.toIter(t)`.
 
 ```motoko no-repl
 import Text "mo:base/Text";

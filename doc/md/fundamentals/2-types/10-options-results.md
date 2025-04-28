@@ -23,7 +23,7 @@ var username : ?Text = null;
 
 :::info [Null semantics]
 
-`null` is only valid as a value of an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, or Haskell where the compiler enforces explicit handling of missing values.
+`null` is only valid as a value of the trivial `Null` type or an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell. In all these languages, the type system also enforces explicit handling of missing values.
 
 :::
 
@@ -140,11 +140,11 @@ If either `firstName` or `lastName` is `null`, the result remains `null`.
 
 ```motoko
 actor App {
-  var username : ?Text = ?Motoko;
+  var username : ?Text = ?"Motoko";
 
   public func getUsername() : async Text {
       switch (username) {
-          case (?name) "Username: " # name;
+          case (?value) "Username: " # value;
           case null "No username set";
       }
   }
@@ -181,6 +181,7 @@ func divide(a : Nat, b : Nat) : Result.Result<Nat, Text> {
 ## Resources
 
 - [`Option`](/docs/motoko/base/Option)
+- [`Result`](/docs/motoko/base/Result)
 
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
