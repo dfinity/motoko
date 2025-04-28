@@ -3,7 +3,7 @@ import Float "mo:base/Float";
 
 (with migration =
   // an explicit migration function
-  func (old: { var state : Int }) : { var newState : Float } {
+  func (old : { var state : Int }) : { var newState : Float } {
     { var newState = Float.fromInt(old.state) };
   })
 persistent actor Counter_v7 {
