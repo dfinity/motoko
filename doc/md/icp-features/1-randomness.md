@@ -6,6 +6,8 @@ sidebar_position: 1
 
 [Randomness](https://internetcomputer.org/docs/building-apps/network-features/randomness) is used for generating unique identifiers, ensuring fairness in games, cryptographic protocols, and much more. On ICP, all computations, including [randomness](https://internetcomputer.org/docs/building-apps/network-features/randomness), must be **verifiable and reproducible** across the network's nodes.
 
+For applications with elevated security requirements the [best practices for dealing with randomness](https://internetcomputer.org/docs/building-apps/network-features/randomness) on the IC should be observed.
+
 The network provides a **verifiable random function (VRF)** through the [management canister](https://internetcomputer.org/docs/references/system-canisters/management-canister) that produces random values that are **unpredictable yet verifiable**, ensuring fairness and security while maintaining network consensus. It guarantees cryptographic security, making it suitable for use cases such as cryptographic key generation.
 
 The VRF generates 256-bit random `Blob`s in each execution round. Your canister can request one of these random `Blob`s via the management canister's `raw_rand` method.
@@ -45,7 +47,7 @@ actor {
 
 ## `Random`
 
-The [`Random` module](https://internetcomputer.org/docs/motoko/base/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
+The [`Random` module](https://internetcomputer.org/docs/motoko/base/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching 32-byte of fresh entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
 
 Below is an example demonstrating how to generate a random boolean using `Random.Finite`.
 
@@ -97,7 +99,7 @@ actor {
 ```
 
 ## Resources
-
+- [Best practices](https://internetcomputer.org/docs/building-apps/security/misc/#using-secure-randomness-in-canisters)
 - [`raw_rand`](https://internetcomputer.org/docs/references/ic-interface-spec#ic-raw_rand)
 - [`Random`](https://internetcomputer.org/docs/motoko/base/Random)
 - [`fuzz`](https://mops.one/fuzz)

@@ -58,7 +58,7 @@ actor {
 
 ### `from_candid`
 
-The `from_candid` function deserializes a Candid-encoded binary `Blob` back into Motoko values. This explicit decoding can be useful when retrieving serialized data for processing or state restoration.
+`from_candid` deserializes a Candid-encoded binary `Blob` back into Motoko values. This explicit decoding can be useful when retrieving serialized data for processing or state restoration.
 
 `from_candid` requires clear type context or annotations to decode the `Blob` correctly. The result is wrapped in an optional (`?`) type to handle cases where decoding might fail due to type mismatch or invalid data.
 
