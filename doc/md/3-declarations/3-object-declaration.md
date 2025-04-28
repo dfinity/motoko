@@ -37,16 +37,26 @@ ghost.age += 1; // Updates age
 Objects extend records by supporting functions. Fields can have explicit visibility modifiers, such as `public` or `private`. Objects support async functions and structured behavior.
 
 ```motoko no-repl
-let motoko = object {
-    public let name = "Motoko";
-    public var age = 30;
+import List "mo:base/List";  
+import Debug "mo:base/Debug";  
 
-    public func greet() : Text {
-        "Hello, my name is " # name # "!"
-    };
-};
-
-Debug.print(motoko.greet()); // "Hello, my name is Motoko!"
+let logger = object {  
+    private var logs = List.empty<Text>()  
+    
+    public func add(message : Text) : () {  
+        List.add(logs, message);  
+        Debug.print("New entry: " # message);  
+    };  
+    
+    public func clear() : () {  
+        logs.clear();  
+        Debug.print("Logs cleared");  
+    };  
+    
+    public func size() : Nat {  
+        logs.size();  
+    };  
+};  
 ```
 
 ### Accessing object fields

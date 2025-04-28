@@ -49,8 +49,18 @@ applyFunction(double, 10);
 Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
 ```motoko no-repl
-let multiply = func (x : Int, y : Int) : Int { x * y };
-multiply(4, 2);
+func twice<T>(f : T -> T) : T -> T = func (x : T) {  
+  f(f(x))  
+};  
+```
+
+You can use it with different types:
+
+```motoko no-repl
+let double = twice<Nat>(func x = x * 2);  
+assert double(2) == 8;  
+let echoTwice = twice<Text>(func s = s # "!");  
+assert echoTwice("Hello") == "Hello!!";  
 ```
 
 The function is assigned to `multiply` instead of being named directly. `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.

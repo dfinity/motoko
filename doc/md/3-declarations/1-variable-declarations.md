@@ -33,7 +33,6 @@ var y = 10;
 y := 20; // Allowed, updates the value of y
 ```
 
-:::info
 Mutable variables declared with `var` do not support pattern matching. For example, the following is invalid:
 
 ```motoko no-repl
@@ -45,5 +44,3 @@ In contrast, `let` bindings do support pattern matching:
 ```motoko
 let (a, b) = (1, 2); // Supported
 ```
-
-:::
