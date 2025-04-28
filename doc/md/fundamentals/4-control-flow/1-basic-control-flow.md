@@ -19,14 +19,18 @@ sidebar_position: 1
 A return statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and returns a value to the caller.
 
 ```motoko no-repl
-func add(a : Nat, b : Nat) : Nat {
+actor {
+  func add(a : Nat, b : Nat) : Nat {
     return a + b;
-}
+  };
+
+  func checkSign(n : Int) : Text {
     if (n > 0) {
         return "Positive";
     } else {
         return "Negative or Zero";
     };
+  }
 }
 ```
 
@@ -35,6 +39,9 @@ func add(a : Nat, b : Nat) : Nat {
 A `switch` matches a value against multiple cases and executes the corresponding block of code.
 
 ```motoko no-repl
+import Nat "mo:base/Nat";
+import Text "mo:base/Text";
+
 type HttpRequestStatus = {
     #ok: Nat;
     #err: Nat;
@@ -42,16 +49,18 @@ type HttpRequestStatus = {
 
 func checkStatus(r : HttpRequestStatus) : Text {
     switch (r) {
-        case (#ok(successCode)) { "Success: " # Nat.toText(value) } // e.g. 200
-        case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) } // e.g. 404
+        case (#ok(successCode)) { "Success: " # Nat.toText(successCode) };
+        case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) };
     }
-}
+};
+
+func checkAge(user : ?Nat) : ?Nat {
     do ? {
         let age = user!;  // If user is null, exit with null
         if (age < 18) null!; // null break to exit early if age is too low
         age
     }
-  }
+}
 ```
 <!--- this contains a null break usage example, we should point a reader here for a search for null break--->
 
@@ -124,7 +133,9 @@ for (num in numbers.vals()) {
 
 ```motoko no-repl
 let age = 18;
-let authorized : Bool = if (age > 18) {true} else {false};
+let ?{ name; age = personAge } = person 
+else 
+    return #err("Person not found");
 ```
 
 
