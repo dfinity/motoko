@@ -3,3 +3,6 @@
 install $ID cost/cost-simple.mo ""
 ingress $ID test "DIDL\x00\x00"
 
+reinstall $ID cost/cost-ecdsa.mo ""
+ingress $ID test "DIDL\x00\x00"
+
