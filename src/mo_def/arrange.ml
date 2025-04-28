@@ -188,7 +188,7 @@ module Make (Cfg : Config) = struct
 
   and pat_field pf = source pf.at (match pf.it with
     | VarPF(id, p) -> "VarPF" $$ [Atom id.it; pat p]
-    | TypPF(id) -> "TypPF" $$ [Atom id.it])
+    | TypPF(id, tbs) -> "TypPF" $$ [Atom id.it] @ List.map typ_bind tbs)
 
   (* conditionally include parenthetical to avoid breaking lsp *)
   and parenthetical eo sexps =

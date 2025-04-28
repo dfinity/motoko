@@ -2470,12 +2470,12 @@ and check_pat_fields (env : env) (t : T.typ) (tfs : T.field list) (pfs : pat_fie
       "object field %s is not contained in expected type%a"
       id.it
       display_typ_expand t
-  | [], { it = TypPF(id); at; _ } ::_ ->
+  | [], { it = TypPF(id, _); at; _ } ::_ ->
     error env at "M0119"
       "object type field %s is not contained in expected type%a"
       id.it
       display_typ_expand t
-  | T.{lab; typ = Typ t'; _}::tfs', { it = TypPF(id); _ }::pfs' ->
+  | T.{lab; typ = Typ t'; _}::tfs', { it = TypPF(id, _); _ }::pfs' ->
     begin match compare id.it lab with
     | 0 -> check_pat_fields env t tfs' pfs' ve (T.Env.add id.it t' te) at
     | _ -> check_pat_fields env t tfs' pfs ve te at
@@ -2503,7 +2503,7 @@ and check_pat_fields (env : env) (t : T.typ) (tfs : T.field list) (pfs : pat_fie
       | _ -> check_pat_fields env t tfs' pfs' ve' te at
 
 and compare_pat_field pf1 pf2 = match pf1.it, pf2.it with
-  | TypPF(id1), TypPF(id2) -> compare id1.it id2.it
+  | TypPF(id1, _), TypPF(id2, _) -> compare id1.it id2.it
   | TypPF(_), _ -> -1
   | _, TypPF(_) -> 1
   | VarPF(id1, _), VarPF(id2, _) -> compare id1.it id2.it
@@ -2876,7 +2876,7 @@ and check_stab env sort scope dec_fields =
       check_stable id.it id.at;
       [id]
     | T.Actor, Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
-      let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
+      let ids = T.Env.keys (gather_pat env Scope.empty pat).Scope.val_env in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
@@ -3102,7 +3102,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env
     }
-  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
+  | LetD (pat, _, _) -> Scope.adjoin scope (gather_pat env scope pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
@@ -3138,24 +3138,45 @@ and gather_dec env scope dec : Scope.t =
       obj_env = scope.obj_env;
     }
 
-and gather_pat env ve pat : Scope.val_env =
-  gather_pat_aux env Scope.Declaration ve pat
+and gather_pat env scope pat : Scope.t =
+  gather_pat_aux env Scope.Declaration scope pat
 
-and gather_pat_aux env val_kind ve pat : Scope.val_env =
+and gather_pat_aux env val_kind scope pat : Scope.t =
   match pat.it with
-  | WildP | LitP _ | SignP _ -> ve
-  | VarP id -> gather_id env ve id val_kind
-  | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
+  | WildP | LitP _ | SignP _ -> scope
+  | VarP id -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind)
+  | TupP pats -> List.fold_left (gather_pat env) scope pats
+  | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
-  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env scope pat1
 
-and gather_pat_field env ve pf : Scope.val_env =
+and gather_pat_field env scope pf : Scope.t =
   let val_kind = kind_of_field_pattern pf in
   match pf.it with
-  | VarPF(_, pat) -> gather_pat_aux env val_kind ve pat
-  | TypPF(_) -> T.Env.empty
-
+  | VarPF(_, pat) -> gather_pat_aux env val_kind scope pat
+  | TypPF(id, binds) ->
+    let open Scope in
+    if T.Env.mem id.it scope.typ_env then
+      error_duplicate env "type " id;
+    let binds' = match binds with
+      | bind::binds when bind.it.sort.it = T.Scope ->
+        binds
+      | _ -> binds
+    in
+    let pre_tbs = List.map (fun bind ->
+      { T.var = bind.it.var.it;
+        T.sort = T.Type;
+        T.bound = T.Pre })
+      binds'
+    in
+    let pre_k = T.Abs (pre_tbs, T.Pre) in
+    let c = Cons.fresh id.it pre_k in
+    { val_env = scope.val_env;
+      typ_env = T.Env.add id.it c scope.typ_env;
+      con_env = T.ConSet.disjoint_add c scope.con_env;
+      lib_env = scope.lib_env;
+      obj_env = scope.obj_env;
+    }
 
 and gather_id env ve id val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
