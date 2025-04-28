@@ -377,11 +377,12 @@ type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
 let resolved_import_name ri =
-  match ri.Source.it with
-  | Syntax.Unresolved -> "/* unresolved */"
-  | Syntax.LibPath { Syntax.package = _; path }
-  | Syntax.IDLPath (path, _) -> path
-  | Syntax.PrimPath -> "@prim"
+  Syntax.(match ri.Source.it with
+  | Unresolved -> "/* unresolved */"
+  | LibPath { package = _; path }
+  | IDLPath (path, _)
+  | ImportedValuePath path -> path
+  | PrimPath -> "@prim")
 
 let chase_imports_cached parsefn senv0 imports scopes_map
     : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
