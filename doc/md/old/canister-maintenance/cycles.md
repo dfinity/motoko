@@ -54,7 +54,7 @@ To illustrate, we will now use the [`ExperimentalCycles`](../base/ExperimentalCy
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer withdrawn amounts.
 
-``` motoko name=PiggyBank file=../examples/PiggyBank.mo
+``` motoko name=PiggyBank file=../../examples/PiggyBank.mo
 ```
 
 The owner of the bank is identified with the implicit caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a [`Principal`](../base/Principal.md) and is stored in private variable `owner` for future reference. See [principals and caller identification](../writing-motoko/caller-id.md) for more explanation of this syntax.
@@ -77,7 +77,7 @@ Note that the owner of the `PiggyBank` could supply a callback that rewards a be
 
 Here’s how an owner, `Alice`, might use an instance of `PiggyBank`:
 
-``` motoko include=PiggyBank file=../examples/Alice.mo
+``` motoko include=PiggyBank file=../../examples/Alice.mo
 ```
 
 `Alice` imports the `PiggyBank` actor class as a library so she can create a new `PiggyBank` actor on demand.

@@ -170,7 +170,7 @@ The [Motoko base library](../base/index.md) lists a selection of modules, focusi
 
 To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
 
-``` motoko file=../examples/print.mo
+``` motoko file=../../examples/print.mo
 ```
 
 In this case, we import Motoko code with the `mo:` prefix, specify the `base/` path, followed by the module’s file name `Debug.mo` minus its extension.

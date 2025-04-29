@@ -91,7 +91,7 @@ The following example defines a simple function that evaluates expressions built
 TODO: make interactive
 -->
 
-``` motoko file=../examples/option-block.mo
+``` motoko file=../../examples/option-block.mo
 ```
 
 To guard against division by `0` without trapping, the `eval` function returns an option result, using `null` to indicate failure.

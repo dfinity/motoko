@@ -64,34 +64,34 @@ System function `inspect` should **not** be used for definitive access control. 
 
 A simple example of method inspection is a counter actor that inspects some of its messages in detail, and others only superficially:
 
-``` motoko file=../examples/InspectFull.mo
+``` motoko file=../../examples/InspectFull.mo
 ```
 
 Due to subtyping, all of the following variations in order of increasing argument specificity, are legal definitions of `inspect`.
 
 Blanket denial of all ingress messages, ignoring further information:
 
-``` motoko no-repl file=../examples/InspectNone.mo#L10-L10
+``` motoko no-repl file=../../examples/InspectNone.mo#L10-L10
 ```
 
 Declining anonymous calls:
 
-``` motoko no-repl file=../examples/InspectCaller.mo#L12-L14
+``` motoko no-repl file=../../examples/InspectCaller.mo#L12-L14
 ```
 
 Declining large messages, based on the raw size in bytes of `arg` prior to any decoding from Candid binary blob to Motoko value:
 
-``` motoko no-repl file=../examples/InspectArg.mo#L10-L13
+``` motoko no-repl file=../../examples/InspectArg.mo#L10-L13
 ```
 
 Declining messages by name only, ignoring message arguments. Note the use of type `Any` as message argument variants:
 
-``` motoko no-repl file=../examples/InspectName.mo#L10-L23
+``` motoko no-repl file=../../examples/InspectName.mo#L10-L23
 ```
 
 A combination of the previous three, specifying the argument types of some variants while ignoring others at type `Any` and using pattern matching to conflate identical cases:
 
-``` motoko no-repl file=../examples/InspectMixed.mo#L12-L30
+``` motoko no-repl file=../../examples/InspectMixed.mo#L12-L30
 ```
 
 ## Tips on authoring `inspect`
@@ -100,7 +100,7 @@ Implementing `inspect` after the fact once all shared functions of an actor have
 
 For example, in the actor from the previous section, incorrectly declaring forces the compiler to report the expected type below, which you can then cut-and-paste into your code:
 
-``` motoko no-repl file=../examples/InspectTrick.mo#L11-L13
+``` motoko no-repl file=../../examples/InspectTrick.mo#L11-L13
 ```
 
 ``` motoko no-repl

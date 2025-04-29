@@ -22,6 +22,7 @@ import Package "mo:itertools\Iter";
 
 **3. Files within the current project.**
 
+```motoko no-repl
 import Utils "Utils";
 ```
 

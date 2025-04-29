@@ -72,7 +72,7 @@ let num = identity<Nat>(42);
 let text = identity<Text>("Hello");  
 ```
 
-The type of identity is <T>T -> T, indicating that when supplied with any type T, and argument of type T, it returns a result of the same type T.
+The type of identity is `<T>T -> T`, indicating that when supplied with any type `T`, and argument of type `T`, it returns a result of the same type `T`.
 
 Type arguments can be omitted from calls when the compiler can infer them from the arguments and context, allowing the simpler code:
 

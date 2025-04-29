@@ -38,14 +38,14 @@ shared(msg) persistent actor class Counter(init : Nat) {
 
 To extend this example, assume you want to restrict the `Counter` actor so it can only be modified by the installer of the `Counter`. To do this, you can record the principal that installed the actor by binding it to an `owner` variable. You can then check that the caller of each method is equal to `owner` like this:
 
-``` motoko file=../examples/Counters-caller.mo
+``` motoko file=../../examples/Counters-caller.mo
 ```
 
 In this example, the `assert (owner == msg.caller)` expression causes the functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of the `count` variable while the `read()` function permits any caller.
 
 The argument to `shared` is just a pattern. You can rewrite the above to use pattern matching:
 
-``` motoko file=../examples/Counters-caller-pat.mo
+``` motoko file=../../examples/Counters-caller-pat.mo
 ```
 
 :::note
@@ -63,7 +63,7 @@ The data type of `Principal` in Motoko is both sharable and stable, meaning you 
 
 Below is an example of how you can record principals in a set.
 
-``` motoko file=../examples/RecordPrincipals.mo
+``` motoko file=../../examples/RecordPrincipals.mo
 ```
 
 

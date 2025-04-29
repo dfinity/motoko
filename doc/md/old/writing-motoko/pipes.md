@@ -8,7 +8,7 @@ sidebar_position: 20
 
 It can sometimes be hard to read deeply nested expressions involving several function applications.
 
-``` motoko file=../examples/Unpiped.mo#L1-L8
+``` motoko file=../../examples/Unpiped.mo#L1-L8
 ```
 
 This expression takes the range of numbers `0`..`10`, converts it to a list, filters the list for multiples of three, then returns a record containing the result.
@@ -18,7 +18,7 @@ The operator evaluates the first argument `<exp1>`, and lets you refer to its va
 
 Using this, you can write the former expression as:
 
-``` motoko file=../examples/Piped.mo#L1-L8
+``` motoko file=../../examples/Piped.mo#L1-L8
 ```
 
 Now, the textual order of operations corresponds to the explanation above. The pipe expression `<exp1> |> <exp2>` is just syntactic sugar for the following block binding `<exp1>` to a reserved placeholder identifier, `p`, before returning `<exp2>`:

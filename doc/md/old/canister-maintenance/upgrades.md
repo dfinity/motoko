@@ -29,7 +29,7 @@ Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` i
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
-``` motoko file=../examples/StableCounter.mo
+``` motoko file=../../examples/StableCounter.mo
 ```
 
 Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
@@ -37,7 +37,7 @@ Using a `persistent` actor can help avoid unintended data loss. It is the recomm
 
 Since Motoko v0.13.5, the recommended way to declare `StableCounter` above is:
 
-``` motoko file=../examples/PersistentCounter.mo
+``` motoko file=../../examples/PersistentCounter.mo
 ```
 
 :::note
@@ -89,7 +89,7 @@ Unlike stable data structures in the Rust CDK, these modules do not use stable m
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
 
-``` motoko no-repl file=../examples/WeatherActor.mo
+``` motoko no-repl file=../../examples/WeatherActor.mo
 ```
 
 3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.

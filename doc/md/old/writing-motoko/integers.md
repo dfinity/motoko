@@ -36,7 +36,7 @@ To illustrate working with numbers, here is an example calculator program that c
 
 ## Using integers
 
-```motoko file=../examples/Calc.mo
+```motoko file=../../examples/Calc.mo
 ```
 
 You might notice that this sample code uses integer ([`Int`](../base/Int.md)) data types, enabling you to use positive or negative numbers. If you wanted to restrict the functions in this calculator code to only use positive numbers, you could change the data type to only allow natural ([`Nat`](../base/Nat.md)) data.

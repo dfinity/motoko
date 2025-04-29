@@ -160,7 +160,7 @@ let result = 5 |> double(_) |> increment(_); // (5 * 2) + 1 = 11
 
 ## Option blocks (`do ?`)
 
-Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when <block> has type `T` and, importantly, introduces the possibility of a break from <block>. 
+Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>.`
 
 Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`. 
 

@@ -12,7 +12,7 @@ On ICP, canisters can set recurring timers that execute a piece of code after a 
 
 A simple example is a periodic reminder that logs a new year's message:
 
-``` motoko no-repl file=../examples/Reminder.mo
+``` motoko no-repl file=../../examples/Reminder.mo
 ```
 
 The underlying mechanism is a [canister global timer](https://internetcomputer.org/docs/current/references/ic-interface-spec#timer) that by default is issued with appropriate callbacks from a priority queue maintained by the Motoko runtime.

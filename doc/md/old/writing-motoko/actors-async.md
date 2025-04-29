@@ -38,7 +38,7 @@ In Motoko, actors have dedicated syntax and types:
 
 Consider the following actor declaration:
 
-``` motoko file=../examples/counter-actor.mo
+``` motoko file=../../examples/counter-actor.mo
 ```
 
 The `Counter` actor declares one field and three public, shared functions:
@@ -59,7 +59,7 @@ A value of type `async T` is a future. The producer of the future completes the 
 
 Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
 
-``` motoko name=counter file=../examples/counter-actor-sugar.mo
+``` motoko name=counter file=../../examples/counter-actor-sugar.mo
 ```
 
 For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
@@ -145,7 +145,7 @@ A trap will only revoke changes made since the last commit point. In particular,
 
 Consider the following stateful `Atomicity` actor:
 
-``` motoko no-repl file=../examples/atomicity.mo
+``` motoko no-repl file=../../examples/atomicity.mo
 ```
 
 Calling the shared function `atomic()` will fail with an error, since the last statement causes a trap. However, the trap leaves the mutable variable `s` with value `0`, not `1`, and variable `pinged` with value `false`, not `true`. This is because the trap happens before the method `atomic` has executed an `await`, or exited with a result. Even though `atomic` calls `ping()`, `ping()` is queued until the next commit point.

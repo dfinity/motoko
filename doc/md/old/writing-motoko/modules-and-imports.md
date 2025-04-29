@@ -120,12 +120,12 @@ For example, a Motoko actor can import and instantiate the `Counter` class descr
 
 `Counters.mo`:
 
-``` motoko name=Counters file=../examples/Counters.mo
+``` motoko name=Counters file=../../examples/Counters.mo
 ```
 
 `CountToTen.mo`:
 
-``` motoko no-repl file=../examples/CountToTen.mo
+``` motoko no-repl file=../../examples/CountToTen.mo
 ```
 
 The call to `Counters.Counter(1)` installs a fresh counter on the network. Installation is asynchronous, so the caller must `await` the result.

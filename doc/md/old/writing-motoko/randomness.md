@@ -23,7 +23,7 @@ The Random module features a class called `Finite` and a `*From` method. These c
 
 To demonstrate randomness, consider the following example that shuffles a deck of cards then returns the cards in their shuffled order. The code is annotated with additional information:
 
-```motoko file=../examples/CardShuffle.mo
+```motoko file=../../examples/CardShuffle.mo
 ```
 
 View this example on the [Motoko Playground](https://play.motoko.org/?tag=2675232834) or on [GitHub](https://github.com/crusso/card-shuffle/blob/main/src/cards_backend/main.mo).
@@ -40,7 +40,7 @@ When its current supply of bits is exhausted, the code asynchronously requests a
 
 Alternatively, you can use randomness by calling the management canister's `raw_rand` endpoint:
 
-```motoko file=../examples/RawRand.mo
+```motoko file=../../examples/RawRand.mo
 ```
 
 ## Resources
