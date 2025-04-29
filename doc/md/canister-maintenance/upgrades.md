@@ -118,14 +118,13 @@ You can emit the stable signature of the main actor or actor class to a `.most` 
 
 A stable signature `<stab-sig1>` is stable-compatible with signature `<stab-sig2>`, if for each stable field `<id> : T` in `<stab-sig1>` one of the following conditions hold:
 
-- `<stab-sig2>` does not contain a stable field `<id>`.
-- `<stab-sig>` has a matching stable field `<id> : U` with `T <: U`.
+- `<stab-sig>` has a matching stable field `<id> : U` with `T < U` (`T` must be as stable subtype of `U`).
 
-Note that `<stab-sig2>` may contain additional fields or abandon fields of `<stab-sig1>`. Mutability can be different for matching fields.
+Note that `<stab-sig2>` may contain additional fields. Mutability can be different for matching fields.
 
 `<stab-sig1>` is the signature of an older version while `<stab-sig2>` is the signature of a newer version.
 
-The subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code.
+The stable subtyping condition on stable fields ensures that the final value of some field can be consumed as the initial value of that field in the upgraded code, without loss of data.
 
 :::tip
 
@@ -169,7 +168,7 @@ After you have deployed a Motoko actor with the appropriate `stable` variables, 
 You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
 
-In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about dropping stable variables.
+In addition, Motoko with enhanced orthogonal persistence implements extra safe guard in the runtime system to ensure that the stable data is compatible, to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about incompatibility and dropping stable variables.
 
 ## Data migration
 
@@ -182,13 +181,16 @@ Motoko supports two kinds of data migrations: Implicit migration and explicit mi
 This is automatically supported when the new program version is stable-compatible with the old version. The runtime system of Motoko then automatically handles the migration on upgrade.
 
 More precisely, the following changes can be implicitly migrated:
-* Adding or removing actor fields.
+* Adding actor fields.
 * Changing the mutability of an actor field.
-* Removing record fields.
 * Adding variant fields.
 * Changing `Nat` to `Int`.
-* Shared function parameter contravariance and return type covariance.
-* Any change that is allowed by the Motoko's subtyping rule.
+* Any change that is allowed by the Motoko's stable subtyping rule.
+  These are similar to Motoko subtyping, but stricter, and doesn't allow dropping of record
+  fields or promotion to the type `Any`, either of which can result in data loss.
+
+Motoko versions prior to 0.14.6 also allowed actor fields to be dropped or promoted to `Any`, but such changes now require explicit migrations (see below).
+The rules have been strengthened to prevent accidental loss of data.
 
 ### Explicit migration
 
