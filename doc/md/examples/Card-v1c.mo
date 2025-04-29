@@ -8,5 +8,4 @@ persistent actor {
   };
 
   var map : [(Nat32, Card)] = []; // Initialized by migration on upgrade
-
 };
