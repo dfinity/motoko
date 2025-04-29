@@ -33,9 +33,6 @@
             base
           ];
         };
-
-        # No testing of atdgen, as it pulls in python stuff, tricky on musl
-        atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
       };
     }
     )
