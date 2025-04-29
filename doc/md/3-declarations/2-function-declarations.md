@@ -6,7 +6,7 @@ sidebar_position: 2
 
 A function in Motoko is a block of code that takes inputs, processes them, then (optionally) returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
 
-## Declaring a function
+## Declaring a function 
 
 Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse. Anonymous functions do not have a name (e.g., lambda functions or function expressions). They can be defined inline and usually assigned to variables or passed as arguments.
 
