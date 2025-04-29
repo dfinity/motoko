@@ -185,7 +185,7 @@ More precisely, the following changes can be implicitly migrated:
 * Changing the mutability of an actor field.
 * Adding variant fields.
 * Changing `Nat` to `Int`.
-* Any change that is allowed by the Motoko's stable subtyping rule.
+* Any change that is allowed by Motoko stable subtyping rules.
   These are similar to Motoko subtyping, but stricter, and doesn't allow dropping of record
   fields or promotion to the type `Any`, either of which can result in data loss.
 
