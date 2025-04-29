@@ -27,7 +27,6 @@ Bitwise operators can only be used with bounded types.
 | `-`      | Numeric negation |
 | `+`      | Numeric identity |
 | `^`      | Bitwise negation |
-| `do ?`   | Option block     |
 
 ## Relational operators
 

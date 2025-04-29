@@ -26,20 +26,16 @@ import Char "mo:base/Char";
 actor {
   // Internal function that works with iterators
   func textToChars(t: Text) : Iter.Iter<Char> {
-    Text.toIter(t)
+    t.chars() 
   };
   
   // Public function that demonstrates using the iterator
   public func demonstrateTextToChars(t: Text) : async Text {
-    let charIter = textToChars(t);
-    var result = "";
-    
-    // Iterate through the characters and build a result string
-    for (c in charIter) {
-      result #= Char.toText(c) # "";
-    };
-    
-    return result
+    // Use Text.translate for more efficient character transformation
+    return Text.translate(t, func(c) {
+      // This function is applied to each character
+      Char.toText(c)
+    });
   };
 }
 ```

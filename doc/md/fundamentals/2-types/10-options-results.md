@@ -161,21 +161,32 @@ If the value exists (`?value`), it can be accessed directly as its inner type (`
 
 ## Results
 
-The `Result` type can hold:
+While options are a built-in type, the `Result` is defined as a variant type:
 
-- `#ok(value)`: Success with a value.
-- `#err(errorMessage)`: Failure with an error message.
+`type Result<Ok, Err> = { #ok : Ok; #err : Err }`
+
+Because of the second type parameter, `Err`, the `Result` type lets you select the type used to describe errors. 
+
+For example, define a `TodoError` type that the `markDone` function will use to signal errors:
 
 ```motoko no-repl
-import Result "mo:base/Result";
-import Nat "mo:base/Nat";
+  public type TodoError = { #notFound; #alreadyDone : Time };
+```
 
-func divide(a : Nat, b : Nat) : Result.Result<Nat, Text> {
-    if (b == 0) {
-        #err("Cannot divide by zero");
-    };
-    #ok(a / b);
+
+### Pattern matching with `Result`
+
+In the case of a `Result`, you can also use pattern matching with the difference that you also get an informative value, not just `null`, in the `#err` case:
+
+```motoko no-repl
+func greetResult(resultName : Result<Text, Text>) : Text {
+  switch (resultName) {
+    case (#err(error)) { "No name: " # error };
+    case (#ok(name)) { "Hello, " # name };
+  }
 };
+assert(greetResult(#ok("Motoko")) == "Hello, Motoko!");
+assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
 ```
 
 ## Resources
