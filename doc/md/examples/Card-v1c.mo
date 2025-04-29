@@ -1,8 +1,7 @@
 import {migration} "CardMigration";
 
 (with migration) // Declare the migration function
-persistent actor
-  {
+persistent actor {
   type Card = {
     title : Text;
     description : Text;
