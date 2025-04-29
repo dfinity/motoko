@@ -13,6 +13,7 @@ Package imports should be at the top of the source file. Imports allow you to re
 
 ```motoko no-repl
 import Text "mo:base/Text";
+```
 
 **2. Third-party packages installed via a package manager (such as Mops).**
 

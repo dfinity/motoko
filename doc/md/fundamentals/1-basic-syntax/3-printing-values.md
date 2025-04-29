@@ -16,7 +16,7 @@ Debug.print("Hello, world!");
 
 For debugging purposes, `debug_show` converts most Motoko types into [`Text`](https://internetcomputer.org/docs/motoko/base/Text). The operator handles most types well, but may not work with cyclic data structures or types containing functions or type parameters.
 
-```
+```motoko
 import Debug "mo:base/Debug";
 
 Debug.print(debug_show {life = 42} ); // "{life = 42}"

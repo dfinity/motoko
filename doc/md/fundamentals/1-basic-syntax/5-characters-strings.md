@@ -70,7 +70,7 @@ for (c in "abc".chars()) {
 
 Text values can be compared using "==", "<" and all the other relational operators.
 
-### Resources
+## Resources
 
 - [`Char`](https://internetcomputer.org/docs/motoko/base/Char)
 - [`Text`](https://internetcomputer.org/docs/motoko/base/Text)

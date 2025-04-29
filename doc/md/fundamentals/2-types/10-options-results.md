@@ -2,7 +2,7 @@
 sidebar_position: 10
 ---
 
-# Options and results
+# Options & results
 
 | Type    | Syntax                  | Purpose                          | When to use it                                   |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
