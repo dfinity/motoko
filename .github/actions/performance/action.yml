@@ -24,6 +24,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Debug is_fork value
+      run: |
+        echo "is_fork value: ${{ inputs.is_fork }}"
+        echo "is_fork type: $(echo ${{ inputs.is_fork }} | jq type)"
+      shell: bash
+
     - name: Discover `test/bench` changes
       if: ${{ !inputs.is_fork }}
       run: |
