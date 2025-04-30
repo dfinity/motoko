@@ -44,9 +44,11 @@ runs:
         authToken: ${{ inputs.cachix-auth-token }}
 
     - run: nix profile install .#nix-build-uncached
+      shell: bash
 
     - name: "Run ${{ inputs.test-name }}"
       run: |
         cachix watch-exec ic-hs-test -- \
         nix-build-uncached --max-jobs auto \
         -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
+      shell: bash
