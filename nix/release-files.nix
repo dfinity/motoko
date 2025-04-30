@@ -28,10 +28,10 @@ let
 in
 pkgs.runCommandNoCC "motoko-release-${releaseVersion}" { } ''
   mkdir $out
-  cp ${as_tarball "x86_64-linux" (with linux.release; [ mo-ide mo-doc moc ])} $out/motoko-Linux-x86_64-${releaseVersion}.tar.gz
-  cp ${as_tarball "aarch64-linux" (with linuxArm.release; [ mo-ide mo-doc moc ])} $out/motoko-Linux-aarch64-${releaseVersion}.tar.gz
-  cp ${as_tarball "x86_64-darwin" (with darwin.release; [ mo-ide mo-doc moc ])} $out/motoko-Darwin-x86_64-${releaseVersion}.tar.gz
-  cp ${as_tarball "aarch64-darwin" (with darwinArm.release; [ mo-ide mo-doc moc ])} $out/motoko-Darwin-arm64-${releaseVersion}.tar.gz
+  cp ${as_tarball "x86_64-linux" (with linux.release; [ mo-doc moc ])} $out/motoko-Linux-x86_64-${releaseVersion}.tar.gz
+  cp ${as_tarball "aarch64-linux" (with linuxArm.release; [ mo-doc moc ])} $out/motoko-Linux-aarch64-${releaseVersion}.tar.gz
+  cp ${as_tarball "x86_64-darwin" (with darwin.release; [ mo-doc moc ])} $out/motoko-Darwin-x86_64-${releaseVersion}.tar.gz
+  cp ${as_tarball "aarch64-darwin" (with darwinArm.release; [ mo-doc moc ])} $out/motoko-Darwin-arm64-${releaseVersion}.tar.gz
 
   cp ${as_js "moc" linux.js.moc} $out/moc-${releaseVersion}.js
   cp ${as_js "moc-interpreter" linux.js.moc_interpreter} $out/moc-interpreter-${releaseVersion}.js
