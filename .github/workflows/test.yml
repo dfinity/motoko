@@ -16,7 +16,7 @@ jobs:
       os: ${{ matrix.os }}
       test-target: common-tests
       test-name: ${{ matrix.os }}-common-tests
-      cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      cachix-auth-token: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       ref: ${{ github.event.pull_request.head.sha }}
 
   gc-tests:
@@ -30,7 +30,7 @@ jobs:
       os: ${{ matrix.os }}
       test-target: gc-tests
       test-name: ${{ matrix.os }}-gc-tests
-      cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      cachix-auth-token: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       ref: ${{ github.event.pull_request.head.sha }}
 
   tests:
@@ -47,7 +47,7 @@ jobs:
           os: ${{ matrix.os }}
           test-target: ${{ matrix.build_type }}-systems-go
           test-name: ${{ matrix.os }}-${{ matrix.build_type }}-tests
-          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          cachix-auth-token: '${{ secrets.CACHIX_AUTH_TOKEN }}'
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run Performance Tests
@@ -58,7 +58,7 @@ jobs:
           head_ref: ${{ github.event.pull_request.head.ref }}
           base_ref: ${{ github.base_ref }}
           pr_number: ${{ github.event.pull_request.number }}
-          niv_updater_token: ${{ secrets.NIV_UPDATER_TOKEN }}
+          niv_updater_token: '${{ secrets.NIV_UPDATER_TOKEN }}'
           is_fork: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
 
   reports:
