@@ -28,6 +28,7 @@ runs:
       run: |
         echo "is_fork value: ${{ inputs.is_fork }}"
         echo "is_fork type: $(echo ${{ inputs.is_fork }} | jq type)"
+        echo "Condition evaluation: ${{ !inputs.is_fork }}"
       shell: bash
 
     - name: Discover `test/bench` changes
@@ -90,7 +91,6 @@ runs:
     # Forks can't add comments so this job does not run on forks, see
     # motoko#2864.
     - name: Create or update performance comment
-      if: ${{ !inputs.is_fork }}
       uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
