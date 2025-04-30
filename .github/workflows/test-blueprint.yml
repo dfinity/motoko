@@ -32,15 +32,13 @@ on:
       test-name:
         required: true
         type: string
-        description: "Name for the test job (e.g., ubuntu-common-tests)"
-      cachix-auth-token:
+      ref:
         required: true
         type: string
-        description: "The Cachix authentication token"
-      ref:
-        required: false
-        type: string
         description: "The git ref to checkout (e.g. PR head SHA)"
+    secrets:
+      cachix-auth-token:
+        required: true
 
 jobs:
   run-tests:
@@ -59,12 +57,12 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: ic-hs-test
-          authToken: '${{ inputs.cachix-auth-token }}'
+          authToken: '${{ secrets.cachix-auth-token }}'
 
       - run: nix profile install .#nix-build-uncached
-      
-      - name: Run Tests
+
+      - name: "Run ${{ inputs.test-name }}"
         run: |
           cachix watch-exec ic-hs-test -- \
-            nix-build-uncached --max-jobs auto \
-              -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
+          nix-build-uncached --max-jobs auto \
+          -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
