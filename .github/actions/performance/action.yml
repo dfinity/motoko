@@ -25,7 +25,7 @@ runs:
   using: "composite"
   steps:
     - name: Discover `test/bench` changes
-      if: !inputs.is_fork
+      if: ${{ !inputs.is_fork }}
       run: |
         git diff --no-index $(nix build .#tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ inputs.head_ref }}
@@ -61,7 +61,7 @@ runs:
         path: ./perf-delta.txt
 
     - name: Find performance comment
-      if: !inputs.is_fork
+      if: ${{ !inputs.is_fork }}
       uses: peter-evans/find-comment@v3
       id: fc
       with:
@@ -72,7 +72,7 @@ runs:
     # Forks can't add comments so this job does not run on forks, see
     # motoko#2864.
     - name: Create or update performance comment
-      if: !inputs.is_fork
+      if: ${{ !inputs.is_fork }}
       uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
