@@ -57,7 +57,7 @@
 
 <typ_nobin> ::= 
     <typ_pre>
-    <func_sort_opt> <typ_params_opt> <typ_un> '->' <typ_nobin>
+    <func_sort_opt> <typ_params>? <typ_un> '->' <typ_nobin>
 
 <typ> ::= 
     <typ_nobin>
@@ -76,14 +76,14 @@
     '<' <list(<typ>, ',')> '>'
     '<' 'system' (',' <typ>)* '>'
 
-<typ_params_opt> ::= 
-    ('<' <list(<typ_bind>, ',')> '>')?
+<typ_params> ::= 
+    '<' <list(<typ_bind>, ',')> '>'
     '<' 'system' (',' <typ_bind>)* '>'
 
 <typ_field> ::= 
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
-    <id> <typ_params_opt> <typ_nullary> ':' <typ>
+    <id> <typ_params>? <typ_nullary> ':' <typ>
 
 <typ_tag> ::= 
     '#' <id> (':' <typ>)?
@@ -200,10 +200,16 @@
     'to_candid' '(' <list(<exp>, ',')> ')'
     'from_candid' <exp_un>
 
+<exp_binop> ::= 
+    <exp_bin> <binop> <exp_bin>
+
+<exp_relop> ::= 
+    <exp_bin> <relop> <exp_bin>
+
 <exp_bin> ::= 
     <exp_un>
-    <exp_bin> <binop> <exp_bin>
-    <exp_bin> <relop> <exp_bin>
+    <exp_binop>
+    <exp_relop>
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ_nobin>
@@ -307,18 +313,21 @@
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
 
+<param_pat> ::= 
+    <pat_plain>
+
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> 'func' <id>? <typ_params>? <param_pat> (':' <typ>)? <func_body>
     <parenthetical>? <obj_or_class_dec>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params>? <param_pat> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>

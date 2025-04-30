@@ -262,6 +262,21 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_stab_field) -> "<stab_field>", eg_stab_field
   | X (N N_pre_stab_field) -> "<pre_stab_field>", eg_pre_stab_field
   | X (N N_start) -> entry_point "<start>" (* dummy non-terminal, don't display *)
+  | X (N N_unassign) -> "<unassign>", "+="
+  | X (N N_type_typ_params_opt) -> "typ_params_opt", "<T>"
+  | X (N N_typ_obj_sort) -> "<typ_obj_sort>", "" (*?*)
+  | X (N N_req) -> "<req>", "stable"
+  | X (N N_query) -> "<query>", "query"
+  | X (N N_parenthetical) -> "<parenthetical>", "(with ...)"
+  | X (N N_obj_sort_opt) -> "<obj_sort_opt>", ""
+  | X (N N_obj_sort) -> "<obj_sort>", "object"
+  | X (N N_exp_relop_bl_) -> "<exp_relop>", "x == y"
+  | X (N N_exp_relop_ob_) -> "<exp_relop>", "x == y"
+  | X (N N_exp_binop_bl_) -> "<exp_binop>", "x + y"
+  | X (N N_exp_binop_ob_) -> "<exp_binop>", "x + y"
+  | X (N N_binassign) -> "<binassign>", "+="
+  | X (N N_typ_params) -> "<typ_params>", "<T>"
+  | X (N N_param_pat) -> "<param_pat>", "(x : Int)"
 
 (* In order to print a view of the stack that includes semantic values,
    we need an element printer. (If we don't need this feature, then

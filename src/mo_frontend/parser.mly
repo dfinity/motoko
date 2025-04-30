@@ -378,21 +378,21 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline typ_obj_sort :
+(* %inline*) typ_obj_sort :
   | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE {Type.Module @@ at $sloc }
 
-%inline obj_sort :
+(* %inline*) obj_sort :
   | OBJECT { (false, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
   | MODULE { (false, Type.Module @@ at $sloc) }
 
-%inline obj_sort_opt :
+(* %inline *) obj_sort_opt :
   | os=obj_sort { os }
   | (* empty *) { (false, Type.Object @@ no_region) }
 
-%inline query:
+(* %inline *) query:
   | QUERY { Type.Query }
   | COMPOSITE QUERY { Type.Composite }
 
@@ -492,13 +492,17 @@ inst :
   | LT SYSTEM ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-%inline type_typ_params_opt :
+(*%inline*) type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
-%inline typ_params_opt :
-  | ts=type_typ_params_opt { ts }
+typ_params :
+  | LT ts=seplist(typ_bind, COMMA) GT { ts }
   | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+
+%inline typ_params_opt :
+  | (* empty *) { [] }
+  | tps=typ_params { tps }
 
 typ_field :
   | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
@@ -560,7 +564,7 @@ lit :
   | ROTROP { RotROp }
   | HASH { CatOp }
 
-%inline relop :
+ %inline relop :
   | EQOP  { EqOp }
   | NEQOP { NeqOp }
   | LTOP  { LtOp }
@@ -568,12 +572,12 @@ lit :
   | GTOP  { GtOp }
   | GEOP  { GeOp }
 
-%inline unassign :
+(* %inline *) unassign :
   | PLUSASSIGN { PosOp }
   | MINUSASSIGN { NegOp }
   | XORASSIGN { NotOp }
 
-%inline binassign :
+(* %inline *) binassign :
   | PLUSASSIGN { AddOp }
   | MINUSASSIGN { SubOp }
   | MULASSIGN { MulOp }
@@ -597,7 +601,7 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
-%inline parenthetical:
+(*%inline*) parenthetical:
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
     { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
 
@@ -682,13 +686,25 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
+
+exp_binop(B) :
+  | e1=exp_bin(B) op=binop e2=exp_bin(ob)
+    { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
+
+exp_relop(B) :
+  | e1=exp_bin(B) op=relop e2=exp_bin(ob)
+    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
+
 %public exp_bin(B) :
   | e=exp_un(B)
     { e }
+  | e=exp_binop(B) {e}
+  | e=exp_relop(B) {e}
+(*
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin(B) op=relop e2=exp_bin(ob)
-    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
+    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc } *)
   | e1=exp_bin(B) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)
@@ -896,7 +912,8 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
-
+param_pat :
+  | p=pat_plain { p }
 
 (* Declarations *)
 
@@ -911,7 +928,7 @@ dec_nonvar :
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+      tps=typ_params_opt p=param_pat t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
@@ -941,7 +958,7 @@ obj_or_class_dec :
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+      tps=typ_params_opt p=param_pat t=annot_opt  cb=class_body
     { fun eo ->
       let (persistent, s) = ds in
       let x, dfs = cb in
@@ -1023,7 +1040,7 @@ pre_stab_field :
   | r=req mut=var_opt x=id COLON t=typ
     { (r, ValF (x, t, mut) @@ at $sloc) }
 
-%inline req :
+(*%inline*) req :
   | STABLE { false @@ at $sloc }
   | IN { true @@ at $sloc }
 
