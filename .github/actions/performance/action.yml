@@ -27,7 +27,7 @@ runs:
     - name: Discover `test/bench` changes
       if: ${{ inputs.is_fork == 'false' }}
       run: |
-        git diff --no-index $(nix build .#tests.bench)/share test/bench/ok | patch -p1 -R
+        git diff --no-index $(nix build --print-out-paths .#tests.bench)/share test/bench/ok | patch -p1 -R
         git switch ${{ inputs.head_ref }}
         git branch --show-current
       shell: bash
