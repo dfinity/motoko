@@ -12,13 +12,14 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Run Common Tests
-        uses: ./.github/actions/test-blueprint
+        uses: actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: common-tests
           test-name: ${{ matrix.os }}-common-tests
-          ref: ${{ github.event.pull_request.head.sha }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   gc-tests:
@@ -28,13 +29,14 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Run GC Tests
-        uses: ./.github/actions/test-blueprint
+        uses: actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: gc-tests
           test-name: ${{ matrix.os }}-gc-tests
-          ref: ${{ github.event.pull_request.head.sha }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   tests:
@@ -45,18 +47,24 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch full history so that git merge-base works
+          fetch-depth: 0
+          # fetch PR commit, not predicted merge commit
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Run Tests
-        uses: ./.github/actions/test-blueprint
+        uses: actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: ${{ matrix.build_type }}-systems-go
           test-name: ${{ matrix.os }}-${{ matrix.build_type }}-tests
-          ref: ${{ github.event.pull_request.head.sha }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Run Performance Tests
         if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && runner.os == 'Linux' && runner.arch == 'X64' && matrix.build_type == 'release'
-        uses: ./.github/actions/performance
+        uses: actions/performance
         with:
           head_sha: ${{ github.event.pull_request.head.sha }}
           head_ref: ${{ github.event.pull_request.head.ref }}

@@ -32,10 +32,6 @@ on:
       test-name:
         required: true
         type: string
-      ref:
-        required: true
-        type: string
-        description: "The git ref to checkout (e.g. PR head SHA)"
       cachix-auth-token:
         required: true
         type: string
@@ -46,13 +42,6 @@ jobs:
     name: ${{ inputs.test-name }}
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          # fetch full history so that git merge-base works
-          fetch-depth: 0
-          # fetch PR commit, not predicted merge commit
-          ref: ${{ inputs.ref }}
-      
       - uses: cachix/install-nix-action@v31
 
       - uses: cachix/cachix-action@v16
