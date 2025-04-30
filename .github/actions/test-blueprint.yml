@@ -36,9 +36,10 @@ on:
         required: true
         type: string
         description: "The git ref to checkout (e.g. PR head SHA)"
-    secrets:
       cachix-auth-token:
         required: true
+        type: string
+        description: "Cachix authentication token"
 
 jobs:
   run-tests:
@@ -57,7 +58,7 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: ic-hs-test
-          authToken: '${{ secrets.cachix-auth-token }}'
+          authToken: ${{ inputs.cachix-auth-token }}
 
       - run: nix profile install .#nix-build-uncached
 
