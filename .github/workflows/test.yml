@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Common Tests
-        uses: actions/test-blueprint
+        uses: ./.github/actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: common-tests
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run GC Tests
-        uses: actions/test-blueprint
+        uses: ./.github/actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: gc-tests
@@ -55,7 +55,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run Tests
-        uses: actions/test-blueprint
+        uses: ./.github/actions/test-blueprint
         with:
           os: ${{ matrix.os }}
           test-target: ${{ matrix.build_type }}-systems-go
@@ -64,7 +64,7 @@ jobs:
 
       - name: Run Performance Tests
         if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && runner.os == 'Linux' && runner.arch == 'X64' && matrix.build_type == 'release'
-        uses: actions/performance
+        uses: ./.github/actions/performance
         with:
           head_sha: ${{ github.event.pull_request.head.sha }}
           head_ref: ${{ github.event.pull_request.head.ref }}
