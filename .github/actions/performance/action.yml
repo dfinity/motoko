@@ -60,14 +60,26 @@ runs:
           --argstr to "$to"
       shell: bash
 
+    - name: Debug perf-delta.txt
+      run: |
+        echo "Checking if perf-delta.txt exists:"
+        ls -la perf-delta.txt || echo "File not found"
+        echo "Contents of perf-delta.txt:"
+        cat perf-delta.txt || echo "Could not read file"
+      shell: bash
+
     - name: Read performance delta
       id: perf
       uses: juliangruber/read-file-action@v1
       with:
         path: ./perf-delta.txt
 
+    - name: Debug perf output
+      run: |
+        echo "Perf output: ${{ steps.perf.outputs.content }}"
+      shell: bash
+
     - name: Find performance comment
-      if: ${{ !inputs.is_fork }}
       uses: peter-evans/find-comment@v3
       id: fc
       with:
