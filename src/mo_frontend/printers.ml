@@ -276,7 +276,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_exp_binop_ob_) -> "<exp_binop>", "x + y"
   | X (N N_binassign) -> "<binassign>", "+="
   | X (N N_typ_params) -> "<typ_params>", "<T>"
-  | X (N N_param_pat) -> "<param_pat>", "(x : Int)"
+  | X (N N_func_pat) -> "<func_pat>", "f(x : Int)"
 
 (* In order to print a view of the stack that includes semantic values,
    we need an element printer. (If we don't need this feature, then
