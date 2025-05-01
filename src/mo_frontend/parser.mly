@@ -374,21 +374,21 @@ seplist1(X, SEP) :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-(* %inline*) typ_obj_sort :
+typ_obj_sort :
   | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE {Type.Module @@ at $sloc }
 
-(* %inline*) obj_sort :
+obj_sort :
   | OBJECT { (false, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
   | MODULE { (false, Type.Module @@ at $sloc) }
 
-(* %inline *) obj_sort_opt :
+obj_sort_opt :
   | os=obj_sort { os }
   | (* empty *) { (false, Type.Object @@ no_region) }
 
-(* %inline *) query:
+query:
   | QUERY { Type.Query }
   | COMPOSITE QUERY { Type.Composite }
 
@@ -488,7 +488,7 @@ inst :
   | LT SYSTEM ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-(*%inline*) type_typ_params_opt :
+type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
@@ -568,12 +568,12 @@ lit :
   | GTOP  { GtOp }
   | GEOP  { GeOp }
 
-(* %inline *) unassign :
+unassign :
   | PLUSASSIGN { PosOp }
   | MINUSASSIGN { NegOp }
   | XORASSIGN { NotOp }
 
-(* %inline *) binassign :
+binassign :
   | PLUSASSIGN { AddOp }
   | MINUSASSIGN { SubOp }
   | MULASSIGN { MulOp }
@@ -597,7 +597,7 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
-(*%inline*) parenthetical:
+parenthetical:
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
     { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
 
@@ -1040,7 +1040,7 @@ pre_stab_field :
   | r=req mut=var_opt x=id COLON t=typ
     { (r, ValF (x, t, mut) @@ at $sloc) }
 
-(*%inline*) req :
+req :
   | STABLE { false @@ at $sloc }
   | IN { true @@ at $sloc }
 
