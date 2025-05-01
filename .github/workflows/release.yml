@@ -59,7 +59,6 @@ jobs:
         cachix watch-exec ic-hs-test -- \
           nix build --max-jobs 1 -L \
             .#release.moc \
-            .#release.mo-ide \
             .#release.mo-doc \
             .#js.moc \
             .#js.moc_interpreter

@@ -40,7 +40,7 @@ jobs:
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src
-          pr-title: "chore: daily flake.lock update"
+          pr-title: "chore: daily `flake.lock` update"
           pr-labels: |
             automerge-squash
           pr-body: |
