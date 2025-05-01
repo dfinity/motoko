@@ -787,7 +787,7 @@ exp [@recover.expr mk_stub_expr loc] (B) :
   | e=exp_nonvar(B)
     { e }
   | d=dec_var
-    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
+    { BlockE([d]) @? at $sloc }
 
 %public exp_nest :
   | e=block
