@@ -200,16 +200,10 @@
     'to_candid' '(' <list(<exp>, ',')> ')'
     'from_candid' <exp_un>
 
-<exp_binop> ::= 
-    <exp_bin> <binop> <exp_bin>
-
-<exp_relop> ::= 
-    <exp_bin> <relop> <exp_bin>
-
 <exp_bin> ::= 
     <exp_un>
-    <exp_binop>
-    <exp_relop>
+    <exp_bin> <binop> <exp_bin>
+    <exp_bin> <relop> <exp_bin>
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ_nobin>

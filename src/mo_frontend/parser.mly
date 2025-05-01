@@ -682,25 +682,13 @@ exp_un(B) :
   | FROM_CANDID e=exp_un(ob)
     { FromCandidE e @? at $sloc }
 
-
-exp_binop(B) :
-  | e1=exp_bin(B) op=binop e2=exp_bin(ob)
-    { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
-
-exp_relop(B) :
-  | e1=exp_bin(B) op=relop e2=exp_bin(ob)
-    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
-
 %public exp_bin(B) :
   | e=exp_un(B)
     { e }
-  | e=exp_binop(B) {e}
-  | e=exp_relop(B) {e}
-(*
   | e1=exp_bin(B) op=binop e2=exp_bin(ob)
     { BinE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin(B) op=relop e2=exp_bin(ob)
-    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc } *)
+    { RelE(ref Type.Pre, e1, op, e2) @? at $sloc }
   | e1=exp_bin(B) AND e2=exp_bin(ob)
     { AndE(e1, e2) @? at $sloc }
   | e1=exp_bin(B) OR e2=exp_bin(ob)

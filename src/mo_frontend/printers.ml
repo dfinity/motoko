@@ -8,14 +8,6 @@ let abstract abs con = (abs, con)
 (* private helper *)
 let repr_of_symbol : xsymbol -> (string * string) =
   let simple_token con = (con, con) in
-(* 
-  let binop = abstract "<binop>" in
-  let relop = abstract "<relop>" in
-  let binassign = abstract "<binassign>" in
-  (* all unary operators are also binary operators, so keep them unary *)
-  let unop = abstract "<unop>" in
-  let unassign = abstract "<unassign>" in
- *)
   let binop con = abstract "<binop>" "+" in
   let relop con = abstract "<relop>" "==" in
   let binassign con = abstract "<binassign>" "+=" in
@@ -278,10 +270,6 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_parenthetical) -> "<parenthetical>", "(with ...)"
   | X (N N_obj_sort_opt) -> "<obj_sort_opt>", ""
   | X (N N_obj_sort) -> "<obj_sort>", "object"
-  | X (N N_exp_relop_bl_) -> "<exp_relop>", "x == y"
-  | X (N N_exp_relop_ob_) -> "<exp_relop>", "x == y"
-  | X (N N_exp_binop_bl_) -> "<exp_binop>", "x + y"
-  | X (N N_exp_binop_ob_) -> "<exp_binop>", "x + y"
   | X (N N_binassign) -> "<binassign>", "+="
   | X (N N_typ_params) -> "<typ_params>", "<T>"
   | X (N N_func_pat) -> "<func_pat>", "f(x : Int)"
