@@ -2,3 +2,4 @@ par-bad-asyncstar.mo:1.19-1.25: syntax error [M0001], unexpected token 'async*',
   <obj_or_class_dec>
   async <exp_nest>
   <exp_post(ob)> <inst> <exp_nullary(ob)>
+  class <func_pat> <annot_opt> <class_body>

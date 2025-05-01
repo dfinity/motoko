@@ -370,29 +370,25 @@ seplist1(X, SEP) :
   | id=id { fun _ _ -> true, id }
   | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @@ at sloc }
 
-%inline typ_id_opt :
-  | id=typ_id { fun _ _ -> id }
-  | (* empty *) { fun sort sloc -> anon_id sort (at sloc) @= at sloc }
-
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
   | VAR { Var @@ at $sloc }
 
-%inline typ_obj_sort :
+typ_obj_sort :
   | OBJECT { Type.Object @@ at $sloc }
   | ACTOR { Type.Actor @@ at $sloc }
   | MODULE {Type.Module @@ at $sloc }
 
-%inline obj_sort :
+obj_sort :
   | OBJECT { (false, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
   | MODULE { (false, Type.Module @@ at $sloc) }
 
-%inline obj_sort_opt :
+obj_sort_opt :
   | os=obj_sort { os }
   | (* empty *) { (false, Type.Object @@ no_region) }
 
-%inline query:
+query:
   | QUERY { Type.Query }
   | COMPOSITE QUERY { Type.Composite }
 
@@ -492,13 +488,17 @@ inst :
   | LT SYSTEM ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-%inline type_typ_params_opt :
+type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
-%inline typ_params_opt :
-  | ts=type_typ_params_opt { ts }
+typ_params :
+  | LT ts=seplist(typ_bind, COMMA) GT { ts }
   | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+
+%inline typ_params_opt :
+  | (* empty *) { [] }
+  | tps=typ_params { tps }
 
 typ_field :
   | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
@@ -560,7 +560,7 @@ lit :
   | ROTROP { RotROp }
   | HASH { CatOp }
 
-%inline relop :
+ %inline relop :
   | EQOP  { EqOp }
   | NEQOP { NeqOp }
   | LTOP  { LtOp }
@@ -568,12 +568,12 @@ lit :
   | GTOP  { GtOp }
   | GEOP  { GeOp }
 
-%inline unassign :
+unassign :
   | PLUSASSIGN { PosOp }
   | MINUSASSIGN { NegOp }
   | XORASSIGN { NotOp }
 
-%inline binassign :
+binassign :
   | PLUSASSIGN { AddOp }
   | MINUSASSIGN { SubOp }
   | MULASSIGN { MulOp }
@@ -597,7 +597,7 @@ lit :
 bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 %public ob : e=exp_obj { e }
 
-%inline parenthetical:
+parenthetical:
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR
     { Some (ObjE (Option.(to_list base), fs) @? at $sloc) }
 
@@ -896,7 +896,8 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
-
+func_pat :
+  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
 
 (* Declarations *)
 
@@ -910,11 +911,12 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+  | sp=shared_pat_opt FUNC
+      xf_tps_p=func_pat t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
-         around bodies declared as blocks *)
+      around bodies declared as blocks *)
+      let xf, tps, p = xf_tps_p in
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
@@ -940,10 +942,13 @@ obj_or_class_dec :
         else objblock eo s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+  | sp=shared_pat_opt ds=obj_sort_opt CLASS
+      xf_tps_p=func_pat t=annot_opt  cb=class_body
     { fun eo ->
       let (persistent, s) = ds in
+      let xf, tps, p = xf_tps_p in
+      let (_, id) = xf "class" $sloc in
+      let cid = id.it @= id.at in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
@@ -954,7 +959,7 @@ obj_or_class_dec :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, s, xf "class" $sloc, tps', p, t', x, dfs') @? at $sloc }
+      ClassD(eo, sp, s, cid, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
@@ -1023,7 +1028,7 @@ pre_stab_field :
   | r=req mut=var_opt x=id COLON t=typ
     { (r, ValF (x, t, mut) @@ at $sloc) }
 
-%inline req :
+req :
   | STABLE { false @@ at $sloc }
   | IN { true @@ at $sloc }
 

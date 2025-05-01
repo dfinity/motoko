@@ -8,12 +8,12 @@ let abstract abs con = (abs, con)
 (* private helper *)
 let repr_of_symbol : xsymbol -> (string * string) =
   let simple_token con = (con, con) in
-  let binop = abstract "<binop>" in
-  let relop = abstract "<relop>" in
-  let binassign = abstract "<binassign>" in
+  let binop con = abstract "<binop>" "+" in
+  let relop con = abstract "<relop>" "==" in
+  let binassign con = abstract "<binassign>" "+=" in
   (* all unary operators are also binary operators, so keep them unary *)
-  let unop = abstract "<unop>" in
-  let unassign = abstract "<unassign>" in
+  let unop con = abstract "<unop>" "-" in
+  let unassign con = abstract "<unassign>" "-=" in
   (* non-terminal examples: *)
   let eg_exp = "42" in
   let eg_pat = "x" in
@@ -154,7 +154,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_AWAITSTAR) -> simple_token "await*"
   | X (T T_ASYNC) -> simple_token "async"
   | X (T T_ASYNCSTAR) -> simple_token "async*"
-  | X (T T_ASSIGN) -> binassign "assign"
+  | X (T T_ASSIGN) -> simple_token ":="
   | X (T T_ASSERT) -> simple_token "assert"
   | X (T T_ARROW) -> simple_token "->"
   | X (T T_ANDOP) -> binop "&"
@@ -227,7 +227,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist_exp_ob__COMMA_) -> seplist ("<exp(ob)>", eg_exp) comma
   | X (N N_seplist_exp_field_semicolon_) -> seplist ("<exp_field>", eg_exp_field) semi
   | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)", eg_exp_field
-  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)", eg_exp ^ "and"
+  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)", eg_exp
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> seplist ("<exp_nonvar(ob)>", eg_exp) comma
   | X (N N_seplist_imp_SEMICOLON_) -> seplist ("<imp>", eg_imp) semi2
   | X (N N_seplist_imp_semicolon_) -> seplist ("<imp>", eg_imp) semi
@@ -262,6 +262,17 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_stab_field) -> "<stab_field>", eg_stab_field
   | X (N N_pre_stab_field) -> "<pre_stab_field>", eg_pre_stab_field
   | X (N N_start) -> entry_point "<start>" (* dummy non-terminal, don't display *)
+  | X (N N_unassign) -> "<unassign>", "+="
+  | X (N N_type_typ_params_opt) -> "typ_params_opt", "<T>"
+  | X (N N_typ_obj_sort) -> "<typ_obj_sort>", "" (*?*)
+  | X (N N_req) -> "<req>", "stable"
+  | X (N N_query) -> "<query>", "query"
+  | X (N N_parenthetical) -> "<parenthetical>", "(with ...)"
+  | X (N N_obj_sort_opt) -> "<obj_sort_opt>", ""
+  | X (N N_obj_sort) -> "<obj_sort>", "object"
+  | X (N N_binassign) -> "<binassign>", "+="
+  | X (N N_typ_params) -> "<typ_params>", "<T>"
+  | X (N N_func_pat) -> "<func_pat>", "f(x : Int)"
 
 (* In order to print a view of the stack that includes semantic values,
    we need an element printer. (If we don't need this feature, then
