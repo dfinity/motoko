@@ -9,31 +9,31 @@ Functions in Motoko can take on a variety of different attributes, the most basi
 
 The most basic Motoko [function declaration](https://internetcomputer.org/docs/motoko/fundamentals/declarations/function-declarations) is:
 
-```motoko
-func exampleFunction() {};
+```motoko no-repl
+func exampleFunction() : () {};
 ```
 
 By default, all functions are declared private unless explicitly declared `public`.
 
 ```motoko no-repl
-public func exampleFunction() {};
+public func exampleFunction() : () {};
 ```
 
 A function should specify a return type. If a return type is not declared, it defaults to the unit `()` return type.
 
 ```motoko no-repl
 public func exampleFunction(x : Nat) : Nat {
-    return x;
+    x;
 };
 ```
 
-:::info [Understanding function types]
+:::info Understanding function types
 
 Motoko functions vary by access and behaviour:
 
 - `private`: Not exposed outside the namespace(actor, class, module).
 - `public`: Makes the function externally callable; can be query or update.
-- `shared`: Used to support inter-canister or external calls.
+- `shared`: Enables the actor to identify the caller.
 - `query`: Reads data without modifying state.
 - `composite query`: Reads state, can call other queries.
 

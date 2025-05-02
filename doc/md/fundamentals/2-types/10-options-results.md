@@ -21,7 +21,7 @@ var username : ?Text = null;
 
 `username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
 
-:::info [Null semantics]
+:::info Null semantics
 
 `null` is only valid as a value of the trivial `Null` type or an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell. In all these languages, the type system also enforces explicit handling of missing values.
 
@@ -53,6 +53,13 @@ let username : ?Text = null;
 let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
+Then same functionality can be achieved using `let-else`
+
+```motoko no-repl
+let username : ?Text = null;
+let ?displayName =  username else return "Guest" // "Guest" if username is null
+```
+
 ### Using options for error handling
 
 Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
@@ -65,7 +72,6 @@ func safeDivide(a : Int, b : Int) : ?Int {
 let result1 = safeDivide(10, 2); // ?5
 let result2 = safeDivide(10, 0); // null
 ```
-
 
 ### Let / else
 
@@ -82,7 +88,6 @@ func get<T>(option : ?T, defaultValue : T) : T {
 assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
 ```
-
 
 ### Applying transformations to options
 
@@ -112,7 +117,6 @@ let result = Option.apply<Nat, Nat>(maybeValue, maybeIncrement); // ?11
 
 If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
 
-
 ### Combining multiple optional values
 
 When working with multiple optional values, using `Option.chain` processes them safely without unnecessary `switch` statements.
@@ -139,17 +143,13 @@ If either `firstName` or `lastName` is `null`, the result remains `null`.
 ### Unwrapping an option
 
 ```motoko
-actor App {
-  var username : ?Text = ?"Motoko";
-
-  public func getUsername() : async Text {
-      switch (username) {
-          case (?value) "Username: " # value;
-          case null "No username set";
-      }
+persistent actor App {
+  public func getName(optionalName : ?Text) : async Text {
+    let ?name = optionalName else return "Unknown";
+    name
   }
-}
-await App.getUsername();
+};
+await App.getName(null);
 ```
 
 To unwrap an option (`?T`), both cases must be handled:
@@ -180,13 +180,10 @@ In the case of a `Result`, you can also use pattern matching with the difference
 
 ```motoko no-repl
 func greetResult(resultName : Result<Text, Text>) : Text {
-  switch (resultName) {
-    case (#err(error)) { "No name: " # error };
-    case (#ok(name)) { "Hello, " # name };
-  }
+  let #ok(name) = resultname else #err("No Name")
 };
 assert(greetResult(#ok("Motoko")) == "Hello, Motoko!");
-assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
+assert(greetResult(#err("404 Not Found")) == "No name");
 ```
 
 ## Resources

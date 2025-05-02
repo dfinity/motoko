@@ -11,7 +11,7 @@ The [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type represents n
 ```motoko no-repl
 let n : Nat = 42;
 let zero : Nat = 0;
-// let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
+let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
 ```
 
 ### Unbounded natural numbers
@@ -85,11 +85,16 @@ let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 
 ## Floats
 
-Floating-point numbers in Motoko are represented using the [`Float`](https://internetcomputer.org/docs/motoko/base/Float) type, which corresponds to a 64-bit double-precision floating-point number.
+Floating-point numbers in Motoko are represented using the [`Float`](https://internetcomputer.org/docs/motoko/base/Float) type, which corresponds to a 64-bit double-precision floating-point number in IEEE 754(https://en.wikipedia.org/wiki/IEEE_754) representation.
+
+:::note Limited percision
+Floating point numbers have limited precision and operations may inherently result in numerical errors.
+:::
 
 ```motoko no-repl
 let pi : Float = 3.14159;
 let exp : Float = 2.71828;
+let goldenRatio = 1.61803;
 ```
 
 ## Resources

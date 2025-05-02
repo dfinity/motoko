@@ -95,7 +95,6 @@ let individual : Individual = {
 
 Records can be destructured using [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
-
 ```motoko no-repl
 type Address = {
     city : Text;
@@ -137,7 +136,6 @@ let inventory : [Product] = [
 let firstProduct : Product = inventory[0];
 let productName : Text = firstProduct.name;
 ```
-
 
 ## Updating records programmatically
 
@@ -206,11 +204,10 @@ Tuples and records both allow grouping values, but they have key differences in 
 | Pattern matching| Complete, using ordered tuple patterns                       | Selective, using unordered record patterns  |  
 | Mutability     | Immutable after creation                 | Can have mutable fields               |
 | Naming         | Fields are anonymous  | Fields are named               |  
-| Subtyping     | Fields cannot be removed | Fields can be removed | 
-| Use Case       | Positional grouping of related values, e.g. vectors     |  structured data types        | 
+| Subtyping     | Fields cannot be removed | Fields can be removed |
+| Use Case       | Positional grouping of related values, e.g. vectors     |  structured data types        |
 
-
-Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal. 
+Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal.
 
 For example,, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
 

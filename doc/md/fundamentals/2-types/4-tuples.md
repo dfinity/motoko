@@ -11,7 +11,7 @@ A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The t
 A tuple with zero elements is called the **unit value**, written as `()`. It represents a trivial result or token return value.  
 It's type is the **unit type**, also written `()`.  
 
-Unit values are typically used as dummy argument or return values for functions that don't require arguments, or don't produce results (but may produce side-effects).  
+Unit values are typically used as dummy argument or return values for functions that don't require arguments, or don't produce results (but may produce side-effects eg: printing to the console).
 
 ## Defining a tuple
 
@@ -25,7 +25,7 @@ The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is
 let ghost : (Text, Nat) = ("Motoko", 25);
 ```
 
-:::info [Support for one length tuples]
+:::info Support for one length tuples
 Motoko **does not** support length-one tuples. This is in contrast to languages such as Python, where a trailing comma differentiates a single-element tuple from a simple parenthesized value. In Motoko, `(x)` is always just `x`.
 :::
 
@@ -44,17 +44,17 @@ let second = ghost.1; // 25
 
 Tuples are useful for returning multiple values from a function without requiring a separate data structure.
 
-```motoko no-repl
+```motoko
 func getUserInfo() : (Text, Nat) {
     ("Ghost", 30);
-}
+};
 
 getUserInfo();
 ```
 
 ## Nesting tuples
 
-Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points `$(x_1, y_1)$` and `$(x_2, y_2)$` is calculated using the formula:
+Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points $(x_1, y_1)$ and $(x_2, y_2)$ is calculated using the formula:
 
 $$
 m = \frac{y_2 - y_1}{x_2 - x_1}
@@ -91,11 +91,11 @@ Tuples can be stored in arrays or other data structures. Tuples can be construct
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
-This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type. 
+This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ## Extracting values using switch
 
-As well as the dot notation, tuple can be decomposed using tuple patterns. Combined with `let` or `switch`, this let you access the components of a tuple by simple pattern matching. 
+As well as the dot notation, tuple can be decomposed using tuple patterns. Combined with `let` or `switch`, this let you access the components of a tuple by simple pattern matching.
 
 ```motoko no-repl
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];  

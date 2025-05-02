@@ -42,9 +42,9 @@ let result3 = intToNat(10);   // 10
 let result4 = intToNat(-5);   // 5
 ```
 
-:::note [`Nat` to `Int` conversions functions]
+:::info `Nat` to `Int` conversions functions
 
-`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the upcoming new base library.
+`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the base library.
 
 :::
 
@@ -155,14 +155,14 @@ import Iter "mo:base/Iter";
             fraction := 0.1 * Float.fromInt(charToInt(d));
             position += 1
           };
-          case (_) { null }
+          case (_) { return null }
         }
       };
       case (?d) if (Char.isDigit(d)) {
         integer := charToInt(d);
         position += 1
       };
-      case (_) { null }
+      case (_) { return null }
     };
 
     var hasDigits = position > 0;
@@ -196,7 +196,7 @@ import Iter "mo:base/Iter";
               }
             }
           } else {
-            null
+            return null
           }
         };
         case (null) {
@@ -309,8 +309,7 @@ import Iter "mo:base/Iter";
 
 | Non-shared type | Shared equivalent | Conversion method |
 |--------------------|----------------------|----------------------|
-| `Buffer<T>` | `[T]` | `Buffer.toArray(buffer)` |
-| `HashMap<K, V>` | `[(K, V)]` | `Iter.toArray(hashmap.entries())` |
+| VarArray `[var T]` | Array `[T]` | `VarArray.toArray(varArr)` |
 
 ### `Time.now()` to date
 
@@ -320,13 +319,13 @@ This section demonstrates how to extract the year, month, day, hour, minute, and
 
 Additionally, a method for applying a timezone offset is provided, allowing adjustments such as converting UTC to Eastern Standard Time (EST) by subtracting 5 hours. The final output is formatted as `MM-DD-YYYY HH-MM-SS` for readability.
 
-```motoko no-repl
+```motoko
 import Time "mo:base/Time";
 import Int "mo:base/Int";
 import Text "mo:base/Text";
 
-actor {
-    public func timesToDate() : async Text {
+persistent actor D{
+    public func timeToDate() : async Text {
 
         let (year, month, day, hour, minute, second) = timestampToDateTime(system_time());
 
@@ -407,6 +406,7 @@ actor {
         if (n < 10) { "0" # Int.toText(n) } else { Int.toText(n) };
     };
 };
+await D.timeToDate();
 ```
 
 To account for the timezone difference, apply an offset. For example, adjust the time by subtracting 5 hours (assuming EST):

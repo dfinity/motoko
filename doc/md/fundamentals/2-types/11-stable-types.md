@@ -4,7 +4,7 @@ sidebar_position: 11
 
 # Stable types
 
-Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as arguments and or be the result of shared functions. 
+Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as arguments and or be the result of shared functions.
 
 **Stable types** include all shared types and are the types of values that can be stored in Motoko's stable variables. Storing a value in a stable variable ensures the value can be preserved across upgrades of the actor, allowing an application to preserve state without requiring a file system or database. The ability to safely and easily preserve data across upgrades is one the distinguishing features of Motoko that separates it from other mainstream languages.
 

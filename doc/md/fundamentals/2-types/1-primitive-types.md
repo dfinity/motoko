@@ -52,12 +52,12 @@ let y : Nat = Int.abs(x); // Allowed, y = 5
 
 Fixed-size numeric types ([`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32), etc.) support additional operations, including bitwise shifts.
 
-```motoko no-repl
+```motoko
 let x : Nat32 = 0xA; // 10 in hexadecimal
-let y = Nat32.bitshiftLeft(x, 2); // 0x28 (40 in decimal)
+let y = x << 2; // 0x28 (40 in decimal)
 ```
 
-`Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
+`Char` represents a single unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
 ```motoko no-repl
 let letter : Char = 'A';
@@ -75,7 +75,6 @@ let words = Text.split("apple,banana,cherry", ","); // ["apple", "banana", "cher
 The [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) type represents boolean values, `true` or `false`, and supports logical operations.
 
 The logical operators `and` and `or` will only evaluate their second operand if necessary.  
-
 
 ```motoko no-repl
 let flag : Bool = true or false; // true

@@ -72,16 +72,15 @@ for (i in arr.keys()) {
 
 ## Converting an immutable array to a mutable array
 
-You can convert an immutable array into a mutable array using `Array.thaw` which is useful when working with data that needs to be modified in place after initially being immutable.
+You can convert an immutable array into a mutable array using `Array.toVarArray` which is useful when working with data that needs to be modified in place after initially being immutable.
 
 ```motoko no-repl
 let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
-let mutableCopy : [var Nat] = Array.thaw<Nat>(immutableArray);
+let mutableCopy : [var Nat] = VarArray.fromArray<Nat>(immutableArray);
 mutableCopy[0] := 10;
 //
 ```
-
 
 ## Passing a variable number of arguments
 

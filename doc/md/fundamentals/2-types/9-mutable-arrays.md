@@ -22,7 +22,7 @@ Mutable arrays are beneficial when:
 | Modification    | Requires creating a new array.          | Can modify elements directly.         |
 | Growth          | Not designed to grow.                   | Not designed to grow.                 |
 | Shareability    | Can be shared across functions and actors. | Not sharable.       |
-| Conversion      | Can be converted to mutable with `Array.thaw`. | Can be converted to immutable with `Array.freeze`. |
+| Conversion      | Can be converted to mutable with `Array.toVarArray`. | Can be converted to immutable with `VarArray.toArray`. |
 | Use case        |  Tabular fixed, data       |  Iterative algorithms |
 
 :::warning
@@ -94,14 +94,14 @@ for (i in arr.keys()) {
 
 ## Converting a mutable array to an immutable array
 
-You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
+You can convert a mutable array into an immutable array using `Array.fromVarArray`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
 
 ```motoko no-repl
 import Array "mo:base/Array";
 
 let mutableArray : [var Nat] = [var 1, 2, 3];
 
-let immutableArray : [Nat] = Array.freeze<Nat>(mutableArray);
+let immutableArray : [Nat] = Array.fromVarArray<Nat>(mutableArray);
 ```
 
 ## Nested mutable arrays example: Tic-tac-toe

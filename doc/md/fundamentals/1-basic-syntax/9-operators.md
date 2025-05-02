@@ -16,7 +16,7 @@ Motoko provides various operators for working with numbers, text, and boolean va
 
 :::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types. eg: `Int8`, `Nat8`.
 
 :::
 
@@ -54,7 +54,7 @@ Binary operators combine two numbers to produce a result.
 | `%`      | Modulus (remainder) | `a % b` |
 | `**`     | Exponentiation | `a ** b` |
 
-:::warning
+:::caution
 
 Division (`/`) on integers **truncates** decimals. For floating-point division, use `Float.fromInt()`:
 
@@ -78,9 +78,9 @@ Bitwise operators manipulate numbers **at the binary level**.
 | `<<>`    | Rotate left (circular shift) | `a <<> b` |
 | `<>`     | Rotate right (circular shift)| `a <> b` |
 
-:::caution
+:::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types. eg: `Int8`, `Nat8`.
 
 :::
 
@@ -162,7 +162,7 @@ let result = 5 |> double(_) |> increment(_); // (5 * 2) + 1 = 11
 
 Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>.`
 
-Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`. 
+Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`.
 
 If the result is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` of type `U`.
 
@@ -201,9 +201,8 @@ func eval(e : Exp) : ? Nat {
 }
 ```
 
-To guard against division by 0 without trapping, the eval function returns an option result, using null to indicate failure.
+To guard against division by 0 without trapping, the eval function returns an option result, using `null` to indicate failure.
 
-Each recursive call is checked for null using !, immediately exiting the outer do ? block, and then the function itself, when a result is null.
-
+Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ?` block, and then the function itself, when a result is `null`.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
