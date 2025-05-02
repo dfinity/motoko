@@ -946,6 +946,34 @@ let stable t = serializable true t
 let str = ref (fun _ -> failwith "")
 
 
+(* Aggregation of source fields, for use by the language server. *)
+let src_field_updates = ref []
+
+(* Helper to aggregate field updates with an empty list, perform some predicate,
+   commit field updates if the predicate holds, and restore the empty list. *)
+let with_src_field_updates predicate =
+  Fun.protect ~finally:(fun () -> src_field_updates := []) (fun () ->
+    src_field_updates := [];
+    let result = predicate () in
+    (* Do not commit updates if the relation given by the predicate failed. *)
+    if result then
+      List.iter (fun f -> f ()) (List.rev !src_field_updates);
+    result)
+
+(* Possibly stages an update to the source fields of the inputs in case the
+   relation holds. If you use this function, you'll probably want to ensure the
+   entire relation checking procedure is wrapped in [with_src_field_updates]. *)
+let add_src_field_update is_rel rel eq tf1 tf2 =
+  if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
+    let src_field_update () =
+      let srcs = Region_set.union tf1.src.srcs tf2.src.srcs in
+      if rel == eq then
+        tf1.src.srcs <- srcs;
+      tf2.src.srcs <- srcs;
+    in
+    src_field_updates := src_field_update :: !src_field_updates;
+
+
 (* Equivalence & Subtyping *)
 
 exception PreEncountered
@@ -1082,12 +1110,7 @@ and rel_fields d rel eq tfs1 tfs2 =
         rel_typ d rel eq tf1.typ tf2.typ &&
         rel_fields d rel eq tfs1' tfs2'
       in
-      if !Mo_config.Flags.typechecker_combine_srcs && is_rel then begin
-        let srcs = Region_set.union tf1.src.srcs tf2.src.srcs in
-        if rel == eq then
-          tf1.src.srcs <- srcs;
-        tf2.src.srcs <- srcs;
-      end;
+      add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
     | -1 when rel != eq ->
       not (RelArg.is_stable_sub d) &&
@@ -1110,12 +1133,7 @@ and rel_tags d rel eq tfs1 tfs2 =
         rel_typ d rel eq tf1.typ tf2.typ &&
         rel_tags d rel eq tfs1' tfs2'
       in
-      if !Mo_config.Flags.typechecker_combine_srcs && is_rel then begin
-        let srcs = Region_set.union tf1.src.srcs tf2.src.srcs in
-        if rel == eq then
-          tf1.src.srcs <- srcs;
-        tf2.src.srcs <- srcs;
-      end;
+      add_src_field_update is_rel rel eq tf1 tf2;
       is_rel
     | +1 when rel != eq ->
       rel_tags d rel eq tfs1 tfs2'
@@ -1134,15 +1152,6 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
-
-and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2
-
-and sub t1 t2 : bool =
-  rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2
-
-and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -1167,7 +1176,21 @@ and eq_con d eq c1 c2 =
     | None -> false
     )
 
-let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+let eq_binds tbs1 tbs2 =
+  with_src_field_updates (fun () ->
+    let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
+
+let eq t1 t2 : bool =
+  with_src_field_updates (fun () ->
+    let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
+
+let eq_kind k1 k2 : bool =
+  with_src_field_updates (fun () ->
+    eq_kind' (ref SS.empty) k1 k2)
+
+let sub t1 t2 : bool =
+  with_src_field_updates (fun () ->
+    rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
 
@@ -2024,7 +2047,8 @@ let _ = str := string_of_typ
 
 (* Stable signatures *)
 let stable_sub t1 t2 =
-  rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
+  with_src_field_updates (fun () ->
+    rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function
   | Single tfs ->
