@@ -62,10 +62,6 @@ let account1 = Account(500);
 let account2 = Account(1000);
 ```
 
-### Actor classes
-
-Actor classes enable you to create networks of actors programmatically. Actor classes have to be defined in a separate source file. Imported actor classes mu
-
 ### Object classes
 
 An object class defines a blueprint for multiple objects. The above is just short-hand for an `object` class. Motoko also support module and actor classes.  

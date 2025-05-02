@@ -180,7 +180,7 @@ In the case of a `Result`, you can also use pattern matching with the difference
 
 ```motoko no-repl
 func greetResult(resultName : Result<Text, Text>) : Text {
-  let #ok(name) = resultname else #err("No Name")
+  let #ok(name) = resultname else return #err("No Name")
 };
 assert(greetResult(#ok("Motoko")) == "Hello, Motoko!");
 assert(greetResult(#err("404 Not Found")) == "No name");

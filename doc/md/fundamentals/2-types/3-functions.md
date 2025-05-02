@@ -212,7 +212,7 @@ persistent actor Counter {
     type Account = actor { getBalance() : query () -> async Nat;
   };
 
-  transient var accounts : [Account] = []
+  var accounts : [Account] = []
 
   public shared composite query func getDeposits() {
   var deposits = 0;
