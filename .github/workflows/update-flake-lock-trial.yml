@@ -31,7 +31,7 @@ jobs:
             nixpkgs
             ic-src
             rust-overlay
-          pr-title: "chore: weekly flake.lock update"
+          pr-title: "chore: weekly `flake.lock` update"
           pr-labels: |
             autoclose
           pr-body: |
