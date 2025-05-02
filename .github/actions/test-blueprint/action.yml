@@ -4,12 +4,12 @@
 # These are: common-tests, gc-tests, and tests (debug, release)
 # They all take the same install steps, use cachix, and a nix
 # command like the following:
-    # - run: nix profile install .#nix-build-uncached
-    #   - name: "Run common tests"
-    #     run: |
-    #       cachix watch-exec ic-hs-test -- \
-    #         nix-build-uncached --max-jobs auto \
-    #           -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.common-tests'
+#   - run: nix profile install .#nix-build-uncached
+#   - name: "Run common tests"
+#     run: |
+#       cachix watch-exec ic-hs-test -- \
+#         nix-build-uncached --max-jobs auto \
+#           -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.common-tests'
     
 
 # The main workflow from test.yml will call this workflow with different
