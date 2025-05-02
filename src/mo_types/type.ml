@@ -46,13 +46,17 @@ module Region_ord = struct
 
   let compare l r =
     let open Source in
-    let join_compare l r = if l = 0 then r else l in
     let compare_pos l r =
-      join_compare
-        (compare l.file r.file)
-        (join_compare (compare l.line r.line) (compare l.column r.column))
+      match compare l.file r.file with
+      | 0 ->
+        (match compare l.line r.line with
+        | 0 -> compare l.column r.column
+        | ord -> ord)
+      | ord -> ord
     in
-    join_compare (compare_pos l.left r.left) (compare_pos l.right r.right)
+    match compare_pos l.left r.left with
+    | 0 -> compare_pos l.right r.right
+    | ord -> ord
 end
 module Region_set = Set.Make (Region_ord)
 

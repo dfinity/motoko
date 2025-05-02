@@ -45,11 +45,12 @@ let con c = Atom (Type.string_of_con c)
 
 let pos p =
   "Pos" $$
-    [ Atom p.Source.file
-    ; Atom (string_of_int p.Source.line)
+    [ Atom (string_of_int p.Source.line)
     ; Atom (string_of_int p.Source.column) ]
 
-let region at = "@@" $$ [pos at.Source.left; pos at.Source.right]
+let region at =
+  let filename = at.Source.left.Source.file in
+  "@@" $$ [Atom filename; pos at.Source.left; pos at.Source.right]
 
 let src {depr; region = r; srcs} =
   Atom (Option.value ~default:"" depr)
