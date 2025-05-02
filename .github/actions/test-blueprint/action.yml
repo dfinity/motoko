@@ -15,7 +15,6 @@
 # The main workflow from test.yml will call this workflow with different
 # inputs, and this workflow will call the tests defined in the flake.nix file.
 
-
 name: 'Test Blueprint'
 description: 'Runs Motoko tests using nix and cachix'
 
