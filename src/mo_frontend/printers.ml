@@ -197,6 +197,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_exp_un_bl_) -> "<exp_un(bl)>", eg_exp
   | X (N N_exp_un_ob_) -> "<exp_un(ob)>", eg_exp
   | X (N N_func_body) -> "<func_body>", "{}"
+  | X (N N_func_pat) -> "<func_pat>", "f(x : Int)"
   | X (N N_imp) -> "<imp>", eg_imp
   | X (N N_import_list) -> "<import_list>", eg_imp
   | X (N N_inst) -> "<inst>", "<" ^ eg_typ ^ ">"
