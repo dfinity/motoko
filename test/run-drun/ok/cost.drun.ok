@@ -1,16 +1,12 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: client: 42_102_428_000 -- cost_call
-debug.print: client: 38_461_538_461 -- cost_create_canister
-debug.print: client: 4_666_000 -- cost_http_request
-debug.print: client: (1, 4_119_864_450_741_745_554_864_290_083_472) -- cost_sign_with_ecdsa
-debug.print: client: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
+debug.print: 42_102_428_000 -- cost_call
+debug.print: 38_461_538_461 -- cost_create_canister
+debug.print: 4_666_000 -- cost_http_request
+debug.print: (1, 4_119_864_450_741_745_554_864_290_083_472) -- cost_sign_with_ecdsa
+debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
+debug.print: (0, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
+debug.print: (0, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
+debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
+debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
 ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reply: 0x4449444c0000
-debug.print: client: test args:
-{derivation_path = ["\04"]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = "\01\02\03\04\05\06\07\08\09\0A\0B\0C\0D\0E\0F\10\11\12\13\14\15\16\17\18\19\1A\1B\1C\1D\1E\1F\20"}
-debug.print: client: (1, 3_961_447_594_809_568_035_953_547_716_063) -- sign with ecdsa cost
-debug.print: client: Cycles.balance()   = 99_993_514_583_635
-debug.print: client: Cycles.available() = 0
-debug.print: client: Cycles.refunded()  = 0
-ingress Completed: Reject: Unable to route management canister request sign_with_ecdsa: ChainKeyError("Requested unknown or disabled threshold key: ecdsa:Secp256k1:test_key_1, existing enabled keys: []")
