@@ -5059,6 +5059,9 @@ module IC = struct
 
   (* IC-specific stuff: System imports, databufs etc. *)
 
+  (* Stands for the `I` value from the 'IC Interface Specification'.
+   * Use it where a pointer type is expected, to easily differentiate between pointers and i32/i64 values.
+   *)
   let i = I32Type
 
   let register_globals env =
