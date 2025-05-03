@@ -1,7 +1,5 @@
 import Prim "mo:⛔";
 
-import Cycles "cycles/cycles";
-
 actor client {
   func print(t : Text) = Prim.debugPrint("client: " # t);
 
@@ -32,26 +30,16 @@ actor client {
     print(debug_show (Prim.costCreateCanister()) # " -- create canister cost");
     print(debug_show (Prim.costCall(15, 1)) # " -- costCall");
 
-    if (Cycles.balance() == 0) {
-      await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
-      print("top up; balance = " # debug_show (Cycles.balance()));
-    } else {
-      print("already topped up; balance = " # debug_show (Cycles.balance()));
-    };
-
-    let before = Cycles.balance();
     printCycles();
     let { canister_id } = await (with cycles = Prim.costCreateCanister()) ic00.create_canister({ settings = null });
-    let after = Cycles.balance();
     print("created canister id: " # debug_show (canister_id));
     printCycles();
-    print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
   };
 
   func printCycles() {
-    print("Cycles.balance()   = " # debug_show (Cycles.balance()));
-    print("Cycles.available() = " # debug_show (Cycles.available()));
-    print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
+    print("Cycles.balance()   = " # debug_show (Prim.cyclesBalance()));
+    print("Cycles.available() = " # debug_show (Prim.cyclesAvailable()));
+    print("Cycles.refunded()  = " # debug_show (Prim.cyclesRefunded()));
   };
 };
 

@@ -1,7 +1,5 @@
 import Prim "mo:⛔";
 
-import Cycles "cycles/cycles";
-
 actor client {
   func print(t : Text) = Prim.debugPrint("client: " # t);
 
@@ -52,13 +50,6 @@ actor client {
       max_response_bytes = null;
     };
 
-    if (Cycles.balance() < 200_000_000_000) {
-      await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
-      print("top up; balance = " # debug_show (Cycles.balance()));
-    } else {
-      print("already topped up; balance = " # debug_show (Cycles.balance()));
-    };
-
     let headers = [{ name = "x-test"; value = "test" }];
     let body = ?[1, 2, 3] : ?[Nat8];
     let max_response_bytes = ?1_000 : ?Nat64;
@@ -87,9 +78,9 @@ actor client {
   };
 
   func printCycles() {
-    print("Cycles.balance()   = " # debug_show (Cycles.balance()));
-    print("Cycles.available() = " # debug_show (Cycles.available()));
-    print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
+    print("Cycles.balance()   = " # debug_show (Prim.cyclesBalance()));
+    print("Cycles.available() = " # debug_show (Prim.cyclesAvailable()));
+    print("Cycles.refunded()  = " # debug_show (Prim.cyclesRefunded()));
   };
 
   func test(request : http_request, isPrecise : Bool) : async () {
@@ -111,13 +102,10 @@ actor client {
     let cost = Prim.costHttpRequest(requestSize, defaultMaxResBytes);
     print(debug_show (cost) # " -- http cost request");
 
-    let before = Cycles.balance();
     printCycles();
     let response = await (with cycles = cost) ic00.http_request(request); // This call should succeed, it should be enough cycles
-    let after = Cycles.balance();
     print("response: " # debug_show (response));
     printCycles();
-    print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
 
     // Try the same request with less cycles, it should fail
     if (isPrecise) {

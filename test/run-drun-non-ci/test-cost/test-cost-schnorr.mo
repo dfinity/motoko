@@ -1,7 +1,5 @@
 import Prim "mo:⛔";
 
-import Cycles "cycles/cycles";
-
 actor client {
   func print(t : Text) = Prim.debugPrint("client: " # t);
 
@@ -58,13 +56,10 @@ actor client {
     print(debug_show (code, cost) # " -- sign with schnorr cost");
     assert code == 0 and cost > 0;
 
-    let before = Cycles.balance();
     printCycles();
     let { signature } = await (with cycles = cost) ic00.sign_with_schnorr(args);
-    let after = Cycles.balance();
     print("signature: " # debug_show (signature));
     printCycles();
-    print(debug_show (before - after : Nat) # " -- Cycles.balance() diff");
 
     // Try the same args with less cycles, it should fail
     try {
@@ -78,9 +73,9 @@ actor client {
   };
 
   func printCycles() {
-    print("Cycles.balance()   = " # debug_show (Cycles.balance()));
-    print("Cycles.available() = " # debug_show (Cycles.available()));
-    print("Cycles.refunded()  = " # debug_show (Cycles.refunded()));
+    print("Cycles.balance()   = " # debug_show (Prim.cyclesBalance()));
+    print("Cycles.available() = " # debug_show (Prim.cyclesAvailable()));
+    print("Cycles.refunded()  = " # debug_show (Prim.cyclesRefunded()));
   };
 };
 
