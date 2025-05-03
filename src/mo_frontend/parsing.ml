@@ -30,14 +30,12 @@ let abstract_future future =
   String.concat " " ss
 
 let abstract_future_with_example future =
-  let ss = List.map Printers.string_of_symbol future in
-  let f x xs =
-    match Printers.example_of_symbol x with
-    | "" -> xs
-    | example -> example :: xs
-  in
-  let examples = List.fold_right f future [] in
-  String.concat " " ss ^ " (e.g. '" ^ String.concat " " examples ^ "')"
+  let ss      = String.concat " " @@ List.map Printers.string_of_symbol future in
+  let example = String.concat " " @@ List.map Printers.example_of_symbol future in
+  if String.compare ss example != 0 then
+    ss ^ " (e.g. '" ^ example ^ "')"
+  else
+    ss
 
 let rec lex_compare_futures f1 f2 =
   match f1,f2 with

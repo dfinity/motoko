@@ -8,12 +8,12 @@ let abstract abs con = (abs, con)
 (* private helper *)
 let repr_of_symbol : xsymbol -> (string * string) =
   let simple_token con = (con, con) in
-  let binop = abstract "<binop>" in
-  let relop = abstract "<relop>" in
-  let binassign = abstract "<binassign>" in
+  let binop con = abstract "<binop>" "+" in
+  let relop con = abstract "<relop>" "==" in
+  let binassign con = abstract "<binassign>" "+=" in
   (* all unary operators are also binary operators, so keep them unary *)
-  let unop = abstract "<unop>" in
-  let unassign = abstract "<unassign>" in
+  let unop con = abstract "<unop>" "-" in
+  let unassign con = abstract "<unassign>" "-=" in
   (* non-terminal examples: *)
   let eg_exp = "42" in
   let eg_pat = "x" in
@@ -129,7 +129,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_EQ) -> simple_token "="
   | X (T T_EOF) -> simple_token "<eof>"
   | X (T T_ELSE) -> simple_token "else"
-  | X (T T_DOT_NUM) -> simple_token ".<nat>"
+  | X (T T_DOT_NUM) -> ".<nat>", ".1"
   | X (T T_DOT) -> simple_token "."
   | X (T T_DO) -> simple_token "do"
   | X (T T_DIVOP) -> binop "/"
@@ -154,7 +154,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_AWAITSTAR) -> simple_token "await*"
   | X (T T_ASYNC) -> simple_token "async"
   | X (T T_ASYNCSTAR) -> simple_token "async*"
-  | X (T T_ASSIGN) -> binassign ":="
+  | X (T T_ASSIGN) -> simple_token ":="
   | X (T T_ASSERT) -> simple_token "assert"
   | X (T T_ARROW) -> simple_token "->"
   | X (T T_ANDOP) -> binop "&"
