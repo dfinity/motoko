@@ -1,7 +1,0 @@
-ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-ingress Completed: Reply: 0x4449444c0000
-debug.print: client: test args:
-{derivation_path = ["\04"]; key_id = {curve = #secp256k1; name = "test_key_1"}; message_hash = "\01\02\03\04\05\06\07\08\09\0A\0B\0C\0D\0E\0F\10\11\12\13\14\15\16\17\18\19\1A\1B\1C\1D\1E\1F\20"}
-debug.print: client: (1, 3_961_447_568_688_978_421_499_148_935_255) -- sign with ecdsa cost
-ingress Completed: Reject: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at test-cost-ecdsa.mo:51.5-51.34'.
-Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
