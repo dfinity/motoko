@@ -154,7 +154,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_AWAITSTAR) -> simple_token "await*"
   | X (T T_ASYNC) -> simple_token "async"
   | X (T T_ASYNCSTAR) -> simple_token "async*"
-  | X (T T_ASSIGN) -> binassign "assign"
+  | X (T T_ASSIGN) -> binassign ":="
   | X (T T_ASSERT) -> simple_token "assert"
   | X (T T_ARROW) -> simple_token "->"
   | X (T T_ANDOP) -> binop "&"
@@ -227,7 +227,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (N N_seplist_exp_ob__COMMA_) -> seplist ("<exp(ob)>", eg_exp) comma
   | X (N N_seplist_exp_field_semicolon_) -> seplist ("<exp_field>", eg_exp_field) semi
   | X (N N_seplist1_exp_field_semicolon_) -> "seplist1(<exp_field>,<semicolon>)", eg_exp_field
-  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)", eg_exp ^ "and"
+  | X (N N_separated_nonempty_list_AND_exp_post_ob__) -> "seplist+(<exp_post(ob)>,and)", eg_exp
   | X (N N_seplist_exp_nonvar_ob__COMMA_) -> seplist ("<exp_nonvar(ob)>", eg_exp) comma
   | X (N N_seplist_imp_SEMICOLON_) -> seplist ("<imp>", eg_imp) semi2
   | X (N N_seplist_imp_semicolon_) -> seplist ("<imp>", eg_imp) semi
