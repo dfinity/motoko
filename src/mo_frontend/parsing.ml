@@ -32,10 +32,9 @@ let abstract_future future =
 let abstract_future_with_example future =
   let ss = List.map Printers.string_of_symbol future in
   let f x xs =
-    let example = Printers.example_of_symbol x in
-    if String.compare example "" = 0
-    then xs
-    else example :: xs
+    match Printers.example_of_symbol x with
+    | "" -> xs
+    | example -> example :: xs
   in
   let examples = List.fold_right f future [] in
   String.concat " " ss ^ " (e.g. '" ^ String.concat " " examples ^ "')"
