@@ -138,8 +138,8 @@ let%expect_test "" =
     Ok:
     (caller)
     (meth
-      (@@ (Pos test-field-srcs.mo 3 16) (Pos test-field-srcs.mo 3 20))
-      (@@ (Pos test-field-srcs.mo 9 16) (Pos test-field-srcs.mo 9 20))
+      (@@ test-field-srcs.mo (Pos 3 16) (Pos 3 20))
+      (@@ test-field-srcs.mo (Pos 9 16) (Pos 9 20))
     ) |}]
 
 let run_compare_typed_asts_test filename =
