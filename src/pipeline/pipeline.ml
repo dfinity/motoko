@@ -388,7 +388,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
     : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
   =
   (*
-  This function loads and type-checkes the files given in `imports`,
+  This function loads and type-checks the files given in `imports`,
   including any further dependencies.
 
   The resulting `Syntax.libraries` list is in dependency order. To achieve this,
