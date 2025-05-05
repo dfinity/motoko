@@ -10503,7 +10503,7 @@ module Cost = struct
     Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
       Stack.with_words env "dst" 2L (fun get_dst ->
         get_dst ^^
-        IC.cycles_available env ^^
+        IC.cost_create_canister env ^^
         get_dst ^^
         Cycles.from_word128_ptr env
       )
