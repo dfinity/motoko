@@ -1,4 +1,8 @@
 # APPLICATION-SUBNET
+# CLASSICAL-PERSISTENCE-ONLY
 
-install $ID cost/cost-simple.mo ""
+install $ID cost/cost-simple-classical.mo ""
+ingress $ID test "DIDL\x00\x00"
+
+reinstall $ID cost/cost-simple-enhanced.mo ""
 ingress $ID test "DIDL\x00\x00"
