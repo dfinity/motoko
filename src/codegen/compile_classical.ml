@@ -5757,78 +5757,6 @@ module Cycles = struct
 
 end (* Cycles *)
 
-module Cost = struct
-  let call env =
-    Func.share_code2 Func.Always env "cost_call"
-      (("method_name_size", I64Type), ("payload_size", I64Type))
-      [IC.i]
-      (fun env get_method_name_size get_payload_size ->
-        Stack.with_words env "dst" 4l (fun get_dst ->
-          get_method_name_size ^^
-          get_payload_size ^^
-          get_dst ^^
-          IC.cost_call env ^^
-          get_dst ^^
-          Cycles.from_word128_ptr env
-        )
-      )
-
-  let create_canister env =
-    Func.share_code0 Func.Always env "cost_create_canister" [IC.i] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
-        get_dst ^^
-        IC.cost_create_canister env ^^
-        get_dst ^^
-        Cycles.from_word128_ptr env
-      )
-    )
-
-  let http_request env =
-    Func.share_code2 Func.Always env "cost_http_request"
-      (("request_size", I64Type), ("max_res_bytes", I64Type))
-      [IC.i]
-      (fun env get_request_size get_max_res_bytes ->
-        Stack.with_words env "dst" 4l (fun get_dst ->
-          get_request_size ^^
-          get_max_res_bytes ^^
-          get_dst ^^
-          IC.cost_http_request env ^^
-          get_dst ^^
-          Cycles.from_word128_ptr env
-        )
-      )
-  
-  let sign_with_ecdsa env =
-    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
-      (("key_name", IC.i), ("curve", I32Type))
-      [IC.i; I32Type]
-      (fun env get_key_name get_curve ->
-        Stack.with_words env "dst" 4l (fun get_dst ->
-          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
-          get_curve ^^
-          get_dst ^^
-          IC.cost_sign_with_ecdsa env ^^
-          get_dst ^^
-          Cycles.from_word128_ptr env
-        )
-      )
-
-  let sign_with_schnorr env =
-    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
-      (("key_name", IC.i), ("algorithm", I32Type))
-      [IC.i; I32Type]
-      (fun env get_key_name get_algorithm ->
-        Stack.with_words env "dst" 4l (fun get_dst ->
-          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
-          get_algorithm ^^
-          get_dst ^^
-          IC.cost_sign_with_schnorr env ^^
-          get_dst ^^
-          Cycles.from_word128_ptr env
-        )
-      )
-end
-
 (* Low-level, almost raw access to IC stable memory.
    Essentially a virtual page allocator
    * enforcing limit --max-stable-pages not exceeded
@@ -10311,6 +10239,80 @@ module AllocHow = struct
     | _ -> assert false
 
 end (* AllocHow *)
+
+module Cost = struct
+  let call env =
+    Func.share_code2 Func.Always env "cost_call"
+      (("method_name_size", I64Type), ("payload_size", I64Type))
+      [IC.i]
+      (fun env get_method_name_size get_payload_size ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_method_name_size ^^
+          get_payload_size ^^
+          get_dst ^^
+          IC.cost_call env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [IC.i] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.cost_create_canister env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.cost_http_request env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+  
+  let sign_with_ecdsa env =
+    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
+      (("key_name", IC.i), ("curve", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_curve ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_curve ^^
+          get_dst ^^
+          IC.cost_sign_with_ecdsa env ^^
+          StackRep.adjust env (SR.UnboxedWord32 Type.Int32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_schnorr env =
+    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
+      (("key_name", IC.i), ("algorithm", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_algorithm ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_algorithm ^^
+          get_dst ^^
+          IC.cost_sign_with_schnorr env  ^^
+          StackRep.adjust env (SR.UnboxedWord32 Type.Int32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+end
 
 (* The actual compiler code that looks at the AST *)
 

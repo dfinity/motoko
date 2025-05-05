@@ -13,8 +13,8 @@ persistent actor {
     let validKey = "test_key_1"; // This is a valid key, but drun has an empty set of keys.
     let validCurveOrAlgorithm: Nat32 = 0; // Valid argument for both ecdsa and schnorr.
     let invalidCurveOrAlgorithm: Nat32 = 42; // Just a big number which is impossible to be valid.
-    Prim.debugPrint(debug_show (Prim.costSignWithEcdsa(validKey, invalidCurveOrAlgorithm)) # " -- cost_sign_with_ecdsa");
-    Prim.debugPrint(debug_show (Prim.costSignWithSchnorr(validKey, invalidCurveOrAlgorithm)) # " -- cost_sign_with_schnorr");
+    Prim.debugPrint(debug_show (Prim.costSignWithEcdsa(validKey, invalidCurveOrAlgorithm)) # " -- cost_sign_with_ecdsa"); // todo: wrong result code
+    Prim.debugPrint(debug_show (Prim.costSignWithSchnorr(validKey, invalidCurveOrAlgorithm)) # " -- cost_sign_with_schnorr"); // todo: wrong result code
 
     Prim.debugPrint(debug_show (Prim.costSignWithEcdsa(validKey, validCurveOrAlgorithm)) # " -- cost_sign_with_ecdsa");
     Prim.debugPrint(debug_show (Prim.costSignWithSchnorr(validKey, validCurveOrAlgorithm)) # " -- cost_sign_with_schnorr");
