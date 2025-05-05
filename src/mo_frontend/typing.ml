@@ -1147,7 +1147,7 @@ let check_lit env t lit at suggest =
     if not (sub env at t' t) then
     error env at "M0050"
       "literal of type%a\ndoes not have expected type%a%s"
-      display_typ t'
+      (assert false; display_typ) t'
       display_typ_expand t
       (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
 
@@ -2468,7 +2468,7 @@ and check_pats env ts pats ve at : Scope.val_env =
 and check_pat_fields env t tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
-  | [], pf::_ ->
+  | [], pf::_ ->assert false;
     error env pf.at "M0119"
       "object field %s is not contained in expected type%a"
       pf.it.id.it

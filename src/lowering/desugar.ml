@@ -1233,10 +1233,10 @@ let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
 let transform_import (i : S.import) : import_declaration =
-  let (p, f, ir) = i.it in
+  let (p, f, ri) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
-  let rhs = match !ir with
+  let rhs = match !ri with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath {path = fp; _} ->
       varE (var (id_of_full_path fp) t)
@@ -1247,7 +1247,7 @@ let transform_import (i : S.import) : import_declaration =
     | S.ImportedValuePath path ->
        T.(match t with
           | Prim Text -> textE
-          | Prim Blob -> blobE
+          | Non | Prim Blob -> blobE
           | t -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t));*) assert false) path
   in [ letP (pat p) rhs ]
 
