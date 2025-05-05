@@ -2270,7 +2270,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
-    T.Named (id.it, t),  check_pat env t pat1
+    T.Named (id.it, t), check_pat env t pat1
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
@@ -2932,11 +2932,12 @@ and infer_dec env dec : T.typ =
 
 
 
-  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when is_import dec ->
-     let t = check_typ env typ in
-     if exp.note.note_typ = T.Pre
-     then (check_exp {env with (*pre = false; *)check_unused = false} t exp; t)
-else exp.note.note_typ
+  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ } as patX, exp, None) when is_import dec ->
+    let _ = check_pat env T.blob patX in
+    let t = check_typ env typ in
+    if exp.note.note_typ = T.Pre
+    then (failwith "AnnotP"; check_exp {env with (*pre = false; *)check_unused = false} t exp; t)
+    else exp.note.note_typ
 
 
 
@@ -3275,7 +3276,19 @@ and infer_dec_valdecs env dec : Scope.t =
 
 
 
-  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when is_import dec ->
+  | LetD (pat, exp, None) when is_value_import dec ->
+    let typ, ve = match recover_opt (infer_pat false env) pat with
+      | None -> T.blob, check_pat env T.blob pat
+      | Some tv -> tv
+    in
+    (match T.normalize typ with
+     | T.(Prim Text) -> (*failwith "Text"*) Scope.{empty with val_env = ve}
+    | T.(Prim Blob) -> (*failwith "Blob"*) Scope.{empty with val_env = ve}
+    | T.Pre -> failwith "Pre"
+    | T.Non -> failwith "Non"
+    | _ -> failwith ("OTHER" ^ (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ))))
+
+  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when false && is_import dec ->
     let t = check_typ env typ in
     check_exp {env with pre = false; check_unused = false} t exp;
     let ve' = check_pat env t pat in
