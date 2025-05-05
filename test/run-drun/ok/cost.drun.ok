@@ -5,8 +5,8 @@ debug.print: 38_461_538_461 -- cost_create_canister
 debug.print: 4_666_000 -- cost_http_request
 debug.print: (1, 4_119_864_450_741_745_554_864_290_083_472) -- cost_sign_with_ecdsa
 debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
-debug.print: (0, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
-debug.print: (0, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
-debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
-debug.print: (1, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
+debug.print: (2, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
+debug.print: (2, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
+debug.print: (2, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_ecdsa
+debug.print: (2, 4_119_864_450_741_745_554_881_465_286_656) -- cost_sign_with_schnorr
 ingress Completed: Reply: 0x4449444c0000
