@@ -164,7 +164,6 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  (*  *)
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate
