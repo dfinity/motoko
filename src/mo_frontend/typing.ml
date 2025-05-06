@@ -2932,12 +2932,12 @@ and infer_dec env dec : T.typ =
 
 
 
-  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ } as patX, exp, None) when is_import dec ->
-    let _ = check_pat env T.blob patX in
+  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ } as patX, exp, None) when is_value_import dec ->
+     (*let _ = check_pat env T.blob patX in*)
     let t = check_typ env typ in
-    if exp.note.note_typ = T.Pre
+    (*if exp.note.note_typ = T.Pre
     then (failwith "AnnotP"; check_exp {env with (*pre = false; *)check_unused = false} t exp; t)
-    else exp.note.note_typ
+    else *)exp.note.note_typ
 
 
 
@@ -3250,6 +3250,11 @@ and infer_block_valdecs env decs scope : Scope.t =
 and is_import d =
   match d.it with
   | LetD (_, {it = ImportE _; _}, None) -> true
+  | _ -> false
+
+and is_value_import d =
+  match d.it with
+  | LetD (_, {it = ImportE (_, {contents = ImportedValuePath _}); _}, None) -> true
   | _ -> false
 
 and infer_dec_valdecs env dec : Scope.t =
