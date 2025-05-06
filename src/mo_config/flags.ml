@@ -1,6 +1,10 @@
 (* common flags for the moc compiler *)
 
 module M = Map.Make(String)
+module StringPairMap = Map.Make(struct
+  type t = string * string
+  let compare = compare
+end)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
@@ -29,6 +33,7 @@ let dump_tc = ref false
 let dump_lowering = ref false
 let check_ir = ref true
 let package_urls : string M.t ref = ref M.empty
+let package_override_urls : string StringPairMap.t ref = ref StringPairMap.empty
 let actor_aliases : string M.t ref = ref M.empty
 let actor_idl_path : string option ref = ref None
 let max_stable_pages_default = 65536
