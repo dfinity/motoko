@@ -696,25 +696,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | SystemTimeoutSetPrim, [e1] ->
       typ e1 <: T.nat32;
       T.unit <: t
-    (* Cost *)
-    | SystemCostCallPrim, [e1; e2] ->
-      typ e1 <: T.nat64;
-      typ e2 <: T.nat64;
-      T.nat <: t
-    | SystemCostCreateCanisterPrim, [] ->
-      T.nat <: t
-    | SystemCostHttpRequestPrim, [e1; e2] ->
-      typ e1 <: T.nat64;
-      typ e2 <: T.nat64;
-      T.nat <: t
-    | SystemCostSignWithEcdsaPrim, [e1; e2] ->
-      typ e1 <: T.text;
-      typ e2 <: T.nat32;
-      T.Tup [T.nat32; T.nat] <: t
-    | SystemCostSignWithSchnorrPrim, [e1; e2] ->
-      typ e1 <: T.text;
-      typ e2 <: T.nat32;
-      T.Tup [T.nat32; T.nat] <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->
       typ e1 <: T.blob;

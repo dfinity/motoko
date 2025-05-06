@@ -12535,26 +12535,26 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
 
   (* Cost *)
-  | SystemCostCallPrim, [method_name_size; payload_size] ->
+  | OtherPrim "costCall", [method_name_size; payload_size] ->
     SR.Vanilla,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
     Cost.call env
-  | SystemCostCreateCanisterPrim, [] ->
+  | OtherPrim "costCreateCanister", [] ->
     SR.Vanilla, Cost.create_canister env
-  | SystemCostHttpRequestPrim, [request_size; max_res_bytes] ->
+  | OtherPrim "costHttpRequest", [request_size; max_res_bytes] ->
     SR.Vanilla,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
     Cost.http_request env
-  | SystemCostSignWithEcdsaPrim, [key_name; curve] ->
+  | OtherPrim "costSignWithEcdsa", [key_name; curve] ->
     SR.UnboxedTuple 2,
     compile_exp_vanilla env ae key_name ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) curve ^^
     TaggedSmallWord.lsb_adjust Type.Nat32 ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Cost.sign_with_ecdsa env
-  | SystemCostSignWithSchnorrPrim, [key_name; algorithm] ->
+  | OtherPrim "costSignWithSchnorr", [key_name; algorithm] ->
     SR.UnboxedTuple 2,
     compile_exp_vanilla env ae key_name ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) algorithm ^^

@@ -164,13 +164,6 @@ and prim =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  (* Cost *)
-  | SystemCostCallPrim
-  | SystemCostCreateCanisterPrim
-  | SystemCostHttpRequestPrim
-  | SystemCostSignWithEcdsaPrim
-  | SystemCostSignWithSchnorrPrim
-  | SystemCostVetkdDeriveEncryptedKeyPrim
   (*  *)
   | SystemTimeoutSetPrim
   | SetCertifiedData
@@ -325,12 +318,6 @@ let map_prim t_typ t_id p =
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
   | SystemCyclesBurnPrim
-  | SystemCostCallPrim
-  | SystemCostCreateCanisterPrim
-  | SystemCostHttpRequestPrim
-  | SystemCostSignWithEcdsaPrim
-  | SystemCostSignWithSchnorrPrim
-  | SystemCostVetkdDeriveEncryptedKeyPrim
   | SystemTimeoutSetPrim
   | SetCertifiedData
   | GetCertificate

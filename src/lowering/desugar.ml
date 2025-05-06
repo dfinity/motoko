@@ -192,22 +192,6 @@ and exp' at note = function
     I.PrimE (I.SystemCyclesBurnPrim, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "timeoutSet";_},_);_}, _, e) ->
     I.PrimE (I.SystemTimeoutSetPrim, [exp e])
-  (* Cost *)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costCall";_},_);_}, _, {it=S.TupE es;_}) ->
-    assert (List.length es = 2);
-    I.PrimE (I.SystemCostCallPrim, List.map exp es)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costCreateCanister";_},_);_}, _, {it=S.TupE es;_}) ->
-    assert (es = []);
-    I.PrimE (I.SystemCostCreateCanisterPrim, [])
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costHttpRequest";_},_);_}, _, {it=S.TupE es;_}) ->
-    assert (List.length es = 2);
-    I.PrimE (I.SystemCostHttpRequestPrim, List.map exp es)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costSignWithEcdsa";_},_);_}, _, {it=S.TupE es;_}) ->
-    assert (List.length es = 2);
-    I.PrimE (I.SystemCostSignWithEcdsaPrim, List.map exp es)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "costSignWithSchnorr";_},_);_}, _, {it=S.TupE es;_}) ->
-    assert (List.length es = 2);
-    I.PrimE (I.SystemCostSignWithSchnorrPrim, List.map exp es)
   (* Certified data *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
