@@ -61,14 +61,10 @@ jobs:
         with:
           script: |
             const date = new Date().toISOString().split('T')[0];
-            const failedJobs = ['common-tests', 'gc-tests', 'systems-go-tests']
-              .filter(job => needs[job].result === 'failure')
-              .join(', ');
-            
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly macOS-13 Test Failure (${date})`,
-              body: `The following nightly tests for macOS-13 failed: ${failedJobs}\n\nPlease investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              body: `Nightly tests for macOS-13 failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               labels: ['macos-13-failure', 'bug']
             }); 
