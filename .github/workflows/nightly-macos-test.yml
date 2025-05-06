@@ -49,11 +49,7 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests]
-<<<<<<< HEAD
-    if: ${{ contains(needs.*.result, 'failure') }}
-=======
     if: ${{ always() && contains(needs.*.result, 'failure') }}
->>>>>>> master
     runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
@@ -61,45 +57,10 @@ jobs:
         with:
           script: |
             const date = new Date().toISOString().split('T')[0];
-<<<<<<< HEAD
-            const failedJobs = ['common-tests', 'gc-tests', 'systems-go-tests']
-              .filter(job => needs[job].result === 'failure')
-              .join(', ');
-            
-=======
->>>>>>> master
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly macOS-13 Test Failure (${date})`,
-<<<<<<< HEAD
-              body: `The following nightly tests for macOS-13 failed: ${failedJobs}\n\nPlease investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              labels: ['macos-13-failure', 'bug']
-            });
-
-  artifacts:
-    needs: [common-tests, gc-tests, systems-go-tests]
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-      - uses: cachix/cachix-action@v16
-        with:
-          name: ic-hs-test
-      - name: nix-build
-        run: |
-          nix build .#release.moc
-      # upload-artifact doesn't work for symlink dir
-      # https://github.com/actions/upload-artifact/issues/92
-      - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
-      - name: upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: moc-macos-13
-          path: ${{ env.UPLOAD_PATH }}
-          retention-days: 5 
-=======
               body: `Nightly tests for macOS-13 failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               labels: ['macos-13-failure', 'bug']
             }); 
->>>>>>> master
