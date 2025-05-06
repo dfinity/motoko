@@ -10,9 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Force Failure
-        run: exit 1
-
       - name: Run Common Tests
         uses: ./.github/actions/test-blueprint
         with:
