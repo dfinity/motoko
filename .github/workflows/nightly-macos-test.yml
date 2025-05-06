@@ -49,7 +49,11 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests]
+<<<<<<< HEAD
     if: ${{ contains(needs.*.result, 'failure') }}
+=======
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+>>>>>>> master
     runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
@@ -57,14 +61,18 @@ jobs:
         with:
           script: |
             const date = new Date().toISOString().split('T')[0];
+<<<<<<< HEAD
             const failedJobs = ['common-tests', 'gc-tests', 'systems-go-tests']
               .filter(job => needs[job].result === 'failure')
               .join(', ');
             
+=======
+>>>>>>> master
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly macOS-13 Test Failure (${date})`,
+<<<<<<< HEAD
               body: `The following nightly tests for macOS-13 failed: ${failedJobs}\n\nPlease investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               labels: ['macos-13-failure', 'bug']
             });
@@ -90,3 +98,8 @@ jobs:
           name: moc-macos-13
           path: ${{ env.UPLOAD_PATH }}
           retention-days: 5 
+=======
+              body: `Nightly tests for macOS-13 failed. Please investigate.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ['macos-13-failure', 'bug']
+            }); 
+>>>>>>> master
