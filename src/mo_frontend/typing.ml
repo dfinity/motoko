@@ -23,7 +23,7 @@ type ret_env = T.typ option
 type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
-type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region; srcs : T.Region_set.t}
+type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
 let available env = T.Env.map (fun (ty, at, kind) -> (ty, at, kind, Available)) env
@@ -33,16 +33,6 @@ let initial_scope =
     Scope.typ_env = T.Env.singleton T.default_scope_var C.top_cap;
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
-
-let add_to_srcs region (srcs : T.Region_set.t) =
-  if !Flags.typechecker_combine_srcs
-  then T.Region_set.add region srcs
-  else srcs
-
-let singleton_srcs region =
-  if !Flags.typechecker_combine_srcs
-  then T.Region_set.singleton region
-  else T.Region_set.empty
 
 type unused_warnings = (string * Source.region * Scope.val_kind) List.t
 
@@ -68,6 +58,7 @@ type env =
     reported_stable_memory : bool ref;
     viper_mode : bool;
     errors_only : bool;
+    srcs : Field_sources.t;
   }
 
 let env_of_scope ?(viper_mode=false) msgs scope =
@@ -92,6 +83,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     reported_stable_memory = ref false;
     errors_only = false;
     viper_mode;
+    srcs = Field_sources.of_immutable_map scope.Scope.fld_src_env;
   }
 
 let use_identifier env id =
@@ -259,10 +251,10 @@ let error_in modes env at code fmt =
 let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
 
 let warn_lossy_bind_type env at bind t1 t2 =
-  if not T.(sub t1 t2 || sub t2 t1) then
+  if not T.(sub ~src_fields:env.srcs t1 t2 || sub ~src_fields:env.srcs t2 t1) then
     warn env at "M0190" "pattern variable %s has larger type%a\nbecause its types in the pattern alternatives are unrelated smaller types:\ntype in left pattern is%a\ntype in right pattern is%a"
       bind
-      display_typ_expand (T.lub t1 t2)
+      display_typ_expand (T.lub ~src_fields:env.srcs t1 t2)
       display_typ_expand t1
       display_typ_expand t2
 
@@ -340,20 +332,20 @@ let disjoint_union env at code fmt env1 env2 =
 
 
 let sub env at t1 t2 =
-  try T.sub t1 t2  with T.Undecided ->
+  try T.sub ~src_fields:env.srcs t1 t2 with T.Undecided ->
     error env at "M0200" "cannot decide subtyping between type%a\nand%a"
       display_typ_expand t1
       display_typ_expand t2
 
 let eq env at t1 t2 =
-  try T.eq t1 t2  with T.Undecided ->
+  try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
     error env at "M0200" "cannot decide equality between type%a\nand%a"
       display_typ_expand t1
       display_typ_expand t2
 
 
 let eq_kind env at k1 k2 =
-  try T.eq_kind k1 k2 with T.Undecided ->
+  try T.eq_kind ~src_fields:env.srcs k1 k2 with T.Undecided ->
     error env at "M0200" "cannot decide type constructor equality"
 
 (* Coverage *)
@@ -776,7 +768,7 @@ and check_typ' env typ : T.typ =
   | AndT (typ1, typ2) ->
     let t1 = check_typ env typ1 in
     let t2 = check_typ env typ2 in
-    let t = try T.glb t1 t2 with T.PreEncountered ->
+    let t = try T.glb ~src_fields:env.srcs t1 t2 with T.PreEncountered ->
       error env typ2.at "M0168"
         "cannot compute intersection of types containing recursive or forward references to other type definitions"
     in
@@ -790,7 +782,7 @@ and check_typ' env typ : T.typ =
   | OrT (typ1, typ2) ->
     let t1 = check_typ env typ1 in
     let t2 = check_typ env typ2 in
-    let t = try T.lub t1 t2 with T.PreEncountered ->
+    let t = try T.lub ~src_fields:env.srcs t1 t2 with T.PreEncountered ->
       error env typ2.at "M0168"
         "cannot compute union of types containing recursive or forward references to other type definitions"
     in
@@ -822,19 +814,19 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
         error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
           id.it (T.string_of_typ_expand t)
     end;
-    let src = T.{empty_src with srcs = singleton_srcs id.at} in
-    T.{lab = id.it; typ = t; src}
+    Field_sources.add_src env.srcs id.at;
+    T.{lab = id.it; typ = t; src = {empty_src with track_region = id.at}}
   | TypF (id, typ_binds, typ) ->
     let k = check_typ_def env typ_field.at (id, typ_binds, typ) in
     let c = Cons.fresh id.it k in
-    let src = T.{empty_src with srcs = singleton_srcs id.at} in
-    T.{lab = id.it; typ = Typ c; src}
+    Field_sources.add_src env.srcs id.at;
+    T.{lab = id.it; typ = Typ c; src = {empty_src with track_region = id.at}}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
   let t = check_typ env typ in
-  let src = T.{empty_src with srcs = singleton_srcs tag.at} in
-  T.{lab = tag.it; typ = t; src}
+  Field_sources.add_src env.srcs tag.at;
+  T.{lab = tag.it; typ = t; src = {empty_src with track_region = tag.at}}
 
 and check_typ_binds_acyclic env typ_binds cs ts  =
   let n = List.length cs in
@@ -1231,7 +1223,8 @@ and combine_id_srcs env t id : unit =
   | Some (t', _, _, _) ->
     (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
        of the other. *)
-    try ignore (T.sub t t') with T.Undecided | T.PreEncountered -> ()
+    try ignore (T.sub ~src_fields:env.srcs t t') with
+    | T.Undecided | T.PreEncountered -> ()
 
 and combine_pat_srcs env t pat : unit =
   match pat.it with
@@ -1334,7 +1327,7 @@ and infer_exp'' env exp : T.typ =
     t
   | BinE (ot, exp1, op, exp2) ->
     let t1, t2 = infer_bin_exp env exp1 exp2 in
-    let t = Operator.type_binop op (T.lub (T.promote t1) (T.promote t2)) in
+    let t = Operator.type_binop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
     if not env.pre then begin
       assert (!ot = Type.Pre);
       if not (Operator.has_binop op t) then
@@ -1349,7 +1342,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       assert (!ot = Type.Pre);
       let t1, t2 = infer_bin_exp env exp1 exp2 in
-      let t = Operator.type_relop op (T.lub (T.promote t1) (T.promote t2)) in
+      let t = Operator.type_relop op (T.lub ~src_fields:env.srcs (T.promote t1) (T.promote t2)) in
       if not (Operator.has_relop op t) then
         error_bin_op env exp.at t1 t2;
       if not (eq env exp1.at t t1 || eq env exp2.at t t2) && not (sub env exp1.at T.nat t1 && sub env exp2.at T.nat t2) then
@@ -1410,7 +1403,8 @@ and infer_exp'' env exp : T.typ =
     end
   | TagE (id, exp1) ->
     let t1 = infer_exp env exp1 in
-    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with srcs = singleton_srcs id.at}}]
+    Field_sources.add_src env.srcs id.at;
+    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -1502,7 +1496,7 @@ and infer_exp'' env exp : T.typ =
     T.unit
   | ArrayE (mut, exps) ->
     let ts = List.map (infer_exp env) exps in
-    let t1 = List.fold_left T.lub T.Non ts in
+    let t1 = List.fold_left (T.lub ~src_fields:env.srcs) T.Non ts in
     if not env.pre && inconsistent t1 ts then
       warn env exp.at "M0074"
         "this array has type%a\nbecause elements have inconsistent types"
@@ -1624,7 +1618,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then check_exp_strong env T.bool exp1;
     let t2 = infer_exp env exp2 in
     let t3 = infer_exp env exp3 in
-    let t = T.lub t2 t3 in
+    let t = T.lub ~src_fields:env.srcs t2 t3 in
     if not env.pre && inconsistent t [t2; t3] then
       warn env exp.at "M0081"
         "this if has type%a\nbecause branches have inconsistent types,\ntrue produces%a\nfalse produces%a"
@@ -1647,7 +1641,7 @@ and infer_exp'' env exp : T.typ =
         coverage_cases "try handler" env cases T.catch exp.at;
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
     end;
-    T.lub t1 t2
+    T.lub ~src_fields:env.srcs t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
       check_exp_strong env T.bool exp1;
@@ -1804,7 +1798,8 @@ and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
-  T.{lab = id.it; typ = t1; src = {empty_src with srcs = singleton_srcs id.at}}
+  Field_sources.add_src env.srcs id.at;
+  T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}
 
 and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases exp_fields =
   let open List in
@@ -1886,8 +1881,8 @@ and infer_check_bases_fields env (check_fields : T.field list) exp_at exp_bases 
           in
           iter2 immutable_base stripped_bases exp_bases
   end;
-  let t_base = T.(fold_left glb (Obj (Object, [])) stripped_bases) in
-  T.(glb t_base (Obj (Object, sort T.compare_field fts)))
+  let t_base = T.(fold_left (glb ~src_fields:env.srcs) (Obj (Object, [])) stripped_bases) in
+  T.(glb ~src_fields:env.srcs t_base (Obj (Object, sort T.compare_field fts)))
 
 and check_exp_strong env t exp =
   check_exp {env with weak = false} t exp
@@ -2250,7 +2245,7 @@ and infer_case env t_pat t case =
   let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   leave_scope env ve initial_usage;
-  let t'' = T.lub t t' in
+  let t'' = T.lub ~src_fields:env.srcs t t' in
   if not env.pre && inconsistent t'' [t; t'] then
     warn env case.at "M0101"
       "the switch has type%a\nbecause branches have inconsistent types,\nthis case produces type%a\nthe previous produce type%a"
@@ -2315,13 +2310,14 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     T.Opt t1, ve
   | TagP (id, pat1) ->
     let t1, ve = infer_pat false env pat1 in
-    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with srcs = singleton_srcs id.at}}], ve
+    Field_sources.add_src env.srcs id.at;
+    T.Variant [T.{lab = id.it; typ = t1; src = {empty_src with track_region = id.at}}], ve
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
         "cannot infer the type of this or-pattern, please add a type annotation";
     (*let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
-    let t = T.lub t1 t2 in
+    let t = T.lub ~src_fields:env.srcs t1 t2 in
     if not (T.compatible t1 t2) then
       error env pat.at "M0104"
         "pattern branches have incompatible types,\nleft consumes%a\nright consumes%a"
@@ -2330,7 +2326,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
-    t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
+    t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
     T.Named (id.it, t),  check_pat env t pat1
@@ -2354,8 +2350,8 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   | pf::pfs' ->
     let typ, ve1 = infer_pat false env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-    let src = T.{empty_src with srcs = singleton_srcs pf.it.id.at} in
-    infer_pat_fields at env pfs' (T.{lab = pf.it.id.it; typ; src}::ts) ve'
+    Field_sources.add_src env.srcs pf.it.id.at;
+    infer_pat_fields at env pfs' (T.{lab = pf.it.id.it; typ; src = {empty_src with track_region = pf.it.id.at}}::ts) ve'
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
@@ -2468,7 +2464,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
       let (t2, _, _) = find k ve2 in
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
-    let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub t1 t2, at1, kind1) in
+    let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub ~src_fields:env.srcs t1 t2, at1, kind1) in
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -2564,8 +2560,7 @@ and pub_fields dec_fields : visibility_env =
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
   | {vis = { it = Public depr; _}; dec; _} ->
-    let srcs = T.Region_set.empty in
-    pub_dec T.{depr = depr; region = dec_field.at; srcs} dec xs
+    pub_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
 
 and pub_dec src dec xs : visibility_env =
@@ -2593,12 +2588,10 @@ and pub_pat_field src pf xs =
   pub_pat src pf.it.pat xs
 
 and pub_typ_id src id (xs, ys) : visibility_env =
-  let srcs = add_to_srcs id.at src.T.srcs in
-  (T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region; srcs} xs, ys)
+  (T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} xs, ys)
 
 and pub_val_id src id (xs, ys) : visibility_env =
-  let srcs = add_to_srcs id.at src.T.srcs in
-  (xs, T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region; srcs} ys)
+  (xs, T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} ys)
 
 
 (* Object/Scope transformations *)
@@ -2612,8 +2605,8 @@ and object_of_scope env sort dec_fields scope at =
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
         | Some src ->
-          let srcs = add_to_srcs src.id_region src.srcs in
-          T.{lab = id; typ = T.Typ c; src = {depr = src.depr; region = src.field_region; srcs}}::tfs
+          Field_sources.add_src env.srcs src.id_region;
+          T.{lab = id; typ = T.Typ c; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2622,8 +2615,8 @@ and object_of_scope env sort dec_fields scope at =
       (fun id (t, _, _) tfs ->
         match T.Env.find_opt id pub_val with
         | Some src ->
-          let srcs = add_to_srcs src.id_region src.srcs in
-          T.{lab = id; typ = t; src = {depr = src.depr; region = src.field_region; srcs}}::tfs
+          Field_sources.add_src env.srcs src.id_region;
+          T.{lab = id; typ = t; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -2837,7 +2830,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        match T.lookup_val_field_opt tf.T.lab rng_tfs with
        | None -> ()
        | Some typ ->
-         if not (T.stable_sub (T.as_immut typ) (T.as_immut tf.T.typ)) then
+         if not (T.stable_sub ~src_fields:env.srcs (T.as_immut typ) (T.as_immut tf.T.typ)) then
            local_error env focus "M0204"
              "migration expression produces field `%s` of type%a\n, not the expected type%a"
               tf.T.lab
@@ -2947,10 +2940,10 @@ and check_stab env sort scope dec_fields =
     (List.map
       (fun id ->
          let typ, _, _ = T.Env.find id.it scope.Scope.val_env in
-         let srcs = singleton_srcs id.at in
+         Field_sources.add_src env.srcs id.at;
          T.{ lab = id.it;
              typ;
-             src = {depr = None; region = id.at; srcs}})
+             src = {depr = None; track_region = id.at; region = id.at}})
       ids)
 
 (* Blocks and Declarations *)
@@ -3166,7 +3159,8 @@ and gather_dec env scope dec : Scope.t =
       typ_env = scope.typ_env;
       lib_env = scope.lib_env;
       con_env = scope.con_env;
-      obj_env = obj_env
+      obj_env = obj_env;
+      fld_src_env = scope.fld_src_env;
     }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
@@ -3202,6 +3196,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = T.ConSet.disjoint_add c scope.con_env;
       lib_env = scope.lib_env;
       obj_env = scope.obj_env;
+      fld_src_env = scope.fld_src_env;
     }
 
 and gather_pat env ve pat : Scope.val_env =
@@ -3390,7 +3385,9 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
+let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
+    : (T.typ * Scope.t) Diag.result
+  =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
@@ -3399,9 +3396,10 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog : (T.typ * Scope
           let env = {
              env0 with async = async_cap;
           } in
-          let res = infer_block env prog.it prog.at true in
+          let t, sscope = infer_block env prog.it prog.at true in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
-          res
+          let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
+          t, {sscope with Scope.fld_src_env}
         ) prog
     )
 
@@ -3492,7 +3490,8 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
-          Scope.lib lib.note.filename imp_typ
+          let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
+          {(Scope.lib lib.note.filename imp_typ) with Scope.fld_src_env}
         ) lib
     )
 

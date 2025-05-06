@@ -5,19 +5,23 @@ open Source
 open Syntax
 open Wasm.Sexpr
 
+type type_rep_config =
+  | Without_type_rep
+  | With_type_rep of Field_sources.srcs_map option
+
 module type Config = sig
   val include_sources : bool
   val include_types : bool
-  val include_type_rep : bool
+  val include_type_rep : type_rep_config
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
   val include_parenthetical : bool
   val main_file : string option
 end
 
-module Default = struct
+module Default : Config = struct
   let include_sources = false
-  let include_type_rep = false
   let include_types = false
+  let include_type_rep = Without_type_rep
   let include_parenthetical = true (* false for vscode *)
   let include_docs = None
   let main_file = None
@@ -57,9 +61,13 @@ module Make (Cfg : Config) = struct
   let annot_arrange_typ t it =
     if Cfg.include_types
     then
-      if Cfg.include_type_rep
-      then ":" $$ [it; typ t; Arrange_type.typ t]
-      else ":" $$ [it; typ t]
+      match Cfg.include_type_rep with
+      | Without_type_rep -> ":" $$ [it; typ t]
+      | With_type_rep srcs_tbl ->
+        let module Arrange_type = Arrange_type.Make (struct
+          let srcs_tbl = srcs_tbl
+        end) in
+        ":" $$ [it; typ t; Arrange_type.typ t]
     else it
 
   let annot_typ t it =

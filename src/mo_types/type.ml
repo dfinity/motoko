@@ -1,3 +1,5 @@
+open Field_sources
+
 (* Representation *)
 type lab = string
 type var = string
@@ -41,25 +43,6 @@ type prim =
   | Principal
   | Region
 
-module Region_ord = struct
-  type t = Source.region
-
-  let compare l r =
-    let open Source in
-    let compare_pos l r =
-      match compare l.file r.file with
-      | 0 ->
-        (match compare l.line r.line with
-        | 0 -> compare l.column r.column
-        | ord -> ord)
-      | ord -> ord
-    in
-    match compare_pos l.left r.left with
-    | 0 -> compare_pos l.right r.right
-    | ord -> ord
-end
-module Region_set = Set.Make (Region_ord)
-
 type t = typ
 and typ =
   | Var of var * int                          (* variable *)
@@ -83,7 +66,7 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and src = {depr : string option; region : Source.region; mutable srcs : Region_set.t}
+and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -91,7 +74,7 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-let empty_src = {depr = None; region = Source.no_region; srcs = Region_set.empty}
+let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
 (* Stable signatures *)
 type stab_sig =
@@ -716,7 +699,7 @@ let lookup_val_field_opt l tfs =
 let lookup_typ_field_opt l tfs =
   let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> Some c
+  | Some {lab = _; typ = Typ c; src} -> Some c
   | _ -> None
 
 let lookup_val_field l tfs =
@@ -948,30 +931,65 @@ let str = ref (fun _ -> failwith "")
 
 (* Aggregation of source fields, for use by the language server. *)
 let src_field_updates = ref []
+let src_field_map = ref (empty_srcs_tbl ())
+
+(* Helper to perform source field updates to the given map. *)
+let with_src_field_updates src_fields action =
+  Fun.protect ~finally:(fun () -> src_field_map := empty_srcs_tbl ()) (fun () ->
+    src_field_map := src_fields;
+    action ())
 
 (* Helper to aggregate field updates with an empty list, perform some predicate,
-   commit field updates if the predicate holds, and restore the empty list. *)
-let with_src_field_updates predicate =
-  Fun.protect ~finally:(fun () -> src_field_updates := []) (fun () ->
+   commit field updates if the predicate holds, and restore the empty list. It
+   will update the actions given to it in the source fields map . *)
+let with_src_field_updates_predicate src_fields predicate =
+  Fun.protect ~finally:(fun () -> src_field_updates := []; src_field_map := empty_srcs_tbl ()) (fun () ->
     src_field_updates := [];
+    src_field_map := src_fields;
     let result = predicate () in
     (* Do not commit updates if the relation given by the predicate failed. *)
     if result then
       List.iter (fun f -> f ()) (List.rev !src_field_updates);
     result)
 
+(* Updates to the source fields of the inputs depending on the given relation.
+   If you use this function, you'll probably want to ensure the entire relation
+   checking procedure is wrapped in [with_src_field_updates]. You'll probably
+   want to use this with [combine]. *)
+let add_src_field rel lubs glbs f1 f2 =
+  if !Mo_config.Flags.typechecker_combine_srcs then
+    let r1 = f1.src.track_region in
+    let r2 = f2.src.track_region in
+    let src_map = !src_field_map in
+    (* Perhaps we could get away with just adding [r1] and [r2] to each other's
+       tables, but we play safe here and overapproximate. *)
+    let srcs =
+      Source.Region_set.(if rel == lubs then union else inter)
+        (get_srcs src_map r1)
+        (get_srcs src_map r2)
+    in
+    Srcs_tbl.replace src_map r1 srcs;
+    Srcs_tbl.replace src_map r2 srcs
+
 (* Possibly stages an update to the source fields of the inputs in case the
    relation holds. If you use this function, you'll probably want to ensure the
-   entire relation checking procedure is wrapped in [with_src_field_updates]. *)
+   entire relation checking procedure is wrapped in
+   [with_src_field_updates_predicate]. You'll probably want to use it when
+   checking [sub] or [eq]. *)
 let add_src_field_update is_rel rel eq tf1 tf2 =
   if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
     let src_field_update () =
-      let srcs = Region_set.union tf1.src.srcs tf2.src.srcs in
+      let r1 = tf1.src.track_region in
+      let r2 = tf2.src.track_region in
+      let src_map = !src_field_map in
+      (* Perhaps we could get away with just adding [r1] and [r2] to each
+         other's tables, but we play safe here and overapproximate. *)
+      let srcs = Source.Region_set.union (get_srcs src_map r1) (get_srcs src_map r2) in
       if rel == eq then
-        tf1.src.srcs <- srcs;
-      tf2.src.srcs <- srcs;
+        Srcs_tbl.replace src_map r1 srcs;
+      Srcs_tbl.replace src_map r2 srcs
     in
-    src_field_updates := src_field_update :: !src_field_updates;
+    src_field_updates := src_field_update :: !src_field_updates
 
 
 (* Equivalence & Subtyping *)
@@ -1176,20 +1194,20 @@ and eq_con d eq c1 c2 =
     | None -> false
     )
 
-let eq_binds tbs1 tbs2 =
-  with_src_field_updates (fun () ->
+let eq_binds ?(src_fields = empty_srcs_tbl ()) tbs1 tbs2 =
+  with_src_field_updates_predicate src_fields (fun () ->
     let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
 
-let eq t1 t2 : bool =
-  with_src_field_updates (fun () ->
+let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
     let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
 
-let eq_kind k1 k2 : bool =
-  with_src_field_updates (fun () ->
+let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
     eq_kind' (ref SS.empty) k1 k2)
 
-let sub t1 t2 : bool =
-  with_src_field_updates (fun () ->
+let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
     rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
@@ -1329,14 +1347,6 @@ module M = Map.Make (OrdPair)
 
 exception Mismatch
 
-let merge_srcs rel lubs glbs src1 src2 =
-  let depr = None in
-  let region = Source.no_region in
-  let srcs =
-    Region_set.(if rel == lubs then union else inter) src1.srcs src2.srcs
-  in
-  { depr; region; srcs }
-
 let rec combine rel lubs glbs t1 t2 =
   assert (rel == lubs || rel == glbs);
   if t1 == t2 then t1 else
@@ -1443,11 +1453,8 @@ and combine_fields rel lubs glbs fs1 fs2 =
     | _ ->
       match combine rel lubs glbs f1.typ f2.typ with
       | typ ->
-        let src =
-          if !Mo_config.Flags.typechecker_combine_srcs
-          then merge_srcs rel lubs glbs f1.src f2.src
-          else empty_src
-        in
+        add_src_field rel lubs glbs f1 f2;
+        let src = {empty_src with track_region = f1.src.track_region} in
         {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
       | exception Mismatch when rel == lubs ->
         combine_fields rel lubs glbs fs1' fs2'
@@ -1462,15 +1469,19 @@ and combine_tags rel lubs glbs fs1 fs2 =
     | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
     | _ ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
-      let src =
-        if !Mo_config.Flags.typechecker_combine_srcs
-        then merge_srcs rel lubs glbs f1.src f2.src
-        else empty_src
-      in
+      add_src_field rel lubs glbs f1 f2;
+      let src = {empty_src with track_region = f1.src.track_region} in
       {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
 
-let lub t1 t2 = let lubs = ref M.empty in combine lubs lubs (ref M.empty) t1 t2
-let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
+let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let lubs = ref M.empty in
+    combine lubs lubs (ref M.empty) t1 t2)
+
+let glb ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let glbs = ref M.empty in
+    combine glbs (ref M.empty) glbs t1 t2)
 
 
 (* Environments *)
@@ -2046,8 +2057,8 @@ include MakePretty(ElideStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
-let stable_sub t1 t2 =
-  with_src_field_updates (fun () ->
+let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates_predicate src_fields (fun () ->
     rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function

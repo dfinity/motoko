@@ -33,8 +33,6 @@ type prim =
   | Principal
   | Region
 
-module Region_set : Set.S with type elt = Source.region
-
 type t = typ
 
 and typ =
@@ -60,7 +58,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and src = {depr : string option; region : Source.region; mutable srcs : Region_set.t}
+and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -235,15 +233,15 @@ val cons_kind : kind -> ConSet.t
 
 exception Undecided (* raised if termination depth exceeded  *)
 
-val eq : typ -> typ -> bool
-val eq_kind : kind -> kind -> bool
+val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 
-val sub : typ -> typ -> bool
+val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val compatible : typ -> typ -> bool
 
 exception PreEncountered
-val lub : typ -> typ -> typ
-val glb : typ -> typ -> typ
+val lub : ?src_fields : Field_sources.t -> typ -> typ -> typ
+val glb : ?src_fields : Field_sources.t -> typ -> typ -> typ
 
 
 (* First-order substitution *)
@@ -273,7 +271,7 @@ val scope_bind : bind
 
 (* like sub, but disallows promotion to  Any or narrower object types
    that signal data loss *)
-val stable_sub : typ -> typ -> bool
+val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 
 type stab_sig =
   | Single of field list
