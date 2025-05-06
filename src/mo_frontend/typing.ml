@@ -12,7 +12,7 @@ module C = Async_cap
 
 module S = Set.Make(String)
 
-(* Contexts  *)
+(* Contexts *)
 
 (* availability, used to mark actor constructors as unavailable in compiled code
    FUTURE: mark unavailable, non-shared variables *)
@@ -2931,14 +2931,14 @@ and infer_dec env dec : T.typ =
 
 
 
-
+(*
   | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ } as patX, exp, None) when is_value_import dec ->
      (*let _ = check_pat env T.blob patX in*)
     let t = check_typ env typ in
     (*if exp.note.note_typ = T.Pre
     then (failwith "AnnotP"; check_exp {env with (*pre = false; *)check_unused = false} t exp; t)
     else *)exp.note.note_typ
-
+ *)
 
 
 
@@ -3282,21 +3282,24 @@ and infer_dec_valdecs env dec : Scope.t =
 
 
   | LetD (pat, exp, None) when is_value_import dec ->
-    let typ, ve = match recover_opt (infer_pat false env) pat with
+    let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.slienced}) pat with
       | None -> T.blob, check_pat env T.blob pat
       | Some tv -> tv
     in
     (match T.normalize typ with
-     | T.(Prim Text) -> (*failwith "Text"*) Scope.{empty with val_env = ve}
-    | T.(Prim Blob) -> (*failwith "Blob"*) Scope.{empty with val_env = ve}
+     | T.(Prim Text) -> (*failwith "Text"*) ()
+    | T.(Prim Blob) -> (*failwith "Blob"*) ()
     | T.Pre -> failwith "Pre"
     | T.Non -> failwith "Non"
-    | _ -> failwith ("OTHER" ^ (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ))))
+    | _ -> failwith ("OTHER" ^ (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ))));
+    (*check_exp {env with pre = true; check_unused = false} typ exp;*)
+    Scope.{empty with val_env}
 
   | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when false && is_import dec ->
     let t = check_typ env typ in
-    check_exp {env with pre = false; check_unused = false} t exp;
+    check_exp {env with pre = true; check_unused = false} t exp;
     let ve' = check_pat env t pat in
+    print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec dec));
     Scope.{empty with val_env = ve'}
 
 
