@@ -3221,11 +3221,11 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
        | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
-  | LetD (pat, exp, fail) when is_import dec ->
+  | LetD (pat, exp, _) ->
      let t = infer_exp {env with pre = true; check_unused = false} exp in
-     let ve', te' = check_pat_aux {env with pre = true} t pat Scope.Declaration in
-     Scope.{empty with val_env = ve'; typ_env = te'}
-  | LetD _ | ExpD _ | VarD _ ->
+     let _, te' = check_pat_aux {env with pre = true} t pat Scope.Declaration in
+     Scope.{empty with typ_env = te'}
+  | ExpD _ | VarD _ ->
     Scope.empty
   | TypD (id, typ_binds, typ) ->
     let k = check_typ_def env dec.at (id, typ_binds, typ) in
