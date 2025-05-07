@@ -120,7 +120,6 @@ let
   haskellPackages = pkgs.haskellPackages.override {
     overrides = _hself: hsuper: {
       qc-motoko = hsuper.callCabal2nix "qc-motoko" ../test/random { };
-      lsp-int = hsuper.callCabal2nix "lsp-int" ../test/lsp-int { };
     };
   };
 
@@ -131,16 +130,6 @@ let
       export LANG=C.utf8 # for haskell
       qc-motoko${pkgs.lib.optionalString (replay != 0)
           " --quickcheck-replay=${toString replay}"}
-    '';
-  };
-
-  lsp = testDerivation {
-    src = ../test/lsp-int-test-project;
-    buildInputs = [ moc haskellPackages.lsp-int ];
-    checkPhase = ''
-      echo running lsp-int
-      export LANG=C.utf8 # for haskell
-      lsp-int ${mo-ide}/bin/mo-ide .
     '';
   };
 
@@ -214,12 +203,11 @@ let
 in
 fix_names
   {
-    run = test_subdir "run" [ moc ];
+    run-release = test_subdir "run" [ moc ];
     run-debug = snty_subdir "run" [ moc ];
     run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
     run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-    drun = test_subdir "run-drun" [ moc pkgs.drun ];
+    drun-release = test_subdir "run-drun" [ moc pkgs.drun ];
     drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ];
     drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun ];
     drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun ];
@@ -239,7 +227,7 @@ fix_names
     perf = perf_subdir false "perf" [ moc pkgs.drun ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
-    inherit qc lsp unit candid coverage;
+    inherit qc unit candid coverage;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)

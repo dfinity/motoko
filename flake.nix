@@ -114,7 +114,6 @@
 
       commonBuildInputs = pkgs: with pkgs; [ dune_3 obelisk perl removeReferencesTo ] ++ (with ocamlPackages; [
         ocaml
-        atdgen
         checkseum
         findlib
         menhir
@@ -139,19 +138,28 @@
       moPackages = officialRelease: import ./nix/mo-packages.nix { inherit pkgs commonBuildInputs rts officialRelease; };
       releaseMoPackages = moPackages true;
       debugMoPackages = moPackages false;
-      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-ide mo-doc didc deser; };
+      buildableMoPackages = moPackages: { inherit (moPackages) moc mo-ld mo-doc didc deser; };
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
       tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
 
-      testsFor = type:
+      filterTests = type:
         pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
           (name: _drv:
-            let matchDebug = builtins.match ".*-debug$" name;
+            let
+              matchDebug = builtins.match ".*-debug$" name;
+              matchRelease = builtins.match ".*-release$" name;
+              matchGC = builtins.match ".*-gc$" name;
+              # Common tests are those that do not match -debug, -release, or -gc.
+              matchCommon = matchDebug == null &&
+                matchRelease == null &&
+                matchGC == null;
             in {
               "debug" = matchDebug != null;
-              "release" = matchDebug == null;
+              "release" = matchRelease != null;
+              "gc" = matchGC != null;
+              "common" = matchCommon;
             }.${type})
           tests);
 
@@ -198,25 +206,37 @@
 
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
 
-        # Release version - excludes debug tests
+        # Common tests version - includes non-GC, non-release/debug specific tests.
+        common-tests = pkgs.releaseTools.aggregate {
+          name = "common-tests";
+          constituents = filterTests "common";  # Only include common tests.
+        };
+
+        # GC tests version - only includes GC tests.
+        gc-tests = pkgs.releaseTools.aggregate {
+          name = "gc-tests";
+          constituents = filterTests "gc";  # Only include GC tests.
+        };
+
+        # Release version - excludes debug tests.
         release-systems-go = pkgs.releaseTools.aggregate {
           name = "release-systems-go";
           constituents =
             pkgs.lib.attrValues common-constituents ++
               pkgs.lib.attrValues checks ++
               pkgs.lib.attrValues buildableReleaseMoPackages ++
-              testsFor "release" # Only include release tests
+              filterTests "release" # Only include release tests.
               ++ builtins.attrValues js;
         };
 
-        # Debug version - only includes debug tests
+        # Debug version - only includes debug tests.
         debug-systems-go = pkgs.releaseTools.aggregate {
           name = "debug-systems-go";
           constituents =
             pkgs.lib.attrValues common-constituents ++
               pkgs.lib.attrValues checks ++
               pkgs.lib.attrValues buildableDebugMoPackages ++
-              testsFor "debug"  # Only include debug tests
+              filterTests "debug"  # Only include debug tests
               ++ builtins.attrValues js;
         };
 

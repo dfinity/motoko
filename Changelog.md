@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
+
 ## 0.14.8 (2025-04-17)
 
 * motoko (`moc`)
