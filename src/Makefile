@@ -18,7 +18,7 @@ NATIVE_TARGETS = $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(DIDC_TARGET) $
 JS_TARGETS = $(MOC_JS_TARGET) $(DIDC_JS_TARGET) $(MOC_INTERPRETER_TARGET)
 ALL_TARGETS = $(NATIVE_TARGETS) $(JS_TARGETS)
 
-.PHONY: all clean exes grammar candid-tests unit-tests test-quick test-parallel test format
+.PHONY: all clean exes grammar unit-tests test-quick test-parallel test format
 
 # let make update check this file every time
 SOURCE_ID = source_id/generated.ml
@@ -73,6 +73,7 @@ deser: $(SOURCE_ID)
 
 candid-tests: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(CANDID_TESTS_TARGET)
+	@ln -fs $(CANDID_TESTS_TARGET) $@
 
 .PHONY: $(SOURCE_ID)
 
