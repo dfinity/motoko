@@ -50,17 +50,17 @@ mo-doc: $(SOURCE_ID)
 
 moc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) --profile=release $(MOC_JS_TARGET)
-	@ln -fs $(MOC_JS_TARGET) moc.js
+	@ln -fs $(MOC_JS_TARGET) $@
 	ls -al $(MOC_JS_TARGET)
 
 moc_interpreter.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) --profile=release $(MOC_INTERPRETER_TARGET)
-	@ln -fs $(MOC_INTERPRETER_TARGET) moc_interpreter.js
+	@ln -fs $(MOC_INTERPRETER_TARGET) $@
 	ls -al $(MOC_INTERPRETER_TARGET)
 
 didc.js: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) --profile=release $(DIDC_JS_TARGET)
-	@ln -fs $(DIDC_JS_TARGET) didc.js
+	@ln -fs $(DIDC_JS_TARGET) $@
 	ls -al $(DIDC_JS_TARGET)
 
 didc: $(SOURCE_ID)
