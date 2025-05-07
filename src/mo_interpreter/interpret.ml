@@ -458,7 +458,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | LibPath {path; _} ->
       k (find path env.libs)
     | ImportedValuePath path ->
-      k (find path env.libs)
+      let contents = find path env.libs |> V.as_blob in
+      k T.(match normalize exp.note.note_typ with | Prim Blob -> V.Blob contents | Prim Text -> V.Text contents
+                                                  | Non -> failwith "Non?"
+                                                  | _ -> assert false)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -1143,8 +1146,14 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
-  | Syntax.FileU str ->
-    fun _ -> interpret_lit env (ref (TextLit str))
+  | Syntax.FileU str -> fun _ -> V.Blob str
+                        (* Always create a blob here, but the ImportedValuePath will apply the coercion if Text needed
+    begin match T.normalize cub.note.note_typ with
+    | T.(Prim Text) -> interpret_lit env (ref (TextLit str))
+    | T.(Prim Blob) -> interpret_lit env (ref (BlobLit str))
+    | T.Non) -> failwith "NON?"
+    | _ -> assert false
+    end*)
   | _ -> assert false
 
 

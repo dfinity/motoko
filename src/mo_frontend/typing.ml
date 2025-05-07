@@ -2940,7 +2940,10 @@ and infer_dec env dec : T.typ =
     else *)exp.note.note_typ
  *)
 
-
+  | LetD (pat, exp, None) when is_value_import dec ->
+    let typ = pat.note in
+    check_exp env typ exp;
+    typ
 
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
