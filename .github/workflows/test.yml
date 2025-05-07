@@ -8,7 +8,7 @@ jobs:
   common-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,7 +25,7 @@ jobs:
   gc-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -42,7 +42,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -99,7 +99,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
