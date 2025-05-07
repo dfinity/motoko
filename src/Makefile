@@ -12,13 +12,13 @@ MOC_JS_TARGET = _build/default/js/moc_js.bc.js
 MOC_INTERPRETER_TARGET = _build/default/js/moc_interpreter.bc.js
 DIDC_JS_TARGET = _build/default/js/didc_js.bc.js
 
-DUNE_OPTS ?= --profile=release
+DUNE_OPTS ?=
 
 NATIVE_TARGETS = $(MO_LD_TARGET) $(MO_DOC_TARGET) $(MOC_TARGET) $(DIDC_TARGET) $(DESER_TARGET) $(CANDID_TESTS_TARGET)
 JS_TARGETS = $(MOC_JS_TARGET) $(DIDC_JS_TARGET) $(MOC_INTERPRETER_TARGET)
 ALL_TARGETS = $(NATIVE_TARGETS) $(JS_TARGETS)
 
-.PHONY: all clean moc mo-doc mo-ld moc.js didc deser candid-tests unit-tests didc.js
+.PHONY: all clean exes grammar unit-tests test-quick test-parallel test format
 
 # let make update check this file every time
 SOURCE_ID = source_id/generated.ml
@@ -38,42 +38,42 @@ exes: $(SOURCE_ID)
 
 moc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MOC_TARGET)
-	@ln -fs $(MOC_TARGET) moc
+	@ln -fs $(MOC_TARGET) $@
 
 mo-ld: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MO_LD_TARGET)
-	@ln -fs $(MO_LD_TARGET) mo-ld
+	@ln -fs $(MO_LD_TARGET) $@
 
 mo-doc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(MO_DOC_TARGET)
-	@ln -fs $(MO_DOC_TARGET) mo-doc
+	@ln -fs $(MO_DOC_TARGET) $@
 
 moc.js: $(SOURCE_ID)
-	dune build $(DUNE_OPTS) $(MOC_JS_TARGET)
-	@ln -fs $(MOC_JS_TARGET) moc.js
+	dune build $(DUNE_OPTS) --profile=release $(MOC_JS_TARGET)
+	@ln -fs $(MOC_JS_TARGET) $@
 	ls -al $(MOC_JS_TARGET)
 
 moc_interpreter.js: $(SOURCE_ID)
-	dune build $(DUNE_OPTS) $(MOC_INTERPRETER_TARGET)
-	@ln -fs $(MOC_INTERPRETER_TARGET) moc_interpreter.js
+	dune build $(DUNE_OPTS) --profile=release $(MOC_INTERPRETER_TARGET)
+	@ln -fs $(MOC_INTERPRETER_TARGET) $@
 	ls -al $(MOC_INTERPRETER_TARGET)
 
 didc.js: $(SOURCE_ID)
-	dune build $(DUNE_OPTS) $(DIDC_JS_TARGET)
-	@ln -fs $(DIDC_JS_TARGET) didc.js
+	dune build $(DUNE_OPTS) --profile=release $(DIDC_JS_TARGET)
+	@ln -fs $(DIDC_JS_TARGET) $@
 	ls -al $(DIDC_JS_TARGET)
 
 didc: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DIDC_TARGET)
-	@ln -fs $(DIDC_TARGET) didc
+	@ln -fs $(DIDC_TARGET) $@
 
 deser: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(DESER_TARGET)
-	@ln -fs $(DESER_TARGET) deser
+	@ln -fs $(DESER_TARGET) $@
 
 candid-tests: $(SOURCE_ID)
 	dune build $(DUNE_OPTS) $(CANDID_TESTS_TARGET)
-	@ln -fs $(CANDID_TESTS_TARGET) candid-tests
+	@ln -fs $(CANDID_TESTS_TARGET) $@
 
 .PHONY: $(SOURCE_ID)
 
