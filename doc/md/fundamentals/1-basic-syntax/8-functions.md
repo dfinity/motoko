@@ -23,8 +23,8 @@ object Counter  {
    public func get() : Nat { value }; 
 }
 ```
+
 The object `Counter` has two public methods, the functions `Counter.inc()` and `Counter.get()`. Both `value` and `reset()` are implicitly `private` - attempts to access `Counter.reset()` and `Counter.value` are type errors.
-```
 
 A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
@@ -38,12 +38,15 @@ public func exampleFunction(x : Nat) : Nat {
 
 Motoko functions vary by access and behaviour:
 
-- `private`: Not exposed outside the namespace(actor, class, module).
-- `public`: Makes the function externally callable; can be query or update.
-- `shared`: Enables the actor to identify the caller.
-- `query`: Reads data without modifying state.
-- `composite query`: Reads state, can call other queries.
-For example, we can rewrite the object above as an actor: 
+The public functions of an actor, used to send messages to the actor, are special sorts of functions called `shared` functions. Shared functions can only be declared within actors and,  unlike ordinary functions their values can be sent to, that is _shared with_, other actors.
+Shared functions come in several flavors: `shared` functions that can modify the state of an actor, `shared query` functions that can read the state of an actor without observably changing its state, but not send any further messages, and `shared composite query` functions that are similar to queries with the power to call other queries.
+All shared function, unlike ordinary functions, provide access to the identity of their caller, for applications like access control.
+
+[Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
+
+:::
+
+For example, we can rewrite the object above as an actor:
 
 ``` motoko
 actor Digit {
@@ -74,8 +77,5 @@ actor Digit {
    public query func get() : async Nat { value }; 
 }
 ```
-[Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
-
-:::
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

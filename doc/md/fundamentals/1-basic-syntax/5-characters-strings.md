@@ -18,7 +18,7 @@ let symbol : Char = '✮';
 
 You can convert a `Text` value `t` to a `Char` iterator using either `t.chars()` or, equivalently, `Text.toIter(t)`.
 
-:::info Iter
+:::info [Iter](https://internetcomputer.org/docs/motoko/base/Iter)
 An `Iter<T>` is an object that sequentially produces values of specified type `T` until no more values remain.
 :::
 
@@ -67,7 +67,7 @@ await Alternator.alternateCaps("motoko");
 
 Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
 
-```motoko no-repl
+```motoko
 let greeting : Text = "Hello, world!";
 
 // Concatenating text
