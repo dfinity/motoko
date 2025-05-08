@@ -57,9 +57,12 @@ let adoc_of_typ_bind : Buffer.t -> env -> Syntax.typ_bind -> unit =
  fun buf env -> Plain.plain_of_typ_bind buf (render_fns env)
 
 let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
- fun buf env arg ->
-  Buffer.add_string buf arg.name;
-  opt_typ buf env arg.typ
+ fun buf env -> function
+  | { name = "_"; typ = Some ({ Source.it = Syntax.ObjT _; _ } as typ); _ } ->
+      adoc_of_type buf env typ
+  | arg ->
+      Buffer.add_string buf arg.name;
+      opt_typ buf env arg.typ
 
 let adoc_header : Buffer.t -> int -> string -> unit =
  fun buf lvl s -> bprintf buf "%s %s\n\n" (String.make (lvl + 1) '=') s
