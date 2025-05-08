@@ -88,8 +88,7 @@ type extracted = {
 }
 
 let typed_pat_field : Syntax.pat_field -> bool = function
-  | { it = Syntax.{ pat = { it = AnnotP _ | TupP []; _ }; _ }; _ }
-      true
+  | { it = Syntax.{ pat = { it = AnnotP _ | TupP []; _ }; _ }; _ } -> true
   | _ -> false
 
 let pf2tf (pat_field : Syntax.pat_field) =
