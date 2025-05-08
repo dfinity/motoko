@@ -1245,10 +1245,11 @@ let transform_import (i : S.import) : import_declaration =
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
     | S.ImportedValuePath path ->
+       let contents = Lib.FilePath.contents path in
        T.(match t with
           | Prim Text -> textE
           | Non | Prim Blob -> blobE
-          | t -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t));*) assert false) path
+          | t -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t));*) assert false) contents
   in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =

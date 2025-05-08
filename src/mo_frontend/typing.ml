@@ -2928,23 +2928,10 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | ExpD exp -> infer_exp env exp
-
-
-
-(*
-  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ } as patX, exp, None) when is_value_import dec ->
-     (*let _ = check_pat env T.blob patX in*)
-    let t = check_typ env typ in
-    (*if exp.note.note_typ = T.Pre
-    then (failwith "AnnotP"; check_exp {env with (*pre = false; *)check_unused = false} t exp; t)
-    else *)exp.note.note_typ
- *)
-
   | LetD (pat, exp, None) when is_value_import dec ->
     let typ = pat.note in
     check_exp env typ exp;
     typ
-
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
     (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
