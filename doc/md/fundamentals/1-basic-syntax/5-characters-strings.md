@@ -60,7 +60,7 @@ await Alternator.alternateCaps("motoko");
 :::note Conversions
 
 - `Char` can be converted to a single-character `Text` using `Text.fromChar(c)`.
-- `Text` can br converted to a single-character `Char` using `Char.toText(t)`.
+- `Text` can be converted to a single-character `Char` using `Char.toText(t)`.
 :::
 
 ## Strings
