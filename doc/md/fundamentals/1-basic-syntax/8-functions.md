@@ -26,7 +26,7 @@ object Counter  {
 The object `Counter` has two public methods, the functions `Counter.inc()` and `Counter.get()`. Both `value` and `reset()` are implicitly `private` - attempts to access `Counter.reset()` and `Counter.value` are type errors.
 ```
 
-A function should specify a return type. If a return type is not declared, it defaults to the unit `()` return type.
+A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
 ```motoko no-repl
 public func exampleFunction(x : Nat) : Nat {
