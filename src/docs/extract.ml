@@ -87,6 +87,32 @@ type extracted = {
   docs : doc list;
 }
 
+let typed_pat_field : Syntax.pat_field -> bool = function
+  | { it = Syntax.{ pat = { it = AnnotP _; _ }; _ }; _ }
+  | { it = Syntax.{ pat = { it = TupP []; _ }; _ }; _ } ->
+      true
+  | _ -> false
+
+let pf2tf (pat_field : Syntax.pat_field) =
+  let ann = function
+    | { it = Syntax.AnnotP (_, typ); _ } -> typ.it
+    | { it = Syntax.TupP []; _ } -> Syntax.TupT []
+    | _ -> assert false
+  in
+  Syntax.
+    {
+      pat_field with
+      it =
+        ValF
+          ( pat_field.it.id,
+            {
+              pat_field with
+              it = ann pat_field.it.pat;
+              note = Mo_types.Type.Pre;
+            },
+            { pat_field with it = Const; note = () } );
+    }
+
 module MakeExtract (Env : sig
   val all_decs : Syntax.dec_field list
   val imports : (string * string) list
@@ -102,14 +128,14 @@ struct
     Namespace.lookup_type namespace
 
   let rec extract_args = function
-    | Source.{ it = Syntax.VarP { it = name; at; _ }; _ } ->
+    | { it = Syntax.VarP { it = name; at; _ }; _ } ->
         Some
           {
             name;
             typ = None;
             doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
           }
-    | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
+    | { it = Syntax.AnnotP (p, ty); at; _ } ->
         Option.map
           (fun x ->
             {
@@ -118,7 +144,31 @@ struct
               doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
             })
           (extract_args p)
-    | Source.{ it = Syntax.WildP; _ } -> None
+    | { it = Syntax.WildP; _ } -> None
+    | { it = Syntax.ObjP fs; at; _ } as obj when List.for_all typed_pat_field fs
+      ->
+        Some
+          {
+            name = "_";
+            typ =
+              Some
+                {
+                  obj with
+                  it =
+                    Syntax.ObjT
+                      ( { obj with it = Mo_types.Type.Object; note = () },
+                        List.map pf2tf fs );
+                };
+            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+          }
+    | { it = Syntax.ObjP _; at; _ } ->
+        Some
+          {
+            name = "_";
+            (* can we do better? *)
+            typ = None;
+            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+          }
     | pat ->
         (* Wasm.Sexpr.print 80 (Arrange.pat pat); *)
         None

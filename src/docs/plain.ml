@@ -213,9 +213,12 @@ let plain_of_doc_typ : Buffer.t -> doc_type -> unit =
   | DTObj (ty, doc_fields) -> plain_of_typ buf plain_render_functions ty
 
 let function_arg : Buffer.t -> function_arg_doc -> unit =
- fun buf arg ->
-  Buffer.add_string buf arg.name;
-  opt_typ buf arg.typ
+ fun buf -> function
+  | { name = "_"; typ = Some ({ Source.it = Syntax.ObjT _; _ } as typ); _ } ->
+      plain_of_typ buf plain_render_functions typ
+  | arg ->
+      Buffer.add_string buf arg.name;
+      opt_typ buf arg.typ
 
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
 let end_block buf = bprintf buf "\n```\n\n"
