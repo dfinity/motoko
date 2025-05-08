@@ -43,7 +43,37 @@ Motoko functions vary by access and behaviour:
 - `shared`: Enables the actor to identify the caller.
 - `query`: Reads data without modifying state.
 - `composite query`: Reads state, can call other queries.
+For example, we can rewrite the object above as an actor: 
 
+``` motoko
+actor Digit {
+   var value = 0;
+   func reset() { value := 0 };
+   public shared func inc() : async (){ 
+      value += 1;
+      if (value == 10) reset(); 
+   };
+   public shared query func get() : async Nat { value }; 
+}
+```
+
+The only difference is that the public functions are now declared `shared` and return their result wrapped futures (`async ()` and `async nat`)
+
+The private `reset()` f unction can stay unchanged.
+
+Since the public functions of an actor must be `shared`, you are allowed to omit the `shared` keyword:
+
+``` motoko
+actor Digit {
+   var value = 0;
+   func reset() { value := 0 };
+   public func inc() : async () { 
+      value += 1;
+      if (value == 10) reset(); 
+   };
+   public query func get() : async Nat { value }; 
+}
+```
 [Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
 
 :::
