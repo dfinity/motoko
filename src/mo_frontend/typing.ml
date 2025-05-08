@@ -423,7 +423,7 @@ let check_closed env id k at =
 let check_import env at f ri =
   let full_path = match !ri with
     | Unresolved -> error env at "M0020" "unresolved import %s" f
-    | LibPath {path=fp; _}
+    | LibPath {path = fp; _}
     | ImportedValuePath fp
     | IDLPath (fp, _) -> fp
     | PrimPath -> "@prim" in
@@ -1147,7 +1147,7 @@ let check_lit env t lit at suggest =
     if not (sub env at t' t) then
     error env at "M0050"
       "literal of type%a\ndoes not have expected type%a%s"
-      (assert false; display_typ) t'
+      display_typ t'
       display_typ_expand t
       (if suggest then Suggest.suggest_conversion env.libs env.vals t' t else "")
 
@@ -2456,19 +2456,19 @@ and check_pats env ts pats ve at : Scope.val_env =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-        let ve1 = check_pat env t pat in
-        let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-        go ts' pats' ve'
+      let ve1 = check_pat env t pat in
+      let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
+      go ts' pats' ve'
     | _, _ ->
-        error env at "M0118" "tuple pattern has %i components but expected type has %i"
-          pats_len ts_len
+      error env at "M0118" "tuple pattern has %i components but expected type has %i"
+        pats_len ts_len
   in
   go ts pats ve
 
 and check_pat_fields env t tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
-  | [], pf::_ ->assert false;
+  | [], pf::_ ->
     error env pf.at "M0119"
       "object field %s is not contained in expected type%a"
       pf.it.id.it
