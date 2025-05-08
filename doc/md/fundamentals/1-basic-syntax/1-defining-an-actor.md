@@ -20,7 +20,7 @@ persistent actor Motoko {
     "Hello, " # name # "!";
   };
 };
-await Motoko.greet("Progrmmer");
+await Motoko.greet("Programmer");
 ```
 
 A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, written in Motoko or another language such as Rust.
