@@ -13,10 +13,17 @@ The most basic Motoko [function declaration](https://internetcomputer.org/docs/m
 func exampleFunction() : () {};
 ```
 
-By default, all functions are declared private unless explicitly declared `public`.
+Within objects, modules and actors all functions are declared private unless explicitly declared `public`.
 
 ```motoko no-repl
-public func exampleFunction() : () {};
+object Counter  {
+   var value = 0;
+   func reset() { value := 0 };
+   public func inc() { value := 1};
+   public func get() : Nat { value }; 
+}
+```
+The object `Counter` has two public methods, the functions `Counter.inc()` and `Counter.get()`. Both `value` and `reset()` are implicitly `private` - attempts to access `Counter.reset()` and `Counter.value` are type errors.
 ```
 
 A function should specify a return type. If a return type is not declared, it defaults to the unit `()` return type.
