@@ -26,15 +26,9 @@ Motoko supports both signed integers and unsigned naturals. Signed numbers can r
 
 The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.  
 
-Since the set of non-negative integers is a subset the integers, in Motoko [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int).  
+Since the set of non-negative integers is a subset of the integers, in Motoko [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int).  
 
 This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) without any need for conversion. The opposite is not true.  
-
-```motoko no-repl
-let x : Nat = 5;
-let y : Int = x; // Allowed
-let y = x << 2; // 0x28 (40 in decimal)
-```
 
 An [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type only contains non-negative numbers. 
 
@@ -56,6 +50,8 @@ Fixed-size numeric types ([`Int8`](https://internetcomputer.org/docs/motoko/base
 let x : Nat32 = 0xA; // 10 in hexadecimal
 let y = x << 2; // 0x28 (40 in decimal)
 ```
+
+## Char and Text
 
 `Char` represents a single unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
