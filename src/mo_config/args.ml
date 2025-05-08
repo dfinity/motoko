@@ -34,8 +34,8 @@ let string_map flag r desc =
 
 (* Everything related to imports, packages, aliases *)
 let package_args = [
-  string_map "--package" Flags.package_urls "<package-name> <package-path> specify a <package-name> <package-path> pair, separated by a space";
-  string_pair_map "--override" Flags.package_overrides "<package-name> <dependency-name> <replacement-name> within <package-name>, rename the package called <dependency-name> to <replacement-name>";
+  string_map "--package" Flags.package_urls "<package-name> <package-path>  specify a <package-name> <package-path> pair, separated by a space";
+  string_pair_map "--override" Flags.package_overrides "<package-name> <dependency-name> <replacement-name>  within <package-name>, rename the package called <dependency-name> to <replacement-name>";
   "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), "<idl-path>   path to actor IDL (Candid) files";
   string_map "--actor-alias" Flags.actor_aliases "<alias> <principal>  actor import alias"
   ]
