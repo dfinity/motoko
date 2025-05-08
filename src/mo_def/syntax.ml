@@ -116,8 +116,17 @@ and pat' =
 *)
 
 and pat_field = pat_field' Source.phrase
-and pat_field' = {id : id; pat : pat}
+and pat_field' =
+  | VarPF of id * pat
+  | TypPF of id * typ_bind list
 
+let pf_id pf = match pf.Source.it with
+  | VarPF(id, _) -> id
+  | TypPF(id, _) -> id
+
+let pf_pattern pf = match pf.Source.it with
+  | VarPF(_, pat) -> Some pat
+  | TypPF(_) -> None
 
 (* Expressions *)
 

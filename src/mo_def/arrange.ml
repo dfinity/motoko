@@ -186,7 +186,9 @@ module Make (Cfg : Config) = struct
 
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-  and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+  and pat_field pf = source pf.at (match pf.it with
+    | VarPF(id, p) -> "VarPF" $$ [Atom id.it; pat p]
+    | TypPF(id, tbs) -> "TypPF" $$ [Atom id.it] @ List.map typ_bind tbs)
 
   (* conditionally include parenthetical to avoid breaking lsp *)
   and parenthetical eo sexps =
