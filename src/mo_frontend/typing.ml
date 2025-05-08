@@ -1606,7 +1606,7 @@ and infer_exp'' env exp : T.typ =
         let t1, t2 = T.as_mono_func_sub t in
         if not (sub env exp1.at T.unit t1) then raise (Invalid_argument "");
         let t2' = T.as_opt_sub t2 in
-        let ve = check_pat_exhaustive warn env t2' pat in
+        let ve, te = check_pat_exhaustive warn env t2' pat in
         check_exp_strong (adjoin_vals env ve) T.unit exp2
       with Invalid_argument _ | Not_found ->
         local_error env exp1.at "M0082"
@@ -1980,7 +1980,7 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
       error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
         "a shared function is only allowed as a public field of an actor";
-    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
+    let ve1, te1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let codom = T.codom c (fun () -> assert false) ts2 in
     let t2 = match typ_opt with
@@ -2178,7 +2178,7 @@ and infer_cases env t_pat t cases : T.typ =
 
 and infer_case env t_pat t case =
   let {pat; exp} = case.it in
-  let ve = check_pat env t_pat pat in
+  let ve, te = check_pat env t_pat pat in
   let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   leave_scope env ve initial_usage;
@@ -2197,7 +2197,7 @@ and check_cases env t_pat t cases =
 and check_case env t_pat t case =
   let {pat; exp} = case.it in
   let initial_usage = enter_scope env in
-  let ve = check_pat env t_pat pat in
+  let ve, te = check_pat env t_pat pat in
   let t' = recover (check_exp (adjoin_vals env ve) t) exp in
   leave_scope env ve initial_usage;
   t'
@@ -2265,10 +2265,13 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
-    T.Named (id.it, t),  check_pat env t pat1
+    T.Named (id.it, t),
+    let ve, te = check_pat env t pat1 in ve
+
   | AnnotP (pat1, typ) ->
-    let t = check_typ env typ in
-    t, check_pat env t pat1
+     let t = check_typ env typ in
+     let ve, te = check_pat env t pat1 in
+     t, ve
   | ParP pat1 ->
     infer_pat name_types env pat1
 
@@ -2296,7 +2299,8 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
-    T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
+    let ve, te = check_pat_exhaustive local_error env T.ctxt pat in
+    T.Shared ss, ve
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
@@ -2310,18 +2314,19 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
-    check_pat_exhaustive local_error env T.ctxt pat
+    let ve, te = check_pat_exhaustive local_error env T.ctxt pat in
+    ve
   | _, T.Memory -> assert false
 
 
-and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
-  let ve = check_pat env t pat in
+and check_pat_exhaustive warnOrError env t pat : Scope.val_env * Scope.typ_env =
+  let ve, te = check_pat env t pat in
   if not env.pre then
     coverage_pat warnOrError env pat t;
-  ve
+  ve, te
 
-and check_pat env t pat : Scope.val_env =
-  fst (check_pat_aux env t pat Scope.Declaration)
+and check_pat env t pat : Scope.val_env * Scope.typ_env =
+  check_pat_aux env t pat Scope.Declaration
 
 and check_pat_aux env t pat val_kind : Scope.val_env * Scope.typ_env =
   assert (pat.note = T.Pre);
@@ -2381,7 +2386,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env * Scope.typ_env =
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
         display_typ_expand t
-    in check_pat env t1 pat1, T.Env.empty
+    in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
       try
@@ -2391,10 +2396,10 @@ and check_pat_aux' env t pat val_kind : Scope.val_env * Scope.typ_env =
       with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
-    in check_pat env t1 pat1, T.Env.empty
+    in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env t pat1 in
-    let ve2 = check_pat env t pat2 in
+    let ve1, te1 = check_pat env t pat1 in
+    let ve2, te2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     T.Env.(iter (fun k (t1, _, _) ->
@@ -2402,6 +2407,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env * Scope.typ_env =
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
     let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub t1 t2, at1, kind1) in
+    (* TODO: merge typ envs *)
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -2410,9 +2416,9 @@ and check_pat_aux' env t pat val_kind : Scope.val_env * Scope.typ_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t' pat1, T.Env.empty
+    check_pat env t' pat1
   | ParP pat1 ->
-    check_pat env t pat1, T.Env.empty
+    check_pat env t pat1
 
 (*
 Consider:
@@ -2453,7 +2459,7 @@ and check_pats env ts pats ve at : Scope.val_env =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-        let ve1 = check_pat env t pat in
+        let ve1, te1 = check_pat env t pat in
         let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
         go ts' pats' ve'
     | _, _ ->
@@ -3304,11 +3310,11 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
-    let ve' = match fail with
+    let ve', te' = match fail with
       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
       | Some _ -> check_pat env t pat
     in
-    Scope.{empty with val_env = ve'}
+    Scope.{empty with val_env = ve'; typ_env = te'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
