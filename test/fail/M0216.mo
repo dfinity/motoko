@@ -1,6 +1,8 @@
-import { type T } "M0216/lib";
+import { type T; type Result<Ok, Err> } "M0216/lib";
 
-let t : T = 10;
+let _t : T = 10;
+let _r1 : Result<Nat, Text> = #ok(3);
+let _r2 : Result<Nat, Text> = #err("Woot");
 
 module What {
   public type S<A> = A;
@@ -16,10 +18,17 @@ type Right = module {
 
 type tVariant = { #left : Left; #right : Right };
 
-func f(x : tVariant) {
+func _f(x : tVariant) {
   let (#left{ type N }) = x else {
     return ()
   };
 
-  let n : N = 10;
-}
+  let _n : N = 10;
+};
+
+func _f2(x : tVariant) {
+  let (#left{ type N } or #right { type N }) = x else {
+    return ()
+  };
+  let _n : N = 10;
+};
