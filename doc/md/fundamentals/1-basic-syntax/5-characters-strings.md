@@ -72,7 +72,7 @@ let greeting : Text = "Hello, world!";
 
 // Concatenating text
 
-"ICP" # "x" # "Motoko" // ICP x Motoko
+"ICP " # "❤️" # " Motoko" // "ICP ❤️ Motoko"
 ```
 
 `t.size()` returns the number of characters in the text `t`.  
