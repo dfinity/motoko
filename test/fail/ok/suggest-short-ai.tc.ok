@@ -78,6 +78,15 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     clzNat64 : (w : Nat64) -> Nat64;
     clzNat8 : (w : Nat8) -> Nat8;
     cos : (f : Float) -> Float;
+    costCall : (methodNameSize : Nat64, payloadSize : Nat64) -> Nat;
+    costCreateCanister : () -> Nat;
+    costHttpRequest : (requestSize : Nat64, maxResBytes : Nat64) -> Nat;
+    costSignWithEcdsa :
+      (keyName : Text, curveEncoding : Nat32) ->
+        (resultCode : Nat32, costOrUndefined : Nat);
+    costSignWithSchnorr :
+      (keyName : Text, algorithmEncoding : Nat32) ->
+        (resultCode : Nat32, costOrUndefined : Nat);
     createActor : (wasm : Blob, argument : Blob) -> async Principal;
     ctzInt16 : (w : Int16) -> Int16;
     ctzInt32 : (w : Int32) -> Int32;
