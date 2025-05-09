@@ -102,11 +102,11 @@ import Time "mo:base/Time";
 import Logger "canister:Logger";
 
 persistent actor {
-private func log(msg : Text) : async () {
-Logger.log(Time.now() + msg); // sends a message
-};
-public shared func doStuff() : async () {
-await log("doingStuff"); } }
+  private func log(msg : Text) : async () {
+    Logger.log(Time.now() + msg); // sends a message
+  };
+  public shared func doStuff() : async () {
+    await log("doingStuff"); } }
 ```
 
 A more efficient variation is to use `async*` and `await*` that avoids the overhead of ordinary `await` just to call the local function:  
