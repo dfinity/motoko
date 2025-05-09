@@ -129,7 +129,7 @@ persistent actor {
 ## Shared functions
 
 The public functions of an actor determine its external interface. All public functions in an actor must be shared and can be either `shared`, `shared query` or `shared composite query` functions. Private functions cannot be `shared`.
-Since public functions must be `shared`, the `shared` keyword is optional and can be committed.  
+Since an actor's public functions must be shared, the `shared` keyword is optional and can be omitted.  
 
 `shared` functions permanently update the state of an actor, while `query` and `composite query` functions are only executed for their result. While queries can temporarily alter the state of the actor, the changes are not permanent and never visible to other callers. It's as if each query operated on a copy of the actor that is discarded on return from the query. When called from a front-end, `query` functions have much lower latency than calling the equivalent `shared` method. This is because `shared` functions require the protocol to reach consensus on the state changes and result of a shared function, while `query` functions do not.  
 
