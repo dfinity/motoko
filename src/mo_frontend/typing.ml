@@ -2019,7 +2019,8 @@ and check_exp' env0 t exp : T.typ =
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
     t
-  | ImportE (_, {contents = ImportedValuePath _}), (T.(Prim (Blob|Text)) as t) ->
+  | ImportE (_, {contents = ImportedValuePath path}), (T.(Prim Text) as t) ->
+    Lib.FilePath.contents path |> check_text env exp.at |> ignore;
     t
   | ImportE _, t ->
     t
