@@ -136,10 +136,10 @@ let get_package_override base pkg path : string =
   let override = ref None in
   Flags.StringPairMap.iter (fun (dir, pkg') override_pkg ->
     if pkg = pkg' then
-      (* TODO: properly check if `base` is within the directory *)
-      if String.starts_with ~prefix:dir base && (
+      if String.starts_with ~prefix:(dir ^ "/") (base ^ "/") && (
         match !override with
-        | Some (other_path, _) -> String.length dir > String.length other_path
+        | Some (dir', _) ->
+          String.length dir > String.length dir' (* most specific parent directory *)
         | None -> true
       ) then override := Some (dir, override_pkg)
   ) !Flags.package_overrides;
