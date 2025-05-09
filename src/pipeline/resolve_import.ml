@@ -1,4 +1,5 @@
 open Mo_def
+open Mo_config
 open Ic
 module Traversals = Mo_frontend.Traversals
 
@@ -131,11 +132,30 @@ let append_extension : (string -> bool) -> string -> string =
   else
     lib_path
 
+let get_package_override at pkg path : string =
+  let {file; _} = at.left in
+  let from_pkg = ref None in
+  Flags.M.iter (fun pkg url ->
+    (* TODO: normalize `from_path` *)
+    let from_path = url in
+    if String.starts_with ~prefix:from_path file && (
+      match !from_pkg with
+      | Some (_, other_path) -> String.length from_path < String.length other_path
+      | None -> true
+    ) then from_pkg := Some (pkg, url)
+  ) !Flags.package_urls;
+  (match !from_pkg with
+  | Some (from_pkg, _) ->
+    (match Flags.StringPairMap.find_opt (from_pkg, pkg) !Flags.package_overrides with
+    | Some override_pkg -> override_pkg
+    | None -> pkg) (* no relevant --override flag *)
+  | None -> pkg) (* no relevant enclosing package *)
+
 let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
   let full_path = Lib.FilePath.normalise full_path in
   if Sys.file_exists full_path
-  then Ok full_path
+    then Ok full_path
   else Error (err_file_does_not_exist' at full_path)
 
 let add_lib_import msgs imported ri_ref at lib_path =
@@ -178,7 +198,8 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     add_lib_import msgs imported ri_ref at
       { path = in_base base path; package = None }
   | Ok (Url.Package (pkg,path)) ->
-    begin match M.find_opt pkg packages with
+    let override_pkg = get_package_override at pkg path in
+    begin match M.find_opt override_pkg packages with
     | Some pkg_path ->
       add_lib_import msgs imported ri_ref at
         { path = in_base pkg_path path; package = Some pkg }
