@@ -6,7 +6,7 @@ sidebar_position: 2
 
 All Motoko types are divided into sets. The smallest is the set of shared types. Shared types are part of the larger set of [stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types).  
 
-A shared type's value can easily be exchanged, or shared, with other actors. To avoid the problems of sharing state across actors, **shared types are all immutable**. This means that their values can be transmitted by simply copying data, avoiding the complexity and perils of transmitting stateful objects.  
+A shared type's value can easily be exchanged, or shared, with other actors. To avoid the problems of sharing state across actors, **all shared types are immutable**. This means that their values can be transmitted by simply copying data, avoiding the complexity and perils of transmitting stateful objects.  
 Motoko's shared types also have a natural translation to Candid types.
 
 Operationally, you can think of shared types as the subset of types that can be serialized to Candid.
