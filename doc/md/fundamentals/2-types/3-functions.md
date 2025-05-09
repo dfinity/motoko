@@ -66,7 +66,7 @@ func gcd(a : Nat, b : Nat) : Nat {
 let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
 ```
 
-The type of `add` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals  as argument and returns a natural as a result.  
+The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals  as argument and returns a natural as a result.  
 
 **Example use case:** Local computations that do not require communication with other actors or canisters.  
 
@@ -81,7 +81,7 @@ let num = identity<Nat>(42);
 let text = identity<Text>("Hello");  
 ```
 
-The type of identity is `<T> T -> T`, indicating that when supplied with any type `T`, and argument of type `T`, it returns a result of the same type `T`.
+The type of identity is `<T>T -> T`, indicating that when supplied with any type `T`, and argument of type `T`, it returns a result of the same type `T`.
 
 Type arguments can be omitted from calls when the compiler can infer them from the arguments and context, allowing the simpler code:
 
