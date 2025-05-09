@@ -4780,7 +4780,6 @@ module IC = struct
       E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
       E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
       E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
-      (* E.add_func_import env "ic0" "cost_vetkd_derive_encrypted_key" [i; i; I32Type; i] [I32Type]; *)
 
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
@@ -5347,14 +5346,6 @@ module IC = struct
       system_call env "cycles_burn128"
     | _ ->
       E.trap_with env "cannot burn cycles when running locally"
-
-  (* Cost *)
-  let cost_call = ic_system_call "cost_call"
-  let cost_create_canister = ic_system_call "cost_create_canister"
-  let cost_http_request = ic_system_call "cost_http_request"
-  let cost_sign_with_ecdsa = ic_system_call "cost_sign_with_ecdsa"
-  let cost_sign_with_schnorr = ic_system_call "cost_sign_with_schnorr"
-  let cost_vetkd_derive_encrypted_key = ic_system_call "cost_vetkd_derive_encrypted_key"
 
   let set_certified_data env =
     match E.mode env with
@@ -10493,7 +10484,7 @@ module Cost = struct
           get_method_name_size ^^
           get_payload_size ^^
           get_dst ^^
-          IC.cost_call env ^^
+          IC.ic_system_call "cost_call" env ^^
           get_dst ^^
           Cycles.from_word128_ptr env
         )
@@ -10503,7 +10494,7 @@ module Cost = struct
     Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
       Stack.with_words env "dst" 2L (fun get_dst ->
         get_dst ^^
-        IC.cost_create_canister env ^^
+        IC.ic_system_call "cost_create_canister" env ^^
         get_dst ^^
         Cycles.from_word128_ptr env
       )
@@ -10518,7 +10509,7 @@ module Cost = struct
           get_request_size ^^
           get_max_res_bytes ^^
           get_dst ^^
-          IC.cost_http_request env ^^
+          IC.ic_system_call "cost_http_request" env ^^
           get_dst ^^
           Cycles.from_word128_ptr env
         )
@@ -10533,7 +10524,7 @@ module Cost = struct
           get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
           get_curve ^^
           get_dst ^^
-          IC.cost_sign_with_ecdsa env ^^
+          IC.ic_system_call "cost_sign_with_ecdsa" env ^^
           G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
           TaggedSmallWord.msb_adjust Type.Nat32 ^^
           StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^
@@ -10551,7 +10542,7 @@ module Cost = struct
           get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
           get_algorithm ^^
           get_dst ^^
-          IC.cost_sign_with_schnorr env ^^
+          IC.ic_system_call "cost_sign_with_schnorr" env ^^
           G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
           TaggedSmallWord.msb_adjust Type.Nat32 ^^
           StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^

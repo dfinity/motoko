@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## [Unreleased]
+
+* motoko (`moc`)
+
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
 ## 0.14.9 (2025-04-25)
 
 * motoko (`moc`)
