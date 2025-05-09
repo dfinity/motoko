@@ -3268,33 +3268,19 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
-
-
-
   | LetD (pat, exp, None) when is_value_import dec ->
     let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.slienced}) pat with
       | None -> T.blob, check_pat env T.blob pat
       | Some tv -> tv
     in
     (match T.normalize typ with
-     | T.(Prim Text) -> (*failwith "Text"*) ()
-    | T.(Prim Blob) -> (*failwith "Blob"*) ()
-    | T.Pre -> failwith "Pre"
-    | T.Non -> failwith "Non"
-    | _ -> failwith ("OTHER" ^ (Wasm.Sexpr.to_string 80 (Arrange_type.typ typ))));
-    (*check_exp {env with pre = true; check_unused = false} typ exp;*)
+     | T.(Prim (Text | Blob)) -> ()
+     | T.Pre -> failwith "Pre"
+     | T.Non -> failwith "Non"
+     | _ ->
+       error env pat.at "M0216" "value import pattern can only bind `Blob` or `Text`, but asks for type%a"
+         display_typ typ);
     Scope.{empty with val_env}
-
-  | LetD ({ it = ParP { it = AnnotP (pat, typ); _ }; _ }, exp, None) when false && is_import dec ->
-    let t = check_typ env typ in
-    check_exp {env with pre = true; check_unused = false} t exp;
-    let ve' = check_pat env t pat in
-    print_endline (Wasm.Sexpr.to_string 80 (Arrange.dec dec));
-    Scope.{empty with val_env = ve'}
-
-
-
-
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
