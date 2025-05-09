@@ -31,7 +31,7 @@ Motoko provides different types of functions based on where in the program they 
 
 | Keyword  | Function  |
 |-------------|--------------|
-| `shared`    | Provides access to the caller’s identity. |
+| `shared`    | Used to enable async communication between actors. Exposes the caller’s identity. |
 | `async`     | Runs the function [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) and returns its result in a future. |
 | `query`     | Optimized for reading data but cannot modify [state](https://internetcomputer.org/docs/motoko/fundamentals/state). |
 
