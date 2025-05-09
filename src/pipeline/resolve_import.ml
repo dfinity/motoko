@@ -132,24 +132,22 @@ let append_extension : (string -> bool) -> string -> string =
   else
     lib_path
 
-let get_package_override at pkg path : string =
-  let {file; _} = at.left in
+let get_package_override base pkg path : string =
   let from_pkg = ref None in
-  Flags.M.iter (fun pkg url ->
+  Flags.M.iter (fun pkg' url' ->
     (* TODO: normalize `from_path` *)
-    let from_path = url in
-    if String.starts_with ~prefix:from_path file && (
+    if String.starts_with ~prefix:url' base && (
       match !from_pkg with
-      | Some (_, other_path) -> String.length from_path < String.length other_path
+      | Some (_, other_path) -> String.length url' < String.length other_path
       | None -> true
-    ) then from_pkg := Some (pkg, url)
+    ) then from_pkg := Some (pkg', url')
   ) !Flags.package_urls;
-  (match !from_pkg with
-  | Some (from_pkg, _) ->
-    (match Flags.StringPairMap.find_opt (from_pkg, pkg) !Flags.package_overrides with
-    | Some override_pkg -> override_pkg
-    | None -> pkg) (* no relevant --override flag *)
-  | None -> pkg) (* no relevant enclosing package *)
+  let from_pkg' = match !from_pkg with
+  | Some (p, _) -> p
+  | None -> "." in (* importing outside of a package *)
+  match Flags.StringPairMap.find_opt (from_pkg', pkg) !Flags.package_overrides with
+  | Some override_pkg -> override_pkg
+  | None -> pkg (* no relevant --override flag *)
 
 let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
@@ -198,7 +196,8 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     add_lib_import msgs imported ri_ref at
       { path = in_base base path; package = None }
   | Ok (Url.Package (pkg,path)) ->
-    let override_pkg = get_package_override at pkg path in
+    let override_pkg = get_package_override base pkg path in
+    if !Flags.verbose && pkg <> override_pkg then Printf.printf "-- Overriding %s -> %s (%s)\n" pkg override_pkg at.left.file;
     begin match M.find_opt override_pkg packages with
     | Some pkg_path ->
       add_lib_import msgs imported ri_ref at
