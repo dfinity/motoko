@@ -1081,6 +1081,10 @@ let check_text env at s =
     local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s);
   s
 
+let check_text_import env at path s =
+  if not (Lib.Utf8.is_valid s) then
+    local_error env at "M0217" "imported string literal from file \"%s\" is not valid utf8" (String.escaped path)
+
 let infer_lit env lit at : T.prim =
   match !lit with
   | NullLit -> T.Null
@@ -2020,7 +2024,7 @@ and check_exp' env0 t exp : T.typ =
     check_exp env typ exp1;
     t
   | ImportE (_, {contents = ImportedValuePath path}), (T.(Prim Text) as t) ->
-    Lib.FilePath.contents path |> check_text env exp.at |> ignore;
+    Lib.FilePath.contents path |> check_text_import env exp.at path;
     t
   | ImportE _, t ->
     t
