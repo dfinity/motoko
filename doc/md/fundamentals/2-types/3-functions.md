@@ -4,25 +4,26 @@ sidebar_position: 3
 
 # Function types
 
-Functions are reusable chunks of code that perform a specific task. A function is defined with a name, optional parameters, and returns a result of a defined when called. A function can also specify a return type for the value it produces.
+Functions are reusable chunks of code that perform a specific task. A function is defined with a name and optional parameters, then returns a defined result. A function can also specify a return type for the value it produces.
 
-:::info Side Effects
-In the process of producing a result, the execution of the function can have other side-effects, like modifying state, printing to the log, or sending messages to other canisters.
+:::info Side effects
+In the process of producing a result, the execution of the function can have other side effects, like modifying state, printing to the log, or sending messages to other canisters.
 :::
 
 Functions can be synchronous or asynchronous. A synchronous function blocks the caller until it returns with a result, just like functions in most traditional programming languages.
 
 An asynchronous function returns immediately, providing a **future** value as a placeholder for its result. The caller can await the future later to retrieve the result or ignore it and continue with other tasks.
 
-Motoko has functions with different capabilities.
+Motoko has different sorts of functions with different capabilities.
 Local functions, declared using just the `func` keyword, are typically synchronous but can be asynchronous if their body is an `async` expression.
+A local function is only available to call within the actor that defines it, it cannot be called from another actor, or be sent to another actor in a message.
 
 Shared functions, declared in actor bodies using the `shared`, `shared query` or `shared composite query` keywords, are asynchronous.
-Calling a shared function sends a message to another actor. The caller of a shared function is typically another Motoko actor, ICP canister or frontend code interacting with the ICP using an agent.
+Calling a shared function sends a message to another actor. The caller of a shared function is typically another Motoko actor, a [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters), or an [agent](https://internetcomputer.org/docs/building-apps/interact-with-canisters/agents/overview).
 
 An actor's shared functions are always called as the result of the actor receiving some message. Shared functions that return a result have `async` return types.
 
-Since actors can only have `shared` functions as public members, the `shared` keyword can, and usually is, omitted from public actor functions.
+Since actors can only have `shared` functions as public members, the `shared` keyword  is optional and can be omitted from public actor functions.
 
 Motoko provides different types of functions based on where in the program they execute and how they interact with the system. Understanding these distinctions is essential when designing efficient and scalable canister logic.
 
