@@ -282,6 +282,7 @@ let interpret_lit env lit : V.value =
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
   | BlobLit b -> V.Blob b
+  (* | PreLit (s, _) -> V.Text s FIXME: why not type-checked in ProgU? *)
   | PreLit _ -> assert false
 
 
@@ -456,6 +457,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
+    | ImportedValuePath path ->
+      let contents = find path env.libs |> V.as_blob in
+      k T.(match normalize exp.note.note_typ with | Prim Blob -> V.Blob contents | Prim Text -> V.Text contents
+                                                  | Non -> failwith "Non?"
+                                                  | _ -> assert false)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -1122,7 +1128,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
@@ -1140,6 +1146,14 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
+  | Syntax.FileU str -> fun _ -> V.Blob str
+                        (* Always create a blob here, but the ImportedValuePath will apply the coercion if Text needed
+    begin match T.normalize cub.note.note_typ with
+    | T.(Prim Text) -> interpret_lit env (ref (TextLit str))
+    | T.(Prim Blob) -> interpret_lit env (ref (BlobLit str))
+    | T.Non) -> failwith "NON?"
+    | _ -> assert false
+    end*)
   | _ -> assert false
 
 
