@@ -133,21 +133,19 @@ let append_extension : (string -> bool) -> string -> string =
     lib_path
 
 let get_package_override base pkg path : string =
-  let from_pkg = ref None in
-  Flags.M.iter (fun pkg' url' ->
-    (* TODO: normalize `from_path` *)
-    if String.starts_with ~prefix:url' base && (
-      match !from_pkg with
-      | Some (_, other_path) -> String.length url' < String.length other_path
-      | None -> true
-    ) then from_pkg := Some (pkg', url')
-  ) !Flags.package_urls;
-  let from_pkg' = match !from_pkg with
-  | Some (p, _) -> p
-  | None -> "." in (* importing outside of a package *)
-  match Flags.StringPairMap.find_opt (from_pkg', pkg) !Flags.package_overrides with
-  | Some override_pkg -> override_pkg
-  | None -> pkg (* no relevant --override flag *)
+  let override = ref None in
+  Flags.StringPairMap.iter (fun (dir, pkg') override_pkg ->
+    if pkg = pkg' then
+      (* TODO: properly check if `base` is within the directory *)
+      if String.starts_with ~prefix:dir base && (
+        match !override with
+        | Some (other_path, _) -> String.length dir > String.length other_path
+        | None -> true
+      ) then override := Some (dir, override_pkg)
+  ) !Flags.package_overrides;
+  match !override with
+  | Some (_, override_pkg) -> override_pkg
+  | None -> pkg (* importing outside of a package *)
 
 let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
