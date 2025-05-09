@@ -31,8 +31,6 @@ Motoko provides different types of functions based on where in the program they 
 
 | Keyword  | Function  |
 |-------------|--------------|
-| `public`    | Makes a function callable by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). |
-| `private`    | Restricts the function visiblity to the namespace (actor, class or module). |
 | `shared`    | Provides access to the caller’s identity. |
 | `async`     | Runs the function [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) and returns a future. |
 | `query`     | Optimized for reading data but cannot modify [state](https://internetcomputer.org/docs/motoko/fundamentals/state). |
