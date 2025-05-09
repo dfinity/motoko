@@ -2554,43 +2554,52 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
 
 (* Objects *)
 
+and nonpub_fields dec_fields : visibility_env =
+  List.fold_right nonpub_field dec_fields T.Env.(empty, empty)
+
+and nonpub_field dec_field xs : visibility_env =
+  match dec_field.it with
+  | {vis = { it = Private | System; _}; dec; _} ->
+    vis_dec T.{depr = None; track_region = no_region; region = dec_field.at} dec xs
+  | _ -> xs
+
 and pub_fields dec_fields : visibility_env =
   List.fold_right pub_field dec_fields T.Env.(empty, empty)
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
   | {vis = { it = Public depr; _}; dec; _} ->
-    pub_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
+    vis_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
 
-and pub_dec src dec xs : visibility_env =
+and vis_dec src dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _, _) -> pub_pat src pat xs
-  | VarD (id, _) -> pub_val_id src id xs
+  | LetD (pat, _, _) -> vis_pat src pat xs
+  | VarD (id, _) -> vis_val_id src id xs
   | ClassD (_, _, _, id, _, _, _, _, _) ->
-    pub_val_id src {id with note = ()} (pub_typ_id src id xs)
-  | TypD (id, _, _) -> pub_typ_id src id xs
+    vis_val_id src {id with note = ()} (vis_typ_id src id xs)
+  | TypD (id, _, _) -> vis_typ_id src id xs
 
-and pub_pat src pat xs : visibility_env =
+and vis_pat src pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id -> pub_val_id src id xs
-  | TupP pats -> List.fold_right (pub_pat src) pats xs
-  | ObjP pfs -> List.fold_right (pub_pat_field src) pfs xs
+  | VarP id -> vis_val_id src id xs
+  | TupP pats -> List.fold_right (vis_pat src) pats xs
+  | ObjP pfs -> List.fold_right (vis_pat_field src) pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | TagP (_, pat1)
   | AnnotP (pat1, _)
-  | ParP pat1 -> pub_pat src pat1 xs
+  | ParP pat1 -> vis_pat src pat1 xs
 
-and pub_pat_field src pf xs =
-  pub_pat src pf.it.pat xs
+and vis_pat_field src pf xs =
+  vis_pat src pf.it.pat xs
 
-and pub_typ_id src id (xs, ys) : visibility_env =
+and vis_typ_id src id (xs, ys) : visibility_env =
   (T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} xs, ys)
 
-and pub_val_id src id (xs, ys) : visibility_env =
+and vis_val_id src id (xs, ys) : visibility_env =
   (xs, T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} ys)
 
 
@@ -2620,6 +2629,19 @@ and object_of_scope env sort dec_fields scope at =
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
+
+  (* Add sources for private fields. *)
+  if !Flags.typechecker_combine_srcs then begin
+    let nonpub_typ, nonpub_val = nonpub_fields dec_fields in
+    let add_srcs ids =
+      T.Env.iter (fun id _env ->
+        match T.Env.find_opt id ids with
+        | None -> ()
+        | Some src -> Field_sources.add_src env.srcs src.id_region)
+    in
+    add_srcs nonpub_typ scope.Scope.typ_env;
+    add_srcs nonpub_val scope.Scope.val_env;
+  end;
 
   Lib.List.iter_pairs
     (fun x y ->

@@ -87,15 +87,9 @@ module Make (Cfg : Config) = struct
      [typ] of a node but also its [Arrange_type.typ] (which motivated these
      changes). Arranging the type for every node would be expensive; there
      would be considerable duplication as there is no sharing mechanism
-     currently. As a compromise, we currently annotate only the nodes that
-     currently matter for the language server, i.e. [DotE] nodes and the left
-     expression of a [DotE] node (the latter is handled in [exp]). *)
-  let should_arrange_exp_typ ?arrange_typ e =
-    match e.it with
-    | DotE _ -> true
-    | _ -> Option.value ~default:false arrange_typ
-
-  let rec exp ?arrange_typ e = source e.at (annot ~arrange_typ:(should_arrange_exp_typ ?arrange_typ e) e.note (match e.it with
+     currently. As a compromise, we annotate only the nodes that currently
+     matter for the language server, i.e. the left expression of a [DotE] node. *)
+  let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]

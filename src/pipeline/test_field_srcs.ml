@@ -154,7 +154,9 @@ let%expect_test "" =
       (@@ test-field-srcs.mo (Pos 9 16) (Pos 9 20))
     )
     Sources table:
+    test-field-srcs.mo:2.9-2.15: test-field-srcs.mo:2.9-2.15
     test-field-srcs.mo:3.17-3.21: test-field-srcs.mo:3.17-3.21
+    test-field-srcs.mo:8.9-8.15: test-field-srcs.mo:8.9-8.15
     test-field-srcs.mo:9.17-9.21: test-field-srcs.mo:3.17-3.21 test-field-srcs.mo:9.17-9.21
     test-field-srcs.mo:14.15-14.19: test-field-srcs.mo:14.15-14.19 |}]
 
