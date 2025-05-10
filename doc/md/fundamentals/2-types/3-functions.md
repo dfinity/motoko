@@ -152,7 +152,7 @@ Omitting the shared keyword, we can also write:
 persistent actor Account {  
   var balance = 0;  
   
-  public shared func deposit(amount : Nat) : async Nat {  
+  public func deposit(amount : Nat) : async Nat {  
      balance += amount;  
      balance  
   }  
@@ -208,17 +208,17 @@ A good example of a composite query might be a bank that holds references to its
 
 ```motoko no-repl
 persistent actor Counter {
-    type Account = actor { getBalance() : query () -> async Nat;
+  type Account = actor { getBalance() : query () -> async Nat;
   };
 
   var accounts : [Account] = []
 
   public shared composite query func getDeposits() {
-  var deposits = 0;
-  for (account in accounts.values()) {
-  deposits += await account.getBalance()
+    var deposits = 0;
+      for (account in accounts.values()) {
+      deposits += await account.getBalance()
   };
-  return deposits;
+  deposits;
   };
 }
 ```
@@ -226,13 +226,13 @@ persistent actor Counter {
 Again, the shared keyword is redundant and can be omitted:
 
 ```motoko
-  public composite query func getDeposits() {  
-    var deposits = 0;  
-    for (account in accounts.values()) {  
-       deposits += await account.getBalance()  
-    };  
-    return deposits;  
-  };  
+  public composite query func getDeposits() {
+    var deposits = 0;
+    for (account in accounts.values()) {
+       deposits += await account.getBalance()
+    };
+    deposits;
+  };
 ```
 
 The type of `getDeposits` is `shared composite query () -> Nat`.
@@ -240,16 +240,16 @@ The type of `getDeposits` is `shared composite query () -> Nat`.
 ### Shared composite query functions
 
 ```motoko no-repl
-actor Bank {
-    stable var balance : Nat = 100;
+persistent actor Bank {
+    var balance : Nat = 100;
 
     public query func getBalance() : async Nat {
-        return balance;
+        balance;
     };
 
     public composite query func doubleBalance() : async Nat {
         let b : Nat = await getBalance();
-        return b * 2;
+        b * 2;
     };
 };
 await Bank.doubleBalance();
@@ -262,7 +262,7 @@ await Bank.doubleBalance();
 [Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
 
 ```motoko no-repl
-  public func setGreeting(prefix : Text) : async () {
+  public func setGreeting(prefix : Text) : () {
     greeting := prefix;
   };
 ```
@@ -280,7 +280,7 @@ A function can take a single argument of a specific type.
 ```motoko no-repl
   public func increment(amount : Nat) : async Nat {
     count += amount;
-    return count;
+    count;
   }
 ```
 
@@ -299,8 +299,8 @@ Functions can accept multiple arguments and return multiple results by enclosing
 Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
-  public func userName(user: { name : Text; age : Nat }) : Text {
-    user.name;
+func userName(user: { name : Text; age : Nat }) : Text {
+    user.name
   }
 ```
 
