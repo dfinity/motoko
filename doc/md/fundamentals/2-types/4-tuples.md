@@ -8,10 +8,10 @@ A tuple is a fixed-size, ordered collection of values, where each element can ha
 
 A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The type of a tuple is determined by types of its elements, such as ([`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool)). The values inside a tuple are evaluated in order from left to right. Tuples are immutable and their components cannot be modified after creation (unlike record fields, which can be declared mutable).  
 
-A tuple with zero elements is called the **unit value**, written as `()`. It represents a trivial result or token return value.  
+A tuple with zero elements is called the **unit value**, written as `()`. Since it carries no other data, it represents a trivial  or token value.  
 It's type is the **unit type**, also written `()`.  
 
-Unit values are typically used as dummy argument or return values for functions that don't require arguments, or don't produce results (but may produce side-effects eg: printing to the console).
+Unit values are typically used as dummy argument or return values for functions that don't require arguments or don't produce results. However, they may still produce side effects like printing to the console.
 
 ## Defining a tuple
 
@@ -93,7 +93,7 @@ let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 
 This structure efficiently represents a collection of key-value pairs without requiring a dedicated [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
-## Extracting values using switch
+## Pattern matching on tuples
 
 As well as the dot notation, tuple can be decomposed using tuple patterns. Combined with `let` or `switch`, this let you access the components of a tuple by simple pattern matching.
 
