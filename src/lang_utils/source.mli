@@ -3,6 +3,12 @@ type region = {left : pos; right : pos}
 type ('a, 'b) annotated_phrase = {at : region; it : 'a; mutable note: 'b}
 type 'a phrase = ('a, unit) annotated_phrase
 
+module Pos_ord : Set.OrderedType with type t = pos
+module Region_ord : Set.OrderedType with type t = region
+
+module Region_set : Set.S with type elt = region
+module Region_map : Map.S with type key = region
+
 val no_pos : pos
 val no_region : region
 

@@ -99,14 +99,14 @@ let rec normalize_let p e =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP x @! at, e' @? at, None) @? at
+  then LetD(VarP x @! x.at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
 let is_sugared_func_or_module dec = match dec.it with
-  | LetD({it = VarP _; _} as pat, exp, None) ->
-    dec.at = pat.at && pat.at = exp.at &&
+  | LetD({it = VarP _; _}, exp, None) ->
+    dec.at = exp.at &&
     (match exp.it with
     | ObjBlockE (_, sort, _, _) ->
       sort.it = Type.Module
