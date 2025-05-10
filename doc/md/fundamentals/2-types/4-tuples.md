@@ -52,37 +52,6 @@ func getUserInfo() : (Text, Nat) {
 getUserInfo();
 ```
 
-## Nesting tuples
-
-Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points $(x_1, y_1)$ and $(x_2, y_2)$ is calculated using the formula:
-
-$$
-m = \frac{y_2 - y_1}{x_2 - x_1}
-$$
-
-Using nested tuples, this can be implemented in Motoko as follows:
-
-```motoko no-repl
-// Points is a nested tuple
-func calculateGradient(points : ((Float, Float), (Float, Float))) : ?Float {
-let ((x1, y1), (x2, y2)) = points;  
-  if (x1 == x2) {  
-    null // Gradient is undefined for a vertical line  
-  } else {  
-    ?((y2 - y1) / (x2 - x1)) // Wraps the result as an option  
-  }  
-}  
-
-let coordinates : ((Float, Float), (Float, Float)) = ((2.0, 3.0), (5.0, 7.0));
-
-let gradient : ?Float = calculateGradient(coordinates);
-
-Debug.print(switch (gradient) {
-    case (?m) "Gradient: " # debug_show(m);
-    case null "Gradient is undefined.";
-});
-```
-
 ## Using tuples in collections
 
 Tuples can be stored in arrays or other data structures. Tuples can be constructed with named types, improving readability. By naming the types in the tuple in the collection, the intent of each component is clarified, reducing ambiguity.  
@@ -103,6 +72,34 @@ let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 let (firstUserName, _) = users[0] // "Motoko" 
 ```
 
-The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) age. `users[0]` retrieves the first tuple in the array. The `let` pattern extracts only the name while ignoring the second element using the wildcard pattern (`_`). 
+The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) age. `users[0]` retrieves the first tuple in the array. The `let` pattern extracts only the name while ignoring the second element using the wildcard pattern (`_`).
+
+## Nesting tuples
+
+Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points $(x_1, y_1)$ and $(x_2, y_2)$ is calculated using the formula:
+
+$$
+m = \frac{y_2 - y_1}{x_2 - x_1}
+$$
+
+Using nested tuples, this can be implemented in Motoko as follows:
+
+```motoko
+type Point = (Float, Float);
+// Line is a tuple of points, that is, a nested tuple
+type Line = (Point, Point);
+  func calculateGradient(line : Line) : ?Float {
+    let ((x1, y1), (x2, y2)) = line;
+    if (x1 == x2) {
+      null
+      // Gradient is undefined for a vertical line
+    } else {
+      ?((y2 - y1) / (x2 - x1)) // Wraps the result as an option
+    }
+  };
+  let line : Line = ((2.0, 3.0), (5.0, 7.0));
+  // Show the gradient when run
+  calculateGradient(line);
+```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
