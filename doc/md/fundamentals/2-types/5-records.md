@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Records
 
-Records provide a structured way to group related values using named fields. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability. Unlike tuples, record also support mutable fields.  
+Records let you group related values using named fields. Each field can have a different type. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving maintainability. Records also support mutable fields, declared using the `var` keyword.  The fields of a tuple are always immutable.
 
 ## Defining a record
 
@@ -14,6 +14,28 @@ let person = {
    age : Nat = 25;
 };
 ```
+
+:::info Inferred types
+Type annotations on immutable record fields aren’t necessary as the compiler will infer them.
+However, for mutable fields (`var`), it’s good practice to explicitly declare the type. Otherwise, the compiler might infer a more specific type than intended, preventing future assignments of a broader type.
+
+Example:
+
+```motoko
+let account = { name = "Motoko"; var balance = 0 };
+// Inferred as { name : Text; var balance : Nat }
+account.balance := -100; //  Rejected, -100 is not a Nat
+````
+
+To avoid this issue, annotate the field explicitly:
+
+```motoko
+let account = { name = "Motoko"; var balance : Int = 0 };
+account.balance := -100; //  Allowed
+```
+
+This recommendation also applies to all `var` declarations—not just record fields.
+:::
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
@@ -26,7 +48,7 @@ Unlike tuples, the order of record fields is immaterial and all record types wit
 
 Fields in a record can be accessed using the dot (`.`) notation.
 
-```motoko no-repl
+```motoko
 let person = {
    name : Text = "Motoko";
    age : Nat = 25;
@@ -35,7 +57,7 @@ let person = {
 let personName = person.name;  // "Motoko"
 let personAge = person.age;    // 25
 
-Debug.print(personName # is # debug_show(personAge));
+person;
 ```
 
 Attempting to access a field that isn't available in the type of the record is a compile-time type error.  
@@ -55,7 +77,7 @@ This `person` has type `{var age : Nat; var name : Text}`.
 
 `var name` and `var age` allow the values to be updated later.
 
-```motoko no-repl
+```motoko
 let person = {
    var name : Text = "Motoko";
    var age : Nat = 25;
@@ -64,10 +86,10 @@ let person = {
 person.name := "Ghost";  // Now person.name is "Ghost"
 person.age := 30;      // Now person.age is 30
 
-Debug.print(person.name # is # debug_show(person.age));
+person
 ```
 
-Attempting to update an immutable field will raise an error.
+Attempting to update an immutable field is a compile-time type error.
 
 ## Nested records
 
@@ -210,7 +232,5 @@ Tuples and records both allow grouping values, but they have key differences in 
 Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal.
 
 For example,, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
-
-
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -9,7 +9,7 @@ Whitespace characters (spaces, tabs, newlines) are generally ignored in Motoko, 
 ### Incorrect use of whitespace
 
 ```motoko
-persistent actor Counter{public func inc(x:Int): async Int{return x+1}}; await Counter.inc(1);
+persistent actor Counter{var x : Nat = 0; public func inc(): async Int{x+=1; x;}}; await Counter.inc();
 ```
 
 ### Proper whitespace usage
