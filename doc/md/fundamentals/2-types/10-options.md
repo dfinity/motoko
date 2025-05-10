@@ -7,7 +7,6 @@ sidebar_position: 10
 | Type    | Syntax                  | Purpose                          | When to use it                                   |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
 | Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result**. |
-| Result  | `Result.Result<T, E>`  where `T` is the success type and `E` is the error type.  | Represents success or failure.   | When an operation can either **succeed or fail**. |
 
 ## Options
 
@@ -21,7 +20,7 @@ var username : ?Text = null;
 
 `username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
 
-:::info [Null semantics]
+:::info Null semantics
 
 `null` is only valid as a value of the trivial `Null` type or an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell. In all these languages, the type system also enforces explicit handling of missing values.
 
@@ -53,6 +52,13 @@ let username : ?Text = null;
 let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
+Then same functionality can be achieved using `let-else`
+
+```motoko no-repl
+let username : ?Text = null;
+let ?displayName =  username else return "Guest" // "Guest" if username is null
+```
+
 ### Using options for error handling
 
 Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
@@ -65,7 +71,6 @@ func safeDivide(a : Int, b : Int) : ?Int {
 let result1 = safeDivide(10, 2); // ?5
 let result2 = safeDivide(10, 0); // null
 ```
-
 
 ### Let / else
 
@@ -82,7 +87,6 @@ func get<T>(option : ?T, defaultValue : T) : T {
 assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
 ```
-
 
 ### Applying transformations to options
 
@@ -112,7 +116,6 @@ let result = Option.apply<Nat, Nat>(maybeValue, maybeIncrement); // ?11
 
 If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
 
-
 ### Combining multiple optional values
 
 When working with multiple optional values, using `Option.chain` processes them safely without unnecessary `switch` statements.
@@ -139,17 +142,13 @@ If either `firstName` or `lastName` is `null`, the result remains `null`.
 ### Unwrapping an option
 
 ```motoko
-actor App {
-  var username : ?Text = ?"Motoko";
-
-  public func getUsername() : async Text {
-      switch (username) {
-          case (?value) "Username: " # value;
-          case null "No username set";
-      }
+persistent actor App {
+  public func getName(optionalName : ?Text) : async Text {
+    let ?name = optionalName else return "Unknown";
+    name
   }
-}
-await App.getUsername();
+};
+await App.getName(null);
 ```
 
 To unwrap an option (`?T`), both cases must be handled:
@@ -159,40 +158,57 @@ To unwrap an option (`?T`), both cases must be handled:
 
 If the value exists (`?value`), it can be accessed directly as its inner type (`T`) within the `case (?value)` branch. If the value is `null`, an alternative action or default value must be provided in the `case null` branch to ensure safe execution. This prevents runtime errors and ensures that optional values are handled explicitly.
 
-## Results
+## Option blocks (`do ?`)
 
-While options are a built-in type, the `Result` is defined as a variant type:
+Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>.`
 
-`type Result<Ok, Err> = { #ok : Ok; #err : Err }`
+Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`.
 
-Because of the second type parameter, `Err`, the `Result` type lets you select the type used to describe errors. 
+If the result is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` of type `U`.
 
-For example, define a `TodoError` type that the `markDone` function will use to signal errors:
-
-```motoko no-repl
-  public type TodoError = { #notFound; #alreadyDone : Time };
-```
-
-
-### Pattern matching with `Result`
-
-In the case of a `Result`, you can also use pattern matching with the difference that you also get an informative value, not just `null`, in the `#err` case:
+The `do ? <block>` is similar to how the `?` operator works in languages like Rust.
 
 ```motoko no-repl
-func greetResult(resultName : Result<Text, Text>) : Text {
-  switch (resultName) {
-    case (#err(error)) { "No name: " # error };
-    case (#ok(name)) { "Hello, " # name };
-  }
-};
-assert(greetResult(#ok("Motoko")) == "Hello, Motoko!");
-assert(greetResult(#err("404 Not Found")) == "No name: 404 Not Found");
+// Introduces an option block that returns a value of type ?T
+let result: ?T = do ? {
+  // The ! operator (null break) unwraps optional values inside the block
+  someOptionalValue!  // unwraps the value or short-circuits
+}
 ```
+
+The following example defines a simple function that evaluates expressions built from natural numbers, division and a zero test, encoded as a variant type:
+
+```motoko
+type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
+func eval(e : Exp) : ? Nat {
+  do ? {
+    switch e {
+      case (#Lit n) { n };
+      case (#Div (e1, e2)) {
+        let v1 = eval e1 !;  // If eval e1 returns null, exit with null
+        let v2 = eval e2 !;  // If eval e2 returns null, exit with null
+        if (v2 == 0)
+          null !  // Explicitly exit with null for division by zero
+        else v1 / v2
+      };
+      case (#If (e1, e2, e3)) {
+        if (eval e1 ! == 0)  // Unwrap and check if zero
+          eval e2 !  // Return result of e2 (or null if it's null)
+        else
+          eval e3 !  // Return result of e3 (or null if it's null)
+      };
+    };
+  };
+}
+```
+
+To guard against division by 0 without trapping, the eval function returns an option result, using `null` to indicate failure.
+
+Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ?` block, and then the function itself, when a result is `null`.
 
 ## Resources
 
 - [`Option`](/docs/motoko/base/Option)
-- [`Result`](/docs/motoko/base/Result)
 
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

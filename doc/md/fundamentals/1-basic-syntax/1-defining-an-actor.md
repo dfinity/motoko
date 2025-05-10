@@ -7,27 +7,37 @@ hide_table_of_contents: true
 
 In Motoko, an actor is a unit of computation that encapsulates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and interact with each other through [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging.
 
-Actors are objects with special system-level capabilities. An actor supports asynchronous operations and can persist state across calls. Each actor runs independently with its own message queue, allowing concurrent execution.  
+Actors are objects with special system-level capabilities. An actor supports asynchronous operations and can persist state across calls. Each actor runs independently with its own message queue, allowing concurrent execution.
 
 A Motoko program typically starts by defining an actor.
 
 ```motoko
-// Declares an actor named Main
-persistent actor HelloWorld {
-  // Defines a hello function that returns the message "Hello, world!"
-  public query func greet(name : Text) : async Text {
-    return "Hello, " # name # "!";
+// Declares an actor named Main with persistent state
+persistent actor Main {
+  // Counter to track the number of greetings
+  var count : Nat = 0;
+
+  // Function to greet someone and increment the counter
+  public func greet(name : Text) : async Text {
+    count += 1;
+    "Hello, " # name # "! You are visitor number " # debug_show(count);
+  };
+
+  // Function to get the current greeting count separately
+  public query func readCount() : async Nat {
+    count
   };
 };
+await Main.greet("Programmer");
 ```
 
-A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to **[Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts)**, an interface description language. The Candid description can be consumed by other canisters, written in Motoko or another language such as Rust. 
+A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, written in Motoko or another language such as Rust.
 
 The above example's corresponding Candid interface can be found below.
 
 ```did
 service : {
-  greet: (text) -> (text) query;
+  greet : (text) -> (text) query;
 }
 ```
 

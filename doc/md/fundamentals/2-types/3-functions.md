@@ -4,25 +4,26 @@ sidebar_position: 3
 
 # Function types
 
-Functions can be used to define abstract code as reusable building blocks.  
+Functions are reusable chunks of code that perform a specific task. A function is defined with a name and optional parameters, then returns a defined result. A function can also specify a return type for the value it produces.
 
-Functions are parameterized bits of code that produce results when supplied with arguments. In the process of producing a result, the execution of the function can have other side-effects, like modifying state, printing to the log, or sending messages to other canisters. 
+:::info Side effects
+In the process of producing a result, the execution of the function can have other side effects, like modifying state, printing to the log, or sending messages to other canisters.
+:::
 
-Functions can be synchronous or asynchronous. A synchronous function blocks the caller until the function returns with its result, allowing the caller to proceed. This is the usual notion of function implemented by other programming languages.  
+Functions can be synchronous or asynchronous. A synchronous function blocks the caller until it returns with a result, just like functions in most traditional programming languages.
 
-An asynchronous functions immediately returns to its caller. Its execution is decoupled from the execution of the caller. Instead, the caller may receive a **future** value, which acts as a placeholder for the result of the call. This future is replaced with a result when the function call returns. 
+An asynchronous function returns immediately, providing a **future** value as a placeholder for its result. The caller can await the future later to retrieve the result or ignore it and continue with other tasks.
 
-The caller can retrieve the result by awaiting the future at a later point in time. It can also ignore the result entirely by never awaiting the future. Between calling the asynchronous function and awaiting its result, the caller is able to proceed with other tasks.  
+Motoko has different sorts of functions with different capabilities.
+Local functions, declared using just the `func` keyword, are typically synchronous but can be asynchronous if their body is an `async` expression.
+A local function is only available to call within the actor that defines it, it cannot be called from another actor, or be sent to another actor in a message.
 
-Motoko has different sorts of functions with different capabilities.  
-Local functions, declared using just the `func` keyword, are typically synchronous but can be asynchronous if their body is an `async` expression.  
+Shared functions, declared in actor bodies using the `shared`, `shared query` or `shared composite query` keywords, are asynchronous.
+Calling a shared function sends a message to another actor. The caller of a shared function is typically another Motoko actor, a [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters), or an [agent](https://internetcomputer.org/docs/building-apps/interact-with-canisters/agents/overview).
 
-Shared functions, declared in actor bodies using the `shared`, `shared query` or `shared composite query` keywords, are asynchronous. 
-Calling a shared function sends a message to another actor. The caller of a shared function is typically another Motoko actor, ICP canister or frontend code interacting with the ICP using an agent.  
+An actor's shared functions are always called as the result of the actor receiving some message. Shared functions that return a result have `async` return types.
 
-An actor's shared functions are always called as the result of the actor receiving some message. Shared functions that return a result have async return types.  
-
-Since actors can only have `shared` functions as public members, the `shared` keyword can, and usually is, omitted from public actor functions.  
+Since actors can only have `shared` functions as public members, the `shared` keyword  is optional and can be omitted from public actor functions.
 
 Motoko provides different types of functions based on where in the program they execute and how they interact with the system. Understanding these distinctions is essential when designing efficient and scalable canister logic.
 
@@ -30,9 +31,8 @@ Motoko provides different types of functions based on where in the program they 
 
 | Keyword  | Function  |
 |-------------|--------------|
-| `public`    | Makes a function callable by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). |
-| `shared`    | Enables [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) calls and provides access to the caller’s identity. |
-| `async`     | Runs the function [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) and returns a future result. |
+| `shared`    | Used to enable async communication between actors. Exposes the caller’s identity. |
+| `async`     | Runs the function [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) and returns its result in a future. |
 | `query`     | Optimized for reading data but cannot modify [state](https://internetcomputer.org/docs/motoko/fundamentals/state). |
 
 ## Function comparison
@@ -50,14 +50,23 @@ Motoko provides different types of functions based on where in the program they 
 Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.  
 
 ```motoko no-repl
-func add(a : Nat, b : Nat) : Nat {
-    a + b
+func gcd(a : Nat, b : Nat) : Nat {
+  var x = a;
+  var y = b;
+
+  while (y != 0) {
+    let temp = y;
+    y := x % y;
+    x := temp;
+  };
+
+  x  // Return value is the GCD
 };
 
-let sum : Nat = add(5, 3); // Synchronous execution
+let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
 ```
 
-The type of `add` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals  as argument and returns a natural as a result.  
+The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals  as argument and returns a natural as a result.  
 
 **Example use case:** Local computations that do not require communication with other actors or canisters.  
 
@@ -86,41 +95,41 @@ let text = identity("Hello");
 
 Local function that have an `async`  or `async*` return type are asynchronous and can interact with other canisters by calling shared functions.  
 
-They are useful for defining  asynchronous logic  used in the implementation of public  `shared` functions.  
+They are useful for defining  asynchronous logic  used in the implementation of public  `shared` functions.
 
 ```motoko no-repl
 import Time "mo:base/Time";
 import Logger "canister:Logger";
 
-actor {
-private func log(msg : Text) : async () {
-Logger.log(Time.now() + msg); // sends a message
-};
-public shared func doStuff() : async () {
-await log("doingStuff"); } }
+persistent actor {
+  private func log(msg : Text) : async () {
+    Logger.log(Time.now() + msg); // sends a message
+  };
+  public shared func doStuff() : async () {
+    await log("doingStuff"); } }
 ```
 
 A more efficient variation is to use `async*` and `await*` that avoids the overhead of ordinary `await` just to call the local function:  
 
-```motoko no-repl  
-import Time "mo:base/Time"  
-import Logger "canister:Logger";  
+```motoko no-repl
+import Time "mo:base/Time"
+import Logger "canister:Logger";
 
-actor {  
-  private func log(msg : Text) : async* () {  
-    Logger.log(Time.now() + msg); // sends a message  
-  };  
+persistent actor {  
+  private func log(msg : Text) : async* () {
+    Logger.log(Time.now() + msg); // sends a message
+  };
 
-  public shared func doStuff() : async () {  
-    await* log("doingStuff");  
-  } 
+  public shared func doStuff() : async () {
+    await* log("doingStuff");
+  }
 }  
 ```
 
 ## Shared functions
 
-The public functions of an actor determine its external interface. All public functions in an actor must be shared and can be either `shared`, `shared query` or `shared composite query` functions. Private functions cannot be `shared`. 
-Since public functions must be `shared`, the `shared` keyword is optional and can be committed.  
+The public functions of an actor determine its external interface. All public functions in an actor must be shared and can be either `shared`, `shared query` or `shared composite query` functions. Private functions cannot be `shared`.
+Since an actor's public functions must be shared, the `shared` keyword is optional and can be omitted.  
 
 `shared` functions permanently update the state of an actor, while `query` and `composite query` functions are only executed for their result. While queries can temporarily alter the state of the actor, the changes are not permanent and never visible to other callers. It's as if each query operated on a copy of the actor that is discarded on return from the query. When called from a front-end, `query` functions have much lower latency than calling the equivalent `shared` method. This is because `shared` functions require the protocol to reach consensus on the state changes and result of a shared function, while `query` functions do not.  
 
@@ -143,7 +152,7 @@ Omitting the shared keyword, we can also write:
 persistent actor Account {  
   var balance = 0;  
   
-  public shared func deposit(amount : Nat) : async Nat {  
+  public func deposit(amount : Nat) : async Nat {  
      balance += amount;  
      balance  
   }  
@@ -198,18 +207,18 @@ The `getBalance` function has function type `shared query () -> async Nat`.
 A good example of a composite query might be a bank that holds references to its individual accounts, implemented as separate actors, and provides a composite query that sums the deposits in all its accounts:  
 
 ```motoko no-repl
-actor Counter {
-    type Account = actor { getBalance() : query () -> async Nat;
+persistent actor Counter {
+  type Account = actor { getBalance() : query () -> async Nat;
   };
 
   var accounts : [Account] = []
 
   public shared composite query func getDeposits() {
-  var deposits = 0;
-  for (account in accounts.values()) {
-  deposits += await account.getBalance()
+    var deposits = 0;
+      for (account in accounts.values()) {
+      deposits += await account.getBalance()
   };
-  return deposits;
+  deposits;
   };
 }
 ```
@@ -217,47 +226,43 @@ actor Counter {
 Again, the shared keyword is redundant and can be omitted:
 
 ```motoko
-  public composite query func getDeposits() {  
-    var deposits = 0;  
-    for (account in accounts.values()) {  
-       deposits += await account.getBalance()  
-    };  
-    return deposits;  
-  };  
+  public composite query func getDeposits() {
+    var deposits = 0;
+    for (account in accounts.values()) {
+       deposits += await account.getBalance()
+    };
+    deposits;
+  };
 ```
 
 The type of `getDeposits` is `shared composite query () -> Nat`.
 
-
-
 ### Shared composite query functions
 
 ```motoko no-repl
-actor Bank {
-    stable var balance : Nat = 100;
+persistent actor Bank {
+    var balance : Nat = 100;
 
     public query func getBalance() : async Nat {
-        return balance;
+        balance;
     };
 
     public composite query func doubleBalance() : async Nat {
         let b : Nat = await getBalance();
-        return b * 2;
+        b * 2;
     };
 };
 await Bank.doubleBalance();
 ```
 
-
 **Example use case:** Efficiently combining multiple queries while avoiding [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) update calls.
-
 
 ## Update functions
 
 [Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
 
 ```motoko no-repl
-  public func setGreeting(prefix : Text) : async () {
+  public func setGreeting(prefix : Text) : () {
     greeting := prefix;
   };
 ```
@@ -275,7 +280,7 @@ A function can take a single argument of a specific type.
 ```motoko no-repl
   public func increment(amount : Nat) : async Nat {
     count += amount;
-    return count;
+    count;
   }
 ```
 
@@ -287,15 +292,18 @@ Functions can accept multiple arguments and return multiple results by enclosing
   func divRem(x : Nat, y : Nat) : (Nat, Nat) {
     (x / y, x % y)
   }
+```
 
 ### Using a record as an argument
 
 Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
-  public func userName(user: { name : Text; age : Nat }) : Text {
-    user.name;
+func userName(user: { name : Text; age : Nat }) : Text {
+    user.name
   }
+```
+
 ### Using an array as an argument
 
 A collection of values can be passed as a single array argument.
