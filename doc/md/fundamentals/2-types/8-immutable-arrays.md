@@ -79,7 +79,6 @@ let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
 let mutableCopy : [var Nat] = Array.thaw<Nat>(immutableArray);
 mutableCopy[0] := 10;
-//
 ```
 
 ## Passing a variable number of arguments

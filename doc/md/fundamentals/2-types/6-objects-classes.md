@@ -9,7 +9,7 @@ sidebar_position: 6
 In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.
 
 A simple object containing just fields of data is like a record in a database.  
-Motoko's light-weight record syntax make it easy do construct such objects [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records).  
+Motoko's light-weight  [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax make it easy do construct such objects..  
 
 When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  
 From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
@@ -18,7 +18,7 @@ In addition to the record syntax, Motoko let's you defined objects from a block 
 The declarations in the block can be `public` or `private`, with `private` the default.  
 The public declarations become fields of the object, all private declarations are hidden.  
 
-An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()` use `object class()` instead.
+An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently as `object()`.  Instead, you must use an object class (`object class()`).
 
 ```motoko no-repl
 object Account {
@@ -120,7 +120,7 @@ Object subtyping allows objects with more fields to be treated as subtypes of ob
 
 Objects with fewer fields are more general, while objects with additional fields are subtypes of more general types.
 
-| Specificity Level | Description | Relationship |
+| Specificity level | Description | Relationship |
 |-------------------|-------------|--------------|
 | Most general | `type basicAccount = { getBalance : () -> Nat }` | Subtype of `{}` |
 | Middle generality | `type standardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `basicAccount` |

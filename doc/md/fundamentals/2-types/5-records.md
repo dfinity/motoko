@@ -117,7 +117,7 @@ let individual : Individual = {
 
 Records can be destructured using [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
-```motoko no-repl
+```motoko
 type Address = {
     city : Text;
     street : Text;
@@ -227,10 +227,10 @@ Tuples and records both allow grouping values, but they have key differences in 
 | Mutability     | Immutable after creation                 | Can have mutable fields               |
 | Naming         | Fields are anonymous  | Fields are named               |  
 | Subtyping     | Fields cannot be removed | Fields can be removed |
-| Use Case       | Positional grouping of related values, e.g. vectors     |  structured data types        |
+| Use case       | Positional grouping of related values, e.g. vectors     |  Structured data types        |
 
 Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal.
 
-For example,, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
+For example, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
