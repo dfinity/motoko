@@ -8,15 +8,13 @@ Immutable arrays are fixed-size, read-only data structures that allow efficientl
 
 ## When to use immutable arrays
 
-Immutable arrays in Motoko are best used when:
+- Fixed-size storage suffices: The number of elements is known in advance and will not change.
+- Performance is required: Arrays provide efficient random access to elements.
+- Mutability is not needed: Immutability ensures that no accidental modifications occur.
 
-- Fixed-size storage is required: The number of elements is known in advance and will not change.
-- Performance optimization is needed: They provide efficient index access without dynamic resizing overhead.
-- Data integrity must be preserved: Immutability ensures that no accidental modifications occur.
+Unlike mutable arrays, immutable arrays support subtyping and are shared types that can be sent in messages (provided the element type is shared).
 
-Immutable arrays do not allow in-place modifications, making them suitable when stability and performance are priorities.
-
-If the number of elements may change, collections like `List` or `Buffer` are a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
+If the number of elements may change, collections like `List` is a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
 
 ## Defining an immutable array
 
