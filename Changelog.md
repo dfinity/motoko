@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.14.10 (FUTURE)
+
+* motoko (`moc`)
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
+
 ## 0.14.9 (2025-04-25)
 
 * motoko (`moc`)
