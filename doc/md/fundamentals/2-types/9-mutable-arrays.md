@@ -6,6 +6,67 @@ sidebar_position: 9
 
 Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
 
+## Creating a mutable array
+
+Mutable array types are written with square brackets `[var T]`. The var keyword indicates mutability. The type of the array element is specified within the square brackets, e.g., `[var Nat]` describes an mutable array of natural numbers.
+
+A mutable array is created using a mutable array expression:
+
+ ``` motoko
+ [var 1, 2, 3, 4, 5];
+ ```
+
+:::note
+Its type is inferred to be `[var Nat]`.
+:::
+
+If you want to update the array with negative elements, use a type annotation:
+
+ ```motoko
+ [var 1, 2, 3, 4, 5] : [var Nat]
+ ```
+
+A named array can be declared using either `let` or `var`:
+
+```motoko
+let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+```
+
+The function `Array.tabulateVar(size, f)` creates a mutable array of `size` elements, where each element at index `i` is initialized with the value `f(i)`.
+
+Example:
+
+```motoko
+import Nat "mo:base/Nat";
+import Array "mo:base/Array";
+
+let digits = Array.tabulateVar(10, Nat.toText);
+```
+
+Constructs the array:
+
+```motoko
+[var "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+```
+
+Each element is mutable and can be updated later.
+
+To initialize a large array where every element starts with the same value, use `Array.init(size, value)`:
+
+```motoko
+import Array "mo:base/Array";
+
+let optArr = Array.init<?Int>(10, null);
+```
+
+This produces the array:
+
+```motoko
+[var null, null, null, null, null, null, null, null, null, null]
+```
+
+Such arrays are useful when the exact contents will be updated later.
+
 ## When to use mutable arrays
 
 Mutable arrays are beneficial when:
@@ -22,7 +83,7 @@ Mutable arrays are beneficial when:
 | Modification    | Requires creating a new array.          | Can modify elements directly.         |
 | Growth          | Not designed to grow.                   | Not designed to grow.                 |
 | Shareability    | Can be shared across functions and actors. | Not sharable.       |
-| Conversion      | Can be converted to mutable with `Array.toVarArray`. | Can be converted to immutable with `VarArray.toArray`. |
+| Conversion      | Can be converted to mutable with `Array.thaw`. | Can be converted to immutable with `Array.freeze`. |
 | Use case        |  Tabular fixed, data       |  Iterative algorithms |
 
 :::warning
@@ -94,14 +155,14 @@ for (i in arr.keys()) {
 
 ## Converting a mutable array to an immutable array
 
-You can convert a mutable array into an immutable array using `Array.fromVarArray`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
+You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
 
 ```motoko no-repl
 import Array "mo:base/Array";
 
 let mutableArray : [var Nat] = [var 1, 2, 3];
 
-let immutableArray : [Nat] = Array.fromVarArray<Nat>(mutableArray);
+let immutableArray : [Nat] = Array.freeze<Nat>(mutableArray);
 ```
 
 ## Nested mutable arrays example: Tic-tac-toe
@@ -110,9 +171,9 @@ To demonstrate nested mutable arrays, consider the following.
 
 A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
 
-`VarArray.tabulate` is used with `VarArray.repeat` to create a mutable board initialized with `"_"` (empty space).  
+`Array.tabulateVar` is used to create a mutable board initialized with `"_"` (empty space).
 
-```motoko no-repl
+```motoko
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 
@@ -120,14 +181,13 @@ func createTicTacToeBoard() : [var [var Text]] {
     let size : Nat = 3;
 
     // Initialize a 3x3 board with empty spaces
-    // Use tabulate and repeat to construct the board
-    VarArray.tabulate<[var Text]>(
-    size,
-    func(_) {
-      VarArray.repeat("_", size)
-    }
-  )
-};
+    Array.tabulateVar<[var Text]>(
+      size,
+      func(_ : Nat) : [var Text] {
+        Array.tabulateVar<Text>(size, func(_ : Nat) : Text {"_"}) // Fill with "_"
+      }
+    )
+  };
 
   // Create a mutable Tic-tac-toe board
   let board : [var [var Text]] = createTicTacToeBoard();
@@ -144,8 +204,7 @@ func createTicTacToeBoard() : [var [var Text]] {
   // Function to print the board
   func printBoard() {
     for (row in board.vals()) {
-      let frozenRow = Array.fromVarArray(row);
-      let rowText = Array.foldLeft<Text, Text>(frozenRow, "", func(acc, cell) = acc # cell # " ");
+      let rowText = Array.foldLeft<Text, Text>(Array.freeze<Text>(row), "", func(acc, cell) = acc # cell # " ");
       Debug.print(rowText)
     }
   };
@@ -156,7 +215,6 @@ func createTicTacToeBoard() : [var [var Text]] {
   makeMove(2, 2, "X");
 
   printBoard();
-
 ```
 
 Since both the outer and inner arrays are mutable, players can update the board in place. The array must be frozen before `foldLeft()` can be applied to the rows as `foldleft()` expects an immutable array as an argument.

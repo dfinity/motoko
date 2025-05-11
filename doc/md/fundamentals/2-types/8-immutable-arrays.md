@@ -72,12 +72,12 @@ for (i in arr.keys()) {
 
 ## Converting an immutable array to a mutable array
 
-You can convert an immutable array into a mutable array using `Array.toVarArray` which is useful when working with data that needs to be modified in place after initially being immutable.
+You can convert an immutable array into a mutable array using `Array.thaw` which is useful when working with data that needs to be modified in place after initially being immutable.
 
 ```motoko no-repl
 let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
-let mutableCopy : [var Nat] = VarArray.fromArray<Nat>(immutableArray);
+let mutableCopy : [var Nat] = Array.thaw<Nat>(immutableArray);
 mutableCopy[0] := 10;
 //
 ```
@@ -86,18 +86,17 @@ mutableCopy[0] := 10;
 
 Motoko supports passing collections to a function, ensuring that all arguments are handled as a collection rather than individual parameters.
 
-Arrays can be useful when writing functions that take a variable number of arguments, allowing you to condense multiple arguments into a single array:  
+```motoko
+import Debug "mo:base/Debug"
 
-```motoko no-repl
 func printAllStrings(strings : [Text]) {
   for (s in strings.values()) {
     Debug.print(s);
   }
 };
 
-printAllStrings(["Hello, "Hola", "Ciao"]);
+printAllStrings(["Hello", "Hola", "Ciao"]);
 ```
-
 
 ## Comparing arrays  
 
@@ -133,14 +132,14 @@ Unlike some languages, Motoko does not compare arrays by reference using a prope
 
 Motoko's base library [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
-```motoko no-repl
+```motoko
 import Array "mo:base/Array";
 
-func transformArray() : async () {
+func transformArray() : async [Nat] {
     let numbers : [Nat] = [1, 2, 3];
     let doubled : [Nat] = Array.map<Nat, Nat>(numbers, func(x) { x * 2 });
 
-    Debug.print(debug_show(doubled)); // [2, 4, 6]
+    doubled; // [2, 4, 6]
 }
 ```
 
@@ -150,8 +149,9 @@ To demonstrate nested immutable arrays, consider the following:
 
 A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](https://internetcomputer.org/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
-
-```motoko no-repl
+```motoko
+import Array "mo:base/Array";
+import Debug "mo:base/Debug";
  func generateChessboard() : [[Text]] {
     let size : Nat = 8;
 
