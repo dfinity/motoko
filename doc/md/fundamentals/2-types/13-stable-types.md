@@ -4,7 +4,7 @@ sidebar_position: 13
 
 # Stable types
 
-Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as arguments and or be the result of shared functions.
+Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as the arguments or results of shared functions.
 
 **Stable types** comprise all shared types and represent the types of values that may be stored in the stable declarations of a Motoko actor.
 Storing a value in a stable declaration ensures that the value persists across actor upgrades, enabling state preservation without relying on a file system or database
