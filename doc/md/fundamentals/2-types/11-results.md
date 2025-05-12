@@ -24,13 +24,16 @@ For example, define a `TodoError` type that the `markDone` function will use to 
 
 In the case of a `Result`, you can also use pattern matching with the difference that you also get an informative value, not just `null`, in the `#err` case:
 
-```motoko no-repl
-func greetResult(resultName : Result<Text, Text>) : Text {
-  let #ok(name) = resultname else return #err("No Name")
+```motoko
+import Result "mo:base/Result";
+
+func greetResult(name : Text) : Result.Result<Text,Text> {
+   if (name.size() == 0) #err "Name must be present" else #ok ("Hello" # name);
 };
-assert(greetResult(#ok("Motoko")) == "Hello, Motoko!");
-assert(greetResult(#err("404 Not Found")) == "No name");
+let result1 = greetResult("Ghost"); // Hello Ghost
+let result2 = greetResult(""); // #err "Name must be present"
 ```
 
 ## Resources
-- [`Result`](/docs/motoko/base/Option)
+
+- [`Result`](/docs/motoko/base/Result)

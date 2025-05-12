@@ -2,13 +2,11 @@
 sidebar_position: 10
 ---
 
-# Options & results
+# Options
 
 | Type    | Syntax                  | Purpose                          | When to use it                                   |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
 | Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result**. |
-
-## Options
 
 Options provide a structured way to represent values that may or may not be present. Instead of using `null` directly, the option type enforces explicit handling, making programs safer and reducing unexpected failures.
 
@@ -22,9 +20,22 @@ var username : ?Text = null;
 
 :::info Null semantics
 
-`null` is only valid as a value of the trivial `Null` type or an optional type (`?T`). This makes it similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell. In all these languages, the type system also enforces explicit handling of missing values.
+The constant `null` is the only value of the trivial `Null` type.  It also indicates an absent value in an optional type (`?T`). This makes `null` similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell, and Motoko's option `?T` type similar to `Option<T>` in Rust, `Option[T]` in Scala, and `Maybe T` in Haskell.  In all these languages the type system enforces explicit handling of missing values by using a dedicated type to indicate optionality
 
 :::
+
+When a Motoko value has type `?T`, then is either `null` or some value, written `?value` (note leading `?`). The fundamental way to access the value is to use a `switch` expression, that explicitly handles both cases:
+
+``` motoko
+func displayName(option : ?Text) : Text {
+  switch option {
+     case ?user { user };
+     case null { "Guest" };
+  }
+}
+```
+
+Sometimes, the verbosity of `switch` expression can make code harder to read, so Motoko also offers additional ways to handle option types.
 
 ### Checking for presence
 
@@ -52,13 +63,6 @@ let username : ?Text = null;
 let displayName = Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
-Then same functionality can be achieved using `let-else`
-
-```motoko no-repl
-let username : ?Text = null;
-let ?displayName =  username else return "Guest" // "Guest" if username is null
-```
-
 ### Using options for error handling
 
 Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
@@ -74,7 +78,7 @@ let result2 = safeDivide(10, 0); // null
 
 ### Let / else
 
-To safely extract values from options, use the `let ... else` pattern. This is often preferred and encoraged over nested `switch` expressions when a fallback is needed, as it improves readability and ensures fallbacks are handled.
+Another way to extract values from options, is use the `let ... else` pattern. This may be preferable over a `switch` expression, but only applies when the `else` expression can divert control elsewhere when the value fails to match the pattern used in the `let`
 
 For example, here’s a simple implementation of an option helper:
 
@@ -87,6 +91,24 @@ func get<T>(option : ?T, defaultValue : T) : T {
 assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
 ```
+
+The `let` matches option against the pattern `?value`, extracting any contents from `option`. If `option` is `null`, the pattern fails to match, and the `else` branch is entered, exiting the function with `defaultValue`.
+
+The same logic can be expressed using a `switch`, though the result is  more verbose and introduces an additional level of nesting:
+
+``` motoko
+func get<T>(option : ?T, defaultValue : T) : T {
+  switch option {
+    case null defaultValue;
+    case (?value) value;
+  }
+};
+```
+
+:::tip
+Although convenient for option patterns, `let-else` also works with other types of pattern,
+handling pattern-match failure using the `else` branch.
+:::
 
 ### Applying transformations to options
 
@@ -138,25 +160,6 @@ let fullName = Option.chain<Text, Text>(firstName, func (first : Text) {
 ```
 
 If either `firstName` or `lastName` is `null`, the result remains `null`.
-
-### Unwrapping an option
-
-```motoko
-persistent actor App {
-  public func getName(optionalName : ?Text) : async Text {
-    let ?name = optionalName else return "Unknown";
-    name
-  }
-};
-await App.getName(null);
-```
-
-To unwrap an option (`?T`), both cases must be handled:
-
-1. When the value is present.
-2. When it is absent (`null`).
-
-If the value exists (`?value`), it can be accessed directly as its inner type (`T`) within the `case (?value)` branch. If the value is `null`, an alternative action or default value must be provided in the `case null` branch to ensure safe execution. This prevents runtime errors and ensures that optional values are handled explicitly.
 
 ## Option blocks (`do ?`)
 

@@ -41,13 +41,13 @@ func intToNat(i : Int) : Nat {
 let result3 = intToNat(10);   // 10
 let result4 = intToNat(-5);   // 5
 ```
-
+<!--
 :::info `Nat` to `Int` conversions functions
 
 `Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the base library.
 
 :::
-
+----->
 ## Modifying types
 
 ### `Nat8` to `Char`
@@ -324,7 +324,7 @@ import Time "mo:base/Time";
 import Int "mo:base/Int";
 import Text "mo:base/Text";
 
-persistent actor D{
+persistent actor Date {
     public func timeToDate() : async Text {
 
         let (year, month, day, hour, minute, second) = timestampToDateTime(system_time());
@@ -406,7 +406,7 @@ persistent actor D{
         if (n < 10) { "0" # Int.toText(n) } else { Int.toText(n) };
     };
 };
-await D.timeToDate();
+await Date.timeToDate();
 ```
 
 To account for the timezone difference, apply an offset. For example, adjust the time by subtracting 5 hours (assuming EST):
