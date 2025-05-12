@@ -74,21 +74,20 @@ The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of na
 
 Generic functions allow the use of type parameters, making them more flexible for using different data types.
 
-```motoko no-repl
-func identity<T>(x : T) : T = x;
+```motoko
+func swap<T, U>(t : T, u : U) : (U, T) {
+  (u, t)
+};
 
-let num = identity<Nat>(42);  
-let text = identity<Text>("Hello");  
+swap<Nat, Text>(42, "ICP"); // ("ICP", 42)
 ```
 
-The type of identity is `<T>T -> T`, indicating that when supplied with any type `T`, and argument of type `T`, it returns a result of the same type `T`.
+The type of `swap` is `<T, U> (T, U) -> (U, T)`, indicating it can accept any two types and return them in reversed order.
 
 Type arguments can be omitted from calls when the compiler can infer them from the arguments and context, allowing the simpler code:
 
-```motoko no-repl  
-func identity<T>(x : T) : T = x;  
-let num = identity(42);  
-let text = identity("Hello");  
+```motoko no-repl
+let result = swap(42, "ICP"); // Inferred as <Nat, Text>
 ```
 
 ## Local, asynchronous functions  
