@@ -212,13 +212,18 @@ let plain_of_doc_typ : Buffer.t -> doc_type -> unit =
   | DTPlain ty -> plain_of_typ buf plain_render_functions ty
   | DTObj (ty, doc_fields) -> plain_of_typ buf plain_render_functions ty
 
+let named_arg : Buffer.t -> function_arg_named -> unit =
+ fun buf arg ->
+  Buffer.add_string buf arg.name;
+  opt_typ buf arg.typ
+
 let function_arg : Buffer.t -> function_arg_doc -> unit =
  fun buf -> function
-  | { name = "_"; typ = Some ({ Source.it = Syntax.ObjT _; _ } as typ); _ } ->
-      plain_of_typ buf plain_render_functions typ
-  | arg ->
-      Buffer.add_string buf arg.name;
-      opt_typ buf arg.typ
+  | FAObject fields ->
+      bprintf buf "{ ";
+      sep_by buf "; " (named_arg buf) fields;
+      bprintf buf " }"
+  | FANamed arg -> named_arg buf arg
 
 let begin_block buf = bprintf buf "\n``` motoko no-repl\n"
 let end_block buf = bprintf buf "\n```\n\n"

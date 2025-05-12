@@ -22,11 +22,15 @@ and function_doc = {
   args : function_arg_doc list;
 }
 
-and function_arg_doc = {
+and function_arg_named = {
   name : string;
   typ : Syntax.typ option;
   doc : string option;
 }
+
+and function_arg_doc =
+  | FANamed of function_arg_named
+  | FAObject of function_arg_named list
 
 and value_sort = Let | Var
 and value_doc = { sort : value_sort; name : string; typ : Syntax.typ option }
@@ -87,30 +91,6 @@ type extracted = {
   docs : doc list;
 }
 
-let typed_pat_field : Syntax.pat_field -> bool = function
-  | { it = Syntax.{ pat = { it = AnnotP _ | TupP []; _ }; _ }; _ } -> true
-  | _ -> false
-
-let pf2tf (pat_field : Syntax.pat_field) =
-  let ann = function
-    | { it = Syntax.AnnotP (_, typ); _ } -> typ.it
-    | { it = Syntax.TupP []; _ } -> Syntax.TupT []
-    | _ -> assert false
-  in
-  Syntax.
-    {
-      pat_field with
-      it =
-        ValF
-          ( pat_field.it.id,
-            {
-              pat_field with
-              it = ann pat_field.it.pat;
-              note = Mo_types.Type.Pre;
-            },
-            { pat_field with it = Const; note = () } );
-    }
-
 module MakeExtract (Env : sig
   val all_decs : Syntax.dec_field list
   val imports : (string * string) list
@@ -128,48 +108,37 @@ struct
   let rec extract_args = function
     | { it = Syntax.VarP { it = name; at; _ }; _ } ->
         Some
-          {
-            name;
-            typ = None;
-            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-          }
+          (FANamed
+             {
+               name;
+               typ = None;
+               doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+             })
     | { it = Syntax.AnnotP (p, ty); at; _ } ->
-        Option.map
-          (fun x ->
-            {
-              x with
-              typ = Some ty;
-              doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-            })
-          (extract_args p)
-    | { it = Syntax.WildP; _ } -> None
-    | { it = Syntax.ObjP fs; at; _ } as obj when List.for_all typed_pat_field fs
-      ->
-        Some
-          {
-            name = "_";
-            typ =
+        Option.bind (extract_args p) (function
+          | FANamed x ->
               Some
-                {
-                  obj with
-                  it =
-                    Syntax.ObjT
-                      ( { obj with it = Mo_types.Type.Object; note = () },
-                        List.map pf2tf fs );
-                };
-            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-          }
-    | { it = Syntax.ObjP _; at; _ } ->
-        Some
-          {
-            name = "_";
-            (* can we do better? *)
-            typ = None;
-            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-          }
+                (FANamed
+                   {
+                     x with
+                     typ = Some ty;
+                     doc =
+                       Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+                   })
+          | FAObject _ -> None)
+    | { it = Syntax.WildP; _ } -> None
+    | { it = Syntax.ObjP fs; at; _ } ->
+        let fields = List.filter_map extract_pat_field fs in
+        Some (FAObject fields)
     | pat ->
         (* Wasm.Sexpr.print 80 (Arrange.pat pat); *)
         None
+
+  and extract_pat_field pf =
+    match pf.it.Syntax.pat with
+    | { it = Syntax.AnnotP (_, typ); _ } ->
+        Some { name = pf.it.Syntax.id.it; typ = Some typ; doc = None }
+    | _ -> None
 
   let extract_func_args = function
     | { it = Syntax.ParP arg; _ } -> Option.to_list (extract_args arg)
@@ -177,19 +146,20 @@ struct
     | _ -> []
 
   let extract_typ_item (id_opt, typ) =
-    {
-      name = (match id_opt with Some id -> id.it | _ -> "_");
-      typ = Some typ;
-      doc = None;
-    }
+    FANamed
+      {
+        name = (match id_opt with Some id -> id.it | _ -> "_");
+        typ = Some typ;
+        doc = None;
+      }
 
   let extract_ty_args = function
     | { it = Syntax.ParT arg; _ } ->
-        [ { name = "_"; typ = Some arg; doc = None } ]
+        [ FANamed { name = "_"; typ = Some arg; doc = None } ]
     | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
-        [ { name; typ = Some arg; doc = None } ]
+        [ FANamed { name; typ = Some arg; doc = None } ]
     | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
-    | typ -> [ { name = "_"; typ = Some typ; doc = None } ]
+    | typ -> [ FANamed { name = "_"; typ = Some typ; doc = None } ]
 
   let is_func_ty ty =
     match ty.it with
