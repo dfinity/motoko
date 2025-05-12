@@ -80,9 +80,22 @@ For more details on our CI and CI setup, see `CI.md`.
 
 We make frequent releases, at least weekly. The steps to make a release (say, version 0.14.1) are:
 
+Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
+
+```bash
+git checkout master
+git pull
+```
+
+After pulling, you can check the latest released version with:
+
+```bash
+git describe --tags --abbrev=0
+```
+
  * Make sure that the top section of `Changelog.md` has a title like
 
-        ## 0.14.1 (2025-02-10)
+   ## 0.14.1 (2025-02-10)
 
    with today’s date.
 
@@ -98,17 +111,40 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`
+ * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`, or automatically:
+
+   ```bash
+   export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1))
+   echo "MOC_MINOR=$MOC_MINOR"
+   ```
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
+
+   Alternatively, on macOS you can open the comparison in your browser with:
+
+   ```bash
+   open "https://github.com/dfinity/motoko/compare/$(git describe --tags --abbrev=0)...master"
+   ```
+
+ * Validate the changelog has the correct format for the extraction of the release notes.
+   Make sure the 'Extract changelog' step in the [release workflow](.github/workflows/release.yml) passes.
+
+ * Switch to a new release branch (creating it if it doesn't exist):
+
+   ```bash
+   git switch -c $USER/0.14.$MOC_MINOR
+   ```
 
  * `git commit -am "chore: Releasing 0.14."$MOC_MINOR`
  * Create a PR from this commit, and label it `automerge-squash`. E.g.
    with `git push origin HEAD:$USER/0.14.$MOC_MINOR`. Mergify will
    merge it into `master` without additional approval, but it will take some
    time as the title (version number) enters into the `nix` dependency tracking.
+
+After the PR is merged, you can push the tag:
+
  * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
  * `git show` to verify we are at the right commit
  * `git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR`
