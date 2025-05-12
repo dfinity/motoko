@@ -2,6 +2,8 @@
 
 ## 0.14.10 (FUTURE)
 
+## 0.14.10 (2025-05-12)
+
 * motoko (`moc`)
 
   * Added new primitives for cost calculation:
