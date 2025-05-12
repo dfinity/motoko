@@ -56,11 +56,18 @@ let opt_typ : Buffer.t -> env -> Syntax.typ option -> unit =
 let adoc_of_typ_bind : Buffer.t -> env -> Syntax.typ_bind -> unit =
  fun buf env -> Plain.plain_of_typ_bind buf (render_fns env)
 
+let adoc_of_named_arg : Buffer.t -> env -> function_arg_named -> unit =
+ fun buf env arg ->
+  Buffer.add_string buf arg.name;
+  opt_typ buf env arg.typ
+
 let adoc_of_function_arg : Buffer.t -> env -> function_arg_doc -> unit =
  fun buf env -> function
-  | { name = "_"; typ = Some ({ Source.it = Syntax.ObjT _; _ } as typ); _ } ->
-      adoc_of_type buf env typ
-  | arg ->
+  | FAObject fields ->
+      bprintf buf "{ ";
+      Plain.sep_by buf "; " (adoc_of_named_arg buf env) fields;
+      bprintf buf " }"
+  | FANamed arg ->
       Buffer.add_string buf arg.name;
       opt_typ buf env arg.typ
 

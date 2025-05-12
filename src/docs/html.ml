@@ -207,15 +207,20 @@ let html_of_type_doc : env -> Extract.type_doc -> Xref.t -> t =
         ++ string " = "
         ++ html_of_type env ty)
 
+let html_of_named_arg : env -> Extract.function_arg_named -> t =
+ fun env arg ->
+  parameter arg.name
+  ++ Option.fold ~none:empty
+       ~some:(fun arg -> string " : " ++ html_of_type env arg)
+       arg.typ
+
 let html_of_arg : env -> Extract.function_arg_doc -> t =
  fun env -> function
-  | { name = "_"; typ = Some ({ Source.it = Syntax.ObjT _; _ } as typ); _ } ->
-      html_of_type env typ
-  | arg ->
-      parameter arg.name
-      ++ Option.fold ~none:empty
-           ~some:(fun arg -> string " : " ++ html_of_type env arg)
-           arg.typ
+  | FAObject fields ->
+      string "{ "
+      ++ join_with (string "; ") (List.map (html_of_named_arg env) fields)
+      ++ string " }"
+  | FANamed arg -> html_of_named_arg env arg
 
 let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
  fun env xref dec ->
