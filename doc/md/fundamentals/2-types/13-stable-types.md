@@ -6,7 +6,19 @@ sidebar_position: 13
 
 Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as arguments and or be the result of shared functions.
 
-**Stable types** include all shared types and are the types of values that can be stored in Motoko's stable variables. Storing a value in a stable variable ensures the value can be preserved across upgrades of the actor, allowing an application to preserve state without requiring a file system or database. The ability to safely and easily preserve data across upgrades is one the distinguishing features of Motoko that separates it from other mainstream languages.
+**Stable types** comprise all shared types and represent the types of values that may be stored in the stable declarations of a Motoko actor.
+Storing a value in a stable declaration ensures that the value persists across actor upgrades, enabling state preservation without relying on a file system or database
+
+The ability to retain data across upgrades is a key feature of Motoko, distinguishing it from other mainstream languages.
+The set of stable types corresponds to the types of values that can be transferred from an actor to its future upgraded versions.
+Types that cannot be transferred include those whose values depend on the actor’s current code, such as non-shared functions or, more generally, objects with function members.
+
+:::info  
+In actors declared without the `persistent` keyword, all private declarations are treated as transient unless explicitly marked `stable`.  
+In a `persistent` actor, all private declarations—except for function declarations—are considered stable by default, unless explicitly marked `transient`.  
+The type of any stable variable must belong to the set of stable types.  
+Transient variables are exempt from this restriction and may have any type, including non-stable types.  
+:::
 
 To give the user more flexibility, the set of stable types is larger than the set of shared types and includes mutable types. This means that programmers can store their application state using a wide range of imperative (stateful) as well as functional (stateless) data structures. 
 
@@ -14,19 +26,28 @@ To give the user more flexibility, the set of stable types is larger than the se
 
 While all shared types are stable, the reverse is not true. Some stable types cannot be shared across [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters).
 
-| Type                            | Stable | Shared |
-|---------------------------------|--------|--------|
-| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool), etc.) | Yes | Yes |
-| Immutable arrays (`[T]`)     | Yes | Yes |
-| Mutable arrays (`[var T]`)   | Yes | No  |
-| Records with immutable fields | Yes | Yes |
-| Records with mutable fields   | Yes | No  |
-| Option types (`?T`)           | Yes | Yes |
-| Shared functions             | Yes | Yes |
-| Actor references              | Yes | Yes |
-| Variants with stable types    | Yes | No (if non-shared types are included) |
-| Actor references              | Yes | Yes |
-| Error type (`Error`)          | No  | No  |
+| Type                                                                                         | Stable | Shared |
+|----------------------------------------------------------------------------------------------|--------|--------|
+| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool), etc.) | Yes    | Yes    |
+| Immutable arrays (`[T]`)                                                                     | Yes*   | Yes**  |
+| Mutable arrays (`[var T]`)                                                                   | Yes*   | No     |
+| Records with immutable fields                                                                | Yes    | Yes    |
+| Records with mutable fields                                                                  | Yes    | No     |
+| Option types (`?T`)                                                                          | Yes*   | Yes**  |
+| Variants with stable types                                                                   | Yes    | No (if non-shared types are included) |
+| Shared functions                                                                             | Yes    | Yes    |
+| Actor references                                                                             | Yes    | Yes    |
+| Regions                                                                                      | Yes    | No     |
+| Error type (`Error`)                                                                         | No     | No     |
+| Non-shared functions and futures (`async* T`)                                                | No     | No     |
+
+\* provided `T` is stable  
+\** provided `T` is shared  
+
+:::info
+In types such as `[T]`, `[var T]`, and `?T`, the element type `T` must itself be stable (for stable use) or shared (for shared use).  
+Non-shared functions and futures (`async* T`) depend on the current actor’s execution context and cannot be preserved or transferred.  
+:::
 
 ## Common stable types
 
