@@ -5093,30 +5093,30 @@ module IC = struct
 
   let import_ic0 env =
     E.add_func_import env "ic0" "accept_message" [] [];
-    E.add_func_import env "ic0" "call_data_append" [i; i] [];
+    E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
     E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
     E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
-    E.add_func_import env "ic0" "call_new" [i; i; i; i; i; i; i; i] [];
+    E.add_func_import env "ic0" "call_new" (i32s 8) [];
     E.add_func_import env "ic0" "call_perform" [] [I32Type];
-    E.add_func_import env "ic0" "call_on_cleanup" [i; i] [];
-    E.add_func_import env "ic0" "canister_cycle_balance128" [i] [];
-    E.add_func_import env "ic0" "canister_self_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "canister_self_size" [] [i];
+    E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
+    E.add_func_import env "ic0" "canister_cycle_balance128" [I32Type] [];
+    E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
     E.add_func_import env "ic0" "canister_status" [] [I32Type];
     E.add_func_import env "ic0" "canister_version" [] [I64Type];
     E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
-    E.add_func_import env "ic0" "is_controller" [i; i] [I32Type];
-    E.add_func_import env "ic0" "subnet_self_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "subnet_self_size" [] [i];
-    E.add_func_import env "ic0" "debug_print" [i; i] [];
-    E.add_func_import env "ic0" "msg_arg_data_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "msg_arg_data_size" [] [i];
-    E.add_func_import env "ic0" "msg_caller_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "msg_caller_size" [] [i];
-    E.add_func_import env "ic0" "msg_cycles_available128" [i] [];
-    E.add_func_import env "ic0" "msg_cycles_refunded128" [i] [];
+    E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
+    E.add_func_import env "ic0" "subnet_self_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "subnet_self_size" [] [I32Type];
+    E.add_func_import env "ic0" "debug_print" (i32s 2) [];
+    E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
+    E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
+    E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
+    E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
     E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; i] [];
-    E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; I32Type] [];
 
     (* Cost *)
     E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
@@ -5125,21 +5125,21 @@ module IC = struct
     E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
     E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
 
-    E.add_func_import env "ic0" "certified_data_set" [i; i] [];
+    E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
     E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
-    E.add_func_import env "ic0" "data_certificate_size" [] [i];
-    E.add_func_import env "ic0" "data_certificate_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "msg_method_name_size" [] [i];
-    E.add_func_import env "ic0" "msg_method_name_copy" [i; i; i] [];
+    E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
+    E.add_func_import env "ic0" "data_certificate_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "msg_method_name_size" [] [I32Type];
+    E.add_func_import env "ic0" "msg_method_name_copy" (i32s 3) [];
     E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
-    E.add_func_import env "ic0" "msg_reject_msg_size" [] [i];
-    E.add_func_import env "ic0" "msg_reject_msg_copy" [i; i; i] [];
-    E.add_func_import env "ic0" "msg_reject" [i; i] [];
-    E.add_func_import env "ic0" "msg_reply_data_append" [i; i] [];
+    E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
+    E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
+    E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
+    E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
     E.add_func_import env "ic0" "msg_reply" [] [];
     E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
     E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
-    E.add_func_import env "ic0" "trap" [i; i] [];
+    E.add_func_import env "ic0" "trap" (i32s 2) [];
     E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
@@ -10231,6 +10231,80 @@ module AllocHow = struct
 
 end (* AllocHow *)
 
+module Cost = struct
+  let call env =
+    Func.share_code2 Func.Always env "cost_call"
+      (("method_name_size", I64Type), ("payload_size", I64Type))
+      [IC.i]
+      (fun env get_method_name_size get_payload_size ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_method_name_size ^^
+          get_payload_size ^^
+          get_dst ^^
+          IC.ic_system_call "cost_call" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [IC.i] (fun env ->
+      Stack.with_words env "dst" 4l (fun get_dst ->
+        get_dst ^^
+        IC.ic_system_call "cost_create_canister" env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.ic_system_call "cost_http_request" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+  
+  let sign_with_ecdsa env =
+    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
+      (("key_name", IC.i), ("curve", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_curve ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_curve ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_ecdsa" env ^^
+          StackRep.adjust env (SR.UnboxedWord32 Type.Int32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_schnorr env =
+    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
+      (("key_name", IC.i), ("algorithm", I32Type))
+      [IC.i; I32Type]
+      (fun env get_key_name get_algorithm ->
+        Stack.with_words env "dst" 4l (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_algorithm ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_schnorr" env  ^^
+          StackRep.adjust env (SR.UnboxedWord32 Type.Int32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+end
+
 (* The actual compiler code that looks at the AST *)
 
 (* wraps a bigint in range [0…2^32-1] into range [-2^31…2^31-1] *)
@@ -12337,6 +12411,30 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  (* Cost *)
+  | OtherPrim "costCall", [method_name_size; payload_size] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
+    Cost.call env
+  | OtherPrim "costCreateCanister", [] ->
+    SR.Vanilla, Cost.create_canister env
+  | OtherPrim "costHttpRequest", [request_size; max_res_bytes] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
+    Cost.http_request env
+  | OtherPrim "costSignWithEcdsa", [key_name; curve] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) curve ^^
+    Cost.sign_with_ecdsa env
+  | OtherPrim "costSignWithSchnorr", [key_name; algorithm] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) algorithm ^^
+    Cost.sign_with_schnorr env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit, compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^ IC.system_call env "call_with_best_effort_response"
