@@ -1,6 +1,10 @@
 # Motoko compiler changelog
 
-## 0.14.10 (FUTURE)
+## 0.14.11 (FUTURE)
+
+* motoko (`moc`)
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
 ## 0.14.10 (2025-05-12)
 
@@ -8,8 +12,6 @@
 
   * Added new primitives for cost calculation:
     `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
-
-  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
 ## 0.14.9 (2025-04-25)
 
