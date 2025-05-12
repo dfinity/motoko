@@ -4,6 +4,9 @@
 
 * motoko (`moc`)
 
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
   * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
 ## 0.14.9 (2025-04-25)
