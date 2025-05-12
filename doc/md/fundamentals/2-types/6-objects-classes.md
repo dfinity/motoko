@@ -16,9 +16,7 @@ From an OOP perspective, an object is an abstraction, defined by the behavior of
 
 In addition to the record syntax, Motoko let's you defined objects from a block of declarations.  
 The declarations in the block can be `public` or `private`, with `private` the default.  
-The public declarations become fields of the object, all private declarations are hidden.  
-
-An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently as `object()`.  Instead, you must use an object class (`object class()`).
+The public declarations become fields of the object, all private declarations are hidden.
 
 ```motoko no-repl
 object Account {
@@ -39,7 +37,7 @@ object Account {
 
 ## Classes
 
-A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
+An object declaration just declares a single object. To declare a function that generates objects of a similar type, Motoko offer classes. A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
 class Account(initialBalance : Nat) {
