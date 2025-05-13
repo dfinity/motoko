@@ -1248,7 +1248,7 @@ let transform_import (i : S.import) : import_declaration =
        let contents = Lib.FilePath.contents path in
        T.(match t with
           | Prim Text -> textE
-          | Non | Prim Blob -> blobE
+          | Prim Blob -> blobE
           | t -> (*Printf.eprintf "Cannot type: %s\n" (Wasm.Sexpr.to_string 80 (Arrange_type.typ t));*) assert false) contents
   in [ letP (pat p) rhs ]
 
