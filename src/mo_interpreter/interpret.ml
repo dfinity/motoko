@@ -1147,15 +1147,8 @@ let import_lib env lib =
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | Syntax.FileU str -> fun _ -> V.Blob str
-                        (* Always create a blob here, but the ImportedValuePath will apply the coercion if Text needed
-    begin match T.normalize cub.note.note_typ with
-    | T.(Prim Text) -> interpret_lit env (ref (TextLit str))
-    | T.(Prim Blob) -> interpret_lit env (ref (BlobLit str))
-    | T.Non) -> failwith "NON?"
-    | _ -> assert false
-    end*)
+    (* always create a Blob here, but the ImportedValuePath will apply the coercion if Text needed *)
   | _ -> assert false
-
 
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags state scope in
