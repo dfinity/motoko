@@ -282,7 +282,6 @@ let interpret_lit env lit : V.value =
   | CharLit c -> V.Char c
   | TextLit s -> V.Text s
   | BlobLit b -> V.Blob b
-  (* | PreLit (s, _) -> V.Text s FIXME: why not type-checked in ProgU? *)
   | PreLit _ -> assert false
 
 

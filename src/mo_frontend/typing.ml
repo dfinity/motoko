@@ -3276,8 +3276,6 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     (match T.normalize typ with
      | T.(Prim (Text | Blob)) -> ()
-     | T.Pre -> failwith "Pre"
-     | T.Non -> failwith "Non"
      | _ ->
        error env pat.at "M0216" "value import pattern can only bind `Blob` or `Text`, but asks for type%a"
          display_typ typ);
