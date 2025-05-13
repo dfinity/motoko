@@ -3,6 +3,7 @@
 (* 1   :  and expected symbol *)
 (* 2   :  and expected symbols *)
 (* 3   :  and parsed items *)
+(* 4   : like 2, but with examples *)
 
 type error_detail = int  (* TODO: make this a datatype! *)
 

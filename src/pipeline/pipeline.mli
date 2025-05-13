@@ -46,7 +46,7 @@ type scope_cache = Scope.t Type.Env.t
 
 type load_result_cached =
     ( Syntax.lib list
-    * (Syntax.prog * string list) list
+    * (Syntax.prog * string list * Scope.t) list
     * Scope.t
     * scope_cache )
   Diag.result

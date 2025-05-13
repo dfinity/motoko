@@ -634,6 +634,19 @@ Example:
 Nat64.bitcountTrailingZero(16); // => 4
 ```
 
+## Function `explode`
+``` motoko no-repl
+func explode(x : Nat64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant), lower (least significant)
+and in-between bytes of `x`.
+
+Example:
+```motoko include=import
+Nat64.explode 0xbb772266aa885511 // => (187, 119, 34, 102, 170, 136, 85, 17)
+```
+
 ## Function `addWrap`
 ``` motoko no-repl
 func addWrap(x : Nat64, y : Nat64) : Nat64

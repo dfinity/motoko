@@ -26,8 +26,16 @@ let abstract_symbols explanations =
   String.concat "\n  " (uniq ss)
 
 let abstract_future future =
-  let ss = List.map Printers.string_of_symbol future  in
+  let ss = List.map Printers.string_of_symbol future in
   String.concat " " ss
+
+let abstract_future_with_example future =
+  let ss      = String.concat " " @@ List.map Printers.string_of_symbol future in
+  let example = String.concat " " @@ List.map Printers.example_of_symbol future in
+  if String.compare ss example != 0 then
+    ss ^ " (e.g. '" ^ example ^ "')"
+  else
+    ss
 
 let rec lex_compare_futures f1 f2 =
   match f1,f2 with
@@ -45,6 +53,11 @@ let compare_futures f1 f2 = match compare (List.length f1) (List.length f2) with
 let abstract_futures explanations =
   let futures = List.sort compare_futures (List.map E.future explanations) in
   let ss = List.map abstract_future futures in
+  String.concat "\n  " (uniq ss)
+
+let abstract_futures_with_examples explanations =
+  let futures = List.sort compare_futures (List.map E.future explanations) in
+  let ss = List.map abstract_future_with_example futures in
   String.concat "\n  " (uniq ss)
 
 let abstract_item item =
@@ -129,6 +142,10 @@ let handle_error lexbuf error_detail message_store (start, end_) explanations =
       Printf.sprintf
         "unexpected %s in position marked . of partially parsed item(s):\n%s"
         token (abstract_items explanations)
+    | 4 ->
+      Printf.sprintf
+        "unexpected %s, expected one of token or <phrase> sequence:\n  %s"
+        token (abstract_futures_with_examples explanations)
     | _ ->
       Printf.sprintf "unexpected %s" token
   in
