@@ -76,7 +76,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
 (* Lib as a single value *)
 let comp_unit_of_value full_path : comp_unit =
   let at = Source.no_region in
-  let prog_typ_note = { empty_typ_note with note_typ = Type.Non (* common subtype of Text and Blob *) } in
+  let prog_typ_note = { empty_typ_note with note_typ = Type.blob } in
   Source.{ it = { imports = []; body = { it = FileU (Lib.FilePath.contents full_path); note = prog_typ_note; at } }; note = { filename = full_path; trivia = Trivia.empty_triv_table}; at }
 
 (* Lib as decs *)

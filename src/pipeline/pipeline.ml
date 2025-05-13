@@ -458,7 +458,7 @@ let chase_imports_cached parsefn senv0 imports scopes_map
     | Syntax.ImportedValuePath full_path ->
       let lib = lib_of_value full_path in
       libs := lib :: !libs; (* NB: Conceptually an append *)
-      let sscope = Scope.lib full_path Type.Non (* common subtype of Text and Blob *) in
+      let sscope = Scope.lib full_path Type.blob in
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
     | Syntax.IDLPath (f, _) ->
