@@ -151,7 +151,7 @@ let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
   let full_path = Lib.FilePath.normalise full_path in
   if Sys.file_exists full_path
-    then Ok full_path
+  then Ok full_path
   else Error (err_file_does_not_exist' at full_path)
 
 let add_lib_import msgs imported ri_ref at lib_path =
