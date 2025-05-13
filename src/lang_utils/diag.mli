@@ -63,4 +63,4 @@ val add_msgs : msg_store -> messages -> unit
 val with_message_store : ?allow_errors:bool -> (msg_store -> 'a option) -> 'a result
 
 (* unsafe! only use when the messages are definitely to be discarded *)
-val slienced : msg_store
+val silenced : msg_store

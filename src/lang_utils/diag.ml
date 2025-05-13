@@ -106,4 +106,4 @@ let run r = match flush_messages r with
   | None -> exit 1
   | Some x -> x
 
-let slienced : msg_store = ref []
+let silenced : msg_store = ref []

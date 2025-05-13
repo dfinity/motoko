@@ -3274,7 +3274,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, None) when is_value_import dec ->
-    let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.slienced}) pat with
+    let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.silenced}) pat with
       | None -> T.blob, check_pat env T.blob pat
       | Some tv -> tv
     in
