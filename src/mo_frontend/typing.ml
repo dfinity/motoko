@@ -1142,8 +1142,6 @@ let check_lit env t lit at suggest =
     lit := FloatLit (check_float env at s)
   | T.Prim T.Blob, PreLit (s, T.Text) ->
     lit := BlobLit s
-  | T.Prim T.Text, PreLit (s, T.Blob) ->
-    lit := TextLit s; failwith "Text"
   | t, _ ->
     let t' = T.Prim (infer_lit env lit at) in
     if not (sub env at t' t) then
