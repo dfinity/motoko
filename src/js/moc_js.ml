@@ -11,6 +11,7 @@ let () =
   Flags.check_ir := false;
   Flags.debug_info := false;
   Flags.actor_idl_path := Some "idl/";
+  Flags.error_detail := 4; (* unexpected token with expected symbols and examples *)
   Js.export "Motoko"
     (object%js
       val version = js_version
@@ -25,6 +26,7 @@ let () =
       method setActorAliases entries = set_actor_aliases entries
       method setPublicMetadata entries = set_public_metadata entries
       method setRunStepLimit limit = js_set_run_step_limit limit
+      method setTypecheckerCombineSrcs combineSrcs = Flags.typechecker_combine_srcs := combineSrcs
       method gcFlags option = gc_flags option
       method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
       method check s = Flags.compiled := false; js_check s
