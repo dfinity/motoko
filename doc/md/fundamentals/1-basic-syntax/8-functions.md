@@ -15,7 +15,7 @@ func exampleFunction() : () {};
 
 Within objects, modules and actors all functions are declared private unless explicitly declared `public`.
 
-```motoko no-repl
+```motoko
 object Counter  {
    var value = 0;
    func reset() { value := 0 };
@@ -28,7 +28,7 @@ The object `Counter` has two public methods, the functions `Counter.inc()` and `
 
 A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
-```motoko no-repl
+```motoko
 public func exampleFunction(x : Nat) : Nat {
     x;
 };

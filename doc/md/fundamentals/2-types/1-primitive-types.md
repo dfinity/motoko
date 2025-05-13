@@ -55,7 +55,7 @@ let y = x << 2; // 0x28 (40 in decimal)
 
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
-```motoko no-repl
+```motoko
 let letter : Char = 'A';
 let codePoint = Char.toNat32(letter); // 65
 
@@ -72,7 +72,7 @@ The [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) type represents
 
 The logical operators `and` and `or` will only evaluate their second operand if necessary.  
 
-```motoko no-repl
+```motoko
 let flag : Bool = true or false; // true
 let opposite = not flag; // false
 
@@ -84,7 +84,7 @@ let comparison = false <= true; // true
 
 [`Float`](https://internetcomputer.org/docs/motoko/base/Float) is a 64-bit floating-point type that provides mathematical operations.
 
-```motoko no-repl
+```motoko
 import Float "mo:base/Float"; 
 let pi = Float.pi;
 let radius : Float = 2.5;

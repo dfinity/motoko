@@ -10,13 +10,13 @@ Advanced type features enable more flexible and expressive type definitions, inc
 
 Structural equality determines whether two values are equal based on their contents. This applies to immutable data structures, such as [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and [variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants), but does not apply to mutable structures for safety reasons.
 
-```motoko no-repl
+```motoko
 type Point = { x : Int; y : Int };
 
 let p1 : Point = { x = 1; y = 2 };
 let p2 : Point = { x = 1; y = 2 };
 
-let areEqual = p1 == p2;  // true (structural equality)
+p1 == p2;  // true (structural equality)
 ```
 
 Even though `p1` and `p2` are distinct objects, they are considered equal because they have the same structure and values.
@@ -25,25 +25,24 @@ Even though `p1` and `p2` are distinct objects, they are considered equal becaus
 
 Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions), [classes](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes), and data structures.
 
-```motoko no-repl
+```motoko
 // Generic function
 func identity<T>(x : T) : T {
   return x;
-}
+};
 
-let num = identity<Nat>(42);  // num is Nat
-let txt = identity<Text>("Hello");  // txt is Text
+identity<Nat>(42);  // num is Nat
 ```
 
 A generic class can store any type while maintaining type safety:
 
-```motoko no-repl
+```motoko
 class Box<T>(value : T) {
   public func get() : T { value };
-}
+};
 
 let intBox = Box<Nat>(10);
-let textBox = Box<Text>("Hello");
+intBox.get();
 ```
 
 ## Recursive types
@@ -58,14 +57,16 @@ public type List<T> = ?(T, List<T>);
 
 Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal and structural mutation without using the built-in `reverse` method.
 
-``` motoko no-repl
+``` motoko
+import List "mo:base/List";
+
 let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
 func reverse(l : List.List<Nat>) : List.List<Nat> {
     var current = l;
-    var rev = List.empty<Nat>();
+    var rev = List.nil<Nat>();
 
-    while(not List.isEmpty(current)){
+    while(not List.isNil(current)){
       switch(current) {
         case(?(h, t)) {
           rev := ?(h, rev);
@@ -91,9 +92,9 @@ This approach balances the flexibility of generic programming with the safety of
 
 The following examples illustrate this behavior:
 
-```motoko no-repl
-func printName<T <: { name : Text }>(x : T) {
-  Debug.print(x.name);
+```motoko
+func printName<T <: { name : Text }>(x : T): Text {
+  debug_show(x.name);
 };
 
 let ghost = { name = "Motoko"; age = 30 };
@@ -104,12 +105,12 @@ In the example above, `T <: { name : Text }` requires that any type used for `T`
 
 Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a basic type.
 
-```motoko no-repl
+```motoko
 func addIfInt<T <: Int>(x : T, y : T) : Int {
   return x + y;
 };
 
-let result = addIfInt(5, -10);  // Allowed because both are of type Int.
+addIfInt(5, -10);  // Allowed because both are of type Int.
 ```
 
 Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.

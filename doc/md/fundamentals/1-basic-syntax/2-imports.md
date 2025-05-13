@@ -23,7 +23,7 @@ import Math "mo:base/Float";
 import Iter "mo:itertools/Iter";
 ```
 
-This imports the `Nat` and `Float` modules from package `base` under the locals name `Nat` and `Math` (`base` is Motoko's standard library). 
+This imports the `Nat` and `Float` modules from package `base` under the locals name `Nat` and `Math` (`base` is Motoko's standard library).
 Module `Iter` is imported from a third-party package `itertools`.
 **3. Files within the current project.**
 

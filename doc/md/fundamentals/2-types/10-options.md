@@ -12,7 +12,7 @@ Options provide a structured way to represent values that may or may not be pres
 
 An option is defined using `?` followed by the type of the value it can hold.
 
-```motoko no-repl
+```motoko
 var username : ?Text = null;
 ```
 
@@ -29,10 +29,11 @@ When a Motoko value has type `?T`, then is either `null` or some value, written 
 ``` motoko
 func displayName(option : ?Text) : Text {
   switch option {
-     case ?user { user };
-     case null { "Guest" };
+     case (?user) { user };
+     case (null) { "Guest" };
   }
-}
+};
+displayName(null);
 ```
 
 Sometimes, the verbosity of `switch` expression can make code harder to read, so Motoko also offers additional ways to handle option types.
@@ -41,8 +42,9 @@ Sometimes, the verbosity of `switch` expression can make code harder to read, so
 
 To determine if an option contains a value, `Option.isSome` returns `true` if it is not `null`.
 
-```motoko no-repl
+```motoko
 import Option "mo:base/Option";
+import Debug "mo:base/Debug";
 
 let value : ?Nat = ?5;
 if (Option.isSome(value)) {
@@ -56,24 +58,24 @@ By leveraging the `Option` module, handling optional values becomes more concise
 
 Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
-```motoko no-repl
+```motoko
 import Option "mo:base/Option";
 
 let username : ?Text = null;
-let displayName = Option.get(username, "Guest"); // "Guest" if username is null
+Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
 ### Using options for error handling
 
 Options can be used to catch expected failures instead of calling a [`trap`](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps), making a function return `null` when it encounters an invalid input.
 
-```motoko no-repl
+```motoko
 func safeDivide(a : Int, b : Int) : ?Int {
     if (b == 0) null else ?(a / b);
-}
+};
 
 let result1 = safeDivide(10, 2); // ?5
-let result2 = safeDivide(10, 0); // null
+safeDivide(10, 0); // null
 ```
 
 ### Let / else
@@ -82,7 +84,7 @@ Another way to extract values from options, is use the `let ... else` pattern. T
 
 For example, here’s a simple implementation of an option helper:
 
-```motoko no-repl
+```motoko
 func get<T>(option : ?T, defaultValue : T) : T {
   let ?value = option else return defaultValue;
   return value;
@@ -114,11 +116,11 @@ handling pattern-match failure using the `else` branch.
 
 The `Option.map` function applies a transformation only if the value is present.
 
-```motoko no-repl
+```motoko
 import Option "mo:base/Option";
 
 let number : ?Nat = ?10;
-let doubled = Option.map<Nat, Nat>(number, func(x : Nat) = x * 2); // ?20
+Option.map<Nat, Nat>(number, func(x : Nat) = x * 2); // ?20
 ```
 
 In this example, if `number` is `null`, `map` ensures the result remains `null` instead of performing an invalid operation.
@@ -127,13 +129,13 @@ In this example, if `number` is `null`, `map` ensures the result remains `null` 
 
 Sometimes, both the function and value are optional. `Option.apply` calls a function only if both are present. This is useful when chaining optional operations that may return `null`.
 
-```motoko no-repl
+```motoko
 import Option "mo:base/Option";
 
 let maybeIncrement : ?(Nat -> Nat) = ?(func x: Nat = x + 1);
 let maybeValue : ?Nat = ?10;
 
-let result = Option.apply<Nat, Nat>(maybeValue, maybeIncrement); // ?11
+Option.apply<Nat, Nat>(maybeValue, maybeIncrement); // ?11
 ```
 
 If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
@@ -142,7 +144,7 @@ If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
 
 When working with multiple optional values, using `Option.chain` processes them safely without unnecessary `switch` statements.
 
-```motoko no-repl
+```motoko
 import Option "mo:base/Option";
 
 let firstName : ?Text = ?"Motoko";
@@ -152,7 +154,7 @@ func combineNames(f : Text, l : Text) : Text {
     f # " " # l;
 };
 
-let fullName = Option.chain<Text, Text>(firstName, func (first : Text) {
+Option.chain<Text, Text>(firstName, func (first : Text) {
     Option.map<Text, Text>(lastName, func(last : Text) { combineNames(first, last) });
 });
 
@@ -202,7 +204,15 @@ func eval(e : Exp) : ? Nat {
       };
     };
   };
-}
+};
+
+let expr : Exp = #If(
+  #Div(#Lit 10, #Lit 2),   // 10 / 2 = 5 (non-zero, so evaluate e3)
+  #Lit 0,                  // e2 (ignored because e1 ≠ 0)
+  #Div(#Lit 6, #Lit 3)     // e3 → 6 / 3 = 2
+);
+
+eval(expr);
 ```
 
 To guard against division by 0 without trapping, the eval function returns an option result, using `null` to indicate failure.
