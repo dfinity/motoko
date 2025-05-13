@@ -203,19 +203,22 @@ let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Sco
     let* () = Definedness.check_prog prog in
     Diag.return t_sscope)
 
-let rec check_progs ?(viper_mode=false) senv progs : Scope.scope Diag.result =
-  match progs with
-  | [] -> Diag.return senv
-  | prog::progs' ->
-    let open Diag.Syntax in
-    let filename = prog.Source.note.Syntax.filename in
-    let async_cap = async_cap_of_prog prog in
-    let* _t, sscope =
-      Cons.session ~scope:filename (fun () ->
-        infer_prog ~viper_mode senv None async_cap prog)
-    in
-    let senv' = Scope.adjoin senv sscope in
-    check_progs ~viper_mode senv' progs'
+let check_progs ?(viper_mode=false) senv progs : (Scope.t list * Scope.t) Diag.result =
+  let rec go senv sscopes = function
+    | [] -> Diag.return (List.rev sscopes, senv)
+    | prog::progs ->
+      let open Diag.Syntax in
+      let filename = prog.Source.note.Syntax.filename in
+      let async_cap = async_cap_of_prog prog in
+      let* _t, sscope =
+        Cons.session ~scope:filename (fun () ->
+          infer_prog ~viper_mode senv None async_cap prog)
+      in
+      let senv' = Scope.adjoin senv sscope in
+      let sscopes' = sscope :: sscopes in
+      go senv' sscopes' progs
+  in
+  go senv [] progs
 
 let check_lib senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
@@ -362,7 +365,7 @@ type scope_cache = Scope.t Type.Env.t
 
 type load_result_cached =
     ( Syntax.lib list
-    * (Syntax.prog * string list) list
+    * (Syntax.prog * string list * Scope.t) list
     * Scope.t
     * scope_cache ) Diag.result
 
@@ -498,12 +501,16 @@ let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache :
   let* () = Typing.check_actors ?viper_mode ?check_actors senv progs in
   (* [infer_prog] seems to annotate the AST with types by mutating some of its
      nodes, therefore, we always run the type checker for programs. *)
-  let* senv = check_progs ?viper_mode senv progs in
-  Diag.return
-    ( libs
-    , List.map (fun (prog, rims) -> prog, List.map resolved_import_name rims) rs
-    , senv
-    , scope_cache )
+  let* sscopes, senv = check_progs ?viper_mode senv progs in
+  let prog_result =
+    List.map2
+      (fun (prog, rims) sscope ->
+        let rims' = List.map resolved_import_name rims in
+        prog, rims', sscope)
+      rs
+      sscopes
+  in
+  Diag.return (libs, prog_result, senv, scope_cache)
 
 let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
   let open Diag.Syntax in
@@ -511,7 +518,7 @@ let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
   let* libs, rs, senv, _scope_cache =
     load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache
   in
-  let progs = List.map fst rs in
+  let progs = List.map (fun (prog, _immediate_imports, _sscope) -> prog) rs in
   Diag.return (libs, progs, senv)
 
 let load_decl parse_one senv : load_decl_result =
