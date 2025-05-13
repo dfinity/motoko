@@ -165,9 +165,7 @@ let display_typs fmt typs =
     let tfs = T.Env.fold (fun x c acc ->
       if Syntax.(is_privileged x || is_scope x) ||
         T.(match Cons.kind c with
-          | Def ([], Prim _)
-          | Def ([], Any)
-          | Def ([], Non) -> string_of_con c = x
+          | Def ([], (Prim _ | Any | Non)) -> string_of_con c = x
           | _ -> false)
       then acc
       else T.{lab = x; src = {depr = None; region = Source.no_region }; typ = T.Typ c}::acc)
