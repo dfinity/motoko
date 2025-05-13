@@ -166,14 +166,6 @@ let add_value_import msgs imported ri_ref at path =
   | Error err ->
      Diag.add_msg msgs err
 
-(*
-  if Sys.file_exists full_path
-  then begin
-    ri_ref := IDLPath (full_path, bytes);
-    imported := RIM.add (IDLPath (full_path, bytes)) at !imported
-  end else
-    err_file_does_not_exist msgs at full_path
- *)
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
   imported := RIM.add PrimPath at !imported
