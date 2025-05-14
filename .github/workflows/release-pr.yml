@@ -19,7 +19,7 @@ jobs:
       id: get_version
       run: |
         PR_TITLE="${{ github.event.pull_request.title }}"
-        VERSION=$(echo "$PR_TITLE" | sed -E 's/^chore: Releasing ([0-9]+\.[0-9]+\.[0-9]+).*$/\1/')
+        VERSION=$(echo "$PR_TITLE" | sed -nE 's/^chore: Releasing ([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p')
         echo version=$VERSION >> "$GITHUB_OUTPUT"
 
     - name: Fail if version is not valid
