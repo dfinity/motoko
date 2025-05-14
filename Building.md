@@ -95,6 +95,7 @@ git describe --tags --abbrev=0
 
  * Make sure that the very top of `Changelog.md` **exactly** matches the following format (otherwise the release extraction script will fail):
 
+   ```markdown
    # Motoko compiler changelog
 
    ## X.Y.Z (YYYY-MM-DD)
@@ -102,6 +103,7 @@ git describe --tags --abbrev=0
    ...changelog content for this version...
 
    ## ...previous version...
+   ```
 
  * Make sure the markdown doc for base is up-to-date:
    For now, in a nix shell (preferably _re-entering_):
