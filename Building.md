@@ -134,9 +134,6 @@ git describe --tags --abbrev=0
    open "https://github.com/dfinity/motoko/compare/$(git describe --tags --abbrev=0)...master"
    ```
 
- * Validate the changelog has the correct format for the extraction of the release notes.
-   Make sure the 'Extract changelog' step in the [release workflow](.github/workflows/release.yml) passes.
-
  * Switch to a new release branch (creating it if it doesn't exist):
 
    ```bash
@@ -144,8 +141,9 @@ git describe --tags --abbrev=0
    ```
 
  * `git commit -am "chore: Releasing 0.14."$MOC_MINOR`
- * Create a PR from this commit, and label it `automerge-squash`. E.g.
-   with `git push origin HEAD:$USER/0.14.$MOC_MINOR`. Mergify will
+ * Create a PR from this commit.
+   Make sure the PR title is the same as the commit message so that `release-pr.yml` can be triggered. Check that it passes.
+   Label the PR with `automerge-squash`. Mergify will
    merge it into `master` without additional approval, but it will take some
    time as the title (version number) enters into the `nix` dependency tracking.
 
