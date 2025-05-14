@@ -93,11 +93,15 @@ After pulling, you can check the latest released version with:
 git describe --tags --abbrev=0
 ```
 
- * Make sure that the top section of `Changelog.md` has a title like
+ * Make sure that the very top of `Changelog.md` **exactly** matches the following format (otherwise the release extraction script will fail):
 
-   ## 0.14.1 (2025-02-10)
+   # Motoko compiler changelog
 
-   with today’s date.
+   ## X.Y.Z (YYYY-MM-DD)
+
+   ...changelog content for this version...
+
+   ## ...previous version...
 
  * Make sure the markdown doc for base is up-to-date:
    For now, in a nix shell (preferably _re-entering_):
@@ -150,11 +154,11 @@ After the PR is merged, you can push the tag:
  * `git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR`
  * `git push origin 0.14.$MOC_MINOR`
 
-Pushing the tag should cause GitHub Actions to create a “Release” on the GitHub
+Pushing the tag should cause GitHub Actions to create a "Release" on the GitHub
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
 the build artifacts for this revision. In this case, restart the GitHub Action
-on GitHub’s UI.
+on GitHub's UI.
 
 After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
