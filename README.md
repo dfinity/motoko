@@ -60,7 +60,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
 * [Blocks - an online low-code editor for Motoko](https://github.com/Blocks-Editor/blocks)
 * [MOPS - a Motoko package manager hosted on the IC](https://j4mwm-bqaaa-aaaam-qajbq-cai.ic0.app/)
-* [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
+* [Motoko Bootcamp](https://github.com/motoko-bootcamp) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
 * [Motoko library starter template](https://github.com/ByronBecker/motoko-library-template)
 
 ## Contributing
