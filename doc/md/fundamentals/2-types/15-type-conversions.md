@@ -127,7 +127,7 @@ Motoko does not provide a built-in function for converting `Time` into a date-ti
 - Applying timezone offsets (e.g., subtracting 5 hours for EST)
 - Formatting the output as `MM-DD-YYYY HH-MM-SS`
 
-[View example implementation](https://icp.ninja/i?s=Pxl7L)
+[View example implementation](https://icp.ninja/i?s=zy4yg)
 :::
 
 ## Modifying arrays
