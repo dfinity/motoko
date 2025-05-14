@@ -3375,8 +3375,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (pat, exp, None) when is_value_import dec ->
     let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.silenced}) pat with
       | None -> T.blob, check_pat env T.blob pat
-      | Some tv -> tv
-    in
+      | Some tv -> tv in
     (match T.normalize typ with
      | T.(Prim (Text | Blob)) -> ()
      | _ ->
