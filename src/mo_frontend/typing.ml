@@ -3338,7 +3338,7 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | ExpD _ ->
+  | ExpD _ | TypD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -3367,12 +3367,6 @@ and infer_dec_valdecs env dec : Scope.t =
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
-  | TypD (id, _, _) ->
-    let c = Option.get id.note in
-    Scope.{ empty with
-      typ_env = T.Env.singleton id.it c;
-      con_env = T.ConSet.singleton c;
-    }
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
@@ -3401,8 +3395,6 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     Scope.{ empty with
       val_env = singleton id t;
-      typ_env = T.Env.singleton id.it c;
-      con_env = T.ConSet.singleton c;
     }
 
 (* Programs *)
