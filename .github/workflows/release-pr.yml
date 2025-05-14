@@ -2,6 +2,7 @@ name: release-pr
 
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened] # Run on PR title change
     branches:
     - master
     paths:
