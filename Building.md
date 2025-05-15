@@ -121,7 +121,7 @@ git describe --tags --abbrev=0
 
    ```bash
    export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1))
-   echo "MOC_MINOR=$MOC_MINOR"
+   echo MOC_MINOR=$MOC_MINOR
    ```
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
