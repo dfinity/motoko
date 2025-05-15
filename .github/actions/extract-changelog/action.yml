@@ -1,8 +1,8 @@
 name: "Extract Changelog for Release"
-description: "Extracts the changelog section for a given version from Changelog.md and outputs it as release_body."
+description: "Extracts the changelog section for a given version from `Changelog.md` and outputs it as `release_body`"
 inputs:
   version:
-    description: "The version number to extract the changelog for."
+    description: "The version number to extract the changelog for"
     required: true
 runs:
   using: "composite"
