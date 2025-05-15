@@ -1,11 +1,11 @@
-name: "Extract Changelog for Release"
-description: "Extracts the changelog section for a given version from `Changelog.md` and outputs it as `release_body`"
+name: Extract Changelog for Release
+description: Extracts the changelog section for a given version from `Changelog.md` and outputs it as `release_body`
 inputs:
   version:
-    description: "The version number to extract the changelog for"
+    description: The version number to extract the changelog for
     required: true
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Extract changelog section
       id: extract_changelog
@@ -20,5 +20,5 @@ runs:
         echo "RELEASE_BODY=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
 outputs:
   release_body:
-    description: "The extracted changelog body for the given version"
+    description: The extracted changelog body for the given version
     value: ${{ steps.extract_changelog.outputs.RELEASE_BODY }}
