@@ -10,7 +10,7 @@ on:
 
 jobs:
   validate-changelog:
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
     # Only run this job on release PRs. Identify them by the title which is determined by the first commit message as described in the release process.
     if: "${{ startsWith(github.event.pull_request.title, 'chore: Releasing ')}}"
     steps:
