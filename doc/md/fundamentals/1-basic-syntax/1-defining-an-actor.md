@@ -5,11 +5,18 @@ hide_table_of_contents: true
 
 # Defining an actor
 
-In Motoko, an actor is a unit of computation that encapsulates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and interact with each other through [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging.
+In Motoko, an `actor` is a unit of computation that encapsulates [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Unlike traditional functions or objects in other programming languages, actors operate independently and communicate via [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging. Each actor maintains its own message queue, enabling concurrent execution.
 
-Actors are objects with special system-level capabilities. An actor supports asynchronous operations and can persist state across calls. Each actor runs independently with its own message queue, allowing concurrent execution.
+You should define an actor when you want to encapsulate state and expose a public API that can be accessed asynchronously by other actors, canisters, or external clients.
 
-A Motoko program typically starts by defining an actor.
+More specifically, define an actor when:
+
+- You want to deploy your program on ICP.
+- You want to take advantage of the actor model's benefits, such as memory isolation, single-threaded execution for update calls (avoiding race conditions), and asynchronous communication.
+
+In Motoko, actors are defined at the top level of a source file using the `actor` keyword. Public functions within an actor must be marked `shared` and return `async` types to support remote, asynchronous calls.
+
+An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
 ```motoko
 // Declares an actor named Main with persistent state
