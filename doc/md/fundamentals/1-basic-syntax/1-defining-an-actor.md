@@ -19,26 +19,32 @@ In Motoko, actors are defined at the top level of a source file using the `actor
 An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
 ```motoko
-// Declares an actor named Main with persistent state
+// Declares an actor named Main.
+// The actor is defined as 'persistent,' meaning its state will persist. 
+// Learn more about persistence: [link]
 persistent actor Main {
-  // Counter to track the number of greetings
+  // Define a variable called 'count' to track the number of greetings.
   var count : Nat = 0;
 
-  // Function to greet someone and increment the counter
+  // Define a publically callable function that when called 
+  // will greet someone and increment the counter.
   public func greet(name : Text) : async Text {
     count += 1;
     "Hello, " # name # "! You are visitor number " # debug_show(count);
   };
 
-  // Function to get the current greeting count separately
+  // Define a publically called function to 
+  // return the current value of 'count' separately.
   public query func readCount() : async Nat {
     count
   };
 };
+
+// Make a call to the greet function with the input of "Programmer"
 await Main.greet("Programmer");
 ```
 
-A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, written in Motoko or another language such as Rust.
+A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, including canisters written in another language such as Rust.
 
 The above example's corresponding Candid interface can be found below.
 
