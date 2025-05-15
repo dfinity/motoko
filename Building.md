@@ -80,11 +80,30 @@ For more details on our CI and CI setup, see `CI.md`.
 
 We make frequent releases, at least weekly. The steps to make a release (say, version 0.14.1) are:
 
- * Make sure that the top section of `Changelog.md` has a title like
+Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
 
-        ## 0.14.1 (2025-02-10)
+```bash
+git checkout master
+git pull
+```
 
-   with today’s date.
+After pulling, you can check the latest released version with:
+
+```bash
+git describe --tags --abbrev=0
+```
+
+ * Make sure that the very top of `Changelog.md` **exactly** matches the following format (otherwise the release extraction script will fail):
+
+   ```markdown
+   # Motoko compiler changelog
+
+   ## X.Y.Z (YYYY-MM-DD)
+
+   ...changelog content for this version...
+
+   ## ...previous version...
+   ```
 
  * Make sure the markdown doc for base is up-to-date:
    For now, in a nix shell (preferably _re-entering_):
@@ -98,27 +117,48 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`
+ * Define a shell variable `MOC_MINOR` with the next minor version number. E.g. `export MOC_MINOR=1`, or automatically:
+
+   ```bash
+   export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1))
+   echo MOC_MINOR=$MOC_MINOR
+   ```
 
  * Look at `git log --first-parent 0.14.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
+   Alternatively, on macOS you can open the comparison in your browser with:
+
+   ```bash
+   open "https://github.com/dfinity/motoko/compare/$(git describe --tags --abbrev=0)...master"
+   ```
+
+ * Switch to a new release branch (creating it if it doesn't exist):
+
+   ```bash
+   git switch -c $USER/0.14.$MOC_MINOR
+   ```
+
  * `git commit -am "chore: Releasing 0.14."$MOC_MINOR`
- * Create a PR from this commit, and label it `automerge-squash`. E.g.
-   with `git push origin HEAD:$USER/0.14.$MOC_MINOR`. Mergify will
+ * Create a PR from this commit.
+   Make sure the PR title is the same as the commit message so that `release-pr.yml` can be triggered. Check that it passes.
+   Label the PR with `automerge-squash`. Mergify will
    merge it into `master` without additional approval, but it will take some
    time as the title (version number) enters into the `nix` dependency tracking.
+
+After the PR is merged, you can push the tag:
+
  * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
  * `git show` to verify we are at the right commit
  * `git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR`
  * `git push origin 0.14.$MOC_MINOR`
 
-Pushing the tag should cause GitHub Actions to create a “Release” on the GitHub
+Pushing the tag should cause GitHub Actions to create a "Release" on the GitHub
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
 the build artifacts for this revision. In this case, restart the GitHub Action
-on GitHub’s UI.
+on GitHub's UI.
 
 After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
