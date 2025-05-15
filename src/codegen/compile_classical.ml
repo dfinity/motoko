@@ -5092,6 +5092,7 @@ module IC = struct
     G.i (Call (nr (E.built_in env get_actor_to_persist_function_name)))
 
   let import_ic0 env =
+    (* Keep all the imports in sync between classical and enhanced versions *)
     E.add_func_import env "ic0" "accept_message" [] [];
     E.add_func_import env "ic0" "call_data_append" (is 2) [];
     E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];

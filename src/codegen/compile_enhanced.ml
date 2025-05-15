@@ -4749,6 +4749,7 @@ module IC = struct
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
+    (* Keep all the imports in sync between classical and enhanced versions *)
     E.add_func_import env "ic0" "accept_message" [] [];
     E.add_func_import env "ic0" "call_data_append" (is 2) [];
     E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
