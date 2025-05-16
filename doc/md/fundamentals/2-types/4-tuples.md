@@ -11,7 +11,7 @@ A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The t
 A tuple with zero elements is called the **unit value**, written as `()`. Since it carries no other data, it represents a trivial  or token value.  
 It's type is the **unit type**, also written `()`.  
 
-Unit values are typically used as dummy argument or return values for functions that don't require arguments or don't produce results. However, they may still produce side effects like printing to the console.
+Unit values are typically used as placeholder arguments or return values for functions that don't require input or don't return meaningful results. However, such functions may still produce side effects, such as printing to the console or modifying state.
 
 ## Defining a tuple
 
