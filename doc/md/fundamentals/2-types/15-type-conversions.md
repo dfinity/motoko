@@ -52,7 +52,7 @@ let result4 = intToNat(-5);   // 5
 
 ### `Nat8` to `Char`
 
-Motoko allows converting a [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value to a [`Char`](https://internetcomputer.org/docs/motoko/base/Char), where the [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value represents a **unicode scalar value** in the **ASCII range**.
+Motoko allows converting a [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value to a [`Char`](https://internetcomputer.org/docs/motoko/base/Char), where the [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) value represents a **Unicode scalar value** in the **ASCII range**.
 
 Since [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32) before being converted into [`Char`](https://internetcomputer.org/docs/motoko/base/Char).
 
