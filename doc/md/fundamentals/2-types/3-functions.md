@@ -64,7 +64,7 @@ func gcd(a : Nat, b : Nat) : Nat {
 let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
 ```
 
-The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals  as argument and returns a natural as a result.  
+The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals as the input argument and returns a natural as a result.  
 
 **Example use case:** Local computations that do not require communication with other actors or canisters.  
 
@@ -88,11 +88,11 @@ Type arguments can be omitted from calls when the compiler can infer them from t
 let result = swap(42, "ICP"); // Inferred as <Nat, Text>
 ```
 
-## Local, asynchronous functions  
+## Local asynchronous functions  
 
-Local function that have an `async`  or `async*` return type are asynchronous and can interact with other canisters by calling shared functions.  
+Local function that have an `async` or `async*` return type are asynchronous and can interact with other canisters by calling shared functions.  
 
-They are useful for defining  asynchronous logic  used in the implementation of public  `shared` functions.
+They are useful for defining asynchronous logic used in the implementation of public `shared` functions.
 
 ```motoko no-repl
 import Time "mo:base/Time";
