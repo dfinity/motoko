@@ -4,20 +4,24 @@ sidebar_position: 13
 
 # Stable types
 
-Recall that [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) can be transmitted to other actors and canisters as the arguments or results of shared functions.
 
-**Stable types** comprise all shared types and represent the types of values that may be stored in the stable declarations of a Motoko actor.
-Storing a value in a stable declaration ensures that the value persists across actor upgrades, enabling state preservation without relying on a file system or database
+**Stable types** include all [shared types](link) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
+Storing a value in a `stable` declaration ensures that it persists across canister upgrades. This enables state preservation without the need for an external file system or database.
 
 The ability to retain data across upgrades is a key feature of Motoko, distinguishing it from other mainstream languages.
-The set of stable types corresponds to the types of values that can be transferred from an actor to its future upgraded versions.
-Types that cannot be transferred include those whose values depend on the actor’s current code, such as non-shared functions or, more generally, objects with function members.
+The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
+Types that cannot be transferred include those whose values depend on the actor's current code, such as non-shared functions or, more generally, objects containing function members. These types are not stable because their behavior cannot be preserved independently of the code that defines them.
 
 :::info  
-In actors declared without the `persistent` keyword, all private declarations are treated as transient unless explicitly marked `stable`.  
-In a `persistent` actor, all private declarations—except for function declarations—are considered stable by default, unless explicitly marked `transient`.  
-The type of any stable variable must belong to the set of stable types.  
-Transient variables are exempt from this restriction and may have any type, including non-stable types.  
+In Motoko, the treatment of private declarations depends on whether an actor is declared with the `persistent` keyword:
+
+- In actors **without** the `persistent` keyword, all private declarations are considered *transient* by default, unless explicitly marked `stable`.
+
+- In **`persistent` actors**, all private declarations (except function declarations) are considered **stable** by default, unless explicitly marked `transient`.
+
+Stable variables must have types that belong to the set of stable types.  
+Transient variables are not subject to this restriction and may have any type, including non-stable types such as functions or objects with function members.
+
 :::
 
 To give the user more flexibility, the set of stable types is larger than the set of shared types and includes mutable types. This means that programmers can store their application state using a wide range of imperative (stateful) as well as functional (stateless) data structures. 
@@ -45,8 +49,8 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 \** provided `T` is shared  
 
 :::info
-In types such as `[T]`, `[var T]`, and `?T`, the element type `T` must itself be stable (for stable use) or shared (for shared use).  
-Non-shared functions and futures (`async* T`) depend on the current actor’s execution context and cannot be preserved or transferred.  
+In composite types like `[T]`, `[var T]`, and `?T`, the element type `T` must also be stable (for use in stable variables) or shared (for use in shared declarations). This ensures that the entire structure adheres to the requirements of stability or shareability, respectively.
+Non-shared functions and futures (`async T`) and computations (`async* T`) depend on the current actor's code and execution context and therefore cannot be preserved across upgrades or transferred between actors.
 :::
 
 ## Common stable types
