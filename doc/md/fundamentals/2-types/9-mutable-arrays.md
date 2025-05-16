@@ -8,7 +8,7 @@ Mutable arrays allow direct modification of elements, making them suitable for s
 
 ## Creating a mutable array
 
-Mutable array types are written with square brackets `[var T]`. The var keyword indicates mutability. The type of the array element is specified within the square brackets, e.g., `[var Nat]` describes an mutable array of natural numbers.
+Mutable array types are written with square brackets `[var T]`. The `var` keyword indicates mutability. The type of the array element is specified within the square brackets, e.g., `[var Nat]` describes an mutable array of natural numbers.
 
 A mutable array is created using a mutable array expression:
 
