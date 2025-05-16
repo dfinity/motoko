@@ -6,7 +6,7 @@ sidebar_position: 5
 
 ## Characters
 
-The `Char` type in Motoko represents a single unicode character delimited with a single quotation mark (`'`).
+The `Char` type in Motoko represents a single Unicode character delimited with a single quotation mark (`'`).
 
 ```motoko
 let letter : Char = 'A';
@@ -75,7 +75,7 @@ let greeting : Text = "Hello, world!";
 "ICP " # "❤️" # " Motoko" // "ICP ❤️ Motoko"
 ```
 
-`t.size()` returns the number of characters in the text `t`.  
+`t.size()` can be used to return the number of characters in the text `t`.  
 
 ```motoko
 "abc".size() == 3
