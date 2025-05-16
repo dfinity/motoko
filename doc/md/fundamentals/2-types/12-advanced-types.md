@@ -172,12 +172,15 @@ Type bounds are not limited to records. For example, it is possible to constrain
 func max<T <: Int>(x : T, y : T) : T {
   if (x <= y) y else x
 };
-max<Int>(-5, -10);  // returns -10  : Int
+max<Int>(-5, -10);  // returns -5  : Int
 ```
+
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
+
 ```motoko
-max<Nat>(5,10); // returns 5 : Nat
+max<Nat>(5,10); // returns 10 : Nat
 ```
+
 Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
 
 The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](https://internetcomputer.org/docs/motoko/base/Int) or [`Float`](https://internetcomputer.org/docs/motoko/base/Float), it restricts `T` to that type.
