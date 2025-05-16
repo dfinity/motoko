@@ -4,7 +4,7 @@ sidebar_position: 11
 
 # Results
 
-| Type    | Syntax                  | Purpose                          | When to use it                                   |
+| Type    | Syntax                  | Purpose                          | Application                                 |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
 | Result  | `Result.Result<T, E>`  where `T` is the success type and `E` is the error type.  | Represents success or failure.   | When an operation can either **succeed or fail**. |
 
@@ -34,18 +34,18 @@ When a Motoko value has type `Result<T, E>`, it is either a success, written `#o
 import Result "mo:base/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
-  if (name.size() == 0) #err "Name must be present" else #ok ("Hello " # name);
+  if (name.size() == 0) #err "Name is empty" else #ok ("Hello " # name);
 };
 
-let result = greet("motoko");
+let result = greet("Motoko");
 switch (result){
   case (#ok message) {
-    debug_show(message) // Hello Motoko
+    message
   };
-  case (#err error){
-    debug_show(error)
+  case (#err error) {
+    error
   };
-}
+} // "Hello Motoko"
 ```
 
 The verbosity of `switch` expressions can make code harder to read, so Motoko also offers additional ways to handle `Result`.
@@ -58,7 +58,7 @@ Values can be extracted from Result using the `let ... else` pattern. This can b
 import Result "mo:base/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
-  if (name.size() == 0) #err "Name must be present" else #ok ("Hello " # name);
+  if (name.size() == 0) #err "Name is empty" else #ok ("Hello " # name);
 };
 
 func safeGreet(name : Text) : Text {
@@ -69,9 +69,7 @@ func safeGreet(name : Text) : Text {
 safeGreet("");      // returns "Default greeting: Hi!"
 ```
 
-:::info
-A default alternative flow is provided when an error is encountered. This ensures that control flow remains uninterrupted—there is no need to handle both cases explicitly, and the function continues  with a fallback result in the event of failure.
-:::
+In `safeGreet` the `else` part of the `let` allows the function to exit early with a default greeting, when the value return by `greet` does not match `#ok greeting` but is some error `#err ...`.  It does not, however, give you access to the error value itself. When you do need access, it is better to use a `switch`.
 
 ## Resources
 
