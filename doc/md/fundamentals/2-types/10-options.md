@@ -171,13 +171,13 @@ The `do ? <block>` construct is similar to the `?` operator in Rust, providing a
 
 The `do ? <block>` is similar to how the `?` operator works in languages like Rust.
 
-```motoko no-repl
-// Introduces an option block that returns a value of type ?T
-let result: ?T = do ? {
-  // The ! operator (null break) unwraps optional values inside the block
-  someOptionalValue!  // unwraps the value or short-circuits
+```motoko 
+ // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
+func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
+    do ? { 
+      n! + m!  
+    }
 }
-```
 
 The following example defines a simple function that evaluates expressions built from natural numbers, division and a zero test, encoded as a variant type:
 
@@ -215,7 +215,7 @@ eval(expr);
 
 To guard against division by 0 without trapping, the eval function returns an option result, using `null` to indicate failure.
 
-Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ?` block, and then the function itself, when a result is `null`.
+Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ?` block, and then the function itself, when an intermediate result is `null`.
 
 ## Resources
 
