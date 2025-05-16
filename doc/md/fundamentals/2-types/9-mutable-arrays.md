@@ -177,6 +177,7 @@ A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns.
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 
+persistent actor TicTacToe{
 func createTicTacToeBoard() : [var [var Text]] {
     let size : Nat = 3;
 
@@ -215,6 +216,7 @@ func createTicTacToeBoard() : [var [var Text]] {
   makeMove(2, 2, "X");
 
   printBoard();
+};
 ```
 
 Since both the outer and inner arrays are mutable, players can update the board in place. The array must be frozen before `foldLeft()` can be applied to the rows as `foldleft()` expects an immutable array as an argument.
