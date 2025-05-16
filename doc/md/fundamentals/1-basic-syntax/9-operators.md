@@ -16,7 +16,7 @@ Motoko provides various operators for working with numbers, text, and boolean va
 
 :::info
 
-Bitwise operators can only be used with bounded types. eg: `Int8`, `Nat8`.
+Bitwise operators can only be used with bounded types, such as `Int8`, `Nat8`.
 
 :::
 
@@ -107,7 +107,7 @@ Bitwise operators manipulate numbers **at the binary level**.
 |  `\|`    | Bitwise OR | `a \| b` |
 | `^`      | Bitwise XOR | `a ^ b` |
 | `<<`     | Shift left | `a << b` |
-| `>>`     | Shift right (must be proceeded by whitespace) |`a >> b` |
+| `>>`     | Shift right (must be preceded by a whitespace) |`a >> b` |
 | `<<>`    | Rotate left (circular shift) | `a <<> b` |
 | `<>`     | Rotate right (circular shift)| `a <> b` |
 
