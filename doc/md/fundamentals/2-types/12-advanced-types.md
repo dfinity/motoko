@@ -59,21 +59,73 @@ intBox.get();
 Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base library utilizes recursive types to define linked lists.
 
 ```motoko no-repl
-public type List<T> = ?(T, List<T>);
+type List = ?(Nat, List);
 ```
+
+This defines a recursive type for representing a linked list of natural number. Each list is either:
+
+* `null`, representing the empty list, or
+* `?(head, tail)`, where `head` is a `Nat`, and `tail` is another `List`.
+
+```motoko no-repl
+?(1, ?(2, ?(3, null)))  // A list: 1 → 2 → 3
+```
+
+To generalize this structure and support values of any type, we introduce a parameterized type:
+
+```motoko no-repl
+type List<T> = ?(T, List<T>);
+```
+
+This defines a generic linked list, where `T` can be any type — `Nat`, `Text`, `Blob`, or a custom type.
 
 ### Manually reversing a linked list
 
 Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal without using `List.reverse` library function.
 
+Non-paremitized type:
+
+```motoko
+type List = ?(Nat, List);
+
+persistent actor NatReverser{
+
+let numbers : List = ?(1, ?(2, ?(3, null)));
+
+// Reverses List
+func reverseNat(l : List) : List {
+  var current = l;
+  var rev : List = null;
+
+  while (current != null) {
+    switch (current) {
+      case (?(head, tail)) {
+        rev := ?(head, rev);
+        current := tail;
+      };
+      case (null) {};
+    };
+  };
+  rev
+};
+
+reverseNat(numbers); // ?(3, ?(2, ?(1, null)))
+};
+```
+
+Parametized:
+
 ``` motoko
 import List "mo:base/List";
 
+persistent actor GenericReverser {
+
+let numbersText : List.List<Text> = ?("one", ?("two", ?("three", null)));
 let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
-func reverse(l : List.List<Nat>) : List.List<Nat> {
+func reverse<T>(l : List.List<T>) : List.List<T> {
     var current = l;
-    var rev = List.nil<Nat>();
+    var rev = List.nil<T>();
 
     while(not List.isNil(current)){
       switch(current) {
@@ -86,7 +138,9 @@ func reverse(l : List.List<Nat>) : List.List<Nat> {
     };
     rev
   };
-reverse(numbers); // 3-> 2-> 1
+reverse<Text>(numbersText); // "three" -> "two" -> "one"
+reverse<Nat>(numbers); // 1 -> 2 -> 3
+}
 ```
 
 ## Type bounds

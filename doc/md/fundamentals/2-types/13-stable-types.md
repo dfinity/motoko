@@ -4,11 +4,9 @@ sidebar_position: 13
 
 # Stable types
 
-
 **Stable types** include all [shared types](link) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
 Storing a value in a `stable` declaration ensures that it persists across canister upgrades. This enables state preservation without the need for an external file system or database.
 
-The ability to retain data across upgrades is a key feature of Motoko, distinguishing it from other mainstream languages.
 The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
 Types that cannot be transferred include those whose values depend on the actor's current code, such as non-shared functions or, more generally, objects containing function members. These types are not stable because their behavior cannot be preserved independently of the code that defines them.
 
