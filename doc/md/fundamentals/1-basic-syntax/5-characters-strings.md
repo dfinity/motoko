@@ -65,7 +65,7 @@ await Alternator.alternateCaps("motoko");
 
 ## Strings
 
-Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of unicode characters delimited with a double quotation mark (`"`).
+Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of Unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko
 let greeting : Text = "Hello, world!";

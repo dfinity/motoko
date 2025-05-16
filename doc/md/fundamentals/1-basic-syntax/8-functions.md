@@ -66,10 +66,6 @@ actor Digit {
 }
 ```
 
-The only difference is that the public functions are now declared `shared` and return their results wrapped in futures (`async ()` and `async nat`)
-
-The private `reset()` function can stay unchanged.
-
 Since the public functions of an actor must be `shared`, you can omit the `shared` keyword:
 
 ``` motoko

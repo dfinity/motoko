@@ -107,7 +107,7 @@ persistent actor {
     await log("doingStuff"); } }
 ```
 
-A more efficient variation is to use `async*` and `await*` that avoids the overhead of ordinary `await` just to call the local function:  
+A more efficient variation is to use `async*` and `await*` , which avoids the overhead of using ordinary `await` just to call a local function:  
 
 ```motoko no-repl
 import Time "mo:base/Time"
