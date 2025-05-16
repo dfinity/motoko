@@ -26,7 +26,7 @@ Motoko supports both signed integers and unsigned naturals. Signed numbers can r
 
 The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.  
 
-Since the set of non-negative integers is a subset of the integers, in Motoko [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int).  
+In Motoko, [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int), since the set of non-negative integers is a subset of all integers.
 
 This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) without any need for conversion. The opposite is not true.  
 
