@@ -80,7 +80,7 @@ safeDivide(10, 0); // null
 
 Another way to extract values from option types is by using the `let ... else` pattern. This approach can be preferable to a `switch` expression for brevity and clarity. However, it only applies when the `else` branch can redirect control flow, such as returning early or throwing an error, if the value does not match the pattern in the `let`.
 
-Another way to extract values from options, is use the `let ... else` pattern. This may be preferable over a `switch` expression, but only applies when the `else` expression can divert control elsewhere when the value fails to match the pattern used in the `let`
+Another way to extract values from options, is use the `let ... else` pattern. This may be preferable over a `switch` expression, but only applies when the `else` expression can divert control elsewhere when the value fails to match the pattern used in the `let`.
 
 For example, here’s a simple implementation of an option helper:
 
@@ -92,11 +92,11 @@ func get<T>(option : ?T, defaultValue : T) : T {
 
 assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
-```
+The `let` statement matches the option against the pattern `?value`, extracting the contained value if present. If the option is `null`, the pattern fails to match and the `else` branch is executed, typically to exit the function early or return a default value.
 
-The `let` matches option against the pattern `?value`, extracting any contents from `option`. If `option` is `null`, the pattern fails to match, and the `else` branch is entered, exiting the function with `defaultValue`.
+The same logic can be expressed using a `switch`, though the result is more verbose and introduces an additional level of nesting:
 
-The same logic can be expressed using a `switch`, though the result is  more verbose and introduces an additional level of nesting:
+``` motoko no-repl
 
 ``` motoko
 func get<T>(option : ?T, defaultValue : T) : T {
@@ -106,8 +106,7 @@ func get<T>(option : ?T, defaultValue : T) : T {
   }
 };
 ```
-
-:::tip
+Although convenient for option patterns, `let-else` also works with other types of patterns.
 Although convenient for option patterns, `let-else` also works with other types of pattern,
 handling pattern-match failure using the `else` branch.
 :::
@@ -161,15 +160,14 @@ Option.chain<Text, Text>(firstName, func (first : Text) {
 // ?("Motoko Ghost")
 ```
 
-If either `firstName` or `lastName` is `null`, the result remains `null`.
-
 ## Option blocks (`do ?`)
 
-Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>.`
+Option blocks in Motoko use the syntax `do ? <block>` to work with optional values of type `?T` without requiring nested `switch` statements. When the `<block>` evaluates to a value of type `T`, the entire `do ?` expression returns a value of type `?T`. Crucially, it allows early exits from the block when encountering `null`.
 
-Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`.
+Within a `do ? <block>`, the `!` operator is used to unwrap values of unrelated option types (e.g., `?U`). When evaluating an expression `<exp> !`, if `<exp>` results in `null`, control immediately exits the `do ?` block with value `null`. Otherwise, it unwraps the value `?v` and continues with `v` of type `U`.
 
-If the result is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` of type `U`.
+The `do ? <block>` construct is similar to the `?` operator in Rust, providing a concise and expressive way to propagate `null` values.
+
 
 The `do ? <block>` is similar to how the `?` operator works in languages like Rust.
 
