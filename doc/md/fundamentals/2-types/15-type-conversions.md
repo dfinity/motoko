@@ -61,11 +61,14 @@ import Char "mo:base/Char";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 
+persistent actor CharConverter{
+
 func nat8ToChar(n : Nat8) : Char {
-    Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
+  Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
 };
 
-let charA = nat8ToChar(65);  // 'A'
+nat8ToChar(65);  // 'A'
+}
 ```
 
 ### `Text` to lowercase
@@ -75,11 +78,14 @@ Motoko provides a built-in function `Text.toLowercase`, which converts all chara
 ```motoko
 import Text "mo:base/Text";
 
+persistent actor CaseConverter{
+
 func toLowercaseExample(s : Text) : Text {
     return Text.toLowercase(s);
 };
 
-let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
+toLowercaseExample("HELLO WORLD");  // "hello world"
+};
 ```
 
 ### `Text` to an optional `Blob` for a ledger memo
@@ -89,11 +95,12 @@ let result1 = toLowercaseExample("HELLO WORLD");  // "hello world"
 ```motoko
 import Text "mo:base/Text";
 
+persistent actor TextToBlobConverter{
 func textToOptionalBlob(s : Text) : ?Blob {
     ?Text.encodeUtf8(s);
+    };
 };
-
-let memo1 = textToOptionalBlob("Payment Memo");  // ?Blob
+textToOptionalBlob("Payment Memo");  // ?Blob
 ```
 
 ### `Text` to `Float`
@@ -140,11 +147,14 @@ Motoko does not provide a built-in function for converting `Time` into a date-ti
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 
+persistent actor ArrayConverter{
+
 func arrayToText(arr : [Char]) : Text {
     Text.fromArray(arr);
 };
 
 arrayToText(['a','b','c'])
+}
 ```
 
 For arrays containing numbers or other types, each element is converted to [`Text`](https://internetcomputer.org/docs/motoko/base/Text) before joining them into a single string.
@@ -154,10 +164,12 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 
+persistent actor NatArrayConverter{
 func arrayOfNatToText(arr : [Nat]) : Text {
     Text.join(" ", Array.map<Nat, Text>(arr, Nat.toText).values())
 };
 arrayOfNatToText([1, 2, 3]);
+};
 ```
 
 ### `Array` of tuples to an object
@@ -168,14 +180,16 @@ Motoko lacks support for dynamic objects, so an array of tuples is converted int
 import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 
+persistent actor MapConverter{
 func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
-    let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
+  let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
     for ((key, value) in arr.vals()) {
         map.put(key, value);
     };
     map;
-};
+    };
 arrayToMap([("Motoko", 4), ("Ghost", 21)]);
+};
 ```
 
 To convert an array of tuples `[(Text, Nat)]` into a custom [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records).
@@ -186,7 +200,7 @@ type User = {
     name : Text;
     age : Nat;
 };
-
+persistent actor TupleConverter{
 func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
     Array.map<(Text, Nat), User>(arr, func((name, age)) {
         { name = name; age = age }
@@ -194,6 +208,7 @@ func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
 };
 
 tuplesToUsers([("Motoko", 4), ("Ghost", 21)]);
+};
 ```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
