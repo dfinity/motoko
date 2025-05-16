@@ -79,7 +79,7 @@ let failure : Result = #error("Operation failed");
 
 ### Option types
 
-[Option types](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) are shared when they contain shared types.
+[Option types](https://internetcomputer.org/docs/motoko/fundamentals/types/options) are shared when they contain shared types.
 
 ```motoko no-repl
 // Option types with shared inner types are shared

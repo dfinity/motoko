@@ -111,7 +111,7 @@ stable var ghostStatus : UserStatus = #busy("In a meeting");
 
 ### Option types
 
-[Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) types are stable when they contain stable types.
+[Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options) types are stable when they contain stable types.
 
 ```motoko no-repl
 // Option types with stable inner types are stable
