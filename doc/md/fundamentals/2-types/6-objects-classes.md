@@ -6,17 +6,19 @@ sidebar_position: 6
 
 ## Objects
 
-In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.
+In Motoko, an object is a collection of named fields that hold values.  
+These values can be plain data or functions.  
+Each field can be either **mutable** or **immutable**, depending on whether it's declared with `var` or not.
 
 A simple object containing just fields of data is like a record in a database.  
-Motoko's light-weight  [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax make it easy do construct such objects..  
+Motoko's light-weight [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax makes it easy to construct such objects.
 
 When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  
 From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
 
 In addition to the record syntax, Motoko let's you defined objects from a block of declarations.  
 The declarations in the block can be `public` or `private`, with `private` the default.  
-The public declarations become fields of the object, all private declarations are hidden.
+Public declarations become accessible fields of the object, while private declarations remain hidden and inaccessible from outside the object.
 
 ```motoko no-repl
 object Account {
@@ -128,8 +130,10 @@ Objects with fewer fields are more general, while objects with additional fields
 
 A function expecting `{ getBalance : () -> Nat }` can accept any of the above, since all contain at least that method. However, a function requiring `{ withdraw : Nat -> Bool }` cannot accept more general types that lack this method.
 
-- A subtype must be usable wherever its supertype is expected.
-- The more general object has fewer methods because it makes fewer assumptions about available functionality.
+- In general, if type `T` is a subtype of type `U`, then any value of type `T` also has type `U`. The means that a value of the more specific type `T` can pass as a value of the more general type `U` without any explicit conversion.
+- When `T` and `U` are object types, subtyping ensures that `T` provides at least the fields required by `U`, so that any object of type `T` can serve as an object of the more general type `U`. 
+
+The more general object type has fewer fields because this places fewer requirements on its values.
 
 `premiumAccount <: standardAccount <: basicAccount`, or equivalently:  `premiumAccount` is a subtype of `standardAccount`, which is a subtype of `basicAccount`.  
 
