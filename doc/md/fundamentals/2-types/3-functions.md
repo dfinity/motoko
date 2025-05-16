@@ -12,12 +12,11 @@ Functions can be synchronous or asynchronous. A synchronous function blocks the 
 
 An asynchronous function returns immediately, providing a **future** value as a placeholder for its result. The caller can await the future later to retrieve the result or ignore it and continue with other tasks.
 
-Motoko has different sorts of functions with different capabilities.
-Local functions, declared using just the `func` keyword, are typically synchronous but can be asynchronous if their body is an `async` expression.
-A local function is only available to call within the actor that defines it, it cannot be called from another actor, or be sent to another actor in a message.
+Motoko offers different types of functions, each with distinct capabilities:
 
-Shared functions, declared in actor bodies using the `shared`, `shared query` or `shared composite query` keywords, are asynchronous.
-Calling a shared function sends a message to another actor. The caller of a shared function is typically another Motoko actor, a [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters), or an [agent](https://internetcomputer.org/docs/building-apps/interact-with-canisters/agents/overview).
+- **Local functions**, declared using the `func` keyword, are typically synchronous but can be asynchronous if their body contains an `async` expression. A local function is only available within the actor that defines it; it cannot be called from another actor or sent to another actor in a message.
+
+- **Shared functions**, declared using the `shared`, `shared query`, or `shared composite query` keywords, are asynchronous by nature. Calling a shared function sends a message to another actor. The caller is typically another Motoko actor, a [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters), or an [agent](https://internetcomputer.org/docs/building-apps/interact-with-canisters/agents/overview).
 
 An actor's shared functions are always called as the result of the actor receiving some message. Shared functions that return a result have `async` return types.
 
@@ -48,6 +47,7 @@ Motoko provides different types of functions based on where in the program they 
 Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.  
 
 ```motoko no-repl
+persistent actor CommonDivisor{
 func gcd(a : Nat, b : Nat) : Nat {
   var x = a;
   var y = b;
@@ -62,6 +62,7 @@ func gcd(a : Nat, b : Nat) : Nat {
 };
 
 let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
+};
 ```
 
 The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals as the input argument and returns a natural as a result.  
@@ -128,9 +129,11 @@ persistent actor {
 The public functions of an actor determine its external interface. All public functions in an actor must be shared and can be either `shared`, `shared query` or `shared composite query` functions. Private functions cannot be `shared`.
 Since an actor's public functions must be shared, the `shared` keyword is optional and can be omitted.  
 
-`shared` functions permanently update the state of an actor, while `query` and `composite query` functions are only executed for their result. While queries can temporarily alter the state of the actor, the changes are not permanent and never visible to other callers. It's as if each query operated on a copy of the actor that is discarded on return from the query. When called from a front-end, `query` functions have much lower latency than calling the equivalent `shared` method. This is because `shared` functions require the protocol to reach consensus on the state changes and result of a shared function, while `query` functions do not.  
+`shared` functions permanently update the state of an actor, while `query` and `composite` `query` functions are only executed for their result.
 
-Shared functions can be called from outside the canister (e.g., by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters)). These are processed [asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) because they interact with the network.
+Although queries can temporarily alter the state of an actor, these changes are not permanent and are never visible to other callers. It's as if each query operates on a copy of the actor, which is discarded when the query returns.
+
+When called from a front-end, `query` functions generally have much lower latency than equivalent shared functions. This is because shared functions require the protocol to reach consensus on the state changes and results, whereas query functions do not.
 
 ```motoko no-repl  
 persistent actor Account {  
@@ -223,6 +226,7 @@ persistent actor Counter {
 Again, the shared keyword is redundant and can be omitted:
 
 ```motoko
+persistent actor Counter{
   public composite query func getDeposits() {
     var deposits = 0;
     for (account in accounts.values()) {
@@ -230,6 +234,7 @@ Again, the shared keyword is redundant and can be omitted:
     };
     deposits;
   };
+};`
 ```
 
 The type of `getDeposits` is `shared composite query () -> Nat`.
@@ -259,9 +264,11 @@ await Bank.doubleBalance();
 [Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
 
 ```motoko no-repl
-  public func setGreeting(prefix : Text) : () {
+persistent actor Greeter {
+  public func setGreeting(prefix : Text) : async () {
     greeting := prefix;
   };
+};
 ```
 
 **Example use case:** Exposing public endpoints for [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) or [frontend](/docs/building-apps/frontends/using-an-asset-canister) interactions.
