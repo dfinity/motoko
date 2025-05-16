@@ -24,7 +24,7 @@ object Counter  {
 }
 ```
 
-The object `Counter` has two public methods, the functions `Counter.inc()` and `Counter.get()`. Both `value` and `reset()` are implicitly `private` - attempts to access `Counter.reset()` and `Counter.value` are type errors.
+The object `Counter` has two public methods, the functions `Counter.inc()` and `Counter.get()`. Both `value` and `reset()` are implicitly `private`. Any attempts to access `Counter.reset()` and `Counter.value` produce type errors.
 
 A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
@@ -36,17 +36,23 @@ public func exampleFunction(x : Nat) : Nat {
 
 :::info Understanding function types
 
-Motoko functions vary by access and behaviour:
+Motoko functions vary by access and behavior:
 
-The public functions of an actor, used to send messages to the actor, are special sorts of functions called `shared` functions. Shared functions can only be declared within actors and,  unlike ordinary functions their values can be sent to, that is _shared with_, other actors.
-Shared functions come in several flavors: `shared` functions that can modify the state of an actor, `shared query` functions that can read the state of an actor without observably changing its state, but not send any further messages, and `shared composite query` functions that are similar to queries with the power to call other queries.
+The public functions of an actor are a special kind of function called shared functions. These functions can only be declared within actors and, unlike ordinary functions, their values can be sent to (i.e., shared with) other actors.
+Shared functions come in several forms:
+
+- `shared` functions, which can modify an actor's state.
+
+- `shared query` functions, which can read the actor's state without making observable changes and cannot send further messages.
+
+- `shared composite query` functions, which behave like queries but can also call other queries.
 All shared function, unlike ordinary functions, provide access to the identity of their caller, for applications like access control.
 
-[Learn more about functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
+[Learn more about function types](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).
 
 :::
 
-For example, we can rewrite the object above as an actor:
+For example, you can rewrite the object above as an actor:
 
 ``` motoko
 actor Digit {
@@ -60,11 +66,11 @@ actor Digit {
 }
 ```
 
-The only difference is that the public functions are now declared `shared` and return their result wrapped futures (`async ()` and `async nat`)
+The only difference is that the public functions are now declared `shared` and return their results wrapped in futures (`async ()` and `async nat`)
 
-The private `reset()` f unction can stay unchanged.
+The private `reset()` function can stay unchanged.
 
-Since the public functions of an actor must be `shared`, you are allowed to omit the `shared` keyword:
+Since the public functions of an actor must be `shared`, you can omit the `shared` keyword:
 
 ``` motoko
 actor Digit {
