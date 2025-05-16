@@ -4,7 +4,11 @@ sidebar_position: 5
 
 # Records
 
-Records let you group related values using named fields. Each field can have a different type. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving maintainability. Records also support mutable fields, declared using the `var` keyword.  The fields of a tuple are always immutable.
+Records allow you to group related values using named fields, with each field potentially having a different type.  
+Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which use positional access, records provide field-based access, improving readability and maintainability.
+
+Records also support **mutable fields**, declared using the `var` keyword.  
+In contrast, all fields in a tuple are always **immutable**.
 
 ## Defining a record
 
@@ -16,8 +20,9 @@ let person = {
 ```
 
 :::info Inferred types
-Type annotations on immutable record fields aren’t necessary as the compiler will infer them.
-However, for mutable fields (`var`), it’s good practice to explicitly declare the type. Otherwise, the compiler might infer a more specific type than intended, preventing future assignments of a broader type.
+Type annotations on immutable record fields are optional, as the compiler can infer their types automatically.
+However, for mutable fields (`var`), it's good practice to explicitly declare the type.  
+Without an explicit annotation, the compiler might infer a more specific type than intended, which can restrict future assignments to broader types.
 
 Example:
 
@@ -34,7 +39,7 @@ let account = { name = "Motoko"; var balance : Int = 0 };
 account.balance := -100; //  Allowed
 ```
 
-This recommendation also applies to all `var` declarations—not just record fields.
+This recommendation also applies to all `var` declarations, not just record fields.
 :::
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
@@ -229,7 +234,9 @@ Tuples and records both allow grouping values, but they have key differences in 
 | Subtyping     | Fields cannot be removed | Fields can be removed |
 | Use case       | Positional grouping of related values, e.g. vectors     |  Structured data types        |
 
-Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal.
+Motoko's records support more flexible subtyping than tuples.  
+With records, subtyping allows fields to be omitted in the subtype (a concept known as **width subtyping**).  
+In contrast, tuple subtyping requires tuples to have the **same length**, making them less flexible in this regard.
 
 For example, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
 
