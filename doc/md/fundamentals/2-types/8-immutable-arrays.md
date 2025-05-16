@@ -149,6 +149,8 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
 ```motoko
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
+
+persistent actor Chess{
  func generateChessboard() : [[Text]] {
     let size : Nat = 8;
 
@@ -176,6 +178,7 @@ import Debug "mo:base/Debug";
     let rowText = Array.foldLeft<Text, Text>(row, "", func(acc, square) = acc # square # " ");
     Debug.print(rowText)
   }
+};
 ```
 
 The function `Array.tabulate(size, f)` creates an array of `size` elements, populated so that element `i` contains the value of `f(i)`.  
