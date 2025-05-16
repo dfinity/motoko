@@ -37,7 +37,7 @@ let x : Int = -5;
 let y : Nat = x; // Error
 ```
 
-Passing an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) requires a explicit conversion, such as taking the absolute value, or apply some other conversion function. 
+Passing an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) equires an explicit conversion, such as taking the absolute value or applying another conversion function.
 
 ```motoko no-repl
 let x : Int = -5;
