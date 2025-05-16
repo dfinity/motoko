@@ -40,7 +40,7 @@ Sometimes, the verbosity of `switch` expression can make code harder to read, so
 
 ### Checking for presence
 
-To determine if an option contains a value, `Option.isSome` returns `true` if it is not `null`.
+To determine if an option contains a value, function `Option.isSome` returns `true` if its argument is not `null`.
 
 ```motoko
 import Option "mo:base/Option";
@@ -78,7 +78,7 @@ let result1 = safeDivide(10, 2); // ?5
 safeDivide(10, 0); // null
 ```
 
-### Let / else
+Another way to extract values from option types is by using the `let ... else` pattern. This approach can be preferable to a `switch` expression for brevity and clarity. However, it only applies when the `else` branch can redirect control flow, such as returning early or throwing an error, if the value does not match the pattern in the `let`.
 
 Another way to extract values from options, is use the `let ... else` pattern. This may be preferable over a `switch` expression, but only applies when the `else` expression can divert control elsewhere when the value fails to match the pattern used in the `let`
 
