@@ -6,9 +6,7 @@ sidebar_position: 3
 
 Functions are reusable chunks of code that perform a specific task. A function is defined with a name and optional parameters, then returns a defined result. A function can also specify a return type for the value it produces.
 
-:::info Side effects
 In the process of producing a result, the execution of the function can have other side effects, like modifying state, printing to the log, or sending messages to other canisters.
-:::
 
 Functions can be synchronous or asynchronous. A synchronous function blocks the caller until it returns with a result, just like functions in most traditional programming languages.
 
