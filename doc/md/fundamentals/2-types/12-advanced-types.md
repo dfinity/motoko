@@ -21,6 +21,15 @@ p1 == p2;  // true (structural equality)
 
 Even though `p1` and `p2` are distinct objects, they are considered equal because they have the same structure and values.
 
+This remains true even if we add some different fields to the point values, since the `==` on `Point`  values only considers the `x` and `y` fields and ignores other fields.
+
+```motoko
+type Point = { x : Int; y : Int };
+let p1 : Point = { x = 1; y = 2; z = 3 };
+let p2 : Point = { x = 1; y = 2; z = 4; c = "Red"; };
+p1 == p2;  // true (structural equality at type `Point`)
+```
+
 ## Generic types
 
 Generic types are used to define type parameters that work with multiple data types, commonly used in [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions), [classes](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes), and data structures.
@@ -55,7 +64,7 @@ public type List<T> = ?(T, List<T>);
 
 ### Manually reversing a linked list
 
-Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal and structural mutation without using the built-in `reverse` method.
+Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal without using `List.reverse` library function.
 
 ``` motoko
 import List "mo:base/List";
@@ -103,16 +112,18 @@ printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 
 In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
 
-Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a basic type.
+Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a primitive type.
 
 ```motoko
-func addIfInt<T <: Int>(x : T, y : T) : Int {
-  return x + y;
+func max<T <: Int>(x : T, y : T) : T {
+  if (x <= y) y else x
 };
-
-addIfInt(5, -10);  // Allowed because both are of type Int.
+max<Int>(-5, -10);  // returns -10  : Int
 ```
-
+But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
+```motoko
+max<Nat>(5,10); // returns 5 : Nat
+```
 Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
 
 The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](https://internetcomputer.org/docs/motoko/base/Int) or [`Float`](https://internetcomputer.org/docs/motoko/base/Float), it restricts `T` to that type.
