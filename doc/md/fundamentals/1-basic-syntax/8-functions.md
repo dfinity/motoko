@@ -5,7 +5,7 @@ hide_table_of_contents: true
 
 # Functions
 
-Functions in Motoko can take on a variety of different attributes, the most basic of which is if the function is public or private. Public functions are callable by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters), while private functions can only be called within the program that defines it.
+Functions in Motoko can have various attributes, the most fundamental being whether they are public or private. Public functions can be called by users or other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters), while private functions are only accessible within the program that defines them.
 
 The most basic Motoko [function declaration](https://internetcomputer.org/docs/motoko/fundamentals/declarations/function-declarations) is:
 
@@ -13,7 +13,7 @@ The most basic Motoko [function declaration](https://internetcomputer.org/docs/m
 func exampleFunction() : () {};
 ```
 
-Within objects, modules and actors all functions are declared private unless explicitly declared `public`.
+In objects, modules, and actors, all functions are private by default unless explicitly declared as `public`.
 
 ```motoko
 object Counter  {
