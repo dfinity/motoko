@@ -20,22 +20,22 @@ var username : ?Text = null;
 
 :::info Null semantics
 
-The constant `null` is the only value of the trivial `Null` type.  It also indicates an absent value in an optional type (`?T`). This makes `null` similar to `None` in languages like Rust, Scala, and `Nothing` in Haskell, and Motoko's option `?T` type similar to `Option<T>` in Rust, `Option[T]` in Scala, and `Maybe T` in Haskell.  In all these languages the type system enforces explicit handling of missing values by using a dedicated type to indicate optionality
+The constant `null` is the sole value of Motoko’s trivial `Null` type. It also represents the absence of a value in an optional type (`?T`). In this role, `null` is similar to `None` in Rust and Scala, and to `Nothing` in Haskell. Likewise, Motoko’s optional type `?T` is conceptually similar to `Option<T>` in Rust, `Option[T]` in Scala, and `Maybe T` in Haskell. In all these languages, the type system enforces explicit handling of missing values by representing optionality through a dedicated type.
 
 :::
 
-When a Motoko value has type `?T`, then is either `null` or some value, written `?value` (note leading `?`). The fundamental way to access the value is to use a `switch` expression, that explicitly handles both cases:
+When a Motoko value has type `?T`, it is either `null` or contains a value, written as `?value` (note the leading `?`). The fundamental way to access this value is by using a `switch` expression, which explicitly handles both cases:
 
-``` motoko
+``` motoko no-repl
 func displayName(option : ?Text) : Text {
   switch option {
      case (?user) { user };
-     case (null) { "Guest" };
+     case null { "Guest" };
   }
 };
 displayName(null);
 ```
-
+Sometimes, the verbosity of a `switch` expression can make code harder to read. To improve readability, Motoko provides additional constructs for working with option types.
 Sometimes, the verbosity of `switch` expression can make code harder to read, so Motoko also offers additional ways to handle option types.
 
 ### Checking for presence
