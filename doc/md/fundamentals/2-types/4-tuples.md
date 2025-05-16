@@ -84,9 +84,9 @@ $$
 Using nested tuples, this can be implemented in Motoko as follows:
 
 ```motoko
-type Point = (Float, Float);
-// Line is a tuple of points, that is, a nested tuple
-type Line = (Point, Point);
+  type Point = (Float, Float);
+  // Line is a tuple of points, that is, a nested tuple
+  type Line = (Point, Point);
   func calculateGradient(line : Line) : ?Float {
     let ((x1, y1), (x2, y2)) = line;
     if (x1 == x2) {
