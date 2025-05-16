@@ -4,8 +4,8 @@
 
 * motoko (`moc`)
 
-  * Enhance syntax error messages with examples and support "find-references" and "go-to-definition"
-    functionality for fields in the LSP server (Serokell, Milestone-3) (#5076).
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
 
   * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
