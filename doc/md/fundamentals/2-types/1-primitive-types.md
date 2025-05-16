@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Motoko provides several primitive types that form the foundation of all computations. These include numeric types, characters and text, booleans, and floating-point numbers.
 
-The primitive types are supported by a large set of familiar built-in operators such `+`, `-` and so on. 
+The primitive types are supported by a large set of familiar built-in operators such as `+`, `-` and so on.
 
 More esoteric functions, not supported by dedicated operators, can be found in the corresponding libraries.  
 
