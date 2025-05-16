@@ -71,7 +71,9 @@ let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 let (firstUserName, _) = users[0] // "Motoko" 
 ```
 
-The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) age. `users[0]` retrieves the first tuple in the array. The `let` pattern extracts only the name while ignoring the second element using the wildcard pattern (`_`).
+The array `users` contains tuples, where each tuple represents a user with a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) name and a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) age.  
+Accessing `users[0]` retrieves the first tuple in the array.  
+A `let` pattern can then be used to extract just the name, ignoring the age by using the wildcard pattern (`_`).
 
 ## Nesting tuples
 
