@@ -1,8 +1,11 @@
 # Motoko compiler changelog
 
-## 0.14.11 (FUTURE)
+## 0.14.11 (2025-05-16)
 
 * motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support "find-references" and "go-to-definition"
+    functionality for fields in the LSP server (Serokell, Milestone-3) (#5076).
 
   * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
