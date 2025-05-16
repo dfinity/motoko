@@ -64,8 +64,7 @@ This structure efficiently represents a collection of key-value pairs without re
 
 ## Pattern matching on tuples
 
-As well as the dot notation, tuple can be decomposed using tuple patterns. Combined with `let` or `switch`, this let you access the components of a tuple by simple pattern matching.
-
+In addition to dot notation, tuples can be decomposed using tuple patterns. When combined with `let` or `switch`, this allows you to access the components of a tuple through simple pattern matching.
 ```motoko no-repl
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];  
 
