@@ -50,7 +50,8 @@ The above example's corresponding Candid interface can be found below.
 
 ```did
 service : {
-  greet : (text) -> (text) query;
+  greet : (text) -> (text);
+  readCount : () -> (nat) query;
 }
 ```
 
