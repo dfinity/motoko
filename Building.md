@@ -192,25 +192,44 @@ After releasing the compiler you can update `motoko-base`'s `master`
 branch to the `next-moc` branch.
 
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
-* Change into `motoko-base`
-* `git switch next-moc; git pull`
-* `git switch -c $USER/update-moc-0.14.$MOC_MINOR`
+* Change into `motoko-base` and pull the latest `next-moc`
+```bash
+git switch next-moc; git pull
+```
+* Create a new branch for the update
+```bash
+git switch -c $USER/update-moc-0.14.$MOC_MINOR
+```
 * Revise and update the `CHANGELOG.md`, by adding a top entry for the release
 * Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml`
-* `git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR`
-* You can `git push` now
+```bash
+perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml
+```
+* Add the changed files and commit the changes
+```bash
+git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR
+```
+* Push the branch
+```bash
+git push --set-upstream origin $USER/update-moc-0.14.$MOC_MINOR
+```
 
-Make a PR off of that branch and merge it using a _normal merge_ (not
+Make a PR off of that branch, targeting `master`, and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
 
 Finally tag the base release (so the documentation interpreter can do the right thing):
-* `git switch master && git pull`
-* `git show` to verify we are at the right commit
-* `git tag moc-0.14.$MOC_MINOR`
-* `git push origin moc-0.14.$MOC_MINOR`
+First, switch to `master`, pull the latest changes and verify we are at the right commit:
+```bash
+git switch master && git pull
+git show
+```
+* Tag and push the release
+```bash
+git tag moc-0.14.$MOC_MINOR
+git push origin moc-0.14.$MOC_MINOR
+```
 
 ### Downstream
 
