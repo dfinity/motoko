@@ -12,7 +12,7 @@ Options provide a structured way to represent values that may or may not be pres
 
 An option is defined using `?` followed by the type of the value it can hold.
 
-```motoko
+```motoko no-repl
 var username : ?Text = null;
 ```
 
@@ -107,9 +107,6 @@ func get<T>(option : ?T, defaultValue : T) : T {
 ```
 
 Although convenient for option patterns, `let-else` also works with other types of patterns.
-Although convenient for option patterns, `let-else` also works with other types of pattern,
-handling pattern-match failure using the `else` branch.
-:::
 
 ### Applying transformations to options
 
