@@ -13,7 +13,13 @@ Imports should be placed at the top of the source file. They enable code reuse f
 
 ```motoko no-repl
 import Text "mo:base/Text";
+import Nat "mo:base/Nat";
+import Math "mo:base/Float";
 ```
+The package `base` is Motoko's standard library. 
+This imports the `Text`, `Nat` and `Float` modules from package `base` under the local names `Text`, `Nat` and `Math`. 
+
+It's good practice, but not required, to import a module using its name in the package.
 
 **2. Packages installed via a package manager (such as Mops).**
 
