@@ -34,7 +34,7 @@ let result2 = floatToNat(-15.6);  // 15 (absolute value is taken)
 import Int "mo:base/Int";
 
 func intToNat(i : Int) : Nat {
-    Int.toNat(i);
+    Int.abs(i);
 };
 
 // Example usage
@@ -95,12 +95,12 @@ toLowercaseExample("HELLO WORLD");  // "hello world"
 ```motoko
 import Text "mo:base/Text";
 
-persistent actor TextToBlobConverter{
+persistent actor TextToBlobConverter {
 func textToOptionalBlob(s : Text) : ?Blob {
-    ?Text.encodeUtf8(s);
-    };
+  ?Text.encodeUtf8(s);
+  };
+  textToOptionalBlob("Payment Memo");  // ?Blob
 };
-textToOptionalBlob("Payment Memo");  // ?Blob
 ```
 
 ### `Text` to `Float`

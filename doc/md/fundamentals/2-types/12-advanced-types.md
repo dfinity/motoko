@@ -47,11 +47,11 @@ A generic class can store any type while maintaining type safety:
 
 ```motoko
 class Box<T>(value : T) {
-  public func get() : T { value };
+  public func open() : T { value };
 };
 
 let intBox = Box<Nat>(10);
-intBox.get();
+intBox.open();
 ```
 
 ## Recursive types
@@ -139,8 +139,8 @@ func reverse<T>(l : List.List<T>) : List.List<T> {
     };
     rev
   };
-reverse<Text>(numbersText); // "three" -> "two" -> "one"
-reverse<Nat>(numbers); // 1 -> 2 -> 3
+let textReversed = reverse<Text>(numbersText); // "three" -> "two" -> "one"
+let numbersReversed = reverse<Nat>(numbers); // 1 -> 2 -> 3
 }
 ```
 
@@ -169,7 +169,7 @@ In the example above, `T <: { name : Text }` requires that any type used for `T`
 
 Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a primitive type.
 
-```motoko
+```motoko name=max
 func max<T <: Int>(x : T, y : T) : T {
   if (x <= y) y else x
 };
@@ -178,7 +178,7 @@ max<Int>(-5, -10);  // returns -5  : Int
 
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 
-```motoko
+```motoko include=max
 max<Nat>(5,10); // returns 10 : Nat
 ```
 

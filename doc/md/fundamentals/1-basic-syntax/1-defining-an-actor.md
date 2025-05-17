@@ -39,10 +39,12 @@ persistent actor Main {
   };
 };
 ```
+
 This code defines an actor that can be deployed on ICP.
 The actor is declared as 'persistent` so that its state, `count`, will be preserved
-when the actor is upgraded. 
-Learn more about persistence: [link]
+when the actor is upgraded.
+<!---TODO update persistent link---->
+Learn more about persistence: [link](https://internetcomputer.org/docs/motoko/icp-features/data-persistence)
 
 Another actor can call `Main.greet()` with an argument and await the result:
 

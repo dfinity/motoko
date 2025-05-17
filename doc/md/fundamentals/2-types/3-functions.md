@@ -214,10 +214,10 @@ persistent actor Bank {
 
   var accounts : [Account] = []
 
-  public shared composite query func getDeposits() {
+  public shared composite query func getDeposits() : async Nat {
     var deposits = 0;
       for (account in accounts.values()) {
-      deposits += await account.getBalance()
+      deposits += await account.getBalance();
   };
   deposits;
   };
@@ -226,54 +226,19 @@ persistent actor Bank {
 
 Again, the shared keyword is redundant and can be omitted:
 
-```motoko
+```motoko no-repl
 persistent actor Bank {
-   // ...
-  public composite query func getDeposits() {
+  public composite query func getDeposits() : async Nat {
     var deposits = 0;
     for (account in accounts.values()) {
        deposits += await account.getBalance()
     };
     deposits;
   };
-};`
+};
 ```
 
 The type of `getDeposits` is `shared composite query () -> Nat`.
-
-### Shared composite query functions
-
-```motoko no-repl
-persistent actor Bank {
-    var balance : Nat = 100;
-
-    public query func getBalance() : async Nat {
-        balance;
-    };
-
-    public composite query func doubleBalance() : async Nat {
-        let b : Nat = await getBalance();
-        b * 2;
-    };
-};
-await Bank.doubleBalance();
-```
-
-**Example use case:** Efficiently combining multiple queries while avoiding [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) update calls.
-
-## Update functions
-
-[Update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions modify a canister’s [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and must go through consensus before the result is returned. Any function without the identifier `query` is an update function by default.
-
-```motoko no-repl
-persistent actor Greeter {
-  public func setGreeting(prefix : Text) : async () {
-    greeting := prefix;
-  };
-};
-```
-
-**Example use case:** Exposing public endpoints for [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) or [frontend](/docs/building-apps/frontends/using-an-asset-canister) interactions.
 
 ## Passing arguments to functions
 
