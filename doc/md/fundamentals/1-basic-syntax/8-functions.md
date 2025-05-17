@@ -29,7 +29,7 @@ The object `Counter` has two public methods, the functions `Counter.inc()` and `
 A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
 ```motoko
-public func exampleFunction(x : Nat) : Nat {
+func exampleFunction(x : Nat) : Nat {
     x;
 };
 ```
@@ -55,7 +55,7 @@ All shared function, unlike ordinary functions, provide access to the identity o
 For example, you can rewrite the object above as an actor:
 
 ``` motoko
-actor Digit {
+persistent actor Digit {
    var value = 0;
    func reset() { value := 0 };
    public shared func inc() : async (){ 
@@ -69,7 +69,7 @@ actor Digit {
 Since the public functions of an actor must be `shared`, you can omit the `shared` keyword:
 
 ``` motoko
-actor Digit {
+persistent actor Digit {
    var value = 0;
    func reset() { value := 0 };
    public func inc() : async () { 

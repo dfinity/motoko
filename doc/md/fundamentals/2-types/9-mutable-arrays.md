@@ -40,7 +40,7 @@ Example:
 import Nat "mo:base/Nat";
 import Array "mo:base/Array";
 
-let digits = Array.tabulateVar(10, Nat.toText);
+let digits = Array.tabulateVar<Text>(10, Nat.toText);
 ```
 
 Constructs the array:

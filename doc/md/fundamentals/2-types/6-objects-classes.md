@@ -20,7 +20,7 @@ In addition to the record syntax, Motoko let's you defined objects from a block 
 The declarations in the block can be `public` or `private`, with `private` the default.  
 Public declarations become accessible fields of the object, while private declarations remain hidden and inaccessible from outside the object.
 
-```motoko no-repl
+```motoko
 object Account {
     var balance : Nat = 1000;
 
@@ -66,7 +66,7 @@ let account2 = Account(1000);
 
 An object class defines a blueprint for multiple objects. The above is just short-hand for an `object` class. Motoko also support module and actor classes.  
 
-```motoko no-repl
+```motoko
 object class Account(initialBalance : Nat) {
     var balance = initialBalance;
 
@@ -87,7 +87,7 @@ object class Account(initialBalance : Nat) {
 
 Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.  
 
-```motoko no-repl
+```motoko
 module CurrencyConverter {
     public func toUSD(amount : Nat) : Float {
         return Float.fromInt(amount) * 1.1;
@@ -99,7 +99,7 @@ module CurrencyConverter {
 
 A module class can be used to produce multiple modules with different configurations.
 
-```motoko no-repl
+```motoko
 module class ExchangeRate(baseRate : Float) {
     public func convert(amount : Nat) : Float {
         return Float.fromInt(amount) * baseRate;
@@ -140,7 +140,7 @@ The more general object type has fewer fields because this places fewer requirem
 A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
 However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three type of objects.  
 
-```motoko no-repl
+```motoko
 func printBalance(account : { getBalance : () -> Nat }) {
   Debug.print("Balance: " # Nat.toText(account.getBalance()));
 };
@@ -151,7 +151,7 @@ printBalance(standardAccount);
 printBalance(premiumAccount);
 ```
 
-```motoko no-repl
+```motoko
 func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);
   Debug.print(if success then "Withdrawal successful" else "Insufficient funds");

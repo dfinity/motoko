@@ -18,7 +18,7 @@ let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underf
 
 Like [`Int`](https://internetcomputer.org/docs/motoko/base/Int), the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type is unbounded by default, allowing extremely large values without overflow.
 
-```motoko no-repl
+```motoko
 let hugeNat : Nat = 1_000_000_000_000_000;
 ```
 
@@ -54,7 +54,7 @@ let c : Int = 12345;
 
 The  [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning its values can grow as large (or as small) as needed without causing over- or underflow.
 
-```motoko no-repl
+```motoko
 let bigNumber : Int = 999_999_999_999_999;
 ```
 

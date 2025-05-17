@@ -35,8 +35,8 @@ func displayName(option : ?Text) : Text {
 };
 displayName(null);
 ```
+
 Sometimes, the verbosity of a `switch` expression can make code harder to read. To improve readability, Motoko provides additional constructs for working with option types.
-Sometimes, the verbosity of `switch` expression can make code harder to read, so Motoko also offers additional ways to handle option types.
 
 ### Checking for presence
 
@@ -84,7 +84,7 @@ Another way to extract values from options, is use the `let ... else` pattern. T
 
 For example, here’s a simple implementation of an option helper:
 
-```motoko
+```motoko no-repl
 func get<T>(option : ?T, defaultValue : T) : T {
   let ?value = option else return defaultValue;
   return value;
@@ -92,13 +92,13 @@ func get<T>(option : ?T, defaultValue : T) : T {
 
 assert get(?"A", "B") == "A";
 assert get(null, "B") == "B";
+```
+
 The `let` statement matches the option against the pattern `?value`, extracting the contained value if present. If the option is `null`, the pattern fails to match and the `else` branch is executed, typically to exit the function early or return a default value.
 
 The same logic can be expressed using a `switch`, though the result is more verbose and introduces an additional level of nesting:
 
 ``` motoko no-repl
-
-``` motoko
 func get<T>(option : ?T, defaultValue : T) : T {
   switch option {
     case null defaultValue;
@@ -106,6 +106,7 @@ func get<T>(option : ?T, defaultValue : T) : T {
   }
 };
 ```
+
 Although convenient for option patterns, `let-else` also works with other types of patterns.
 Although convenient for option patterns, `let-else` also works with other types of pattern,
 handling pattern-match failure using the `else` branch.
@@ -168,18 +169,16 @@ Within a `do ? <block>`, the `!` operator is used to unwrap values of unrelated 
 
 The `do ? <block>` construct is similar to the `?` operator in Rust, providing a concise and expressive way to propagate `null` values.
 
-
-The `do ? <block>` is similar to how the `?` operator works in languages like Rust.
-
-```motoko 
+```motoko
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
 func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
     do ? { 
       n! + m!  
     }
 }
+```
 
-The following example defines a simple function that evaluates expressions built from natural numbers, division and a zero test, encoded as a variant type:
+The following example defines a simple function that evaluates expressions built from natural numbers, division, and a zero test, encoded as a variant type:
 
 ```motoko
 type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};

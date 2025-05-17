@@ -55,8 +55,9 @@ let y = x << 2; // 0x28 (40 in decimal)
 
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
-```motoko
+```motoko no-repl
 let letter : Char = 'A';
+
 let codePoint = Char.toNat32(letter); // 65
 
 let word : Text = "Motoko";

@@ -54,7 +54,6 @@ persistent actor Alternator {
     return Text.join("", modified);
   };
 };
-await Alternator.alternateCaps("motoko"); 
 ```
 
 :::note Conversions
@@ -84,11 +83,12 @@ let greeting : Text = "Hello, world!";
 `t.chars()` returns an iterator enumerating the characters in `t`. For example:  
 
 ```motoko  
-import Char "mo:base/Char";  
+import Char "mo:base/Char";
+import Debug "mo:base/Debug";
 
-for (c in "abc".chars()) {  
-  Debug.print(Char.toText(c));  
-} 
+for (c in "abc".chars()) {
+  Debug.print(Char.toText(c));
+}
 ```
 
 Text values can be compared using "==", "<" and all the other relational operators.
