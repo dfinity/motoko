@@ -30,11 +30,11 @@ Example:
 let account = { name = "Motoko"; var balance = 0 };
 // Inferred as { name : Text; var balance : Nat }
 account.balance := -100; //  Rejected, -100 is not a Nat
-````
+```
 
 To avoid this issue, annotate the field explicitly:
 
-```motoko
+```motoko no-repl
 let account = { name = "Motoko"; var balance : Int = 0 };
 account.balance := -100; //  Allowed
 ```
