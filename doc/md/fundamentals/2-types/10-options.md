@@ -212,7 +212,7 @@ let expr : Exp = #If(
 eval(expr);
 ```
 
-To guard against division by 0 without trapping, the eval function returns an option result, using `null` to indicate failure.
+To guard against division by 0 without trapping, the `eval` function returns an option result, using `null` to indicate failure.
 
 Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ?` block, and then the function itself, when an intermediate result is `null`.
 
