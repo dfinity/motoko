@@ -129,12 +129,12 @@ On ICP, time is measured in nanoseconds since the Unix epoch (January 1, 1970, U
 :::info `Time` to date
 Motoko does not provide a built-in function for converting `Time` into a date-time representation. Doing so requires:
 
-- Calculating days and seconds since the Unix epoch (1970-01-01)
-- Handling leap years to determine the correct month and day
-- Applying timezone offsets (e.g., subtracting 5 hours for EST)
-- Formatting the output as `MM-DD-YYYY HH-MM-SS`
+- Calculating days and seconds since the Unix epoch (1970-01-01).
+- Handling leap years to determine the correct month and day.
+- Applying timezone offsets (e.g., subtracting 5 hours for EST).
+- Formatting the output as `MM-DD-YYYY HH-MM-SS`.
 
-[View example implementation](https://icp.ninja/i?s=zy4yg)
+[View example implementation](https://icp.ninja/i?s=zy4yg).
 :::
 
 ## Modifying arrays
@@ -143,7 +143,7 @@ Motoko does not provide a built-in function for converting `Time` into a date-ti
 
 `Text.fromArray` converts a [`Char`](https://internetcomputer.org/docs/motoko/base/Char) into a [`Text`](https://internetcomputer.org/docs/motoko/base/Text). When working with different types, elements must be converted to [`Text`](https://internetcomputer.org/docs/motoko/base/Text) before transformation.
 
-```motoko
+```motoko no-repl
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 
@@ -159,7 +159,7 @@ arrayToText(['a','b','c'])
 
 For arrays containing numbers or other types, each element is converted to [`Text`](https://internetcomputer.org/docs/motoko/base/Text) before joining them into a single string.
 
-```motoko
+```motoko no-repl
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
@@ -176,7 +176,7 @@ arrayOfNatToText([1, 2, 3]);
 
 Motoko lacks support for dynamic objects, so an array of tuples is converted into a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) or a structured representation.
 
-```motoko
+```motoko no-repl
 import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 
@@ -194,7 +194,7 @@ arrayToMap([("Motoko", 4), ("Ghost", 21)]);
 
 To convert an array of tuples `[(Text, Nat)]` into a custom [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type, such as `User`, `Array.map` is used to transform each tuple into a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records).
 
-```motoko
+```motoko no-repl
 import Array "mo:base/Array";
 type User = {
     name : Text;

@@ -21,7 +21,7 @@ p1 == p2;  // true (structural equality)
 
 Even though `p1` and `p2` are distinct objects, they are considered equal because they have the same structure and values.
 
-This remains true even if we add some different fields to the point values, since the `==` on `Point`  values only considers the `x` and `y` fields and ignores other fields.
+This remains true even if different fields are added to the point values, since the `==` on `Point`  values only considers the `x` and `y` fields and ignores other fields.
 
 ```motoko
 type Point = { x : Int; y : Int };
@@ -64,8 +64,9 @@ type List = ?(Nat, List);
 
 This defines a recursive type for representing a linked list of natural number. Each list is either:
 
-* `null`, representing the empty list, or
-* `?(head, tail)`, where `head` is a `Nat`, and `tail` is another `List`.
+- `null`, representing the empty list.
+
+ - `?(head, tail)`, where `head` is a `Nat` and `tail` is another `List`.
 
 ```motoko no-repl
 ?(1, ?(2, ?(3, null)))  // A list: 1 → 2 → 3
@@ -77,7 +78,7 @@ To generalize this structure and support values of any type, we introduce a para
 type List<T> = ?(T, List<T>);
 ```
 
-This defines a generic linked list, where `T` can be any type — `Nat`, `Text`, `Blob`, or a custom type.
+This defines a generic linked list, where `T` can be any type (`Nat`, `Text`, `Blob`, or a custom type).
 
 ### Manually reversing a linked list
 

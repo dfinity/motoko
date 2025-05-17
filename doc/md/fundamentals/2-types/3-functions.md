@@ -208,7 +208,7 @@ The `getBalance` function has function type `shared query () -> async Nat`.
 A good example of a composite query might be a bank that holds references to its individual accounts, implemented as separate actors, and provides a composite query that sums the deposits in all its accounts:  
 
 ```motoko no-repl
-persistent actor Counter {
+persistent actor Bank {
   type Account = actor { getBalance() : query () -> async Nat;
   };
 
@@ -227,7 +227,8 @@ persistent actor Counter {
 Again, the shared keyword is redundant and can be omitted:
 
 ```motoko
-persistent actor Counter{
+persistent actor Bank {
+   // ...
   public composite query func getDeposits() {
     var deposits = 0;
     for (account in accounts.values()) {

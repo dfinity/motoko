@@ -4,7 +4,7 @@ sidebar_position: 13
 
 # Stable types
 
-**Stable types** include all [shared types](link) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
+**Stable types** include all [shared types](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types) and represent the kinds of values that can be stored in the `stable` declarations of a Motoko actor.
 Storing a value in a `stable` declaration ensures that it persists across canister upgrades. This enables state preservation without the need for an external file system or database.
 
 The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
@@ -13,7 +13,7 @@ Types that cannot be transferred include those whose values depend on the actor'
 :::info  
 In Motoko, the treatment of private declarations depends on whether an actor is declared with the `persistent` keyword:
 
-- In actors **without** the `persistent` keyword, all private declarations are considered *transient* by default, unless explicitly marked `stable`.
+- In actors **without** the `persistent` keyword, all private declarations are considered **transient** by default, unless explicitly marked `stable`.
 
 - In **`persistent` actors**, all private declarations (except function declarations) are considered **stable** by default, unless explicitly marked `transient`.
 

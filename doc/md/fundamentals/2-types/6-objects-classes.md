@@ -7,17 +7,14 @@ sidebar_position: 6
 ## Objects
 
 In Motoko, an object is a collection of named fields that hold values.  
-These values can be plain data or functions.  
-Each field can be either **mutable** or **immutable**, depending on whether it's declared with `var` or not.
+These values can be plain data or functions.  Each field can be either **mutable** or **immutable**, depending on whether it's declared with `var` or not.
 
 A simple object containing just fields of data is like a record in a database.  
 Motoko's light-weight [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax makes it easy to construct such objects.
 
-When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  
-From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
+When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
 
-In addition to the record syntax, Motoko let's you defined objects from a block of declarations.  
-The declarations in the block can be `public` or `private`, with `private` the default.  
+In addition to the record syntax, Motoko let's you define an object from a block of declarations. The declarations in the block can be `public` or `private`, with `private` the default.  
 Public declarations become accessible fields of the object, while private declarations remain hidden and inaccessible from outside the object.
 
 ```motoko
