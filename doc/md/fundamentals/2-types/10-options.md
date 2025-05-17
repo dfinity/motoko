@@ -4,7 +4,7 @@ sidebar_position: 10
 
 # Options
 
-| Type    | Syntax                  | Purpose                          | When to use it                                   |
+| Type    | Syntax                  | Purpose                          | Application                              |
 |---------|-------------------------|----------------------------------|------------------------------------------------|
 | Option  | `?T`                     | Represents a value that may be missing. | When an operation might return **no result**. |
 
