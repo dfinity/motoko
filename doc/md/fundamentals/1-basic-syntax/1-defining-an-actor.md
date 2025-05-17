@@ -40,7 +40,15 @@ persistent actor Main {
     count
   };
 };
+```
+This code defines an actor that can be deployed on ICP.
+The actor is declared as 'persistent` so that its state, `count`, will be preserved
+when the actor is upgraded. 
+Learn more about persistence: [link]
 
+Another actor can call `Main.greet()` with an argument and await the result:
+
+```motoko include=Main
 ```
 
 A Motoko actor always presents its interface as a suite of named [functions](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/functions) (also called methods) with defined argument and return types. When Motoko code is compiled, this interface is automatically translated to [Candid](https://internetcomputer.org/docs/building-apps/interact-with-canisters/candid/candid-concepts), an interface description language. The Candid description can be consumed by other canisters, including canisters written in another language such as Rust.
