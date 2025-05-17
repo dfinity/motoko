@@ -10,7 +10,9 @@ sidebar_position: 11
 
 While options are a built-in type, the `Result` is defined as a variant type:
 
-`type Result<Ok, Err> = { #ok : Ok; #err : Err }`
+```
+type Result<Ok, Err> = { #ok : Ok; #err : Err }
+```
 
 Because of the second type parameter `Err`, the `Result` type lets you select the type used to describe errors.
 
@@ -52,7 +54,7 @@ The verbosity of `switch` expressions can make code harder to read, so Motoko al
 
 ### `let else`
 
-Values can be extracted from Result using the `let ... else` pattern. This can be preferable to a `switch` expression when only the success `case` is needed, and the else branch can cleanly handle or exit on failure. It allows concise early returns or alternative flows when the result is `#err`.
+Values can be extracted from `Result` using the `let ... else` pattern. This can be preferable to a `switch` expression when only the success `case` is needed, and the else branch can cleanly handle or exit on failure. It allows concise early returns or alternative flows when the result is `#err`.
 
 ```motoko
 import Result "mo:base/Result";
@@ -69,8 +71,10 @@ func safeGreet(name : Text) : Text {
 safeGreet("");      // returns "Default greeting: Hi!"
 ```
 
-In `safeGreet` the `else` part of the `let` allows the function to exit early with a default greeting, when the value return by `greet` does not match `#ok greeting` but is some error `#err ...`.  It does not, however, give you access to the error value itself. When you do need access, it is better to use a `switch`.
+In `safeGreet`, the `else` branch of the `let` expression allows the function to exit early with a default greeting when the result of `greet` is an error (i.e., does not match `#ok greeting` but instead returns `#err ...`). However, this pattern does not provide access to the actual error value.
+
+If you need to handle or inspect the error, it's better to use a `switch` statement, which gives you explicit access to both `#ok` and `#err` cases.
 
 ## Resources
 
-- [`Result`](/docs/motoko/base/Result)
+- [`Result`](https://internetcomputer.org/docs/motoko/base/Result)
