@@ -45,7 +45,7 @@
         targets = [ "wasm32-wasip1" ];
       };
 
-      rust-stable = self.rust-bin.stable.latest.default;
+      rust-stable = self.rust-bin.stable."1.86.0".default;
 
       rustPlatform-stable = self.makeRustPlatform {
         rustc = self.rust-stable;
