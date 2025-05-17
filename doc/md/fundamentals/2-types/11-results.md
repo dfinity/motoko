@@ -14,7 +14,7 @@ While options are a built-in type, the `Result` is defined as a variant type:
 
 Because of the second type parameter `Err`, the `Result` type lets you select the type used to describe errors.
 
-Here’s a simple function that validates a username. If it's non-empty, we return a greeting of type `Text`. If not, return an error of type `Text`.
+Here’s a simple function that validates a username. If it's non-empty, it will return a greeting of type `Text`. If not, it will return an error of type `Text`.
 
 ```motoko
 import Result "mo:base/Result";
