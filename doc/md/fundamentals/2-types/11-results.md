@@ -12,7 +12,7 @@ While options are a built-in type, the `Result` is defined as a variant type:
 
 `type Result<Ok, Err> = { #ok : Ok; #err : Err }`
 
-Because of the second type parameter, `Err`, the `Result` type lets you select the type used to describe errors.
+Because of the second type parameter `Err`, the `Result` type lets you select the type used to describe errors.
 
 Here’s a simple function that validates a username. If it's non-empty, we return a greeting of type `Text`. If not, return an error of type `Text`.
 
