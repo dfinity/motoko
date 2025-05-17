@@ -51,7 +51,7 @@ let x : Nat32 = 0xA; // 10 in hexadecimal
 let y = x << 2; // 0x28 (40 in decimal)
 ```
 
-## Char and Text
+## `Char` and `Text`
 
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
