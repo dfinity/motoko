@@ -103,7 +103,9 @@ persistent actor {
     Logger.log(Time.now() + msg); // sends a message
   };
   public shared func doStuff() : async () {
-    await log("doingStuff"); } }
+    await log("doingStuff"); 
+  } 
+}
 ```
 
 A more efficient variation is to use `async*` and `await*` , which avoids the overhead of using ordinary `await` just to call a local function:  
