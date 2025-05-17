@@ -25,8 +25,6 @@ It's good practice, but not required, to import a module using its name in the p
 
 ```motoko no-repl
 import Nat "mo:base/Nat";
-import Math "mo:base/Float";
-import Iter "mo:itertools/Iter";
 ```
 
 This imports the `Nat` and `Float` modules from package `base` under locals names `Nat` and `Math`
