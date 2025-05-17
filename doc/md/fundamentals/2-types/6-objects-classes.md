@@ -6,21 +6,18 @@ sidebar_position: 6
 
 ## Objects
 
-In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.  
+In Motoko, an object is a collection of named fields that hold values.  
+These values can be plain data or functions.  Each field can be either **mutable** or **immutable**, depending on whether it's declared with `var` or not.
 
 A simple object containing just fields of data is like a record in a database.  
-Motoko's light-weight record syntax make it easy do construct such objects [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records).  
+Motoko's light-weight [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax makes it easy to construct such objects.
 
-When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  
-From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
+When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).  From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.  
 
-In addition to the record syntax, Motoko let's you defined objects from a block of declarations.  
-The declarations in the block can be `public` or `private`, with `private` the default.  
-The public declarations become fields of the object, all private declarations are hidden.  
+In addition to the record syntax, Motoko let's you define an object from a block of declarations. The declarations in the block can be `public` or `private`, with `private` the default.  
+Public declarations become accessible fields of the object, while private declarations remain hidden and inaccessible from outside the object.
 
-An object, similar to a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records), stores structured data with optional mutable fields and supports methods, including [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) behavior. Unlike records, objects can encapsulate or share their [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior using `public` and `private` visibility modifiers. However, they cannot be instantiated independently, such as `object()`.
-
-```motoko no-repl
+```motoko
 object Account {
     var balance : Nat = 1000;
 
@@ -39,7 +36,7 @@ object Account {
 
 ## Classes
 
-A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
+An object declaration just declares a single object. To declare a function that generates objects of a similar type, Motoko offer classes. A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
 class Account(initialBalance : Nat) {
@@ -66,7 +63,7 @@ let account2 = Account(1000);
 
 An object class defines a blueprint for multiple objects. The above is just short-hand for an `object` class. Motoko also support module and actor classes.  
 
-```motoko no-repl
+```motoko
 object class Account(initialBalance : Nat) {
     var balance = initialBalance;
 
@@ -87,7 +84,7 @@ object class Account(initialBalance : Nat) {
 
 Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.  
 
-```motoko no-repl
+```motoko
 module CurrencyConverter {
     public func toUSD(amount : Nat) : Float {
         return Float.fromInt(amount) * 1.1;
@@ -99,7 +96,7 @@ module CurrencyConverter {
 
 A module class can be used to produce multiple modules with different configurations.
 
-```motoko no-repl
+```motoko
 module class ExchangeRate(baseRate : Float) {
     public func convert(amount : Nat) : Float {
         return Float.fromInt(amount) * baseRate;
@@ -114,30 +111,33 @@ Debug.print(Float.toText(usdConverter.convert(100)));  // "110.0"
 Debug.print(Float.toText(eurConverter.convert(100)));  // "90.0"
 ```
 
-
 ## Object subtyping
 
 Object subtyping allows objects with more fields to be treated as subtypes of objects with fewer fields. This enables flexibility in function arguments and object compatibility.
 
 Objects with fewer fields are more general, while objects with additional fields are subtypes of more general types.
 
-| Most general   | ` type basicAccount = { getBalance : () -> Nat }` | Subtype of `{}`  |  
-| Middle generality | `type standardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `basicAccount` |  
-| Least general  | `type premiumAccount = { getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Suptype of `standardAccount` |  
+| Specificity level | Description | Relationship |
+|-------------------|-------------|--------------|
+| Most general | `type basicAccount = { getBalance : () -> Nat }` | Subtype of `{}` |
+| Middle generality | `type standardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `basicAccount` |
+| Least general | `type premiumAccount = { getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Subtype of `standardAccount` |
 
 `basicAccount` is the most general type of account, because `standardAccount` and `premiumAccount` can both be used as `basicAccount`s.  
 
 A function expecting `{ getBalance : () -> Nat }` can accept any of the above, since all contain at least that method. However, a function requiring `{ withdraw : Nat -> Bool }` cannot accept more general types that lack this method.
 
-- A subtype must be usable wherever its supertype is expected.
-- The more general object has fewer methods because it makes fewer assumptions about available functionality.
+- In general, if type `T` is a subtype of type `U`, then any value of type `T` also has type `U`. The means that a value of the more specific type `T` can pass as a value of the more general type `U` without any explicit conversion.
+- When `T` and `U` are object types, subtyping ensures that `T` provides at least the fields required by `U`, so that any object of type `T` can serve as an object of the more general type `U`. 
 
-` premiumAccount <: standardAccount <: basicAccount`, or equivalently:  `premiumAccount` is a subtype of `standardAccount`, which is a subtype of `basicAccount`.  
+The more general object type has fewer fields because this places fewer requirements on its values.
+
+`premiumAccount <: standardAccount <: basicAccount`, or equivalently:  `premiumAccount` is a subtype of `standardAccount`, which is a subtype of `basicAccount`.  
 
 A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
 However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three type of objects.  
 
-```motoko no-repl
+```motoko
 func printBalance(account : { getBalance : () -> Nat }) {
   Debug.print("Balance: " # Nat.toText(account.getBalance()));
 };
@@ -148,7 +148,7 @@ printBalance(standardAccount);
 printBalance(premiumAccount);
 ```
 
-```motoko no-repl
+```motoko
 func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);
   Debug.print(if success then "Withdrawal successful" else "Insufficient funds");

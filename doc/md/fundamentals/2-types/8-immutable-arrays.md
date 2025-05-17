@@ -8,15 +8,13 @@ Immutable arrays are fixed-size, read-only data structures that allow efficientl
 
 ## When to use immutable arrays
 
-Immutable arrays in Motoko are best used when:
+- Fixed-size storage suffices: The number of elements is known in advance and will not change.
+- Performance is required: Arrays provide efficient random access to elements.
+- Mutability is not needed: Immutability ensures that no accidental modifications occur.
 
-- Fixed-size storage is required: The number of elements is known in advance and will not change.
-- Performance optimization is needed: They provide efficient index access without dynamic resizing overhead.
-- Data integrity must be preserved: Immutability ensures that no accidental modifications occur.
+Unlike mutable arrays, immutable arrays support subtyping and are shared types that can be sent in messages (provided the element type is shared).
 
-Immutable arrays do not allow in-place modifications, making them suitable when stability and performance are priorities.
-
-If the number of elements may change, collections like `List` or `Buffer` are a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
+If the number of elements may change, collections like `List` is a better choice, as immutable arrays require creating a new array each time an element is added or removed, which is inefficient.
 
 ## Defining an immutable array
 
@@ -79,26 +77,23 @@ let immutableArray : [Nat] = [1, 2, 3, 4, 5];
 
 let mutableCopy : [var Nat] = Array.thaw<Nat>(immutableArray);
 mutableCopy[0] := 10;
-//
 ```
-
 
 ## Passing a variable number of arguments
 
 Motoko supports passing collections to a function, ensuring that all arguments are handled as a collection rather than individual parameters.
 
-Arrays can be useful when writing functions that take a variable number of arguments, allowing you to condense multiple arguments into a single array:  
+```motoko
+import Debug "mo:base/Debug"
 
-```motoko no-repl
 func printAllStrings(strings : [Text]) {
   for (s in strings.values()) {
     Debug.print(s);
   }
 };
 
-printAllStrings(["Hello, "Hola", "Ciao"]);
+printAllStrings(["Hello", "Hola", "Ciao"]);
 ```
-
 
 ## Comparing arrays  
 
@@ -134,14 +129,14 @@ Unlike some languages, Motoko does not compare arrays by reference using a prope
 
 Motoko's base library [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
-```motoko no-repl
+```motoko
 import Array "mo:base/Array";
 
-func transformArray() : async () {
+func transformArray() : async [Nat] {
     let numbers : [Nat] = [1, 2, 3];
     let doubled : [Nat] = Array.map<Nat, Nat>(numbers, func(x) { x * 2 });
 
-    Debug.print(debug_show(doubled)); // [2, 4, 6]
+    doubled; // [2, 4, 6]
 }
 ```
 
@@ -151,8 +146,11 @@ To demonstrate nested immutable arrays, consider the following:
 
 A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](https://internetcomputer.org/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
+```motoko
+import Array "mo:base/Array";
+import Debug "mo:base/Debug";
 
-```motoko no-repl
+persistent actor Chess{
  func generateChessboard() : [[Text]] {
     let size : Nat = 8;
 
@@ -180,6 +178,7 @@ A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the ini
     let rowText = Array.foldLeft<Text, Text>(row, "", func(acc, square) = acc # square # " ");
     Debug.print(rowText)
   }
+};
 ```
 
 The function `Array.tabulate(size, f)` creates an array of `size` elements, populated so that element `i` contains the value of `f(i)`.  

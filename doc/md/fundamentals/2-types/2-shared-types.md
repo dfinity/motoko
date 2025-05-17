@@ -6,14 +6,15 @@ sidebar_position: 2
 
 All Motoko types are divided into sets. The smallest is the set of shared types. Shared types are part of the larger set of [stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types).  
 
-A shared type's value can easily be exchanged, or shared, with other actors. To avoid the problems of sharing state across actors, shared types are all immutable. This means that their values can be transmitted by simply copying data, avoiding the complexity and perils of transmitting stateful objects.  
+A shared type's value can be easily exchanged with other actors. To prevent issues associated with sharing mutable state across actors, **all shared types are immutable**. This immutability allows values to be transmitted safely by copying data, avoiding the complexity and risks of sharing stateful or mutable objects.
+
 Motoko's shared types also have a natural translation to Candid types.
 
-Operationally, you can think of shared types as the subset of types that can be serialized to Candid.  
+Operationally, you can think of shared types as the subset of types that can be serialized to Candid.
 
-In Motoko, shared functions are used to transmit values between actors. Unlike other functions, their arguments and results are restricted to shared types. This restriction allows the arguments and results to be translated and transmitted as Candid.  
+In Motoko, shared functions are used to transmit values between actors. Unlike other functions, their arguments and results are restricted to shared types. This restriction allows the arguments and results to be translated and transmitted as Candid.
 
-These functions are shared because they, too, are values of with shared types and can be communicated with other actors.  
+These functions are shared because they are also values of shared types and can be communicated to other actors.
 
 ## Importance of shared types
 
@@ -30,7 +31,7 @@ Shareability is essential for several reasons:
 
 Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) are shared by default.
 
-```motoko no-repl
+```motoko
 // Numbers, text, and booleans are shared
 let number : Nat = 42;
 let message : Text = "Hello IC";
@@ -41,7 +42,7 @@ let flag : Bool = true;
 
 Collections that cannot be modified after creation are shared, including [immutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) and [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples).
 
-```motoko no-repl
+```motoko
 // Immutable arrays are shared
 let names : [Text] = ["Motoko", "Ghost", "Astronaut"];
 
@@ -79,7 +80,7 @@ let failure : Result = #error("Operation failed");
 
 ### Option types
 
-[Option types](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) are shared when they contain shared types.
+[Option types](https://internetcomputer.org/docs/motoko/fundamentals/types/options) are shared when they contain shared types.
 
 ```motoko no-repl
 // Option types with shared inner types are shared
