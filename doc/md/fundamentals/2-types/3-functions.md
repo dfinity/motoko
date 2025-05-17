@@ -48,19 +48,18 @@ Local functions run within the canister's [actor](https://internetcomputer.org/d
 
 ```motoko no-repl
 persistent actor CommonDivisor{
-func gcd(a : Nat, b : Nat) : Nat {
-  var x = a;
-  var y = b;
+  func gcd(a : Nat, b : Nat) : Nat {
+    var x = a;
+    var y = b;
 
-  while (y != 0) {
-    let temp = y;
-    y := x % y;
-    x := temp;
+    while (y != 0) {
+      let temp = y;
+      y := x % y;
+      x := temp;
+    };
+
+    x  // Return value is the GCD
   };
-
-  x  // Return value is the GCD
-};
-
 let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
 };
 ```
