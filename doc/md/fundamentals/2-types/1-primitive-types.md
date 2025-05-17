@@ -78,7 +78,6 @@ let flag : Bool = true or false; // true
 let opposite = not flag; // false
 
 let isEqual =  true == false ; // false  
-let comparison = false <= true; // true 
 ```
 
 ## Float
