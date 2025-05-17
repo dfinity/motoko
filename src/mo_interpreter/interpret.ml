@@ -456,6 +456,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
+    | ImportedValuePath path ->
+      let contents = find path env.libs |> V.as_blob in
+      k T.(match normalize exp.note.note_typ with | Prim Blob -> V.Blob contents | Prim Text -> V.Text contents
+                                                  | Non -> failwith "Non?"
+                                                  | _ -> assert false)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -1122,7 +1127,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
@@ -1140,8 +1145,9 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
+  | Syntax.FileU str -> fun _ -> V.Blob str
+    (* always create a Blob here, but the ImportedValuePath will apply the coercion if Text needed *)
   | _ -> assert false
-
 
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags state scope in
