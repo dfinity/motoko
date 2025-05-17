@@ -17,7 +17,7 @@ persistent actor Counter{var x : Nat = 0; public func inc(): async Int{x+1; x;}}
 ```motoko
 persistent actor Counter {
   var x : Nat = 0;
-  public func inc(x : Int) : async Int {
+  public func inc() : async Int {
     x + 1;
   };
 };
