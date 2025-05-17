@@ -21,14 +21,12 @@ Every Motoko actor corresponds to an ICP canister. Conversely, any ICP canister,
 
 ```motoko name=Main
 // Declares an actor named Main.
-// The actor is defined as 'persistent,' meaning its state will persist. 
-// Learn more about persistence: [link]
 persistent actor Main {
-  // Define a variable called 'count' to track the number of greetings.
+  // Define a private variable called 'count' to track the number of greetings.
   var count : Nat = 0;
 
-  // Define a publically callable function that when called 
-  // will greet someone and increment the counter.
+  // Define a public function that asynchronously returns a greeting
+  // and increments the counter.
   public func greet(name : Text) : async Text {
     count += 1;
     "Hello, " # name # "! You are visitor number " # debug_show(count);
