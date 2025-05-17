@@ -80,7 +80,6 @@ safeDivide(10, 0); // null
 
 Another way to extract values from option types is by using the `let ... else` pattern. This approach can be preferable to a `switch` expression for brevity and clarity. However, it only applies when the `else` branch can redirect control flow, such as returning early or throwing an error, if the value does not match the pattern in the `let`.
 
-Another way to extract values from options, is use the `let ... else` pattern. This may be preferable over a `switch` expression, but only applies when the `else` expression can divert control elsewhere when the value fails to match the pattern used in the `let`.
 
 For example, here’s a simple implementation of an option helper:
 
