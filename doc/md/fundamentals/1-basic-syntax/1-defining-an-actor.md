@@ -18,7 +18,7 @@ In Motoko, actors are defined at the top level of a source file using the `actor
 
 An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
-```motoko
+```motoko name=Main
 // Declares an actor named Main.
 // The actor is defined as 'persistent,' meaning its state will persist. 
 // Learn more about persistence: [link]
