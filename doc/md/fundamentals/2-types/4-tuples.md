@@ -8,7 +8,7 @@ A tuple is a fixed-size, ordered collection of values, where each element can ha
 
 A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The type of a tuple is determined by types of its elements, such as ([`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool)). The values inside a tuple are evaluated in order from left to right. Tuples are immutable and their components cannot be modified after creation (unlike record fields, which can be declared mutable).  
 
-A tuple with zero elements is called the **unit value**, written as `()`. Since it carries no other data, it represents a trivial  or token value.  
+A tuple with zero elements is called the **unit value**, written as `()`. Since it carries no other data, it represents a trivial or token value.  
 It's type is the **unit type**, also written `()`.  
 
 Unit values are typically used as placeholder arguments or return values for functions that don't require input or don't return meaningful results. However, such functions may still produce side effects, such as printing to the console or modifying state.
@@ -77,7 +77,7 @@ A `let` pattern can then be used to extract just the name, ignoring the age by u
 
 ## Nesting tuples
 
-Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points $(x_1, y_1)$ and $(x_2, y_2)$ is calculated using the formula:
+Tuples can be used to represent coordinate pairs, allowing for structured calculations such as finding the gradient of a line. The gradient (or slope) between two points `$(x_1, y_1)$` and `$(x_2, y_2)$` is calculated using the formula:
 
 $$
 m = \frac{y_2 - y_1}{x_2 - x_1}
@@ -86,21 +86,22 @@ $$
 Using nested tuples, this can be implemented in Motoko as follows:
 
 ```motoko
-  type Point = (Float, Float);
-  // Line is a tuple of points, that is, a nested tuple
-  type Line = (Point, Point);
-  func calculateGradient(line : Line) : ?Float {
-    let ((x1, y1), (x2, y2)) = line;
-    if (x1 == x2) {
-      null
-      // Gradient is undefined for a vertical line
-    } else {
-      ?((y2 - y1) / (x2 - x1)) // Wraps the result as an option
-    }
-  };
-  let line : Line = ((2.0, 3.0), (5.0, 7.0));
-  // Show the gradient when run
-  calculateGradient(line);
+// Point is a tuple of coordinate floats
+type Point = (Float, Float);
+// Line is a tuple of points, that is, a nested tuple
+type Line = (Point, Point);
+func calculateGradient(line : Line) : ?Float {
+  let ((x1, y1), (x2, y2)) = line;
+  if (x1 == x2) {
+    null
+    // Gradient is undefined for a vertical line
+  } else {
+    ?((y2 - y1) / (x2 - x1)) // Wraps the result as an option
+  }
+};
+let line : Line = ((2.0, 3.0), (5.0, 7.0));
+// Show the gradient when run
+calculateGradient(line);
 ```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
