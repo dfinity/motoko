@@ -6,14 +6,13 @@ sidebar_position: 7
 
 Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.  
 
-
 ## Defining a variant
 
-```motoko no-repl
+```motoko no-repl name=status
 type Status = {
-    #Active;
-    #Inactive;
-    #Banned : Text;
+  #Active;
+  #Inactive;
+  #Banned : Text;
 };
 ```
 
@@ -23,7 +22,7 @@ type Status = {
 
 To assign a variant value, use one of the defined tags.
 
-```motoko no-repl
+```motoko
 let activeUser = #Active;
 let bannedUser = #Banned("Violation of rules");
 ```
@@ -32,17 +31,19 @@ let bannedUser = #Banned("Violation of rules");
 
 To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
-```motoko no-repl
+```motoko include=status
+import Debug "mo:base/Debug";
+
 let activeUser : Status = #Active;
 let bannedUser : Status = #Banned("Violation of rules");
 
 func getStatusMessage(status : Status) : Text {
-    switch (status) {
-        case (#Active) "User is active";
-        case (#Inactive) "User is inactive";
-        case (#Banned(reason)) "User is banned: " # reason;
-    }
-}
+  switch (status) {
+    case (#Active) "User is active";
+    case (#Inactive) "User is inactive";
+    case (#Banned(reason)) "User is banned: " # reason;
+    };
+};
 
 Debug.print(getStatusMessage(activeUser));
 Debug.print(getStatusMessage(bannedUser));
@@ -62,12 +63,11 @@ Since the traffic light can only be in one of these states at a time, a variant 
 
 ### Defining the traffic light state
 
-```motoko no-repl
-// Each tag #red, #yellow, #green represents one possible state of the traffic light.
+```motoko no-repl name=lights
 type TrafficLight = {
-    #red;
-    #yellow;
-    #green;
+  #red;
+  #yellow;
+  #green;
 };
 ```
 
@@ -75,7 +75,7 @@ type TrafficLight = {
 
 A function can define how the traffic light cycles from one [state](https://internetcomputer.org/docs/motoko/fundamentals/state) to the next.
 
-```motoko no-repl
+```motoko include=lights
 func nextState(light : TrafficLight) : TrafficLight {
     switch (light) {
         case (#red)    #green;
@@ -83,58 +83,45 @@ func nextState(light : TrafficLight) : TrafficLight {
         case (#yellow) #red;
     }
 };
+nextState(#red);
 ```
 
 ### Simulating traffic light changes
 
-```motoko no-repl
- type TrafficLight = {
-    #red;
-    #yellow;
-    #green
-  };
+```motoko include=lights
+import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
 
-  func nextState(light : TrafficLight) : TrafficLight {
-    switch (light) {
-      case (#red) #green;
-      case (#green) #yellow;
-      case (#yellow) #red
-    }
-  };
+func nextState(light : TrafficLight) : TrafficLight {
+  switch (light) {
+    case (#red) #green;
+    case (#green) #yellow;
+    case (#yellow) #red
+  }
+};
 
-  var light : TrafficLight = #red; // Initial state
+var light : TrafficLight = #red; // Initial state
 
-  for (_ in Iter.range(0, 5)) {
-    // Cycle through states
-    light := nextState(light);
-    Debug.print(debug_show (light))
-  };
-```
-
-#### Output
-
-```bash
-#green
-#yellow
-#red
-#green
-#yellow
-#red
+for (_ in Iter.range(0, 5)) {
+  // Cycle through states
+  light := nextState(light);
+  Debug.print(debug_show (light))
+};
 ```
 
 ## Defining a binary tree type using variants
 
 A binary tree is a data structure where each node has up to two child nodes. A variant can be used to represent this structure since a node can either contain a value with left and right children or be an empty leaf. This tree type is recursive as it refers to itself in its definition.
 
-```motoko no-repl
+```motoko no-repl name=tree
 type Tree = {
-    #node : {
-      value : Nat;
-      left : Tree;
-      right : Tree
-    };
-    #leaf
+  #node : {
+    value : Nat;
+    left : Tree;
+    right : Tree
   };
+  #leaf
+};
 ```
 
 This example contains two variants:
@@ -146,11 +133,11 @@ This example contains two variants:
 
 The following example defines a tree with a single root node containing the value `10`. It has two child nodes, `5` and `15`, both of which do not have any children.
 
-```motoko no-repl
+```motoko include=tree
 let tree : Tree = #node {
-    value = 10;
-    left = #node {value = 5; left = #leaf; right = #leaf};
-    right = #node {value = 15; left = #leaf; right = #leaf}
+  value = 10;
+  left = #node {value = 5; left = #leaf; right = #leaf};
+  right = #node {value = 15; left = #leaf; right = #leaf}
   };
 ```
 
@@ -172,33 +159,26 @@ A tree can be traversed in multiple ways. One common approach is in-order traver
 
 The following example recursively traverses the tree in order and prints each value as it is visited.
 
-```motoko no-repl
-type Tree = {
-    #node : {
-      value : Nat;
-      left : Tree;
-      right : Tree
-    };
-    #leaf
-  };
+```motoko include=tree
+import Debug "mo:base/Debug";
 
 let tree : Tree = #node {
-    value = 10;
-    left = #node {value = 5; left = #leaf; right = #leaf};
-    right = #node {value = 15; left = #leaf; right = #leaf}
-  };
+  value = 10;
+  left = #node {value = 5; left = #leaf; right = #leaf};
+  right = #node {value = 15; left = #leaf; right = #leaf}
+};
 
 func traverseInOrder(t : Tree) {
-    switch (t) {
-      case (#leaf) {};
-      case (#node {value; left; right}) {
-        traverseInOrder(left);
-        Debug.print(debug_show (value));
-        traverseInOrder(right)
-      }
+  switch (t) {
+    case (#leaf) {};
+    case (#node {value; left; right}) {
+      traverseInOrder(left);
+      Debug.print(debug_show (value));
+      traverseInOrder(right)
     }
-  };
-  traverseInOrder(tree);
+  }
+};
+traverseInOrder(tree);
 ```
 
 ### Using generic types
@@ -222,7 +202,7 @@ With this change, the tree can store any type, such as [`Text`](https://internet
 
 In Motoko, a variant with fewer tags is a subtype of a variant with more tags:  
 
-```motoko
+```motoko no-repl
 type WorkDay = { #mon; #tues; #wed; #thurs; #fri };
 type Day = { #sun; #mon; #tues; #wed; #thurs; #fri; #sat};
 ```

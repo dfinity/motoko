@@ -18,7 +18,7 @@ let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underf
 
 Like [`Int`](https://internetcomputer.org/docs/motoko/base/Int), the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type is unbounded by default, allowing extremely large values without overflow.
 
-```motoko
+```motoko no-repl
 let hugeNat : Nat = 1_000_000_000_000_000;
 ```
 
@@ -33,10 +33,9 @@ Motoko also provides bounded natural number types.
 
 Bounded [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types are ideal when working with binary protocols, embedded systems, or hardware where size constraints matter.
 
-```motoko
+```motoko no-repl
 let trappingNat8 : Nat8 = 255+1; // trap: arithmetic overflow
 ```
-
 
 ## Integers
 
@@ -54,7 +53,7 @@ let c : Int = 12345;
 
 The  [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is unbounded, meaning its values can grow as large (or as small) as needed without causing over- or underflow.
 
-```motoko
+```motoko no-repl
 let bigNumber : Int = 999_999_999_999_999;
 ```
 
@@ -65,13 +64,11 @@ let bigNumber : Int = 999_999_999_999_999;
 - [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32) (32-bit signed integer)
 - [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64) (64-bit signed integer)
 
-
 Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
-```motoko
+```motoko no-repl
 let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 ```
-
 
 ## Comparing `Int` and `Nat`
 
@@ -81,7 +78,6 @@ let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 | Default behavior      | Unbounded                  | Unbounded                |
 | Bounded variants      | [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32)...| [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)...|
 | Overflow possibility  | Yes (for bounded types)    | Yes (for bounded types)  |
-
 
 ## Floats
 
@@ -110,6 +106,5 @@ let goldenRatio = 1.61803;
 - [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)
 - [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64)
 - [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
-
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

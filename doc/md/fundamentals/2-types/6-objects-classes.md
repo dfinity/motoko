@@ -19,17 +19,16 @@ Public declarations become accessible fields of the object, while private declar
 
 ```motoko
 object Account {
-    var balance : Nat = 1000;
+  var balance : Nat = 1000;
 
-   public  func deposit(amount : Nat) : Nat {  
-        balance += amount;
-        balance
-    };
-
-    func withdraw(amount : Nat) : ?Nat {
-        if (amount > balance) { return null };
-        balance -= amount;
-        ?balance
+  public  func deposit(amount : Nat) : Nat {  
+    balance += amount;
+    balance
+  };
+  func withdraw(amount : Nat) : ?Nat {
+    if (amount > balance) { return null };
+      balance -= amount;
+      ?balance
     };
 }
 ```
@@ -38,19 +37,18 @@ object Account {
 
 An object declaration just declares a single object. To declare a function that generates objects of a similar type, Motoko offer classes. A class acts as a blueprint for creating multiple objects with independent [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
-```motoko no-repl
+```motoko
 class Account(initialBalance : Nat) {
-    var balance = initialBalance;
+  var balance = initialBalance;
 
-    public func deposit(amount : Nat) : async Nat {
-        balance += amount;
-        balance
-    };
-
-    public func withdraw(amount : Nat) : ?Nat {
-        if (amount > balance) { return null };
-        balance -= amount;
-        ?balance
+  public func deposit(amount : Nat) : async Nat {
+    balance += amount;
+    balance
+  };
+  public func withdraw(amount : Nat) : ?Nat {
+    if (amount > balance) { return null };
+      balance -= amount;
+      ?balance
     };
 };
 
@@ -65,50 +63,54 @@ An object class defines a blueprint for multiple objects. The above is just shor
 
 ```motoko
 object class Account(initialBalance : Nat) {
-    var balance = initialBalance;
+  var balance = initialBalance;
 
-    public func deposit(amount : Nat) : Nat {
-        balance += amount;
-        balance
-    };
+  public func deposit(amount : Nat) : Nat {
+    balance += amount;
+    balance
+  };
 
-    public func withdraw(amount : Nat) : ?Nat {
-        if (amount > balance) { return null };
-        balance -= amount;
-        ?balance
+  public func withdraw(amount : Nat) : ?Nat {
+    if (amount > balance) { return null };
+      balance -= amount;
+      ?balance
     };
 }
 ```
 
 ## Modules
 
-Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.  
+Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.
 
-```motoko
+```motoko name=float
+import Float "mo:base/Float";
+
 module CurrencyConverter {
-    public func toUSD(amount : Nat) : Float {
-        return Float.fromInt(amount) * 1.1;
+  public func toUSD(amount : Nat) : Float {
+    Float.fromInt(amount) * 1.1;
     };
-}
+};
 ```
 
 ### Module classes
 
 A module class can be used to produce multiple modules with different configurations.
 
-```motoko
+```motoko include=float
+import Debug "mo:base/Debug";
+
 module class ExchangeRate(baseRate : Float) {
     public func convert(amount : Nat) : Float {
         return Float.fromInt(amount) * baseRate;
     };
-}
+};
 
 // Creating different currency converters
 let usdConverter = ExchangeRate(1.1);
 let eurConverter = ExchangeRate(0.9);
 
-Debug.print(Float.toText(usdConverter.convert(100)));  // "110.0"
-Debug.print(Float.toText(eurConverter.convert(100)));  // "90.0"
+Debug.print(debug_show(Float.toText(usdConverter.convert(100))));  // "110.0"
+Debug.print(debug_show(Float.toText(eurConverter.convert(100))));  // "90.0"
 ```
 
 ## Object subtyping
@@ -119,45 +121,108 @@ Objects with fewer fields are more general, while objects with additional fields
 
 | Specificity level | Description | Relationship |
 |-------------------|-------------|--------------|
-| Most general | `type basicAccount = { getBalance : () -> Nat }` | Subtype of `{}` |
-| Middle generality | `type standardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `basicAccount` |
-| Least general | `type premiumAccount = { getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Subtype of `standardAccount` |
+| Most general | `type BasicAccount = { getBalance : () -> Nat }` | Subtype of `{}` |
+| Middle generality | `type StandardAccount = { getBalance : () -> Nat; deposit : Nat -> () }` | Subtype of `BasicAccount` |
+| Least general | `type PremiumAccount = { getBalance : () -> Nat; deposit : Nat -> (); withdraw : Nat -> Bool }` | Subtype of `StandardAccount` |
 
-`basicAccount` is the most general type of account, because `standardAccount` and `premiumAccount` can both be used as `basicAccount`s.  
+Below are example objects for each account type, demonstrating subtyping in practice:
+
+```motoko name=accounts
+type BasicAccount = {
+  getBalance : () -> Nat;
+};
+
+type StandardAccount = {
+  getBalance : () -> Nat;
+  deposit : Nat -> ();
+};
+
+type PremiumAccount = {
+  getBalance : () -> Nat;
+  deposit : Nat -> ();
+  withdraw : Nat -> Bool;
+};
+
+object _basicAccount : BasicAccount = {
+  public func getBalance() : Nat {
+    100
+  };
+};
+
+object _standardAccount : StandardAccount = {
+  var balance = 200;
+
+  public func getBalance() : Nat {
+    balance
+  };
+
+  public func deposit(amount : Nat) {
+    balance += amount;
+  };
+};
+
+object _premiumAccount : PremiumAccount = {
+  var balance = 300;
+
+  public func getBalance() : Nat {
+    balance
+  };
+
+  public func deposit(amount : Nat) {
+    balance += amount;
+  };
+
+  public func withdraw(amount : Nat) : Bool {
+    if (amount <= balance) {
+      balance -= amount;
+      true
+    } else {
+      false
+    }
+  };
+};
+```
+
+`BasicAccount` is the most general type of account, because `StandardAccount` and `PremiumAccount` can both be used as `BasicAccount`s.
 
 A function expecting `{ getBalance : () -> Nat }` can accept any of the above, since all contain at least that method. However, a function requiring `{ withdraw : Nat -> Bool }` cannot accept more general types that lack this method.
 
 - In general, if type `T` is a subtype of type `U`, then any value of type `T` also has type `U`. The means that a value of the more specific type `T` can pass as a value of the more general type `U` without any explicit conversion.
-- When `T` and `U` are object types, subtyping ensures that `T` provides at least the fields required by `U`, so that any object of type `T` can serve as an object of the more general type `U`. 
+- When `T` and `U` are object types, subtyping ensures that `T` provides at least the fields required by `U`, so that any object of type `T` can serve as an object of the more general type `U`.
 
 The more general object type has fewer fields because this places fewer requirements on its values.
 
-`premiumAccount <: standardAccount <: basicAccount`, or equivalently:  `premiumAccount` is a subtype of `standardAccount`, which is a subtype of `basicAccount`.  
+`PremiumAccount <: StandardAccount <: BasicAccount`, or equivalently:  `PremiumAccount` is a subtype of `StandardAccount`, which is a subtype of `BasicAccount`.
 
-A function expecting `premiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
-However, a function expecting `basicAccount` only needs `getBalance`, so it can accept all three type of objects.  
+A function expecting `PremiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
+However, a function expecting `BasicAccount` only needs `getBalance`, so it can accept all three type of objects.
 
-```motoko
+```motoko include=accounts
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
 func printBalance(account : { getBalance : () -> Nat }) {
   Debug.print("Balance: " # Nat.toText(account.getBalance()));
 };
 
 // Works, because all have getBalance
-printBalance(basicAccount);
-printBalance(standardAccount);
-printBalance(premiumAccount);
+printBalance(_basicAccount);
+printBalance(_standardAccount);
+printBalance(_premiumAccount);
 ```
 
-```motoko
+```motoko include=accounts
+import Debug "mo:base/Debug";
 func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);
-  Debug.print(if success then "Withdrawal successful" else "Insufficient funds");
+  Debug.print(if success "Withdrawal successful" else "Insufficient funds");
 };
 
 // Works only for premiumAccount, fails for others
-withdrawFromAccount(premiumAccount);  // Works
-withdrawFromAccount(standardAccount); // type error: (missing withdraw)  
-withdrawFromAccount(basicAccount);    // type error: (missing withdraw)  
+withdrawFromAccount(_premiumAccount);
+
+// withdrawFromAccount(_standardAccount); // type error: (missing withdraw)
+// withdrawFromAccount(_basicAccount);    // type error: (missing withdraw)
 ```
 
 [Learn more about subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping).

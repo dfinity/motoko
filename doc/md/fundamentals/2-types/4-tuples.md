@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Tuples
 
-A tuple is a fixed-size, ordered collection of values, where each element can have a different type. Tuples provide a way to group values by position, without the overhead of defining a record of named fields.  
+A tuple is a fixed-size, ordered collection of values, where each element can have a different type. Tuples provide a way to group values by position, without the overhead of defining a record of named fields.
 
 A tuple is grouped together in parentheses (`value1`, `value2`, `value3`). The type of a tuple is determined by types of its elements, such as ([`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool)). The values inside a tuple are evaluated in order from left to right. Tuples are immutable and their components cannot be modified after creation (unlike record fields, which can be declared mutable).  
 
@@ -19,7 +19,7 @@ Unit values are typically used as placeholder arguments or return values for fun
 let ghost = ("Motoko", 25);
 ```
 
-The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `25` is of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat). 
+The tuple's type is automatically inferred as `(Text, Nat)`, since `"Motoko"` is of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `25` is of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
 ```motoko
 let ghost : (Text, Nat) = ("Motoko", 25);
@@ -33,7 +33,7 @@ Motoko **does not** support length-one tuples. This is in contrast to languages 
 
 Elements are accessed using `.n` where `n` is the index (0-based indexing).
 
-```motoko no-repl
+```motoko
 // Ghost is a tuple of length 2
 let ghost : (firstName : Text, age : Nat) = ("Motoko", 25);
 let first = ghost.0; // "Motoko"
@@ -56,7 +56,7 @@ getUserInfo();
 
 Tuples can be stored in arrays or other data structures. Tuples can be constructed with named types, improving readability. By naming the types in the tuple in the collection, the intent of each component is clarified, reducing ambiguity.  
 
-```motoko no-repl
+```motoko
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];
 ```
 
@@ -65,7 +65,8 @@ This structure efficiently represents a collection of key-value pairs without re
 ## Pattern matching on tuples
 
 In addition to dot notation, tuples can be decomposed using tuple patterns. When combined with `let` or `switch`, this allows you to access the components of a tuple through simple pattern matching.
-```motoko no-repl
+
+```motoko
 let users : [(Text, Nat)] = [("Motoko", 25), ("Ghost", 30)];  
 
 let (firstUserName, _) = users[0] // "Motoko" 

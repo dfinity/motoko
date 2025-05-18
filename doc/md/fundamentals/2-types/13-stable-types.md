@@ -58,10 +58,15 @@ Non-shared functions and futures (`async T`) and computations (`async* T`) depen
 Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
 
 ```motoko no-repl
-// Numbers, text, and booleans are stable
-stable var counter : Nat = 0;
-stable var greeting : Text = "Welcome";
-stable var isActive : Bool = true;
+persistent actor {
+
+// Numbers, text, and booleans are implicitly stable
+// when an actor is declare with the persistent keyword
+var counter : Nat = 0;
+var greeting : Text = "Welcome";
+var isActive : Bool = true;
+
+};
 ```
 
 ### Immutable and mutable collections
@@ -69,11 +74,14 @@ stable var isActive : Bool = true;
 Both immutable and mutable collections of stable types are stable.
 
 ```motoko no-repl
+persistent actor {
+
 // Immutable arrays are stable
-stable var usernames : [Text] = ["Motoko", "Ghost"];
+var usernames : [Text] = ["Motoko", "Ghost"];
 
 // Mutable arrays are also stable (unlike shared types)
-stable var scores : [var Nat] = [var 100, 85, 92];
+var scores : [var Nat] = [var 100, 85, 92];
+};
 ```
 
 ### Records with mutable or immutable fields
@@ -81,17 +89,19 @@ stable var scores : [var Nat] = [var 100, 85, 92];
 [Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
 
 ```motoko no-repl
+persistent actor {
 // Records with immutable fields are stable
-stable var config = {
-    appName = "My_Motoko_App";
-    version = "1.0.0";
+var config = {
+  appName = "My_Motoko_App";
+  version = "1.0.0";
 };
 
 // Records with mutable fields are also stable
-stable var settings = {
-    var darkMode = false;
-    var notifications = true;
-    var port = 80;
+var settings = {
+  var darkMode = false;
+  var notifications = true;
+  var port = 80;
+  };
 };
 ```
 
@@ -100,6 +110,7 @@ stable var settings = {
 [Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
 
 ```motoko no-repl
+persistent actor {
 // Variants with stable tags are stable
 type UserStatus = {
     #online;
@@ -107,8 +118,9 @@ type UserStatus = {
     #busy : Text;
 };
 
-stable var motokoStatus : UserStatus = #online;
-stable var ghostStatus : UserStatus = #busy("In a meeting");
+var motokoStatus : UserStatus = #online;
+var ghostStatus : UserStatus = #busy("In a meeting");
+};
 ```
 
 ### Option types
@@ -116,9 +128,12 @@ stable var ghostStatus : UserStatus = #busy("In a meeting");
 [Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options) types are stable when they contain stable types.
 
 ```motoko no-repl
+persistent actor {
+
 // Option types with stable inner types are stable
-stable var optionalDeadline : ?Nat = ?1640995200000;
-stable var optionalMessage : ?Text = null;
+var optionalDeadline : ?Nat = ?1640995200000;
+var optionalMessage : ?Text = null;
+};
 ```
 
 ### Regions
@@ -126,8 +141,12 @@ stable var optionalMessage : ?Text = null;
 The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
+
+persistent actor {
+
 // Regions are stable
-stable var storage : Region = Region.new();
+var storage : Region = Region.new();
+}
 ```
 
 ### Actor references
@@ -135,20 +154,13 @@ stable var storage : Region = Region.new();
 References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
+persistent actor {
 // Actor types are stable
 type LoggerActor = actor {
     log : shared (message : Text) -> async ();
 };
-
-stable var logger : ?LoggerActor = null;
-```
-
-### Mutable arrays
-
-Mutable arrays are stable but not shared.
-
-```motoko no-repl
-stable var counters : [var Nat] = [var 0, 0, 0];
+var logger : ?LoggerActor = null;
+};
 ```
 
 ### Objects with mutable fields
@@ -156,9 +168,11 @@ stable var counters : [var Nat] = [var 0, 0, 0];
 Objects with mutable fields are stable but not shared.
 
 ```motoko no-repl
-stable var user = {
+persistent actor {
+object user = {
     var name = "Motoko";
     var loginCount = 0;
+  };
 };
 ```
 

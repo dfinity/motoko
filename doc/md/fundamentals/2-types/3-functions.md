@@ -46,7 +46,7 @@ Motoko provides different types of functions based on where in the program they 
 
 Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.  
 
-```motoko no-repl
+```motoko
 persistent actor CommonDivisor{
   func gcd(a : Nat, b : Nat) : Nat {
     var x = a;
@@ -72,7 +72,7 @@ The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of na
 
 Generic functions allow the use of type parameters, making them more flexible for using different data types.
 
-```motoko
+```motoko name=swap
 func swap<T, U>(t : T, u : U) : (U, T) {
   (u, t)
 };
@@ -84,8 +84,8 @@ The type of `swap` is `<T, U> (T, U) -> (U, T)`, indicating it can accept any tw
 
 Type arguments can be omitted from calls when the compiler can infer them from the arguments and context, allowing the simpler code:
 
-```motoko no-repl
-let result = swap(42, "ICP"); // Inferred as <Nat, Text>
+```motoko include=swap
+let result = swap(2021, "Motoko"); // Inferred as <Nat, Text>
 ```
 
 ## Local asynchronous functions  
@@ -136,33 +136,33 @@ Although queries can temporarily alter the state of an actor, these changes are 
 
 When called from a front-end, `query` functions generally have much lower latency than equivalent shared functions. This is because shared functions require the protocol to reach consensus on the state changes and results, whereas query functions do not.
 
-```motoko no-repl  
-persistent actor Account {  
-  var balance = 0;  
-  
-  public shared func deposit(amount : Nat) : async Nat {  
-     balance += amount;  
-     balance  
-  }  
-}  
+```motoko no-repl
+persistent actor Account {
+  var balance = 0;
+
+  public shared func deposit(amount : Nat) : async Nat {
+    balance += amount;
+    balance
+  }
+}
 ```
 
 Omitting the shared keyword, we can also write:
 
-```motoko no-repl  
-persistent actor Account {  
-  var balance = 0;  
-  
-  public func deposit(amount : Nat) : async Nat {  
-     balance += amount;  
-     balance  
-  }  
-}  
+```motoko no-repl
+persistent actor Account {
+  var balance = 0;
+
+  public func deposit(amount : Nat) : async Nat {
+    balance += amount;
+    balance
+  }
+}
 ```
 
 The deposit function has type `: shared Nat -> async Nat`.
 
-**Example use case**: Transactions, user [state](https://internetcomputer.org/docs/motoko/fundamentals/state) updates, or anything that modifies persistent data.  
+**Example use case**: Transactions, user [state](https://internetcomputer.org/docs/motoko/fundamentals/state) updates, or anything that modifies persistent data.
 
 ## Query functions
 
@@ -176,25 +176,25 @@ The deposit function has type `: shared Nat -> async Nat`.
 
 ### Shared query functions
 
-```motoko no-repl  
-persistent actor Account {  
-  var balance  = 0;  
-  public shared query func getBalance() : async Nat {  
-     balance  
-  };  
-}  
+```motoko no-repl
+persistent actor Account {
+  var balance  = 0;
+  public shared query func getBalance() : async Nat {
+     balance
+  };
+}
 ```
 
 Again, you can omit the shared keyword:
 
 ```motoko no-repl
-persistent actor Account {  
-  var balance = 0;  
+persistent actor Account {
+  var balance = 0;
 
-  public query func getBalance() : async Nat {  
-     balance  
-  };  
-}  
+  public query func getBalance() : async Nat {
+    balance
+  };
+}
 ```
 
 The `getBalance` function has function type `shared query () -> async Nat`.
@@ -283,7 +283,7 @@ A collection of values can be passed as a single array argument.
   public func sum(numbers : [Nat]) : async Nat {
     var total : Nat = 0;
     for (num in numbers.vals()) { total += num };
-    return total;
+    total;
   }
 ```
 

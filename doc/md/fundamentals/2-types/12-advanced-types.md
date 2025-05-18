@@ -25,8 +25,10 @@ This remains true even if different fields are added to the point values, since 
 
 ```motoko
 type Point = { x : Int; y : Int };
+
 let p1 : Point = { x = 1; y = 2; z = 3 };
 let p2 : Point = { x = 1; y = 2; z = 4; c = "Red"; };
+
 p1 == p2;  // true (structural equality at type `Point`)
 ```
 
@@ -66,9 +68,9 @@ This defines a recursive type for representing a linked list of natural number. 
 
 - `null`, representing the empty list.
 
- - `?(head, tail)`, where `head` is a `Nat` and `tail` is another `List`.
+- `?(head, tail)`, where `head` is a `Nat` and `tail` is another `List`.
 
-```motoko no-repl
+```motoko
 ?(1, ?(2, ?(3, null)))  // A list: 1 → 2 → 3
 ```
 
@@ -89,7 +91,7 @@ Non-paremitized type:
 ```motoko
 type List = ?(Nat, List);
 
-persistent actor NatReverser{
+persistent actor NatReverser {
 
 let numbers : List = ?(1, ?(2, ?(3, null)));
 
@@ -125,19 +127,19 @@ let numbersText : List.List<Text> = ?("one", ?("two", ?("three", null)));
 let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
 
 func reverse<T>(l : List.List<T>) : List.List<T> {
-    var current = l;
-    var rev = List.nil<T>();
+  var current = l;
+  var rev = List.nil<T>();
 
-    while(not List.isNil(current)){
-      switch(current) {
-        case(?(h, t)) {
-          rev := ?(h, rev);
-          current := t;
-        };
-        case (null) {};
+  while(not List.isNil(current)){
+    switch(current) {
+      case(?(h, t)) {
+        rev := ?(h, rev);
+        current := t;
       };
+      case (null) {};
     };
-    rev
+  };
+  rev
   };
 let textReversed = reverse<Text>(numbersText); // "three" -> "two" -> "one"
 let numbersReversed = reverse<Nat>(numbers); // 1 -> 2 -> 3

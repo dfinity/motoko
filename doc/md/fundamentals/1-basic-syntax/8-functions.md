@@ -28,7 +28,7 @@ The object `Counter` has two public methods, the functions `Counter.inc()` and `
 
 A function should specify a return type. If a return type is not declared or otherwise determined from the context, it defaults to the unit `()` return type.
 
-```motoko
+```motoko no-repl
 func exampleFunction(x : Nat) : Nat {
     x;
 };
@@ -52,11 +52,13 @@ For example, you can rewrite the object above as an actor:
 persistent actor Digit {
    var value = 0;
    func reset() { value := 0 };
-   public shared func inc() : async (){ 
+   public shared func inc() : async (){
       value += 1;
-      if (value == 10) reset(); 
+      if (value == 10) reset();
    };
-   public shared query func get() : async Nat { value }; 
+   public shared query func get() : async Nat {
+      value
+   };
 }
 ```
 
@@ -66,11 +68,13 @@ Since the public functions of an actor must be `shared`, you can omit the `share
 persistent actor Digit {
    var value = 0;
    func reset() { value := 0 };
-   public func inc() : async () { 
+   public func inc() : async () {
       value += 1;
-      if (value == 10) reset(); 
+      if (value == 10) reset();
    };
-   public query func get() : async Nat { value }; 
+   public query func get() : async Nat {
+      value
+   };
 }
 ```
 

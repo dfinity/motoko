@@ -10,7 +10,7 @@ sidebar_position: 11
 
 While options are a built-in type, the `Result` is defined as a variant type:
 
-```
+``` motoko no-repl
 type Result<Ok, Err> = { #ok : Ok; #err : Err }
 ```
 
@@ -22,7 +22,7 @@ Here’s a simple function that validates a username. If it's non-empty, it will
 import Result "mo:base/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
-  if (name.size() == 0) #err "Name must be present" else #ok ("Hello" # name);
+  if (name.size() == 0) #err "Name is empty" else #ok ("Hello" # name);
 };
 ```
 

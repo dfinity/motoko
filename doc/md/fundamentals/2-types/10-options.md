@@ -12,8 +12,9 @@ Options provide a structured way to represent values that may or may not be pres
 
 An option is defined using `?` followed by the type of the value it can hold.
 
-```motoko no-repl
+```motoko name=user
 var username : ?Text = null;
+username;
 ```
 
 `username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
@@ -26,14 +27,14 @@ The constant `null` is the sole value of Motoko’s trivial `Null` type. It also
 
 When a Motoko value has type `?T`, it is either `null` or contains a value, written as `?value` (note the leading `?`). The fundamental way to access this value is by using a `switch` expression, which explicitly handles both cases:
 
-``` motoko no-repl
+``` motoko include=user
 func displayName(option : ?Text) : Text {
   switch option {
-     case (?user) { user };
-     case null { "Guest" };
+    case (?user) { user };
+    case null { "Guest" };
   }
 };
-displayName(null);
+displayName(username);
 ```
 
 Sometimes, the verbosity of a `switch` expression can make code harder to read. To improve readability, Motoko provides additional constructs for working with option types.
@@ -48,7 +49,7 @@ import Debug "mo:base/Debug";
 
 let value : ?Nat = ?5;
 if (Option.isSome(value)) {
-    Debug.print("Value is present.");
+  Debug.print("Value is present.");
 }
 ```
 
@@ -58,10 +59,9 @@ By leveraging the `Option` module, handling optional values becomes more concise
 
 Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
-```motoko
+```motoko include=user
 import Option "mo:base/Option";
 
-let username : ?Text = null;
 Option.get(username, "Guest"); // "Guest" if username is null
 ```
 
@@ -71,7 +71,7 @@ Options can be used to catch expected failures instead of calling a [`trap`](htt
 
 ```motoko
 func safeDivide(a : Int, b : Int) : ?Int {
-    if (b == 0) null else ?(a / b);
+  if (b == 0) null else ?(a / b);
 };
 
 let result1 = safeDivide(10, 2); // ?5
@@ -79,7 +79,6 @@ safeDivide(10, 0); // null
 ```
 
 Another way to extract values from option types is by using the `let ... else` pattern. This approach can be preferable to a `switch` expression for brevity and clarity. However, it only applies when the `else` branch can redirect control flow, such as returning early or throwing an error, if the value does not match the pattern in the `let`.
-
 
 For example, here’s a simple implementation of an option helper:
 
@@ -151,7 +150,7 @@ func combineNames(f : Text, l : Text) : Text {
 };
 
 Option.chain<Text, Text>(firstName, func (first : Text) {
-    Option.map<Text, Text>(lastName, func(last : Text) { combineNames(first, last) });
+  Option.map<Text, Text>(lastName, func(last : Text) { combineNames(first, last) });
 });
 
 // ?("Motoko Ghost")
@@ -168,9 +167,9 @@ The `do ? <block>` construct is similar to the `?` operator in Rust, providing a
 ```motoko
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
 func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
-    do ? { 
-      n! + m!  
-    }
+  do ? {
+    n! + m!  
+  }
 }
 ```
 
@@ -188,7 +187,7 @@ func eval(e : Exp) : ? Nat {
         if (v2 == 0)
           null !  // Explicitly exit with null for division by zero
         else v1 / v2
-      };
+        };
       case (#If (e1, e2, e3)) {
         if (eval e1 ! == 0)  // Unwrap and check if zero
           eval e2 !  // Return result of e2 (or null if it's null)

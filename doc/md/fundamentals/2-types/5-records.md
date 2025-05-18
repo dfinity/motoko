@@ -29,12 +29,12 @@ Example:
 ```motoko
 let account = { name = "Motoko"; var balance = 0 };
 // Inferred as { name : Text; var balance : Nat }
-account.balance := -100; //  Rejected, -100 is not a Nat
+account.balance := -100; //  Rejected, -100 is an Int not a Nat
 ```
 
 To avoid this issue, annotate the field explicitly:
 
-```motoko no-repl
+```motoko
 let account = { name = "Motoko"; var balance : Int = 0 };
 account.balance := -100; //  Allowed
 ```
@@ -100,7 +100,7 @@ Attempting to update an immutable field is a compile-time type error.
 
 Records can contain other records, allowing for hierarchical data structures that maintain organization while ensuring type safety and clarity.
 
-```motoko no-repl
+```motoko
 type Address = {
     city : Text;
     street : Text;
@@ -149,7 +149,7 @@ The field pattern `name` is just shorthand for `name = name`: it binds the conte
 
 Records are commonly used in arrays and other collections for structured data storage, allowing efficient  data organization and retrieval.
 
-```motoko no-repl
+```motoko
 type Product = {
     name : Text;
     price : Float;
@@ -178,7 +178,7 @@ let person = { name : Text = "Motoko"; age : Nat =  25; };
 
 let profile = { person and contact };
 
-Debug.print(debug_show (profile));
+debug_show(profile);
 ```
 
 `profile` combines `person` and `contact` because they have unique fields. If any field name overlaps, `and` alone is not allowed. Use  the `with` keyword to resolve conflicts.
@@ -187,14 +187,14 @@ Debug.print(debug_show (profile));
 
 The `with` keyword modifies, overrides, or adds fields when combining records.
 
-```motoko no-repl
+```motoko
 let person = { name : Text = "Motoko"; age : Nat =  25; };
 // age = 26; updates the existing age field.
 // city = "New York" adds a new field to the record.
 // city = "New York" adds a new field to the record.
 let updatedPerson = { person with age : Nat = 26; city : Text = "New York"; };
 
-Debug.print(debug_show (updatedPerson));
+debug_show(updatedPerson);
 ```
 
 :::info
@@ -205,7 +205,7 @@ If `person` contained a mutable (`var`) field, `with` must redefine it, preventi
 
 ### Combining `and` and `with`
 
-```motoko no-repl
+```motoko
 let person = {name : Text = "Motoko"; age : Nat = 25};
 let contact = {email : Text = "motoko@example.com"};
 
@@ -217,7 +217,7 @@ let fullProfile = {
   age = 26;
   location : Text = "New York";
 };
-Debug.print(debug_show (fullProfile));
+debug_show(fullProfile);
 ```
 
 ## Tuples vs records

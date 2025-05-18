@@ -23,7 +23,7 @@ Its type is inferred to be `[var Nat]`.
 If you want to update the array with negative elements, use a type annotation:
 
  ```motoko
- [var 1, 2, 3, 4, 5] : [var Nat]
+ [var 1, 2, 3, 4, 5] : [var Int]
  ```
 
 A named array can be declared using either `let` or `var`:
@@ -97,25 +97,27 @@ For dynamically-sized,  array-like data structures, consult the libraries in `ba
 
 Mutable arrays use the `var` keyword inside the square brackets `[var T]`. The type of the array is also specified within the square brackets, e.g., `[var Nat]` declares a mutable array of natural numbers. In place element modification is supported in mutable arrays.
 
-```motoko no-repl
+```motoko
 let mutableArray : [var Nat] = [var 1, 2, 3, 4, 5];
 
 mutableArray[0] := 10;  // Updates the first element to 10
+
+mutableArray;
 ```
 
 ## Accessing and modifying elements
 
 Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps).
 
-```motoko no-repl
+```motoko
 let numbers : [var Nat] = [var 10, 20, 30];
 
 numbers[0] := 100;  // updating first element
 
-Debug.print(debug_show(numbers[0]));  // 100
+debug_show(numbers[0]);  // 100
 ```
 
-The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`. 
+The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 
 Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). 
 
@@ -236,9 +238,9 @@ To see why, suppose the following was allowed: `[var Nat] <: [var Int]` (since `
 Then, consider the following code:
 
 ```motoko
-let ns :  [var Nat] = [var 0]
+let ns :  [var Nat] = [var 0];
 let is  :  [var Int] = ns; // only allowed if [var Nat] <: [var Int]
-is[0] := -1;
+is[0] := -1; // [var Nat] is not a subtype of [var Int] — even though Nat <: Int.
 ns[0] // -1
 ```
 

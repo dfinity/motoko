@@ -149,7 +149,7 @@ Assignment operators modify variables in place. Both mutable variables declared 
 
 For example:  
 
-```motoko
+```motoko no-repl
 var done = false; done := true;
 
 let a = [var 1, 2];

@@ -12,7 +12,7 @@ More esoteric functions, not supported by dedicated operators, can be found in t
 
 For example, the library function `Int.toText: Int -> Text`, declared in base library `Int`, returns the textual representation of its argument.  
 
-```motoko
+```motoko name=int
 import Int "mo:base/Int";
 Int.toText(0); // returns "0"
 ```
@@ -32,14 +32,14 @@ This means that every expression of type [`Nat`](https://internetcomputer.org/do
 
 An [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type only contains non-negative numbers. 
 
-```motoko no-repl
+```motoko
 let x : Int = -5;
 let y : Nat = x; // Error
 ```
 
 Passing an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) equires an explicit conversion, such as taking the absolute value or applying another conversion function.
 
-```motoko no-repl
+```motoko include=int
 let x : Int = -5;
 let y : Nat = Int.abs(x); // Allowed, y = 5
 ```
@@ -55,7 +55,9 @@ let y = x << 2; // 0x28 (40 in decimal)
 
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
-```motoko no-repl
+```motoko
+import Text "mo:base/Text";
+import Char "mo:base/Char";
 let letter : Char = 'A';
 
 let codePoint = Char.toNat32(letter); // 65
@@ -63,8 +65,8 @@ let codePoint = Char.toNat32(letter); // 65
 let word : Text = "Motoko";
 let uppercase = Text.toUppercase(word); // "MOTOKO"
 
-let modified = Text.replace("hello world", "world", "Motoko"); // "hello Motoko"
-let words = Text.split("apple,banana,cherry", ","); // ["apple", "banana", "cherry"]
+let modified = Text.replace("hello world", #text "world", "Motoko"); // "hello Motoko"
+let words = Text.split("apple,banana,cherry", #char ','); // apple -> banana -> cherry
 ```
 
 ## Bool

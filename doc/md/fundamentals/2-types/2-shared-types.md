@@ -31,7 +31,7 @@ Shareability is essential for several reasons:
 
 Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) are shared by default.
 
-```motoko
+```motoko no-repl
 // Numbers, text, and booleans are shared
 let number : Nat = 42;
 let message : Text = "Hello IC";
@@ -42,7 +42,7 @@ let flag : Bool = true;
 
 Collections that cannot be modified after creation are shared, including [immutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) and [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples).
 
-```motoko
+```motoko no-repl
 // Immutable arrays are shared
 let names : [Text] = ["Motoko", "Ghost", "Astronaut"];
 
