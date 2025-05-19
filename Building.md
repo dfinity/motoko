@@ -32,6 +32,14 @@ $ nix profile install .#release.moc
 ```
 in a check-out of the `motoko` repository.
 
+### Other tools
+
+Similarly the other tools can be installed using
+```
+$ nix profile install .#release.mo-doc
+```
+etc.
+
 ## Development using Nix
 
 To enter a shell with the necessary dependencies available,
