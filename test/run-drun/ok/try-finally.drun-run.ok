@@ -106,9 +106,23 @@ debug.print: InnerLIVESTILL7
 debug.print: InnerOUT7
 debug.print: OUT7
 debug.print: It's over
-ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at try-finally.mo:238.17-238.29'.
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at try-finally.mo:238.17-238.29'
+Canister Backtrace:
+$k/191
+$lambda
+@anon-func-395.20
+@callback<u>
+.
 Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 debug.print: go2
 debug.print: It's so over
-ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at try-finally.mo:350.13-350.25'.
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at try-finally.mo:350.13-350.25'
+Canister Backtrace:
+$k/270
+$lambda
+@anon-func-379.15
+fulfill
+$lambda
+@callback<u>
+.
 Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly

@@ -1,5 +1,14 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
-ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'IDL error: missing magic bytes'.
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'IDL error: missing magic bytes'
+Canister Backtrace:
+rts_trap
+motoko_rts::trap_with_prefix::h0c0cba6391952961
+motoko_rts::idl_trap_with::h601c6e07e67afd3f
+parse_idl_header
+@deserialize<>
+init
+canister_init
+.
 Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
