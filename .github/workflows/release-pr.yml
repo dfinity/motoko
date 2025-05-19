@@ -49,7 +49,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     # Only when the PR is merged!
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged
     steps:
     - uses: actions/checkout@v4
       with:
