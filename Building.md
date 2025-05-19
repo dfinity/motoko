@@ -182,9 +182,10 @@ After the PR is merged, the `release-pr.yml` workflow should automatically creat
 ### 3. Wait for the release to complete, and verify it
 
 Verify that the release is complete and go to the next step if the release was successful.
+Otherwise, fix the issue and push the tags manually as described below:
 
 <details>
-<summary>Otherwise, fix the issue and push the tags manually as described below.</summary>
+<summary>Click here for manual tag-pushing steps if the automated release fails.</summary>
 
 After the PR is merged: Pull the latest `master` and verify you are at the right commit:
 
