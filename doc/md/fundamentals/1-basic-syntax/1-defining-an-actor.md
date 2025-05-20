@@ -5,7 +5,23 @@ hide_table_of_contents: true
 
 # Defining an actor
 
-In Motoko, an **actor**, declared with the `actor` keyword, is a computational process with its own  [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior.
+In Motoko, an **actor** is a computational process with its own [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. Actors are declared with the `actor` keyword.
+
+Unlike traditional functions or objects in other programming languages, actors operate independently and communicate via [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) messaging. Each actor maintains its own message queue, enabling concurrent execution.
+
+An actor's state is defined by its private variables, while its behavior is defined by the public functions it exposes to other actors.
+
+You should define an actor when you want to encapsulate state and expose a public API that can be accessed asynchronously by other actors, canisters, or external clients.
+
+More specifically, define an actor when:
+
+- You are building a canister smart contract that maintains private state and exposes public functions.
+- You want to create an application that runs on the Internet Computer and is accessible by users or other canisters.
+- You want to take advantage of the actor model's benefits, such as memory isolation, single-threaded execution for update calls (avoiding race conditions), and asynchronous communication.
+
+In Motoko, actors are defined at the top level of a source file using the `actor` keyword. Public functions within an actor must be marked `shared` and return `async` types to support remote, asynchronous calls.
+
+An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
 The state is defined by the actor's private variables and the behavior is defined by its public functions - the functions it exposes to other actors.
 
