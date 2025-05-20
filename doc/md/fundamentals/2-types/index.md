@@ -20,12 +20,14 @@ This section explores Motoko’s rich and expressive type system.
 
 9. [Mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays)
 
-10. [Options & results](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results)
+10. [Options](https://internetcomputer.org/docs/motoko/fundamentals/types/options)
 
-11. [Stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types)
+11. [Results](https://internetcomputer.org/docs/motoko/fundamentals/types/results);
 
-12. [Advanced types](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types)
+12. [Stable types](https://internetcomputer.org/docs/motoko/fundamentals/types/stable-types)
 
-13. [Subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping)
+13. [Advanced types](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types)
 
-14. [Type conversions](https://internetcomputer.org/docs/motoko/fundamentals/types/type-conversions)
+14. [Subtyping](https://internetcomputer.org/docs/motoko/fundamentals/types/subtyping)
+
+15. [Type conversions](https://internetcomputer.org/docs/motoko/fundamentals/types/type-conversions)

@@ -11,7 +11,13 @@ The [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type represents n
 ```motoko no-repl
 let n : Nat = 42;
 let zero : Nat = 0;
-// let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
+
+```
+
+Defining a `Nat` with a negative value is a compile time error:
+
+``` motoko
+let negative : Nat = -1; // Error: Cannot assign a negative value to Nat
 ```
 
 ### Unbounded natural numbers
@@ -33,10 +39,9 @@ Motoko also provides bounded natural number types.
 
 Bounded [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types are ideal when working with binary protocols, embedded systems, or hardware where size constraints matter.
 
-```motoko
+```motoko no-repl
 let trappingNat8 : Nat8 = 255+1; // trap: arithmetic overflow
 ```
-
 
 ## Integers
 
@@ -65,13 +70,11 @@ let bigNumber : Int = 999_999_999_999_999;
 - [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32) (32-bit signed integer)
 - [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64) (64-bit signed integer)
 
-
 Arithmetic on bounded integers can overflow if their limits are exceeded, resulting in a [runtime error](https://internetcomputer.org/docs/motoko/fundamentals/error-handling).
 
-```motoko
+```motoko no-repl
 let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 ```
-
 
 ## Comparing `Int` and `Nat`
 
@@ -82,14 +85,18 @@ let trappingInt8 : Int8 = 127+1; // trap: arithmetic overflow
 | Bounded variants      | [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32)...| [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)...|
 | Overflow possibility  | Yes (for bounded types)    | Yes (for bounded types)  |
 
-
 ## Floats
 
-Floating-point numbers in Motoko are represented using the [`Float`](https://internetcomputer.org/docs/motoko/base/Float) type, which corresponds to a 64-bit double-precision floating-point number.
+Floating-point numbers in Motoko are represented using the [`Float`](https://internetcomputer.org/docs/motoko/base/Float) type, which corresponds to a 64-bit double-precision floating-point number in [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754) representation.
+
+:::note Limited precision
+Floating point numbers have limited precision and operations may inherently result in numerical errors.
+:::
 
 ```motoko no-repl
 let pi : Float = 3.14159;
 let exp : Float = 2.71828;
+let goldenRatio = 1.61803;
 ```
 
 ## Resources
@@ -105,6 +112,5 @@ let exp : Float = 2.71828;
 - [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32)
 - [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64)
 - [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
-
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
