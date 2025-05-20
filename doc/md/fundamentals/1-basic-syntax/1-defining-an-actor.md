@@ -19,21 +19,16 @@ More specifically, define an actor when:
 - You want to create an application that runs on the Internet Computer and is accessible by users or other canisters.
 - You want to take advantage of the actor model's benefits, such as memory isolation, single-threaded execution for update calls (avoiding race conditions), and asynchronous communication.
 
-In Motoko, actors are defined at the top level of a source file using the `actor` keyword. Public functions within an actor must be marked `shared` and return `async` types to support remote, asynchronous calls.
+In Motoko, actors are defined at the top level of a source file using the `actor` keyword. Public functions within an actor return their results in `async` types (otherwise known as futures) to support asynchronous calls from remote callers.
 
 An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
-The state is defined by the actor's private variables and the behavior is defined by its public functions - the functions it exposes to other actors.
 
-An actor operates independently but can communicate with other actors by calling their public functions. A call to a public function sends an [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) message to the receiving actor.
 
-Each actor maintains its own queues of incoming messages, one queue per sender. Message are processed in order, so that the processing of one message cannot interfere with the processing of another, protecting the actor's state from concurrent modification.
+Each actor maintains separate queues of incoming messages, one per sender. Messages are processed in order, ensuring that one message cannot interfere with another. This protects the actor's state from concurrent modification.
 
-Because each actor processes its messages independently, multiple actors can execute messages at the same time, allowing for parallel execution at the level of actors.
+Since actors process messages independently, multiple actors can handle messages in parallel, enabling concurrent execution across actors.
 
-Although a Motoko actor can have many internal components, including functions, classes and modules, the unit of deployment on ICP is always an actor. If you want to deploy Motoko code as an  ICP canister that code must define an actor.
-
-Every Motoko actor corresponds to an ICP canister. Conversely, any ICP canister, regardless of the implementation language is represented as an actor when imported into Motoko.
 
 ```motoko name=Main
 // Declares an actor named Main.
@@ -66,7 +61,7 @@ Learn more about [persistence](https://internetcomputer.org/docs/motoko/icp-feat
 
 Another actor can call `Main.greet()` with an argument and await the result:
 
-```motoko include=Main
+```motoko no-repl
 await Main.greet("Programmer");
 ```
 

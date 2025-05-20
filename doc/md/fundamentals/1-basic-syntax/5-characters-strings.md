@@ -16,12 +16,28 @@ let symbol : Char = '✮';
 'I' == 'i' // False
 ```
 
-You can convert a `Text` value `t` to a `Char` iterator using either `t.chars()` or, equivalently, `Text.toIter(t)`.
 
 :::info [Iter](https://internetcomputer.org/docs/motoko/base/Iter)
 An `Iter<T>` is an object that sequentially produces values of specified type `T` until no more values remain.
 :::
+``` motoko
+import Char "mo:base/Char";
 
+func reverse(t: Text) : Text {
+  var result = "";
+  for (c in t.chars()) {
+    result := Char.toText(c) # result
+  };
+  result;
+};
+
+reverse("Motoko");
+```
+The operator `#` concatenates two `Text` values.
+
+```
+
+It would probably be best if this example came after both the sections on Text and Char (not immediately after Char).
 ```motoko
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
@@ -58,17 +74,22 @@ persistent actor Alternator {
 
 :::note Conversions
 
-- `Char` can be converted to a single-character `Text` using `Text.fromChar(c)`.
-- `Text` can be converted to a single-character `Char` using `Char.toText(t)`.
+- `Char` can be converted to a single-character `Text` using `Char.toText(c)`.
+- `Char` can be converted to its 32-bit Unicode scalar value using `Char.toNat32(c)`.
+- A `Char` can be converted from a 32-bit Unicode scalar value using `Char.fromNat32(n)` (the function traps on invalid codes). 
 :::
 
-## Strings
+## Text
 
-Sequences of characters are handled using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type, which represents immutable strings of Unicode characters delimited with a double quotation mark (`"`).
+Strings of characters, familiar from other languages, are called **text** in Motoko, and represented using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type. A text value is an immutable sequence of Unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko
 let greeting : Text = "Hello, world!";
+```
 
+The `#` operator concatenates two `Text` values:
+
+``` motoko
 // Concatenating text
 
 "ICP " # "❤️" # " Motoko" // "ICP ❤️ Motoko"

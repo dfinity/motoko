@@ -39,7 +39,7 @@ let y : Nat = x; // Error
 
 Passing an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) as a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) equires an explicit conversion, such as taking the absolute value or applying another conversion function.
 
-```motoko include=int
+```motoko no-repl
 let x : Int = -5;
 let y : Nat = Int.abs(x); // Allowed, y = 5
 ```
@@ -56,6 +56,8 @@ let y = x << 2; // 0x28 (40 in decimal)
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
 ```motoko
+import Char "mo:base/Char";
+import Text  "mo:base/Text";
 import Text "mo:base/Text";
 import Char "mo:base/Char";
 let letter : Char = 'A';

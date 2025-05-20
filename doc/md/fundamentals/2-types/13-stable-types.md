@@ -43,8 +43,8 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 | Error type (`Error`)                                                                         | No     | No     |
 | Non-shared functions and futures (`async* T`)                                                | No     | No     |
 
-\* provided `T` is stable  
-\** provided `T` is shared  
+\* provided `T` is stable.
+\** provided `T` is shared.
 
 :::info
 In composite types like `[T]`, `[var T]`, and `?T`, the element type `T` must also be stable (for use in stable variables) or shared (for use in shared declarations). This ensures that the entire structure adheres to the requirements of stability or shareability, respectively.
@@ -60,8 +60,7 @@ Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/typ
 ```motoko no-repl
 persistent actor {
 
-// Numbers, text, and booleans are implicitly stable
-// when an actor is declare with the persistent keyword
+// Numbers, text, booleans and other primitive types are stable
 var counter : Nat = 0;
 var greeting : Text = "Welcome";
 var isActive : Bool = true;
@@ -141,7 +140,6 @@ var optionalMessage : ?Text = null;
 The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
-
 persistent actor {
 
 // Regions are stable
@@ -165,7 +163,7 @@ var logger : ?LoggerActor = null;
 
 ### Objects with mutable fields
 
-Objects with mutable fields are stable but not shared.
+Simple objects with mutable fields (but no methods) are stable. Such simple objects are the same as records.
 
 ```motoko no-repl
 persistent actor {

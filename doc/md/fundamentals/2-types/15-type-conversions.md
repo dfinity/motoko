@@ -56,7 +56,7 @@ Motoko allows converting a [`Nat8`](https://internetcomputer.org/docs/motoko/bas
 
 Since [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8) is a bounded type `(0–255)`, it must be explicitly widened to [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32) before being converted into [`Char`](https://internetcomputer.org/docs/motoko/base/Char).
 
-```motoko
+```motoko no-repl
 import Char "mo:base/Char";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";

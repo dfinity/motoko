@@ -11,7 +11,13 @@ The [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type represents n
 ```motoko no-repl
 let n : Nat = 42;
 let zero : Nat = 0;
-let negative : Nat = -1; // Error: Cannot assign a negative value to Nat (underflow)
+
+```
+
+Defining a `Nat` with a negative value is a compile time error:
+
+``` motoko
+let negative : Nat = -1; // Error: Cannot assign a negative value to Nat
 ```
 
 ### Unbounded natural numbers

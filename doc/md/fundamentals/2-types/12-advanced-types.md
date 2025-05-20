@@ -86,37 +86,38 @@ This defines a generic linked list, where `T` can be any type (`Nat`, `Text`, `B
 
 Reversing a linked list involves iterating through the list and prepending each element to a new list. This approach demonstrates list traversal without using `List.reverse` library function.
 
-Non-paremitized type:
+Non-parameterized type:
 
 ```motoko
-type List = ?(Nat, List);
-
 persistent actor NatReverser {
 
-let numbers : List = ?(1, ?(2, ?(3, null)));
+  // Lists of naturals
+  type List = ?(Nat, List);
 
-// Reverses List
-func reverseNat(l : List) : List {
-  var current = l;
-  var rev : List = null;
+  let numbers : List = ?(1, ?(2, ?(3, null)));
 
-  while (current != null) {
-    switch (current) {
-      case (?(head, tail)) {
-        rev := ?(head, rev);
-        current := tail;
+  // Reverses List
+  func reverseNat(l : List) : List {
+    var current = l;
+    var rev : List = null;
+
+    while (current != null) {
+      switch (current) {
+        case (?(head, tail)) {
+          rev := ?(head, rev);
+          current := tail;
+        };
+        case (null) {};
       };
-      case (null) {};
     };
+    rev
   };
-  rev
-};
 
-reverseNat(numbers); // ?(3, ?(2, ?(1, null)))
+  reverseNat(numbers); // ?(3, ?(2, ?(1, null)))
 };
 ```
 
-Parametized:
+Parameterized:
 
 ``` motoko
 import List "mo:base/List";
@@ -167,7 +168,7 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`—that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
 
 Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a primitive type.
 
@@ -181,7 +182,7 @@ max<Int>(-5, -10);  // returns -5  : Int
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 
 ```motoko include=max
-max<Nat>(5,10); // returns 10 : Nat
+max<Nat>(5, 10); // returns 10 : Nat
 ```
 
 Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.

@@ -38,8 +38,14 @@ func exampleFunction(x : Nat) : Nat {
 
 Motoko functions vary by access and behaviour:
 
-The public functions of an actor, used to send messages to the actor, are special sorts of functions called `shared` functions. Shared functions can only be declared within actors and,  unlike ordinary functions their values can be sent to, that is _shared with_, other actors.
-Shared functions come in several flavors: `shared` functions that can modify the state of an actor, `shared query` functions that can read the state of an actor without observably changing its state, but not send any further messages, and `shared composite query` functions that are similar to queries with the power to call other queries.
+The public functions of an actor are a special kind of function called shared functions. These functions can only be declared within actors and, unlike ordinary functions, their values can be sent to (i.e., shared with) other actors.
+Shared functions come in several forms:
+
+- `shared` functions, which can modify an actor's state.
+
+- `shared query` functions, which can read the actor's state without making observable changes and cannot send further messages.
+
+- `shared composite query` functions, which behave like queries but can also call other queries.
 All shared function, unlike ordinary functions, provide access to the identity of their caller, for applications like access control.
 
 [Learn more about function types](https://internetcomputer.org/docs/motoko/fundamentals/types/functions).

@@ -27,7 +27,7 @@ The constant `null` is the sole value of Motoko’s trivial `Null` type. It also
 
 When a Motoko value has type `?T`, it is either `null` or contains a value, written as `?value` (note the leading `?`). The fundamental way to access this value is by using a `switch` expression, which explicitly handles both cases:
 
-``` motoko include=user
+``` motoko no-repl
 func displayName(option : ?Text) : Text {
   switch option {
     case (?user) { user };
@@ -59,7 +59,7 @@ By leveraging the `Option` module, handling optional values becomes more concise
 
 Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
-```motoko include=user
+```motoko no-repl
 import Option "mo:base/Option";
 
 Option.get(username, "Guest"); // "Guest" if username is null
