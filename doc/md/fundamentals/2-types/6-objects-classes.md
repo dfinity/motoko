@@ -210,7 +210,7 @@ printBalance(_standardAccount);
 printBalance(_premiumAccount);
 ```
 
-```motoko include=accounts
+```motoko no-repl
 import Debug "mo:base/Debug";
 func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);

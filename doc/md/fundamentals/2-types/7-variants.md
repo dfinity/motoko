@@ -159,7 +159,7 @@ A tree can be traversed in multiple ways. One common approach is in-order traver
 
 The following example recursively traverses the tree in order and prints each value as it is visited.
 
-```motoko include=tree
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 let tree : Tree = #node {
