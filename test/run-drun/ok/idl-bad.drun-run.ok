@@ -3,8 +3,9 @@ ingress Completed: Reply: 0x4449444c0000
 Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'IDL error: missing magic bytes'
 Canister Backtrace:
 rts_trap
-motoko_rts::trap_with_prefix::h0c0cba6391952961
-motoko_rts::idl_trap_with::h601c6e07e67afd3f
+motoko_rts::trap_with_prefix::hfcb282e7953d18f7
+motoko_rts::idl_trap_with::h35d72b4a345debb6
+motoko_rts::idl::parse_idl_header::h63fd2c8535320a54
 parse_idl_header
 @deserialize<>
 foo

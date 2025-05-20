@@ -3,6 +3,7 @@ debug.print: ok1
 debug.print: ok2
 ingress Err: IC0502: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister trapped: stack overflow
 Canister Backtrace:
+B_le
 f
 f
 f
@@ -1997,10 +1998,7 @@ f
 f
 f
 f
-f
-f
-f
-...f
+f...f
 f
 f
 f
