@@ -1,18 +1,27 @@
+# This workflow is triggered on 'release PRs' which are identified by the 'release' label.
+# It validates the changelog and the PR title to ensure they have the same version.
+# It checks that the changelog can be extracted for the release.
+# On merge, it will push a tag to start the release.
+
 name: release-pr
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened] # Run on PR title change
+    # Rerun on PR title change
+    # On PR merge: push tag to start release
+    types: [opened, edited, synchronize, reopened, closed]
     branches:
     - master
     paths:
     - Changelog.md
 
 jobs:
-  validate-changelog:
+  validate:
     runs-on: ubuntu-latest
-    # Only run this job on release PRs. Identify them by the title which is determined by the first commit message as described in the release process.
-    if: "${{ startsWith(github.event.pull_request.title, 'chore: Releasing ')}}"
+    # Only run this job on release PRs. Identify them by the 'release' label.
+    if: contains(github.event.pull_request.labels.*.name, 'release')
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
     - uses: actions/checkout@v4
 
@@ -35,3 +44,29 @@ jobs:
       uses: ./.github/actions/extract-changelog
       with:
         version: ${{ steps.get_version.outputs.version }}
+
+  tag-release:
+    needs: validate
+    runs-on: ubuntu-latest
+    # Only when the PR is merged!
+    if: github.event.pull_request.merged
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Checkout the merge commit so we can tag it
+        ref: ${{ github.event.pull_request.merge_commit_sha }}
+    - name: Sanity check that the commit is correct
+      run: |
+        set -euo pipefail
+        if ! git log -1 --pretty=%B | grep -q "^chore: Releasing ${{ needs.validate.outputs.version }}"; then
+          echo "::error::Commit message does not match required string 'chore: Releasing ${{ needs.validate.outputs.version }}'"
+          exit 1
+        fi
+    - name: Configure git user
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    - name: Push tag to start release
+      run: |
+        git tag ${{ needs.validate.outputs.version }} -m "Motoko ${{ needs.validate.outputs.version }}"
+        git push origin ${{ needs.validate.outputs.version }}

@@ -169,12 +169,25 @@ git push --set-upstream origin $USER/0.14.$MOC_MINOR
 ```
 
 Create a PR from this commit:
-- Make sure the **PR title** is the same as the **commit message** so that `release-pr.yml` can be triggered. Check that it passes.
-- Label the PR with `automerge-squash`. Mergify will merge it into `master` without additional approval, but it will take some time as the title (version number) enters into the `nix` dependency tracking.
+- Make sure the **PR title** is the same as the **commit message**.
+- Label the PR with `release` (to mark it as a release PR) and `automerge-squash`. Mergify will merge it into `master` without additional approval, but it will take some time as the title (version number) enters into the `nix` dependency tracking.
 
-### 3. Push the tag that starts the release
+To create the PR, you can use `gh` CLI:
+```bash
+gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+```
 
-**After the PR is merged**: Pull the latest `master` and verify you are at the right commit:
+After the PR is merged, the `release-pr.yml` workflow should automatically create a tag and push it to the remote repository starting the release process.
+
+### 3. Wait for the release to complete, and verify it
+
+Verify that the release is complete and go to the next step if the release was successful.
+Otherwise, fix the issue and push the tags manually as described below:
+
+<details>
+<summary>Click here for manual tag-pushing steps if the automated release fails.</summary>
+
+After the PR is merged: Pull the latest `master` and verify you are at the right commit:
 
 ```bash
 git switch master; git pull --rebase
@@ -193,6 +206,7 @@ project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
 the build artifacts for this revision. In this case, restart the GitHub Action
 on GitHub's UI.
+</details>
 
 ### 4. Update `motoko-base`
 
