@@ -75,7 +75,7 @@ nat8ToChar(65);  // 'A'
 
 Motoko provides a built-in function `Text.toLowercase`, which converts all characters in a string to lowercase.
 
-```motoko
+```motoko no-repl
 import Text "mo:base/Text";
 
 persistent actor CaseConverter{
@@ -92,7 +92,7 @@ toLowercaseExample("HELLO WORLD");  // "hello world"
 
 [`Text`](https://internetcomputer.org/docs/motoko/base/Text) can be converted into a [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob) using `Text.encodeUtf8`. To make it optional (`?Blob`), it can be wrapped in `?`.
 
-```motoko
+```motoko no-repl
 import Text "mo:base/Text";
 
 persistent actor TextToBlobConverter {

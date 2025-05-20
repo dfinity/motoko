@@ -34,7 +34,7 @@ account.balance := -100; //  Rejected, -100 is an Int not a Nat
 
 To avoid this issue, annotate the field explicitly:
 
-```motoko
+```motoko no-repl
 let account = { name = "Motoko"; var balance : Int = 0 };
 account.balance := -100; //  Allowed
 ```

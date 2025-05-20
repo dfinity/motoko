@@ -31,7 +31,7 @@ let bannedUser = #Banned("Violation of rules");
 
 To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
-```motoko include=status
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 let activeUser : Status = #Active;
@@ -75,7 +75,7 @@ type TrafficLight = {
 
 A function can define how the traffic light cycles from one [state](https://internetcomputer.org/docs/motoko/fundamentals/state) to the next.
 
-```motoko include=lights
+```motoko no-repl
 func nextState(light : TrafficLight) : TrafficLight {
     switch (light) {
         case (#red)    #green;
@@ -88,7 +88,7 @@ nextState(#red);
 
 ### Simulating traffic light changes
 
-```motoko include=lights
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 
@@ -133,7 +133,7 @@ This example contains two variants:
 
 The following example defines a tree with a single root node containing the value `10`. It has two child nodes, `5` and `15`, both of which do not have any children.
 
-```motoko include=tree
+```motoko no-repl
 let tree : Tree = #node {
   value = 10;
   left = #node {value = 5; left = #leaf; right = #leaf};

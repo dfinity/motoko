@@ -6,8 +6,7 @@ sidebar_position: 6
 
 ## Objects
 
-In Motoko, an object is a collection of named fields that hold values.  
-These values can be plain data or functions.  Each field can be either **mutable** or **immutable**, depending on whether it's declared with `var` or not.
+In Motoko, an object is a collection of named fields that hold values. These values can be plain data or functions.  Each field can be either **mutable** or **immutable** depending on whether it's declared with `var` or not.
 
 A simple object containing just fields of data is like a record in a database.  
 Motoko's light-weight [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) syntax makes it easy to construct such objects.
@@ -96,7 +95,7 @@ module CurrencyConverter {
 
 A module class can be used to produce multiple modules with different configurations.
 
-```motoko include=float
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 module class ExchangeRate(baseRate : Float) {
@@ -197,7 +196,7 @@ The more general object type has fewer fields because this places fewer requirem
 A function expecting `PremiumAccount` expects `withdraw`, so it cannot accept `basicAccount`.
 However, a function expecting `BasicAccount` only needs `getBalance`, so it can accept all three type of objects.
 
-```motoko include=accounts
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 

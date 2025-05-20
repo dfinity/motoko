@@ -105,7 +105,7 @@ printAllStrings(["Hello", "Hola", "Ciao"]);
 
 Arrays of  shared types can be compare directly using `==`. Two arrays are considered equal if they have the same length and their corresponding elements are equal:
 
-```motoko
+```motoko no-repl
 let arr1 : [Nat] = [1, 2, 3];
 let arr2 : [Nat] = [1, 2, 3];
 let arr3 : [Nat] = [3, 2, 1];
@@ -116,7 +116,7 @@ assert (not (arr1 == arr3));
 
 More generally, including for arrays of non-shared types, the `Array.equal<T>(a1, a2, eq)` function can be used to check whether two arrays are equal. It takes an additional function `eq` for comparing the elements.  
 
-```motoko
+```motoko no-repl
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 
@@ -150,7 +150,7 @@ To demonstrate nested immutable arrays, consider the following:
 
 A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](https://internetcomputer.org/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
-```motoko
+```motoko no-repl
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 

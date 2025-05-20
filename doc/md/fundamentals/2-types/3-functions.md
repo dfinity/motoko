@@ -80,11 +80,11 @@ func swap<T, U>(t : T, u : U) : (U, T) {
 swap<Nat, Text>(42, "ICP"); // ("ICP", 42)
 ```
 
-The type of `swap` is `<T, U> (T, U) -> (U, T)`, indicating it can accept any two types and return them in reversed order.
+The type of `swap` is `<T, U> (T, U) -> (U, T)`, indicating it can accept any two types `T` and `U`, a value of tuple type `(T, U)` and return a tuple of type `(U, T)`, with the elements swapped.
 
 Type arguments can be omitted from calls when the compiler can infer them from the arguments and context, allowing the simpler code:
 
-```motoko include=swap
+```motoko no-repl
 let result = swap(2021, "Motoko"); // Inferred as <Nat, Text>
 ```
 
@@ -161,8 +161,46 @@ persistent actor Account {
 ```
 
 The deposit function has type `: shared Nat -> async Nat`.
+Consider this code:
+
+``` motoko
+let b1 = await Account.deposit(50);
+let b2 = await Acccount.deposit(50);
+(b1,b2)
+```
+The first class to `Account.balance(50)` increments `balance` from `0` to `50`, returning `50`.
+The second call increments the balance from `50` to `100`, returning `100`.
+
+Since `Account.deposit` is asynchronous, its results are returned in futures of type `async Nat`. Calling `await` on each future extracts the results of the calls when they become available (so `b1` is `50` and `b2` is `100`).
 
 **Example use case**: Transactions, user [state](https://internetcomputer.org/docs/motoko/fundamentals/state) updates, or anything that modifies persistent data.
+
+### One-way functions
+
+An update function can, but need not, return a future. An update function can just return `()` to indicate that it can be called for its side effect, but its result cannot be awaited.
+Such a function is called a _one-way_ (or _fire-and-forget_) function.
+
+An example of this might be a variant of `Account.deposit`, `Account.credit`, that merely updates the balance without returning its new value:
+
+```motoko no-repl 
+persistent actor Account {
+  var balance = 0;
+  public func credit(amount : Nat) : () {
+    balance += amount;
+  }
+}
+```
+
+Calling `Account.credit(100)` updates the balance by `100`;
+
+``` motoko
+Account.credit(100);
+```
+
+Again, the shared keyword is optional. Note that `Account.credit(100` just returns control; it doesn't return a future that you can await. The call is executed asynchronously.
+
+
+**Example use case**: Log messages, asynchronous notifications, and messages that don't require explicit acknowledgements or return values.
 
 ## Query functions
 
@@ -174,7 +212,6 @@ The deposit function has type `: shared Nat -> async Nat`.
   };
 ```
 
-### Shared query functions
 
 ```motoko no-repl
 persistent actor Account {
@@ -209,16 +246,16 @@ A good example of a composite query might be a bank that holds references to its
 
 ```motoko no-repl
 persistent actor Bank {
-  type Account = actor { getBalance() : query () -> async Nat;
-  };
+  type Account = 
+    actor { getBalance() : query () -> async Nat };
 
   var accounts : [Account] = []
 
   public shared composite query func getDeposits() : async Nat {
     var deposits = 0;
-      for (account in accounts.values()) {
+    for (account in accounts.values()) {
       deposits += await account.getBalance();
-  };
+    };
   deposits;
   };
 }
@@ -228,7 +265,8 @@ Again, the shared keyword is redundant and can be omitted:
 
 ```motoko no-repl
 persistent actor Bank {
-  public composite query func getDeposits() : async Nat {
+    // ... code omitted ...
+    public composite query func getDeposits() : async Nat {
     var deposits = 0;
     for (account in accounts.values()) {
        deposits += await account.getBalance()
