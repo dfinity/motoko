@@ -59,11 +59,10 @@ Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/typ
 
 ```motoko no-repl
 persistent actor {
-
-// Numbers, text, booleans and other primitive types are stable
-var counter : Nat = 0;
-var greeting : Text = "Welcome";
-var isActive : Bool = true;
+  // Numbers, text, booleans and other primitive types are stable
+  var counter : Nat = 0;
+  var greeting : Text = "Welcome";
+  var isActive : Bool = true;
 
 };
 ```
@@ -74,12 +73,11 @@ Both immutable and mutable collections of stable types are stable.
 
 ```motoko no-repl
 persistent actor {
+  // Immutable arrays are stable
+  var usernames : [Text] = ["Motoko", "Ghost"];
 
-// Immutable arrays are stable
-var usernames : [Text] = ["Motoko", "Ghost"];
-
-// Mutable arrays are also stable (unlike shared types)
-var scores : [var Nat] = [var 100, 85, 92];
+  // Mutable arrays are also stable (unlike shared types)
+  var scores : [var Nat] = [var 100, 85, 92];
 };
 ```
 
@@ -89,18 +87,18 @@ var scores : [var Nat] = [var 100, 85, 92];
 
 ```motoko no-repl
 persistent actor {
-// Records with immutable fields are stable
-var config = {
-  appName = "My_Motoko_App";
-  version = "1.0.0";
-};
-
-// Records with mutable fields are also stable
-var settings = {
-  var darkMode = false;
-  var notifications = true;
-  var port = 80;
+  // Records with immutable fields are stable
+  var config = {
+    appName = "My_Motoko_App";
+    version = "1.0.0";
   };
+
+  // Records with mutable fields are also stable
+  var settings = {
+    var darkMode = false;
+    var notifications = true;
+    var port = 80;
+    };
 };
 ```
 
@@ -110,15 +108,15 @@ var settings = {
 
 ```motoko no-repl
 persistent actor {
-// Variants with stable tags are stable
-type UserStatus = {
-    #online;
-    #offline;
-    #busy : Text;
-};
+  // Variants with stable tags are stable
+  type UserStatus = {
+      #online;
+      #offline;
+      #busy : Text;
+  };
 
-var motokoStatus : UserStatus = #online;
-var ghostStatus : UserStatus = #busy("In a meeting");
+  var motokoStatus : UserStatus = #online;
+  var ghostStatus : UserStatus = #busy("In a meeting");
 };
 ```
 
@@ -128,10 +126,9 @@ var ghostStatus : UserStatus = #busy("In a meeting");
 
 ```motoko no-repl
 persistent actor {
-
-// Option types with stable inner types are stable
-var optionalDeadline : ?Nat = ?1640995200000;
-var optionalMessage : ?Text = null;
+  // Option types with stable inner types are stable
+  var optionalDeadline : ?Nat = ?1640995200000;
+  var optionalMessage : ?Text = null;
 };
 ```
 
@@ -141,10 +138,9 @@ The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which
 
 ```motoko no-repl
 persistent actor {
-
-// Regions are stable
-var storage : Region = Region.new();
-}
+  // Regions are stable
+  var storage : Region = Region.new();
+  }
 ```
 
 ### Actor references
@@ -153,11 +149,11 @@ References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/act
 
 ```motoko no-repl
 persistent actor {
-// Actor types are stable
-type LoggerActor = actor {
-    log : shared (message : Text) -> async ();
-};
-var logger : ?LoggerActor = null;
+  // Actor types are stable
+  type LoggerActor = actor {
+      log : shared (message : Text) -> async ();
+  };
+  var logger : ?LoggerActor = null;
 };
 ```
 
@@ -167,10 +163,10 @@ Simple objects with mutable fields (but no methods) are stable. Such simple obje
 
 ```motoko no-repl
 persistent actor {
-object user = {
-    var name = "Motoko";
-    var loginCount = 0;
-  };
+  object user = {
+      var name = "Motoko";
+      var loginCount = 0;
+    };
 };
 ```
 

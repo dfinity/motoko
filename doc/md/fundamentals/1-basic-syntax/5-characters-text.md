@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# Characters & strings
+# Characters & text
 
 ## Characters
 

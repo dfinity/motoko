@@ -62,13 +62,11 @@ import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 
 persistent actor CharConverter{
-
-func nat8ToChar(n : Nat8) : Char {
-  Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
+  func nat8ToChar(n : Nat8) : Char {
+    Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
+  };
+  nat8ToChar(65);  // 'A'
 };
-
-nat8ToChar(65);  // 'A'
-}
 ```
 
 ### `Text` to lowercase
@@ -79,12 +77,11 @@ Motoko provides a built-in function `Text.toLowercase`, which converts all chara
 import Text "mo:base/Text";
 
 persistent actor CaseConverter{
-
-func toLowercaseExample(s : Text) : Text {
+  func toLowercaseExample(s : Text) : Text {
     return Text.toLowercase(s);
-};
+  };
 
-toLowercaseExample("HELLO WORLD");  // "hello world"
+    toLowercaseExample("HELLO WORLD");  // "hello world"
 };
 ```
 
@@ -96,8 +93,8 @@ toLowercaseExample("HELLO WORLD");  // "hello world"
 import Text "mo:base/Text";
 
 persistent actor TextToBlobConverter {
-func textToOptionalBlob(s : Text) : ?Blob {
-  ?Text.encodeUtf8(s);
+  func textToOptionalBlob(s : Text) : ?Blob {
+    ?Text.encodeUtf8(s);
   };
   textToOptionalBlob("Payment Memo");  // ?Blob
 };
@@ -148,10 +145,9 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 
 persistent actor ArrayConverter{
-
-func arrayToText(arr : [Char]) : Text {
+  func arrayToText(arr : [Char]) : Text {
     Text.fromArray(arr);
-};
+  };
 
 arrayToText(['a','b','c'])
 }
@@ -165,9 +161,9 @@ import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 
 persistent actor NatArrayConverter{
-func arrayOfNatToText(arr : [Nat]) : Text {
+  func arrayOfNatToText(arr : [Nat]) : Text {
     Text.join(" ", Array.map<Nat, Text>(arr, Nat.toText).values())
-};
+  };
 arrayOfNatToText([1, 2, 3]);
 };
 ```
@@ -181,11 +177,11 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 
 persistent actor MapConverter{
-func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
-  let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
-    for ((key, value) in arr.vals()) {
-        map.put(key, value);
-    };
+  func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
+    let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
+        for ((key, value) in arr.vals()) {
+            map.put(key, value);
+        };
     map;
     };
 arrayToMap([("Motoko", 4), ("Ghost", 21)]);
@@ -201,7 +197,7 @@ type User = {
     age : Nat;
 };
 persistent actor TupleConverter{
-func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
+  func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
     Array.map<(Text, Nat), User>(arr, func((name, age)) {
         { name = name; age = age }
     });

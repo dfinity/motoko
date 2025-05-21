@@ -128,7 +128,7 @@ assert Array.equal(arr1, arr2, Nat.equal);
 assert not Array.equal(arr1, arr3, Nat.equal);
 ```
 
-Unlike some languages, Motoko does not compare arrays by reference using a proper element-by-element structural comparison instead.  
+Unlike some languages, Motoko does not compare arrays by reference; instead, it uses proper element-by-element structural comparison.
 
 ## Transforming arrays
 

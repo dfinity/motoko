@@ -113,7 +113,7 @@ type Individual = {
 };
 
 let individual : Individual = {
-    name = "Diana";
+    name = "Motoko";
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
 ```
@@ -135,7 +135,7 @@ type Individual = {
 };
 
 let individual : Individual = {
-    name = "Diana";
+    name = "Motoko";
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
 

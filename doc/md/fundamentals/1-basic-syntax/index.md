@@ -10,7 +10,7 @@ This section introduces the basic syntax of Motoko.
 
 4. [Numbers](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/numbers)
 
-5. [Characters & strings](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/characters-strings)
+5. [Characters & text](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/characters-text)
 
 6. [Literals](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/literals)
 

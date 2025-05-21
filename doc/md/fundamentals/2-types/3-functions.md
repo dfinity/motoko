@@ -165,7 +165,7 @@ Consider this code:
 
 ``` motoko
 let b1 = await Account.deposit(50);
-let b2 = await Acccount.deposit(50);
+let b2 = await Account.deposit(50);
 (b1,b2)
 ```
 The first class to `Account.balance(50)` increments `balance` from `0` to `50`, returning `50`.
@@ -308,7 +308,7 @@ Functions can accept multiple arguments and return multiple results by enclosing
 Multiple values can be passed as a single argument by encapsulating them within a [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) type.
 
 ```motoko no-repl
-func userName(user: { name : Text; age : Nat }) : Text {
+  func userName(user: { name : Text; age : Nat }) : Text {
     user.name
   }
 ```
