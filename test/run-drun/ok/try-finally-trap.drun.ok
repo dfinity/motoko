@@ -7,30 +7,13 @@ debug.print: {rts_callback_table_count = 0}
 ingress Completed: Reply: 0x4449444c0000
 debug.print: trap in finally!
 ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at try-finally-trap.mo:8.7-8.19'
-Canister Backtrace:
-$k/17
-$lambda
-@anon-func-379.15
-fulfill
-$lambda
-@callback<u>
-
 
 call_on_cleanup also failed:
 
 Canister called `ic0.trap` with message: 'assertion failed at try-finally-trap.mo:12.7-12.19'
-Canister Backtrace:
-$cleanup
-$k/15
-clean
-@cleanup_callback
-
 debug.print: {rts_callback_table_count = 1}
 ingress Completed: Reply: 0x4449444c0000
-ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)'
-Canister Backtrace:
-pre_upgrade
-.
+ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)'.
 Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: https://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 debug.print: {rts_callback_table_count = 1}
 ingress Completed: Reply: 0x4449444c0000
