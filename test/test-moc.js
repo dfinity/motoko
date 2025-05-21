@@ -111,7 +111,7 @@ assert.deepStrictEqual(bad_result, {
       code: "M0001",
       category: "syntax",
       message:
-        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
+        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)> (e.g. '42')",
     },
   ],
   code: null,
@@ -141,7 +141,7 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
       category: "syntax",
       code: "M0001",
       message:
-        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
+        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)> (e.g. '42')",
     },
   ],
   code: null,
