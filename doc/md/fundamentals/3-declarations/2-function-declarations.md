@@ -45,7 +45,7 @@ applyFunction(double, 10);
 `applyFunction` takes a function `f` and applies it to `value`.  `double` is passed as an parameter, allowing to construct higher-order functions.
 
 ## Anonymous functions
-
+<!-- anonymous functions are expressions, not declarations, perhaps move this section elsewhere -->
 Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
 
