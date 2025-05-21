@@ -65,7 +65,7 @@ applyFunction( func x { x * 2 } , 2);
 
 ## Recursive functions
 
-A function that can call itself is a recursive function. Recursion enables looping behavior by having a function repeatedly invoke itself, typically with modified arguments, until a base case is reached. However, each recursive call consumes stack space by allocating a new stack frame, which uses memory on the program's relatively small call stack. As a result, excessive or uncontrolled recursion can lead to stack overflow or out-of-memory errors.
+A function that calls itself is a recursive function. Recursion enables looping behavior by having a function repeatedly invoke itself, typically with smaller arguments, until a base case is reached. 
 
 ```motoko no-repl
 func factorial(n : Nat) : Nat {
