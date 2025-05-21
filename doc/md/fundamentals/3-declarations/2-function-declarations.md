@@ -20,6 +20,15 @@ func add(a : Int, b : Int) : Int {
 }
 ```
 
+In Motoko, explicit `return` expressions are only required for early returns that redirect control-flow.
+Generally, a function body will return the value of its last expression, so you can also write:
+
+```motoko no-repl
+func add(a : Int, b : Int) : Int {
+    a + b;
+}
+```
+
 ## Calling a function
 
 To execute a function, you simply call it by its name (or reference, in the case of anonymous functions) and pass the required arguments in parentheses. The arguments must match the number and types specified in the function’s definition.
