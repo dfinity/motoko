@@ -21,11 +21,12 @@ x := 20; // Error: Cannot assign to immutable variable
 
 The left hand side of a `let` can be also be a more general pattern, naming the components of a value by matching its structure:
 
-For example, the declaration 
+For example, the declaration:
 
 ``` motoko
 let (fst, snd) = (1, 2); 
 ```
+
 uses the pattern `(fst, snd)` to name the components of the pair `(1,2)`. The value of `fst` is `1` and the value of `snd` is 2. Both `fst` and `snd` are immutable.
 Mutable variables declared with `var` do not support pattern matching. For example, the following is invalid:
 
@@ -40,10 +41,4 @@ A `var` declaration in Motoko defines a mutable variable whose value can be upda
 ```motoko no-repl
 var y = 10;
 y := 20; // Allowed, updates the value of y
-```
-
-`let` bindings do support pattern matching:
-
-```motoko
-let (a, b) = (1, 2); // Supported
 ```
