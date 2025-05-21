@@ -31,7 +31,7 @@ func add(a : Int, b : Int) : Int {
 add(3, 5);
 ```
 
-## Functions as values (anonymous functions)
+## Functions as values
 
 Functions in Motoko are first-class values, meaning they can be treated like any other value in the language. They can be assigned to variables, stored in data structures such as arrays or records, and passed as arguments to other functions.
 
