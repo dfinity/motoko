@@ -46,10 +46,11 @@ applyFunction(double, 10);
 
 In the call, the function `double` is passed as an argument.
 
-## Anonymous functions
-<!-- anonymous functions are expressions, not declarations, perhaps move this section elsewhere -->
-Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
+<!-- anonymous functions are expressions, not declarations, perhaps move this section elsewhere 
+Commenting out for now, revisit in future iteration 
 
+## Anonymous functions
+Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
 ``` motoko no-repl
 func applyFunction(f :  Int -> Int, value : Int) : Int { f(value) };
@@ -64,6 +65,8 @@ The compiler can infer the argument and result types of anonymous functions, whe
 ``` motoko no-repl
 applyFunction( func x { x * 2 } , 2);
 ```
+
+-->
 
 ## Recursive functions
 
