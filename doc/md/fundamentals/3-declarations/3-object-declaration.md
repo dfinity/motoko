@@ -8,7 +8,7 @@ In Motoko, records and objects are both used to group related data, but they dif
 
 Objects are constructs that support mutable fields, can contain functions, and allow for visibility modifiers like public and private, enabling encapsulation and modular design.
 
-Records are simple, immutable data structures that consist of named fields holding values. They are primarily used for organizing static, structured data and do not support behavior or mutable state.
+Records are simple data structures that consist of named fields holding values. They cannot contain functions. They are primarily used for organizing static, structured data and do not support behavior or mutable state.
 
 While records are ideal for lightweight data representation, objects are better suited for scenarios requiring state management and method definitions.
 
