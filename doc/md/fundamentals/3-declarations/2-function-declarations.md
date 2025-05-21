@@ -4,11 +4,11 @@ sidebar_position: 2
 
 # Functions declarations
 
-A function in Motoko is a block of code that takes inputs, processes them, then (optionally) returns a result. Functions can be named or anonymous, and can optionally specify parameter and return types.
+A function in Motoko is a reusable block of code that accepts inputs, performs computations or actions, and optionally returns a result. Functions can be either named or anonymous and may explicitly define the types of their parameters and return values for clarity and type safety.
 
 ## Declaring a function
 
-Functions are declared using the `func` keyword. A named function assigns a function to an identifier, allowing recursion and reuse. Anonymous functions do not have a name (e.g., lambda functions or function expressions). They can be defined inline and usually assigned to variables or passed as arguments.
+Functions are declared using the `func` keyword. A named function assigns the function to an identifier, making it accessible for reuse and enabling recursion. This allows the function to refer to itself by name within its own body. In contrast, anonymous functions (e.g., lambda functions or function expressions) do not have a name and are typically defined inline. These functions are often assigned to variables or passed directly as arguments to other functions.
 
 ```motoko no-repl
 // The function is named 'add'
@@ -16,24 +16,24 @@ Functions are declared using the `func` keyword. A named function assigns a func
 // 'Int' is the return type.
 func add(a : Int, b : Int) : Int {
     // Exits the function and provides a result.
-    return a + b;
+  a + b;
 }
 ```
 
 ## Calling a function
 
-To execute a function, pass the required arguments:
+To execute a function, you simply call it by its name (or reference, in the case of anonymous functions) and pass the required arguments in parentheses. The arguments must match the number and types specified in the function’s definition.
 
 ```motoko no-repl
 func add(a : Int, b : Int) : Int {
-    return a + b;
+  a + b;
 };
 add(3, 5);
 ```
 
 ## Functions as values (anonymous functions)
 
-Functions in Motoko are first-class values. They can be assigned to variables, stored in data structures, and passed as parameters.
+Functions in Motoko are first-class values, meaning they can be treated like any other value in the language. They can be assigned to variables, stored in data structures such as arrays or records, and passed as arguments to other functions.
 
 ```motoko no-repl
 let double = func (x : Int) : Int { x * 2 };
@@ -57,14 +57,14 @@ The function is assigned to `multiply` instead of being named directly. `{ x * y
 
 ## Recursive functions
 
-A function that can call itself is a recursive function. Recursion allows looping behavior without explicit loops. Note that recursion implies allocating stack frames, which allocates additional memory on the (relatively small) program stack. Excessive recursion can lead to out-of-memory errors.
+A function that can call itself is a recursive function. Recursion enables looping behavior by having a function repeatedly invoke itself, typically with modified arguments, until a base case is reached. However, each recursive call consumes stack space by allocating a new stack frame, which uses memory on the program's relatively small call stack. As a result, excessive or uncontrolled recursion can lead to stack overflow or out-of-memory errors.
 
 ```motoko no-repl
 func factorial(n : Nat) : Nat {
-    if (n == 0) {
-        return 1;
+  if (n == 0) {
+    return 1;
     };
-// Calls itself with factorial(n - 1), reducing n until reaching 0.
+    // Calls itself with factorial(n - 1), reducing n until reaching 0.
     n * factorial(n - 1);
 }
 ```
@@ -96,31 +96,29 @@ assert echoTwice("Hello") == "Hello!!";
 In actors, functions can be marked as `shared` to allow [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) [inter-canister](https://internetcomputer.org/docs/motoko/fundamentals/messaging) communication.
 
 ```motoko no-repl
-actor Counter {
-    stable var count : Nat = 0;
+persistent actor Counter {
+  var count : Nat = 0;
 
-    public func inc() : async () {
-        count += 1;
-    };
+  public func inc() : async () {
+    count += 1;
+  };
 
-    public shared query func getCount() : async Nat {
-        return count;
-    }
+  public shared query func getCount() : async Nat {
+  count;
+  }
 };
-await Counter.inc();
-await Counter.getCount();
 ```
 
 ### Accessing the caller identity
 
-One key advantage of `shared` functions is that they can access the caller's `Principal`, which represents the entity (user or canister) making the request. This enables actors to enforce access control or record who invoked them.
+One key utility of shared functions in Motoko is that they have access to the caller's Principal, which uniquely identifies the entity (user or another canister) that made the request. This capability allows actors to implement access control by verifying the caller’s identity before performing sensitive operations.
 
-```motoko
-actor Example {
-    // msg.caller retrieves the Principal of the caller.
-    public shared(msg) func whoAmI() : async Principal {
-        return msg.caller;
-    }
+```motoko no-repl
+persistent actor Identifier {
+  // msg.caller retrieves the Principal of the caller.
+  public shared(msg) func whoAmI() : async Principal {
+    return msg.caller;
+  }
 }
 ```
 
