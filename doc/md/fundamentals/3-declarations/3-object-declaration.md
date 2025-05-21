@@ -19,11 +19,14 @@ An object declaration is a structured collection of named fields, where each fie
 For example, an object might represent a user profile:
 
 ```motoko no-repl
-let user = {
-  name = "Motoko";
-  age = 30;
-  greet = func() { "Hello, " # user.name };
-};
+  let user = object {
+    let name = "Motoko";
+    let age = 30;
+
+    public func greet() : Text {
+      "Hello, " # name;
+    };
+  };
 ```
 
 In this object declaration, `name` and `age` are fields holding values, while `greet` is a field holding a function.
@@ -57,7 +60,7 @@ let motoko = object {
     };
     public func birthday() : Text{
       age += 1;
-      "It's my birthday, I'm now " # debug_show(age) # "years old!"
+      "It's my birthday, I'm now " # debug_show(age) # " years old!"
     }
 };
 Debug.print(motoko.greet());
