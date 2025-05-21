@@ -5,33 +5,42 @@ hide_table_of_contents: true
 
 # Imports
 
-In Motoko, libraries of related code modules are collected into packages. A module can be imported from a named package or the local file system using a relative path. The location of a package on the file system is determined by a command line argument to the compiler. 
+In Motoko, related code modules are organized into packages. Modules can be imported either from named packages or from the local file system using relative paths. The compiler locates packages on the file system based on a command line argument specifying their location.
 
-Package imports should be at the top of the source file. Imports allow you to reuse code from external libraries or modules, making code easier to maintain and manage. You can import from:
+Imports should be placed at the top of the source file. They enable code reuse from external libraries or modules, helping to improve maintainability and organization. You can import from:
 
 **1. Standard modules provided by the base library.**
 
 ```motoko no-repl
 import Text "mo:base/Text";
+import Nat "mo:base/Nat";
+import Math "mo:base/Float";
+```
 
-**2. Third-party packages installed via a package manager (such as Mops).**
+The package `base` is Motoko's standard library.
+This imports the `Text`, `Nat` and `Float` modules from package `base` under the local names `Text`, `Nat` and `Math`.
+
+While not required, it's considered good practice to import a module using its package-defined name. This helps with consistency and readability across codebases.
+
+**2. Packages installed via a package manager (such as Mops).**
 
 ```motoko no-repl
-import Package "mo:itertools\Iter";
+import Iter "mo:base/itertools";
 ```
+
+The module `Iter` is imported from a third-party package `itertools`.
 
 **3. Files within the current project.**
 
+```motoko no-repl
 import Utils "Utils";
 ```
 
-You can also import specific functions from a module:
+**You can also import specific functions from a module:**
 
 ```motoko no-repl
 import { compare } "mo:base/Nat";
 ```
-
-Other forms of imports can be used to reference actor classes and other actors.
 
 Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/modules-imports).
 

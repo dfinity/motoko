@@ -9,16 +9,49 @@ Motoko provides various operators for working with numbers, text, and boolean va
 | **Category**   | **Description**                          | **Examples**  |
 |---------------|----------------------------------|----------------------|
 | Arithmetic | Math operations on numbers      | `+`, `-`, `*`, `/`, `%`, `**` |
-| Bitwise    | Operations on individual bits   | `&`, `|`, ^`, `<<`, `>>`, `<<>`, `<>>` |
+| Bitwise    | Operations on individual bits   | `&`, <code>&#124;</code>, `^`, `<<`, `>>`, `<<>`, `<>>` |
 | Text       | Text concatenation              | `#` |
 | Logical | Logical/boolean operations       | `not`, `and`, `or` |
 | Ordered | Comparing values                  | `==`, `!=`, `<`, `>` |
 
 :::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types, such as `Int8`, `Nat8`.
 
 :::
+
+## Short-circuit evaluation
+
+In Motoko, the logical operators `and` and `or` use short-circuit evaluation:
+
+* `and` evaluates the second operand **only if** the first is `true`.
+* `or` evaluates the second operand **only if** the first is `false`.
+
+This avoids unnecessary computation and potential side effects.
+
+### Short circuit `and`
+
+If the first operand is `false`, the second is not evaluated.
+
+```motoko no-repl
+let x = false;
+
+if (x and someOtherExp) {
+  Debug.print("Unreachable code executed! something is wrong!"); // This should never be printed.
+};
+```
+
+### Short circuit `or`
+
+If the first operand is `true`, the second is not evaluated.
+
+```motoko no-repl
+let y = true;
+
+if (y or someOtherExp) {
+  Debug.print("This will be printed");
+};
+```
 
 ## Unary operators
 
@@ -54,7 +87,7 @@ Binary operators combine two numbers to produce a result.
 | `%`      | Modulus (remainder) | `a % b` |
 | `**`     | Exponentiation | `a ** b` |
 
-:::warning
+:::caution
 
 Division (`/`) on integers **truncates** decimals. For floating-point division, use `Float.fromInt()`:
 
@@ -71,16 +104,16 @@ Bitwise operators manipulate numbers **at the binary level**.
 | Operator | Description |Example |
 |----------|------------|----------|
 | `&`      | Bitwise AND |`a & b` |
-|  `|`    | Bitwise OR | `a | b` |
+| <code>&#124;</code> | Bitwise OR | <code>a &#124; b</code> |
 | `^`      | Bitwise XOR | `a ^ b` |
 | `<<`     | Shift left | `a << b` |
-| `>>`     | Shift right (must be proceeded by whitespace) |`a >> b` |
+| `>>`     | Shift right (must be preceded by a whitespace) |`a >> b` |
 | `<<>`    | Rotate left (circular shift) | `a <<> b` |
 | `<>`     | Rotate right (circular shift)| `a <> b` |
 
-:::caution
+:::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types. eg: `Int8`, `Nat8`.
 
 :::
 
@@ -116,7 +149,7 @@ Assignment operators modify variables in place. Both mutable variables declared 
 
 For example:  
 
-```motoko
+```motoko no-repl
 var done = false; done := true;
 
 let a = [var 1, 2];
