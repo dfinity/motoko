@@ -30,17 +30,20 @@ let (fst, snd) = (1, 2);
 ```
 
 uses the pattern `(fst, snd)` to name the components of the pair `(1,2)`. The value of `fst` is `1` and the value of `snd` is 2. Both `fst` and `snd` are immutable.
-Mutable variables declared with `var` do not support pattern matching. For example, the following is invalid:
-
-```motoko no-repl
-var (a, b) = (1, 2); // Not supported
-```
 
 ## Mutable variables
 
-A `var` declaration in Motoko defines a mutable variable whose value can be updated after it is initially assigned. Unlike `let`, which creates an immutable binding, `var` allows reassignment using the `:=` operator. This means that the variable can hold different values over time, making it suitable for scenarios where state changes are required.
+A `var` declaration in Motoko defines a mutable variable whose value can be updated after it is initially assigned. 
+Unlike `let`, which creates an immutable binding, `var` allows reassignment using the `:=` operator. This means that the variable can hold different values over time, making it suitable for scenarios where state changes are required.
 
 ```motoko no-repl
 var y = 10;
 y := 20; // Allowed, updates the value of y
+```
+
+Unlike, `let` declarations, `var` declarations do not support pattern matching. 
+For example, the following is a syntax error:
+
+```motoko no-repl
+var (a, b) = (1, 2); // Not supported
 ```
