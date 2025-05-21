@@ -105,9 +105,10 @@ Then, in another file you can create an instance of this actor class:
 import Counter "./Counter";
 
 actor {
-  let counter = Counter.Counter();
+  let counter = await (with cycles = 1_000_000_000_000) Counter.Counter();
 
   let newCount = await counter.increment();
+
   Debug.print("Count is now: " # Int.toText(newCount));
 
   let currentCount = await counter.get();
