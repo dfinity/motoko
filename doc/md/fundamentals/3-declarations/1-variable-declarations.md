@@ -12,7 +12,9 @@ In Motoko, variables are declared using:
 
 ## Immutable variables
 
-The `let` keyword is used to bind a name to the result of an expression, creating an immutable variable. When a let declaration is made, the expression on the right-hand side is evaluated once, and its resulting value is associated with the given name. This value cannot be changed after the initial assignment. The Motoko compiler enforces this immutability by generating a compile-time error if there is any attempt to modify the variable later in the code. This behavior helps ensure safety and predictability, especially in concurrent or distributed applications running on ICP.
+The `let` keyword is used to bind a name to the result of an expression, creating an immutable variable. In a `let` declaration, the expression on the right-hand side is evaluated once, and its resulting value is associated with the given name. This value cannot be changed after the initial assignment. The Motoko compiler enforces this immutability by generating a compile-time error if there is any attempt to modify the variable later in the code. 
+
+In concurrent code, immutable declarations should be preferred over mutable declarations, since they prevent concurrent modification.
 
 ```motoko no-repl
 let x = 10;
