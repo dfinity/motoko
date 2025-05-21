@@ -2,6 +2,7 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 ingress Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'assertion failed at Lib.mo:3.27-5.4'
 Canister Backtrace:
+ic_trap
 fail
 $lambda
 go
