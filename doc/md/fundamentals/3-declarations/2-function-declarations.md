@@ -72,7 +72,7 @@ func factorial(n : Nat) : Nat {
     if (n == 0) {
         return 1;
     };
-// Calls itself with factorial(n - 1), reducing n until reaching 0.
+     // Calls itself with factorial(n - 1), reducing n until reaching 0.
     n * factorial(n - 1);
 }
 ```
