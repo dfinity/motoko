@@ -4,8 +4,17 @@ sidebar_position: 4
 
 # Class declarations
 
-A class in Motoko serves as a blueprint for creating [objects](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declaration) that encapsulate both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time. Classes are particularly useful when using multiple objects with similar structures but different initial states.
+A class in Motoko serves as a blueprint for creating [objects](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declaration) that encapsulate both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
 
+Classes in Motoko are not the same as classes like in other object oritentated programming languages, but they serve the same purpose. Motoko also doesn’t have a `this` or `self` keyword because you can simply call other methods directly by name.
+
+Use a class when you need to:
+- Create multiple objects with the same fields and methods.
+- Encapsulate state and behavior inside an object.
+- Simulate object orientated programming-like design patterns.
+
+Classes are particularly useful when using multiple objects with similar structures but different initial states. You can think of classes as a template for creating objects. You define fields and methods, and then create new instances by calling the class like a function.
+ 
 ## Defining a class
 
 A class in Motoko defines both:
