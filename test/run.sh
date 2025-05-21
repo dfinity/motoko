@@ -458,7 +458,7 @@ do
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
-            run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.noname.wasm
+            run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
 
