@@ -29,7 +29,7 @@ For example, the declaration:
 let (fst, snd) = (1, 2); 
 ```
 
-uses the pattern `(fst, snd)` to name the components of the pair `(1,2)`. The value of `fst` is `1` and the value of `snd` is 2. Both `fst` and `snd` are immutable.
+uses the pattern `(fst, snd)` to name the components of the pair `(1,2)`. The value of `fst` is `1` and the value of `snd` is `2`. Both `fst` and `snd` are immutable.
 
 ## Mutable variables
 
