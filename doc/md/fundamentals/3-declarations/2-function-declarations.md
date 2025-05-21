@@ -48,12 +48,20 @@ applyFunction(double, 10);
 
 Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
 
-```motoko no-repl
-let multiply = func (x : Int, y : Int) : Int { x * y };
-multiply(4, 2);
+
+``` motoko no-repl
+func applyFunction(f :  Int -> Int, value : Int) : Int { f(value) };
+applyFunction( func (x : Int) : Int { x * 2 } , 2);
 ```
 
-The function is assigned to `multiply` instead of being named directly. `{ x * y }` is the function body without `return`, as single expressions are implicitly returned.
+In this example, the first argument to `applyFunction` is the anonymous function `func (x : Int) : Int { x * 2 }`.
+This is just an anonymous version of the function named `double` above.
+
+The compiler can infer the argument and result types of anonymous functions, when the types are determined from the context, so you can even just write:
+
+``` motoko no-repl
+applyFunction( func x { x * 2 } , 2);
+```
 
 ## Recursive functions
 
