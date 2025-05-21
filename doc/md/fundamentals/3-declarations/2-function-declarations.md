@@ -97,8 +97,8 @@ func twice<T>(f : T -> T) : T -> T = func (x : T) {
 You can use it with different types:
 
 ```motoko no-repl
-let double = twice<Nat>(func x { x * 2 });
-assert double(2) == 8;
+let cube= twice<Nat>(func x { x * 2 });
+assert cube(2) == 8;
 
 let echoTwice = twice<Text>(func s { s # "!" });
 assert echoTwice("Hello") == "Hello!!";
