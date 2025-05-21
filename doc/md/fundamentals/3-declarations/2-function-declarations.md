@@ -100,7 +100,7 @@ You can use it with different types:
 let double = twice<Nat>(func x { x * 2 });
 assert double(2) == 8;
 
-let echoTwice = twice<Text>(func s = s # "!");
+let echoTwice = twice<Text>(func s { s # "!" });
 assert echoTwice("Hello") == "Hello!!";
 ```
 
