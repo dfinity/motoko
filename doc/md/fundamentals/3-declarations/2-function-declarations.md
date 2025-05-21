@@ -36,8 +36,8 @@ add(3, 5);
 Functions in Motoko are first-class values, meaning they can be treated like any other value in the language. They can be assigned to variables, stored in data structures such as arrays or records, and passed as arguments to other functions.
 
 ```motoko no-repl
-let double = func (x : Int) : Int { x * 2 };
-let applyFunction = func (f : (Int) -> Int, value : Int) : Int { f(value) };
+func double(x : Int) : Int { x * 2 };
+func applyFunction(f : Int -> Int, value : Int) : Int { f(value) };
 
 applyFunction(double, 10);
 ```
