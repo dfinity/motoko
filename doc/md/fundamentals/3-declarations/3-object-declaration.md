@@ -13,7 +13,7 @@ An object is a collection of named fields that can hold values or [functions](ht
 | Named fields | Yes | Yes |
 | Private fields | No | Yes |
 | Recursively defined fields | No | Yes |
-| Mutability | Supports [`let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) | [Supports `let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) |
+| Mutability | [Supports `let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) | [Supports `let` (immutable) and `var` (mutable)](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) |
 | Supports field visibility (`public`, `private`) | No | Yes |
 | Combination (`and`, `with`) | Yes | Yes |
 | Supports async behavior | No | Yes (supports `async` functions) |
@@ -24,8 +24,8 @@ Records are typically used to store structured data. Fields are always accessibl
 
 ```motoko no-repl
 let ghost = {
-    var name : Text = "Motoko";
-    var age : Nat = 25;
+  var name : Text = "Motoko";
+  var age : Nat = 25;
 };
 
 Debug.print(ghost.name); // "Motoko"
@@ -38,12 +38,12 @@ Objects extend records by supporting functions. Fields can have explicit visibil
 
 ```motoko no-repl
 let motoko = object {
-    public let name = "Motoko";
-    public var age = 30;
+  public let name = "Motoko";
+  public var age = 30;
 
-    public func greet() : Text {
-        "Hello, my name is " # name # "!"
-    };
+  public func greet() : Text {
+    "Hello, my name is " # name # "!"
+  };
 };
 
 Debug.print(motoko.greet()); // "Hello, my name is Motoko!"
@@ -55,16 +55,16 @@ Fields and methods of an object are accessed using [dot notation](https://en.wik
 
 ```motoko no-repl
 let motoko = object {
-    public let name = "Motoko";
-    public var age = 30;
+  public let name = "Motoko";
+  public var age = 30;
 
-    public func greet() : Text {
-        "Hello, my name is " # name # "!"
-    };
-    public func birthday() : Text{
-      age += 1;
-      "It's my birthday, I'm now " # debug_show(age) # "years old!"
-    }
+  public func greet() : Text {
+    "Hello, my name is " # name # "!"
+  };
+  public func birthday() : Text{
+    age += 1;
+    "It's my birthday, I'm now " # debug_show(age) # "years old!"
+  }
 };
 Debug.print(motoko.greet());
 Debug.print(motoko.birthday());
