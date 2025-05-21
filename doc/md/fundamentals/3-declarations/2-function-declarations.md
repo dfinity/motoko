@@ -42,7 +42,9 @@ func applyFunction(f : Int -> Int, value : Int) : Int { f(value) };
 applyFunction(double, 10);
 ```
 
-`applyFunction` takes a function `f` and applies it to `value`.  `double` is passed as an parameter, allowing to construct higher-order functions.
+`applyFunction` takes a function `f` and applies it to `value`. Because `applyFunction` takes a function as a parameter, it it is a _higher-order_ function.
+
+In the call, the function `double` is passed as an argument.
 
 ## Anonymous functions
 <!-- anonymous functions are expressions, not declarations, perhaps move this section elsewhere -->
