@@ -9,16 +9,49 @@ Motoko provides various operators for working with numbers, text, and boolean va
 | **Category**   | **Description**                          | **Examples**  |
 |---------------|----------------------------------|----------------------|
 | Arithmetic | Math operations on numbers      | `+`, `-`, `*`, `/`, `%`, `**` |
-| Bitwise    | Operations on individual bits   | `&`, `|`, ^`, `<<`, `>>`, `<<>`, `<>>` |
+| Bitwise    | Operations on individual bits   | `&`, <code>&#124;</code>, `^`, `<<`, `>>`, `<<>`, `<>>` |
 | Text       | Text concatenation              | `#` |
 | Logical | Logical/boolean operations       | `not`, `and`, `or` |
 | Ordered | Comparing values                  | `==`, `!=`, `<`, `>` |
 
 :::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types, such as `Int8`, `Nat8`.
 
 :::
+
+## Short-circuit evaluation
+
+In Motoko, the logical operators `and` and `or` use short-circuit evaluation:
+
+* `and` evaluates the second operand **only if** the first is `true`.
+* `or` evaluates the second operand **only if** the first is `false`.
+
+This avoids unnecessary computation and potential side effects.
+
+### Short circuit `and`
+
+If the first operand is `false`, the second is not evaluated.
+
+```motoko no-repl
+let x = false;
+
+if (x and someOtherExp) {
+  Debug.print("Unreachable code executed! something is wrong!"); // This should never be printed.
+};
+```
+
+### Short circuit `or`
+
+If the first operand is `true`, the second is not evaluated.
+
+```motoko no-repl
+let y = true;
+
+if (y or someOtherExp) {
+  Debug.print("This will be printed");
+};
+```
 
 ## Unary operators
 
@@ -54,7 +87,7 @@ Binary operators combine two numbers to produce a result.
 | `%`      | Modulus (remainder) | `a % b` |
 | `**`     | Exponentiation | `a ** b` |
 
-:::warning
+:::caution
 
 Division (`/`) on integers **truncates** decimals. For floating-point division, use `Float.fromInt()`:
 
@@ -71,16 +104,16 @@ Bitwise operators manipulate numbers **at the binary level**.
 | Operator | Description |Example |
 |----------|------------|----------|
 | `&`      | Bitwise AND |`a & b` |
-|  `|`    | Bitwise OR | `a | b` |
+| <code>&#124;</code> | Bitwise OR | <code>a &#124; b</code> |
 | `^`      | Bitwise XOR | `a ^ b` |
 | `<<`     | Shift left | `a << b` |
-| `>>`     | Shift right (must be proceeded by whitespace) |`a >> b` |
+| `>>`     | Shift right (must be preceded by a whitespace) |`a >> b` |
 | `<<>`    | Rotate left (circular shift) | `a <<> b` |
 | `<>`     | Rotate right (circular shift)| `a <> b` |
 
-:::caution
+:::info
 
-Bitwise operators can only be used with bounded types.
+Bitwise operators can only be used with bounded types. eg: `Int8`, `Nat8`.
 
 :::
 
@@ -116,7 +149,7 @@ Assignment operators modify variables in place. Both mutable variables declared 
 
 For example:  
 
-```motoko
+```motoko no-repl
 var done = false; done := true;
 
 let a = [var 1, 2];
@@ -157,53 +190,5 @@ func increment(n : Int) : Int { n + 1 };
 
 let result = 5 |> double(_) |> increment(_); // (5 * 2) + 1 = 11
 ```
-
-## Option blocks (`do ?`)
-
-Option blocks use the syntax `do ? <block>` to handle optional values of type `?T` without needing nested switch statements. It produces a value of type `?T`, when `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>.`
-
-Within a `do ? <block>`, the `null` break `<exp> !` tests whether the result of the expression, `<exp>` of unrelated option type, `?U`, is `null`. 
-
-If the result is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` of type `U`.
-
-The `do ? <block>` is similar to how the `?` operator works in languages like Rust.
-
-```motoko no-repl
-// Introduces an option block that returns a value of type ?T
-let result: ?T = do ? {
-  // The ! operator (null break) unwraps optional values inside the block
-  someOptionalValue!  // unwraps the value or short-circuits
-}
-```
-
-The following example defines a simple function that evaluates expressions built from natural numbers, division and a zero test, encoded as a variant type:
-
-```motoko no-repl
-func eval(e : Exp) : ? Nat {
-  do ? {
-    switch e {
-      case (#Lit n) { n };
-      case (#Div (e1, e2)) {
-        let v1 = eval e1 !;  // If eval e1 returns null, exit with null
-        let v2 = eval e2 !;  // If eval e2 returns null, exit with null
-        if (v2 == 0)
-          null !  // Explicitly exit with null for division by zero
-        else v1 / v2
-      };
-      case (#IfZero (e1, e2, e3)) {
-        if (eval e1 ! == 0)  // Unwrap and check if zero
-          eval e2 !  // Return result of e2 (or null if it's null)
-        else
-          eval e3 !  // Return result of e3 (or null if it's null)
-      };
-    };
-  };
-}
-```
-
-To guard against division by 0 without trapping, the eval function returns an option result, using null to indicate failure.
-
-Each recursive call is checked for null using !, immediately exiting the outer do ? block, and then the function itself, when a result is null.
-
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

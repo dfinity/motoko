@@ -6,6 +6,67 @@ sidebar_position: 9
 
 Mutable arrays allow direct modification of elements, making them suitable for scenarios where data needs to be updated frequently. Unlike [immutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays), which require creating a new array to reflect changes, mutable arrays support in place modifications, improving performance in some cases.
 
+## Creating a mutable array
+
+Mutable array types are written with square brackets `[var T]`. The `var` keyword indicates mutability. The type of the array element is specified within the square brackets, e.g., `[var Nat]` describes an mutable array of natural numbers.
+
+A mutable array is created using a mutable array expression:
+
+ ``` motoko
+ [var 1, 2, 3, 4, 5];
+ ```
+
+:::note
+Its type is inferred to be `[var Nat]`.
+:::
+
+If you want to update the array with negative elements, use a type annotation:
+
+ ```motoko
+ [var 1, 2, 3, 4, 5] : [var Int]
+ ```
+
+A named array can be declared using either `let` or `var`:
+
+```motoko
+let digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+```
+
+The function `Array.tabulateVar(size, f)` creates a mutable array of `size` elements, where each element at index `i` is initialized with the value `f(i)`.
+
+Example:
+
+```motoko
+import Nat "mo:base/Nat";
+import Array "mo:base/Array";
+
+let digits = Array.tabulateVar<Text>(10, Nat.toText);
+```
+
+Constructs the array:
+
+```motoko no-repl
+[var "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+```
+
+Each element is mutable and can be updated later.
+
+To initialize a large array where every element starts with the same value, use `Array.init(size, value)`:
+
+```motoko
+import Array "mo:base/Array";
+
+let optArr = Array.init<?Int>(10, null);
+```
+
+This produces the array:
+
+```motoko no-repl
+[var null, null, null, null, null, null, null, null, null, null]
+```
+
+Such arrays are useful when the exact contents will be updated later.
+
 ## When to use mutable arrays
 
 Mutable arrays are beneficial when:
@@ -36,25 +97,27 @@ For dynamically-sized,  array-like data structures, consult the libraries in `ba
 
 Mutable arrays use the `var` keyword inside the square brackets `[var T]`. The type of the array is also specified within the square brackets, e.g., `[var Nat]` declares a mutable array of natural numbers. In place element modification is supported in mutable arrays.
 
-```motoko no-repl
+```motoko
 let mutableArray : [var Nat] = [var 1, 2, 3, 4, 5];
 
 mutableArray[0] := 10;  // Updates the first element to 10
+
+mutableArray;
 ```
 
 ## Accessing and modifying elements
 
 Mutable array elements can be read and modified using indexed access. Attempting to access an index that does not exist will result in a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps).
 
-```motoko no-repl
+```motoko
 let numbers : [var Nat] = [var 10, 20, 30];
 
 numbers[0] := 100;  // updating first element
 
-Debug.print(debug_show(numbers[0]));  // 100
+debug_show(numbers[0]);  // 100
 ```
 
-The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`. 
+The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 
 Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). 
 
@@ -110,24 +173,24 @@ To demonstrate nested mutable arrays, consider the following.
 
 A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
 
-`VarArray.tabulate` is used with `VarArray.repeat` to create a mutable board initialized with `"_"` (empty space).  
+`Array.tabulateVar` is used to create a mutable board initialized with `"_"` (empty space).
 
-```motoko no-repl
+```motoko
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 
+persistent actor TicTacToe {
 func createTicTacToeBoard() : [var [var Text]] {
     let size : Nat = 3;
 
     // Initialize a 3x3 board with empty spaces
-    // Use tabulate and repeat to construct the board
-    VarArray.tabulate<[var Text]>(
-    size,
-    func(_) {
-      VarArray.repeat("_", size)
-    }
-  )
-};
+    Array.tabulateVar<[var Text]>(
+      size,
+      func(_ : Nat) : [var Text] {
+        Array.tabulateVar<Text>(size, func(_ : Nat) : Text {"_"}) // Fill with "_"
+      }
+    )
+  };
 
   // Create a mutable Tic-tac-toe board
   let board : [var [var Text]] = createTicTacToeBoard();
@@ -144,8 +207,7 @@ func createTicTacToeBoard() : [var [var Text]] {
   // Function to print the board
   func printBoard() {
     for (row in board.vals()) {
-      let frozenRow = Array.fromVarArray(row);
-      let rowText = Array.foldLeft<Text, Text>(frozenRow, "", func(acc, cell) = acc # cell # " ");
+      let rowText = Array.foldLeft<Text, Text>(Array.freeze<Text>(row), "", func(acc, cell) = acc # cell # " ");
       Debug.print(rowText)
     }
   };
@@ -156,7 +218,7 @@ func createTicTacToeBoard() : [var [var Text]] {
   makeMove(2, 2, "X");
 
   printBoard();
-
+};
 ```
 
 Since both the outer and inner arrays are mutable, players can update the board in place. The array must be frozen before `foldLeft()` can be applied to the rows as `foldleft()` expects an immutable array as an argument.
@@ -176,9 +238,9 @@ To see why, suppose the following was allowed: `[var Nat] <: [var Int]` (since `
 Then, consider the following code:
 
 ```motoko
-let ns :  [var Nat] = [var 0]
+let ns :  [var Nat] = [var 0];
 let is  :  [var Int] = ns; // only allowed if [var Nat] <: [var Int]
-is[0] := -1;
+is[0] := -1; // [var Nat] is not a subtype of [var Int] — even though Nat <: Int.
 ns[0] // -1
 ```
 

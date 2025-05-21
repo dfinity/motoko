@@ -4,7 +4,11 @@ sidebar_position: 5
 
 # Records
 
-Records provide a structured way to group related values using named fields. Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which rely on positional access, records use field names for retrieval, improving clarity and maintainability. Unlike tuples, record also support mutable fields.  
+Records allow you to group related values using named fields, with each field potentially having a different type.  
+Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which use positional access, records provide field-based access, improving readability and maintainability.
+
+Records also support **mutable fields**, declared using the `var` keyword.  
+In contrast, all fields in a tuple are always **immutable**.
 
 ## Defining a record
 
@@ -14,6 +18,29 @@ let person = {
    age : Nat = 25;
 };
 ```
+
+:::info Inferred types
+Type annotations on immutable record fields are optional, as the compiler can infer their types automatically.
+However, for mutable fields (`var`), it's good practice to explicitly declare the type.  
+Without an explicit annotation, the compiler might infer a more specific type than intended, which can restrict future assignments to broader types.
+
+Example:
+
+```motoko
+let account = { name = "Motoko"; var balance = 0 };
+// Inferred as { name : Text; var balance : Nat }
+account.balance := -100; //  Rejected, -100 is an Int not a Nat
+```
+
+To avoid this issue, annotate the field explicitly:
+
+```motoko no-repl
+let account = { name = "Motoko"; var balance : Int = 0 };
+account.balance := -100; //  Allowed
+```
+
+This recommendation also applies to all `var` declarations, not just record fields.
+:::
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
@@ -26,7 +53,7 @@ Unlike tuples, the order of record fields is immaterial and all record types wit
 
 Fields in a record can be accessed using the dot (`.`) notation.
 
-```motoko no-repl
+```motoko
 let person = {
    name : Text = "Motoko";
    age : Nat = 25;
@@ -35,7 +62,7 @@ let person = {
 let personName = person.name;  // "Motoko"
 let personAge = person.age;    // 25
 
-Debug.print(personName # is # debug_show(personAge));
+person;
 ```
 
 Attempting to access a field that isn't available in the type of the record is a compile-time type error.  
@@ -55,7 +82,7 @@ This `person` has type `{var age : Nat; var name : Text}`.
 
 `var name` and `var age` allow the values to be updated later.
 
-```motoko no-repl
+```motoko
 let person = {
    var name : Text = "Motoko";
    var age : Nat = 25;
@@ -64,16 +91,16 @@ let person = {
 person.name := "Ghost";  // Now person.name is "Ghost"
 person.age := 30;      // Now person.age is 30
 
-Debug.print(person.name # is # debug_show(person.age));
+person
 ```
 
-Attempting to update an immutable field will raise an error.
+Attempting to update an immutable field is a compile-time type error.
 
 ## Nested records
 
 Records can contain other records, allowing for hierarchical data structures that maintain organization while ensuring type safety and clarity.
 
-```motoko no-repl
+```motoko
 type Address = {
     city : Text;
     street : Text;
@@ -95,8 +122,7 @@ let individual : Individual = {
 
 Records can be destructured using [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch), allowing selective extraction of fields. This approach makes accessing deeply nested fields more explicit and readable.
 
-
-```motoko no-repl
+```motoko
 type Address = {
     city : Text;
     street : Text;
@@ -123,7 +149,7 @@ The field pattern `name` is just shorthand for `name = name`: it binds the conte
 
 Records are commonly used in arrays and other collections for structured data storage, allowing efficient  data organization and retrieval.
 
-```motoko no-repl
+```motoko
 type Product = {
     name : Text;
     price : Float;
@@ -137,7 +163,6 @@ let inventory : [Product] = [
 let firstProduct : Product = inventory[0];
 let productName : Text = firstProduct.name;
 ```
-
 
 ## Updating records programmatically
 
@@ -153,7 +178,7 @@ let person = { name : Text = "Motoko"; age : Nat =  25; };
 
 let profile = { person and contact };
 
-Debug.print(debug_show (profile));
+debug_show(profile);
 ```
 
 `profile` combines `person` and `contact` because they have unique fields. If any field name overlaps, `and` alone is not allowed. Use  the `with` keyword to resolve conflicts.
@@ -162,14 +187,14 @@ Debug.print(debug_show (profile));
 
 The `with` keyword modifies, overrides, or adds fields when combining records.
 
-```motoko no-repl
+```motoko
 let person = { name : Text = "Motoko"; age : Nat =  25; };
 // age = 26; updates the existing age field.
 // city = "New York" adds a new field to the record.
 // city = "New York" adds a new field to the record.
 let updatedPerson = { person with age : Nat = 26; city : Text = "New York"; };
 
-Debug.print(debug_show (updatedPerson));
+debug_show(updatedPerson);
 ```
 
 :::info
@@ -180,7 +205,7 @@ If `person` contained a mutable (`var`) field, `with` must redefine it, preventi
 
 ### Combining `and` and `with`
 
-```motoko no-repl
+```motoko
 let person = {name : Text = "Motoko"; age : Nat = 25};
 let contact = {email : Text = "motoko@example.com"};
 
@@ -192,7 +217,7 @@ let fullProfile = {
   age = 26;
   location : Text = "New York";
 };
-Debug.print(debug_show (fullProfile));
+debug_show(fullProfile);
 ```
 
 ## Tuples vs records
@@ -206,14 +231,13 @@ Tuples and records both allow grouping values, but they have key differences in 
 | Pattern matching| Complete, using ordered tuple patterns                       | Selective, using unordered record patterns  |  
 | Mutability     | Immutable after creation                 | Can have mutable fields               |
 | Naming         | Fields are anonymous  | Fields are named               |  
-| Subtyping     | Fields cannot be removed | Fields can be removed | 
-| Use Case       | Positional grouping of related values, e.g. vectors     |  structured data types        | 
+| Subtyping     | Fields cannot be removed | Fields can be removed |
+| Use case       | Positional grouping of related values, e.g. vectors     |  Structured data types        |
 
+Motoko's records support more flexible subtyping than tuples.  
+With records, subtyping allows fields to be omitted in the subtype (a concept known as **width subtyping**).  
+In contrast, tuple subtyping requires tuples to have the **same length**, making them less flexible in this regard.
 
-Motoko's records afford more flexible subtyping than tuples. Subtyping on records allows fields to be removed in the subtype, while for tuples, subtyping always requires the length of the tuples to be equal. 
-
-For example,, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
-
-
+For example, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
