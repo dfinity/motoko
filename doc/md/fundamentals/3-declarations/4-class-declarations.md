@@ -18,21 +18,23 @@ A class in Motoko defines both:
 Motoko also supports generic classes, which allow abstraction over types. This enables the creation of reusable, type-safe components that can work with a variety of data types while maintaining strong compile-time guarantees.
 
 ```motoko no-repl
-// A generic comparator class for ordering elements
-class Comparator<T>(compare : (T, T) -> O.Order) {
+import O "mo:base/Order"; // Required to reference O.Order and its variants
 
-  public func lessThan(a : T, b : T) : Bool {
-    compare(a, b) == #less;
+  // A generic comparator class for ordering elements
+  class Comparator<T>(compare : (T, T) -> O.Order) {
+    public func lessThan(a : T, b : T) : Bool {
+      compare(a, b) == #less;
+    };
+
+    public func equal(a : T, b : T) : Bool {
+      compare(a, b) == #equal;
+    };
+
+    public func greaterThan(a : T, b : T) : Bool {
+      compare(a, b) == #greater;
+    };
   };
 
-  public func equal(a : T, b : T) : Bool {
-    compare(a, b) == #equal;
-  };
-
-  public func greaterThan(a : T, b : T) : Bool {
-    compare(a, b) == #greater;
-  };
-};
 ```
 
 This declaration creates:
