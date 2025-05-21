@@ -76,6 +76,11 @@ func factorial(n : Nat) : Nat {
     n * factorial(n - 1);
 }
 ```
+::: warning
+
+In a recursive function, each recursive call consumes stack space by allocating a new stack frame, which uses memory on the program's relatively small call stack. As a result, excessive or uncontrolled recursion can lead to stack overflow or out-of-memory errors.
+
+:::
 
 ## Generic functions
 
