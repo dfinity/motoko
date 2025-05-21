@@ -117,7 +117,7 @@ actor Counter {
     };
 
     public shared query func getCount() : async Nat {
-        return count;
+        count;
     }
 };
 await Counter.inc();
