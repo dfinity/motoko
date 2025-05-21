@@ -441,15 +441,16 @@ do
         # Run compiled program
         if [ "$SKIP_RUNNING" != yes ]
         then
+          wasm-strip --remove-section=name $out/$base.wasm -o $out/$base.noname.wasm
           if [ $DTESTS = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              run_if wasm drun-run $WRAP_drun $out/$base.noname.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+              run_if wasm drun-run $WRAP_drun $out/$base.noname.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
@@ -457,7 +458,7 @@ do
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
-            run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.wasm
+            run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.noname.wasm
           fi
         fi
 
