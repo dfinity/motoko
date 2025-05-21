@@ -132,7 +132,7 @@ One key advantage of shared functions in Motoko is that they have access to the 
 actor Example {
     // msg.caller retrieves the Principal of the caller.
     public shared(msg) func whoAmI() : async Principal {
-        return msg.caller;
+        msg.caller;
     }
 }
 ```
