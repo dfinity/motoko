@@ -2,10 +2,10 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'IDL error: illegal type table'
 Canister Backtrace:
+ic_trap
 rts_trap
-motoko_rts::trap_with_prefix::hfcb282e7953d18f7
-motoko_rts::idl_trap_with::h35d72b4a345debb6
-motoko_rts::idl::parse_idl_header::h63fd2c8535320a54
+motoko_rts::trap_with_prefix::h194a3848ff2baf46
+motoko_rts::idl_trap_with::h10215e2764a044b3
 parse_idl_header
 @deserialize<at>
 any

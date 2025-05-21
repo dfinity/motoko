@@ -4,6 +4,7 @@ Ok: Reply: 0x4449444c00017e01
 Ok: Reply: 0x4449444c00017e00
 Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: 'IDL error: byte tag not 0 or 1'
 Canister Backtrace:
+ic_trap
 @deserialize_go<b>
 @deserialize<b>
 flip
