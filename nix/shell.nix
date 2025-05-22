@@ -51,6 +51,7 @@ pkgs.mkShell {
         pkgs.drun
         pkgs.pocket-ic.server
         pkgs.pocket-ic.library
+        pkgs.gh # GitHub CLI
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 
