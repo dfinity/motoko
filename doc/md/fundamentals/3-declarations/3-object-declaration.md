@@ -8,8 +8,7 @@ sidebar_position: 3
 
 In Motoko, records and objects are both used to group related values using named fields. Record and objects have the same types, but differ in the way they are created and used. The types of record and objects are both described using object types, which are unordered sequences of named fields describing the content and mutability of each public field. Both record and object fields can be accessed by either dot notation or by pattern matching on the names of the fields.
 
-While records expressions are ideal for lightweight data representation, objects expressions are more verbose. Object expressions can define full objects in the sense of object-oriented programming where an object is
-a collection of named fields and methods acting on private state. In Motoko, the private declarations define the encapsulated state, while the public definitions define the object's visible members.
+While records expressions are ideal for lightweight data representation, objects expressions are more verbose. Object expressions can define full objects in the sense of object-oriented programming where an object is a collection of named fields and methods acting on private state. In Motoko, the private declarations define the encapsulated state, while the public definitions define the object's visible members.
 
 Record and object both use the `var` keyword to define [mutable](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) and declarations. Both records and objects support `and` and `with` for merging and updating object fields to create new records and objects.
 
