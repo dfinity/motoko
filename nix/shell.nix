@@ -49,6 +49,8 @@ pkgs.mkShell {
         pkgs.z3_4_12 # for viper dev
         pkgs.difftastic
         pkgs.drun
+        pkgs.pocket-ic.server
+        pkgs.pocket-ic.library
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 
@@ -81,6 +83,8 @@ pkgs.mkShell {
   MOTOKO_BASE = base-src;
   CANDID_TESTS = "${pkgs.sources.candid-src}/test";
   VIPER_SERVER = "${viper-server}";
+  POCKET_IC_SERVER = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+  POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
 
   # allow building this as a derivation, so that hydra builds and caches
   # the dependencies of shell.

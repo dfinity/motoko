@@ -29,6 +29,10 @@
       url = "github:luc-blaeser/ic/drun/2025-02-27_03";
       flake = false;
     };
+    pocket-ic-src = {
+      url = "github:dfinity/ic/master";
+      flake = false;
+    };
     ic-wasm-src = {
       url = "github:dfinity/ic-wasm";
       flake = false;
@@ -69,6 +73,7 @@
     , viper-server
     , candid-src
     , ic-src
+    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
@@ -84,6 +89,7 @@
           inherit
             candid-src
             ic-src
+            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
@@ -202,7 +208,11 @@
 
         inherit nix-update tests js;
 
-        inherit (pkgs) nix-build-uncached drun ic-wasm;
+        inherit (pkgs) nix-build-uncached drun ic-wasm pocket-ic;
+
+        # Split pocket-ic into server and library
+        pocket-ic-server = pkgs.pocket-ic.server;
+        pocket-ic-library = pkgs.pocket-ic.library;
 
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
 
