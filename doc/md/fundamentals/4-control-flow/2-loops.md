@@ -20,7 +20,6 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
-
 ```motoko no-repl
 shared func unconditionalLoop() : async Nat {
     var count : Nat = 0;
