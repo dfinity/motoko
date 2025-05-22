@@ -1573,7 +1573,14 @@ and infer_exp'' env exp : T.typ =
       let res =
         try
           match infer_exp (adjoin_vals env'' ve2) exp1 with
-          | T.Tup [] -> None
+          | T.Tup [] -> None (* Exclude: no changes compared to the default unit *)
+          (* Exclude implicit conversions to unit (when pre = true):
+           * e.g. `loop { if true return }` is inferred as None, but it's `()`
+           * e.g. func f<A <: ()>(a : A) { if true return; a } is inferred as `A`, but it's `()`
+           * For backward compatibility, every unannotated return type might be unit `()`.
+           * Or traverse expressions fully to check every return (any other problematic cases?)
+           *)
+          | t when T.sub t T.unit -> None
           | T.Tup ts -> Some ts
           | t -> Some [t]
         with Recover ->
