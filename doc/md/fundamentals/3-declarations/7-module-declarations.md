@@ -6,14 +6,14 @@ sidebar_position: 7
 
 A module in Motoko is a collection of related types, values, and logic grouped together under a single namespace. Unlike actors and classes, modules cannot declare or mutate state, ensuring pure, side-effect-free reuse.
 
-Modules are primarily used for building libraries, such as the [base library](https://internetcomputer.org/docs/motoko/main/base/) modules and libraries published on [MOPS (Motoko Package Manager)](https://mops.one).
+Modules are primarily used for building libraries, such as the [base library](https://internetcomputer.org/docs/motoko/main/base/) modules and libraries published on [MOPS (Motoko package manager)](https://mops.one).
 
 :::note
 Modules must be pure and cannot contain mutable state (`var`) or non-static expressions.
 
 ```motoko no-repl
 module myModule {
-  var x =0; // not allowed! non-static expression in library
+  var x = 0; // not allowed! non-static expression in library
 }
 ```
 
