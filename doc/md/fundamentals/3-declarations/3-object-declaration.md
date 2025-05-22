@@ -6,14 +6,16 @@ sidebar_position: 3
 
 # Object declarations
 
-In Motoko, records and objects are both used to group related values using named fields.
-Record and objects have the same types, but differ in the way they are created and used.
+In Motoko, records and objects are both used to group related values using named fields. Record and objects have the same types, but differ in the way they are created and used. The types of record and objects are both described using object types, which are unordered sequences of named fields describing the content and mutability of each public field. Both record and object fields can be accessed by either dot notation or by pattern matching on the names of the fields.
 
+While records expressions are ideal for lightweight data representation, objects expressions are more verbose. Object expressions can define full objects in the sense of object-oriented programming where an object is
+a collection of named fields and methods acting on private state. In Motoko, the private declarations define the encapsulated state, while the public definitions define the object's visible members.
 
-Record expressions are used to construct simple data structures that consist of named fields holding values. The fields can be mutable or immutable.
-The fields of a record cannot refer to each other by name and are mainly used to store plain data, like the records in a database.
+Record and object both use the `var` keyword to define [mutable](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations) and declarations. Both records and objects support `and` and `with` for merging and updating object fields to create new records and objects.
 
-Record values can be named using a `let`. That is the only way to declare a named record.
+**Record expressions** are used to construct simple data structures that consist of named fields holding values. The fields can be mutable or immutable. The fields of a record cannot refer to each other by name and are mainly used to store plain data, like the records in a database.
+
+Record values can only be declared using `let`:
 
 ```motoko name=record no-repl
 let Motoko = {
@@ -22,42 +24,23 @@ let Motoko = {
 };
 ```
 
-All fields of a record are accessible.
+All fields of a record are accessible by the [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming) or by pattern matching on the structure of the record:
 
-Record fields can be accessed by the [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming):
-
-```motoko _include=record no-repl
+```motoko no-repl
+// Dot notation
 Motoko.age += 1; // Updates age
 Motoko.name; // "Motoko"
-```
 
-or by pattern matching on the structure of the record:
-
-```motoko _include=record no-repl
+// Pattern matching
 let {name} = Motoko;
 name;
 ```
 
-Object expressions are more general than records. An object is constructed using the `object` keyword followed by a block of field declarations.
-Each field declaration is a visibility modifier, `public` or `private` (the default), followed by a declaration.
-The public declarations become accessible as fields of the object, while the private field declarations are hidden - private fields do not even appear in the type of the object.
-These field declarations can refer to each other in ways that record fields cannot.
-
-The types of record and objects are both described using object types, unordered sequences of named fields describing the content and mutability of each public field.
-
-Both record and object fields can be accessed by either the dot notation or by pattern matching on the names of the fields.
-
-While records expressions are ideal for lightweight data representation, objects expressions are more verbose.
-The advantage of object expressions is that they can define full objects in the sense of object-oriented programming: in the object-oriented sense, an object is
-a collection of named fields and methods acting on private state.
-In Motoko, the private declarations define the encapsulated state, while the public definitions define the object's visible members.
-
+Object expressions are more general than records. An object is constructed using the `object` keyword followed by a block of field declarations. Each field declaration is a visibility modifier, `public` or `private`, followed by a declaration. Public declarations become accessible as fields of the object, while the private declarations are hidden. Private fields do not appear in the type of the object. Object field declarations can refer to each other in ways that record fields cannot.
 
 ## Declaring an object using `let`
 
-In Motoko, the primitive form of object declaration uses a `let` to name an object expression.:
-
-For example, an object might represent a Motoko user profile:
+In Motoko, the primitive form of object declaration uses `let` to name an object expression. For example, an object might represent a Motoko user profile:
 
 ```motoko no-repl
 let Motoko = object {
@@ -74,12 +57,11 @@ let Motoko = object {
 };
 ```
 
-This defines an object with three public members, the field `name` and the methods `greet()` and `birthday()`.
-The mutable field `age` is private, ensuring it can only be increased and read with calls to `birthday()`.
+This defines an object with three public members, the field `name` and the methods `greet()` and `birthday()`. The mutable field `age` is private, ensuring it can only be increased and read with calls to `birthday()`.
 
-## Declaring an object using an object declaration.
+## Declaring an object using an object declaration
 
-Motoko also supports object _declarations_, which stress the definition of an object by using the `object` keyword in place of `let`:
+Motoko also supports object declarations, which stress the definition of an object by using the `object` keyword in place of `let`:
 
 ```motoko name=Object no-repl
 object Motoko = {
@@ -96,25 +78,22 @@ object Motoko = {
 };
 ```
 
-Since `private` is the default accessibility for the declarations inside an object, the second form is just an abbrevation - syntactic sugar - for the previous `let`-declared object.
+Since `private` is the default accessibility for the declarations inside an object, the second form is just an abbrevation (syntactic sugar) for the previous `let`-declared object.
 
 ### Accessing object fields
 
-Fields and methods of an object are accessed using the [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming).
+Fields and methods of an object are accessed using [dot notation](https://en.wikipedia.org/wiki/Object-oriented_programming) or pattern matching:
 
-```motoko _include=Object no-repl
+```motoko no-repl
+// Dot notation
 Motoko.greet() # " " # Motoko.birthday();
-```
 
-Or by pattern matching:
-
-```motoko _include=Object no-repl
+// Pattern matching
 let {greet=g; birthday} = Motoko;
 g() # " " # birthday();
 ```
 
-The field `age` is private and can't accessed by the dot notation or pattern matching.
-
+The field `age` is private and can't be accessed by dot notation or pattern matching.
 
 ## Comparing records and objects
 
@@ -125,11 +104,6 @@ The field `age` is private and can't accessed by the dot notation or pattern mat
 | Private fields | No | Yes |
 | Recursively defined fields | No | Yes |
 | Combination (`and`, `with`) | Yes | Yes |
-
-Record and object both use the `var` keyword to define [mutable](https://internetcomputer.org/docs/motoko/fundamentals/declarations/variable-declarations)
-and declarations.
-
-Both records and objects support `and` and `with` for merging and updating object fields to create new records and objects.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
 
