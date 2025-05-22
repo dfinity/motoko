@@ -54,6 +54,11 @@ pkgs.mkShell {
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 
+  # Add these variables to the shell environment so that
+  # test-runner can find the pocket-ic binary and library.
+  POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+  POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
+
   shellHook = llvmEnv + ''
     # We need to add the ./bin directory to PATH however `nix develop` or direnv
     # might be invoked from a subdirectory of the motoko repository. So we need
@@ -76,6 +81,11 @@ pkgs.mkShell {
     # some cleanup of environment variables otherwise set by nix-shell
     # that would be confusing in interactive use
     unset XDG_DATA_DIRS
+
+    # Update Cargo.toml with the correct pocket-ic path if it exists
+    if [ -f "test-runner/Cargo.toml" ]; then
+      sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" test-runner/Cargo.toml
+    fi
   '';
   ESM = esm;
   TOMMATHSRC = pkgs.sources.libtommath-src;
@@ -83,8 +93,6 @@ pkgs.mkShell {
   MOTOKO_BASE = base-src;
   CANDID_TESTS = "${pkgs.sources.candid-src}/test";
   VIPER_SERVER = "${viper-server}";
-  POCKET_IC_SERVER = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-  POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
 
   # allow building this as a derivation, so that hydra builds and caches
   # the dependencies of shell.

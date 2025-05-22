@@ -183,6 +183,27 @@ let
     deriv.overrideAttrs { name = "test-${name}"; }
   );
 
+  # Add test-runner test
+  test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+    pname = "test-runner";
+    version = "0.1.0";
+    src = ../test-runner;
+    cargoLock = {
+      lockFile = ../test-runner/Cargo.lock;
+    };
+    buildInputs = [
+      pkgs.pocket-ic.library
+      pkgs.pocket-ic.server
+    ];
+    POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
+    POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+    
+    # Update Cargo.toml with the correct path
+    preBuild = ''
+      sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" Cargo.toml
+    '';
+  };
+
   coverage = testDerivation {
     # this runs all subdirectories, so let's just depend on all of test/
     src = ../test;
@@ -236,7 +257,7 @@ fix_names
     perf = perf_subdir false "perf" [ moc pkgs.drun ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
-    inherit qc unit candid coverage;
+    inherit qc unit candid coverage test-runner;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)
