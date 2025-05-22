@@ -10,7 +10,6 @@ debug.print: 100_000
 debug.print: PRE-UPGRADE HOOK!
 debug.print: IC0503: Error from Canister rrkah-fqaaa-aaaaa-aaaaq-cai: Canister called `ic0.trap` with message: 'Messages are blocked during stabilization'
 Canister Backtrace:
-ic_trap
 trans_state5
 print
 .
@@ -18,7 +17,6 @@ Consider gracefully handling failures from this canister or altering the caniste
 debug.print: Upgrade
 debug.print: IC0503: Error from Canister rrkah-fqaaa-aaaaa-aaaaq-cai: Canister called `ic0.trap` with message: 'Messages are blocked during stabilization'
 Canister Backtrace:
-ic_trap
 trans_state5
 print
 .
