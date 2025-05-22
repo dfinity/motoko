@@ -754,6 +754,9 @@ let show_translation =
 let eq_translation =
   transform_if "Translate polymorphic equality" Eq.transform
 
+let rename_translation =
+  transform_if "Rename all bound variables" Rename.transform
+
 let analyze analysis_name analysis prog name =
   phase analysis_name name;
   analysis prog;
@@ -761,6 +764,8 @@ let analyze analysis_name analysis prog name =
   then Check_ir.check_prog !Flags.verbose analysis_name prog
 
 let ir_passes mode prog_ir name =
+  (* rename all bound variables (to test stable functions) *)
+  let prog_ir = rename_translation true prog_ir name in
   (* erase typ components from objects *)
   let prog_ir = typ_field_translation true prog_ir name in
   (* translations that extend the progam and must be done before await/cps conversion *)
