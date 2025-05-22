@@ -12,6 +12,7 @@ let id rho i =
   with Not_found -> i
 
 let id_bind rho i =
+  if i.[0] = '@' then (i, rho) else
   let i' = fresh_id i in
   (i', Renaming.add i i' rho)
 
