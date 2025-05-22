@@ -214,6 +214,9 @@
         pocket-ic-server = pkgs.pocket-ic.server;
         pocket-ic-library = pkgs.pocket-ic.library;
 
+        # Add test-runner directly to packages
+        test-runner = tests.test-runner;
+
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.
