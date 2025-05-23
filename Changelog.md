@@ -1,5 +1,10 @@
 # Motoko compiler changelog
 
+## 0.14.12 (FUTURE)
+
+* motoko (`moc`)
+  TBW
+
 ## 0.14.11 (2025-05-16)
 
 * motoko (`moc`)
