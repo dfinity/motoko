@@ -88,64 +88,75 @@ Reversing a linked list involves iterating through the list and prepending each 
 
 Non-parameterized type:
 
-```motoko
-persistent actor NatReverser {
+```motoko name=List
+// Lists of naturals
+type List = ?(Nat, List);
 
-  // Lists of naturals
-  type List = ?(Nat, List);
+// Reverses List
+func reverseNat(l : List) : List {
+  var current = l;
+  var rev : List = null;
 
-  let numbers : List = ?(1, ?(2, ?(3, null)));
-
-  // Reverses List
-  func reverseNat(l : List) : List {
-    var current = l;
-    var rev : List = null;
-
-    while (current != null) {
-      switch (current) {
-        case (?(head, tail)) {
-          rev := ?(head, rev);
-          current := tail;
-        };
-        case (null) {};
+  loop {
+    switch (current) {
+      case (?(head, tail)) {
+        rev := ?(head, rev);
+        current := tail;
+      };
+      case (null) {
+        return rev;
       };
     };
-    rev
   };
-
-  reverseNat(numbers); // ?(3, ?(2, ?(1, null)))
 };
+```
+
+```motoko _include=List no-repl
+let numbers : List = ?(1, ?(2, ?(3, null)));
+reverseNat(numbers); // ?(3, ?(2, ?(1, null)))
 ```
 
 Parameterized:
 
-``` motoko
-import List "mo:base/List";
+```motoko name=GenList
+// Lists of naturals
+type List<T> = ?(T, List<T>);
 
-persistent actor GenericReverser {
-
-let numbersText : List.List<Text> = ?("one", ?("two", ?("three", null)));
-let numbers : List.List<Nat> = ?(1, ?(2, ?(3, null)));
-
-func reverse<T>(l : List.List<T>) : List.List<T> {
+// Reverses List
+func reverse<T>(l : List<T>) : List<T> {
   var current = l;
-  var rev = List.nil<T>();
-
-  while(not List.isNil(current)){
-    switch(current) {
-      case(?(h, t)) {
-        rev := ?(h, rev);
-        current := t;
+  var rev : List<T> = null;
+  loop {
+    switch (current) {
+      case (?(head, tail)) {
+        rev := ?(head, rev);
+        current := tail;
       };
-      case (null) {};
+      case (null) {
+        return rev;
+      };
     };
   };
-  rev
-  };
-let textReversed = reverse<Text>(numbersText); // "three" -> "two" -> "one"
-let numbersReversed = reverse<Nat>(numbers); // 1 -> 2 -> 3
-}
+};
 ```
+
+These type and function definitions generalize the previous code to work not just on lists of `Nat`s, but on lists of `T` values, for any type `T`.
+
+You can reverse a list of numbers.
+
+``` motoko _include=GenList no-repl
+let numbers : List<Nat> = ?(1, ?(2, ?(3, null)));
+reverse<Nat>(numbers); // ?(3, ?(2, ?(1, null)))
+```
+But you can also reverse a list characters:
+
+```motoko _include=GenList no-repl
+
+let chars : List<Char> = ?('a', ?('b', ?('c', null)));
+reverse<Char>(numbers); // ?('c', ?('b', ?('a', null)))
+```
+
+Notice how generic types and generic functions complement each other.
 
 ## Type bounds
 
@@ -157,6 +168,7 @@ Although the concept of type bounds is often associated with [inheritance-based 
 
 This approach balances the flexibility of generic programming with the safety of compile-time checks, enabling the creation of generic functions that operate on a range of types while still enforcing specific structural or type constraints.
 
+<!-- TODO better example that requires bounds (this on doesn't) -->
 The following examples illustrate this behavior:
 
 ```motoko
@@ -170,7 +182,9 @@ printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 
 In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
 
-Type bounds are not limited to records. For example, it is possible to constrain a generic type to be a subtype of a primitive type.
+Type bounds are not limited to records.
+In general, the notation `T <: A` in a parameter declaration mandates that any type provided for type parameter `T` must be a subtype of the specified type `A`.
+For example, it is possible to constrain a generic type to be a subtype of a primitive type.
 
 ```motoko name=max
 func max<T <: Int>(x : T, y : T) : T {
@@ -179,14 +193,12 @@ func max<T <: Int>(x : T, y : T) : T {
 max<Int>(-5, -10);  // returns -5  : Int
 ```
 
+Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int), ensuring that arithmetic operations are valid.
+
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 
-```motoko include=max
+```motoko _include=max no-repl
 max<Nat>(5, 10); // returns 10 : Nat
 ```
-
-Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int). Since [`Int`](https://internetcomputer.org/docs/motoko/base/Int) is a concrete type, this effectively restricts `T` to [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (or to types that are structurally equivalent to [`Int`](https://internetcomputer.org/docs/motoko/base/Int)), ensuring that arithmetic operations are valid.
-
-The notation `T <: Type` mandates that any type provided for `T` must be a subtype of the specified `Type`. For records, this implies having at least the required fields; for basic types like [`Int`](https://internetcomputer.org/docs/motoko/base/Int) or [`Float`](https://internetcomputer.org/docs/motoko/base/Float), it restricts `T` to that type.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
