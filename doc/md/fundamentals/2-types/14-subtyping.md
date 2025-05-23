@@ -9,8 +9,9 @@ Subtyping is a fundamental concept in type systems that allows a value of one ty
 | Variance type | Description | Relationship | Motoko example |
 |---------------|-------------|--------------|----------------|
 | Covariant | Preserves the direction of subtyping. | If `T1 <: T2`, then `F[T1] <: F[T2]` | If `Nat <: Int`, then `?Nat <: ?Int`. You can use an optional natural number where an optional integer is expected. |
-| Invariant | No subtyping relationship is preserved. | If `T1 <: T2`, then `F[T1]` and `F[T2]` have no subtyping relation. | If `Nat <: Int`, then `[var Nat]` and `[var Int]` are unrelated. You cannot use a mutable array of natural numbers where a mutable array of integers is expected. |
-| Contravariant | Reverses the direction of subtyping. | If `T1 <: T2`, then `F[T2] <: F[T1]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. A function that can process any integer can be used where a natural number-specific function is expected |
+| Contravariant | Reverses the direction of subtyping. | If `T1 <: T2`, then `F[T2] <: F[T1]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. You can use function that takes an integer as a function that takes a natural number |
+| Invariant | No subtyping relationship is preserved. | `F[T1]` <: `F[T2]` only when `T1 <: T2` and `T2 <: T1`  | Since `Nat  <: Int` but not `Int <: Nat`, `[var Nat]` and `[var Int]` are not related by subtyping. You cannot use a mutable array of natural numbers where a mutable array of integers is expected
+
 
 - `T1` and `T2` are types.
 
@@ -38,7 +39,8 @@ let b : ?Int = a;     // Works because `?Nat <: ?Int`
 
 ## Records
 
-[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) support structural subtyping, meaning a record with more fields can be used where a record with fewer fields is expected. A record type is a subtype of another if it has at least the same fields with matching types.
+[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) support structural subtyping, meaning a record is a subtype of the record with some fields removed,
+provided the types of the fields in common are related by subtyping.
 
 ```motoko no-repl
 type A = { name : Text };
@@ -53,8 +55,8 @@ let b2 : B = a; // Not allowed because A lacks age.
 
 ## Variants
 
-[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support structural subtyping, but only if the variant contains, at most, the same cases as expected. A variant with fewer cases can be used where a variant with more cases is expected.
-
+[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support structural subtyping,
+meaning that a variant is a subtype of a variant with some cases added, provided the types of the cases in common are related by subtyping.
 ```motoko no-repl
 type A = { #Dog };
 type B = { #Dog; #Cat };
@@ -75,12 +77,13 @@ let numsAsInts : [Int] = nums;  // Allowed, since `Nat <: Int`
 
 ## Mutable arrays
 
-[Mutable arrays (`var [T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) do not support subtyping due to type safety risks. Allowing `var [T1] <: var [T2]` could lead to runtime type mismatches.
+[Mutable arrays (`var [T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) do not support subtyping to ensure type safety. Allowing `var [T1] <: var [T2]` could lead to runtime type mismatches.
 
 ```motoko no-repl
 let nums :  [var Nat] = [var 1, 2, 3];
 let numsAsInts :  [var Int] = nums;  // Not allowed because mutable arrays are invariant
 ```
+<!-- TODO: add explanation (I thought I had)-->
 
 ## Functions
 
@@ -99,7 +102,7 @@ let g : Int -> Nat = child;   // Not allowed because the return type must be cov
 
 ## Objects, modules & actors
 
-[Objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped. An object with additional methods is a subtype of one with fewer. Modules and actors follow the same principle.
+[Objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes) are structurally subtyped. An object with additional members is a subtype of one with fewer. Modules and actors follow the same principle.
 
 ```motoko no-repl
 type Parent = { getName : () -> Text };
