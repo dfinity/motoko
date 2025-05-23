@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun
+#    -d: Run on in `drun`
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
@@ -443,16 +443,18 @@ do
         # Run compiled program
         if [ "$SKIP_RUNNING" != yes ]
         then
-          wasm-strip --remove-section=name $out/$base.wasm -o $out/$base.noname.wasm
           if [ $DTESTS = yes ]
           then
+            # remove name custom section so that we don't have to deal with backtraces
+            # caveat: this won't remove embedded `name` sections in actor classes
+            wasm-strip --remove-section=name $out/$base.wasm
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.noname.wasm $mangled
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.noname.wasm $mangled 222> $out/$base.metrics
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
