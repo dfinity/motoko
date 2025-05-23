@@ -39,12 +39,6 @@ runs:
       if: startsWith(inputs.os, 'ubuntu-')
       uses: jlumbroso/free-disk-space@main
       with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
         swap-storage: false
 
     - uses: cachix/install-nix-action@v31
