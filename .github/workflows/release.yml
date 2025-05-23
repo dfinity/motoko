@@ -16,28 +16,17 @@ jobs:
   # first check that the changelog is in good order and extract the changelog
   # This will fail for non-release tags.
   changelog:
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
-    - name: Get the version
-      id: get_version
-      run: echo version=${{ github.ref_name }} >> "$GITHUB_OUTPUT"
-
     - name: Extract changelog
       id: read_changelog
       if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        export VERSION='${{ steps.get_version.outputs.version }}'
-        perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
-        cat changelog-extract.md
-        # need to mangle to use with $GITHUB_OUTPUT (previously: set-output),
-        # see https://github.com/svenstaro/upload-release-action/blob/master/README.md
-        # under "Example for feeding a file from repo to the body tag"
-        echo "RELEASE_BODY=$(perl -0777 -p -e 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g' changelog-extract.md)" >> "$GITHUB_OUTPUT"
-
+      uses: ./.github/actions/extract-changelog
+      with:
+        version: ${{ github.ref_name }}
     outputs:
-      release_body: ${{ steps.read_changelog.outputs.RELEASE_BODY }}
+      release_body: ${{ steps.read_changelog.outputs.release_body }}
 
   # Now build the release on both linux and darwin
   build:
@@ -59,7 +48,6 @@ jobs:
         cachix watch-exec ic-hs-test -- \
           nix build --max-jobs 1 -L \
             .#release.moc \
-            .#release.mo-ide \
             .#release.mo-doc \
             .#js.moc \
             .#js.moc_interpreter

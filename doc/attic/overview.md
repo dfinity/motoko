@@ -136,7 +136,7 @@ print();
 
 ## Control flow
 
-The usual suspects…​
+The usual suspects…
 
 -   `do { … }`
 
@@ -343,7 +343,7 @@ func display(x : ?Text) : Text {
 
 ## Option blocks
 
-Switching on every option value can be inconvenient …​
+Switching on every option value can be inconvenient …
 
 The *option block*, `do ? { … }`, allow you to safely access option values with a postfix *null break* `!` expression.
 
@@ -890,8 +890,6 @@ let t = toText(employee); // also works, since Employee <: Person
     -   `mo_doc` (generates doc from doc comments),
 
     -   `vessel` (package manager)
-
-    -   `mo_ide` (LSP language server for VSCode, emacs etc)
 
 <!--
 == Old slides

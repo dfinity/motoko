@@ -373,6 +373,16 @@ func cyclesBurn<system>(amount : Nat) : Nat {
   (prim "cyclesBurn" : Nat -> Nat) amount;
 };
 
+func costCall(methodNameSize : Nat64, payloadSize : Nat64) : Nat = (prim "costCall" : (Nat64, Nat64) -> Nat)(methodNameSize, payloadSize);
+
+func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
+
+func costHttpRequest(requestSize : Nat64, maxResBytes : Nat64) : Nat = (prim "costHttpRequest" : (Nat64, Nat64) -> Nat)(requestSize, maxResBytes);
+
+func costSignWithEcdsa(keyName : Text, curveEncoding : Nat32) : (resultCode : Nat32, costOrUndefined : Nat) = (prim "costSignWithEcdsa" : (Text, Nat32) -> (Nat32, Nat))(keyName, curveEncoding);
+
+func costSignWithSchnorr(keyName : Text, algorithmEncoding : Nat32) : (resultCode : Nat32, costOrUndefined : Nat) = (prim "costSignWithSchnorr" : (Text, Nat32) -> (Nat32, Nat))(keyName, algorithmEncoding);
+
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;
 func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob)();

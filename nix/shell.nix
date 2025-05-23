@@ -48,6 +48,8 @@ pkgs.mkShell {
         pkgs.openjdk
         pkgs.z3_4_12 # for viper dev
         pkgs.difftastic
+        pkgs.drun
+        pkgs.gh # GitHub CLI
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 

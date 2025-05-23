@@ -76,7 +76,6 @@ in
 rec {
   moc = ocaml_exe "moc" "moc" rts;
   mo-ld = ocaml_exe "mo-ld" "mo-ld" null;
-  mo-ide = ocaml_exe "mo-ide" "mo-ide" null;
   mo-doc = ocaml_exe "mo-doc" "mo-doc" null;
   didc = ocaml_exe "didc" "didc" null;
   deser = ocaml_exe "deser" "deser" null;

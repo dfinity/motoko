@@ -1,7 +1,32 @@
 # Motoko compiler changelog
 
+## 0.14.12 (FUTURE)
+
 * motoko (`moc`)
-  todo
+  TBW
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
+
+## 0.14.10 (2025-05-12)
+
+* motoko (`moc`)
+
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
 
 ## 0.14.8 (2025-04-17)
 

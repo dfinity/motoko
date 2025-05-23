@@ -4716,6 +4716,11 @@ module IC = struct
 
   (* IC-specific stuff: System imports, databufs etc. *)
 
+  (* Stands for the `I` value from the 'IC Interface Specification'.
+   * Use it where a pointer type is expected, to easily differentiate between pointers and i32/i64 values.
+   *)
+  let i = I64Type
+
   let register_globals env =
     (* result of last ic0.call_perform  *)
     E.add_global64 env "__call_perform_status" Mutable 0L;
@@ -4770,6 +4775,14 @@ module IC = struct
       E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
       E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
       E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
+
+      (* Cost *)
+      E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_create_canister" [i] [];
+      E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
+      E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
+      E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
+
       E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
@@ -10475,6 +10488,84 @@ module AllocHow = struct
 
 end (* AllocHow *)
 
+module Cost = struct
+  let call env =
+    Func.share_code2 Func.Always env "cost_call"
+      (("method_name_size", I64Type), ("payload_size", I64Type))
+      [IC.i]
+      (fun env get_method_name_size get_payload_size ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_method_name_size ^^
+          get_payload_size ^^
+          get_dst ^^
+          IC.ic_system_call "cost_call" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
+        get_dst ^^
+        IC.ic_system_call "cost_create_canister" env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.ic_system_call "cost_http_request" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_ecdsa env =
+    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
+      (("key_name", IC.i), ("curve", I32Type))
+      [IC.i; I64Type]
+      (fun env get_key_name get_curve ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_curve ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_ecdsa" env ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+          TaggedSmallWord.msb_adjust Type.Nat32 ^^
+          StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_schnorr env =
+    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
+      (("key_name", IC.i), ("algorithm", I32Type))
+      [IC.i; I64Type]
+      (fun env get_key_name get_algorithm ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_algorithm ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_schnorr" env ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+          TaggedSmallWord.msb_adjust Type.Nat32 ^^
+          StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+end
+
 (* The actual compiler code that looks at the AST *)
 
 (* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
@@ -12450,6 +12541,34 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  (* Cost *)
+  | OtherPrim "costCall", [method_name_size; payload_size] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
+    Cost.call env
+  | OtherPrim "costCreateCanister", [] ->
+    SR.Vanilla, Cost.create_canister env
+  | OtherPrim "costHttpRequest", [request_size; max_res_bytes] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
+    Cost.http_request env
+  | OtherPrim "costSignWithEcdsa", [key_name; curve] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) curve ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    Cost.sign_with_ecdsa env
+  | OtherPrim "costSignWithSchnorr", [key_name; algorithm] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) algorithm ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    Cost.sign_with_schnorr env
 
   | SystemTimeoutSetPrim, [e1] ->
     SR.unit,
