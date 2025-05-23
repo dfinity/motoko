@@ -96,7 +96,7 @@ function normalize () {
     # and remove spurious intervening method in backtrace for EOP
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
         -e 's/^20.*UTC: debug.print:/debug.print:/g' \
-        -e '/ic_trap/d' |
+        -e '/^ic_trap$/d' |
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
         -e '/RTS error: Cannot allocate memory/q' |
