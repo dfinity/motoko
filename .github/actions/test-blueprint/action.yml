@@ -35,13 +35,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: cachix/install-nix-action@v31
-
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        authToken: ${{ inputs.cachix-auth-token }}
-
     - name: Free Disk Space (Ubuntu)
       if: startsWith(inputs.os, 'ubuntu-')
       uses: jlumbroso/free-disk-space@main
@@ -53,6 +46,13 @@ runs:
         large-packages: true
         docker-images: true
         swap-storage: false
+
+    - uses: cachix/install-nix-action@v31
+
+    - uses: cachix/cachix-action@v16
+      with:
+        name: ic-hs-test
+        authToken: ${{ inputs.cachix-auth-token }}
 
     - run: nix profile install .#nix-build-uncached
       shell: bash
