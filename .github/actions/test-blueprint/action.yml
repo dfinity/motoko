@@ -35,6 +35,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Free Disk Space (Ubuntu)
+      if: startsWith(inputs.os, 'ubuntu-')
+      uses: jlumbroso/free-disk-space@main
+      with:
+        swap-storage: false
+
     - uses: cachix/install-nix-action@v31
 
     - uses: cachix/cachix-action@v16
