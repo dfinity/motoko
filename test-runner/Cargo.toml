@@ -1,0 +1,8 @@
+[package]
+name = "test-runner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pocket-ic = { path = "/nix/store/z6d4aqwrwz4k28crinz3flmz00sjcx7c-source/packages/pocket-ic" }  # This will be replaced by the shell hook
+
