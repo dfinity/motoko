@@ -93,10 +93,8 @@ function normalize () {
         -e 's/Motoko (source .*)/Motoko (source XXX)/ig' |
 
     # Normalize canister id prefixes and timestamps in debug prints
-    # and remove spurious intervening method in backtrace for EOP
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
-        -e 's/^20.*UTC: debug.print:/debug.print:/g' \
-        -e '/^ic_trap$/d' |
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
         -e '/RTS error: Cannot allocate memory/q' |
@@ -445,9 +443,6 @@ do
         then
           if [ $DTESTS = yes ]
           then
-            # remove name custom section so that we don't have to deal with backtraces
-            # caveat: this won't remove embedded `name` sections in actor classes
-            wasm-strip --remove-section=name $out/$base.wasm
             if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
             fi
@@ -554,7 +549,6 @@ do
         moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
         run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
-        wasm-strip --remove-section=name $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
