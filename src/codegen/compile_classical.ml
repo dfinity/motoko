@@ -5102,8 +5102,8 @@ module IC = struct
       E.add_func_import env "ic0" "canister_cycle_balance128" [I32Type] [];
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
-      (* E.add_func_import env "ic0" "root_key_copy" (i32s 3) []; *)
-      (* E.add_func_import env "ic0" "root_key_size" [] [I32Type]; *)
+      E.add_func_import env "ic0" "root_key_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "root_key_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
       E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
@@ -5420,8 +5420,8 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       Func.share_code0 Func.Never env "root_key" [I32Type] (fun env ->
         Blob.of_size_copy env Tagged.A
-          (fun env -> system_call env "subnet_self_size") (* FIXME: replace with root_key_size *)
-          (fun env -> system_call env "subnet_self_copy") (* FIXME: replace with root_key_copy *)
+          (fun env -> system_call env "root_key_size")
+          (fun env -> system_call env "root_key_copy")
           (fun env -> compile_unboxed_const 0l)
       )
     | _ ->

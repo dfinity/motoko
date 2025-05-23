@@ -5139,8 +5139,8 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       Func.share_code0 Func.Never env "root_key" [I64Type] (fun env ->
         Blob.of_size_copy env Tagged.A
-          (fun env -> system_call env "subnet_self_size") (* FIXME *)
-          (fun env -> system_call env "subnet_self_copy") (* FIXME *)
+          (fun env -> system_call env "root_key_size")
+          (fun env -> system_call env "root_key_copy")
           (fun env -> compile_unboxed_const 0L)
       )
     | _ ->
