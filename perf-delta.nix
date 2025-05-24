@@ -54,46 +54,22 @@ let
 
   checkout = rev: builtins.fetchGit { url = ./.; ref = ref; inherit rev; };
 
-  baseCheckout = checkout from;
-
-  isBaseFlake = builtins.hasAttr "flake.nix" (builtins.readDir baseCheckout);
-
   flakeOf = dir:
     let
       flakePath = builtins.unsafeDiscardStringContext "${dir}";
     in
     builtins.getFlake flakePath;
 
-  # TODO: This if-then-else is only needed for the transition from default.nix to flake.nix.
-  # After https://github.com/dfinity/motoko/pull/5067 is merged we can remove it and just use flakes.
-  baseArgs =
-    if isBaseFlake
-    then
-      let
-        baseFlake = flakeOf baseCheckout;
-      in
-      {
-        baseMoc = baseFlake.packages.${system}.debug.moc;
-        basePerf = baseFlake.checks.${system}.perf;
-      }
-    else
-      let
-        baseJobs = import baseCheckout { };
-      in
-      {
-        baseMoc = baseJobs.moc;
-        basePerf = baseJobs.tests.perf;
-      };
-  inherit (baseArgs) baseMoc basePerf;
+  baseFlake = flakeOf (checkout from);
+  prFlake = flakeOf (checkout to);
 
-  prCheckout = checkout to;
-
-  prFlake = flakeOf prCheckout;
+  baseMoc = baseFlake.packages.${system}.debug.moc;
   prMoc = prFlake.packages.${system}.debug.moc;
 
   baseWasm = wasm-hash-for baseMoc;
   prWasm = wasm-hash-for prMoc;
 
+  basePerf = baseFlake.checks.${system}.perf;
   prPerf = prFlake.checks.${system}.perf;
 in
 pkgs.runCommandNoCC "perf-delta"

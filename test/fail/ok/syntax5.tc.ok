@@ -12,6 +12,7 @@ syntax5.mo:3.1: syntax error [M0001], unexpected end of input, expected one of t
   . <id>
   , seplist(<exp(ob)>,,)
   : <typ_nobin>
+  := <exp(ob)>
   <binop> <exp_bin(ob)>
   <binassign> <exp(ob)>
   and <exp_bin(ob)>

@@ -91,14 +91,6 @@ for the real deal; some shortcuts had to be taken.
 
    Kitchen-sink of `didc` related files. Yet to be split up.
 
- * `lsp/`
-
-   Language Server Protocol JSON mapping.
-
- * `languageServer/`
-
-   The language server functionality itself.
-
 Executables
 -----------
 
@@ -109,10 +101,6 @@ actual functionality is easily shared.
  * `moc` (using `pipeline/`)
 
    The Motoko compiler
-
- * `mo-ide` (using `languageServer/`)
-
-   The Motoko language server
 
  * `mo.js` (using `pipeline/`)
 

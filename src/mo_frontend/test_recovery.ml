@@ -10,7 +10,7 @@ let parse_from_lexbuf lexbuf : Mo_def.Syntax.prog Diag.result =
   let lexer, triv_table = Lexer.tokenizer lexer_mode lexbuf in
   let () = Parser_lib.triv_table := triv_table in
   let start =  Parser.Incremental.parse_prog lexbuf.Lexing.lex_start_p in
-  let error_details = 0 in
+  let error_details = 4 in
   let* mk_syntax = Mo_frontend.Parsing.parse ~recovery:true lexer_mode error_details start lexer lexbuf
   in Diag.return @@ mk_syntax name
 
@@ -58,22 +58,34 @@ let%expect_test "test1" =
               Actor
               _
               (DecField
-                (LetD (VarP x) (AnnotE (LitE (PreLit 1 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID x))
+                  (AnnotE (LitE (PreLit 1 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP z) (AnnotE (LitE (PreLit 3 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID z))
+                  (AnnotE (LitE (PreLit 3 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP t) (AnnotE (LitE (PreLit 4 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID t))
+                  (AnnotE (LitE (PreLit 4 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -84,9 +96,51 @@ let%expect_test "test1" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'let'
+    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
+      }
+      .<nat> (e.g. '.1')
+      !
+      <exp_nullary(ob)> (e.g. '42')
+      <binop> <exp(ob)> (e.g. '+ 42')
+      ; seplist(<dec_field>,<semicolon>) (e.g. '; public let x : Int = 0')
+      |> <exp_bin(ob)> (e.g. '|> 42')
+      or <exp_bin(ob)> (e.g. 'or 42')
+      <unassign> <exp(ob)> (e.g. '-= 42')
+      implies <exp_bin(ob)> (e.g. 'implies 42')
+      <relop> <exp_bin(ob)> (e.g. '== 42')
+      else <exp_nest> (e.g. 'else 42')
+      . <id>
+      : <typ_nobin> (e.g. ': Int')
+      := <exp(ob)> (e.g. ':= 42')
+      <binop> <exp_bin(ob)> (e.g. '+ 42')
+      <binassign> <exp(ob)> (e.g. '+= 42')
+      and <exp_bin(ob)> (e.g. 'and 42')
+      <unop> <exp_bin(ob)> (e.g. '- 42')
+      <inst> <exp_nullary(ob)> (e.g. '<Int> 42')
+      [ <exp(ob)> ] (e.g. '[ 42 ]')
 
-    (unknown location): syntax error [M0001], unexpected token 'let' |}]
+    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
+      }
+      .<nat> (e.g. '.1')
+      !
+      <exp_nullary(ob)> (e.g. '42')
+      <binop> <exp(ob)> (e.g. '+ 42')
+      ; seplist(<dec_field>,<semicolon>) (e.g. '; public let x : Int = 0')
+      |> <exp_bin(ob)> (e.g. '|> 42')
+      or <exp_bin(ob)> (e.g. 'or 42')
+      <unassign> <exp(ob)> (e.g. '-= 42')
+      implies <exp_bin(ob)> (e.g. 'implies 42')
+      <relop> <exp_bin(ob)> (e.g. '== 42')
+      else <exp_nest> (e.g. 'else 42')
+      . <id>
+      : <typ_nobin> (e.g. ': Int')
+      := <exp(ob)> (e.g. ':= 42')
+      <binop> <exp_bin(ob)> (e.g. '+ 42')
+      <binassign> <exp(ob)> (e.g. '+= 42')
+      and <exp_bin(ob)> (e.g. 'and 42')
+      <unop> <exp_bin(ob)> (e.g. '- 42')
+      <inst> <exp_nullary(ob)> (e.g. '<Int> 42')
+      [ <exp(ob)> ] (e.g. '[ 42 ]') |}]
 
 let%expect_test "test2" =
   let s = "actor {
@@ -108,17 +162,20 @@ let%expect_test "test2" =
               _
               (DecField
                 (LetD
-                  (VarP x)
+                  (VarP (ID x))
                   (AnnotE
                     (BinE ??? (LitE (PreLit 1 Nat)) AddOp (LoopE (BlockE)))
-                    (PathT (IdH Int))
+                    (PathT (IdH (ID Int)))
                   )
                 )
                 Private
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -129,7 +186,8 @@ let%expect_test "test2" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'let' |}]
+    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
+      <exp_bin(ob)> (e.g. '42') |}]
 
 let%expect_test "test3" =
   let s = "actor {
@@ -159,7 +217,7 @@ let%expect_test "test3" =
                     ???
                     Local
                     @anon-func-2.11
-                    (TupP (VarP a) (VarP Int))
+                    (TupP (VarP (ID a)) (VarP (ID Int)))
                     _
 
                     (BlockE (ExpD (RetE (TupE))))
@@ -170,13 +228,13 @@ let%expect_test "test3" =
               )
               (DecField
                 (LetD
-                  (VarP bar)
+                  (VarP (ID bar))
                   (FuncE
                     ???
                     Local
                     bar
-                    (ParP (AnnotP (VarP y) (PathT (IdH Int))))
-                    (PathT (IdH Int))
+                    (ParP (AnnotP (VarP (ID y)) (PathT (IdH (ID Int)))))
+                    (PathT (IdH (ID Int)))
 
                     (BlockE (ExpD (RetE (LitE (PreLit 2 Nat)))))
                   )
@@ -185,7 +243,10 @@ let%expect_test "test3" =
                 Flexible
               )
               (DecField
-                (LetD (VarP y) (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH Int))))
+                (LetD
+                  (VarP (ID y))
+                  (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
+                )
                 Private
                 Flexible
               )
@@ -196,11 +257,19 @@ let%expect_test "test3" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'Int'
+    (unknown location): syntax error [M0001], unexpected token 'Int', expected one of token or <phrase> sequence:
+      )
+      or <pat_bin> (e.g. 'or x')
+      , seplist(<pat_bin>,,) (e.g. ', x')
+      : <typ> (e.g. ': Int')
 
-    (unknown location): syntax error [M0001], unexpected token 'private'
+    (unknown location): syntax error [M0001], unexpected token 'private', expected one of token or <phrase> sequence:
+      }
+      ; seplist(<dec_field>,<semicolon>) (e.g. '; public let x : Int = 0')
 
-    (unknown location): syntax error [M0001], unexpected token 'let' |}] 
+    (unknown location): syntax error [M0001], unexpected token 'let', expected one of token or <phrase> sequence:
+      }
+      ; seplist(<dec_field>,<semicolon>) (e.g. '; public let x : Int = 0') |}] 
 
 
 let%expect_test "test4" =
@@ -217,9 +286,9 @@ actor Main {
   Printf.printf "%s" @@ show (parse_from_string s);
   [%expect{|
     Ok: (Prog
-      (LetD (ObjP (print (VarP print))) (ImportE mo:base/Debug))
+      (LetD (ObjP (print (VarP (ID print)))) (ImportE mo:base/Debug))
       (LetD
-        (VarP Main)
+        (VarP (ID Main))
         (AwaitE
           (AsyncE
             _
@@ -228,16 +297,16 @@ actor Main {
               _
               Actor
               Main
-              (DecField (LetD (VarP x) (LitE (PreLit 1 Nat))) Private Flexible)
+              (DecField (LetD (VarP (ID x)) (LitE (PreLit 1 Nat))) Private Flexible)
               (DecField
                 (ExpD
                   (FuncE
                     ???
-                    (Query (VarP test))
+                    (Query (VarP (ID test)))
                     @anon-func-7.12
                     ($ (PrimT Any))
                     (TupP)
-                    (AsyncT (PathT (IdH $)) (PathT (IdH Nat)))
+                    (AsyncT (PathT (IdH (ID $))) (PathT (IdH (ID Nat))))
 
                     (AsyncE
                       _
@@ -256,9 +325,36 @@ actor Main {
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'public'
+    (unknown location): syntax error [M0001], unexpected token 'public', expected one of token or <phrase> sequence:
+      }
+      .<nat> (e.g. '.1')
+      !
+      <exp_nullary(ob)> (e.g. '42')
+      <binop> <exp(ob)> (e.g. '+ 42')
+      ; seplist(<dec_field>,<semicolon>) (e.g. '; public let x : Int = 0')
+      |> <exp_bin(ob)> (e.g. '|> 42')
+      or <exp_bin(ob)> (e.g. 'or 42')
+      <unassign> <exp(ob)> (e.g. '-= 42')
+      implies <exp_bin(ob)> (e.g. 'implies 42')
+      <relop> <exp_bin(ob)> (e.g. '== 42')
+      else <exp_nest> (e.g. 'else 42')
+      . <id>
+      : <typ_nobin> (e.g. ': Int')
+      := <exp(ob)> (e.g. ':= 42')
+      <binop> <exp_bin(ob)> (e.g. '+ 42')
+      <binassign> <exp(ob)> (e.g. '+= 42')
+      and <exp_bin(ob)> (e.g. 'and 42')
+      <unop> <exp_bin(ob)> (e.g. '- 42')
+      <inst> <exp_nullary(ob)> (e.g. '<Int> 42')
+      [ <exp(ob)> ] (e.g. '[ 42 ]')
 
-    (unknown location): syntax error [M0001], unexpected token '(' |}]
+    (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
+      func <func_pat> <annot_opt> <func_body> (e.g. 'func f(x : Int) : Int {}')
+      class <func_pat> <annot_opt> <class_body> (e.g. 'class f(x : Int) : Int = {}')
+      object class <func_pat> <annot_opt> <class_body> (e.g. 'object class f(x : Int) : Int = {}')
+      module class <func_pat> <annot_opt> <class_body> (e.g. 'module class f(x : Int) : Int = {}')
+      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}')
+      persistent actor class <func_pat> <annot_opt> <class_body> (e.g. 'persistent actor class f(x : Int) : Int = {}') |}]
 
 let%expect_test "test5" =
   let s = "module {
@@ -277,16 +373,16 @@ let%expect_test "test5" =
           _
           Module
           _
-          (DecField (LetD (VarP x) (LoopE (BlockE))) Private (Flexible))
+          (DecField (LetD (VarP (ID x)) (LoopE (BlockE))) Private (Flexible))
           (DecField
             (ExpD
               (FuncE
                 ???
-                (Query (VarP test))
+                (Query (VarP (ID test)))
                 @anon-func-5.12
                 ($ (PrimT Any))
                 (TupP)
-                (AsyncT (PathT (IdH $)) (PathT (IdH Nat)))
+                (AsyncT (PathT (IdH (ID $))) (PathT (IdH (ID Nat))))
 
                 (AsyncE
                   _
@@ -303,6 +399,14 @@ let%expect_test "test5" =
     )
 
      with errors:
-    (unknown location): syntax error [M0001], unexpected token 'public'
+    (unknown location): syntax error [M0001], unexpected token 'public', expected one of token or <phrase> sequence:
+      <exp(ob)> (e.g. '42')
+      <exp(ob)> else <exp_nest> (e.g. '42 else 42')
 
-    (unknown location): syntax error [M0001], unexpected token '(' |}]
+    (unknown location): syntax error [M0001], unexpected token '(', expected one of token or <phrase> sequence:
+      func <func_pat> <annot_opt> <func_body> (e.g. 'func f(x : Int) : Int {}')
+      class <func_pat> <annot_opt> <class_body> (e.g. 'class f(x : Int) : Int = {}')
+      object class <func_pat> <annot_opt> <class_body> (e.g. 'object class f(x : Int) : Int = {}')
+      module class <func_pat> <annot_opt> <class_body> (e.g. 'module class f(x : Int) : Int = {}')
+      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}')
+      persistent actor class <func_pat> <annot_opt> <class_body> (e.g. 'persistent actor class f(x : Int) : Int = {}') |}]

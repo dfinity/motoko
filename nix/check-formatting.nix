@@ -7,6 +7,6 @@ pkgs.stdenv.mkDerivation {
   phases = "unpackPhase checkPhase installPhase";
   installPhase = "touch $out";
   checkPhase = ''
-    ocamlformat --check languageServer/*.{ml,mli} docs/*.{ml,mli}
+    ocamlformat --check docs/*.{ml,mli}
   '';
 }

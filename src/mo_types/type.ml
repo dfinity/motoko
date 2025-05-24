@@ -1,3 +1,5 @@
+open Field_sources
+
 (* Representation *)
 type lab = string
 type var = string
@@ -64,7 +66,7 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and src = {depr : string option; region : Source.region}
+and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -72,7 +74,7 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-let empty_src = {depr = None; region = Source.no_region}
+let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
 (* Stable signatures *)
 type stab_sig =
@@ -697,7 +699,7 @@ let lookup_val_field_opt l tfs =
 let lookup_typ_field_opt l tfs =
   let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> Some c
+  | Some {lab = _; typ = Typ c; src} -> Some c
   | _ -> None
 
 let lookup_val_field l tfs =
@@ -927,6 +929,69 @@ let stable t = serializable true t
 let str = ref (fun _ -> failwith "")
 
 
+(* Aggregation of source fields, for use by the language server. *)
+let src_field_updates = ref []
+let src_field_map = ref (empty_srcs_tbl ())
+
+(* Helper to perform source field updates to the given map. *)
+let with_src_field_updates src_fields action =
+  Fun.protect ~finally:(fun () -> src_field_map := empty_srcs_tbl ()) (fun () ->
+    src_field_map := src_fields;
+    action ())
+
+(* Helper to aggregate field updates with an empty list, perform some predicate,
+   commit field updates if the predicate holds, and restore the empty list. It
+   will update the actions given to it in the source fields map . *)
+let with_src_field_updates_predicate src_fields predicate =
+  Fun.protect ~finally:(fun () -> src_field_updates := []; src_field_map := empty_srcs_tbl ()) (fun () ->
+    src_field_updates := [];
+    src_field_map := src_fields;
+    let result = predicate () in
+    (* Do not commit updates if the relation given by the predicate failed. *)
+    if result then
+      List.iter (fun f -> f ()) (List.rev !src_field_updates);
+    result)
+
+(* Updates to the source fields of the inputs depending on the given relation.
+   If you use this function, you'll probably want to ensure the entire relation
+   checking procedure is wrapped in [with_src_field_updates]. You'll probably
+   want to use this with [combine]. *)
+let add_src_field rel lubs glbs f1 f2 =
+  if !Mo_config.Flags.typechecker_combine_srcs then
+    let r1 = f1.src.track_region in
+    let r2 = f2.src.track_region in
+    let src_map = !src_field_map in
+    (* Perhaps we could get away with just adding [r1] and [r2] to each other's
+       tables, but we play safe here and overapproximate. *)
+    let srcs =
+      Source.Region_set.(if rel == lubs then union else inter)
+        (get_srcs src_map r1)
+        (get_srcs src_map r2)
+    in
+    Srcs_tbl.replace src_map r1 srcs;
+    Srcs_tbl.replace src_map r2 srcs
+
+(* Possibly stages an update to the source fields of the inputs in case the
+   relation holds. If you use this function, you'll probably want to ensure the
+   entire relation checking procedure is wrapped in
+   [with_src_field_updates_predicate]. You'll probably want to use it when
+   checking [sub] or [eq]. *)
+let add_src_field_update is_rel rel eq tf1 tf2 =
+  if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
+    let src_field_update () =
+      let r1 = tf1.src.track_region in
+      let r2 = tf2.src.track_region in
+      let src_map = !src_field_map in
+      (* Perhaps we could get away with just adding [r1] and [r2] to each
+         other's tables, but we play safe here and overapproximate. *)
+      let srcs = Source.Region_set.union (get_srcs src_map r1) (get_srcs src_map r2) in
+      if rel == eq then
+        Srcs_tbl.replace src_map r1 srcs;
+      Srcs_tbl.replace src_map r2 srcs
+    in
+    src_field_updates := src_field_update :: !src_field_updates
+
+
 (* Equivalence & Subtyping *)
 
 exception PreEncountered
@@ -1059,8 +1124,12 @@ and rel_fields d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ d rel eq tf1.typ tf2.typ &&
-      rel_fields d rel eq tfs1' tfs2'
+      let is_rel =
+        rel_typ d rel eq tf1.typ tf2.typ &&
+        rel_fields d rel eq tfs1' tfs2'
+      in
+      add_src_field_update is_rel rel eq tf1 tf2;
+      is_rel
     | -1 when rel != eq ->
       not (RelArg.is_stable_sub d) &&
       rel_fields d rel eq tfs1' tfs2
@@ -1078,8 +1147,12 @@ and rel_tags d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ d rel eq tf1.typ tf2.typ &&
-      rel_tags d rel eq tfs1' tfs2'
+      let is_rel =
+        rel_typ d rel eq tf1.typ tf2.typ &&
+        rel_tags d rel eq tfs1' tfs2'
+      in
+      add_src_field_update is_rel rel eq tf1 tf2;
+      is_rel
     | +1 when rel != eq ->
       rel_tags d rel eq tfs1 tfs2'
     | _ -> false
@@ -1097,15 +1170,6 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
-
-and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2
-
-and sub t1 t2 : bool =
-  rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2
-
-and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -1130,7 +1194,21 @@ and eq_con d eq c1 c2 =
     | None -> false
     )
 
-let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+let eq_binds ?(src_fields = empty_srcs_tbl ()) tbs1 tbs2 =
+  with_src_field_updates_predicate src_fields (fun () ->
+    let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
+
+let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
+
+let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    eq_kind' (ref SS.empty) k1 k2)
+
+let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
 
@@ -1375,7 +1453,9 @@ and combine_fields rel lubs glbs fs1 fs2 =
     | _ ->
       match combine rel lubs glbs f1.typ f2.typ with
       | typ ->
-       {lab = f1.lab; typ; src = empty_src} :: combine_fields rel lubs glbs fs1' fs2'
+        add_src_field rel lubs glbs f1 f2;
+        let src = {empty_src with track_region = f1.src.track_region} in
+        {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
       | exception Mismatch when rel == lubs ->
         combine_fields rel lubs glbs fs1' fs2'
 
@@ -1389,10 +1469,19 @@ and combine_tags rel lubs glbs fs1 fs2 =
     | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
     | _ ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
-      {lab = f1.lab; typ; src = empty_src} :: combine_tags rel lubs glbs fs1' fs2'
+      add_src_field rel lubs glbs f1 f2;
+      let src = {empty_src with track_region = f1.src.track_region} in
+      {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
 
-let lub t1 t2 = let lubs = ref M.empty in combine lubs lubs (ref M.empty) t1 t2
-let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
+let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let lubs = ref M.empty in
+    combine lubs lubs (ref M.empty) t1 t2)
+
+let glb ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let glbs = ref M.empty in
+    combine glbs (ref M.empty) glbs t1 t2)
 
 
 (* Environments *)
@@ -1808,10 +1897,10 @@ and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
 
 and pp_tag vs ppf {lab; typ; src} =
   match typ with
-  | Tup [] -> fprintf ppf "#%s" lab
+  | Tup [] ->
+    fprintf ppf "#%s" lab
   | _ ->
-    fprintf ppf "@[<2>#%s :@ %a@]" lab
-      (pp_typ' vs) typ
+    fprintf ppf "@[<2>#%s :@ %a@]" lab (pp_typ' vs) typ
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1968,8 +2057,9 @@ include MakePretty(ElideStamps)
 let _ = str := string_of_typ
 
 (* Stable signatures *)
-let stable_sub t1 t2 =
-  rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
+let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates_predicate src_fields (fun () ->
+    rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function
   | Single tfs ->

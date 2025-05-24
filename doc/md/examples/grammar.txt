@@ -307,18 +307,21 @@
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
 
+<func_pat> ::= 
+    <id>? <typ_params_opt> <pat_plain>
+
 <dec_var> ::= 
     'var' <id> (':' <typ>)? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> 'func' <func_pat> (':' <typ>)? <func_body>
     <parenthetical>? <obj_or_class_dec>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
+    <shared_pat_opt> <obj_sort>? 'class' <func_pat> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>

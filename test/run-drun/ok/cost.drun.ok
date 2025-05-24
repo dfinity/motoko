@@ -1,0 +1,23 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 42_102_428_000 -- cost_call
+debug.print: 38_461_538_461 -- cost_create_canister
+debug.print: 4_666_000 -- cost_http_request
+debug.print: (1, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (1, "undefined-cost") -- cost_sign_with_schnorr
+debug.print: (2, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (2, "undefined-cost") -- cost_sign_with_schnorr
+debug.print: (2, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (2, "undefined-cost") -- cost_sign_with_schnorr
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 82_102_428_000 -- cost_call
+debug.print: 38_461_538_461 -- cost_create_canister
+debug.print: 4_666_000 -- cost_http_request
+debug.print: (1, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (1, "undefined-cost") -- cost_sign_with_schnorr
+debug.print: (2, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (2, "undefined-cost") -- cost_sign_with_schnorr
+debug.print: (2, "undefined-cost") -- cost_sign_with_ecdsa
+debug.print: (2, "undefined-cost") -- cost_sign_with_schnorr
+ingress Completed: Reply: 0x4449444c0000

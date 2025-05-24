@@ -3,6 +3,30 @@ type region = {left : pos; right : pos}
 type ('a, 'b) annotated_phrase = {at : region; it : 'a; mutable note: 'b}
 type 'a phrase = ('a, unit) annotated_phrase
 
+module Pos_ord = struct
+  type t = pos
+
+  let compare l r =
+    match compare l.file r.file with
+    | 0 ->
+      (match compare l.line r.line with
+      | 0 -> compare l.column r.column
+      | ord -> ord)
+    | ord -> ord
+end
+
+module Region_ord = struct
+  type t = region
+
+  let compare l r =
+    match Pos_ord.compare l.left r.left with
+    | 0 -> Pos_ord.compare l.right r.right
+    | ord -> ord
+end
+
+module Region_set = Set.Make (Region_ord)
+module Region_map = Map.Make (Region_ord)
+
 let annotate note it at = {it; at; note}
 let (@@) it at = annotate () it at
 

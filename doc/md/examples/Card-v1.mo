@@ -3,5 +3,6 @@ persistent actor {
     title : Text;
     description : Text;
   };
+
   var map : [(Nat32, Card)] = [];
 };
