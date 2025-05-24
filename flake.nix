@@ -26,7 +26,7 @@
       flake = false;
     };
     ic-src = {
-      url = "github:luc-blaeser/ic/drun/2025-02-27_03";
+      url = "github:dfinity/ic";
       flake = false;
     };
     ic-wasm-src = {
