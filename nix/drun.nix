@@ -22,9 +22,9 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
       "ic-bn-lib-0.1.0" = "sha256-40EQ0oKEjcEnAiQhlqveLjQfvloLMLbqeze1T2QhP5M=";
       "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
       "ic-gateway-0.2.0" = "sha256-67nSahWf/IPxmGxhZz5phnZtZUsFyyXx73grkMh6J8E=";
+      "ic-vetkeys-0.1.0" = "sha256-h8Jso21fK0QTyuSa14iAYsDvrfMphvI3spJBYOLgq1c=";
       "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
       "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
-      "tower_governor-0.5.0" = "sha256-YugNEuG1IeK5MuD/falbtFPpNKXHJoo2j7IvT4Ey+nc=";
     };
   };
 
