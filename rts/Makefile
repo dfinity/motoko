@@ -295,33 +295,39 @@ LINKER_OPTIONS_64=\
 
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_32) \
-		$+
+	  $(LINKER_OPTIONS_32) \
+	  $+
+	wasm-validate $@
 
 mo-rts-non-incremental-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_32) \
-		$+
+	  $(LINKER_OPTIONS_32) \
+	  $+
+	wasm-validate $@
 
 mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_32) \
-		$+
+	  $(LINKER_OPTIONS_32) \
+	  $+
+	wasm-validate $@
 
 mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_32) \
-		$+
+	  $(LINKER_OPTIONS_32) \
+	  $+
+	wasm-validate $@
 
 mo-rts-eop.wasm: $(RTS_RUST_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_64) \
-		$+
+	  $(LINKER_OPTIONS_64) \
+	  $+
+	wasm-validate --enable-memory64 $@
 
 mo-rts-eop-debug.wasm: $(RTS_RUST_DEBUG_WASM_64_A) $(WASM_A_DEPENDENCIES_64)
 	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS_64) \
-		$+
+	  $(LINKER_OPTIONS_64) \
+	  $+
+	wasm-validate --enable-memory64 $@
 
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
