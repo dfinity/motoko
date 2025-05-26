@@ -50,6 +50,7 @@ in
 
 pkgs.stdenv.mkDerivation {
   name = "moc-rts";
+  __contentAddressed = true;
 
   src = ../rts;
 
