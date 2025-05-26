@@ -1560,14 +1560,15 @@ and infer_exp'' env exp : T.typ =
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
 
-    let inferred_opt = if typ_opt <> None then None else begin
+    let inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
       let env'' =
         { env' with
           (* labs = T.Env.empty; *)
           pre = true;
-          msgs = Diag.copy_msg_store env.msgs;
-          (* rets = Some codom; *)
-          (* async = None; *) }
+          msgs;
+          rets = Some T.Pre;
+          (* async = None; *)
+        }
       in
       let initial_usage = enter_scope env'' in
       let res =
@@ -1588,11 +1589,14 @@ and infer_exp'' env exp : T.typ =
       in
       leave_scope env ve2 initial_usage;
       res
-    end in
-    Option.iter (fun ts -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
+    ) in
+    Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
+    (* Note: when `ok` there are probably no messages *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> []) inferred_opt |> Diag.print_messages; *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> x) inferred_opt |> Diag.print_messages; *)
     let ts2 = match inferred_opt with
-      | Some ts -> ts
-      | None -> ts2
+      | Ok (ts, _) -> ts
+      | Error _ -> ts2
     in
 
     typ.note <- T.seq ts2; (* HACK *)

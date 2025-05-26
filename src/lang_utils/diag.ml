@@ -55,7 +55,6 @@ type msg_store = messages ref
 let add_msg s m = s := m :: !s
 let add_msgs s ms = s := List.rev ms @ !s
 let get_msgs s = List.rev !s
-let copy_msg_store s = ref !s
 
 let has_errors : messages -> bool =
   List.exists (fun msg -> msg.sev == Error)
