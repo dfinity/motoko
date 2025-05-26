@@ -62,6 +62,7 @@ pkgs.stdenv.mkDerivation {
     wasmtime
     rust-bindgen
     python3
+    wabt
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];

@@ -71,11 +71,11 @@
     "ic-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1747423349,
-        "narHash": "sha256-6prb7q1Xl5ExGuKbYogcMbaeaWhLvW/1qrXf8eWXLf4=",
+        "lastModified": 1748007685,
+        "narHash": "sha256-tipmsmLB+iH5KLsIl+fCYjmZdREesrWMWRmuyiceaUA=",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "05fdb3a476caa6024739fb84b7ac9873acad2cad",
+        "rev": "1b05fbe93d6cc035bdd48ee86a9a3a70406af7e1",
         "type": "github"
       },
       "original": {
