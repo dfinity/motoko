@@ -10,7 +10,7 @@ sh <(curl -L https://nixos.org/nix/install) --daemon
 This repository is also a Nix Flake which means you need to
 allow this feature by making sure the following is present in `/etc/nix/nix.conf`:
 ```
-extra-experimental-features = nix-command flakes
+extra-experimental-features = nix-command flakes ca-derivations
 ```
 
 You should also enable a nix cache to get all dependencies pre-built.
