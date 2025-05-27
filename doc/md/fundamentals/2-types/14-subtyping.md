@@ -11,6 +11,9 @@ In Motoko, the simplest subtyping relation is between `Nat` and `Int`. `Nat` is 
 If you have a value of type `Nat`, you can supply it to a function taking the more general supertype `Int`.
 Motoko applies subtyping wherever it needs to, to prove that your program is type correct.
 
+
+:::info
+
 Subtyping is similar to the notion of subset you may have encountered in school.
 With sets, one set `A` is a subset of another `B`, written `A ⊆ B`, if every element of the set `A` is contained in the set `B` (which may have additional elements).
 
@@ -19,15 +22,22 @@ Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the su
 If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called _transitivity_.
 
 Not all sets are related by subset. Take, for example the set of natural numbers  `N = {0, 1, 2, …}` and the set of integers `I = {… -1, -2, 0, 1, 2, …}`
-only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is not a subset of `N`).
+only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is _not_ a subset of `N`).
 
+:::
 
 With types, one type `T` is a subtype of another type `U`, written `T <: U`, if every value of the type `T` is also a value of the type `U`.
-Every type `T` is a trivial subtype of itself, `T <: T`. The subtype relation, like subset, is reflexive.
-If `T` is subtype of `U` (`T <: U`) and `U` is a subtype of `V` (`U <: V`) then `T` is a subtype of `V` (`T <: V`) too. The subtype relation, like subset, is transitive.
-We'll use the notation `T </: U` to mean _not_ `T <: U`.
 
-In Motoko, subtyping is used in various contexts to provide flexible typing while maintaining type safety.
+Every type `T` is a trivial subtype of itself, `T <: T`. The subtype relation, like subset, is reflexive.
+
+If `T` is subtype of `U` (`T <: U`) and `U` is a subtype of `V` (`U <: V`) then `T` is a subtype of `V` (`T <: V`) too. The subtype relation, like subset, is transitive.
+
+We'll use the notation `T </: U` to mean _not_ `T <: U` (`T` is not a subtype of `U`).
+
+There is no run-time cost to subtyping: using a value at a supertype does not perform any conversion on the value,
+but just views the same value through the lens of a different type.
+
+In Motoko, subtyping is used to provide more flexible typing without compromising type safety.
 
 ## Variance
 
@@ -66,7 +76,7 @@ In this table:
 
 - `<:` means "is a subtype of."
 
-## Numeric (`Nat <: Int`)
+## Numbers `Nat` and `Int`
 
 [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) (as negative numbers exist in `Int`).
 
@@ -80,6 +90,46 @@ let i : Int = n;        // Allowed, since `Int <: Nat`
 let i : Int = -5;
 let n : Nat = i;        // Not allowed, since `Int </: Nat`
 ```
+
+## None: the least type
+
+`None` is an empty type in Motoko. It contains no values at all so, and, by definition, `None` is a subtype of every other type: `None <: T`, for any `T`.
+
+None is the least (as in smallest) type.
+
+You might think the `None` type is useless, but it is used to type expressions that never produce a value, like the infinite loop `loop {}`.
+
+``` motoko
+func impossible() : None { loop {} };
+
+impossible() # impossible();  // Allowed, since `None <: Text`
+impossible() + impossible();  // Allowed, since `None <: Nat`
+
+if (false == true) impossible(); // Allowed, since `None <: ()`
+```
+
+Call the function `impossible()` will force your program to enter an infinite loop, returning no value at all.
+Because `None` is the least type, it can be used wherever any other type is expected.
+
+`None` is similar to the empty set: the empty set has no elements and is a subset of every other set `{} ⊆ A`.
+
+## Any: the greatest type
+
+Motoko's `Any` type contains all values. By definition, every type is a subset of `Any`, `T <: Any`.
+`Any` is the greatest (as in largest) type in Motoko.
+
+A function that accepts an `Any` argument can be applied to "any" type of argument.
+
+``` motoko
+func discard(a : Any) {};
+
+discard(0); // Allowed, since `Nat <: Any`
+discard(true); // Allowed, since `Bool <: Any`
+discard("abc"); // Allowed, since `Text <: Any`
+```
+
+`Any` is similar to the universal set `U`, the set that contains all possible elements.
+Every set `A` is a subset of the universal set, `A ⊆ U`.
 
 ## Options
 
@@ -101,30 +151,35 @@ let ot : ?Text = n;     // Allowed, since `Null <: ?Text`
 
 ## Records and objects
 
-[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally,  [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)  support subtyping, meaning an object is a subtype of a similar object with some fields removed,
-provided the types of the fields in common are related by subtyping.
+[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally,  [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)
+support subtyping, both in the required fields and the types of those fields.
+
+An object type `T` is a subtype of another object type `U`, if `T` requires all the fields required by `U`,
+with field types that are subtypes of those in `U`.
+Note that `T` may provide more fields than `U`.
 
 ```motoko norepl
-type A = { name : Text };
-type B = { name : Text; age : Nat };
-type C = { name : Text; age : Int };
+type A = { name : Text; age : Nat };
+type B = { name : Text; age : Int };
+type C = { name : Text };
 
-let a : A = { name = "Motoko" };
-let b : B = { name = "Ghost"; age = 25 };
-let c : C = { name = "Other"; age = -1 };
+let a : A = { name = "Ghost"; age = 25 };
+let b : B = { name = "Other"; age = -1 };
+let c : C = { name = "Motoko" };
 
-
-let a2 : A = b; // Allowed, since B has all fields of A
-let b2 : B = a; // Not allowed because A lacks age.
-let c2 : C = b; // Allowed since `age : Nat` implies `age : Int` (`Nat <: Int`).
-let b3 : B = c; // Not allowed since `age : Int` does not implies `age : Nat` (`Int </: Nat`).
+let b1 : B = a; // Allowed since `age : Nat` implies `age : Int` (`Nat <: Int`).
+let c1 : C = b; // Allowed, since `B` has all fields of `C`
+let a1 : A = b; // Not allowed since `age : Int` does not imply `age : Nat` (`Int </: Nat`).
+let b2 : B = c; // Not allowed because `C` lacks `age`.
 ```
 
 ## Variants
 
-[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping.
+[Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping, both in the allowed fields and the types of those fields.
 
-A variant is a subtype of a similar variant with some cases added, provided the types of the cases in common are related by subtyping.
+An variant type `T` is a subtype of another variant type `U`, if `T` allows only some of the fields allowed by `U`,
+with field types that are subtypes of those in `U`.
+Note that `T` may allow fewer fields than `U`.
 
 For example, we can define a variant `WeekDay` that is a subtype of `Day` (adding weekends):
 
@@ -175,24 +230,24 @@ let numsAsInts : [Int] = nums;  // Allowed, since `Nat <: Int` we also have `[Na
 
 ## Mutable arrays
 
-[Mutable arrays (`[var T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) do not support interesting subtyping.
-Indeed, `[var T1] <: [var T2]` only when `T1` and `T2` are equivalent.
-Allowing `[var T1] <: var T2]` whenever `T1 <: T2` is not safe.
-
+[Mutable arrays]](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form  `[var T]` do not support interesting subtyping.
 The mutable array constructor `[var T]` is invariant in `T`.
+This means that `[var T1] <: [var T2]` only when `T1` and `T2` are equivalent.
+
+Allowing `[var T1] <: [var T2]` whenever `T1 <: T2`, without requiring `T2 <: T1` would not be safe.
 
 ```motoko norepl
-let nums :  [var Nat] = [var 1, 2, 3];
-let numsAsInts :  [var Int] = nums;  // Not allowed because `[var Nat] </: [var Int]`.
+let nats : [var Nat] = [var 1, 2, 3];
+let ints : [var Int] = nats;  // Not allowed because `[var Nat] </: [var Int]`.
 ```
 
-If this were allowed, then the legal assignment
+If subtyping between mutable arrays were allowed, then the legal assignment
 
 ``` motoko norepl
-numsAsInts[0] := -1;
+ints[0] := -1;
 ```
 
-would have the side-effect of also setting `nums[0]` to `-1`, yet `num` is supposed to only contain (non-negative) `Nat`s.
+would have the side-effect of also setting `nats[0]` to `-1`, but `nats` must only contain `Nat`s!
 
 
 ## Functions
@@ -261,7 +316,11 @@ type ColorPoint = {
 `ColorPoint` is a subtype of `Point`:
 
 ``` motoko include=Point
-let cp : ColorPoint = { color = #red; x = 0; move = func (dx : Int) { { cp with x = cp.x + dx } }};
+let cp : ColorPoint = {
+  color = #red;
+  x = 0;
+  move = func (dx : Int) { { cp with x = cp.x + dx } }
+};
 let c : Point = cp;
 ```
 
