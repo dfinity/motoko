@@ -97,7 +97,7 @@ None is the least (as in smallest) type.
 
 You might think the `None` type is useless, but it is used to type expressions that never produce a value, like the infinite loop `loop {}`.
 
-``` motoko
+``` motoko no-repl
 func impossible() : None { loop {} };
 
 impossible() # impossible();  // Allowed, since `None <: Text`
@@ -118,7 +118,7 @@ Motoko's `Any` type contains all values. By definition, every type is a subset o
 
 A function that accepts an `Any` argument can be applied to "any" type of argument.
 
-``` motoko
+``` motoko no-repl
 func discard(a : Any) {};
 
 discard(0); // Allowed, since `Nat <: Any`
@@ -133,7 +133,7 @@ Every set `A` is a subset of the universal set, `A ⊆ U`.
 
 If `T <: U`, then `?T <: ?U` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
 
-```motoko norepl
+```motoko no-repl
 let a : ?Nat = ?5;
 let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
 ```
@@ -141,7 +141,7 @@ let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
 In Motoko, the literal `null` has type `Null` which subtypes any option type, that is `Null <: ?T` (for any `T`).
 This means you can use `null` as the absent value of any optional type.
 
-```motoko norepl
+```motoko no-repl
 let n : Null = null;
 let oi : ?Int = n;      // Allowed, since `Null <: ?Int`
 let ot : ?Text = n;     // Allowed, since `Null <: ?Text`
@@ -156,7 +156,7 @@ An object type `T` is a subtype of another object type `U`, if `T` requires all 
 with field types that are subtypes of those in `U`.
 Note that `T` may provide more fields than `U`.
 
-```motoko norepl
+```motoko no-repl
 type A = { name : Text; age : Nat };
 type B = { name : Text; age : Int };
 type C = { name : Text };
@@ -175,7 +175,7 @@ If the field of an object is mutable (e.g. `var age : Nat`), then any field in t
 
 For example, consider these object types with mutable `age` fields:
 
-```motoko norepl
+```motoko no-repl
 type A = { name : Text; var age : Nat };
 type B = { name : Text; var age : Int };
 ```
@@ -194,28 +194,28 @@ Note that `T` may allow fewer fields than `U`.
 
 For example, we can define a variant `WeekDay` that is a subtype of `Day` (adding weekends):
 
-```motoko norepl name=Days
+```motoko no-repl name=Days
 type WeekDay = { #mon; #tue; #wed; #thu; #fri };
 type Day = { #mon; #tue; #wed; #thu; #fri; #sat; #sun};
 ```
 
 Now every weekday is a day:
 
-```motoko norepl include=Days
+```motoko no-repl _include=Days
 let wd : WeekDay = #mon;
 let d : Day = wd;  // Allowed, since `WeekDay <: Day`
 ```
 
 But not the other way round:
 
-```motoko norepl include=Days
+```motoko no-repl _include=Days
 let d : Day = #mon;
 let wd : WeekDay = d;  // Not allowed, since `Day </: WeekDay` (`d` could also be `#sat`)
 ```
 
 Variants with arguments can also be related by subtyping:
 
-```motoko norepl
+```motoko no-repl
 type Ok<T> = {#ok : T};
 type Err<E> = {#err : E};
 type Result<T, E> = {#ok : T; #err : E};
@@ -235,7 +235,7 @@ let rok : Result<Int, Text> = ok; // Allowed, since `{#ok : Nat} <: {#ok : Int; 
 
 If `T <: U`, then an (immutable) array of type `[T]` can be used as an array of type `[U]`.
 
-```motoko norepl
+```motoko no-repl
 let nats : [Nat] = [1, 2, 3];
 let ints : [Int] = nats;  // Allowed, since `Nat <: Int` we also have `[Nat] <: [Int]`.
 ```
@@ -248,14 +248,14 @@ This means that `[var T] <: [var U]` only when `T` and `U` are equivalent.
 
 Allowing `[var T] <: [var U]` whenever `T <: U`, without requiring `U <: T` would not be safe.
 
-```motoko norepl
+```motoko no-repl
 let nats : [var Nat] = [var 1, 2, 3];
 let ints : [var Int] = nats;  // Not allowed, because `[var Nat] </: [var Int]`.
 ```
 
 If subtyping between mutable arrays were allowed, then the legal assignment
 
-``` motoko norepl
+``` motoko no-repl
 ints[0] := -1;
 ```
 
@@ -279,7 +279,7 @@ will only receive arguments it can consume (since `U1 <: T1`) and produce result
 
 As a simple example, consider the `magnitude` function that returns the absolute value, or magnitude, of an integer.
 
-```motoko norepl name=magnitude
+```motoko no-repl name=magnitude
 import Int "mo:base/Int"
 func magnitude(i : Int) : Nat { Int.abs(i) };
 ```
@@ -287,7 +287,7 @@ func magnitude(i : Int) : Nat { Int.abs(i) };
 Its most precise type is `Int -> Nat`, but, due to subtyping, it also has types `Nat -> Nat` (making the argument more specific),
 `Int -> Int`  (making the result more general) and `Int -> Int` (doing both).
 
-``` motoko norepl include=magnitude
+``` motoko no-repl _include=magnitude
 let i2n : Int -> Nat = magnitude;
 let n2n : Nat -> Nat = magnitude;
 let i2i : Int-> Int = magnitude;
@@ -312,7 +312,7 @@ functions with supertypes.
 
 Consider these two recursive point types, the second one adding a `color` field:
 
-```motoko norepl name=Point
+```motoko no-repl name=Point
 type Point = {
   x : Int;
   move: Int -> Point
@@ -327,7 +327,7 @@ type ColorPoint = {
 
 `ColorPoint` is a subtype of `Point`:
 
-``` motoko include=Point
+``` motoko no-repl _include=Point
 let cp : ColorPoint = {
   color = #red;
   x = 0;
@@ -340,7 +340,7 @@ This also works for recursive variants and even generic types:
 
 For example, a tree with exclusively `#red` nodes is subtype of a tree with both `#red` and `#black` nodes:
 
-```motoko norepl
+```motoko no-repl
 type RedTree<T> = {
   #leaf;
   #red : (RedTree<T>, RedTree<T>)
