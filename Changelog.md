@@ -3,7 +3,8 @@
 ## 0.14.12 (FUTURE)
 
 * motoko (`moc`)
-  TBW
+  
+  * Added the `rootKey` primitive (#4994).
 
 ## 0.14.11 (2025-05-16)
 
