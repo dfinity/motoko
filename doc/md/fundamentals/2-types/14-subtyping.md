@@ -49,7 +49,7 @@ For example,
 * The mutable array type `[var T]` constructs a mutable array type from `T`.
 * The object type `{… f : T; …}` constructs an object type from a field type `T`.
 * The variant type `{… #f : T; …}` constructs a variant type from a field type `T`.
-* The function type `T1 -> T2` constructs a function type from the argument type `T1` and result type `T2`.
+* The function type `T -> U` constructs a function type from the argument type `T` and result type `U`.
 
 If replacing an argument to a type constructor by a supertype produces a supertype of the constructed type, then the constructor is
 _covariant_ in that argument.
@@ -64,13 +64,13 @@ Note that a type constructor that takes several arguments can have different var
 
 | Variance type | Description | Relationship | Motoko example |
 |---------------|-------------|--------------|----------------|
-| Covariant | Preserves the direction of subtyping. | If `T1 <: T2`, then `F[T1] <: F[T2]` | If `Nat <: Int`, then `?Nat <: ?Int`. You can use an optional natural number where an optional integer is expected. |
-| Contravariant | Reverses the direction of subtyping. | If `T1 <: T2`, then `F[T2] <: F[T1]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. You can use a function that takes an integer as a function that takes a natural number |
-| Invariant | No subtyping relationship is preserved. | `F[T1]` <: `F[T2]` only when `T1 <: T2` and `T2 <: T1`  | Since `Nat  <: Int` but not `Int <: Nat`, `[var Nat]` and `[var Int]` are not related by subtyping. You cannot use a mutable array of natural numbers where a mutable array of integers is expected |
+| Covariant | Preserves the direction of subtyping. | If `T <: U`, then `F[T] <: F[U]` | If `Nat <: Int`, then `?Nat <: ?Int`. You can use an optional natural number where an optional integer is expected. |
+| Contravariant | Reverses the direction of subtyping. | If `T <: U`, then `F[U] <: F[T]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. You can use a function that takes an integer as a function that takes a natural number |
+| Invariant | No subtyping relationship is preserved. | `F[T]` <: `F[U]` only when `T <: U` and `U <: T`  | Since `Nat  <: Int` but not `Int <: Nat`, `[var Nat]` and `[var Int]` are not related by subtyping. You cannot use a mutable array of natural numbers where a mutable array of integers is expected |
 
 In this table:
 
-- `T1` and `T2` are types.
+- `T` and `U` are types.
 
 - `F[T]` represents a type constructor applied to type `T` (e.g. `?T` for option type).
 
@@ -133,7 +133,7 @@ Every set `A` is a subset of the universal set, `A ⊆ U`.
 
 ## Options
 
-If `T1 <: T2`, then `?T1 <: ?T2` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
+If `T <: U`, then `?T <: ?U` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
 
 ```motoko norepl
 let a : ?Nat = ?5;
@@ -220,25 +220,26 @@ let rok : Result<Int, Text> = ok; // Allowed, since `{#ok : Nat} <: {#ok : Int; 
 
 ## Immutable arrays
 
-[Immutable arrays (`[T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) support covariant subtyping, meaning if `T1 <: T2`, then `[T1] <: [T2]`.
-If `T1 <: T2`, then an immutable array of type `[T1]` can be used as an immutable array of type `[T2]`.
+[Immutable arrays (`[T]`)](https://internetcomputer.org/docs/motoko/fundamentals/types/immutable-arrays) support covariant subtyping, meaning if `T <: U`, then `[T] <: [U]`.
+
+If `T <: U`, then an (immutable) array of type `[T]` can be used as an array of type `[U]`.
 
 ```motoko norepl
-let nums : [Nat] = [1, 2, 3];
-let numsAsInts : [Int] = nums;  // Allowed, since `Nat <: Int` we also have `[Nat] <: [Int]`.
+let nats : [Nat] = [1, 2, 3];
+let ints : [Int] = nats;  // Allowed, since `Nat <: Int` we also have `[Nat] <: [Int]`.
 ```
 
 ## Mutable arrays
 
 [Mutable arrays]](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form  `[var T]` do not support interesting subtyping.
 The mutable array constructor `[var T]` is invariant in `T`.
-This means that `[var T1] <: [var T2]` only when `T1` and `T2` are equivalent.
+This means that `[var T] <: [var U]` only when `T` and `U` are equivalent.
 
-Allowing `[var T1] <: [var T2]` whenever `T1 <: T2`, without requiring `T2 <: T1` would not be safe.
+Allowing `[var T] <: [var U]` whenever `T <: U`, without requiring `U <: T` would not be safe.
 
 ```motoko norepl
 let nats : [var Nat] = [var 1, 2, 3];
-let ints : [var Int] = nats;  // Not allowed because `[var Nat] </: [var Int]`.
+let ints : [var Int] = nats;  // Not allowed, because `[var Nat] </: [var Int]`.
 ```
 
 If subtyping between mutable arrays were allowed, then the legal assignment
