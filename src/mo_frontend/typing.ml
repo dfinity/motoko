@@ -3326,8 +3326,8 @@ and infer_id_typdecs env at id c k : Scope.con_env =
 and infer_block_valdecs env decs scope : Scope.t =
   let _, scope' =
     List.fold_left (fun (env, scope) dec ->
-      let scope' = infer_dec_valdecs env dec in
-      adjoin env scope', Scope.adjoin scope scope'
+      let ve = infer_dec_valdecs env dec in
+      adjoin_vals env ve, Scope.adjoin_val_env scope ve
     ) (env, scope) decs
   in scope'
 
@@ -3336,10 +3336,10 @@ and is_import d =
   | LetD (_, {it = ImportE _; _}, None) -> true
   | _ -> false
 
-and infer_dec_valdecs env dec : Scope.t =
+and infer_dec_valdecs env dec : Scope.val_env =
   match dec.it with
   | ExpD _ | TypD _ ->
-    Scope.empty
+    T.Env.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
@@ -3356,17 +3356,16 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = singleton id obj_typ}
+    singleton id obj_typ
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
-    let ve' = match fail with
+    begin match fail with
       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
       | Some _ -> check_pat env t pat
-    in
-    Scope.{empty with val_env = ve'}
+    end
   | VarD (id, exp) ->
-    let t = infer_exp {env with pre = true} exp in
-    Scope.{empty with val_env = singleton id (T.Mut t)}
+     let t = infer_exp {env with pre = true} exp in
+     singleton id (T.Mut t)
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
@@ -3393,9 +3392,7 @@ and infer_dec_valdecs env dec : Scope.t =
       List.map (T.close cs) ts1,
       [T.close cs t2])
     in
-    Scope.{ empty with
-      val_env = singleton id t;
-    }
+    singleton id t
 
 (* Programs *)
 
