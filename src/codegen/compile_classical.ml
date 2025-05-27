@@ -5419,7 +5419,7 @@ module IC = struct
   let get_root_key env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      Func.share_code0 Func.Never env "root_key" [I32Type] (fun env ->
+      Func.share_code0 Func.Never env "root_key" [i] (fun env ->
         Blob.of_size_copy env Tagged.A
           (fun env -> system_call env "root_key_size")
           (fun env -> system_call env "root_key_copy")
