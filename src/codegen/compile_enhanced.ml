@@ -4745,66 +4745,68 @@ module IC = struct
     Blob.lit env Tagged.T "" ^^
     set_call_perform_message env
 
+  let is n = Lib.List.make n i
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
-      E.add_func_import env "ic0" "accept_message" [] [];
-      E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
-      E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
-      E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
-      E.add_func_import env "ic0" "call_new" (i64s 8) [];
-      E.add_func_import env "ic0" "call_perform" [] [I32Type];
-      E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
-      E.add_func_import env "ic0" "canister_cycle_balance128" [I64Type] [];
-      E.add_func_import env "ic0" "canister_self_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
-      E.add_func_import env "ic0" "root_key_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "root_key_size" [] [I64Type];
-      E.add_func_import env "ic0" "canister_status" [] [I32Type];
-      E.add_func_import env "ic0" "canister_version" [] [I64Type];
-      E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
-      E.add_func_import env "ic0" "is_controller" (i64s 2) [I32Type];
-      E.add_func_import env "ic0" "subnet_self_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "subnet_self_size" [] [I64Type];
-      E.add_func_import env "ic0" "debug_print" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_arg_data_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_arg_data_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_caller_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_caller_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_cycles_available128" [I64Type] [];
-      E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
-      E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
-      E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
+    (* Keep all the imports in sync between classical and enhanced versions *)
+    E.add_func_import env "ic0" "accept_message" [] [];
+    E.add_func_import env "ic0" "call_data_append" (is 2) [];
+    E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+    E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
+    E.add_func_import env "ic0" "call_new" (is 8) [];
+    E.add_func_import env "ic0" "call_perform" [] [I32Type];
+    E.add_func_import env "ic0" "call_on_cleanup" (is 2) [];
+    E.add_func_import env "ic0" "canister_cycle_balance128" [i] [];
+    E.add_func_import env "ic0" "canister_self_copy" (is 3) [];
+    E.add_func_import env "ic0" "canister_self_size" [] [i];
+    E.add_func_import env "ic0" "canister_status" [] [I32Type];
+    E.add_func_import env "ic0" "canister_version" [] [I64Type];
+    E.add_func_import env "ic0" "root_key_copy" (is 3) [];
+    E.add_func_import env "ic0" "root_key_size" [] [i];
+    E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
+    E.add_func_import env "ic0" "is_controller" (is 2) [I32Type];
+    E.add_func_import env "ic0" "subnet_self_copy" (is 3) [];
+    E.add_func_import env "ic0" "subnet_self_size" [] [i];
+    E.add_func_import env "ic0" "debug_print" (is 2) [];
+    E.add_func_import env "ic0" "msg_arg_data_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_arg_data_size" [] [i];
+    E.add_func_import env "ic0" "msg_caller_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_caller_size" [] [i];
+    E.add_func_import env "ic0" "msg_cycles_available128" [i] [];
+    E.add_func_import env "ic0" "msg_cycles_refunded128" [i] [];
+    E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; i] [];
 
-      (* Cost *)
-      E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
-      E.add_func_import env "ic0" "cost_create_canister" [i] [];
-      E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
-      E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
-      E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
+    (* Cost *)
+    E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cost_create_canister" [i] [];
+    E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
+    E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
 
-      E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
-      E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
-      E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
-      E.add_func_import env "ic0" "data_certificate_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_method_name_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_method_name_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject_msg_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_reject_msg_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_reject" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_reply_data_append" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_reply" [] [];
-      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
-      E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
-      E.add_func_import env "ic0" "trap" (i64s 2) [];
-      E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
-      E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
-      E.add_func_import env "ic0" "stable64_size" [] [I64Type];
-      E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
-      E.add_func_import env "ic0" "time" [] [I64Type];
-      if !Flags.global_timer then
-        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
+    E.add_func_import env "ic0" "certified_data_set" (is 2) [];
+    E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
+    E.add_func_import env "ic0" "data_certificate_size" [] [i];
+    E.add_func_import env "ic0" "data_certificate_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_method_name_size" [] [i];
+    E.add_func_import env "ic0" "msg_method_name_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+    E.add_func_import env "ic0" "msg_reject_msg_size" [] [i];
+    E.add_func_import env "ic0" "msg_reject_msg_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_reject" (is 2) [];
+    E.add_func_import env "ic0" "msg_reply_data_append" (is 2) [];
+    E.add_func_import env "ic0" "msg_reply" [] [];
+    E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
+    E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
+    E.add_func_import env "ic0" "trap" (is 2) [];
+    E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
+    E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
+    E.add_func_import env "ic0" "stable64_size" [] [I64Type];
+    E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+    E.add_func_import env "ic0" "time" [] [I64Type];
+    if !Flags.global_timer then
+      E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
   let system_imports env =
     match E.mode env with
