@@ -27,6 +27,7 @@ jobs:
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@main
         with:
+          branch: "update_flake_lock_action_daily"
           inputs: |
             flake-utils
             nix-update-flake
