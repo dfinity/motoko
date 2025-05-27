@@ -21,7 +21,7 @@ Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the su
 
 If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called _transitivity_.
 
-Not all sets are related by subset. Take, for example the set of natural numbers  `N = {0, 1, 2, …}` and the set of integers `I = {… -1, -2, 0, 1, 2, …}`
+Not all sets are related by subset. Take, for example, the set of natural numbers  `N = {0, 1, 2, …}` and the set of integers `I = {… -1, -2, 0, 1, 2, …}`
 only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is _not_ a subset of `N`).
 
 :::
@@ -64,17 +64,15 @@ Note that a type constructor that takes several arguments can have different var
 
 | Variance type | Description | Relationship | Motoko example |
 |---------------|-------------|--------------|----------------|
-| Covariant | Preserves the direction of subtyping. | If `T <: U`, then `F[T] <: F[U]` | If `Nat <: Int`, then `?Nat <: ?Int`. You can use an optional natural number where an optional integer is expected. |
-| Contravariant | Reverses the direction of subtyping. | If `T <: U`, then `F[U] <: F[T]` | If `Nat <: Int`, then `(Int -> ()) <: (Nat -> ())`. You can use a function that takes an integer as a function that takes a natural number |
-| Invariant | No subtyping relationship is preserved. | `F[T]` <: `F[U]` only when `T <: U` and `U <: T`  | Since `Nat  <: Int` but not `Int <: Nat`, `[var Nat]` and `[var Int]` are not related by subtyping. You cannot use a mutable array of natural numbers where a mutable array of integers is expected |
+| Covariant | Preserves subtyping | `F[T] <: F[U]` | `?Nat <: ?Int`. An optional  natural is also an optional integer. |
+| Contravariant | Inverts subtyping | `F[U] <: F[T]` | `(Int -> ()) <: (Nat -> ())`. A function on integers is also a function on naturals |
+| Invariant | No subtyping | `F[T] </: F[U]` | `[var Nat] </: [var Int]`. A mutable array of naturals is not an array of integers |
 
 In this table:
 
-- `T` and `U` are types.
+- `T` and `U` are distinct types such that `T <: U` but not `U <: T`.
 
 - `F[T]` represents a type constructor applied to type `T` (e.g. `?T` for option type).
-
-- `<:` means "is a subtype of."
 
 ## Numbers `Nat` and `Int`
 
@@ -169,9 +167,22 @@ let c : C = { name = "Motoko" };
 
 let b1 : B = a; // Allowed since `age : Nat` implies `age : Int` (`Nat <: Int`).
 let c1 : C = b; // Allowed, since `B` has all fields of `C`
-let a1 : A = b; // Not allowed since `age : Int` does not imply `age : Nat` (`Int </: Nat`).
-let b2 : B = c; // Not allowed because `C` lacks `age`.
+let a1 : A = b; // Not allowed, since `age : Int` does not imply `age : Nat` (`Int </: Nat`).
+let b2 : B = c; // Not allowed, because `C` is missing field `age`.
 ```
+
+If the field of an object is mutable (e.g. `var age : Nat`), then any field in the supertype must also be mutable, with equivalent content.
+
+For example, consider these object types with mutable `age` fields:
+
+```motoko norepl
+type A = { name : Text; var age : Nat };
+type B = { name : Text; var age : Int };
+```
+
+Now neither `A <: B` nor `B <: A` since the contents of the mutable `age` field, `Nat` and `Int`, are not equivalent.
+However, we still have `A <: C` and `B <: C` (dropping the `age` field entirely).
+
 
 ## Variants
 
