@@ -18,13 +18,14 @@ Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the su
 
 If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called _transitivity_.
 
-Not all sets are related by subset. Take, for example the set of natural numbers  `N = {0, 1, 2, ...}` and the set of integers `I = {... -1, -2, 0, 1, 2, ...}`
+Not all sets are related by subset. Take, for example the set of natural numbers  `N = {0, 1, 2, …}` and the set of integers `I = {… -1, -2, 0, 1, 2, …}`
 only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is not a subset of `N`).
 
 
 With types, one type `T` is a subtype of another type `U`, written `T <: U`, if every value of the type `T` is also a value of the type `U`.
 Every type `T` is a trivial subtype of itself, `T <: T`. The subtype relation, like subset, is reflexive.
 If `T` is subtype of `U` (`T <: U`) and `U` is a subtype of `V` (`U <: V`) then `T` is a subtype of `V` (`T <: V`) too. The subtype relation, like subset, is transitive.
+We'll use the notation `T </: U` to mean _not_ `T <: U`.
 
 In Motoko, subtyping is used in various contexts to provide flexible typing while maintaining type safety.
 
@@ -32,12 +33,13 @@ In Motoko, subtyping is used in various contexts to provide flexible typing whil
 
 Motoko provides type-level syntax for constructing types from other types.
 
-For example, the option type `?T` constructs an option type from `T`.
-For array type `[T]` constructs an array type from `T`.
-The mutable array type `[var T]` constructs a mutable array type from `T`.
-The object type `{... f : T; ...}` constructs a record type from a field type `T`.
-The variant type `{... #f : T; ...}` constructs a variant type from a field type `T`.
-The function type `T1 -> T2` constructs a function type from the argument type `T1` and result type `T2`.
+For example,
+* The option type `?T` constructs an option type from `T`.
+* The array type `[T]` constructs an array type from `T`.
+* The mutable array type `[var T]` constructs a mutable array type from `T`.
+* The object type `{… f : T; …}` constructs an object type from a field type `T`.
+* The variant type `{… #f : T; …}` constructs a variant type from a field type `T`.
+* The function type `T1 -> T2` constructs a function type from the argument type `T1` and result type `T2`.
 
 If replacing an argument to a type constructor by a supertype produces a supertype of the constructed type, then the constructor is
 _covariant_ in that argument.
@@ -83,9 +85,18 @@ let n : Nat = i;        // Not allowed, since `Int </: Nat`
 
 If `T1 <: T2`, then `?T1 <: ?T2` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
 
-```motoko no-repl
+```motoko norepl
 let a : ?Nat = ?5;
 let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
+```
+
+In Motoko, the literal `null` has type `Null` which subtypes any option type, that is `Null <: ?T` (for any `T`).
+This means you can use `null` as the absent value of any optional type.
+
+```motoko norepl
+let n : Null = null;
+let oi : ?Int = n;      // Allowed, since `Null <: ?Int`
+let ot : ?Text = n;     // Allowed, since `Null <: ?Text`
 ```
 
 ## Records and objects
@@ -93,7 +104,7 @@ let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
 [Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally,  [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)  support subtyping, meaning an object is a subtype of a similar object with some fields removed,
 provided the types of the fields in common are related by subtyping.
 
-```motoko no-repl
+```motoko norepl
 type A = { name : Text };
 type B = { name : Text; age : Nat };
 type C = { name : Text; age : Int };
@@ -105,13 +116,14 @@ let c : C = { name = "Other"; age = -1 };
 
 let a2 : A = b; // Allowed, since B has all fields of A
 let b2 : B = a; // Not allowed because A lacks age.
-let c2 : C = b; // Allowed since age : Nat implies age : Int (Nat <: Int).
-let b3 : B = c; // Not allowed since age : Int does not implies age : Nat (Nat </: Int).
+let c2 : C = b; // Allowed since `age : Nat` implies `age : Int` (`Nat <: Int`).
+let b3 : B = c; // Not allowed since `age : Int` does not implies `age : Nat` (`Int </: Nat`).
 ```
 
 ## Variants
 
 [Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping.
+
 A variant is a subtype of a similar variant with some cases added, provided the types of the cases in common are related by subtyping.
 
 For example, we can define a variant `WeekDay` that is a subtype of `Day` (adding weekends):
@@ -138,9 +150,9 @@ let wd : WeekDay = d;  // Not allowed, since `Day </: WeekDay` (`d` could also b
 Variants with arguments can also be related by subtyping:
 
 ```motoko norepl
-type Ok<T> = { #ok : T};
-type Err<E> = { #err : E};
-type Result<T, E> = { #ok : T; #err : E};
+type Ok<T> = {#ok : T};
+type Err<E> = {#err : E};
+type Result<T, E> = {#ok : T; #err : E};
 
 let err : Err<Text> = #err "ohoh";
 let ok : Ok<Nat> = #ok 0;
@@ -221,10 +233,10 @@ Motoko uses the simple rule that two function types with type parameters are sub
 
 ## Modules and actors
 
-Modules and actor support subtyping just like objects, meaning an module/actor is a subtype of a similar module/actor with some fields removed,
+Modules and actors support subtyping just like objects, meaning a module(actor) is a subtype of a similar module(actor) with some fields removed,
 provided the types of the fields in common are related by subtyping.
 
-For actors, which can only contain shared functions as fields, this means that you can remove some functions or replace the types of remaining
+For actors, which can only contain shared functions as fields, this means that you can remove some functions or replace the types of common
 functions with supertypes.
 
 ## Recursive and generic types
