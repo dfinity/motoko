@@ -1,0 +1,8 @@
+import { debugPrint; encodeUtf8 } "mo:⛔";
+import (t : Text) = "file:file-import.mo";
+import (b : Blob) = "file:file-import.mo";
+import c = "file:file-import.mo";
+
+assert b == c;
+assert b == encodeUtf8 t;
+debugPrint t
