@@ -25,9 +25,9 @@ func bumpUsers() : Nat {
    n += 1;
    n
 };
-
 ```
 
+In Motoko, expressions of type `()` play the role of statements in other languages.
 ## Basic usage
 
 Expression declarations are commonly used for functions or operations that produce side effects, such as printing or modifying [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
@@ -54,10 +54,10 @@ In comparison, below is an invalid expression declaration:
 
 ```motoko no-repl
 let x = 10;
-x * 2;  // This expression produces a value but is not assigned.
+x * 2;  // This expression produces a non-`()` value but is not named or ignored.
 let y = 5;
 ```
 
-The expression `x * 2;` returns a value of type `Nat`, but since it is not assigned to a variable and is not the last declaration, this is invalid. Expressions in the last position must return `()`.
+The expression `x * 2;` returns a value of type `Nat`, but since it is not assigned to a variable and is not the last declaration, this is invalid. Declaration expressions in intermediate positions must return `()` or be marked `ignore`.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
