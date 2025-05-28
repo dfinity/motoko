@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Module declarations
 
-In Motoko, a **module** is a collection of related types, values, and logic grouped under a single namespace. Unlike actors and classes, modules cannot hold or mutate state, making them ideal for reusing side-effect-free code.
+In Motoko, a **module** is a collection of related types, values, and functions grouped under a single namespace. Unlike actors and objects, modules cannot declare mutable state or have side effects during their construction. This restriction makes them ideal for defining code libraries, since you don’t need to worry about the side effects or state implications of importing the same library multiple times or removing an unused one.
 
 Modules are mainly used to build libraries, such as those in the [base library](https://internetcomputer.org/docs/motoko/main/base/) or packages available through [Mops, the Motoko package manager](https://mops.one).
 
