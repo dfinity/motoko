@@ -94,6 +94,7 @@ class Counter(init : Nat) : Reset = this {
 ```
 
 This extended `Counter` class checks that the implementation matches interface `Reset` and names this parameter `self`.
+
 ## Actor classes
 
 Actor classes enable you to create networks of actors programmatically. These classes must be defined in separate source files.
