@@ -240,9 +240,10 @@ let ints : [Int] = nats;  // Allowed, since `Nat <: Int` we also have `[Nat] <: 
 
 [Mutable arrays]](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form  `[var T]` do not support interesting subtyping.
 The mutable array constructor `[var T]` is invariant in `T`.
-This means that `[var T] <: [var U]` only when `T` and `U` are equivalent.
 
-Allowing `[var T] <: [var U]` whenever `T <: U`, without requiring `U <: T` would not be safe.
+This means that `[var T]` is a subtype of `[var U]` only if `T` and `U` are equivalent types, that is, both `T <: U` and `U <: T` must hold.
+
+Allowing `[var T] <: [var U]` whenever `T <: U` (without requiring `U <: T`) would be unsafe, as it could allow writing values of type `U` into an array that only expects values of type `T`.
 
 ```motoko no-repl
 let nats : [var Nat] = [var 1, 2, 3];
