@@ -238,7 +238,7 @@ let ints : [Int] = nats;  // Allowed, since `Nat <: Int` we also have `[Nat] <: 
 
 ## Mutable arrays
 
-[Mutable arrays]](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form  `[var T]` do not support interesting subtyping.
+[Mutable arrays](https://internetcomputer.org/docs/motoko/fundamentals/types/mutable-arrays) of the form `[var T]` do not support interesting subtyping.
 The mutable array constructor `[var T]` is invariant in `T`.
 
 This means that `[var T]` is a subtype of `[var U]` only if `T` and `U` are equivalent types, that is, both `T <: U` and `U <: T` must hold.
