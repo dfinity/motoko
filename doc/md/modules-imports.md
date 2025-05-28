@@ -26,6 +26,13 @@ Debug.print("Hello, world!");
 
 The `mo:` prefix identifies a Motoko module. The declaration does not include the `.mo` file extension.
 
+You can also selectively import a subset of named values from a module by using the object pattern syntax:
+
+``` motoko
+import { map; find; foldLeft = fold } = "mo:base/Array";
+```
+
+
 ## Importing specific functions
 
 Instead of importing an entire module, individual functions can be imported.
@@ -54,15 +61,32 @@ src/project_backend
  ├── utils.mo  // Contains helper functions
 ```
 
-In this scenario, you may want to import functions from different files:
 
-```motoko no-repl
+In this scenario, you might place all three files in the same directory and use a local import to make the functions available where they are needed.
+
+For example, the `main.mo` contains the following lines to reference the modules in the same directory:
+
+``` motoko no-repl
 import Types "types";
 import Utils "utils";
 ```
 
-A prefix is not required for local imports and the `.mo` file extension is omitted. The imported modules must be in the same directory as `main.mo`.
+These lines import modules from the local project instead of the Motoko library and don’t use the `mo:` prefix. In this example, both the `types.mo` and `utils.mo` files are in the same directory as the `main.mo` file.
 
+## Importing from another package or directory
+
+You can also import modules from other packages or from directories other than the local directory.
+
+For example, the following lines import modules from a `redraw` package that is defined as a dependency:
+
+``` motoko no-repl
+import Render "mo:redraw/Render";
+import Mono5x5 "mo:redraw/glyph/Mono5x5";
+```
+
+You can define dependencies for a project using a package manager or in the project `dfx.json` configuration file.
+
+In this example, the `Render` module is in the default location for source code in the `redraw` package and the `Mono5x5` module is in a `redraw` package subdirectory called `glyph`.
 
 ## Importing packages from a package manager
 
