@@ -258,12 +258,11 @@ A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` prov
 1. The argument types are related in the opposite direction (`U1 <: T1` ).
 2. The return types are related in the same direction (`T2 <: U2`).
 
-This means that function subtyping is contravariant in the arguments of the function and covariant in the results.
+Function subtyping is contravariant in the argument types and covariant in the return type.
 
-This might seems confusing at first, but the intuition is quite simple.
-A function can be used at a supertype provided that type requires a more specific argument and produces a more general result.
-This ensures that the orginal function, when used at the supertype,
-will only receive arguments it can consume (since `U1 <: T1`) and produce results than are expected (since `T2 <: U2`).
+A function of type `T1 → T2` can be used where a function of type `U1 → U2` is expected only if `U1 <: T1` (the expected argument is more specific) and `T2 <: U2` (the actual result is more generic).
+
+This ensures safety because the function will never be passed arguments it can’t handle, and it will always produce results that meet the expectations of the surrounding context.
 
 As a simple example, consider the `magnitude` function that returns the absolute value, or magnitude, of an integer.
 
