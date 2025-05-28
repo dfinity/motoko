@@ -1,9 +1,9 @@
 # Motoko compiler changelog
 
-## 0.14.12 (FUTURE)
+## 0.14.12 (2025-05-28)
 
 * motoko (`moc`)
-  
+
   * Added the `rootKey` primitive (#4994).
 
 ## 0.14.11 (2025-05-16)
