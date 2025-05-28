@@ -21,7 +21,7 @@ Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the su
 If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called [transitivity](https://en.wikipedia.org/wiki/Transitive_relation).
 
 Not all sets are related by subset. Take, for example, a set of natural numbers `N = {0, 1, 2, …}` and a set of integers `I = {… -1, -2, 0, 1, 2, …}`;
-only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is _not_ a subset of `N`).
+only one is a subset of the other (`N ⊆ I` but `I ⊈ N`, as `I` is not a subset of `N`).
 
 :::
 
@@ -33,8 +33,7 @@ If `T` is subtype of `U` (`T <: U`) and `U` is a subtype of `V` (`U <: V`) then 
 
 We'll use the notation `T </: U` to mean _not_ `T <: U` (`T` is not a subtype of `U`).
 
-There is no run-time cost to subtyping: using a value at a supertype does not perform any conversion on the value,
-but just views the same value through the lens of a different type.
+Subtyping has no runtime overhead. When a value is used as a supertype, no conversion takes place. The value remains the same and is simply viewed through the perspective of a different type.
 
 In Motoko, subtyping is used to provide more flexible typing without compromising type safety.
 
@@ -50,16 +49,13 @@ For example,
 * The variant type `{… #f : T; …}` constructs a variant type from a field type `T`.
 * The function type `T -> U` constructs a function type from the argument type `T` and result type `U`.
 
-If replacing an argument to a type constructor by a supertype produces a supertype of the constructed type, then the constructor is
-_covariant_ in that argument.
+A type constructor is **covariant** in an argument if replacing that argument with a supertype results in a supertype of the constructed type.
 
-If replacing an argument to a type constructor by a supertype produces a _subtype_ of the constructed type, then the constructor is
-_contravariant_ in that argument.
+It is **contravariant** if replacing the argument with a supertype results in a **subtype** of the constructed type.
 
-If replacing an argument to a type constructor by a supertype produces a type _unrelated_ to the constructed type, then the constructor is
-invariant in that argument.
+It is **invariant** if replacing the argument with a supertype results in a type **unrelated** to the original constructed type.
 
-Note that a type constructor that takes several arguments can have different variance for each argument.
+Note that type constructors with multiple arguments can exhibit different variance behavior for each argument.
 
 | Variance type | Description | Relationship | Motoko example |
 |---------------|-------------|--------------|----------------|
@@ -105,17 +101,18 @@ impossible() + impossible();  // Allowed, since `None <: Nat`
 if (false == true) impossible(); // Allowed, since `None <: ()`
 ```
 
-Call the function `impossible()` will force your program to enter an infinite loop, returning no value at all.
+Calling the function `impossible()` will force the program to enter an infinite loop and return no value.
 Because `None` is the least type, it can be used wherever any other type is expected.
 
-`None` is similar to the empty set: the empty set has no elements and is a subset of every other set `{} ⊆ A`.
+`None` is similar to an empty set, as it has no elements and is a subset of every other set `{} ⊆ A`.
 
 ## Any: the greatest type
 
-Motoko's `Any` type contains all values. By definition, every type is a subset of `Any`, `T <: Any`.
-`Any` is the greatest (as in largest) type in Motoko.
+In Motoko, `Any` contains all possible values. By definition, every type is a subtype of `Any`: for any type `T`, there is `T <: Any`.
 
-A function that accepts an `Any` argument can be applied to "any" type of argument.
+This makes `Any` the greatest type in the subtype hierarchy.
+
+A function that takes an argument of type `Any` can be applied to a value of any type, since all types are compatible with `Any`.
 
 ``` motoko no-repl
 func discard(a : Any) {};
@@ -125,8 +122,7 @@ discard(true); // Allowed, since `Bool <: Any`
 discard("abc"); // Allowed, since `Text <: Any`
 ```
 
-`Any` is similar to the universal set `U`, the set that contains all possible elements.
-Every set `A` is a subset of the universal set, `A ⊆ U`.
+`Any` is similar to the universal set `U` that contains all possible elements. Every set `A` is a subset of the universal set `A ⊆ U`.
 
 ## Options
 
@@ -137,8 +133,9 @@ let a : ?Nat = ?5;
 let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
 ```
 
-In Motoko, the literal `null` has type `Null` which subtypes any option type, that is `Null <: ?T` (for any `T`).
-This means you can use `null` as the absent value of any optional type.
+In Motoko, the literal `null` has the type `Null`, which is a subtype of any optional type. For any type `T`, there is `Null <: ?T`.
+
+This means `null` can be used as the absent value for any optional type.
 
 ```motoko no-repl
 let n : Null = null;
@@ -148,7 +145,7 @@ let ot : ?Text = n;     // Allowed, since `Null <: ?Text`
 
 ## Records and objects
 
-[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally,  [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)
+[Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) and, more generally, [objects](https://internetcomputer.org/docs/motoko/fundamentals/types/objects-classes)
 support subtyping, both in the required fields and the types of those fields.
 
 An object type `T` is a subtype of another object type `U`, if `T` requires all the fields required by `U`,
@@ -170,9 +167,9 @@ let a1 : A = b; // Not allowed, since `age : Int` does not imply `age : Nat` (`I
 let b2 : B = c; // Not allowed, because `C` is missing field `age`.
 ```
 
-If the field of an object is mutable (e.g. `var age : Nat`), then any field in the supertype must also be mutable, with equivalent content.
+If the field of an object is mutable (e.g., `var age : Nat`), then any field in the supertype must also be mutable with equivalent content.
 
-For example, consider these object types with mutable `age` fields:
+For example, consider the following object types with mutable `age` fields:
 
 ```motoko no-repl
 type A = { name : Text; var age : Nat };
