@@ -148,7 +148,7 @@ You can reverse a list of numbers.
 let numbers : List<Nat> = ?(1, ?(2, ?(3, null)));
 reverse<Nat>(numbers); // ?(3, ?(2, ?(1, null)))
 ```
-But you can also reverse a list characters:
+But you can also reverse a list of characters:
 
 ```motoko _include=GenList no-repl
 
