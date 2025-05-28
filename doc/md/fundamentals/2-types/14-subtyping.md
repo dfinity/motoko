@@ -261,11 +261,11 @@ would have the side-effect of also setting `nats[0]` to `-1`, but `nats` must on
 
 ## Functions
 
-[Function](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) also support subtyping.
+[Functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) also support subtyping.
 A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` provided
 
-1. `U1 <: T1` : the argument types are related in the opposite direction.
-2. `T2 <: U2` :  the return types are related in the same direction.
+1. The argument types are related in the opposite direction (`U1 <: T1` ).
+2. The return types are related in the same direction (`T2 <: U2`).
 
 This means that function subtyping is contravariant in the arguments of the function and covariant in the results.
 
@@ -291,17 +291,20 @@ let i2i : Int-> Int = magnitude;
 let n2i : Nat-> Int = magnitude;
 ```
 
-You may be wondering what happens if the one or both of the function types is generic and has type parameters.
-Motoko uses the simple rule that two function types with type parameters are subtypes only when both types have the same parameters
-(up to renaming), and the arguments and results are related according to 1. and 2. above.
+You might wonder what happens when one or both of the function types are generic and have type parameters.
+
+Motoko applies a straightforward rule: two generic function types are considered subtypes only if they have the same type parameters (up to renaming), and their parameter and result types follow the usual subtyping rules.
 
 ## Modules and actors
 
-Modules and actors support subtyping just like objects, meaning a module(actor) is a subtype of a similar module(actor) with some fields removed,
-provided the types of the fields in common are related by subtyping.
+Modules and actors in Motoko support subtyping in the same way as objects.
 
-For actors, which can only contain shared functions as fields, this means that you can remove some functions or replace the types of common
-functions with supertypes.
+Specifically, a module (or actor) is a subtype of another module (or actor) with some fields removed, as long as the remaining fields have types that are related by subtyping.
+
+In the case of actors, which can only contain shared functions as fields, this means:
+
+* You can remove some functions.
+* You can replace the types of shared functions with supertypes (according to function subtyping rules).
 
 ## Recursive and generic types
 
@@ -333,9 +336,9 @@ let cp : ColorPoint = {
 let c : Point = cp;
 ```
 
-This also works for recursive variants and even generic types:
+This also works for recursive variants and even generic types.
 
-For example, a tree with exclusively `#red` nodes is subtype of a tree with both `#red` and `#black` nodes:
+For example, a tree with exclusively `#red` nodes is a subtype of a tree with both `#red` and `#black` nodes:
 
 ```motoko no-repl
 type RedTree<T> = {
