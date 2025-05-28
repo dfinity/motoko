@@ -66,7 +66,7 @@ This module follows a functional programming approach: all operations return new
 :::
 
 
-## Module limitations
+## Module restrictions
 
 Modules cannot contain mutable state (`var`) or non-static expressions.
 
