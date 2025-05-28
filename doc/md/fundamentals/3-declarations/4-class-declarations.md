@@ -6,7 +6,7 @@ sidebar_position: 4
 
 A class in Motoko serves as a blueprint for creating [objects](https://internetcomputer.org/docs/motoko/fundamentals/declarations/object-declaration) that encapsulate both [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and behavior. It defines fields to hold data and methods to operate on that data. Unlike records and plain objects, classes support constructors, allowing developers to initialize each instance with unique values at creation time.
 
-Classes in Motoko are not the same as classes like in other object oritentated programming languages, but they serve the same purpose. Motoko also doesn’t have a `this` or `self` keyword because you can simply call other methods directly by name.
+Classes in Motoko are not the same as classes in other object oriented programming languages, but they serve the same purpose. Motoko also doesn’t have a `this` or `self` keyword because you can simply call other methods directly by name or name the entire object using an identifier of your choice.
 
 Use a class when you need to:
 - Create multiple objects with the same fields and methods.
@@ -29,26 +29,26 @@ Motoko also supports generic classes, which allow abstraction over types. This e
 ```motoko no-repl
 import O "mo:base/Order"; // Required to reference O.Order and its variants
 
-  // A generic comparator class for ordering elements
-  class Comparator<T>(compare : (T, T) -> O.Order) {
-    public func lessThan(a : T, b : T) : Bool {
-      compare(a, b) == #less;
-    };
-
-    public func equal(a : T, b : T) : Bool {
-      compare(a, b) == #equal;
-    };
-
-    public func greaterThan(a : T, b : T) : Bool {
-      compare(a, b) == #greater;
-    };
+// A generic comparator class for ordering elements
+class Comparator<T>(compare : (T, T) -> O.Order) {
+  public func lessThan(a : T, b : T) : Bool {
+    compare(a, b) == #less;
   };
+
+  public func equal(a : T, b : T) : Bool {
+    compare(a, b) == #equal;
+  };
+
+  public func greaterThan(a : T, b : T) : Bool {
+    compare(a, b) == #greater;
+  };
+};
 
 ```
 
-This declaration creates:
+This declaration defines:
 
-- A constructor: `Comparator : ((K, K) -> Order) -> Comparator<K>`.
+- A constructor: `Comparator : <K>((K, K) -> Order) -> Comparator<K>`.
 - A generic type: `Comparator<K>` that provides comparison methods.
 
 ## Creating instances
@@ -72,21 +72,43 @@ let myCounter = Counter(0);
 myCounter.inc(); // returns 1
 ```
 
+The class declaration syntax also lets you:
+* Check that the class conforms to some interface, expressed as an object type.
+* Define a self-identifier to refer to the entire object.
+
+```motoko no-repl
+type Reset = { reset : () -> () };
+
+class Counter(init : Nat) : Reset = this {
+  var count : Nat = init;
+
+  public func inc() : Nat {
+    count += 1;
+    count
+  };
+  
+  public func getThis() : Counter { this };
+    
+  public func reset() { count := 0 };
+};
+```
+
+This extended `Counter` class checks that the implementation matches interface `Reset` and names this parameter `self`.
 ## Actor classes
 
 Actor classes enable you to create networks of actors programmatically. These classes must be defined in separate source files.
 
 ```motoko no-repl title="Counter.mo"
-actor class Counter() {
-  var count : Int = 0;
+persistent actor class Counter(init : Nat) {
+  var count : Nat = init;
 
-  public func increment() : async Int {
+  public func inc() : async Nat {
     count += 1;
-    return count;
+    count;
   };
 
-  public func get() : async Int {
-    return count;
+  public func get() : async Nat {
+    count;
   };
 }
 ```
@@ -95,26 +117,32 @@ This defines a `Counter` actor class with:
 
 - A mutable variable `count`.
 
-- A method `increment` that increases `count` and returns the new value.
+- A method `inc` that increases `count` and returns the new value.
 
-- A method get that returns the current count.
+- A method `get` that returns the current count.
 
 Then, in another file you can create an instance of this actor class:
+
 
 ```motoko no-repl title="CallCounter.mo"
 import Counter "./Counter";
 
-actor {
-  let counter = await (with cycles = 1_000_000_000_000) Counter.Counter();
+persistent actor {
 
-  let newCount = await counter.increment();
+  public func test() : async () { 
+    let counter = await (with cycles = 1_000_000_000_000) Counter.Counter(0);
 
-  Debug.print("Count is now: " # Int.toText(newCount));
+    let newCount = await counter.inc();
 
-  let currentCount = await counter.get();
-  Debug.print("Current count: " # Int.toText(currentCount));
+    Debug.print("Count is now: " # Nat.toText(newCount));
+
+    let currentCount = await counter.get();
+    Debug.print("Current count: " # Nat.toText(currentCount));
+  }
 }
 ```
+
+Unlike object classes, actor class constructors are asynchronous. The constructor returns a future that contains the instance. You obtain the instance itself using `await`.
 
 :::note
 
