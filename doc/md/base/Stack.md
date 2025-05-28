@@ -1,17 +1,17 @@
 # Stack
-Class `Stack<X>` provides a Minimal LIFO stack of elements of type `X`.
+ Class `Stack<X>` provides a minimal LIFO stack of elements of type `X`.
 
-See library `Deque` for mixed LIFO/FIFO behavior.
+ See library `Deque` for mixed LIFO/FIFO behavior.
 
-Example:
-```motoko name=initialize
-import Stack "mo:base/Stack";
+ Example:
+ ```motoko name=initialize
+ import Stack "mo:base/Stack";
 
-let stack = Stack.Stack<Nat>(); // create a stack
-```
-Runtime: O(1)
-
-Space: O(1)
+ let stack = Stack.Stack<Nat>(); // create a stack
+ ```
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Class `Stack<T>`
 
@@ -25,19 +25,18 @@ class Stack<T>()
 func push(x : T)
 ```
 
-Push an element on the top of the stack.
+ Push an element on the top of the stack.
 
-Example:
-```motoko include=initialize
-stack.push(1);
-stack.push(2);
-stack.push(3);
-stack.peek(); // examine the top most element
-```
-
-Runtime: O(1)
-
-Space: O(1)
+ Example:
+ ```motoko include=initialize
+ stack.push(1);
+ stack.push(2);
+ stack.push(3);
+ stack.peek(); // examine the top most element
+ ```
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `isEmpty`
@@ -45,16 +44,16 @@ Space: O(1)
 func isEmpty() : Bool
 ```
 
-True when the stack is empty and false otherwise.
+ True when the stack is empty and false otherwise.
 
-Example:
-```motoko include=initialize
-stack.isEmpty();
-```
+ Example:
+ ```motoko include=initialize
+ stack.isEmpty();
+ ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `peek`
@@ -62,19 +61,19 @@ Space: O(1)
 func peek() : ?T
 ```
 
-Return (without removing) the top element, or return null if the stack is empty.
+ Return (without removing) the top element, or return null if the stack is empty.
 
-Example:
-```motoko include=initialize
-stack.push(1);
-stack.push(2);
-stack.push(3);
-stack.peek();
-```
+ Example:
+ ```motoko include=initialize
+ stack.push(1);
+ stack.push(2);
+ stack.push(3);
+ stack.peek();
+ ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `pop`
@@ -82,15 +81,15 @@ Space: O(1)
 func pop() : ?T
 ```
 
-Remove and return the top element, or return null if the stack is empty.
+ Remove and return the top element, or return null if the stack is empty.
 
-Example:
-```motoko include=initialize
-stack.push(1);
-ignore stack.pop();
-stack.isEmpty();
-```
+ Example:
+ ```motoko include=initialize
+ stack.push(1);
+ ignore stack.pop();
+ stack.isEmpty();
+ ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
