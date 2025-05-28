@@ -85,7 +85,7 @@ let n : Nat = i;        // Not allowed, since `Int </: Nat`
 
 ## None: the least type
 
-In Motoko, `None` is an **empty type**. It contains no values at all. By definition, `None` is a subtype of every other type: for any type `T`,  there is `None <: T`.
+In Motoko, `None` is an **empty type**. It contains no values at all. By definition, `None` is a subtype of every other type: for any type `T`, `None <: T`.
 
 This makes `None` the least type in the subtype hierarchy.
 
@@ -107,7 +107,7 @@ Because `None` is the least type, it can be used wherever any other type is expe
 
 ## Any: the greatest type
 
-In Motoko, `Any` contains all possible values. By definition, every type is a subtype of `Any`: for any type `T`, there is `T <: Any`.
+In Motoko, `Any` contains all possible values. By definition, every type is a subtype of `Any`: for any type `T`, `T <: Any`.
 
 This makes `Any` the greatest type in the subtype hierarchy.
 
@@ -132,7 +132,7 @@ let a : ?Nat = ?5;
 let b : ?Int = a;     // Allowed, since `Nat <: Int` implies `?Nat <: ?Int`
 ```
 
-In Motoko, the literal `null` has the type `Null`, which is a subtype of any optional type. For any type `T`, there is `Null <: ?T`.
+In Motoko, the literal `null` has the type `Null`, which is a subtype of any optional type. For any type `T`, `Null <: ?T`.
 
 This means `null` can be used as the absent value for any optional type.
 
