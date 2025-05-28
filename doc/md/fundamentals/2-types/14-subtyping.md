@@ -9,7 +9,7 @@ the first type is a subtype of the second.
 
 In Motoko, the simplest subtyping relation is between `Nat` and `Int`. `Nat` is a subtype of `Int`, written `Nat <: Int`.
 If you have a value of type `Nat`, you can supply it to a function taking the more general supertype `Int`.
-Motoko applies subtyping wherever it needs to, to prove that your program is type correct.
+Motoko applies subtyping when necessary to prove that a program is type correct.
 
 
 :::info
