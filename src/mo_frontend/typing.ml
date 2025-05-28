@@ -61,6 +61,21 @@ type env =
     srcs : Field_sources.t;
   }
 
+let is_my_env env =
+  (* env.vals |> T.Env.keys |> String.concat ", " |> Format.printf "vals: %s\n"; *)
+  (* (!(env.used_identifiers)) |> S.elements |> String.concat ", " |> Format.printf "used_identifiers: %s\n"; *)
+  env.vals |> T.Env.mem "szczebrzeszyn"
+
+let print_exp env exp =
+  if is_my_env env then
+    print_endline (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+
+let print_typ env typ =
+  if is_my_env env then
+    print_endline (Wasm.Sexpr.to_string 80 (Arrange.typ typ))
+
+let stack_trace () = flush_all(); let r = Unix.fork() in if r == 0 then raise Exit
+
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
@@ -1539,11 +1554,51 @@ and infer_exp'' env exp : T.typ =
     let sort, ve = check_shared_pat env shared_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
-    check_shared_return env typ.at sort c ts2;
+    check_shared_return env typ.at sort c ts2; (* TODO: Move it after inferring the body? *)
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
+
+    let inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
+      let env'' =
+        { env' with
+          (* labs = T.Env.empty; *)
+          pre = true;
+          msgs;
+          rets = Some T.Pre;
+          (* async = None; *)
+        }
+      in
+      let initial_usage = enter_scope env'' in
+      let res =
+        try
+          match infer_exp (adjoin_vals env'' ve2) exp1 with
+          | T.Tup [] -> None (* Exclude: no changes compared to the default unit *)
+          (* Exclude implicit conversions to unit (when pre = true):
+           * e.g. `loop { if true return }` is inferred as None, but it's `()`
+           * e.g. func f<A <: ()>(a : A) { if true return; a } is inferred as `A`, but it's `()`
+           * For backward compatibility, every unannotated return type might be unit `()`.
+           * Or traverse expressions fully to check every return (any other problematic cases?)
+           *)
+          | t when T.sub t T.unit -> None
+          | T.Tup ts -> Some ts
+          | t -> Some [t]
+        with Recover ->
+          None
+      in
+      leave_scope env ve2 initial_usage;
+      res
+    ) in
+    Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
+    (* Note: when `ok` there are probably no messages *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> []) inferred_opt |> Diag.print_messages; *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> x) inferred_opt |> Diag.print_messages; *)
+    let ts2 = match inferred_opt with
+      | Ok (ts, _) -> ts
+      | Error _ -> ts2
+    in
+
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -1554,8 +1609,9 @@ and infer_exp'' env exp : T.typ =
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
-      check_exp_strong (adjoin_vals env'' ve2) codom exp1;
+      check_exp_strong (adjoin_vals env'' ve2) codom exp1; (* TODO: Try infering the body when there is no return type *)
       leave_scope env ve2 initial_usage;
+
       if Type.is_shared_sort sort then begin
         check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
@@ -1588,7 +1644,7 @@ and infer_exp'' env exp : T.typ =
     let t = infer_call env exp1 inst exp2 exp.at None in
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t
-  | BlockE decs ->
+            | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
   | NotE exp1 ->
@@ -2007,7 +2063,7 @@ and check_exp' env0 t exp : T.typ =
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with
-        labs = T.Env.empty;
+          labs = T.Env.empty;
         rets = Some t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
