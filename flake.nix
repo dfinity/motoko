@@ -190,6 +190,7 @@
       shell = import ./nix/shell.nix {
         inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
         inherit (checks) check-rts-formatting;
+        test-runner = self.packages.${system}.test-runner;
       };
 
       common-constituents = rec {
@@ -214,8 +215,26 @@
         pocket-ic-server = pkgs.pocket-ic.server;
         pocket-ic-library = pkgs.pocket-ic.library;
 
-        # Add test-runner directly to packages
-        test-runner = tests.test-runner;
+        # Define test-runner package
+        test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+          pname = "test-runner";
+          version = "0.1.0";
+          src = ./test-runner;
+          cargoLock = {
+            lockFile = ./test-runner/Cargo.lock;
+          };
+          buildInputs = [
+            pkgs.pocket-ic.library
+            pkgs.pocket-ic.server
+          ];
+          POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
+          POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+          
+          # Update Cargo.toml with the correct path
+          preBuild = ''
+            sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" Cargo.toml
+          '';
+        };
 
         release-files = import ./nix/release-files.nix { inherit self pkgs; };
 

@@ -10,6 +10,7 @@
 , docs
 , check-rts-formatting
 , debugMoPackages
+, test-runner
 }:
 pkgs.mkShell {
   name = "motoko-shell";
@@ -52,6 +53,7 @@ pkgs.mkShell {
         pkgs.pocket-ic.server
         pkgs.pocket-ic.library
         pkgs.gh # GitHub CLI
+        test-runner
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 

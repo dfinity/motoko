@@ -97,6 +97,11 @@ function normalize () {
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
         -e 's/^20.*UTC: debug.print:/debug.print:/g' \
         -e '/^ic_trap$/d' |
+
+    # Normalize the output of the test-runner.
+    # remove all lines containing PocketIC.
+    sed -e '/PocketIC/d' |
+
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
         -e '/RTS error: Cannot allocate memory/q' |
