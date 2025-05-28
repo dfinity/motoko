@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # Expression declarations
 
-An expression declaration is a statement where an expression is evaluated solely for its side effects. It does not assign the result to a variable or introduce any new bindings.
+An expression declaration is a declaration that consists of a single expression. The expression is evaluated solely for its value and side effects. Unlike other declarations, it does not declare any new names.
 
 Rules for expression declarations:
 
