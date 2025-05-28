@@ -250,15 +250,6 @@ let nats : [var Nat] = [var 1, 2, 3];
 let ints : [var Int] = nats;  // Not allowed, because `[var Nat] </: [var Int]`.
 ```
 
-If subtyping between mutable arrays were allowed, then the legal assignment
-
-``` motoko no-repl
-ints[0] := -1;
-```
-
-would have the side-effect of also setting `nats[0]` to `-1`, but `nats` must only contain `Nat`s!
-
-
 ## Functions
 
 [Functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) also support subtyping.
