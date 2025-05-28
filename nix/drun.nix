@@ -61,8 +61,8 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
 
   buildInputs = with pkgs; [
     openssl
-    llvm_18
-    llvmPackages_18.libclang
+    llvm_19
+    llvmPackages_19.libclang
     lmdb
     libunwind
     libiconv
@@ -70,8 +70,8 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
     pkgs.darwin.apple_sdk.frameworks.Security;
 
   # needed for bindgen
-  LIBCLANG_PATH = "${pkgs.llvmPackages_18.libclang.lib}/lib";
-  CLANG_PATH = "${pkgs.llvmPackages_18.clang}/bin/clang";
+  LIBCLANG_PATH = "${pkgs.llvmPackages_19.libclang.lib}/lib";
+  CLANG_PATH = "${pkgs.llvmPackages_19.clang}/bin/clang";
 
   # needed for ic-protobuf
   PROTOC = "${pkgs.protobuf}/bin/protoc";
