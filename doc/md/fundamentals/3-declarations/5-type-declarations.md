@@ -92,6 +92,15 @@ let numberBox : Box<Nat> = { value = 42 };
 let textBox : Box<Text> = { value = "Hello" };
 ```
 
+In Motoko, all types defined within the same block can refer to each other, allowing mutually recursive type definitions.
+
+For example, you can split the list type above into lists with even and odd numbers of elements:
+
+```motoko no-repl
+type EvenList<T> = ?(T, OddList<T>);
+type OddList<T> = (T, EvenList<T>);
+```
+
 ## Recursive types and productivity
 
 Motoko allows recursive type definitions as long as they are productive. This means that any recursion in a type must pass through a constructor (such as an option (`?`), a variant, or a record field) before referring back to itself.
@@ -137,5 +146,7 @@ type Seq<T> = ?(T, Seq<[T]>);
 
 - [`Record`](https://internetcomputer.org/docs/motoko/fundamentals/types/records)
 - [`Variant`](https://internetcomputer.org/docs/motoko/fundamentals/types/variants)
+
+<!-- TODO(future) explain variance of type definition parameters, perhaps using InvBox<T> (r/w) CoBox<T> (ro) and ContraBox<T> (wo) as examples -->
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
