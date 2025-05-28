@@ -175,8 +175,9 @@ type A = { name : Text; var age : Nat };
 type B = { name : Text; var age : Int };
 ```
 
-Now neither `A <: B` nor `B <: A` since the contents of the mutable `age` field, `Nat` and `Int`, are not equivalent.
-However, we still have `A <: C` and `B <: C` (dropping the `age` field entirely).
+Now, neither `A <: B` nor `B <: A` holds, because the `age` fields differ in type because `Nat` and `Int` are not equivalent.
+
+However, both `A` and `B` are still subtypes of `C`, since `C` lacks the `age` field entirely and subtyping allows dropping fields.
 
 
 ## Variants
