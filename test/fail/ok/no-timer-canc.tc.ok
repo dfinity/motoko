@@ -227,6 +227,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     regionStoreNat64 : (r : Region, offset : Nat64, val : Nat64) -> ();
     regionStoreNat8 : (r : Region, offset : Nat64, val : Nat8) -> ();
     replyDeadline : () -> Nat64;
+    rootKey : () -> Blob;
     rts_callback_table_count : () -> Nat;
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;

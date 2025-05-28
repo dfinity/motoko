@@ -419,6 +419,9 @@ let prim trap =
   | "canister_subnet" ->
       fun _ v k -> as_unit v; k (Blob "")
 
+  | "root_key" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
   (* fake *)
   | "setCandidLimits" ->
       fun _ v k -> k unit
