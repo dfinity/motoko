@@ -262,7 +262,7 @@ would have the side-effect of also setting `nats[0]` to `-1`, but `nats` must on
 ## Functions
 
 [Functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) also support subtyping.
-A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` provided
+A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` provided that:
 
 1. The argument types are related in the opposite direction (`U1 <: T1` ).
 2. The return types are related in the same direction (`T2 <: U2`).
