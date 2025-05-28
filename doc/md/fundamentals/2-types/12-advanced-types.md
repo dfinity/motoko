@@ -168,7 +168,7 @@ Although the concept of type bounds is often associated with [inheritance-based 
 
 This approach balances the flexibility of generic programming with the safety of compile-time checks, enabling the creation of generic functions that operate on a range of types while still enforcing specific structural or type constraints.
 
-<!-- TODO better example that requires bounds (this on doesn't) -->
+<!-- TODO better example that requires bounds (this one doesn't) -->
 The following examples illustrate this behavior:
 
 ```motoko
