@@ -14,14 +14,13 @@ Motoko applies subtyping when necessary to prove that a program is type correct.
 
 :::info
 
-Subtyping is similar to the notion of subset you may have encountered in school.
-With sets, one set `A` is a subset of another `B`, written `A ⊆ B`, if every element of the set `A` is contained in the set `B` (which may have additional elements).
+Subtyping is similar to the notion of subsets, where one set `A` is a subset of another `B`, written `A ⊆ B`, if every element of the set `A` is contained in the set `B` (which may have additional elements).
 
-Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the subset relation is called _reflexivity_.
+Every set `A` is a subset of itself (that is `A ⊆ A`). This property of the subset relation is called [reflexivity](https://en.wikipedia.org/wiki/Reflexive_relation).
 
-If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called _transitivity_.
+If `A` is a subset of `B` (`A ⊆ B`) and `B` is a subset of `C` (`B ⊆ C`) then `A` is a subset of `C` too (`A ⊆ C`). This property of the subset relation is called [transitivity](https://en.wikipedia.org/wiki/Transitive_relation).
 
-Not all sets are related by subset. Take, for example, the set of natural numbers  `N = {0, 1, 2, …}` and the set of integers `I = {… -1, -2, 0, 1, 2, …}`
+Not all sets are related by subset. Take, for example, a set of natural numbers `N = {0, 1, 2, …}` and a set of integers `I = {… -1, -2, 0, 1, 2, …}`;
 only one is a subset of the other: `N ⊆ I` but `I ⊈ N` (`I` is _not_ a subset of `N`).
 
 :::
