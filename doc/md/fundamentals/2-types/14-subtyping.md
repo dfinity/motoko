@@ -41,7 +41,6 @@ In Motoko, subtyping is used to provide more flexible typing without compromisin
 
 Motoko provides type-level syntax for constructing types from other types.
 
-For example,
 * The option type `?T` constructs an option type from `T`.
 * The array type `[T]` constructs an array type from `T`.
 * The mutable array type `[var T]` constructs a mutable array type from `T`.
@@ -86,11 +85,11 @@ let n : Nat = i;        // Not allowed, since `Int </: Nat`
 
 ## None: the least type
 
-`None` is an empty type in Motoko. It contains no values at all so, and, by definition, `None` is a subtype of every other type: `None <: T`, for any `T`.
+In Motoko, `None` is an **empty type**. It contains no values at all. By definition, `None` is a subtype of every other type: for any type `T`,  there is `None <: T`.
 
-None is the least (as in smallest) type.
+This makes `None` the least type in the subtype hierarchy.
 
-You might think the `None` type is useless, but it is used to type expressions that never produce a value, like the infinite loop `loop {}`.
+The `None` type is used to type expressions that never produce a value, such as an infinite loop (`loop {}`).
 
 ``` motoko no-repl
 func impossible() : None { loop {} };
@@ -126,7 +125,7 @@ discard("abc"); // Allowed, since `Text <: Any`
 
 ## Options
 
-If `T <: U`, then `?T <: ?U` (option subtyping is covariant). This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
+If `T <: U`, then `?T <: ?U` because option subtyping is covariant. This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
 
 ```motoko no-repl
 let a : ?Nat = ?5;
@@ -184,11 +183,11 @@ However, we still have `A <: C` and `B <: C` (dropping the `age` field entirely)
 
 [Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping, both in the allowed fields and the types of those fields.
 
-An variant type `T` is a subtype of another variant type `U`, if `T` allows only some of the fields allowed by `U`,
-with field types that are subtypes of those in `U`.
-Note that `T` may allow fewer fields than `U`.
+A variant type `T` is a subtype of another variant type `U` if every value in `T` also appears in `U`, and the associated types in `T` are subtypes of those in `U`. `T` may allow fewer fields than `U`. 
 
-For example, we can define a variant `WeekDay` that is a subtype of `Day` (adding weekends):
+In other words, `T` can define a subset of the fields defined in `U`, as long as their types are compatible (i.e., subtypes).
+
+For example, you can define a variant `WeekDay` that is a subtype of `Day` (adding weekends):
 
 ```motoko no-repl name=Days
 type WeekDay = { #mon; #tue; #wed; #thu; #fri };
