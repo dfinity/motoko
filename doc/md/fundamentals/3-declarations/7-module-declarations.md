@@ -104,7 +104,10 @@ module Counters {
 
 ## Using modules
 
-Modules expose their public types and functions through dot notation. The module name serves as a namespace, helping prevent naming conflicts and group related functionality.
+Library modules are accessed using `import` declarations. As a general convention, it's good style to reuse the file name as the import name.
+However, the importing code is free to assign any name to the imported module and may choose a different name to avoid naming conflicts.
+
+Public types and values within a module are accessed using dot notation, the same syntax used for accessing fields of objects and actors. The module name acts as a namespace, helping to organize related functionality and avoid name clashes across the codebase.
 
 ```motoko no-repl
 import Matrix "Matrix";
