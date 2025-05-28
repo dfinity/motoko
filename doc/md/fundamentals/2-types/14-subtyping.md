@@ -310,7 +310,7 @@ In the case of actors, which can only contain shared functions as fields, this m
 
 [Recursive and generic types](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be subtypes of each other when their definitions allow it.
 
-Consider these two recursive point types, the second one adding a `color` field:
+Consider the following recursive point types, where the second extends the first by adding a color field:
 
 ```motoko no-repl name=Point
 type Point = {
