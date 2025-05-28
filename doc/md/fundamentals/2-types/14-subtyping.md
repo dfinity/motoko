@@ -260,7 +260,7 @@ A function type `T1 -> T2` is a subtype of another function type `U1 -> U2` prov
 
 Function subtyping is contravariant in the argument types and covariant in the return type.
 
-A function of type `T1 → T2` can be used where a function of type `U1 → U2` is expected only if `U1 <: T1` (the expected argument is more specific) and `T2 <: U2` (the actual result is more generic).
+A function of type `T1 → T2` can be used where a function of type `U1 → U2` is expected only if `U1 <: T1` (the expected argument is more specific) and `T2 <: U2` (the actual result is more general).
 
 This ensures safety because the function will never be passed arguments it can’t handle, and it will always produce results that meet the expectations of the surrounding context.
 
