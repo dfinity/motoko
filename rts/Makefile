@@ -284,7 +284,7 @@ EXPORTED_SYMBOLS=\
 WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS:%=--export=%) --allow-undefined --import-undefined \
+  $(EXPORTED_SYMBOLS:%=--export=%) --import-undefined \
   --whole-archive --experimental-pic
 
 WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A)
