@@ -71,8 +71,10 @@ This module follows a functional programming approach: all operations return new
 Modules cannot contain mutable state (`var`) or non-static expressions.
 
 ```motoko no-repl
+import Debug "mo:base/Debug";
 module myModule {
-  var x = 0; // not allowed! non-static expression in library
+  var x = 0; // Not allowed, non-static expression in library
+  Debug.print("hello"); // Not allowed, side-effect in library
 }
 ```
 
