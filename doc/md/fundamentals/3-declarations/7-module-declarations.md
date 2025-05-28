@@ -86,6 +86,22 @@ persistent actor {
 }
 ```
 
+A module can declare classes that use state, provided it doesn't instantiate those classes in its body.
+
+For example, a module can define a class of stateful `Counters` :
+
+``` motoko no-repl
+module Counters { 
+   public class Counter() {
+      var count : Nat = 0;
+      public func inc() : Nat { 
+        count += 1; 
+        count
+      }
+   }
+}
+```
+
 ## Using modules
 
 Modules expose their public types and functions through dot notation. The module name serves as a namespace, helping prevent naming conflicts and group related functionality.
