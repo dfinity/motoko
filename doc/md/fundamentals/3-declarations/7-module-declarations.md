@@ -62,7 +62,7 @@ This module declares:
 - Functions `Matrix.init()`, `Matrix.identity()`, and `Matrix.transpose()` for matrix operations.
 
 :::note Functional programming style
-This module follows a functional programming approach: all operations return new matrices instead of modifying existing ones. This immutable design improves predictability and minimizes side effects.
+This module follows a functional programming approach. All operations return new matrices instead of modifying existing ones.
 :::
 
 
