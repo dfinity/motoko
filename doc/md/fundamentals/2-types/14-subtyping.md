@@ -31,7 +31,7 @@ Every type `T` is a trivial subtype of itself, `T <: T`. The subtype relation, l
 
 If `T` is subtype of `U` (`T <: U`) and `U` is a subtype of `V` (`U <: V`) then `T` is a subtype of `V` (`T <: V`) too. The subtype relation, like subset, is transitive.
 
-We'll use the notation `T </: U` to mean _not_ `T <: U` (`T` is not a subtype of `U`).
+The notation `T </: U` is used to indicate that `T` is not a subtype of `U`.
 
 Subtyping has no runtime overhead. When a value is used as a supertype, no conversion takes place. The value remains the same and is simply viewed through the perspective of a different type.
 
