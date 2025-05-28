@@ -91,7 +91,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
 
 ```bash
-git checkout master
+git switch master
 git pull
 ```
 
