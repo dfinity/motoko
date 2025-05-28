@@ -26,6 +26,19 @@ func greet(name : Username, age : Age) : Text {
 }
 ```
 
+They can also be used in other type definitions:
+
+```  motoko no-repl
+type Person = { username : Username; age : Age}; 
+```
+
+Given a similar type `User`:
+
+``` motoko no-repl
+type User = {  age : Nat; username : Text }; 
+```
+
+Structural typing means that the types `User` and `Person` are interchangeable because their definitions are equivalent (after expanding all definitions). In other languages, `User` and `Person` might be considered incompatible types.
 ## Record types
 
 In Motoko, a type can define a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) with labeled fields. Each field has a specific type, and you can access them using dot notation. Records are useful for organizing related data clearly and safely.
@@ -94,26 +107,29 @@ type List<T> = ?(T, List<T>);
 #### Non-productive recursive type example
 
 ```motoko no-repl
-type C = C; // This definition infinitely refers to itself
+type C = C; // This definition immediately refers to itself
 ```
 
-This type never resolves to a concrete value because it lacks a constructor in its recursion; it is non-productive and rejected by the compiler.
+This type definition is considered non-productive because it is too cyclic. It never expands to a concrete type.
+As a result, the compiler rejects it to prevent infinite expansion or ill-formed types.
 
 ## Expansiveness in type definitions
 
-Motoko enforces non-expansiveness to ensure type definitions do not expand indefinitely, keeping types well-formed and preventing infinite or unmanageable type structures.
+Motoko enforces that type definitions do not expand into ever-growing sets of types.
+This property, called non-expansiveness, guarantees it is always possible to decide whether one type is a subtype of another. Without it, compilation of code may never finish.
 
 #### Non-expansive
 
 ```motoko no-repl
-/// Expands without introducing a larger type.
+// Expands without introducing an infinite set of new instances of `List<_>`.
 type List<T> = ?(T, List<T>);
 ```
 
 #### Expansive
 
 ```motoko no-repl
-///Expands by wrapping T inside [T], growing the type. This is expansive and not allowed.
+// Expands by introducing infinitely many instances of `Seq<_>`:  `Seq<[T]>`, `Seq<[[T]]>`, `Seq<[[[T]]]>`, ....
+// This is expansive and not allowed.
 type Seq<T> = ?(T, Seq<[T]>);
 ```
 
