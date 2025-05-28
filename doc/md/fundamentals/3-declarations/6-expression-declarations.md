@@ -6,12 +6,10 @@ sidebar_position: 6
 
 An expression declaration is a declaration that consists of a single expression. The expression is evaluated solely for its value and side effects. Unlike other declarations, it does not declare any new names.
 
-Rules for expression declarations:
+When used as an intermediate declaration within a block, a declaration expression must have type `()`.
+If it produces a value of another type, it must be preceded by the `ignore` keyword to discard the value and ensure the expression evaluates to `()`.
 
-1. The expression must have a valid type `T` and evaluate without errors.
-2. If the expression appears in a sequence of declarations but is **not** the last one, its type `T` must be `()` (the unit type), meaning it produces no meaningful value.
-3. If an expression returns a value other than `()`, but is used in a context where a value is not allowed (e.g., not the last declaration in a block), the `ignore` keyword can be used to discard the result.
-
+However, when used as the final declaration in a block, the declaration expression determines the type and value of the entire block. In this case, it may be of any valid type, not just `()`.
 For example:
 
 ```motoko no-repl
