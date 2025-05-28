@@ -129,4 +129,14 @@ let myMatrix : Matrix.Matrix = [[1, 2], [3, 4]];
 let result = Matrix.transpose(Matrix.identity(3));
 ```
 
+If you'd prefer to avoid dot notation, you can also import individual values directly from a module using pattern matching in the import statement.
+
+This allows you to bind specific names from the module into your local scope, making the code more concise and readable when those values are used frequently.
+
+``` motoko no-repl
+import {init; identity} "Matrix";
+
+let zero = init(3, 3, 0);
+let id4 = identity(4);
+```
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
