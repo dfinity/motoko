@@ -37,6 +37,7 @@ Below are the default key bindings for commonly used features supported in the e
 - In case you're hoping to learn Motoko without installing `dfx`, the Motoko VS Code extension works standalone on all major operating systems (including Windows).
 - This extension also provides schema validation and autocompletion for `dfx.json` configuration files.
 - View type information and documentation by hovering over function names, imports, and other expressions.
+- Deploy temporary canisters to the ICP mainnet directly from the editor.
 
 [![Tooltips](https://github.com/dfinity/vscode-motoko/raw/master/guide/assets/tooltips.png)](https://marketplace.visualstudio.com/items?itemName=dfinity-foundation.vscode-motoko)
 
