@@ -21,17 +21,16 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
 ```motoko no-repl
-shared func unconditionalLoop() : async Nat {
-    var count : Nat = 0;
+func unconditionalLoop() : Nat {
+  var count : Nat = 0;
 
-    label countLoop loop {
-        count += 1;
-        if (count == 5) {
-            break countLoop;
-        };
+  label countLoop loop {
+    count += 1;
+    if (count == 5) {
+      break countLoop;
     };
-
-    return count;
+  };
+  return count;
 }
 ```
 
@@ -85,11 +84,11 @@ while (condition) {
 
 The `while` loop first evaluates the condition:
 
-   - If it causes a trap (error), the loop stops immediately.
+- If it causes a trap (error), the loop stops immediately.
 
-   - If it evaluates to `false`, the loop ends and does nothing.
+- If it evaluates to `false`, the loop ends and does nothing.
 
-   - If it evaluates to `true`, the body runs and the loop repeats the process.
+- If it evaluates to `true`, the body runs and the loop repeats the process.
 
 Once the condition becomes false, the loop stops, and the final result is `()`.
 
@@ -102,4 +101,3 @@ while (count > 0) {
 ```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
-
