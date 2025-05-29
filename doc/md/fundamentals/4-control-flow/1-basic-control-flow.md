@@ -16,35 +16,6 @@ sidebar_position: 1
 | `while` | Runs while a condition is `true`. |
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
 
-## `while`
-
-A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
-
-```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-
-var i = 0;
-while (i < 5) {
-  Debug.print(Nat.toText(i));
-  i += 1;
-}
-```
-
-## `for`
-
-A `for` loop iterates over elements in a collection or range, executing a block of code for each element.
-
-``` motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-
-let numbers = [1, 2, 3, 4, 5];
-for (num in numbers.vals()) {
-    Debug.print(Nat.toText(num));
-}
-```
-
 ## `return`
 
 A `return` statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and sends a value back to the caller.
@@ -153,6 +124,35 @@ func breakControlFlow() : Int {
     sum // This is returned if no break occurs
   };
   return result;
+}
+```
+
+## `while`
+
+A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+var i = 0;
+while (i < 5) {
+  Debug.print(Nat.toText(i));
+  i += 1;
+}
+```
+
+## `for`
+
+A `for` loop iterates over elements in a collection or range, executing a block of code for each element.
+
+``` motoko no-repl
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+let numbers = [1, 2, 3, 4, 5];
+for (num in numbers.vals()) {
+    Debug.print(Nat.toText(num));
 }
 ```
 
