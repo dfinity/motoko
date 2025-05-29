@@ -78,8 +78,6 @@ actor {
 }
 ```
 
-Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
-
 The `shared` modifier is required on every member of an actor. Motoko both elides them on display and allows you to omit them when authoring an actor type.
 
 Thus, the previous type can be expressed more succinctly as:

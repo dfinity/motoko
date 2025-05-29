@@ -1,4 +1,7 @@
 import Prim "mo:⛔";
+import {migration} = "Migration2"
+
+(with migration)
 actor {
 
   flexible let array = [var 0, 0, 0];

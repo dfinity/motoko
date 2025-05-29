@@ -73,6 +73,7 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
+  | IdxBlobPrim       -> Atom "IdxBlobPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
   | EqArrayOffset     -> Atom "EqArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
@@ -95,7 +96,7 @@ and prim = function
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
-  | SelfRef t         -> "SelfRef"    $$ [typ t]
+  | SelfRef t         -> "SelfRef" $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
   | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
@@ -103,6 +104,7 @@ and prim = function
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
   | SystemCyclesBurnPrim -> Atom "SystemCyclesBurnPrim"
+  | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s

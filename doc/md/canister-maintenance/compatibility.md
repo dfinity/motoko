@@ -74,7 +74,8 @@ In this extension of the interface, old clients remain satisfied, while new ones
 ## Dual interface evolution
 
 An upgrade is safe provided that both the Candid interface and stable type signatures remain compatible:
-* Each stable variable must either be newly declared, dropped, or re-declared at a supertype of its old type.
+* Each stable variable must either be newly declared, or re-declared at a stable supertype of its old type. A stable supertype is any supertype that
+  does not involve promotion to `Any` or dropping object fields.
 * The Candid interface evolves to a subtype.
 
 Consider the following four versions of the counter example:
@@ -163,10 +164,16 @@ For this purpose, a user-instructed migration can be done in three steps:
 
 3. Drop the old declarations once all data has been migrated:
 
+   In versions of Motoko prior to 0.14.6, you could simply remove the old variable, or keep it but change the type to `Any`, implying that the variable is no longer useful.
+
     ``` motoko no-repl file=../examples/count-v6.mo
     ```
 
-Alternatively, the type of `state` can be changed to `Any`, also implying that this variable is no longer used.
+   For added safety, since version 0.14.6 you can only discard data, or promote it to a lossy supertype such as `Any`, using a migration function:
+
+    ``` motoko no-repl file=../examples/count-v6b.mo
+    ```
+
 
 ### Explicit migration using a migration function
 

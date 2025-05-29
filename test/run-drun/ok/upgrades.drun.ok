@@ -2,6 +2,8 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 debug.print: init'ed
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 0
+debug.print: root key: "\30\81\82\30\1D\06\0D\2B\06\01\04\01\82\DC\7C\05\03\01\02\01\06\0C\2B\06\01\04\01\82\DC\7C\05\03\02\01\03\61\00\81\4C\0E\6E\C7\1F\AB\58\3B\08\BD\81\37\3C\25\5C\3C\37\1B\2E\84\86\3C\98\A4\F1\E0\8B\74\23\5D\14\FB\5D\9C\0C\D5\46\D9\68\5F\91\3A\0C\0B\2C\C5\34\15\83\BF\4B\43\92\E4\67\DB\96\D6\5B\9B\B4\CB\71\71\12\F8\47\2E\0D\5A\4D\14\50\5F\FD\74\84\B0\12\91\09\1C\5F\87\B9\88\83\46\3F\98\09\1A\0B\AA\AE"
+debug.print: initial subnet: fscpm-uiaaa-aaaaa-aaaap-yai
 debug.print: initial version: 2
 ingress Completed: Reply: 0x4449444c0000
 debug.print: a

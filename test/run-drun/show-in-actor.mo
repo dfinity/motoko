@@ -8,4 +8,3 @@ let _ = actor {
 
 // non-closed actors not allowed
 //SKIP comp
-//SKIP comp-ref

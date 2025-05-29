@@ -393,7 +393,7 @@ and dec_field' ctxt d =
   (* async functions *)
   | M.(LetD ({it=VarP f;note;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
-             {it = AsyncE (T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
+             {it = AsyncE (_, T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
       { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
       None, (* no init *)
@@ -578,7 +578,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.IfE(e, s1, s2) ->
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
-  | M.(AwaitE(T.Fut, { it = AsyncE (T.Fut, _, e); at; _ })) -> (* gross hack *)
+  | M.(AwaitE(T.Fut, { it = AsyncE (_, T.Fut, _, e); at; _ })) -> (* gross hack *)
      let id = fresh_id "$message_async" in
      let (!!) p = !!! (s.at) p in
      let (!@) p = !!! at p in
@@ -666,7 +666,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (M.Runtime, e) ->
     !!([],
        [ !!(AssumeS (exp ctxt e)) ])
-  | M.(CallE({it = VarE m; _}, inst, args)) ->
+  | M.(CallE(_, {it = VarE m; _}, inst, args)) ->
     !!([],
        [ !!(MethodCallS ([], id_ref m,
        let self_var = self ctxt m.at in
@@ -805,7 +805,7 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   match e with
   | M.({it=TupE [];_}) -> [], []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
-  | M.({it=CallE ({it=M.DotE ({it=M.VarE(m);_}, {it="init";_});_}, _inst, args);_})
+  | M.({it=CallE (_, {it=M.DotE ({it=M.VarE(m);_}, {it="init";_});_}, _inst, args);_})
       when Imports.find_opt (m.it) ctxt.imports = Some(IM_base_Array)
       ->
     begin match args with
@@ -819,7 +819,7 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
       )
     | _ -> unsupported args.at (Arrange.exp args)
     end
-  | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
+  | M.({it = CallE(_, {it = VarE m; _}, inst, args); _}) ->
     fld_via_tmp_var ctxt lval t (fun x ->
       let self_var = self ctxt m.at in
       [], [ !!(MethodCallS ([x], id_ref m, self_var :: call_args ctxt args)) ])
@@ -880,7 +880,7 @@ and exp ctxt e =
     end
   | M.AnnotE(a, b) ->
     exp ctxt a
-  | M.CallE ({it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
+  | M.CallE (_, {it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
       -> sizeE at (exp ctxt e1)
   | M.LitE r ->
     begin match !r with
@@ -961,7 +961,7 @@ and exp ctxt e =
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
       !!(CallE (tup_con_name n, List.map (exp ctxt) es))
-  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
       && (predicate_name = "forall" || predicate_name = "exists")
     ->
@@ -984,7 +984,7 @@ and exp ctxt e =
     | "forall" -> !!(ForallE (typed_binders, e))
     | "exists" -> !!(ExistsE (typed_binders, e))
     | _ -> assert false)
-  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim) -> !!(FldE "$Res")
   | _ ->
      unsupported e.at (Arrange.exp e)

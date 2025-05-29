@@ -24,7 +24,11 @@
                 "Nat64"
                 "Float"
                 "Char"
-                "Text"))
+                "Text"
+                "Blob"
+                "Error"
+                "Principal"
+                "Region"))
               (x-constants
                '("null"
                  "true"

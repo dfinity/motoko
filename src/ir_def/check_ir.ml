@@ -244,6 +244,11 @@ let rec check_typ env typ : unit =
     error env no_region "unexpected T.Mut %s" (T.string_of_typ typ)
   | T.Typ c ->
     error env no_region "unexpected T.Typ"
+  | T.Named (_, typ1) ->
+    check env no_region env.flavor.Ir.has_typ_field
+     "named type field in non-typ_field flavor";
+    check_typ env typ1
+
 
 and check_mut_typ env = function
   | T.Mut t -> check_typ env t
@@ -489,6 +494,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | IdxBlobPrim, [exp1; exp2] ->
+      typ exp1 <: T.blob;
+      typ exp2 <: T.nat;
+      T.(Prim Nat8) <: t
     | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore
@@ -683,6 +692,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.nat <: t
     | SystemCyclesAddPrim, [e1] ->
       typ e1 <: T.nat;
+      T.unit <: t
+    | SystemTimeoutSetPrim, [e1] ->
+      typ e1 <: T.nat32;
       T.unit <: t
     (* Certified Data *)
     | SetCertifiedData, [e1] ->

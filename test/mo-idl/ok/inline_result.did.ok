@@ -9,6 +9,6 @@ type Result =
    ok: nat;
  };
 service : {
-  f: (opt nat) -> (Result);
-  g: (Result) -> (Result_1);
+  f: (x: opt nat) -> (Result);
+  g: (x: Result) -> (Result_1);
 }

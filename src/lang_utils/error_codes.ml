@@ -213,4 +213,10 @@ let error_codes : (string * string option) list =
     "M0207", None; (* Migration consumes, but does not produce, an un-declared field *)
     "M0208", None; (* Missing field migration*)
     "M0209", None; (* Misplaced migration expression on module/object *)
+    "M0210", None; (* Parenthetical note must be applied to a message send *)
+    "M0211", None; (* Parenthetical note has no attributes *)
+    "M0212", Some([%blob "lang_utils/error_codes/M0212.md"]); (* Unrecognised attribute in parenthetical note *)
+    "M0213", None; (* Parenthetical note on shared functions is disallowed *)
+    "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
+    "M0215", None; (* Field is lost in record used at supertype *)
   ]

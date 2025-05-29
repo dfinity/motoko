@@ -3891,6 +3891,36 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
+  (* Dynamic blob index access. Returns the value of the element.
+     Does bounds checking *)
+  let idx env =
+    Func.share_code2 Func.Never env "Blob.idx" (("blob", I64Type), ("idx", I64Type)) [I64Type] (fun env get_blob get_idx ->
+      (* No need to check the lower bound, we interpret idx as unsigned *)
+      (* Check the upper bound *)
+      get_idx ^^
+      get_blob ^^ len env ^^
+      compile_comparison I64Op.LtU ^^
+      E.else_trap_with env "Blob index out of bounds" ^^
+
+      get_idx ^^
+      compile_add_const Int64.(mul header_size Heap.word_size |> add ptr_unskew) ^^
+      get_blob ^^
+      Tagged.load_forwarding_pointer env ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      G.i (Load {ty = I64Type; align = 0; offset = 0L; sz = Some (Pack8, ZX)}) ^^
+      TaggedSmallWord.msb_adjust Type.Nat8 ^^
+      TaggedSmallWord.tag env Type.Nat8
+    )
+
+  (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
+  let idx_bigint env =
+    Func.share_code2 Func.Never env "Blob.idx_bigint" (("blob", I64Type), ("idx", I64Type)) [I64Type] (fun env get_blob get_idx ->
+      get_blob ^^
+      get_idx ^^
+      BigNum.to_word64_with env (lit env Tagged.T "Blob index out of bounds") ^^
+      idx env
+  )
+
   let dyn_alloc_scratch env =
     let (set_len, get_len) = new_local env "len" in
     set_len ^^
@@ -4686,6 +4716,11 @@ module IC = struct
 
   (* IC-specific stuff: System imports, databufs etc. *)
 
+  (* Stands for the `I` value from the 'IC Interface Specification'.
+   * Use it where a pointer type is expected, to easily differentiate between pointers and i32/i64 values.
+   *)
+  let i = I64Type
+
   let register_globals env =
     (* result of last ic0.call_perform  *)
     E.add_global64 env "__call_perform_status" Mutable 0L;
@@ -4710,52 +4745,68 @@ module IC = struct
     Blob.lit env Tagged.T "" ^^
     set_call_perform_message env
 
+  let is n = Lib.List.make n i
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
-      E.add_func_import env "ic0" "accept_message" [] [];
-      E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
-      E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
-      E.add_func_import env "ic0" "call_new" (i64s 8) [];
-      E.add_func_import env "ic0" "call_perform" [] [I32Type];
-      E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
-      E.add_func_import env "ic0" "canister_cycle_balance128" [I64Type] [];
-      E.add_func_import env "ic0" "canister_self_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
-      E.add_func_import env "ic0" "canister_status" [] [I32Type];
-      E.add_func_import env "ic0" "canister_version" [] [I64Type];
-      E.add_func_import env "ic0" "is_controller" (i64s 2) [I32Type];
-      E.add_func_import env "ic0" "debug_print" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_arg_data_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_arg_data_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_caller_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_caller_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_cycles_available128" [I64Type] [];
-      E.add_func_import env "ic0" "msg_cycles_refunded128" [I64Type] [];
-      E.add_func_import env "ic0" "msg_cycles_accept128" (i64s 3) [];
-      E.add_func_import env "ic0" "cycles_burn128" (i64s 3) [];
-      E.add_func_import env "ic0" "certified_data_set" (i64s 2) [];
-      E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
-      E.add_func_import env "ic0" "data_certificate_size" [] [I64Type];
-      E.add_func_import env "ic0" "data_certificate_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_method_name_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_method_name_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject_msg_size" [] [I64Type];
-      E.add_func_import env "ic0" "msg_reject_msg_copy" (i64s 3) [];
-      E.add_func_import env "ic0" "msg_reject" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_reply_data_append" (i64s 2) [];
-      E.add_func_import env "ic0" "msg_reply" [] [];
-      E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
-      E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
-      E.add_func_import env "ic0" "trap" (i64s 2) [];
-      E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
-      E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
-      E.add_func_import env "ic0" "stable64_size" [] [I64Type];
-      E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
-      E.add_func_import env "ic0" "time" [] [I64Type];
-      if !Flags.global_timer then
-        E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
+    (* Keep all the imports in sync between classical and enhanced versions *)
+    E.add_func_import env "ic0" "accept_message" [] [];
+    E.add_func_import env "ic0" "call_data_append" (is 2) [];
+    E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
+    E.add_func_import env "ic0" "call_with_best_effort_response" [I32Type] [];
+    E.add_func_import env "ic0" "call_new" (is 8) [];
+    E.add_func_import env "ic0" "call_perform" [] [I32Type];
+    E.add_func_import env "ic0" "call_on_cleanup" (is 2) [];
+    E.add_func_import env "ic0" "canister_cycle_balance128" [i] [];
+    E.add_func_import env "ic0" "canister_self_copy" (is 3) [];
+    E.add_func_import env "ic0" "canister_self_size" [] [i];
+    E.add_func_import env "ic0" "canister_status" [] [I32Type];
+    E.add_func_import env "ic0" "canister_version" [] [I64Type];
+    E.add_func_import env "ic0" "root_key_copy" (is 3) [];
+    E.add_func_import env "ic0" "root_key_size" [] [i];
+    E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
+    E.add_func_import env "ic0" "is_controller" (is 2) [I32Type];
+    E.add_func_import env "ic0" "subnet_self_copy" (is 3) [];
+    E.add_func_import env "ic0" "subnet_self_size" [] [i];
+    E.add_func_import env "ic0" "debug_print" (is 2) [];
+    E.add_func_import env "ic0" "msg_arg_data_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_arg_data_size" [] [i];
+    E.add_func_import env "ic0" "msg_caller_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_caller_size" [] [i];
+    E.add_func_import env "ic0" "msg_cycles_available128" [i] [];
+    E.add_func_import env "ic0" "msg_cycles_refunded128" [i] [];
+    E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cycles_burn128" [I64Type; I64Type; i] [];
+
+    (* Cost *)
+    E.add_func_import env "ic0" "cost_call" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cost_create_canister" [i] [];
+    E.add_func_import env "ic0" "cost_http_request" [I64Type; I64Type; i] [];
+    E.add_func_import env "ic0" "cost_sign_with_ecdsa" [i; i; I32Type; i] [I32Type];
+    E.add_func_import env "ic0" "cost_sign_with_schnorr" [i; i; I32Type; i] [I32Type];
+
+    E.add_func_import env "ic0" "certified_data_set" (is 2) [];
+    E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
+    E.add_func_import env "ic0" "data_certificate_size" [] [i];
+    E.add_func_import env "ic0" "data_certificate_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_method_name_size" [] [i];
+    E.add_func_import env "ic0" "msg_method_name_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
+    E.add_func_import env "ic0" "msg_reject_msg_size" [] [i];
+    E.add_func_import env "ic0" "msg_reject_msg_copy" (is 3) [];
+    E.add_func_import env "ic0" "msg_reject" (is 2) [];
+    E.add_func_import env "ic0" "msg_reply_data_append" (is 2) [];
+    E.add_func_import env "ic0" "msg_reply" [] [];
+    E.add_func_import env "ic0" "msg_deadline" [] [I64Type];
+    E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
+    E.add_func_import env "ic0" "trap" (is 2) [];
+    E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
+    E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
+    E.add_func_import env "ic0" "stable64_size" [] [I64Type];
+    E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+    E.add_func_import env "ic0" "time" [] [I64Type];
+    if !Flags.global_timer then
+      E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
   let system_imports env =
     match E.mode env with
@@ -4868,6 +4919,10 @@ module IC = struct
 
   let is_controller env =
     ic_system_call "is_controller" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
+  let replicated_execution env =
+    ic_system_call "in_replicated_execution" env ^^ 
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let canister_version env = ic_system_call "canister_version" env
@@ -5069,6 +5124,30 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
 
+  let get_subnet_reference env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "canister_subnet" [I64Type] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "subnet_self_size")
+          (fun env -> system_call env "subnet_self_copy")
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get actor-subnet-reference when running locally"
+
+  let get_root_key env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "root_key" [i] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "root_key_size")
+          (fun env -> system_call env "root_key_copy")
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get root-key when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5145,7 +5224,8 @@ module IC = struct
          "system_transient", 2L;
          "destination_invalid", 3L;
          "canister_reject", 4L;
-         "canister_error", 5L]
+         "canister_error", 5L;
+         "system_unknown", 6L]
         (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
@@ -6965,13 +7045,13 @@ module Serialization = struct
         get_x ^^ Arr.load_field env 1L ^^ size env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         inc_data_size (compile_unboxed_const 1L) ^^ (* one byte tag *)
-        get_x ^^ size env (Prim Blob)
+        get_x ^^ size env blob
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
          size_alias (fun () ->
           inc_data_size (compile_unboxed_const 12L) ^^ (* |id| + |page_count| = 8 + 4 *)
-          get_x ^^ Region.vec_pages env ^^ size env (Prim Blob))
+          get_x ^^ Region.vec_pages env ^^ size env blob)
       | Mut t ->
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -7140,7 +7220,7 @@ module Serialization = struct
         get_x ^^ Arr.load_field env 1L ^^ write env (Prim Text)
       | Obj (Actor, _) | Prim Principal ->
         write_byte env get_data_buf (compile_unboxed_const 1L) ^^
-        get_x ^^ write env (Prim Blob)
+        get_x ^^ write env blob
       | Non ->
         E.trap_with env "serializing value of type None"
       | Mut t ->
@@ -9639,7 +9719,7 @@ module FuncDec = struct
       (fun get_cb_index ->
         get_cb_index ^^
         TaggedSmallWord.msb_adjust Type.Nat32 ^^
-        Serialization.serialize env Type.[Prim Nat32])
+        Serialization.serialize env Type.[nat32])
 
   let ic_call_one_shot env ts get_meth_pair get_arg add_cycles =
     match E.mode env with
@@ -9708,7 +9788,7 @@ module FuncDec = struct
         IC.assert_caller_self env ^^
 
         (* Deserialize and look up continuation argument *)
-        Serialization.deserialize env Type.[Prim Nat32] ^^
+        Serialization.deserialize env Type.[nat32] ^^
         TaggedSmallWord.lsb_adjust Type.Nat32 ^^
         ContinuationTable.peek_future env ^^
         set_closure ^^
@@ -10410,6 +10490,84 @@ module AllocHow = struct
 
 end (* AllocHow *)
 
+module Cost = struct
+  let call env =
+    Func.share_code2 Func.Always env "cost_call"
+      (("method_name_size", I64Type), ("payload_size", I64Type))
+      [IC.i]
+      (fun env get_method_name_size get_payload_size ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_method_name_size ^^
+          get_payload_size ^^
+          get_dst ^^
+          IC.ic_system_call "cost_call" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let create_canister env =
+    Func.share_code0 Func.Always env "cost_create_canister" [I64Type] (fun env ->
+      Stack.with_words env "dst" 2L (fun get_dst ->
+        get_dst ^^
+        IC.ic_system_call "cost_create_canister" env ^^
+        get_dst ^^
+        Cycles.from_word128_ptr env
+      )
+    )
+
+  let http_request env =
+    Func.share_code2 Func.Always env "cost_http_request"
+      (("request_size", I64Type), ("max_res_bytes", I64Type))
+      [IC.i]
+      (fun env get_request_size get_max_res_bytes ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_request_size ^^
+          get_max_res_bytes ^^
+          get_dst ^^
+          IC.ic_system_call "cost_http_request" env ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_ecdsa env =
+    Func.share_code2 Func.Always env "cost_sign_with_ecdsa"
+      (("key_name", IC.i), ("curve", I32Type))
+      [IC.i; I64Type]
+      (fun env get_key_name get_curve ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_curve ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_ecdsa" env ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+          TaggedSmallWord.msb_adjust Type.Nat32 ^^
+          StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+
+  let sign_with_schnorr env =
+    Func.share_code2 Func.Always env "cost_sign_with_schnorr"
+      (("key_name", IC.i), ("algorithm", I32Type))
+      [IC.i; I64Type]
+      (fun env get_key_name get_algorithm ->
+        Stack.with_words env "dst" 2L (fun get_dst ->
+          get_key_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+          get_algorithm ^^
+          get_dst ^^
+          IC.ic_system_call "cost_sign_with_schnorr" env ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+          TaggedSmallWord.msb_adjust Type.Nat32 ^^
+          StackRep.adjust env (SR.UnboxedWord64 Type.Nat32) SR.Vanilla ^^
+          get_dst ^^
+          Cycles.from_word128_ptr env
+        )
+      )
+end
+
 (* The actual compiler code that looks at the AST *)
 
 (* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
@@ -11044,7 +11202,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
 Traps or pushes the pointer to the element on the stack
 *)
 and compile_array_index env ae e1 e2 =
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e1 ^^ (* offset to array payload *)
     compile_exp_vanilla env ae e2 ^^ (* idx *)
     Arr.idx_bigint env
 
@@ -11233,6 +11391,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Arr.len env ^^
     compile_sub_const 1L ^^
     BigNum.from_signed_word_compact env
+
+  | IdxBlobPrim, [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^ (* offset to blob payload *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Blob.idx_bigint env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in
@@ -11538,6 +11702,55 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e2 ^^
     BigNum.compile_rsh env
 
+  | OtherPrim ("explode_Nat16" | "explode_Int16" as pr), [e] ->
+    SR.UnboxedTuple 2,
+    let set, get = new_local env "e" in
+    compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.untag env Type.(if pr = "explode_Nat16" then Nat16 else Int16) ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    get ^^
+    compile_shl_const 8L ^^
+    TaggedSmallWord.tag env Type.Nat8
+
+  | OtherPrim ("explode_Nat32" | "explode_Int32" as pr), [e] ->
+    SR.UnboxedTuple 4,
+    let set, get = new_local env "e" in
+    let byte_at_bit b =
+      get ^^
+      compile_shrU_const b ^^
+      compile_shl_const 56L ^^
+      TaggedSmallWord.tag env Type.Nat8 in
+    compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.untag env Type.(if pr = "explode_Nat32" then Nat32 else Int32) ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    byte_at_bit 48L ^^
+    byte_at_bit 40L ^^
+    byte_at_bit 32L
+
+  | OtherPrim ("explode_Nat64" | "explode_Int64" as pr), [e] ->
+    SR.UnboxedTuple 8,
+    let set, get = new_local env "e" in
+    let byte_at_bit b =
+      get ^^
+      (if b = 0L then G.nop else compile_shrU_const b) ^^
+      compile_shl_const 56L ^^
+      TaggedSmallWord.tag env Type.Nat8 in
+    compile_exp_as env ae (SR.UnboxedWord64 Type.(if pr = "explode_Nat64" then Nat64 else Int64)) e ^^
+    set ^^ get ^^
+    compile_bitand_const 0xFF00000000000000L ^^
+    TaggedSmallWord.tag env Type.Nat8 ^^
+    byte_at_bit 48L ^^
+    byte_at_bit 40L ^^
+    byte_at_bit 32L ^^
+    byte_at_bit 24L ^^
+    byte_at_bit 16L ^^
+    byte_at_bit 8L ^^
+    byte_at_bit 0L
+ 
   | OtherPrim "abs", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
@@ -11867,6 +12080,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Blob.len env ^^
     IC.is_controller env
 
+  | OtherPrim "replicated_execution", [] ->
+    SR.Vanilla,
+    IC.replicated_execution env
+
   | OtherPrim "canister_version", [] ->
     SR.UnboxedWord64 Type.Nat64,
     IC.canister_version env
@@ -12153,7 +12370,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_self_reference env ^^
     IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
-  (* Other prims, binary*)
+  | OtherPrim "canister_subnet", [] ->
+    SR.Vanilla, IC.get_subnet_reference env
+
+  | OtherPrim "root_key", [] ->
+    SR.Vanilla, IC.get_root_key env
+
+  (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
@@ -12274,6 +12497,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
+
   | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
     let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
@@ -12319,6 +12543,41 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | SystemCyclesBurnPrim, [e1] ->
     SR.Vanilla, compile_exp_vanilla env ae e1 ^^ Cycles.burn env
+
+  (* Cost *)
+  | OtherPrim "costCall", [method_name_size; payload_size] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) method_name_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) payload_size ^^
+    Cost.call env
+  | OtherPrim "costCreateCanister", [] ->
+    SR.Vanilla, Cost.create_canister env
+  | OtherPrim "costHttpRequest", [request_size; max_res_bytes] ->
+    SR.Vanilla,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) request_size ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) max_res_bytes ^^
+    Cost.http_request env
+  | OtherPrim "costSignWithEcdsa", [key_name; curve] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) curve ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    Cost.sign_with_ecdsa env
+  | OtherPrim "costSignWithSchnorr", [key_name; algorithm] ->
+    SR.UnboxedTuple 2,
+    compile_exp_vanilla env ae key_name ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) algorithm ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    Cost.sign_with_schnorr env
+
+  | SystemTimeoutSetPrim, [e1] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    IC.system_call env "call_with_best_effort_response"
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12632,7 +12891,7 @@ and compile_lit_pat env l =
     compile_eq env Type.(Prim Nat16)
   | Nat32Lit _ ->
     compile_lit_as env SR.Vanilla l ^^
-    compile_eq env Type.(Prim Nat32)
+    compile_eq env Type.nat32
   | Nat64Lit _ ->
     BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env (SR.UnboxedWord64 Type.Nat64) l ^^

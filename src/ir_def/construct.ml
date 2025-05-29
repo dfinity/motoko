@@ -113,12 +113,13 @@ let primE prim es =
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
     | OtherPrim "trap" -> T.Non
     | OtherPrim "global_timer_set" -> T.nat64
-    | OtherPrim "call_perform_status" -> T.(Prim Nat32)
+    | OtherPrim "call_perform_status" -> T.nat32
     | OtherPrim "call_perform_message" -> T.text
     | OtherPrim "array_len"
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
-    | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "is_controller"
+    | OtherPrim "replicated_execution" -> T.bool
     | OtherPrim "rts_version" -> T.text
     | OtherPrim "rts_memory_size" -> T.nat
     | OtherPrim "rts_heap_size" -> T.nat
@@ -268,7 +269,7 @@ let blockE decs exp =
 let nat32E n =
   { it = LitE (Nat32Lit n);
     at = no_region;
-    note = Note.{ def with typ = T.(Prim Nat32) }
+    note = Note.{ def with typ = T.nat32 }
   }
 
 let nat64E n =
@@ -491,6 +492,9 @@ let assignE v exp2 =
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
+
+let assignVarE v exp =
+  assignE (var v T.(Mut (typ exp |> as_immut))) exp
 
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);

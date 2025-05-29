@@ -99,14 +99,14 @@ let rec normalize_let p e =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP x @! at, e' @? at, None) @? at
+  then LetD(VarP x @! x.at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
 
 let is_sugared_func_or_module dec = match dec.it with
-  | LetD({it = VarP _; _} as pat, exp, None) ->
-    dec.at = pat.at && pat.at = exp.at &&
+  | LetD({it = VarP _; _}, exp, None) ->
+    dec.at = exp.at &&
     (match exp.it with
     | ObjBlockE (_, sort, _, _) ->
       sort.it = Type.Module
@@ -321,6 +321,17 @@ and objblock eo s id ty dec_fields =
 %type<Mo_def.Syntax.typ_field list> seplist(stab_field,semicolon)
 %type<Mo_def.Syntax.typ_field> stab_field
 
+(* recovery comment: force recovery to emit less tokens *)
+%[@recover.default_cost_of_symbol     1000]
+%[@recover.default_cost_of_production 1]
+
+%[@recover.prelude
+    open Mo_def.Syntax
+
+    (* mk_stub_expr loc = VarE ("__error_recovery_var__" @~ loc) @? loc *)
+    let mk_stub_expr loc = LoopE (BlockE [] @? loc, None) @? loc
+ ]
+
 %type<unit> start
 %start<string -> Mo_def.Syntax.prog> parse_prog
 %start<string -> Mo_def.Syntax.prog> parse_prog_interactive
@@ -332,9 +343,10 @@ and objblock eo s id ty dec_fields =
 
 (* Helpers *)
 
+(* recovery comment: force to insert ";" rather immediate reduction *)
 seplist(X, SEP) :
   | (* empty *) { [] }
-  | x=X { [x] }
+  | x=X { [x] } [@recover.cost inf]
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
 seplist1(X, SEP) :
@@ -357,10 +369,6 @@ seplist1(X, SEP) :
 %inline id_opt :
   | id=id { fun _ _ -> true, id }
   | (* empty *) { fun sort sloc -> false, anon_id sort (at sloc) @@ at sloc }
-
-%inline typ_id_opt :
-  | id=typ_id { fun _ _ -> id }
-  | (* empty *) { fun sort sloc -> anon_id sort (at sloc) @= at sloc }
 
 %inline var_opt :
   | (* empty *) { Const @@ no_region }
@@ -607,7 +615,8 @@ exp_plain :
   | LPAR es=seplist(exp(ob), COMMA) RPAR
     { match es with [e] -> e | _ -> TupE(es) @? at $sloc }
 
-exp_nullary(B) :
+(* recovery comment: force to emit special variable instead of "_" to filter spurious errors *)
+exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | e=B
   | e=exp_plain
     { e }
@@ -630,7 +639,7 @@ exp_post(B) :
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
+    { CallE(None, e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -641,10 +650,8 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-(*
-  | parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
-*)
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
+    { CallE(par, e1, inst, e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
@@ -703,10 +710,10 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
-  | (* parenthetical_opt *) ASYNC e=exp_nest
-    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+  | par=parenthetical_opt ASYNC e=exp_nest
+    { AsyncE(par, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
-    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
@@ -771,11 +778,12 @@ exp_nonvar(B) :
   | d=dec_nonvar
     { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
 
-exp(B) :
+(* recovery comment: force to emit special variable rather than "return" *)
+exp [@recover.expr mk_stub_expr loc] (B) :
   | e=exp_nonvar(B)
     { e }
   | d=dec_var
-    { match d.it with ExpD e -> e | _ -> BlockE([d]) @? at $sloc }
+    { BlockE([d]) @? at $sloc }
 
 %public exp_nest :
   | e=block
@@ -884,7 +892,8 @@ pat_opt :
   | (* empty *)
     { fun sloc -> WildP @! sloc }
 
-
+func_pat :
+  | xf=id_opt ts=typ_params_opt p=pat_plain { (xf, ts, p) }
 
 (* Declarations *)
 
@@ -898,11 +907,12 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | sp=shared_pat_opt FUNC xf=id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
+  | sp=shared_pat_opt FUNC
+      xf_tps_p=func_pat t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
+      let xf, tps, p = xf_tps_p in
       let named, x = xf "func" $sloc in
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
@@ -922,16 +932,19 @@ obj_or_class_dec :
           let id = if named then Some x else None in
           AwaitE
             (Type.Fut,
-             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+             AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock eo s None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt ds=obj_sort_opt CLASS xf=typ_id_opt
-      tps=typ_params_opt p=pat_plain t=annot_opt  cb=class_body
+  | sp=shared_pat_opt ds=obj_sort_opt CLASS
+      xf_tps_p=func_pat t=annot_opt  cb=class_body
     { fun eo ->
       let (persistent, s) = ds in
+      let xf, tps, p = xf_tps_p in
+      let (_, id) = xf "class" $sloc in
+      let cid = id.it @= id.at in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
@@ -942,7 +955,7 @@ obj_or_class_dec :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, s, xf "class" $sloc, tps', p, t', x, dfs') @? at $sloc }
+      ClassD(eo, sp, s, cid, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
@@ -1007,6 +1020,14 @@ stab_field :
   | STABLE mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
 
+pre_stab_field :
+  | r=req mut=var_opt x=id COLON t=typ
+    { (r, ValF (x, t, mut) @@ at $sloc) }
+
+%inline req :
+  | STABLE { false @@ at $sloc }
+  | IN { true @@ at $sloc }
+
 parse_stab_sig :
   | start ds=seplist(typ_dec, semicolon) ACTOR LCURLY sfs=seplist(stab_field, semicolon) RCURLY
     { let trivia = !triv_table in
@@ -1017,7 +1038,7 @@ parse_stab_sig :
           note = { filename; trivia } }
     }
   | start ds=seplist(typ_dec, semicolon)
-       ACTOR LPAR LCURLY sfs_pre=seplist(stab_field, semicolon) RCURLY COMMA
+       ACTOR LPAR LCURLY sfs_pre=seplist(pre_stab_field, semicolon) RCURLY COMMA
              LCURLY sfs_post=seplist(stab_field, semicolon) RCURLY  RPAR
     { let trivia = !triv_table in
       let sigs = PrePost(sfs_pre, sfs_post) in

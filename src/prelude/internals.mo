@@ -10,6 +10,7 @@ code, and cannot be shadowed.
 type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
+var @timeout : ?Nat32 = null;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
@@ -18,8 +19,13 @@ func @add_cycles<system>() {
   @reset_cycles();
   if (cycles != 0) {
     (prim "cyclesAdd" : Nat -> ()) cycles;
+  };
+  switch @timeout {
+    case (?timeout) { @timeout := null; (prim "timeoutSet" : Nat32 -> ()) timeout };
+    case null ()
   }
 };
+
 
 // Function called by backend to zero cycles on context switch.
 // DO NOT RENAME without modifying compilation.
@@ -69,8 +75,16 @@ func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
     let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
-func @blob_size(xs : Blob) : () -> Nat =
-  func () : Nat = (prim "blob_size" : Blob -> Nat) xs;
+func @blob_size(b : Blob) : () -> Nat =
+  func () : Nat = (prim "blob_size" : Blob -> Nat) b;
+func @blob_keys(b : Blob) : () -> @Iter<Nat> =
+  func () : @Iter<Nat> = object {
+    var i = 0;
+    let l = (prim "blob_size" : Blob -> Nat) b;
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  };
+func @blob_get(b : Blob) : Nat -> Nat8 =
+  func (n : Nat) : Nat8 = b[n];
 func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
   func () : @Iter<Nat8> = object {
     type BlobIter = Any; // not exposed
@@ -198,7 +212,7 @@ func @text_of_Char(c : Char) : Text {
 
 func @text_of_Blob(blob : Blob) : Text {
   var t = "\"";
-  for (b in blob.vals()) {
+  for (b in blob.values()) {
     // Could do more clever escaping, e.g. leave ascii and utf8 in place
     t #= "\\" # @left_pad(2, "0", @text_of_num(@nat8ToNat b, 16, 0, @digits_hex));
   };
@@ -243,7 +257,7 @@ func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
 func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
   var text = "[";
   var first = true;
-  for (x in xs.vals()) {
+  for (x in xs.values()) {
     if first {
       first := false;
     } else {
@@ -257,7 +271,7 @@ func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
 func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   var text = "[var";
   var first = true;
-  for (x in xs.vals()) {
+  for (x in xs.values()) {
     if first {
       first := false;
       text #= " ";
@@ -556,14 +570,10 @@ func @prune(n : ?@Node) : ?@Node = switch n {
 func @nextExpiration(n : ?@Node) : Nat64 = switch n {
   case null 0;
   case (?n) {
-    var exp = @nextExpiration(n.pre); // TODO: use the corollary for expire == 0
-    if (exp == 0) {
-      exp := n.expire[0];
-      if (exp == 0) {
-        exp := @nextExpiration(n.post)
-      }
-    };
-    exp
+    let pivot = n.expire[0];
+    if (pivot == 0) return @nextExpiration(n.post);
+    let exp = @nextExpiration(n.pre);
+    if (exp == 0) pivot else exp
   }
 };
 
@@ -582,31 +592,34 @@ func @timer_helper() : async () {
   func gatherExpired(n : ?@Node) = switch n {
     case null ();
     case (?n) {
-      gatherExpired(n.pre);
-      if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
-        thunks[gathered] := ?(n.job);
-        switch (n.delay) {
-          case (null or ?0) ();
-          case (?delay) {
-            // re-add the node, skipping past expirations
-            let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
-            n.expire[0] := 0;
-            // N.B. reinsert only works on pruned nodes
-            func reinsert(m : ?@Node) : @Node = switch m {
-              case null ({ n with expire = [var expire]; pre = null; post = null });
-              case (?m) {
-                assert m.expire[0] != 0;
-                if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
-                else ({ m with post = ?reinsert(m.post) })
-              }
-            };
-            @timers := ?reinsert(@prune(@timers));
+      let pivot = n.expire[0];
+      if (pivot > 0) gatherExpired(n.pre); // by corollary
+      if (pivot <= now and gathered < thunks.size()) {
+        if (pivot > 0) {
+          // not expunged yet
+          thunks[gathered] := ?(n.job);
+          switch (n.delay) {
+            case (null or ?0) n.expire[0] := 0;
+            case (?delay) {
+              // re-add the node, skipping past expirations
+              let expire = pivot + delay * (1 + (now - pivot) / delay);
+              n.expire[0] := 0;
+              // N.B. reinsert only works on pruned nodes
+              func reinsert(m : ?@Node) : @Node = switch m {
+                case null ({ n with expire = [var expire]; pre = null; post = null });
+                case (?m) {
+                  assert m.expire[0] != 0;
+                  if (expire < m.expire[0]) ({ m with pre = ?reinsert(m.pre) })
+                  else ({ m with post = ?reinsert(m.post) })
+                }
+              };
+              @timers := ?reinsert(@prune(@timers));
+            }
           };
+          gathered += 1;
         };
-        n.expire[0] := 0;
-        gathered += 1;
-      };
-      gatherExpired(n.post);
+        gatherExpired(n.post)
+      }
     }
   };
 
@@ -632,7 +645,7 @@ func @timer_helper() : async () {
     })
   };
 
-  for (o in thunks.vals()) {
+  for (o in thunks.values()) {
     switch o {
       case (?thunk) try ignore thunk() catch _ reinsert thunk;
       case _ return

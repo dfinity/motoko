@@ -158,6 +158,16 @@ func int64ToInt32(n : Int64) : Int32 = (prim "num_conv_Int64_Int32" : Int64 -> I
 func int32ToInt16(n : Int32) : Int16 = (prim "num_conv_Int32_Int16" : Int32 -> Int16) n;
 func int16ToInt8(n : Int16) : Int8 = (prim "num_conv_Int16_Int8" : Int16 -> Int8) n;
 
+
+// Exploding to bytes
+func explodeNat16(n : Nat16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Nat16" : Nat16 -> (Nat8, Nat8)) n;
+func explodeInt16(n : Int16) : (msb : Nat8, lsb : Nat8) = (prim "explode_Int16" : Int16 -> (Nat8, Nat8)) n;
+func explodeNat32(n : Nat32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Nat32" : Nat32 -> (Nat8, Nat8, Nat8, Nat8)) n;
+func explodeInt32(n : Int32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int32" : Int32 -> (Nat8, Nat8, Nat8, Nat8)) n;
+func explodeNat64(n : Nat64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Nat64" : Nat64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
+func explodeInt64(n : Int64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8) = (prim "explode_Int64" : Int64 -> (Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8)) n;
+
+
 // Char conversion and properties
 
 func charToNat32(c : Char) : Nat32 = (prim "num_wrap_Char_Nat32" : Char -> Nat32) c;
@@ -292,6 +302,7 @@ type ErrorCode = {
   #destination_invalid;
   #canister_reject;
   #canister_error;
+  #system_unknown;
   #future : Nat32;
   #call_error : { err_code : Nat32 };
 };
@@ -325,7 +336,10 @@ func principalOfBlob(act : Blob) : Principal {
 
 func principalOfActor(act : actor {}) : Principal = (prim "principalOfActor" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
+func isReplicatedExecution() : Bool = (prim "replicated_execution" : () -> Bool) ();
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
+func canisterSubnet() : Principal = (prim "canister_subnet" : () -> Principal)();
+func rootKey() : Blob = (prim "root_key" : () -> Blob)();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
@@ -358,6 +372,16 @@ func cyclesAdd<system>(amount : Nat) : () {
 func cyclesBurn<system>(amount : Nat) : Nat {
   (prim "cyclesBurn" : Nat -> Nat) amount;
 };
+
+func costCall(methodNameSize : Nat64, payloadSize : Nat64) : Nat = (prim "costCall" : (Nat64, Nat64) -> Nat)(methodNameSize, payloadSize);
+
+func costCreateCanister() : Nat = (prim "costCreateCanister" : () -> Nat)();
+
+func costHttpRequest(requestSize : Nat64, maxResBytes : Nat64) : Nat = (prim "costHttpRequest" : (Nat64, Nat64) -> Nat)(requestSize, maxResBytes);
+
+func costSignWithEcdsa(keyName : Text, curveEncoding : Nat32) : (resultCode : Nat32, costOrUndefined : Nat) = (prim "costSignWithEcdsa" : (Text, Nat32) -> (Nat32, Nat))(keyName, curveEncoding);
+
+func costSignWithSchnorr(keyName : Text, algorithmEncoding : Nat32) : (resultCode : Nat32, costOrUndefined : Nat) = (prim "costSignWithSchnorr" : (Text, Nat32) -> (Nat32, Nat))(keyName, algorithmEncoding);
 
 // certified data
 func setCertifiedData(data : Blob) = (prim "setCertifiedData" : Blob -> ()) data;

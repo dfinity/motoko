@@ -91,7 +91,7 @@ persistent actor This {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";
-      for (t in ts.vals()) { r #= t };
+      for (t in ts.values()) { r #= t };
       r
    };
 
@@ -113,11 +113,11 @@ In most cases, the standard inter-canister call mechanisms and automatic Candid 
 
 For further information on Candid, check out the documentation here:
 
-- [Candid UI](/docs/current/developer-docs/smart-contracts/candid).
+- [Candid UI](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/candid).
 
-- [What is Candid?](/docs/current/developer-docs/smart-contracts/candid/candid-concepts).
+- [What is Candid?](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/candid/candid-concepts).
 
-- [Using Candid](/docs/current/developer-docs/smart-contracts/candid/candid-howto).
+- [Using Candid](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/candid/candid-howto).
 
 - [Candid specification](https://github.com/dfinity/candid/blob/master/spec/Candid.md).
 

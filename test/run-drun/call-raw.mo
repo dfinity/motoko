@@ -102,10 +102,15 @@ actor self {
     };
 
     do {
+      let cycles = 424242;
       let arg : Blob = "DIDL\00\00";
-      Cycles.add<system> 424242;
+      // legacy way
+      Cycles.add<system> cycles;
       let res = await P.call_raw(p, "cycles", arg);
       assert res == arg;
+      // new way
+      let resu = await (with cycles) P.call_raw(p, "cycles", arg);
+      assert resu == arg;
     }
   }
 };

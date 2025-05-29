@@ -141,13 +141,17 @@ data_typ :
   | t=ref_typ { t }
   | t=prim_typ { t }
 
+typs :
+  | LPAR fs=seplist(data_typ, COMMA) RPAR
+    { fs }
+
 param_typs :
   | LPAR fs=seplist(param_typ, COMMA) RPAR
     { fs }
 
 param_typ :
-  | t=data_typ { t }
-  | name COLON t=data_typ { t }
+  | t=data_typ { { name = None; typ = t} @@ at $sloc }
+  | n=name COLON t=data_typ { { name = Some n; typ = t} @@ at $sloc }
 
 func_mode :
   | ONEWAY { Oneway @@ at $sloc }
@@ -281,7 +285,7 @@ assertion :
   | i1=input NOTEQ i2=input COLON { ParsesEqual (false, i1, i2) }
 
 test :
-  | id=id assertion=assertion tys=param_typs desc=text?
+  | id=id assertion=assertion tys=typs desc=text?
     { if id.it <> "assert" then raise (ParseError (at $loc(id), id.it))
       else { ttyp=tys; assertion; desc } @@ at $sloc }
 
