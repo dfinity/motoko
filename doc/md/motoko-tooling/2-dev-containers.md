@@ -9,9 +9,9 @@ Developer containers are a local development option that uses [Docker](https://w
 
 Dev containers have additional benefits, including:
 
-- **Replicability**: Containers make reproducing builds across teams easy since they contain the entire development environment within a portable format. Team members can interact with the same container without needing to set up their own personal developer environment and reproduce the build themselves.
+- **Reproducibility**: Containers make it easy to build and run in a consistent way across multiple computers since they contain the entire development environment within a portable format. Team members can interact with the same container without needing to set up their own personal developer environment and replicate the build themselves.
 
-- **Security**: Containers do not have access to the other files or applications on your system, making project development secure.
+- **Security**: By default, containers do not have access to the other files or applications on your system, making project development secure. It's also possible to give restricted (e.g. read-only or write-only) access to specific files and directories.
 
 ## Using developer containers
 
