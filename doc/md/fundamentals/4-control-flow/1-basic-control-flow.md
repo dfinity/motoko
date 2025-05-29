@@ -18,7 +18,8 @@ sidebar_position: 1
 
 ## `return`
 
-A `return` statement immediately exits a function and provides a result. Unlike `break` or `continue`, `return` stops execution entirely and sends a value back to the caller.
+A `return` statement immediately exits a function or `async` block with a result.
+Unlike `break` or `continue`, which jump to a labeled point within the same function, `return` does not target a label. Instead, it exits the current function entirely, either returning control to the caller or, in asynchronous contexts, completing a future and resuming the caller that's awaiting the result.
 
 ```motoko
 func checkSign(n : Int) : Text {
@@ -44,15 +45,17 @@ type HttpRequestStatus = {
 
 func checkStatus(r : HttpRequestStatus) : Text {
   switch (r) {
-    case (#ok(successCode)) { "Success: " # Nat.toText(successCode) };
-    case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) };
+    case (#ok successCode) { "Success: " # Nat.toText(successCode) };
+    case (#err errorCode ) { "Failure: " # Nat.toText(errorCode) };
   };
 };
 ```
 
 ## `let-else`
 
-The `let-else` construct allows conditional binding by attempting to bind a value to a variable and immediately handling the case when the binding fails. It is useful when working with `Result<T,E>` and optional values (`?T`), enabling concise error handling or early exits when the value is `null`.
+The `let-else` construct allows conditional binding of the variables in a pattern, by attempting to match a value to the pattern. The `else` clause handles the case when the pattern is not a match. It is useful when working with `Result<T,E>` and optional values (`?T`), enabling concise error handling or early exits when the value is `null`.
+
+Since the code following the `let` cannot execute without its matching bindings, the `else` clause must have type `None`, typically by diverting control using `return`, `throw`, `break` or `continue`.
 
 ```motoko no-repl
 import Nat "mo:base/Nat";
@@ -63,30 +66,33 @@ type HttpRequestStatus = {
 };
 
 func checkStatus(r : HttpRequestStatus) : Text {
-  let #ok(status) = r else return "The request failed!";
+  let #ok status = r else return "The request failed!";
   Nat.toText(status)
 };
 ```
 
 :::note
-Unlike a `switch`, `let-else` discards any additional error information from non-matching cases, making it less suitable when detailed error handling is needed. The `#err(e)` case is dropped entirely — `e` cannot be inspected or logged.
+Unlike a `switch`, `let-else` discards any additional error information from non-matching cases, making it less suitable when detailed error handling is needed. The `(#err e)` case is dropped entirely — `e` cannot be inspected or logged.
 :::
 
 ## Option block
 
-These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and returns `null` if any value is `null`, simplifying code that handles multiple options.
+These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and exits the block with `null` if any value is `null`, simplifying code that handles multiple options.
+The result of the inner block, if any, is returned in an option.
 
 ```motoko no-repl
 let x : ?Nat = foo(); // x might be null or have a Nat value
-let y = ?Nat = foo(); // y might also be null or have a Nat value
-let z = do ? { x! + 3 / y! }; // If x or y is null, z is also null; otherwise, z = x + 3 / y
+let y : ?Nat = foo(); // y might also be null or have a Nat value
+let z = do ? { x! + 3 / y! }; // If x or y is null, z is also null; otherwise, z = ?(x + 3 / y)
 ```
-
-Instead of having to switch `x` and `y` in a verbose manner the use of the postfix operator `!` makes it simple to unwrap.
+<!-- TODO(future): better, complete example. Perhaps there's one already the option section -->
+Instead of having to switch on the options `x` and `y` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
 
 ## `label`
 
-A `label` assigns a name to a block of code that executes like any other block, but its result can be accessed directly. Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
+A `label` assigns a name to a block of code that executes like any other block, but its result can be produced early using a `break` to the label.
+If the block produces a non-`(0)` result, the `break` can include a value.
+Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
 When a labeled block runs, it evaluates its contents and returns a result. If no result is explicitly provided, it defaults to an empty value. Labels don’t change how the block executes but allow referencing and controlling its flow. Each labeled block must define an exit point.
 
