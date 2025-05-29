@@ -22,15 +22,15 @@ A `return` statement immediately exits a function and provides a result. Unlike 
 
 ```motoko
 func add(a : Nat, b : Nat) : Nat {
-    return a + b;
+  a + b;
 };
 
 func checkSign(n : Int) : Text {
-    if (n > 0) {
-        return "Positive";
-    } else {
-        return "Negative or zero";
-    };
+  if (n > 0) {
+    return "Positive";
+  } else {
+    return "Negative or zero";
+  };
 };
 ```
 
@@ -42,16 +42,16 @@ A `switch` expression matches a value against multiple cases and executes the bl
 import Nat "mo:base/Nat";
 
 type HttpRequestStatus = {
-    #ok: Nat;
-    #err: Nat;
+  #ok: Nat;
+  #err: Nat;
 };
 
 func checkStatus(r : HttpRequestStatus) : Text {
-    switch (r) {
-        case (#ok(successCode)) { "Success: " # Nat.toText(successCode) };
-        case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) };
-    }
-}
+  switch (r) {
+    case (#ok(successCode)) { "Success: " # Nat.toText(successCode) };
+    case (#err(errorCode)) { "Failure: " # Nat.toText(errorCode) };
+  };
+};
 ```
 
 ## `label`
@@ -59,7 +59,6 @@ func checkStatus(r : HttpRequestStatus) : Text {
 A `label` assigns a name to a block of code that executes like any other block, but its result can be accessed directly. Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
 When a labeled block runs, it evaluates its contents and returns a result. If no result is explicitly provided, it defaults to an empty value. Labels don’t change how the block executes but allow referencing and controlling its flow. Each labeled block must define an exit point.
-
 
 ```motoko no-repl
 shared func labelControlFlow() : async Int {
@@ -108,8 +107,8 @@ import Nat "mo:base/Nat";
 
 var i = 0;
 while (i < 5) {
-    Debug.print(Nat.toText(i));
-    i += 1;
+  Debug.print(Nat.toText(i));
+  i += 1;
 }
 ```
 
@@ -136,7 +135,6 @@ let age = 18;
 let authorized : Bool = if (age > 18) {true} else {false};
 ```
 
-
 ## Program flows
 
 In Motoko, code executes sequentially, running one statement after another. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
@@ -148,20 +146,20 @@ A `continue` statement skips the remainder of the current iteration in a loop an
 ```motoko no-repl
 shared func continueControlFlow() : async Int {
 
-    // Labeled block
-    label processNumbers : Int {
-        let numbers : [Int] = [3, -1, 0, 5, -2, 7];
-        var sum : Int = 0;
+  // Labeled block
+  label processNumbers : Int {
+    let numbers : [Int] = [3, -1, 0, 5, -2, 7];
+    var sum : Int = 0;
 
-        // Labeled loop
-        label processing for (num in numbers.vals()) {
-            if (num < 0) {
-                continue processing; // Skip negative numbers
-            };
-            sum += num;
-        };
-        sum
+    // Labeled loop
+    label processing for (num in numbers.vals()) {
+      if (num < 0) {
+        continue processing; // Skip negative numbers
+      };
+      sum += num;
     };
+    sum
+  };
 }
 ```
 
