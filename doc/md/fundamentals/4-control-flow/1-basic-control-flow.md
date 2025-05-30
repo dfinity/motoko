@@ -65,7 +65,6 @@ func asyncProduct(numbers : [Int]) : async Int {
 ```
 
 If the expected return type is `()` then you can just write `return` instead of `return ()`.
-```
 
 ## `switch`
 
@@ -117,9 +116,15 @@ These blocks represented as `do ? {...}` allow safe unwrapping of optional value
 The result of the inner block, if any, is returned in an option.
 
 ```motoko no-repl
-let x : ?Nat = foo(); // x might be null or have a Nat value
-let y : ?Nat = foo(); // y might also be null or have a Nat value
-let z = do ? { x! + 3 / y! }; // If x or y is null, z is also null; otherwise, z = ?(x + 3 / y)
+// x might be null or have a Nat value
+// y might also be null or have a Nat value
+// If x or y is null, z is also null; otherwise, z = ?(x + 3 / y)
+func calculateZ(x: ?Nat, y: ?Nat) : ?Nat {
+  do ? { x! + 3 / y! }
+}
+// let z1 = calculateZ(?5, ?2);     //?6
+// let z2 = calculateZ(null, ?2);   // null
+// let z3 = calculateZ(?5, null);   // null
 ```
 <!-- TODO(future): better, complete example. Perhaps there's one already the option section -->
 Instead of having to switch on the options `x` and `y` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
