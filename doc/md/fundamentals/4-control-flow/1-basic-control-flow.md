@@ -111,16 +111,18 @@ Unlike a `switch`, `let-else` discards any additional error information from non
 
 These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and exits the block with `null` if any value is `null`, simplifying code that handles multiple options. The result of the inner block, if any, is returned in an option.
 
+
 ```motoko no-repl
-// x might be null or have a Nat value
-// y might also be null or have a Nat value
-// If x or y is null, z is also null; otherwise, z = ?(x + 3 / y)
-func calculateZ(x: ?Nat, y: ?Nat) : ?Nat {
-  do ? { x! + 3 / y! }
-}
-// let z1 = calculateZ(?5, ?2);     //?6
-// let z2 = calculateZ(null, ?2);   // null
-// let z3 = calculateZ(?5, null);   // null
+ // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
+func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
+  do ? {
+    n! + m!  
+  }
+};
+// let o1 = addOpt(?5, ?2);       // ?7
+// let o2 = addOpt(null, ?2);    // null
+// let o3 = addOpt(?5, null);    // null
+// let o4 = addOpt(null, null);  // null
 ```
 <!-- TODO(future): better, complete example. Perhaps there's one already the option section -->
 Instead of having to switch on the options `x` and `y` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
