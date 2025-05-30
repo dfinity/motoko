@@ -4,7 +4,11 @@ sidebar_position: 4
 
 # Block expressions
 
-A block expression in Motoko is a sequence of statements enclosed in `{ ... }`. Blocks are used to group multiple operations, define local variables, and organize code for readability and logic.
+A block expression in Motoko is a sequence of declarations enclosed in `{ ... }`. 
+Since every expression is also a declaration, the sequence can include expressions.
+Intermediate expressions, that produce values other than `()`, must be prefixed with `ignore`.
+
+Blocks are used to group multiple operations, define local variables, and structure code for clarity.
 
 Block expressions are fundamental to function definitions, as they determine both the function’s structure and return value.
 
@@ -33,9 +37,9 @@ func classify(n : Int) : Text {
 };
 ```
 
-### Block assignments
+### `do` blocks
 
-Blocks are not limited to functions; they can be used anywhere an expression is expected.
+Blocks are not limited to functions; they can be used anywhere an expression is expected by prefixing the block with `do`:
 
 ```motoko no-repl
 let result : Nat = do {
@@ -45,12 +49,11 @@ let result : Nat = do {
 };
 ```
 
-## `do` block
 
-The `do {}` expression in Motoko is used for executing multiple statements sequentially, while ensuring the block is treated as an expression. Unlike standard block expressions inside functions, the `do` block must return a value of type `()` which means it’s intended for side effects, not for returning meaningful values.
+The `do {}` expression in Motoko can be used to enter a new scope and make some local declarations before producing a value.
 
-If a statement inside the `do` block produces a value, that value can be discarded with the `ignore` keyword, unless it’s explicitly needed.
 
+A do block can also just return `()` and be evaluated for its side effect:
 
 ```motoko no-repl
 do {
