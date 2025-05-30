@@ -4,11 +4,11 @@ sidebar_position: 2
 
 # Loops
 
-In Motoko, loops provide flexible control over repetition, such as iterating over collections, waiting for conditions to change, or running code indefinitely until explicitly stopped.
+In Motoko, loops provide flexible control over repetition, such as iterating over collections, looping while some condition holds, or just looping until an explicit exit from the loop.
 
 Motoko supports different types of loops:
 
-- Unconditional loops: Run indefinitely unless manually stopped.
+- `loop` loops: Repeat until explicitly exited.
 
 - `for` loops: Iteration over collections.
 
@@ -44,19 +44,21 @@ for (pattern in iterator) {
 }
 ```
 
-`for` loops must follow these parameters:
+A `for` loop must satisfy these conditions:
 
 - The iterator must provide a `next()` function that returns either a value (`?T`) or `null` when no items remain.
 
-- The pattern is a variable that matches the type of each item returned by the iterator.
+- The pattern must match the type of each item returned by the iterator.
+- The pattern cannot fail to match, e.g. by  matching on a particular number.
 
 The `for` loop's iterator is evaluated once at the start. Each time through the loop, `next()` is called:
 
-- If it returns a value, it is assigned to pattern, and the loop body runs.
+- If it returns a value, it is matched to the pattern, and the loop body runs with the identifiers declared by the pattern.
 
 - If it returns `null`, the loop stops.
 
 If evaluating the iterator causes a trap (error), the loop stops immediately.
+
 
 ```motoko no-repl
 let numbers = [1, 2, 3, 4, 5];
@@ -65,6 +67,17 @@ for (num in numbers.vals()) {
   Debug.print(debug_show(num));
 };
 ```
+
+The pattern can also match on values, for example:
+
+```motoko no-repl
+let pairs = [(1, 2), (3, 4)];
+
+for ((fst, snd) in pairs.vals()) {
+  Debug.print(debug_show(fst + snd));
+};
+```
+
 
 ## `while` loop
 
@@ -76,19 +89,18 @@ while (condition) {
 }
 ```
 
-`while` loops must follow these parameters:
+A `while` loops must satisfy these constraints:
 
-- The condition must be a [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) (`true` or `false`).
+- The condition must have a type  [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) producing `true` or `false`.
 
 - The loop body must have type `()` such that it doesn't return a meaningful value.
 
 The `while` loop first evaluates the condition:
 
-- If it causes a trap (error), the loop stops immediately.
 
 - If it evaluates to `false`, the loop ends and does nothing.
 
-- If it evaluates to `true`, the body runs and the loop repeats the process.
+- If it evaluates to `true`, the body runs and the loop repeats.
 
 Once the condition becomes false, the loop stops, and the final result is `()`.
 
