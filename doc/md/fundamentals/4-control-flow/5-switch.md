@@ -5,6 +5,8 @@ hide_table_of_contents: true
 
 # Switch
 
+<!-- TODO(future): add more examples, unless covered elsewhere -->
+
 A `switch` expression is a selection control structure used for [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching). It evaluates a value and executes the code block corresponding to the first matching pattern.
 
 A `switch` is useful for replacing long `if-else` chains, improving both readability and structure. It lets you match specific values or patterns and handle each case individually.
