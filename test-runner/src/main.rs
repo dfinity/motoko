@@ -1,6 +1,6 @@
 use candid::Principal;
 use hex::decode;
-use pocket_ic::{PocketIc, PocketIcBuilder};
+use pocket_ic::{PocketIc, PocketIcBuilder, RejectResponse};
 use std::io::Read;
 use std::path::PathBuf;
 use std::str::Chars;
@@ -39,7 +39,7 @@ pub enum SubnetType {
     System,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestCommand {
     Install {
         canister_id: String,
@@ -152,6 +152,45 @@ fn parse_str_args(input_str: &str) -> Result<Vec<u8>, String> {
     }
 }
 
+trait ResultExtractor {
+    fn extract(&self, command: TestCommand) -> String;
+}
+
+// For ingress messages (ingress, reinstall, upgrade, install), the output prepends always "ingress Completed: Reply"
+// For query messages, the output prepends always "Ok: Reply".
+impl ResultExtractor for () {
+    fn extract(&self, command: TestCommand) -> String {
+        match command {
+            TestCommand::Ingress { .. }
+            | TestCommand::Reinstall { .. }
+            | TestCommand::Upgrade { .. }
+            | TestCommand::Install { .. } => "ingress Completed: Reply: 0x4449444c0000".to_string(),
+            TestCommand::Query { .. } => "Ok: Reply: 0x4449444c0000".to_string(),
+        }
+    }
+}
+
+// For ingress messages (ingress, reinstall, upgrade, install), the output prepends always "ingress Completed: Reply"
+// For query messages, the output prepends always "Ok: Reply".
+impl ResultExtractor for Vec<u8> {
+    fn extract(&self, command: TestCommand) -> String {
+        let hex_str = self
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<Vec<String>>()
+            .join("");
+        match command {
+            TestCommand::Ingress { .. }
+            | TestCommand::Reinstall { .. }
+            | TestCommand::Upgrade { .. }
+            | TestCommand::Install { .. } => {
+                format!("ingress Completed: Reply: 0x{}", hex_str).to_string()
+            }
+            TestCommand::Query { .. } => format!("Ok: Reply: 0x{}", hex_str).to_string(),
+        }
+    }
+}
+
 impl TestCommand {
     fn install_command(
         &self,
@@ -188,6 +227,33 @@ impl TestCommand {
         Ok(())
     }
 
+    // Checks if the result is an error or a proper response.
+    // A response can be of type () or Vev<u8>.
+    // The error is always a RejectResponse.
+    fn handle_result_and_get_response<T: ResultExtractor>(
+        &self,
+        res: Result<T, RejectResponse>,
+    ) -> String {
+        match res {
+            Ok(t) => t.extract(self.clone()),
+            Err(e) => {
+                // For ingress messages (ingress, reinstall, upgrade, install), the output prepends always "ingress Completed: Reply"
+                // For query messages, the output prepends always "Ok: Reply".
+                match &self {
+                    TestCommand::Ingress { .. }
+                    | TestCommand::Reinstall { .. }
+                    | TestCommand::Upgrade { .. }
+                    | TestCommand::Install { .. } => {
+                        format!("ingress Err: {}: {}", e.error_code, e.reject_message).to_string()
+                    }
+                    TestCommand::Query { .. } => {
+                        format!("Err: {}: {}", e.error_code, e.reject_message).to_string()
+                    }
+                }
+            }
+        }
+    }
+
     fn reinstall_command(
         &self,
         server: &mut PocketIc,
@@ -208,11 +274,7 @@ impl TestCommand {
             }
         };
         let res = server.reinstall_canister(canister_principal, wasm_bytes, args, None);
-        if let Err(e) = res {
-            println!("ingress Err: {}: {}", e.error_code, e.reject_message);
-        } else {
-            println!("ingress Completed: Reply: 0x4449444c0000");
-        }
+        println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
 
@@ -236,12 +298,7 @@ impl TestCommand {
             }
         };
         let res = server.upgrade_canister(canister_principal, wasm_bytes, args, None);
-
-        if let Err(e) = res {
-            println!("ingress Err: {}: {}", e.error_code, e.reject_message);
-        } else {
-            println!("ingress Completed: Reply: 0x4449444c0000");
-        }
+        println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
 
@@ -291,19 +348,7 @@ impl TestCommand {
             ),
         };
 
-        if let Err(e) = res {
-            println!("ingress Err: {}: {}", e.error_code, e.reject_message);
-        } else {
-            // Convert the response to a hex string.
-            let hex_str = res
-                .unwrap()
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<Vec<String>>()
-                .join("");
-
-            println!("ingress Completed: Reply: 0x{}", hex_str);
-        }
+        println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
 
@@ -330,18 +375,7 @@ impl TestCommand {
             method_name,
             payload,
         );
-        if let Err(e) = res {
-            println!("Err: {}: {}", e.error_code, e.reject_message);
-        } else {
-            // Convert the response to a hex string.
-            let hex_str = res
-                .unwrap()
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<Vec<String>>()
-                .join("");
-            println!("Ok: Reply: 0x{}", hex_str);
-        }
+        println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
 
@@ -372,10 +406,6 @@ impl TestCommand {
                 method_name,
                 args,
             } => self.query_command(server, canister_id, method_name, args),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Not implemented",
-            )),
         };
         if let Err(e) = res {
             return Err(e);

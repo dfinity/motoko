@@ -26,6 +26,29 @@ pkgs: let
       [target.aarch64-apple-darwin]
       rustflags = [ "-C", "linker=c++" ]
       EOF
+
+      # Create the patch file
+      echo "Creating patch file..."
+      echo 'diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs' > pocket_ic_server.patch
+      echo 'index 9c32fb7d2a..453f44a4d3 100644' >> pocket_ic_server.patch
+      echo '--- a/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
+      echo '+++ b/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
+      echo '@@ -512,6 +512,12 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
+      echo '             .embedders_config' >> pocket_ic_server.patch
+      echo '             .feature_flags' >> pocket_ic_server.patch
+      echo '             .rate_limiting_of_debug_prints = FlagStatus::Disabled;' >> pocket_ic_server.patch
+      echo '+' >> pocket_ic_server.patch
+      echo '+        hypervisor_config' >> pocket_ic_server.patch
+      echo '+            .embedders_config' >> pocket_ic_server.patch
+      echo '+            .feature_flags' >> pocket_ic_server.patch
+      echo '+            .canister_backtrace = FlagStatus::Disabled;' >> pocket_ic_server.patch
+      echo '+' >> pocket_ic_server.patch
+      echo '         let state_machine_config = StateMachineConfig::new(subnet_config, hypervisor_config);' >> pocket_ic_server.patch
+      echo '         let t = time' >> pocket_ic_server.patch
+      echo '             .duration_since(SystemTime::UNIX_EPOCH)' >> pocket_ic_server.patch
+
+      echo "Applying patch..."
+      patch -p1 < pocket_ic_server.patch
     '';
     nativeBuildInputs = with pkgs; [
       pkg-config
