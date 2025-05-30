@@ -35,6 +35,22 @@ func unconditionalLoop() : Nat {
   return count;
 }
 ```
+<!---Will need to import debug for this and other examples--->
+## `loop-while`
+
+A `loop-while` executes the loop body at least once, then repeats as long as the condition remains true.
+
+``` motoko no-repl
+var count = 0;
+loop {
+  count += 1;
+  Debug.print(debug_show(count))
+} while (count < 5)
+```
+
+:::note
+Even if the condition starts as false, the body runs at least once.
+:::
 
 ## `for` loop
 
@@ -62,7 +78,6 @@ The `for` loop's iterator is evaluated once at the start. Each time through the 
 
 If evaluating the iterator causes a trap (error), the loop stops immediately.
 
-
 ```motoko no-repl
 let numbers = [1, 2, 3, 4, 5];
 
@@ -80,7 +95,6 @@ for ((fst, snd) in pairs.vals()) {
   Debug.print(debug_show(fst + snd));
 };
 ```
-
 
 ## `while` loop
 
