@@ -55,7 +55,7 @@ let result : Nat = do {
 The `do {}` expression in Motoko can be used to enter a new scope and make some local declarations before producing a value.
 
 
-A do block can also just return `()` and be evaluated for its side effect:
+A `do {}` block can also just return `()` and be evaluated for its side effect:
 
 ```motoko no-repl
 do {
