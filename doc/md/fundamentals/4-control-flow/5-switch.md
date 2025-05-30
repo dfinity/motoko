@@ -25,7 +25,7 @@ A `switch` is useful for replacing long `if-else` chains, improving both readabi
 Only the first case of a `switch` expression that matches will execute. The wildcard pattern `_` matches any value and should be placed last, because if `_` appears earlier, it will prevent later cases from being checked. Once a match is found, evaluation continues with the code of the matching case.
 
 ```motoko no-repl
-shared func getDayOfWeek(day : Nat) : async Text {
+func getDayOfWeek(day : Nat) : Text {
     switch day {
         case 1 "Monday";
         case 2 "Tuesday";
