@@ -24,6 +24,40 @@ A `switch` is useful for replacing long `if-else` chains, improving both readabi
 
 Only the first case of a `switch` expression that matches will execute. The wildcard pattern `_` matches any value and should be placed last, because if `_` appears earlier, it will prevent later cases from being checked. Once a match is found, evaluation continues with the code of the matching case.
 
+The simplest use of switch is to emulate an `if-else` expression:
+
+``` motoko
+func toText(b : Bool) : Text {
+   switch b {
+      case true "true";
+      case false "false";
+   }
+}
+```
+
+If you add a second case for `true`, Motoko issues a warning that it will never be matched and is unreachable or dead code:
+
+``` motoko
+func toText(b : Bool) : Text {
+   switch b {
+      case true "true";
+      case false "false";
+      case true "dead code";
+   }
+}
+```
+
+If you forget the case for `false`, Motoko will also issue a warning that `false is not covered by any case`:
+
+``` motoko
+func toText(b : Bool) : Text {
+   switch b {
+      case true "true";
+   }
+}
+```
+
+Motoko is able to issue these warnings for much more complicated patterns where it might be hard to see that you've made a mistake, helping you construct correct code and catch errors at compilation.
 ```motoko no-repl
 func getDayOfWeek(day : Nat) : Text {
     switch day {
