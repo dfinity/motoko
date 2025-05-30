@@ -188,6 +188,7 @@ func breakControlFlow() : Int {
   };
   sum;
 }
+
 ## `while`
 
 A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
