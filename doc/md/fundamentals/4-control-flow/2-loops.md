@@ -100,7 +100,6 @@ A `while` loops must satisfy these constraints:
 
 The `while` loop first evaluates the condition:
 
-
 - If it evaluates to `false`, the loop ends and does nothing.
 
 - If it evaluates to `true`, the body runs and the loop repeats.
