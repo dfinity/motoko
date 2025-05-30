@@ -7,7 +7,18 @@ hide_table_of_contents: true
 
 <!-- TODO(future): add more examples, unless covered elsewhere -->
 
-A `switch` expression is a selection control structure used for [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching). It evaluates a value and executes the branch, an expression or block, corresponding to the first case whose pattern matches the value. Any identifiers bound by the pattern are available in the branch, allowing you to access case specific data in the branch. 
+A `switch` expression is a control flow construct that, given a value, selects a control flow path based on the pattern or shape of the value.
+
+ A switch is constructed from an expression and a sequence of cases. Each case consists of a [pattern](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) guarding an expression or block that defines a possible branch of execution.
+
+Switch evaluates its expression and based on its value, selects the first case whose pattern matches the value.
+Any identifiers bound by the pattern are available in the selected branch, allowing you to access case-specific data in the branch. 
+
+Only one branch is ever executed in a switch, the first one that matches. If no case matches the value, execution traps.
+
+Motoko will warn you if any of the cases are redundant and can never matched due to previous cases. 
+
+Motoko will also warn you if the cases don't cover all possible values, meaning that the switch could fail with a trap at runtime.
 
 A `switch` is useful for replacing long `if-else` chains, improving both readability and structure. It lets you match specific values or patterns and handle each case individually.
 
