@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 ---
-
+<!-- TODO(Future): the examples using  `sum` are ok, but artificial. Rewriting them to use  `product` would be more meaningful since you can exit early when a factor is 0 and skip the `*=` when factors are 1 -->
 # Types of control flow
 
 | Construct | Description |
@@ -22,13 +22,49 @@ A `return` statement immediately exits a function or `async` block with a result
 Unlike `break` or `continue`, which jump to a labeled point within the same function, `return` does not target a label. Instead, it exits the current function entirely, either returning control to the caller or, in asynchronous contexts, completing a future and resuming the caller that's awaiting the result.
 
 ```motoko
-func checkSign(n : Int) : Text {
-  if (n > 0) {
-    return "Positive";
-  } else {
-    return "Negative or zero";
+Consider this function that computes the product of an array of integers.
+
+``` motoko
+func product(numbers : [Int]) : Int {
+  var prod : Int = 1;
+  for (number in numbers.vals()) {
+    prod *= number;
   };
-};
+  prod; // The implicit result of the block and function
+}
+```
+
+This function doesn't require an explicit `return` - it just returns the
+result of its body, `prod`.
+
+However, `prod` will remain `0` once it becomes `0` so
+you can save some work by returning from the function early, exiting both the loop and the function with result `0`.
+
+``` motoko
+func product(numbers : [Int]) : Int {
+  var prod : Int = 1;
+  for (number in numbers.vals()) {
+    prod *= number;
+    if (prod == 0) return 0; // an early return can save work
+  };
+  prod; // The implicit result of the block and function
+}
+```
+
+This also works with asynchronous functions that produce futures:
+
+``` motoko
+func asyncProduct(numbers : [Int]) : async Int {
+  var prod : Int = 1;
+  for (number in numbers.vals()) {
+    prod *= number;
+    if (prod == 0) return 0; // an early return completes the future
+  };
+  prod; // The implicit result of the block and function
+}
+```
+
+If the expected return type is `()` then you can just write `return` instead of `return ()`.
 ```
 
 ## `switch`
@@ -90,11 +126,12 @@ Instead of having to switch on the options `x` and `y` in a verbose manner the u
 
 ## `label`
 
-A `label` assigns a name to a block of code that executes like any other block, but its result can be produced early using a `break` to the label.
+A `label` assigns a name with an optional type to a block of code that executes like any other block, but its result can be produced early using a `break` to the label. 
+The type on the label should indicate the type of the block and defaults to `()` when omitted.
 If the block produces a non-`()` result, the `break` can include a value.
 Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
-When a labeled block runs, it evaluates its contents and returns a result. If no result is explicitly provided, it defaults to an empty value. Labels don’t change how the block executes but allow referencing and controlling its flow. Each labeled block must define an exit point.
+When a labeled block runs, it evaluates the block to produce a result.  Labels don’t change how the block executes but enable early exits from the block using a `break` to that label. If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression. Just as `return` exits a function early with a result, `break` exits its label  early with a result.
 
 ```motoko no-repl
 func labelControlFlow() : Int {
@@ -113,7 +150,7 @@ func labelControlFlow() : Int {
 
 ### `break` within a labeled block
 
-A `break` statement immediately exits a labeled block and returns a specified value. However, `break` must always refer to a label identifier; it cannot be used without one.
+A `break` expression immediately exits a labeled block and returns a specified value. However, `break` must always refer to a label identifier; it cannot be used without one.
 
 ```motoko no-repl
 func breakControlFlow() : Int {
@@ -133,6 +170,22 @@ func breakControlFlow() : Int {
 }
 ```
 
+As with `return`, you can omit the value argument to a `break` when the type of the label is `()`, as in this restructured code:
+
+```motoko no-repl
+func breakControlFlow() : Int {
+  let numbers : [Int] = [3, -1, 0, 5, -2, 7];  
+  var sum : Int = 0;
+  label processNumbers {  
+    for (num in numbers.values()) {
+      if (num < 0) {
+        break processNumbers; // Break from processNumbers
+      };
+      sum += num;
+    };
+  };
+  sum;
+}
 ## `while`
 
 A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
@@ -150,7 +203,7 @@ while (i < 5) {
 
 ## `for`
 
-A `for` loop iterates over elements in a collection or range, executing a block of code for each element.
+A `for` loop iterates over the elements of an iterator, executing a block of code for each element.
 
 ``` motoko no-repl
 import Debug "mo:base/Debug";
@@ -164,11 +217,11 @@ for (num in numbers.vals()) {
 
 ## Program flows
 
-In Motoko, code executes sequentially, running one statement after another. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
+In Motoko, code executes sequentially, evaluating expressions and declarations in order. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
 
 ### `continue`
 
-A `continue` statement skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled loop.
+A `continue` expression skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled `while`, `for` or `loop` expression.
 
 ```motoko no-repl
 func continueControlFlow() : Int {
