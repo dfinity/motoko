@@ -10,9 +10,12 @@ Motoko supports different types of loops:
 
 - `loop` loops: Repeat until explicitly exited.
 
+- `loop-while` loops: Repeat until condition is false (tests after each iteration);
+
+
 - `for` loops: Iteration over collections.
 
-- `while` loops: Condition-based repetition.
+- `while` loops: Repeat while condition is true (tests before each iteration).
 
 ## Unconditional loops
 
@@ -111,5 +114,22 @@ while (count > 0) {
   count -= 1;
 };
 ```
+
+## Continuing loops
+
+If a loop is labeled with a label `l` then you continue to the next iteration of the loop using the expression `continue l`.
+
+```motoko no-repl
+var count = 8;
+label l while (count > 0) {
+  if (count % 2 == 1) continue l; 
+  Debug.print("Counting down...");
+  count -= 1;
+};
+```
+
+## Abandoning loops
+
+While each form of loop defines its own exit conditions, that continues execution after the loop, you can always explicitly abandon a loop using an early `return`, `throw`, `break` or `!` (`null` break) when available.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
