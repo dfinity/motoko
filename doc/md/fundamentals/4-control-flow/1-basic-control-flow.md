@@ -18,8 +18,7 @@ sidebar_position: 1
 
 ## `return`
 
-A `return` statement immediately exits a function or `async` block with a result.
-Unlike `break` or `continue`, which jump to a labeled point within the same function, `return` does not target a label. Instead, it exits the current function entirely, either returning control to the caller or, in asynchronous contexts, completing a future and resuming the caller that's awaiting the result.
+A `return` statement immediately exits a function or `async` block with a result. Unlike `break` or `continue`, which jump to a labeled point within the same function, `return` does not target a label. Instead, it exits the current function entirely, either returning control to the caller or, in asynchronous contexts, completing a future and resuming the caller that's awaiting the result.
 
 ```motoko
 Consider this function that computes the product of an array of integers.
@@ -34,11 +33,9 @@ func product(numbers : [Int]) : Int {
 }
 ```
 
-This function doesn't require an explicit `return` - it just returns the
-result of its body, `prod`.
+This function doesn't require an explicit `return`. It just returns theresult of its body, `prod`.
 
-However, `prod` will remain `0` once it becomes `0` so
-you can save some work by returning from the function early, exiting both the loop and the function with result `0`.
+However, `prod` will remain `0` once it becomes `0` so you can save some work by returning from the function early, exiting both the loop and the function with result `0`.
 
 ``` motoko
 func product(numbers : [Int]) : Int {
@@ -107,13 +104,12 @@ func checkStatus(r : HttpRequestStatus) : Text {
 ```
 
 :::note
-Unlike a `switch`, `let-else` discards any additional error information from non-matching cases, making it less suitable when detailed error handling is needed. The `(#err e)` case is dropped entirely — `e` cannot be inspected or logged.
+Unlike a `switch`, `let-else` discards any additional error information from non-matching cases, making it less suitable when detailed error handling is needed. The `(#err e)` case is dropped entirely; `e` cannot be inspected or logged.
 :::
 
 ## Option block
 
-These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and exits the block with `null` if any value is `null`, simplifying code that handles multiple options.
-The result of the inner block, if any, is returned in an option.
+These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and exits the block with `null` if any value is `null`, simplifying code that handles multiple options. The result of the inner block, if any, is returned in an option.
 
 ```motoko no-repl
 // x might be null or have a Nat value
@@ -131,12 +127,11 @@ Instead of having to switch on the options `x` and `y` in a verbose manner the u
 
 ## `label`
 
-A `label` assigns a name with an optional type to a block of code that executes like any other block, but its result can be produced early using a `break` to the label. 
-The type on the label should indicate the type of the block and defaults to `()` when omitted.
-If the block produces a non-`()` result, the `break` can include a value.
-Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
+A `label` assigns a name with an optional type to a block of code that executes like any other block, but its result can be produced early using a `break` to the label. The type on the label should indicate the type of the block and defaults to `()` when omitted.
 
-When a labeled block runs, it evaluates the block to produce a result.  Labels don’t change how the block executes but enable early exits from the block using a `break` to that label. If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression. Just as `return` exits a function early with a result, `break` exits its label  early with a result.
+If the block produces a non-`()` result, the `break` can include a value. Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
+
+When a labeled block runs, it evaluates the block to produce a result. Labels don’t change how the block executes but enable early exits from the block using a `break` to that label. If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression. Just as `return` exits a function early with a result, `break` exits its label early with a result.
 
 ```motoko no-repl
 func labelControlFlow() : Int {
