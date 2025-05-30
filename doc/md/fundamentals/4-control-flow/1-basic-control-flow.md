@@ -125,7 +125,7 @@ func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
 // let o4 = addOpt(null, null);  // null
 ```
 <!-- TODO(future): better, complete example. Perhaps there's one already the option section -->
-Instead of having to switch on the options `x` and `y` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
+Instead of having to switch on the options `n` and `m` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
 
 ## `label`
 
