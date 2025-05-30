@@ -45,7 +45,7 @@ var count = 0;
 loop {
   count += 1;
   Debug.print(debug_show(count))
-} while (count < 5)
+} while (count < 5);
 ```
 
 :::note
