@@ -91,7 +91,7 @@ Instead of having to switch on the options `x` and `y` in a verbose manner the u
 ## `label`
 
 A `label` assigns a name to a block of code that executes like any other block, but its result can be produced early using a `break` to the label.
-If the block produces a non-`(0)` result, the `break` can include a value.
+If the block produces a non-`()` result, the `break` can include a value.
 Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
 When a labeled block runs, it evaluates its contents and returns a result. If no result is explicitly provided, it defaults to an empty value. Labels don’t change how the block executes but allow referencing and controlling its flow. Each labeled block must define an exit point.
