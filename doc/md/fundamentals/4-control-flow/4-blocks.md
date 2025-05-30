@@ -8,17 +8,17 @@ A block expression in Motoko is a sequence of statements enclosed in `{ ... }`. 
 
 Block expressions are fundamental to function definitions, as they determine both the function’s structure and return value.
 
-Each block contains a series of expressions and statements. The last evaluated expression determines the block’s result. If no meaningful final expression is present, the block returns `()`.
+The last declaration in a block, which might be an expression, determines the block’s result. If no meaningful final declaration is present, the block returns `()`.
 
 ## Block expressions in functions
 
-Every function in Motoko contains a block expression that defines its behavior.
+Every function in Motoko contains a block expression that defines its body and behavior.
 
 ```motoko no-repl
 // The function body is a block expression that returns the result of the last expression.
 shared func add(x : Nat, y : Nat) : async Nat {
     let sum : Nat = x + y;
-    return sum;
+    sum;
 };
 
 // Example of using a block expression with conditional logic:
