@@ -10,8 +10,7 @@ Motoko supports different types of loops:
 
 - `loop` loops: Repeat until explicitly exited.
 
-- `loop-while` loops: Repeat until condition is false (tests after each iteration);
-
+- `loop-while` loops: Repeat until condition is false (tests after each iteration).
 
 - `for` loops: Iteration over collections.
 
@@ -52,6 +51,7 @@ A `for` loop must satisfy these conditions:
 - The iterator must provide a `next()` function that returns either a value (`?T`) or `null` when no items remain.
 
 - The pattern must match the type of each item returned by the iterator.
+
 - The pattern cannot fail to match, e.g. by  matching on a particular number.
 
 The `for` loop's iterator is evaluated once at the start. Each time through the loop, `next()` is called:
@@ -129,6 +129,6 @@ label l while (count > 0) {
 
 ## Abandoning loops
 
-While each form of loop defines its own exit conditions, that continues execution after the loop, you can always explicitly abandon a loop using an early `return`, `throw`, `break` or `!` (`null` break) when available.
+While each type of loop has its own exit conditions and continues execution afterward, you can always exit a loop early using `return`, `throw`, `break`, or `!` (a `null` break) when supported. These provide more control over when and how the loop ends.
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
