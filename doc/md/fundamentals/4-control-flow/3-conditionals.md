@@ -46,6 +46,7 @@ Motoko will infer the common supertype for you, choosing the most specific one p
 let n : Nat = 0; 
 let oops = if (n % 2 == 0) #even else 0;
 ```
+
 ## `if`-expression
 
 An `if`-expression takes the form `if <c> <b1>` and is like an `if-else` but omits the else and second branch `else <b2>`.
