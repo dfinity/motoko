@@ -10,7 +10,9 @@ Intermediate expressions, that produce values other than `()`, must be prefixed 
 
 Blocks are used to group multiple operations, define local variables, and structure code for clarity.
 
-Block expressions are fundamental to function definitions, as they determine both the function’s structure and return value.
+Block expressions are typically used to define function bodies and the bodies of `async` expressions.
+They can also be used as branches in conditional expressions and as the bodies of cases in switches and the blocks of `try-catch-finally` expressions.
+Since blocks  enclose declarations, they define new scopes for locally defined variables and types.
 
 The last declaration in a block, which might be an expression, determines the block’s result. If no meaningful final declaration is present, the block returns `()`.
 
