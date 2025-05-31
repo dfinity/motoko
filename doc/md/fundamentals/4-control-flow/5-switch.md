@@ -75,4 +75,39 @@ func getDayOfWeek(day : Nat) : Text {
 
 This example function takes a number (`day: Nat`) as input, representing a day of the week. The `switch` expression then compares this number against predefined cases. If a matching case is found, the corresponding day name is returned. If the input does not match any case, such as `0` or `8`, the default case (`case _`) prevents an error (`trap`) by returning `"Invalid day"`.
 
+Above, the example `switch` expressions have only matched against simple constants like `true`, `false`, and `1`. You can also match against richer patterns such as tuples, options, variants, and objects. Each pattern can have patterns inside it.
+
+Here's a simple example of matching against an option:
+
+``` motoko no-repl
+func value<T>(option : ?T, default : T) : T {
+   switch option {
+      case null default;
+      case (?value) value;
+   }
+}
+```
+
+The first case matches against the literal `null`, returning `default`. The second case matches against the option pattern `?value`, binding the option's contents to the variable `value` and returning `value`.
+
+If either case is omitted, Motoko will warn that the switch does not cover the `null` or `?_` case.
+
+Here's an example of a nested pattern:
+
+``` motoko no-repl
+type List<T> = ?(T, List<T>);
+
+func size<T>(list : List<T>) : Nat {
+  switch list {
+     case null { 0 };
+     case (?(_, tail)) { 1 + size(tail) };
+  }
+}
+```
+
+This function returns the size of a list by using pattern matching to recurse on the shape of the list. Either the list is `null` or it is some tuple consisting of a value and another list, `tail`.
+
+Notice that the second pattern consists of an option pattern containing a tuple pattern with a wildcard `_` and an identifier pattern, `tail`,  inside it.
+
+In this example, the branches are enclosed in blocks to demonstrate that it is supported. This can be useful if you need to add some local declarations to a branch.
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
