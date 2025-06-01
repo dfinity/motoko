@@ -266,25 +266,24 @@ Use `async*` and `await*` carefully. In Motoko, a regular `await` is a commit po
 
 :::
 
-<!--
-### Example
+### Example 
 
-Customers can place multiple orders at the same time. However, when they ask for an update on their delivery status, responses must be generated sequentially based on the preparation time. Instead of constantly tracking delivery updates, `async*` can be used to calculate the estimated delivery time only when requested.
+``` motoko no-repl
+persistent actor class (Logger : actor { log : Text -> async () }) {
 
-```motoko no-repl
-// async* function to calculate delivery time on demand
-func checkDelivery(order : Text) : async* Text {
-        let estimatedTime = 15 + (orders.size() * 5); // Base time + 5 mins per pending order
-        return "Your " # order # " will arrive in " # Nat.toText(estimatedTime) # " minutes.";
-    };
+  var logging = true;
 
-    // Multiple users can check their delivery status asynchronously
-    public shared func getDeliveryStatus(order : Text) : async Text {
-        let status = await* checkDelivery(order);
-        return status;
-    };
-```
--->
+  func maybeLog(msg : Text) : async* () {
+    if (logging) { await Logger.log(msg) };
+  };
+
+  func doStuff() : async () {
+    // do stuff
+    await* maybeLog("Log entry #1");
+    // do more stuff
+    await* maybeLog("Log entry #2");
+  }
+}
 
 ## `try/finally`
 
@@ -315,5 +314,48 @@ public shared func placeOrder(order : Text) : async Text {
 
 };
 ```
+
+## `try/catch/finally`
+
+A `catch` block can be inserted inside a `try/finally` expression to catch an error.
+
+```motoko no-repl
+    try {
+    // Code that might throw an error
+    } catch (e) {
+    // Handle the error
+    } finally {
+    // Cleanup code that always runs
+    }
+```
+
+When `catch` is used, the `finally` clause is optional. The `catch` block only catches errors in certain scenarios:
+
+1. Explicit throws: When code in the `try` block explicitly throws an error using the `throw` keyword:
+
+```motoko no-repl
+    try {
+        throw Error.reject("Intentional error");
+    } catch (e) {
+        // This will catch the explicitly thrown error
+    }
+```
+
+2. Errors from awaited calls: If an `await` expression in the `try` block returns an error:
+
+```motoko no-repl
+    try {
+        let result = await someAsyncFunction(); // If this returns an error
+    } catch (e) {
+        // The error will be caught here
+    }
+```
+
+`catch` blocks **do not** catch errors in the following scenarios:
+
+1. Local traps.
+2. Pre-await traps in async functions.
+3. Traps after `await`.
+
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
