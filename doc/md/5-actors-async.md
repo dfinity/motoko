@@ -48,8 +48,9 @@ A trap is a non-recoverable runtime failure in Motoko, caused by errors such as:
 * Numeric overflow.
 * Exceeding cycle limits.
 * Failing an assertion.
+* An explicit call to `Debug.trap()`. <!-- FUTURE: `Runtime.trap() in new base -->
 
-When a shared function executes without encountering an `await` expression, it does not suspend and runs atomically, meaning its execution cannot be interleaved or interrupted. Such functions are considered syntactically atomic because their structure guarantees uninterrupted execution from start to finish.
+When a shared function executes without evaluating an `await` expression, it never suspend and thus runs atomically, meaning its execution cannot be interleaved with that of another message. Functions that don't contain any `await` expressions are syntactically atomic and guarantee interference-free execution from start to finish.
 
 ### Commit points
 
@@ -98,7 +99,7 @@ The only way to read or modify the state (`count`) of the `Counter` actor is thr
 
 ## Using `await` to consume async futures
 
-The caller of a shared function typically receives a future, a value of type `async T` for some T.
+The caller of a shared function typically receives a future, a value of type `async T` for some `T`.
 
 The only thing the caller can do with this future is wait for it to be completed by the producer, throw it away, or store it for later use.
 
@@ -123,7 +124,7 @@ let n : Nat = await Counter.read();
 
 Unlike a local function call, which waits for the result before continuing, a shared function call returns a future immediately without blocking. Later, calling `await` on that future pauses the current task until the future is finished. When the future completes, `await` either returns the result or throws an error if the future ended with one.
 
-If you `await` the same future again, it just returns the same result or error. Even if the future is already done, `await` still pauses briefly to make sure all previous state changes and messages are saved before continuing.
+If you `await` the same future again, it just returns the same result or error. Even if the future is already done, `await` will briefly suspend all pending state changes and outgoing messages. This means that you can rely on every `await` to commit state, whether its future is still in progress or already completed.
 
 
 ## Using parentheticals to modify message send modalities
@@ -197,7 +198,7 @@ In other languages without these features, developers often need to use advanced
 To demonstrate how asynchronous actors work, consider the following example.
 
 Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
-
+<!-- TODO(FUTURE): It would be cleaner to use a Deque or Queue pushing new order to the end and popping the next order to make from the front. -->
 ```motoko no-repl
 import Array "mo:base/Array";
 import Text "mo:base/Text";
@@ -265,6 +266,7 @@ Use `async*` and `await*` carefully. In Motoko, a regular `await` is a commit po
 
 :::
 
+<!--
 ### Example
 
 Customers can place multiple orders at the same time. However, when they ask for an update on their delivery status, responses must be generated sequentially based on the preparation time. Instead of constantly tracking delivery updates, `async*` can be used to calculate the estimated delivery time only when requested.
@@ -282,6 +284,7 @@ func checkDelivery(order : Text) : async* Text {
         return status;
     };
 ```
+-->
 
 ## `try/finally`
 
