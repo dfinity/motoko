@@ -70,7 +70,7 @@ A trap will only revoke changes made since the last commit point. In particular,
 
 Consider the following stateful `Atomicity` actor:
 
-``` motoko no-repl file=../examples/atomicity.mo
+``` motoko no-repl file=./examples/atomicity.mo
 ```
 
 Calling the shared function `atomic()` results in an error because it traps before completing. Since the trap happens before any `await` or return, all changes are discarded. The variable `s` stays at 0, and `pinged` remains false. Even though `atomic()` calls `ping()`, that message is only queued and never sent because no commit point is reached.
