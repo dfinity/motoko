@@ -6,46 +6,15 @@ sidebar_position: 6
 
 ICP supports five system functions that canisters can call to interact with the ICP runtime environment:
 
-- [`heartbeat`](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat)
 - [`timer`](https://internetcomputer.org/docs/references/ic-interface-spec#global-timer)
 - [`preupgrade`](#preupgrade)
 - [`postupgrade`](#postupgrade)
+- [`lowmemory`](#lowmemory)
 - [`inspect`](https://internetcomputer.org/docs/references/ic-interface-spec#system-api-inspect-message)
+- [`heartbeat`](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat)
+  
 
 Declaring any other system function will result in an error. Canisters can use these functions to efficiently manage state transitions, automate tasks, or handle system-level operations. 
-
-## `heartbeat()`
-
-Canisters can opt to receive [heartbeat messages](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#heartbeats) by exposing a `canister_heartbeat` function. In Motoko, this is achieved by declaring the system function `heartbeat`, which takes no arguments and returns an asynchronous unit type (`async ()`).
-
-Since `heartbeat()` is async, it can invoke other asynchronous functions and await their results. This function executes on every **subnet heartbeat**, enabling periodic task execution without requiring external triggers. Since subnet heartbeats operate at the protocol level, their timing is not precise and depends on network conditions and execution load. As a result, using heartbeats for high-frequency or time-sensitive operations should be done cautiously, as there is no guarantee of real-time execution.
-
-Every async call in Motoko causes a context switch, which means the actual execution of the heartbeat function may be delayed relative to when the subnet triggers it. The function’s result is ignored, so any errors or traps during execution do not impact future heartbeat calls.
-
-If a canister exports a function named `canister_heartbeat`, it must have the type `() -> ()`, ensuring it adheres to the expected [system function signature](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat).
-
-One example use case for [heartbeats](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#heartbeats) is a recurring alarm, where the canister performs an action at regular intervals. In the example below, the canister triggers an event every fifth heartbeat by maintaining a counter.
-
-```motoko no-repl
-import Debug "mo:base/Debug";
-
-persistent actor Alarm {
-
-  let n = 5;
-  var count = 0;
-
-  public shared func ring() : async () {
-    Debug.print("Ring!");
-  };
-
-  system func heartbeat() : async () {
-    if (count % n == 0) {
-      await ring();
-    };
-    count += 1;
-  }
-}
-```
 
 ## `timer()`
 
@@ -129,6 +98,27 @@ The **use of upgrade hooks is not recommended** as they can fail and cause the p
 
 In many cases, stable variables or actor initialization expressions can replace `postupgrade()`. Complex transformations increase the risk of errors and failures.
 
+## `lowmemory()`
+
+The IC allows to implement a low memory hook, which is a warning trigger when main memory is becoming scarce.
+
+For this purpose, a Motoko actor or actor class instance can implement the system function `lowmemory()`. This system function is scheduled when canister's free main memory space has fallen below the defined threshold `wasm_memory_threshold`, that is is part of the canister settings. In Motoko, `lowmemory()` implements the `canister_on_low_wasm_memory` hook defined in the IC specification.
+
+Example of using the low memory hook:
+```
+actor {
+    system func lowmemory() : async* () {
+        Debug.print("Low memory!");
+    }
+}
+```
+
+The following properties apply to the low memory hook:
+* The execution of `lowmemory` happens with a certain delay, as it is scheduled as a separate asynchronous message that runs after the message in which the threshold was crossed.
+* Once executed, `lowmemory` is only triggered again when the main memory free space first exceeds and then falls below the threshold.
+* Traps or unhandled errors in `lowmemory` are ignored. Traps only revert the changes done in `lowmemory`.
+* Due to its `async*` return type, the `lowmemory` function may send further messages and `await` results.
+
 ## `inspect()`
 
 The [`inspect()` system function](https://internetcomputer.org/docs/references/ic-interface-spec#system-api-inspect-message) allows a canister to inspect ingress messages before execution, determining whether to accept or reject them. The function receives a record of message attributes, including the caller’s principal, the raw argument `Blob`, and a variant identifying the target function.
@@ -175,3 +165,19 @@ persistent actor Counter {
   }
 }
 ```
+
+## `heartbeat()`
+
+:::caution
+Heartbeats are computationally expensive for both the network and user, and instead you should use a timer if possible.
+:::
+
+Canisters can opt to receive [heartbeat messages](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers#heartbeats) by exposing a `canister_heartbeat` function. In Motoko, this is achieved by declaring the system function `heartbeat`, which takes no arguments and returns an asynchronous unit type (`async ()`).
+
+Since `heartbeat()` is async, it can invoke other asynchronous functions and await their results. This function executes on every **subnet heartbeat**, enabling periodic task execution without requiring external triggers. Since subnet heartbeats operate at the protocol level, their timing is not precise and depends on network conditions and execution load. As a result, using heartbeats for high-frequency or time-sensitive operations should be done cautiously, as there is no guarantee of real-time execution.
+
+Every async call in Motoko causes a context switch, which means the actual execution of the heartbeat function may be delayed relative to when the subnet triggers it. The function’s result is ignored, so any errors or traps during execution do not impact future heartbeat calls.
+
+If a canister exports a function named `canister_heartbeat`, it must have the type `() -> ()`, ensuring it adheres to the expected [system function signature](https://internetcomputer.org/docs/references/ic-interface-spec#heartbeat).
+
+Heartbeats should be considered deprecated as they have been superseded by timers.
