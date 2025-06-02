@@ -1,94 +1,36 @@
 ---
-sidebar_position: 2
+sidebar_position: 26
 ---
 
 # Timers
 
-Canisters deployed on ICP can schedule code execution at specific intervals using [timers](https://internetcomputer.org/docs/building-apps/network-features/periodic-tasks-timers). Timers are used to execute periodic tasks such as recurring state mutation, automated maintenance, or enforcing timed access control.
+On ICP, canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Times in Motoko are implemented using the [`Timer.mo`](../base/Timer.md) module, and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple timers.
 
-Motoko provides the [`Timer`](https://internetcomputer.org/docs/motoko/base/Timer) module for creating recurring, application-level timers that execute code at regular intervals.
+## Example
 
-For more precise control, Motoko also supports system timers, which use a canister’s global timer mechanism. System timers allow direct handling of timer expirations by defining a `system func timer()` at the system level.
+A simple example is a periodic reminder that logs a new year's message:
 
-:::warning
+``` motoko no-repl file=../examples/Reminder.mo
+```
 
-While recurring timers provide a straightforward approach for most time-based tasks, system timers offer finer control over scheduling, but may interfere with the `Timer` module if both are used together.
+The underlying mechanism is a [canister global timer](https://internetcomputer.org/docs/current/references/ic-interface-spec#timer) that by default is issued with appropriate callbacks from a priority queue maintained by the Motoko runtime.
 
-:::
+The timer mechanism can be disabled completely by passing the `-no-timer` flag to `moc`.
 
-## Recurring timers
+## Low-level access
 
-The `Timer.recurringTimer` function can be used to automatically execute code at fixed intervals. One practical application is rate limiting, where a canister restricts the number of requests it processes within a specific time window. This prevents excessive usage and ensures fair access to resources.
+When lower-level access to the canister global timer is desired, an actor can elect to receive timer expiry messages by declaring a `system` function named `timer`. The function takes one argument used to reset the global timer and returns a future of unit type `async ()`.
 
-A recurring timer can be used to reset a canister's rate limit counter automatically at regular intervals, restoring access when the time window expires.
+If the `timer` system method is declared, the [`Timer.mo`](../base/Timer.md) base library module may not function correctly and should not be used.
 
-In the following example, a canister limits requests to five per minute, rejecting additional requests until the counter resets.
+The following example of a global timer expiration callback gets called immediately after the canister starts, i.e. after install, and periodically every twenty seconds thereafter:
 
-```motoko no-repl
-import Timer "mo:base/Timer";
-import Error "mo:base/Error";
-
-persistent actor {
-  var requestCount : Nat = 0;
-  let maxRequests : Nat = 5;
-
-  // Reset request count every 60 seconds
-  //It must be ignored because it produces a TimerId
-  ignore Timer.recurringTimer<system>(
-    #seconds 60,
-    func() : async () {
-      requestCount := 0
-    }
-  );
-
-  public func request() : async Text {
-    if (requestCount >= maxRequests) {
-      throw Error.reject("Rate limit exceeded. Try again later.")
-    };
-    requestCount += 1;
-    "Request accepted."
-  }
+``` motoko no-repl
+system func timer(setGlobalTimer : Nat64 -> ()) : async () {
+  let next = Nat64.fromIntWrap(Time.now()) + 20_000_000_000;
+  setGlobalTimer(next); // absolute time in nanoseconds
+  print("Tick!");
 }
 ```
 
-## System timers
-
-System timers provide low-level control over scheduled execution by interfacing directly with a canister’s global timer. Unlike `Timer.recurringTimer`, which triggers execution at fixed intervals, system timers allow scheduling tasks to run at an exact expiration time.
-
-A practical use case for system timers is auto-expiring access tokens. Tokens can be issued with a fixed lifetime and automatically invalidated after expiration without needing an external request. This approach is particularly useful for precise session management and secure, time-bound access control.
-
-The following example sets a system timer to revoke an access token exactly 30 minutes after it is issued.
-
-```motoko no-repl
-import Time "mo:base/Time";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Nat64 "mo:base/Nat64";
-import Debug "mo:base/Debug";
-
-persistent actor {
-   var accessToken : ?Text = null;
-
-  public func issueToken() : async Text {
-    let token = "user-token-" # Nat.toText(Int.abs(Time.now()));
-    accessToken := ?token;
-
-    token
-  };
-  // Set a system timer to revoke the token after 30 minutes
-  system func timer(setGlobalTimer : Nat64 -> ()) : async () {
-    let expiryTime = Nat64.fromNat(Int.abs(Time.now()) + 1_800_000_000_000); // 30 minutes in nanoseconds
-    setGlobalTimer(expiryTime);
-    accessToken := null;
-    Debug.print("Access token expired.")
-  };
-  public query func validateToken() : async Bool {
-    accessToken != null
-  }
-}
-```
-
-## Resources
-
-- [`Timer`](https://internetcomputer.org/docs/motoko/base/Timer)
-- [`Time`](https://internetcomputer.org/docs/motoko/base/Time)
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
