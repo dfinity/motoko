@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach allows the language to evolve while maintaining simplicity.
+Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach keeps the language simple. 
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
@@ -26,28 +26,10 @@ Debug.print("Hello, world!");
 
 The `mo:` prefix identifies a Motoko module. The declaration does not include the `.mo` file extension.
 
-You can also selectively import a subset of named values from a module by using the object pattern syntax:
+You can also selectively import and rename a subset of named values from a module by using the object pattern syntax:
 
 ``` motoko
 import { map; find; foldLeft = fold } = "mo:base/Array";
-```
-
-
-## Importing specific functions
-
-Instead of importing an entire module, individual functions can be imported.
-
-```motoko no-repl
-import { equal } "mo:base/Nat";
-
-let result = equal(10, 10); // Returns true
-```
-
-Functions can also be renamed at import.
-
-```motoko no-repl
-// map and find are imported as-is, while foldLeft is renamed to fold.
-import { map; find; foldLeft = fold } "mo:base/Array";
 ```
 
 ## Importing from another file
@@ -92,7 +74,7 @@ In this example, the `Render` module is in the default location for source code 
 
 Modules can also be imported from other packages, such as those imported from a package manager.
 
-Dependencies are managed using a package manager or defined in the project's `dfx.json` file. Motoko supports package managers like [Mops](https://mops.one/) and [Vessel](https://github.com/dfinity/vessel) to install third-party libraries.
+Dependencies are managed using a package manager or defined in the project's `dfx.json` file. Motoko supports package managers like [Mops](https://mops.one/) to install third-party libraries.
 
 ### Configuring the package manager in `dfx.json`
 
@@ -106,19 +88,61 @@ Dependencies are managed using a package manager or defined in the project's `df
 }
 ```
 
-For Vessel, use `"vessel sources"`.
-
 ### Installing a package with a package manager
 
 With [Mops](https://mops.one/), add the package to your project's dependencies with `mops add`.
 
-With [Vessel](https://github.com/dfinity/vessel), add the package to `vessel.dhall`.
-
 Then import the package into your Motoko code:
 
-```
+```motoko no-repl
 import Vec "mo:vector";
 ```
+
+## Naming imported modules
+
+While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
+
+```motoko no-repl
+import List "mo:base/List";
+import L "mo:base/List";
+import PureList "mo:base/pure/List";
+```
+
+## Importing from another canister
+
+Actors and their functions can be imported from other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) using the `canister:` prefix.
+
+```motoko no-repl
+import BigMap "canister:BigMap";
+import Connectd "canister:Connectd";
+```
+
+`BigMap` and `Connectd` are separate canisters defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
+
+Unlike a Motoko module, an imported canister:
+
+- Can be implemented in any language that emits a Candid interface.
+- Has its type derived from a `.did` file, not from Motoko itself.
+
+:::danger
+When importing from another canister, the canister must be listed as a dependency in the importing canister's `dfx.json`. These must both:
+
+1. Be listed in the `dependencies` array of `my_canister`.
+2. Have their own canister definitions specified elsewhere in the same file.
+
+```json
+{
+  "canisters": {
+    "my_canister": {
+      "main": "src/my_canister/main.mo",
+      "type": "motoko",
+      "dependencies": ["BigMap", "Connectd"]
+    }
+  }
+}
+```
+
+:::
 
 ## Importing actor classes
 
@@ -160,51 +184,5 @@ persistent actor CountToTen {
 ```
 
 `Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
-
-## Importing from another canister
-
-Actors and their functions can be imported from other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters) using the `canister:` prefix.
-
-```motoko no-repl
-import BigMap "canister:BigMap";
-import Connectd "canister:Connectd";
-```
-
-`BigMap` and `Connectd` are separate canisters defined in `dfx.json`. Canister functions are shared and may require `await` to call them.
-
-Unlike a Motoko module, an imported canister:
-
-- Can be implemented in any language that emits a Candid interface.
-- Has its type derived from a `.did` file, not from Motoko itself.
-
-:::danger
-When importing from another canister, the canister must be listed as a dependency in the importing canister's `dfx.json`. These must both:
-
-1. Be listed in the `dependencies` array of `my_canister`.
-2. Have their own canister definitions specified elsewhere in the same file.
-
-```json
-{
-  "canisters": {
-    "my_canister": {
-      "main": "src/my_canister/main.mo",
-      "type": "motoko",
-      "dependencies": ["BigMap", "Connectd"]
-    }
-  }
-}
-```
-
-:::
-
-## Naming imported modules
-
-While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
-
-```motoko no-repl
-import List "mo:base/List";
-import L "mo:base/List";
-import PureList "mo:base/pure/List";
-```
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
