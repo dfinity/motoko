@@ -2,8 +2,6 @@
 sidebar_position: 5
 ---
 
-<!----Previous draft lacked a lot of content that is available in the old docs. Ported most of the existing page over here and made editorial revisions--->
-
 # Actors & async data
 
 The actor programming model was designed to solve concurrency issues by encapsulating [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and computation within independent units called **actors**.
