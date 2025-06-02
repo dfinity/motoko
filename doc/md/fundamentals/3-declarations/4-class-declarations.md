@@ -14,7 +14,7 @@ Use a class when you need to:
 - Simulate object orientated programming-like design patterns.
 
 Classes are particularly useful when using multiple objects with similar structures but different initial states. You can think of classes as a template for creating objects. You define fields and methods, and then create new instances by calling the class like a function.
- 
+
 ## Defining a class
 
 A class in Motoko defines both:
@@ -86,9 +86,9 @@ class Counter(init : Nat) : Reset = this {
     count += 1;
     count
   };
-  
+
   public func getThis() : Counter { this };
-    
+
   public func reset() { count := 0 };
 };
 ```
@@ -130,7 +130,7 @@ import Counter "./Counter";
 
 persistent actor {
 
-  public func test() : async () { 
+  public func test() : async () {
     let counter = await (with cycles = 1_000_000_000_000) Counter.Counter(0);
 
     let newCount = await counter.inc();
@@ -147,7 +147,7 @@ Unlike object classes, actor class constructors are asynchronous. The constructo
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add<system>(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](../../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add<system>(cycles)` function.
 
 :::
 
