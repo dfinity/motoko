@@ -1,8 +1,17 @@
 # Motoko compiler changelog
 
-## 0.14.11 (FUTURE)
+## 0.14.12 (2025-05-28)
 
 * motoko (`moc`)
+
+  * Added the `rootKey` primitive (#4994).
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
 
   * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 

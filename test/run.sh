@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun
+#    -d: Run on in `drun`
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation

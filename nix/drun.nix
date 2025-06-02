@@ -5,8 +5,8 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
   src = pkgs.sources.ic-src;
 
   # update this after bumping the dfinity/ic pin.
-  # 1. change the hash to something arbitrary (e.g. flip one digit to 0 or use `pkgs.lib.fakeSha256`)
-  # 2. run nix-build -A drun nix/
+  # 1. change the hash to the empty string ""
+  # 2. run nix build .#drun
   # 3. copy the “expected” hash from the output into this file
   # 4. commit and push
   #
@@ -18,10 +18,11 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
     lockFile = "${pkgs.sources.ic-src}/Cargo.lock";
     outputHashes = {
       "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
-      "cloudflare-0.12.0" = "sha256-FxCAK7gUKp/63fdvzI5Ufsy4aur74fO4R/K3YFiUw0Y=";
-      "ic-bn-lib-0.1.0" = "sha256-wqWfF70B+YQWg63yiEvIxOq+LN1AasrNXcyPkDM4/jw=";
+      "cloudflare-0.12.0" = "sha256-67kQWJFRXZXHx+qwlyLa9NLF09b/4iRWxTLzCniCHZE=";
+      "ic-bn-lib-0.1.0" = "sha256-40EQ0oKEjcEnAiQhlqveLjQfvloLMLbqeze1T2QhP5M=";
       "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
-      "ic-cdk-0.18.0-alpha.1" = "sha256-MpLZVaLyNBT4qsy9m2eJwMeISTi5UfQH/BM1PxuwY6c=";
+      "ic-gateway-0.2.0" = "sha256-67nSahWf/IPxmGxhZz5phnZtZUsFyyXx73grkMh6J8E=";
+      "ic-vetkeys-0.1.0" = "sha256-h8Jso21fK0QTyuSa14iAYsDvrfMphvI3spJBYOLgq1c=";
       "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
       "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
     };

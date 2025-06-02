@@ -65,12 +65,6 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'home',
-            position: 'left',
-            label: 'Doc',
-          },
-          {
-            type: 'doc',
             docId: 'base/index',
             position: 'left',
             label: 'Base',
