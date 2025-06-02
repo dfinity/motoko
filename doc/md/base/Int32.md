@@ -683,6 +683,19 @@ Example:
 Int32.explode 0x66885511 // => (102, 136, 85, 17)
 ```
 
+## Function `explode`
+``` motoko no-repl
+func explode(x : Int32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant), lower (least significant)
+and in-between bytes of `x`.
+
+Example:
+```motoko include=import
+Int32.explode 0x66885511 // => (102, 136, 85, 17)
+```
+
 ## Function `addWrap`
 ``` motoko no-repl
 func addWrap(x : Int32, y : Int32) : Int32

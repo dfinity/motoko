@@ -680,6 +680,18 @@ Example:
 Int16.explode 0x77ee // => (119, 238)
 ```
 
+## Function `explode`
+``` motoko no-repl
+func explode(x : Int16) : (msb : Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant) and lower (least significant) byte of `x`.
+
+Example:
+```motoko include=import
+Int16.explode 0x77ee // => (119, 238)
+```
+
 ## Function `addWrap`
 ``` motoko no-repl
 func addWrap(x : Int16, y : Int16) : Int16
