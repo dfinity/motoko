@@ -30,39 +30,13 @@ persistent actor Counter {
 };
 ```
 
-## Message inspection
-
-Canisters can check incoming messages before running them to block spam or harmful requests. This is done with the `inspect` system function, which decides to accept or reject messages based on factors like who sent the message, its size, or the function being called. Filtering happens before execution and is done without replicating the check, saving on processing costs. For example, anonymous calls can be blocked to prevent spam, and large requests can be rejected early to avoid wasted work.
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-
-actor Counter {
-    stable var count : Nat = 0;
-
-    public shared func increment() : async () { count += 1 };
-    public shared func reset() : async () { count := 0 };
-    public query func getCount() : async Nat { count };
-
-    system func inspect({ caller : Principal; arg : Blob; msg : { #increment : (); #reset : (); #getCount : () } }) : Bool {
-        if (Principal.isAnonymous(caller)) return false;  // Reject anonymous calls
-        if (arg.size() > 512) return false;  // Reject large requests
-        switch (msg) {
-            case (#increment _) { true };  // Allow increment
-            case (#reset _) { false };  // Reject reset calls
-            case (#getCount _) { true };  // Allow getCount
-        }
-    };
-};
-```
-
 ## Inter-canister calls
 
-One of the key features of ICP is the ability for canisters to invoke functions in other canisters. This capability, known as inter-canister calls, allows functionality to be reused and shared across multiple applications.
+One of the key features of ICP is the ability for canisters to invoke functions in other canisters. This capability, known as inter-canister calls, allows canisters to interact with each other.
 
-There are different methods for making inter-canister calls. The first is direct import, which is used when the target canister is part of the same project and explicitly imported. For example, `import Subscriber "canister:subscriber";` allows direct access to that canister’s functions.
+There are different methods for making inter-canister calls. The primary and recommended method is direct import, which is used when the target canister is part of the same project and explicitly imported. For example, `import Subscriber "canister:subscriber";` allows direct access to that canister’s functions.
 
-The second method uses actor type annotations. This approach applies when calling an external canister that is part of the project but deployed separately. An example is `let sub = actor(canisterId) : actor { notify : Text -> async (); };`, which creates a typed reference to the external canister.
+The second method uses actor type annotations and should be rarely used. This approach applies when calling an external canister that is part of the project but deployed separately. An example is `let sub = actor(canisterId) : actor { notify : Text -> async (); };`, which creates a typed reference to the external canister.
 
 The third method involves dynamic calls. This is useful when calling unknown functions or when the arguments are dynamic. For example, `await IC.call(canisterId, methodName, encodedArgs);` lets you make flexible calls without static typing.
 
@@ -113,6 +87,9 @@ actor Subscriber {
 
 ```
 
+
+<!---- This should be corrected and moved to a section on actor references
+
 ### Actor type annotation
 
 Actor type annotations offer flexibility when working with external canisters, but there’s no guarantee that the function signatures will match at runtime. If the signatures don’t align, the calls will fail.
@@ -141,5 +118,7 @@ actor Publisher {
     };
 };
 ```
+
+---->
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
