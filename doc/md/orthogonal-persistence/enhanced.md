@@ -61,13 +61,13 @@ Compatible changes for immutable types are largely analogous to the allowed Moto
 
 The runtime system checks migration compatibility on upgrade, and if not fulfilled, rolls back the upgrade. This compatibility check serves as an additional safety measure on top of the `dfx` warning that can be bypassed by users.
 
-Any more complex change can be performed with programmatic instruction, see [explicit migration](../upgrades.md#explicit-migration).
+Any more complex change can be performed with programmatic instruction, see [explicit migration](/docs/motoko/data-persistence#explicit-migration).
 
 ### Migration path
-When migrating from the old serialization-based stabilization to the new persistent heap, the old data is deserialized one last time from stable memory and then placed in the new persistent heap layout. Once operating on the persistent heap, the system should prevent downgrade attempts to the old serialization-based persistence. 
+When migrating from the old serialization-based stabilization to the new persistent heap, the old data is deserialized one last time from stable memory and then placed in the new persistent heap layout. Once operating on the persistent heap, the system should prevent downgrade attempts to the old serialization-based persistence.
 
 #### Graph-copy-based stabilization
-Assuming that the persistent memory layout needs to be changed in the future, the runtime system supports serialization and deserialization to and from stable memory in a defined data format using graph-copy-based stabilization. Arbitrarily large data can be serialized and deserialized beyond the instruction and working set limit of upgrades. Large data serialization and deserialization is split in multiple messages, running before and/or after the IC upgrade to migrate large heaps. Other messages will be blocked during this process and only the canister owner or the canister controllers are permitted to initiate this process. 
+Assuming that the persistent memory layout needs to be changed in the future, the runtime system supports serialization and deserialization to and from stable memory in a defined data format using graph-copy-based stabilization. Arbitrarily large data can be serialized and deserialized beyond the instruction and working set limit of upgrades. Large data serialization and deserialization is split in multiple messages, running before and/or after the IC upgrade to migrate large heaps. Other messages will be blocked during this process and only the canister owner or the canister controllers are permitted to initiate this process.
 
 This will only be needed in rare situations when Motoko's implementation changes its internal memory layout. Users will then be instructed to explicitly initiate this migration.
 
@@ -75,7 +75,7 @@ This will only be needed in rare situations when Motoko's implementation changes
 Graph-copy-based stabilization can be performed in three steps:
 
 1. Initiate the explicit stabilization before the upgrade:
-    
+
 ```
 dfx canister call CANISTER_ID __motoko_stabilize_before_upgrade "()"
 ```
