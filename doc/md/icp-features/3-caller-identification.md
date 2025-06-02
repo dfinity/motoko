@@ -4,385 +4,95 @@ sidebar_position: 3
 
 # Caller identification
 
-[Principals](https://internetcomputer.org/docs/building-apps/essentials/canisters#canister-id) are unique identifiers for users, canisters, and other entities on ICP. Every user interacting with a canister is associated with a principal that serves as their [identity](https://internetcomputer.org/docs/building-apps/getting-started/identities) when making requests. Principals are privacy-preserving, as they can differ across applications, making it difficult to track a user across multiple dapps.
+Motoko’s shared functions support a simple form of caller identification that allows you to inspect the ICP **principal** associated with the caller of a function. Principals are a value that identifies a unique user or canister.
 
-When a shared function is called, the caller’s [principal](https://internetcomputer.org/docs/building-apps/canister-management/control) is passed along with the request, allowing canisters to identify who initiated the call. This enables access control mechanisms such as restricting actions to specific users, maintaining lists of authorized accounts, or blocking anonymous requests.
+You can use the principal associated with the caller of a function to implement a basic form of access control in your program.
 
-Shared functions are declared using the `shared` keyword. To access the caller’s identity, a shared function can optionally include a parameter of type `{ caller : Principal }`.
+## Using caller identification
 
-```motoko no-repl
+In Motoko, the `shared` keyword is used to declare a shared function. The shared function can also declare an optional parameter of type `{caller : Principal}`.
+
+To illustrate how to access the caller of a shared function, consider the following:
+
+``` motoko
 shared(msg) func inc() : async () {
-  let caller = msg.caller;
+  // ... msg.caller ...
 }
 ```
 
-The caller’s principal is provided automatically and cannot be forged. This also applies to actor class constructors, where the installer's principal can be stored for access control.
+In this example, the shared function `inc()` specifies a `msg` parameter, a record, and the `msg.caller` accesses the principal field of `msg`.
 
-```motoko no-repl
+The calls to the `inc()` function do not change. At each call site, the caller’s principal is provided by the system, not the user. The principal cannot be forged or spoofed by a malicious user.
+
+To access the caller of an actor class constructor, you use the same syntax on the actor class declaration. For example:
+
+``` motoko
 shared(msg) persistent actor class Counter(init : Nat) {
-  let owner = msg.caller;
+  // ... msg.caller ...
 }
 ```
 
-## Access control models
+## Adding access control
 
-Caller identification is used for authenticating users and authorizing access to data and operations. A variety of access control models can be implemented, each offering distinct mechanisms for managing permissions. The models highlighted here are chosen for their suitability in canister-based and decentralized applications, while also representing a diverse spectrum of implementation strategies.
+To extend this example, assume you want to restrict the `Counter` actor so it can only be modified by the installer of the `Counter`. To do this, you can record the principal that installed the actor by binding it to an `owner` variable. You can then check that the caller of each method is equal to `owner` like this:
 
-| Model | Method | Example use case |
-|------------|----------------|---------------------------|
-| Discretionary access control (DAC) | The owner manually grants and revokes access to specific users. | **User-managed whitelist**: Only users added by the owner can access a function. |
-| Role-based access control (RBAC) | Users are assigned roles (`admin`, `member`), and permissions are granted based on role. | **Admins manage members**: Members have restricted access to specific functions. |
-| Mandatory access control (MAC) | Access is enforced by system-wide rules that users cannot modify. | **Immutable permissions**: Read-only vs. write-only users set at account creation. |
-| Access control list (ACL) | Different functions have separate whitelists, controlling access per action. | One list for `update`, another for `delete`, managed independently. |
-| Attribute-based access control (ABAC) | Users must meet certain conditions to gain access. | **Exclusive model**: Users must hold at least **X tokens** to access the canister. |
-| Policy-based access control (PBAC) | Policies dynamically restrict access based on conditions. | **Time-based access** : Users can only call functions during specific hours. |
+``` motoko file=../examples/Counters-caller.mo
+```
 
-<!---I will probably eliminate the use of any upgrade hooks in the second review as it's not recommended for now they are present--->
+In this example, the `assert (owner == msg.caller)` expression causes the functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of the `count` variable while the `read()` function permits any caller.
 
-### Discretionary access control
+The argument to `shared` is just a pattern. You can rewrite the above to use pattern matching:
 
-**Discretionary access control (DAC)** enables the [controller](https://internetcomputer.org/docs/building-apps/canister-management/control) of a canister to manage an allowlist, dynamically granting or revoking access. This model is particularly effective for whitelisting specific users or canisters for privileged actions, offering both fine-grained control and flexibility in permission management.
+``` motoko file=../examples/Counters-caller-pat.mo
+```
 
-The following example implements a canister-controlled whitelist, where only authorized principals can execute restricted actions.
+:::note
 
-```motoko no-repl
+Simple actor declarations do not let you access their installer. If you need access to the installer of an actor, rewrite the actor declaration as a zero-argument actor class instead.
+
+:::
+
+
+## Recording principals
+
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.
+
+The data type of `Principal` in Motoko is both sharable and stable, meaning you can compare `Principal`s for equality directly.
+
+Below is an example of how you can record principals in a set.
+
+``` motoko file=../examples/RecordPrincipals.mo
+```
+
+
+```motoko
 import Principal "mo:base/Principal";
-import OrderedMap "mo:base/OrderedMap";
+import OrderedSet "mo:base/OrderedSet";
 import Error "mo:base/Error";
 
-shared(msg) persistent actor class WhitelistAccess() {
-  let controller = msg.caller; // The canister's deployer is the controller
+persistent actor {
 
-  // Create an OrderedMap instance for Principal keys
-  transient let principalMap = OrderedMap.Make<Principal>(Principal.compare);
-  var whitelist : OrderedMap.Map<Principal, Bool> = principalMap.empty();
+    // Create set to store principals
+    transient var principalSet = Set.Make(Principal.compare);
 
-  // Add a principal to the whitelist
-  public shared(msg) func addToWhitelist(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the whitelist.");
+    var principals : OrderedSet.Set<Principal> = principalSet.empty();
+
+    // Check if principal is recorded
+    public shared query(msg) func isRecorded() : async Bool {
+        let caller = msg.caller;
+        principleSet.contains(principals, caller);
     };
-    whitelist := principalMap.put(whitelist, user, true);
-  };
 
-  // Remove a principal from the whitelist
-  public shared(msg) func removeFromWhitelist(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the whitelist.");
+    // Record a new principal
+    public shared(msg) func recordPrincipal() : async () {
+        let caller = msg.caller;
+        if (Principal.isAnonymous(caller)) {
+            throw Error.reject("Anonymous principal not allowed");
+        };
+
+        principals := principalSet.put(principals, caller)
     };
-    whitelist := principalMap.delete(whitelist, user);
-  };
-
-  // Check if a caller is in the whitelist
-  public shared query(msg) func isWhitelisted() : async Bool {
-    principalMap.get(whitelist, msg.caller) == ?true;
-  };
-
-  // Restricted function, accessible only to whitelisted users
-  public composite query(msg) func restrictedAction() : async Text {
-    if (not (await isWhitelisted())) {
-      throw Error.reject("Access denied: Caller is not whitelisted.");
-    };
-    "Access granted to restricted action.";
-  };
-}
+};
 ```
 
-### Role based access control
-
-**Role-based access control (RBAC)** assigns permissions based on roles rather than individual users. This approach enables structured and scalable authorization by grouping users into predefined roles, each with specific access levels and responsibilities.
-
-In this example, the canister assigns roles dynamically, allowing its controller to manage administrators and members, each with different permissions.
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-import OrderedMap "mo:base/OrderedMap";
-import Error "mo:base/Error";
-
-shared(msg) persistent actor class RoleBasedAccess() {
-  let controller = msg.caller; // The canister's deployer is the initial controller
-
-  // Define role types
-  type Role = { #Admin; #Member };
-
-  // OrderedMap instance for role storage
-  let roleMap = OrderedMap.Make<Principal>(Principal.compare);
-  stable var roles : OrderedMap.Map<Principal, Role> = roleMap.empty();
-
-  // Assign a role to a principal
-  public shared(msg) func assignRole(user : Principal, role : Role) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can assign roles.");
-    };
-    roles := roleMap.put(roles, user, role);
-  };
-
-  // Remove a principal's role
-  public shared(msg) func removeRole(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can remove roles.");
-    };
-    roles := roleMap.delete(roles, user);
-  };
-
-  // Check a user's role
-  public shared query(msg) func getRole() : async ?Role {
-    roleMap.get(roles, msg.caller);
-  };
-
-  // Admin-only function
-  public shared(msg) func adminAction() : async Text {
-    switch (roleMap.get(roles, msg.caller)) {
-      case (?#Admin) "Admin action executed.";
-      case _ throw Error.reject("Access denied: Admins only.");
-    };
-  };
-
-  // Member-only function
-  public shared(msg) func memberAction() : async Text {
-    switch (roleMap.get(roles, msg.caller)) {
-      case (?#Admin) "Admins can also perform member actions.";
-      case (?#Member) "Member action executed.";
-      case _ throw Error.reject("Access denied: Members only.");
-    };
-  };
-}
-```
-
-### Mandatory access control
-
-**Mandatory access control (MAC)** enforces strict, system-defined rules that users cannot modify. Unlike discretionary access control, where owners can grant or revoke permissions, MAC establishes fixed access policies that remain immutable after deployment. This model is particularly suited for high-security applications where access rules must be enforced without user intervention.
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-import OrderedMap "mo:base/OrderedMap";
-import Error "mo:base/Error";
-
-shared(msg) persistent actor class MandatoryAccess() {
-  let controller = msg.caller;
-
-  type AccessLevel = { #ReadOnly; #WriteOnly; #ReadWrite };
-
-  // Create an OrderedMap instance for storing fixed access rules
-  transient let accessMap = OrderedMap.Make<Principal>(Principal.compare);
-  stable var accessLevels : OrderedMap.Map<Principal, AccessLevel> = accessMap.empty();
-
-  // Ensure the controller always has ReadWrite access
-  system func postupgrade() {
-    if (accessMap.get(accessLevels, controller) == null) {
-      accessLevels := accessMap.put(accessLevels, controller, #ReadWrite);
-    };
-  };
-
-  // Function to check access level
-  public shared query(msg) func getAccessLevel() : async ?AccessLevel {
-    if (msg.caller == controller) return ?#ReadWrite;
-    accessMap.get(accessLevels, msg.caller);
-  };
-
-  // Read function (accessible by RW and R users)
-  public shared composite query(msg) func readData() : async Text {
-    switch (await getAccessLevel()) {
-      case (?#ReadOnly) "Read access granted.";
-      case (?#ReadWrite) "Read access granted.";
-      case _ throw Error.reject("Access denied: No read permissions.");
-    };
-  };
-
-  // Write function (accessible by RW and W users)
-  public shared composite query(msg) func writeData(newData : Text) : async Text {
-    switch (await getAccessLevel()) {
-      case (?#WriteOnly) "Data written: " # newData;
-      case (?#ReadWrite) "Data written: " # newData;
-      case _ throw Error.reject("Access denied: No write permissions.");
-    };
-  };
-}
-```
-
-### Access control list
-
-**Access control lists (ACLs)** define explicit per-user permissions for specific actions, enabling fine-grained control over function access. Unlike role-based access control, which groups users into roles, ACLs require manual management of individual user permissions for each function. While ACLs offer flexibility, they can become challenging to scale in larger applications.
-
-The following example implements separate read and write allow lists, where the controller manages permissions by adding or removing users.
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-import Map "mo:base/OrderedMap";
-import Error "mo:base/Error";
-
-shared(msg) persistent actor class ACLAccess() {
-  let controller = msg.caller;
-
-  // Create map instances for separate allow lists
-  transient let aclMap = Map.Make<Principal>(Principal.compare);
-  stable var readAccessList : Map.Map<Principal, Bool> = aclMap.empty();
-  stable var writeAccessList : Map.Map<Principal, Bool> = aclMap.empty();
-
-  // Add a user to the read ACL
-  public shared(msg) func grantReadAccess(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the ACL.");
-    };
-    readAccessList := aclMap.put(readAccessList, user, true);
-  };
-
-  // Add a user to the write ACL
-  public shared(msg) func grantWriteAccess(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the ACL.");
-    };
-    writeAccessList := aclMap.put(writeAccessList, user, true);
-  };
-
-  // Remove a user from the read ACL
-  public shared(msg) func revokeReadAccess(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the ACL.");
-    };
-    readAccessList := aclMap.delete(readAccessList, user);
-  };
-
-  // Remove a user from the write ACL
-  public shared(msg) func revokeWriteAccess(user : Principal) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify the ACL.");
-    };
-    writeAccessList := aclMap.delete(writeAccessList, user);
-  };
-
-  // Check if a user has read access
-  public shared query(msg) func hasReadAccess() : async Bool {
-    aclMap.get(readAccessList, msg.caller) == ?true;
-  };
-
-  // Check if a user has write access
-  public shared query(msg) func hasWriteAccess() : async Bool {
-    aclMap.get(writeAccessList, msg.caller) == ?true;
-  };
-
-  // Read function (restricted by read ACL)
-  public shared composite query(msg) func readData() : async Text {
-    if (not (await hasReadAccess())) {
-      throw Error.reject("Access denied: Read access required.");
-    };
-    "Read access granted.";
-  };
-
-  // Write function (restricted by write ACL)
-  public shared composite query(msg) func writeData(newData : Text) : async Text {
-    if (not (await hasWriteAccess())) {
-      throw Error.reject("Access denied: Write access required.");
-    };
-    "Data written: " # newData;
-  };
-}
-```
-
-### Attribute-based access control
-
-**Attribute-based access control (ABAC)** grants permissions based on user attributes rather than predefined roles or explicit allow lists. In decentralized applications, these attributes can include token balances, reputation scores, or other on-chain data, making ABAC particularly well-suited for Web3 environments.
-
-This example implements a token-gated access model where users must hold a minimum number of tokens to access restricted functions.
-
-```motoko no-repl
-import Principal "mo:base/Principal";
-import Map "mo:base/OrderedMap";
-import Error "mo:base/Error";
-import Nat "mo:base/Nat";
-
-shared(msg) persistent actor class AttributeBasedAccess(tokenThreshold : Nat) {
-  let controller = msg.caller;
-
-  // Create an OrderedMap instance to track user balances
-  transient let balanceMap = Map.Make<Principal>(Principal.compare);
-  stable var balances : Map.Map<Principal, Nat> = balanceMap.empty();
-
-  // Function to set a user's balance (simulating token ownership)
-  public shared(msg) func setBalance(user : Principal, amount : Nat) : async () {
-    if (msg.caller != controller) {
-      throw Error.reject("Unauthorized: Only the controller can modify balances.");
-    };
-    balances := balanceMap.put(balances, user, amount);
-  };
-
-  // Function to check if a user meets the access requirement
-  public shared query(msg) func hasAccess() : async Bool {
-    switch (balanceMap.get(balances, msg.caller)) {
-      case (?balance) balance >= tokenThreshold;
-      case _ false;
-    }
-  };
-
-  // Restricted function accessible only to users meeting the threshold
-  public shared composite query(msg) func restrictedAction() : async Text {
-    if (not (await hasAccess())) {
-      throw Error.reject("Access denied: Insufficient tokens.");
-    };
-    "Access granted: You meet the token requirement.";
-  };
-}
-```
-
-### Policy-based access control
-
-**Policy-based access control (PBAC)** enforces access rules dynamically based on contextual conditions rather than predefined roles or attributes. Policies can incorporate factors such as time-based restrictions, geographical constraints, or multi-factor conditions. This model is particularly useful for governance, scheduled access, and automated compliance enforcement.
-
-The following example implements a time-based policy, where access is only granted within a specific time window (9AM- 5PM UTC).
-
-```motoko no-repl
-import Error "mo:base/Error";
-import Int "mo:base/Int";
-import Time "mo:base/Time";
-import Nat "mo:base/Nat";
-
-shared(msg) actor class PolicyBasedAccess() {
-
-  // Convert hours to nanoseconds (Time.now() returns nanoseconds)
-  private func hoursToNanos(hours : Nat) : Int {
-    return Int.abs(hours * 3600 * 1000 * 1000 * 1000);
-  };
-
-  // Function to check if the current time is within working hours (9am-5pm)
-  public shared query func isAccessAllowed() : async Bool {
-    let currentTime = Time.now();
-
-    // Calculate seconds since midnight in UTC
-    let nanosecondsPerDay : Int = 24 * 3600 * 1000 * 1000 * 1000;
-    let daysSinceEpoch : Int = currentTime / nanosecondsPerDay;
-    let nanosecondsSinceMidnight : Int = currentTime - (daysSinceEpoch * nanosecondsPerDay);
-
-    // Define working hours in nanoseconds (9am - 5pm)
-    let workStartTime = hoursToNanos(9);
-    let workEndTime = hoursToNanos(17); // 5pm in 24-hour format
-
-    // Check if current time is within working hours
-    return nanosecondsSinceMidnight >= workStartTime and nanosecondsSinceMidnight <= workEndTime;
-  };
-
-  // Restricted function that only allows access within working hours
-  public shared composite query func restrictedAction() : async Text {
-    if (not (await isAccessAllowed())) {
-      throw Error.reject("Access denied: Outside working hours (9am-5pm).");
-    };
-    "Access granted: You are within working hours (9am-5pm).";
-  };
-
-  // For testing: returns current time info
-  public query func getTimeInfo() : async Text {
-    let currentTime = Time.now();
-    let nanosecondsPerDay : Int = 24 * 3600 * 1000 * 1000 * 1000;
-    let daysSinceEpoch : Int = currentTime / nanosecondsPerDay;
-    let nanosecondsSinceMidnight : Int = currentTime - (daysSinceEpoch * nanosecondsPerDay);
-    let hoursSinceMidnight : Int = nanosecondsSinceMidnight / (3600 * 1000 * 1000 * 1000);
-
-    return "Current time: " # Int.toText(currentTime) #
-           "\nHours since midnight (UTC): " # Int.toText(hoursSinceMidnight);
-  };
-}
-```
-
-## Resources
-
-- [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal)
-- [`Principal` specification](https://internetcomputer.org/docs/references/ic-interface-spec/#principal)
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
