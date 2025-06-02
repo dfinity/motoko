@@ -87,7 +87,7 @@ Unlike stable data structures in the Rust CDK, these modules do not use stable m
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
 
-``` motoko no-repl file=../examples/WeatherActor.mo
+``` motoko no-repl file=./examples/WeatherActor.mo
 ```
 
 3. __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.
