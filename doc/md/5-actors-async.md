@@ -282,6 +282,7 @@ persistent actor class (Logger : actor { log : Text -> async () }) {
     await* maybeLog("Log entry #2");
   }
 }
+```
 
 ## `try/finally`
 
