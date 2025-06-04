@@ -1,7 +1,7 @@
 name: release
 
 # We trigger this on all tags and on the `master` branch. The job
-# `changelog` will fail for tags that don’t have a
+# `changelog` will fail for tags that don't have a
 # changelog entry, so that seems good enough.
 # For `master` this check is skipped as well as uploads.
 
@@ -11,6 +11,10 @@ on:
     - '*'
     branches:
     - 'master'
+  workflow_dispatch:
+    # To test this workflow: Go to Actions -> release -> Run workflow
+    # This creates a draft release tagged 'test-draft-release' 
+    # Remember to delete the draft release after testing!
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
@@ -65,8 +69,11 @@ jobs:
   # build product to the cachix cache, as we cannot build the darwin products on
   # linux
   release:
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: 'ubuntu-latest'
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
+    runs-on: ${{ matrix.os }}
     needs: [ changelog, build ]
     steps:
     - uses: actions/checkout@v4
@@ -81,6 +88,7 @@ jobs:
     - run: nix build --max-jobs 1 .#release-files
 
     - name: Upload Release Assets
+      if: startsWith(github.ref, 'refs/tags/')
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,3 +96,17 @@ jobs:
         file: result/*
         file_glob: true
         body: ${{ needs.changelog.outputs.release_body }}
+
+    - name: Upload Draft Release Assets
+      if: github.event_name == 'workflow_dispatch'
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: 'test-draft-release'
+        file: result/*
+        file_glob: true
+        body: 'Test draft release created via workflow dispatch'
+        draft: true
+        prerelease: true
+    
+
