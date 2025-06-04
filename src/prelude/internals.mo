@@ -301,9 +301,10 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 type @CleanCont = () -> ();
 type @BailCont = @CleanCont;
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>, @Cont<Error>, @BailCont) -> {
+type @Async<T> = (Bool, @Cont<T>, @Cont<Error>, @BailCont) -> {
   #suspend;
   #schedule : () -> ();
+  #resume : () -> ();
 };
 
 type @Refund = Nat;
@@ -364,9 +365,10 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
 
   var cleanup : @BailCont = @cleanup;
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
+  func enqueue(shortCircuit : Bool, k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
     #suspend;
     #schedule : () -> ();
+    #resume : () -> ();
   } {
     cleanup := b;
     switch result {
@@ -388,7 +390,8 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
         #suspend
       };
       case (?#ok (r, t)) {
-        #schedule (func _ { @refund := r; k(t) });
+        func invoke() { @refund := r; k(t) };
+        if shortCircuit #resume invoke else #schedule invoke;
       };
       case (?#error e) {
         #schedule (func _ = r(e));

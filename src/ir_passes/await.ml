@@ -471,13 +471,13 @@ and c_exp' context exp k =
       | _ -> assert false
     in
     letcont k (fun k ->
-      let krb = List.map varE [k; r; b] |> tupE in
+      let skrb = falseE() :: List.map varE [k; r; b] |> tupE in
       match eff exp1 with
       | T.Triv ->
-        cps_awaitE s (typ_of_var k) (t_exp context exp1) krb
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) skrb
       | T.Await ->
         c_exp context exp1
-          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krb)))
+          (meta (typ exp1) (fun v1 -> cps_awaitE s (typ_of_var k) (varE v1) skrb))
     )
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1

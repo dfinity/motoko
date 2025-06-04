@@ -46,10 +46,11 @@ let bailT = bail_contT
 let cleanT = clean_contT
 
 let t_async_fut as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
+  Func (Local, Returns, [], [bool; fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
-             ("schedule", Func(Local, Returns, [], [], []))]])
+             ("schedule", Func(Local, Returns, [], [], []));
+             ("resume", Func(Local, Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
   Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT], [])
@@ -83,12 +84,14 @@ let new_nary_async_reply ts =
   let nary_async =
     let coerce u =
       let v = fresh_var "v" u in
+      let s = fresh_var "s" bool in
       let k = fresh_var "k" (contT u unit) in
       let r = fresh_var "r" (err_contT unit) in
       let c = fresh_var "b" bail_contT in
-      [k; r; c] -->* (
+      [s; k; r; c] -->* (
         varE unary_async -*-
           (tupE [
+             varE s;
              [v] -->* (varE k -*- varE v);
              varE r;
              varE c;
@@ -256,22 +259,24 @@ let transform prog =
     | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (Fut, cont_typ), [a; skrb]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          (ensureNamed (t_exp krb) (fun vkrb ->
+          (ensureNamed (t_exp skrb) (fun vskrb ->
             let schedule = fresh_var "schedule" (Func(Local, Returns, [], [], [])) in
-            switch_variantE (t_exp a -*- varE vkrb)
+            switch_variantE (t_exp a -*- varE vskrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" unit in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
-                       ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
+                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vskrb) 2)
+                       ([] -->* (projE (varE vskrb) 3 -*- unitE ())))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vskrb) 2 -*- e))));
+                ("resume", varP schedule, (* resume now *)
+                  varE schedule -*- unitE ())
               ]
               unit
           )).it
@@ -382,7 +387,7 @@ let transform prog =
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
-        | Local  ->
+        | Local ->
           FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | Shared s' ->
           begin
@@ -403,7 +408,7 @@ let transform prog =
                 | t -> assert false in
               let k =
                 let v = fresh_var "v" t1 in
-                v --> (ic_replyE ret_tys (varE v)) in
+                v --> ic_replyE ret_tys (varE v) in
               let r =
                 let e = fresh_var "e" catch in
                 e --> ic_rejectE (errorMessageE (varE e)) in
