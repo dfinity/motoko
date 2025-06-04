@@ -296,7 +296,7 @@ let transform prog =
           letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def;
           let ic_reply = (* flatten v, here and below? *)
             let v = fresh_var "v" (T.seq ts1) in
-            v --> (ic_replyE ts1 (varE v)) in
+            v --> ic_replyE ts1 (varE v) in
           let ic_reject =
             let e = fresh_var "e" catch in
             e --> ic_rejectE (errorMessageE (varE e)) in
