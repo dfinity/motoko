@@ -85,7 +85,8 @@ jobs:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
 
-    - run: nix build --max-jobs 1 .#release-files
+    - name: Build platform-specific release files
+      run: nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
 
     - name: Upload Release Assets
       if: startsWith(github.ref, 'refs/tags/')
