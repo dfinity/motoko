@@ -391,11 +391,11 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
         };
         #suspend
       };
-      case (? (#ok (r, t))) {
-        #schedule (func () { @refund := r; k(t) });
+      case (?#ok (r, t)) {
+        #schedule (func _ { @refund := r; k(t) });
       };
-      case (? (#error e)) {
-        #schedule (func () = r(e));
+      case (?#error e) {
+        #schedule (func _ = r(e));
       };
     };
   };
