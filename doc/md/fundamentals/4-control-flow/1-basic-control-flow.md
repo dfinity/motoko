@@ -1,8 +1,11 @@
 ---
 sidebar_position: 1
 ---
-<!-- TODO(Future): the examples using  `sum` are ok, but artificial. Rewriting them to use  `product` would be more meaningful since you can exit early when a factor is 0 and skip the `*=` when factors are 1 -->
+
 # Types of control flow
+
+<!-- TODO(Future): the examples using  `sum` are ok, but artificial. Rewriting them to use  `product` would be more meaningful since you can exit early when a factor is 0 and skip the `*=` when factors are 1 -->
+
 
 | Construct | Description |
 |--------------|---------------|
@@ -10,7 +13,7 @@ sidebar_position: 1
 | `if` | Executes a block if the condition is `true`. |
 | `if/else` | Executes different blocks based on a condition. |
 | `switch` | [Pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) for variants, options, results, etc. |
-| `let-else` | Destructures a pattern and handle the failure case inline. |
+| `let-else` | Destructure a pattern and handle the failure case inline. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
 | `while` | Runs while a condition is `true`. |
@@ -33,7 +36,7 @@ func product(numbers : [Int]) : Int {
 }
 ```
 
-This function doesn't require an explicit `return`. It just returns theresult of its body, `prod`.
+This function doesn't require an explicit `return`. It just returns the result of its body, `prod`.
 
 However, `prod` will remain `0` once it becomes `0` so you can save some work by returning from the function early, exiting both the loop and the function with result `0`.
 
