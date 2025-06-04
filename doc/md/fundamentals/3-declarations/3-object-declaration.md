@@ -2,8 +2,6 @@
 sidebar_position: 3
 ---
 
-<!-- Some of the leading material might be better under object expressions, if we have a dedicated sections for that -->
-
 # Object declarations
 
 In Motoko, records and objects are both used to group related values using named fields. Record and objects have the same types, but differ in the way they are created and used. The types of record and objects are both described using object types, which are unordered sequences of named fields describing the content and mutability of each public field. Both record and object fields can be accessed by either dot notation or by pattern matching on the names of the fields.
