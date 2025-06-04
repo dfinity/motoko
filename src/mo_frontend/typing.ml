@@ -64,7 +64,7 @@ type env =
 let is_my_env env =
   (* env.vals |> T.Env.keys |> String.concat ", " |> Format.printf "vals: %s\n"; *)
   (* (!(env.used_identifiers)) |> S.elements |> String.concat ", " |> Format.printf "used_identifiers: %s\n"; *)
-  env.vals |> T.Env.mem "szczebrzeszyn"
+  env.vals |> T.Env.mem "_szczebrzeszyn"
 
 let print_exp env exp =
   if is_my_env env then
@@ -73,6 +73,10 @@ let print_exp env exp =
 let print_typ env typ =
   if is_my_env env then
     print_endline (Wasm.Sexpr.to_string 80 (Arrange.typ typ))
+
+let print_ttyp env typ =
+  if is_my_env env then
+    print_endline (Type.string_of_typ typ)
 
 let stack_trace () = flush_all(); let r = Unix.fork() in if r == 0 then raise Exit
 
@@ -3061,12 +3065,13 @@ and infer_block_decs env decs at : Scope.t =
 and infer_block_exps env decs : T.typ =
   match decs with
   | [] -> T.unit
-  | [dec] -> infer_dec env dec
+  | [dec] -> infer_dec env dec (* Why is this not unit? *)
   | dec::decs' ->
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
+  (* TODO: disable lambda body inference for declarations, func and let func *)
   let t =
   match dec.it with
   | ExpD exp -> infer_exp env exp
