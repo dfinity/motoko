@@ -462,12 +462,8 @@ and c_exp' context exp k =
     in
     k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
-    let r = match LabelEnv.find_opt Throw context with
-      | Some (Cont r) -> r
-      | _ -> assert false
-    in
-    let b = match LabelEnv.find_opt Cleanup context with
-      | Some (Cont r) -> r
+    let r, b = match LabelEnv.find_opt Throw context, LabelEnv.find_opt Cleanup context with
+      | Some (Cont r), Some (Cont b) -> r, b
       | _ -> assert false
     in
     letcont k (fun k ->
