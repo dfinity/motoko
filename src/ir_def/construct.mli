@@ -52,7 +52,7 @@ val assertE : exp -> exp
 val asyncE : async_sort -> typ_bind -> exp -> typ -> exp
 val awaitE : async_sort -> exp -> exp
 val cps_asyncE : async_sort -> typ -> typ -> exp -> exp
-val cps_awaitE : async_sort -> typ -> exp -> exp -> exp
+val cps_awaitE : await_sort -> typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
 val ic_callE : exp -> exp -> exp -> exp -> exp -> exp

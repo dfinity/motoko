@@ -46,7 +46,7 @@ let bailT = bail_contT
 let cleanT = clean_contT
 
 let t_async_fut as_seq t =
-  Func (Local, Returns, [], [bool; fulfillT as_seq t; failT; bailT],
+  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
              ("schedule", Func(Local, Returns, [], [], []));
@@ -84,14 +84,12 @@ let new_nary_async_reply ts =
   let nary_async =
     let coerce u =
       let v = fresh_var "v" u in
-      let s = fresh_var "s" bool in
       let k = fresh_var "k" (contT u unit) in
       let r = fresh_var "r" (err_contT unit) in
       let c = fresh_var "b" bail_contT in
-      [s; k; r; c] -->* (
+      [k; r; c] -->* (
         varE unary_async -*-
           (tupE [
-             varE s;
              [v] -->* (varE k -*- varE v);
              varE r;
              varE c;
@@ -259,22 +257,24 @@ let transform prog =
     | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; skrb]) ->
+    | PrimE (CPSAwait (AwaitFut short, cont_typ), [a; krb]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          (ensureNamed (t_exp skrb) (fun vskrb ->
+          (ensureNamed (t_exp krb) (fun vkrb ->
             let schedule = fresh_var "schedule" (Func(Local, Returns, [], [], [])) in
-            switch_variantE (t_exp a -*- varE vskrb)
+            switch_variantE (t_exp a -*- varE vkrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
-                ("schedule", varP schedule, (* resume later *)
-                  (* try await async (); schedule() catch e -> r(e) *)
-                  (let v = fresh_var "call" unit in
+                ("schedule", varP schedule,
+                  (assert (not short);
+                   (* resume later *)
+                   (* try await async (); schedule() catch e -> r(e) *)
+                   let v = fresh_var "call" unit in
                    letE v
-                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vskrb) 2)
-                        ([] -->* (projE (varE vskrb) 3 -*- unitE ())))
-                     (check_call_perform_status (varE v) (fun e -> projE (varE vskrb) 2 -*- e))));
+                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                        ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
+                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))));
                 ("resume", varP schedule, (* resume now *)
                   varE schedule -*- unitE ())
               ]
@@ -282,7 +282,7 @@ let transform prog =
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (AwaitCmp, cont_typ), [a; krb]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
          (t_exp a -*- t_exp krb).it

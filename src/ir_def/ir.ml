@@ -170,7 +170,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.async_sort * Type.typ
+  | CPSAwait of await_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
@@ -185,6 +185,8 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
+
+and await_sort = AwaitFut of bool | AwaitCmp
 
 (* Declarations *)
 

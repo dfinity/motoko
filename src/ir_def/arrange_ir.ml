@@ -108,8 +108,8 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
-  | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAwait (AwaitFut _, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
   | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
   | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"
