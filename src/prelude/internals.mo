@@ -304,7 +304,6 @@ type @Cont<T> = T -> () ;
 type @Async<T> = (@Cont<T>, @Cont<Error>, @BailCont) -> {
   #suspend;
   #schedule : () -> ();
-  #resume : () -> ();
 };
 
 type @Refund = Nat;
@@ -368,7 +367,6 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
   func enqueue(k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
     #suspend;
     #schedule : () -> ();
-    #resume : () -> ();
   } {
     cleanup := b;
     switch result {
@@ -390,11 +388,10 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
         #suspend
       };
       case (?#ok (r, t)) {
-        func invoke() { @refund := r; k(t) };
-        if false #resume invoke else #schedule invoke;
+        #schedule (func() { @refund := r; k(t) })
       };
       case (?#error e) {
-        #schedule (func _ = r(e));
+        #schedule (func _ = r(e))
       };
     };
   };

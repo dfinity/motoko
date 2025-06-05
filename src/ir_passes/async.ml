@@ -49,8 +49,7 @@ let t_async_fut as_seq t =
   Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
-             ("schedule", Func(Local, Returns, [], [], []));
-             ("resume", Func(Local, Returns, [], [], []))]])
+             ("schedule", Func(Local, Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
   Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT], [])
