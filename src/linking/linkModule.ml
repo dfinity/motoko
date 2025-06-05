@@ -111,6 +111,10 @@ See also the tests `test/ld/fun-ptr` for concrete examples of GOT resolutions.
 exception LinkError of string
 exception TooLargeDataSegments of string
 
+
+(* tail-recursive map *)
+let safe_map f l = List.rev (List.rev_map f l)
+
 type imports = (int32 * name) list
 
 let phrase f x = { x with it = f x.it }
@@ -307,7 +311,7 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
 type renumbering = int32 -> int32
 
 let resolve imports exports : (int32 * int32) list =
-  List.flatten (List.map (fun (fi, name) ->
+  List.flatten (safe_map (fun (fi, name) ->
     match NameMap.find_opt name exports with
     | Some fi' -> [ (fi, fi') ]
     | None -> []
@@ -358,11 +362,11 @@ let rename_funcs rn : module_' -> module_' = fun m ->
     | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
     | i -> i
   and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instrs is = safe_map instr is in
 
   let func' f = { f with body = instrs f.body } in
   let func = phrase func' in
-  let funcs = List.map func in
+  let funcs = safe_map func in
 
   let edesc' = function
     | FuncExport v -> FuncExport (var v)
@@ -370,7 +374,7 @@ let rename_funcs rn : module_' -> module_' = fun m ->
   let edesc = phrase edesc' in
   let export' e = { e with edesc = edesc e.edesc } in
   let export = phrase export' in
-  let exports = List.map export in
+  let exports = safe_map export in
 
   let segment' f s = { s with init  = f s.init } in
   let segment f = phrase (segment' f) in
@@ -379,7 +383,7 @@ let rename_funcs rn : module_' -> module_' = fun m ->
     funcs = funcs m.funcs;
     exports = exports m.exports;
     start = Option.map var m.start;
-    elems = List.map (segment (List.map var)) m.elems;
+    elems = safe_map (segment (safe_map var)) m.elems;
   }
 
 let rename_globals rn : module_' -> module_' = fun m ->
@@ -394,21 +398,21 @@ let rename_globals rn : module_' -> module_' = fun m ->
     | GlobalSet v -> GlobalSet (var v)
     | i -> i
   and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instrs is = safe_map instr is in
 
   let func' f = { f with body = instrs f.body } in
   let func = phrase func' in
-  let funcs = List.map func in
+  let funcs = safe_map func in
 
   let const = phrase instrs in
 
   let global' g = { g with value = const g.value } in
   let global = phrase global' in
-  let globals = List.map global in
+  let globals = safe_map global in
 
   let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
   let table_segment = phrase (table_segment') in
-  let table_segments = List.map table_segment in
+  let table_segments = safe_map table_segment in
 
   let segment_mode' (dmode : segment_mode') = 
     match dmode with 
@@ -419,7 +423,7 @@ let rename_globals rn : module_' -> module_' = fun m ->
   let segment_mode = phrase (segment_mode') in
   let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
   let data_segment = phrase (data_segment') in
-  let data_segments = List.map data_segment in
+  let data_segments = safe_map data_segment in
 
   (* The exports are used to resolve `GOT.mem`. 
      Therefore, also update the exported global indices. *)
@@ -430,7 +434,7 @@ let rename_globals rn : module_' -> module_' = fun m ->
   let export_desc = phrase (export_desc') in
   let export' (e: export') = { e with edesc = export_desc e.edesc } in
   let export = phrase export' in
-  let exports = List.map export in
+  let exports = safe_map export in
 
   { m with
     funcs = funcs m.funcs;
@@ -469,11 +473,11 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
     | GlobalSet v when v.it = global -> assert false
     | i -> i
   and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instrs is = safe_map instr is in
 
   let func' f = { f with body = instrs f.body } in
   let func = phrase func' in
-  let funcs = List.map func in
+  let funcs = safe_map func in
 
   let const = phrase instrs in
 
@@ -484,7 +488,7 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
     | _ -> assert false
   in
   let const_instr_to_32 i = phrase const_instr_to_32' i in
-  let convert_const_to_32' = List.map const_instr_to_32 in
+  let convert_const_to_32' = safe_map const_instr_to_32 in
   let convert_const_to_32 = phrase convert_const_to_32' in
   let table_const offset = 
     let expr = const offset in
@@ -493,11 +497,11 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
 
   let global' g = { g with value = const g.value } in
   let global = phrase global' in
-  let globals = List.map global in
+  let globals = safe_map global in
 
   let table_segment' (s : var list segment') = { s with offset = table_const s.offset; } in
   let table_segment = phrase (table_segment') in
-  let table_segments = List.map table_segment in
+  let table_segments = safe_map table_segment in
 
   let segment_mode' (dmode : segment_mode') = 
     match dmode with 
@@ -508,7 +512,7 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
   let segment_mode = phrase (segment_mode') in
   let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
   let data_segment = phrase (data_segment') in
-  let data_segments = List.map data_segment in
+  let data_segments = safe_map data_segment in
 
 
   { m with
@@ -520,8 +524,8 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
 
 let rename_funcs_name_section rn (ns : name_section) =
   { ns with
-    function_names = List.map (fun (fi, name) -> (rn fi, name)) ns.function_names;
-    locals_names = List.map (fun (fi, locals) -> (rn fi, locals)) ns.locals_names;
+    function_names = safe_map (fun (fi, name) -> (rn fi, name)) ns.function_names;
+    locals_names = safe_map (fun (fi, locals) -> (rn fi, locals)) ns.locals_names;
   }
 
 let rename_funcs_extended rn (em : extended_module) =
@@ -549,11 +553,11 @@ let rename_types rn m =
     | If (bty, is1, is2) -> If (block_type bty, instrs is1, instrs is2)
     | i -> i
   and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instrs is = safe_map instr is in
 
   let func' f = { f with ftype = ty_var f.ftype; body = instrs f.body } in
   let func = phrase func' in
-  let funcs = List.map func in
+  let funcs = safe_map func in
 
   let idesc' = function
     | FuncImport tv -> FuncImport (ty_var tv)
@@ -561,7 +565,7 @@ let rename_types rn m =
   let idesc = phrase idesc' in
   let import' i = { i with idesc = idesc i.idesc } in
   let import = phrase import' in
-  let imports = List.map import in
+  let imports = safe_map import in
 
   { m with
     funcs = funcs m.funcs;
@@ -857,7 +861,7 @@ let collect_got_imports (m : module_') : got_import list =
    This is done by adding the library memory base (`lib_heap_start`) to the offset
    that is stored in the exported global that corresponds to the GOT.mem import. *)
 let patch_got_mem_accesses got_mem_imports memory_base = fun m ->
-  let phrase_one_to_many f x = List.map (fun y -> { x with it = y }) (f x.it) in
+  let phrase_one_to_many f x = safe_map (fun y -> { x with it = y }) (f x.it) in
 
   let find_got_mem global_index =
     List.find_opt (fun (index, _, _) -> index = global_index) got_mem_imports
@@ -887,11 +891,11 @@ let patch_got_mem_accesses got_mem_imports memory_base = fun m ->
     | If (ty, is1, is2) -> [If (ty, instrs is1, instrs is2)]
     | i -> [i]
   and instr (i: instr) : instr list = phrase_one_to_many instr' i
-  and instrs (is : instr list) : instr list = List.flatten (List.map instr is) in
+  and instrs (is : instr list) : instr list = List.flatten (safe_map instr is) in
 
   let func' f = { f with body = instrs f.body } in
   let func = phrase func' in
-  let funcs = List.map func in
+  let funcs = safe_map func in
 
   { m with
     funcs = funcs m.funcs;
@@ -908,7 +912,7 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
       | _ -> None
     ) imports
   in
-  let elements = List.map
+  let elements = safe_map
     (fun (_, _, function_index) -> function_index @@ no_region)
     got_func_imports
   in
@@ -944,7 +948,7 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
     | GlobalType (I64Type, _) -> mk_i64_global 0L
     | _ -> raise (LinkError "GOT.mem global type is not supported"))
   in
-  let dummy_globals = List.map
+  let dummy_globals = safe_map
     (fun (global_index, global_type, _) -> (global_index, dummy_global global_type))
     memory_imports
   in
@@ -955,7 +959,7 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
   in
   let new_globals = function_globals @ dummy_globals
     |> List.sort (fun (left, _) (right, _) -> compare left right)
-    |> List.map (fun (_, global) -> global @@ no_region)
+    |> safe_map (fun (_, global) -> global @@ no_region)
   in
   (* Move GOT globals from import section to the beginning of module's global section.
      The movement is based on the following assumption that is checked in `collect_got_imports`:
@@ -1117,7 +1121,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     Hashtbl.to_seq type_indices |>
     List.of_seq |>
     List.sort (fun (_, idx1) (_, idx2) -> compare idx1 idx2) |>
-    List.map (fun (ty, _) -> ty @@ no_region)
+    safe_map (fun (ty, _) -> ty @@ no_region)
   in
 
   let add_initial_call function_name =
@@ -1146,7 +1150,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     let segment_mode = phrase (segment_mode') in
     let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
     let data_segment = phrase (data_segment') in
-    let data_segments = List.map data_segment in
+    let data_segments = safe_map data_segment in
     { m with datas = data_segments m.datas; }
   in
 
@@ -1227,7 +1231,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Rename global and function indices in GOT stuff *)
   let got_imports =
-    List.map (function
+    safe_map (function
       | { global_index; global_type; kind = GotFunc { function_index }} ->
         { global_index = globals2 global_index;
           global_type;
