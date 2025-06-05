@@ -42,8 +42,6 @@ runs:
         swap-storage: false
 
     - uses: cachix/install-nix-action@v31
-      with:
-        extra_nix_config: experimental-features = nix-command flakes ca-derivations
 
     - uses: cachix/cachix-action@v16
       with:
