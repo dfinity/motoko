@@ -33,14 +33,14 @@ jobs:
         run: exit 1
 
   # Check that the changelog is in good order and extract the changelog.
-  # Skip this step for draft releases.
   changelog:
     runs-on: ubuntu-latest
     needs: prepare
-    if: ${{ github.event_name != 'workflow_dispatch' }}
     steps:
     - uses: actions/checkout@v4
     - name: Extract changelog
+      # Skip this step for draft releases. Leave the release body empty.
+      if: ${{ github.event_name != 'workflow_dispatch' }}
       id: read_changelog
       uses: ./.github/actions/extract-changelog
       with:
