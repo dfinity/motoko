@@ -69,18 +69,20 @@ jobs:
       run: |
         nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
 
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-files-${{ matrix.os }}
+        path: result/*
+
+    - name: Test release files
+      run: |
         echo "## checks"
         uname -s -m
         moc="$(nix build --max-jobs 1 .#release.moc --print-out-paths)"
         "$moc/bin/moc" --version
         file "$moc/bin/moc"
         ldd "$moc/bin/moc" || true
-
-    - name: Upload Release Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-files-${{ matrix.os }}
-        path: result/*
 
   publish:
     runs-on: ubuntu-latest
