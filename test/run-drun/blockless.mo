@@ -3,4 +3,4 @@ actor A {
     public func go() : async Int { await* A.foo() }
 }
 
-//CALL ingress go 0x4449444C0000
+A.go() //OR-CALL ingress go 0x4449444C0000

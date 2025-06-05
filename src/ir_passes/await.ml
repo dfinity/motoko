@@ -470,7 +470,7 @@ and c_exp' context exp k =
       let krb = List.map varE [k; r; b] |> tupE in
       match eff exp1 with
       | T.Triv ->
-        cps_awaitE AwaitCmp (typ_of_var k) (t_exp context exp1) krb
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) krb
       | T.Await ->
         c_exp context exp1
           (meta (typ exp1) (fun v1 -> cps_awaitE s (typ_of_var k) (varE v1) krb))
