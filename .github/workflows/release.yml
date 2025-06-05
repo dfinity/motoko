@@ -4,42 +4,57 @@ on:
   push:
     tags:
     - '*'
-    branches:
-    - master
+  workflow_call:
+    inputs:
+      version:
+        description: Version to release, e.g. 0.12.4
+        required: true
+        type: string
   workflow_dispatch:
     # To test this workflow: Go to Actions -> release -> Run workflow
-    # Or using the CLI: gh workflow run release --ref <branch> -f draft_tag=test-draft-release
-    # This creates a draft release tagged 'test-draft-release' 
+    # Or using the CLI: gh workflow run release --ref <branch> -f version=test-draft-release
+    # This creates a draft release tagged with the specified version
     # Remember to delete the draft release after testing!
     inputs:
-      draft_tag:
-        description: 'Tag name for draft release (default: test-draft-release)'
+      version:
+        description: 'Version for draft release (default: test-draft-release)'
         required: false
-        default: 'test-draft-release'
+        default: test-draft-release
         type: string
 
 jobs:
-  # first check that the changelog is in good order and extract the changelog
-  # This will fail for non-release tags.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ inputs.version || github.ref_name }}
+    steps:
+      - name: Ensure tag is from master
+        if: github.event_name == 'push' && github.event.base_ref != 'refs/heads/master'
+        run: exit 1
+
+  # Check that the changelog is in good order and extract the changelog.
+  # Skip this step for draft releases.
   changelog:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     steps:
     - uses: actions/checkout@v4
     - name: Extract changelog
       id: read_changelog
       uses: ./.github/actions/extract-changelog
       with:
-        version: ${{ github.ref_name }}
+        version: ${{ needs.prepare.outputs.version }}
     outputs:
       release_body: ${{ steps.read_changelog.outputs.release_body }}
 
   build:
+    needs: prepare
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     concurrency:
-      group: release-build-${{ matrix.os }}-${{ github.ref }}
+      group: release-build-${{ matrix.os }}-${{ needs.prepare.outputs.version }}
       cancel-in-progress: true
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,7 +65,7 @@ jobs:
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
-        # NB: No auth token, we don’t expect to push new stuff here
+        # NB: No auth token, we don't expect to push new stuff here
 
     - name: Build platform-specific release files
       run: |
@@ -71,7 +86,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: [changelog, build]
+    needs: [prepare, changelog, build]
     steps:
     - name: Download all release artifacts
       uses: actions/download-artifact@v4
@@ -81,24 +96,12 @@ jobs:
         merge-multiple: true
 
     - name: Upload Release Assets
-      if: startsWith(github.ref, 'refs/tags/')
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
+        tag: ${{ needs.prepare.outputs.version }}
         file: release-assets/*
         file_glob: true
-        body: ${{ needs.changelog.outputs.release_body }}
-
-    - name: Upload Draft Release Assets
-      if: github.event_name == 'workflow_dispatch'
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ inputs.draft_tag }}
-        file: release-assets/*
-        file_glob: true
-        body: Draft release created for testing purposes
-        draft: true
-        prerelease: true
-
+        body: ${{ needs.changelog.outputs.release_body || 'Draft release created for testing purposes' }}
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
+        prerelease: ${{ github.event_name == 'workflow_dispatch' }}
