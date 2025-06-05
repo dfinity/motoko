@@ -1,3 +1,0 @@
-blockless.mo:3.43-3.50: type error [M0088], expected async* type, but expression has type
-  async<$go> Int
-Use keyword 'await' (not 'await*') to consume this type.

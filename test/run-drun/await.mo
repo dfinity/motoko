@@ -11,7 +11,7 @@ actor a {
 
     Prim.debugPrint "a";
 
-    let aaaaaaaaa = async await f(0);
+    let a = async await f(0);
 
     Prim.debugPrint "b";
 
@@ -67,7 +67,7 @@ actor a {
        Prim.debugPrint b;
     };
 
-    ignore(await aaaaaaaaa);
+    ignore(await a);
     ignore(await b);
     ignore(await c);
     ignore(await d);
