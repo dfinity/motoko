@@ -267,16 +267,15 @@ let transform prog =
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule,
-                  (assert (not short);
-                   (* resume later *)
-                   (* try await async (); schedule() catch e -> r(e) *)
-                   let v = fresh_var "call" unit in
-                   letE v
-                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
-                        ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
-                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))));
-                ("resume", varP schedule, (* resume now *)
-                  varE schedule -*- unitE ())
+                  (if short then (* resume immediately *)
+                     varE schedule -*- unitE ()
+                   else (* resume later *)
+                     (* try await async (); schedule() catch e -> r(e) *)
+                     let v = fresh_var "call" unit in
+                     letE v
+                       (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                          ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
+                       (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
               ]
               unit
           )).it

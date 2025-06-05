@@ -253,7 +253,9 @@ and exp' at note = function
                        | T.Async (_, t, _) -> t
                        | _ -> assert false) in
     (blockE ds { at; note; it }).it
-  | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
+  | S.AwaitE (T.Cmp, e) when T.is_fut e.note.S.note_typ -> I.PrimE I.(AwaitPrim (AwaitFut true), [exp e])
+  | S.AwaitE (T.Cmp, e) -> I.PrimE I.(AwaitPrim AwaitCmp, [exp e])
+  | S.AwaitE (T.Fut, e) -> I.PrimE I.(AwaitPrim (AwaitFut false), [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
@@ -454,7 +456,7 @@ and call_system_func_opt name es obj_typ =
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
         | "lowmemory" ->
-          awaitE T.Cmp 
+          awaitE None 
             (callE (varE (var id.it note)) [T.scope_bound] (unitE()))
         | name ->
            let inst = match name with
@@ -1193,7 +1195,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
       (letE principal
-        (awaitE T.Cmp
+        (awaitE None
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;

@@ -162,8 +162,9 @@ let asyncE s typ_bind e typ1 =
                       eff = T.(if s = Fut then Await else Triv) }
   }
 
-let awaitE s e =
+let awaitE s_opt e =
   let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
+  let s = match s_opt, s with Some s, _ -> s | None, T.Cmp -> AwaitCmp | None, T.Fut -> AwaitFut false in
   { it = PrimE (AwaitPrim s, [e]);
     at = no_region;
     note = Note.{ def with typ; eff = T.Await }

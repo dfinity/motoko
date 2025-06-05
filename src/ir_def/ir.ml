@@ -134,7 +134,7 @@ and prim =
   | IdxBlobPrim                       (* blob indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim of Type.async_sort       (* await/await* *)
+  | AwaitPrim of await_sort           (* await/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
@@ -337,3 +337,7 @@ let map_prim t_typ t_id p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
+
+let to_async_sort = function
+  | AwaitCmp -> Type.Cmp
+  | AwaitFut _ -> Type.Fut

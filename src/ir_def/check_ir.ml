@@ -538,7 +538,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some c -> T.Con(c, [])
       | None -> error env exp.at "misplaced await" in
       let t1 = T.promote (typ exp1) in
-      let (t2, t3) = try T.as_async_sub s t0 t1
+      let (t2, t3) = try T.as_async_sub (to_async_sort s) t0 t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)

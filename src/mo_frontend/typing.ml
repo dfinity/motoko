@@ -1738,7 +1738,10 @@ and infer_exp'' env exp : T.typ =
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
     (try
-       let (t2, t3) = T.as_async_sub s t0 t1 in
+       let s1 = match s, t1 with
+         | T.(Cmp, Async(Fut, _, _)) -> T.Fut (* we can await* an async *)
+         | _ -> s in
+       let (t2, t3) = T.as_async_sub s1 t0 t1 in
        if not (eq env exp.at t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
@@ -1759,7 +1762,7 @@ and infer_exp'' env exp : T.typ =
             (if s = T.Fut then
               "\nUse keyword 'await*' (not 'await') to consume this type."
             else
-              "\nUse keyword 'await' (not 'await*') to consume this type.")
+              assert false)
           else "")
     )
   | AssertE (_, exp1) ->
