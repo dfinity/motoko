@@ -11,7 +11,7 @@ actor a {
 
     Prim.debugPrint "a";
 
-    let a = async await f(0);
+    let aaaaaaaaa = async await f(0);
 
     Prim.debugPrint "b";
 
@@ -62,12 +62,12 @@ actor a {
 
     func p():async (Text,Text) { ("fst","snd"); };
     let h = async {
-       let (a,b) = ("a","b"); /* await p(a,b);*/
+       let (a,b) = await p();
        Prim.debugPrint a;
        Prim.debugPrint b;
     };
 
-    ignore(await a);
+    ignore(await aaaaaaaaa);
     ignore(await b);
     ignore(await c);
     ignore(await d);
