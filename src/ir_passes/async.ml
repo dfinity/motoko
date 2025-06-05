@@ -270,11 +270,11 @@ let transform prog =
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
-                 (let v = fresh_var "call" unit in
-                  letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vskrb) 2)
-                       ([] -->* (projE (varE vskrb) 3 -*- unitE ())))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vskrb) 2 -*- e))));
+                  (let v = fresh_var "call" unit in
+                   letE v
+                     (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vskrb) 2)
+                        ([] -->* (projE (varE vskrb) 3 -*- unitE ())))
+                     (check_call_perform_status (varE v) (fun e -> projE (varE vskrb) 2 -*- e))));
                 ("resume", varP schedule, (* resume now *)
                   varE schedule -*- unitE ())
               ]
