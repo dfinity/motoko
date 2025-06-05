@@ -52,7 +52,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm ] # macos-13, macos-latest ]
+        os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     concurrency:
       group: release-build-${{ matrix.os }}-${{ needs.prepare.outputs.version }}
       cancel-in-progress: true
@@ -66,8 +66,7 @@ jobs:
         # NB: No auth token, we don't expect to push new stuff here
 
     - name: Build platform-specific release files
-      run: |
-        nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
+      run: nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
 
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@v4
@@ -77,7 +76,6 @@ jobs:
 
     - name: Test release files
       run: |
-        echo "## checks"
         uname -s -m
         moc="$(nix build --max-jobs 1 .#release.moc --print-out-paths)"
         "$moc/bin/moc" --version
