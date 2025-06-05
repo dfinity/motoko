@@ -8,15 +8,22 @@ on:
     - master
   workflow_dispatch:
     # To test this workflow: Go to Actions -> release -> Run workflow
-    # Or using the CLI: gh workflow run release --ref <branch>
+    # Or using the CLI: gh workflow run release --ref <branch> --input draft_tag=test-draft-release
     # This creates a draft release tagged 'test-draft-release' 
     # Remember to delete the draft release after testing!
+    inputs:
+      draft_tag:
+        description: 'Tag name for draft release (default: test-draft-release)'
+        required: false
+        default: 'test-draft-release'
+        type: string
 
 jobs:
   # first check that the changelog is in good order and extract the changelog
   # This will fail for non-release tags.
   changelog:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
     - uses: actions/checkout@v4
     - name: Extract changelog
@@ -35,7 +42,6 @@ jobs:
       matrix:
         os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
     runs-on: ${{ matrix.os }}
-    needs: changelog
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
@@ -89,10 +95,10 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: test-draft-release
+        tag: ${{ inputs.draft_tag }}
         file: release-assets/*
         file_glob: true
-        body: ${{ needs.changelog.outputs.release_body }}
+        body: Draft release created for testing purposes
         draft: true
         prerelease: true
 
