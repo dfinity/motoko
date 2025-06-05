@@ -8,7 +8,7 @@ on:
     - master
   workflow_dispatch:
     # To test this workflow: Go to Actions -> release -> Run workflow
-    # Or using the CLI: gh workflow run release --ref <branch> --input draft_tag=test-draft-release
+    # Or using the CLI: gh workflow run release --ref <branch> -f draft_tag=test-draft-release
     # This creates a draft release tagged 'test-draft-release' 
     # Remember to delete the draft release after testing!
     inputs:
