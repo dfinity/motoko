@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
+
 ## 0.14.12 (2025-05-28)
 
 * motoko (`moc`)
