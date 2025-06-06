@@ -273,9 +273,9 @@ module Const = struct
        | 0 -> Int64.compare i j
        | ord -> ord)
     | Float64 i, Float64 j ->
-       Float.compare
-       (Mo_values.Numerics.Float.to_float i)
-       (Mo_values.Numerics.Float.to_float i)
+       Int64.compare
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float i))
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float j))
     | Bool i, Bool j -> Bool.compare i j
     | Text s, Text t -> String.compare s t
     | Blob s, Blob t -> String.compare s t
@@ -9043,7 +9043,15 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec build_constant env = function
+  let rec build_constant env value =
+    match E.ConstEnv.find_opt value !(env.E.constant_pool) with
+    | Some shared_value -> shared_value
+    | None ->
+      let r = build_constant_aux env value
+      in
+      env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
+      r
+  and build_constant_aux env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
   | Const.Lit (Const.Text payload) -> Blob.constant env Tagged.T payload
@@ -9062,23 +9070,15 @@ module StackRep = struct
         let materialized_payload = Tagged.materialize_shared_value env payload in
         Variant.inject env tag materialized_payload
       )
-  | Const.Array elements -> 
+  | Const.Array elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.I constant_elements
-  | Const.Tuple elements -> 
+  | Const.Tuple elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.T constant_elements
   | Const.Obj fields ->
       let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields  in
       Object.constant env constant_fields
-
-  let build_constant env value =
-    match E.ConstEnv.find_opt value !(env.E.constant_pool) with
-    | Some r -> r
-    | None ->
-      let r = build_constant env value in
-      env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
-      r
 
   let materialize_constant env value =
     Tagged.materialize_shared_value env (build_constant env value)
