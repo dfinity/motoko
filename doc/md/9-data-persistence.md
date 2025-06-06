@@ -42,7 +42,7 @@ Using a `persistent` actor can help avoid unintended data loss. It is the recomm
 
 ## Stable types
 
-The Motoko compiler must ensure that stable variables are both compatible with the upgraded program. To achieve this, every `stable` variable must have a stable type. A type is stable if removing all `var` modifiers from it results in a shared type.
+The Motoko compiler must ensure that stable variables are compatible with the upgraded program. To achieve this, every `stable` variable must have a stable type. A type is stable if removing all `var` modifiers from it results in a shared type.
 
 The only difference between stable types and shared types is the former’s support for mutation. Like shared types, stable types are restricted to first-order data, excluding local functions and structures built from local functions (such as class instances). Excluding local functions is required because the meaning of a function value, consisting of both data and code, cannot easily be preserved across an upgrade while the value of plain data, mutable or not, can be.
 
