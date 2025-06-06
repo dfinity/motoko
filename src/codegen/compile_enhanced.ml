@@ -8893,7 +8893,7 @@ module GCRoots = struct
             allocation env ^^
               E.call_import env "rts" "set_static_variable")
       )
-   )
+    )
 end (* GCRoots *)
 
 module StackRep = struct
