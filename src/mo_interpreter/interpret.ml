@@ -353,10 +353,31 @@ let blob_vals t at =
     in k (V.Obj (V.Env.singleton "next" next))
   )
 
+let blob_get t at =
+  V.local_func 1 1 (fun c v k ->
+    let n = V.as_int v in
+    if Numerics.Nat.lt n (Numerics.Nat.of_int (String.length t))
+    then k V.(Nat8 (Numerics.Nat8.of_int (Char.code (String.get t (Numerics.Nat.to_int n)))))
+    else trap at "blob index out of bounds"
+  )
+
 let blob_size t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     k (V.Int (Numerics.Nat.of_int (String.length t)))
+  )
+
+let blob_keys t at =
+  V.local_func 0 1 (fun c v k ->
+    V.as_unit v;
+    let i = ref 0 in
+    let next =
+      V.local_func 0 1 (fun c v k' ->
+        if !i = String.length t
+        then k' V.Null
+        else let v = V.Opt (V.Int (Numerics.Nat.of_int !i)) in incr i; k' v
+      )
+    in k (V.Obj (V.Env.singleton "next" next))
   )
 
 let text_chars t at =
@@ -538,6 +559,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob b when T.sub exp1.note.note_typ (T.blob)->
         let f = match id.it with
           | "size" -> blob_size
+          | "keys" -> blob_keys
+          | "get" -> blob_get
           | "vals" | "values" -> blob_vals
           | s -> assert false
         in k (f b exp.at)
@@ -560,8 +583,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | IdxE (exp1, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
-        k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
-           with Invalid_argument s -> trap exp.at "%s" s)
+        k V.(let i = Numerics.Int.to_int (as_int v2) in
+             match v1 with
+             | Blob s ->
+               Nat8 (s.[i] |> Char.code |> Numerics.Nat8.of_int)
+             | _ ->
+               try (as_array v1).(i)
+               with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
   | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->

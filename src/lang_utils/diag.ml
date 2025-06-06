@@ -84,12 +84,12 @@ let print_messages = List.iter print_message
 
 let is_error_free (ms: msg_store) = not (has_errors (get_msgs ms))
 
-let with_message_store f =
+let with_message_store ?(allow_errors = false) f =
   let s = ref [] in
   let r = f s in
   let msgs = get_msgs s in
   match r with
-  | Some x when not (has_errors msgs) -> Ok (x, msgs)
+  | Some x when not (has_errors msgs) || allow_errors -> Ok (x, msgs)
   | _ -> Error msgs
 
 let flush_messages : 'a result -> 'a option = function

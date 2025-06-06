@@ -22,11 +22,15 @@ and function_doc = {
   args : function_arg_doc list;
 }
 
-and function_arg_doc = {
+and function_arg_named = {
   name : string;
   typ : Syntax.typ option;
   doc : string option;
 }
+
+and function_arg_doc =
+  | FANamed of function_arg_named
+  | FAObject of function_arg_named list
 
 and value_sort = Let | Var
 and value_doc = { sort : value_sort; name : string; typ : Syntax.typ option }
@@ -102,31 +106,65 @@ struct
     Namespace.lookup_type namespace
 
   let rec extract_args = function
-    | Source.{ it = Syntax.VarP { it = name; at; _ }; _ } ->
+    | { it = Syntax.VarP { it = name; at; _ }; _ } ->
         Some
-          {
-            name;
-            typ = None;
-            doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-          }
-    | Source.{ it = Syntax.AnnotP (p, ty); at; _ } ->
-        Option.map
-          (fun x ->
-            {
-              x with
-              typ = Some ty;
-              doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
-            })
-          (extract_args p)
-    | Source.{ it = Syntax.WildP; _ } -> None
+          (FANamed
+             {
+               name;
+               typ = None;
+               doc = Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+             })
+    | { it = Syntax.AnnotP (p, ty); at; _ } ->
+        Option.bind (extract_args p) (function
+          | FANamed x ->
+              Some
+                (FANamed
+                   {
+                     x with
+                     typ = Some ty;
+                     doc =
+                       Trivia.doc_comment_of_trivia_info (Env.find_trivia at);
+                   })
+          | FAObject _ -> None)
+    | { it = Syntax.WildP; _ } -> None
+    | { it = Syntax.ObjP fs; at; _ } ->
+        let fields = List.filter_map extract_pat_field fs in
+        Some (FAObject fields)
     | pat ->
         (* Wasm.Sexpr.print 80 (Arrange.pat pat); *)
         None
+
+  and extract_pat_field pf =
+    match pf.it.Syntax.pat with
+    | { it = Syntax.AnnotP (_, typ); _ } ->
+        Some { name = pf.it.Syntax.id.it; typ = Some typ; doc = None }
+    | _ -> None
 
   let extract_func_args = function
     | { it = Syntax.ParP arg; _ } -> Option.to_list (extract_args arg)
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
+
+  let extract_typ_item (id_opt, typ) =
+    FANamed
+      {
+        name = (match id_opt with Some id -> id.it | _ -> "_");
+        typ = Some typ;
+        doc = None;
+      }
+
+  let extract_ty_args = function
+    | { it = Syntax.ParT arg; _ } ->
+        [ FANamed { name = "_"; typ = Some arg; doc = None } ]
+    | { it = Syntax.NamedT ({ it = name; _ }, arg); _ } ->
+        [ FANamed { name; typ = Some arg; doc = None } ]
+    | { it = Syntax.TupT args; _ } -> List.map extract_typ_item args
+    | typ -> [ FANamed { name = "_"; typ = Some typ; doc = None } ]
+
+  let is_func_ty ty =
+    match ty.it with
+    | Syntax.FuncT (_, ty_args, dom, cod) -> Some (ty_args, dom, cod)
+    | _ -> None
 
   let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
       =
@@ -135,6 +173,12 @@ struct
     | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
+    | Syntax.AnnotE (e, ty) when is_func_ty ty <> None -> (
+        match is_func_ty ty with
+        | Some (type_args, args, res) ->
+            Function
+              { name; typ = Some res; type_args; args = extract_ty_args args }
+        | _ -> assert false)
     | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }
     | _ -> Value { sort; name; typ = None }
 

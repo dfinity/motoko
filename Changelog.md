@@ -1,10 +1,127 @@
 # Motoko compiler changelog
 
+## 0.14.12 (2025-05-28)
+
+* motoko (`moc`)
+
+  * Added the `rootKey` primitive (#4994).
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
+
+## 0.14.10 (2025-05-12)
+
+* motoko (`moc`)
+
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
+
+## 0.14.8 (2025-04-17)
+
+* motoko (`moc`)
+
+  * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
+
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase (#5035).
+
+    EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
+    ```
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ```
+
+  * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
+
+  * We now provide a proper `motoko-mode` for `emacs` (#5043).
+
+  * bugfix: Avoid generating new Candid `type`s arising from equal homonymous Motoko `type` (if possible)
+    in service definitions (#4309, #5013).
+
+  * bugfix: Provide a more consistent framework for dealing with internally generated type indentifiers,
+    fixing caching bugs, e.g. in the VSCode plugin (#5055).
+
+## 0.14.7 (2025-04-04)
+
+* motoko (`moc`)
+
+  * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
+    The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
+
+    For example,
+    ``` motoko
+    func add(x : Int, y : Int) : (res : Int) = x + y;
+    ```
+    now has inferred type:
+    ``` motoko
+    (x : Int, y: Int) -> (res : Int)
+    ```
+    Previously, the type would be inferred as:
+    ``` motoko
+    (Int, Int) -> Int
+    ```
+
+  * Refine the `*.most` stable signature file format to distinguish stable variables that are strictly required by the migration function rather than propagated from the actor body (#4991).
+    This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
+    Required fields are declared `in`, not `stable`, in the actor's pre-signature.
+
+  * Added improved LSP cache for typechecking (thanks to Serokell) (#4931).
+
+  * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
+
+* motoko-base
+
+  * Deprecated `ExperimentalCycles.add`, use a parenthetical `(with cycles = <amount>) <send>` instead (dfinity/motoko-base#703).
+
+## 0.14.6 (2025-04-01)
+
+* motoko (`moc`)
+
+  * To prevent implicit data loss due to upgrades, stable fields may no longer be dropped or promoted to lossy supertypes (#4970).
+    Removing a stable variable, or promoting its type to a lossy supertype by, for example, dropping nested record fields,
+    now requires an explicit migration expression.
+    Promotion to non-lossy supertypes, such as `Nat` to `Int` or `{#version1}` to `{#version1; #version2}`, is still supported.
+
+  * Now we detect (and warn for) fields in literal objects and record extensions,
+    (as well as `public` fields or types in `object` and `class`) that are inaccessible
+    due to a user-specified type constraint (#4978, #4981).
+
+  * We now provide release artefacts for `Darwin-arm64` and `Linux-aarch64` platforms (#4952).
+
+## 0.14.5 (2025-03-25)
+
+* motoko (`moc`)
+
+  * Performance improvements to the default timer mechanism (#3872, #4967).
+
+* documentation (`mo-doc`)
+
+  * Changed extracted `let` bindings with manifest function type to appear as `func`s (#4963).
+
 ## 0.14.4 (2025-03-18)
 
 * motoko (`moc`)
 
   * Added `canisterSubnet` primitive (#4857).
+
+* motoko-base
+
+  * Added `burn : <system>Nat -> Nat` to `ExperimentalCycles` (dfinity/motoko-base#699).
+
+  * Added `ExperimentalInternetComputer.subnet` (dfinity/motoko-base#700).
 
 ## 0.14.3 (2025-03-04)
 

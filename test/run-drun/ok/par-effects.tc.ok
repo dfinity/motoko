@@ -11,3 +11,5 @@ par-effects.mo:35.9-35.34: warning [M0212], unrecognised attribute moot in paren
 par-effects.mo:36.9-36.47: warning [M0212], unrecognised attribute moot in parenthetical
 par-effects.mo:37.9-37.50: warning [M0212], unrecognised attribute moot in parenthetical
 par-effects.mo:38.9-38.70: warning [M0212], unrecognised attribute moot in parenthetical
+par-effects.mo:39.32-39.36: warning [M0215], public field `moot` is provided but not expected in object of type
+  {}

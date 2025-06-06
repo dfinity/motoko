@@ -29,7 +29,7 @@ shared(msg) persistent actor class PiggyBank(
     : async () {
     assert (msg.caller == owner);
     assert (amount <= savings);
-    await (with cyles = amount) benefit();
+    await (with cycles = amount) benefit();
     let refund = Cycles.refunded();
     savings -= amount - refund;
   };
