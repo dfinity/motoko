@@ -100,7 +100,7 @@ A stable signature `<stab-sig1>` is stable-compatible with another signature `<s
 
 #### Notes
 - `<stab-sig2>` may include additional fields not present in `<stab-sig1>`.
-- Matching fields may differ in mutability (`var` vs. `val`).
+- Matching fields may differ in mutability (`var` vs. non-`var`).
 
 `<stab-sig1>` represents the signature of an older version, and `<stab-sig2>` represents a newer version.
 
