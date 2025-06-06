@@ -1,0 +1,4 @@
+position: 1
+label: 'Basic syntax'
+collapsible: true # make the category collapsible
+collapsed: true 

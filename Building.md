@@ -10,7 +10,7 @@ sh <(curl -L https://nixos.org/nix/install) --daemon
 This repository is also a Nix Flake which means you need to
 allow this feature by making sure the following is present in `/etc/nix/nix.conf`:
 ```
-extra-experimental-features = nix-command flakes ca-derivations
+extra-experimental-features = nix-command flakes
 ```
 
 You should also enable a nix cache to get all dependencies pre-built.
@@ -91,7 +91,7 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
 Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
 
 ```bash
-git checkout master
+git switch master
 git pull
 ```
 
