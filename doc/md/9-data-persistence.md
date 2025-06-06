@@ -12,7 +12,7 @@ In comparison to other supported languages for building canisters, such as Rust,
 
 ## Declaring stable variables
 
-Within an actor, you can configure which part of the program is considered to be persistent (retained across upgrades) and which part are ephemeral (reset on upgrades).
+Within an actor, you can configure which part of the program is considered to be persistent (retained across upgrades) and which part is ephemeral (reset on upgrades).
 
 More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `transient`. If you don’t provide a modifier, the variable is assumed to be `transient` by default.
 

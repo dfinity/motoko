@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Timers
 
-Canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Timers in Motoko are implemented using the [`Timer.mo`](../base/Timer.md) module and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple timers.
+Canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Timers in Motoko are implemented using the [`Timer.mo`](../base/Timer.md) module and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple active timers.
 
 ## Example
 
