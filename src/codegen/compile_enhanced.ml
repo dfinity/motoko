@@ -255,6 +255,34 @@ module Const = struct
     | Null, Null -> true
     | _ -> false
 
+  let tag_lit = function
+    | Vanilla _ -> 0
+    | BigInt _ -> 1
+    | Word64 _ -> 2
+    | Float64 _ -> 3
+    | Bool _ -> 4
+    | Text _ -> 5
+    | Blob _ -> 6
+    | Null -> 7
+
+  let compare_lit l1 l2 = match l1, l2 with
+    | Vanilla i, Vanilla j -> Int64.compare i j
+    | BigInt i, BigInt j -> Big_int.compare_big_int i j
+    | Word64 (tyi, i), Word64 (tyj, j) ->
+      (match (Type.Ord.compare (Type.Prim tyi) (Type.Prim tyj)) with
+       | 0 -> Int64.compare i j
+       | ord -> ord)
+    | Float64 i, Float64 j ->
+       Float.compare
+       (Mo_values.Numerics.Float.to_float i)
+       (Mo_values.Numerics.Float.to_float i)
+    | Bool i, Bool j -> Bool.compare i j
+    | Text s, Text t -> String.compare s t
+    | Blob s, Blob t -> String.compare s t
+    | Null, Null -> 0
+    | _ -> Int.compare (tag_lit l1) (tag_lit l2)
+
+
   (* Inlineable functions
 
      The prelude/prim.mo is full of functions simply wrapping a prim, e.g.
@@ -314,6 +342,42 @@ module Const = struct
     | Fun _, _ | Message _, _ | Obj _, _ | Unit, _ 
     | Array _, _ | Tuple _, _ | Tag _, _ | Opt _, _ 
     | Lit _, _ -> false
+
+  let tag = function
+    | Fun _ -> 0
+    | Message _ -> 1
+    | Obj _ -> 2
+    | Unit -> 3
+    | Array _ -> 4
+    | Tuple _ -> 5
+    | Tag _ -> 6
+    | Opt _ -> 7
+    | Lit _ -> 8
+
+  let rec compare v1 v2 = match v1, v2 with
+    | Fun (id1, _, _), Fun (id2, _, _) -> Int32.compare id1 id2
+    | Message fi1, Message fi2 ->  Int32.compare fi1 fi2
+    | Obj fields1, Obj fields2 ->
+      let compare_fields (name1, field_value1) (name2, field_value2) =
+        match String.compare name1 name2 with
+        | 0 -> compare field_value1 field_value2
+        | ord -> ord
+      in
+      List.compare compare_fields fields1 fields2
+    | Unit, Unit -> 0
+    | Array elements1, Array elements2 ->
+      List.compare compare elements1 elements2
+    | Tuple elements1, Tuple elements2 ->
+      List.compare compare elements1 elements2
+    | Tag (name1, tag_value1), Tag (name2, tag_value2) ->
+      (match String.compare name1 name2 with
+        | 0 -> compare tag_value1 tag_value2
+        | ord -> ord)
+    | Opt opt_value1, Opt opt_value2 ->
+       compare opt_value1 opt_value2
+    | Lit l1, Lit l2 -> compare_lit l1 l2
+    | _ -> Int.compare (tag v1) (tag v2)
+
 
 end (* Const *)
 
