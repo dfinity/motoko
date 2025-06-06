@@ -1,12 +1,12 @@
 # AssocList
 Map implemented as a linked-list of key-value pairs ("Associations").
 
-:::note [Usage context]
+:::note Usage context
 
 This map implementation primarily serves as the underlying bucket structure for other map types. In most cases, those higher-level map implementations are easier to use.
 :::
 
-:::note [Assumptions]
+:::note Assumptions
 
 Runtime and space complexity assumes that `combine`, `equal`, and other functions execute in `O(1)` time and space.
 :::
@@ -16,22 +16,22 @@ Runtime and space complexity assumes that `combine`, `equal`, and other function
 type AssocList<K, V> = List.List<(K, V)>
 ```
 
- Import from the base library to use this module.
+Import from the base library to use this module.
 
- ```motoko name=import
- import AssocList "mo:base/AssocList";
- import List "mo:base/List";
- import Nat "mo:base/Nat";
+```motoko name=import
+import AssocList "mo:base/AssocList";
+import List "mo:base/List";
+import Nat "mo:base/Nat";
 
- type AssocList<K, V> = AssocList.AssocList<K, V>;
- ```
+type AssocList<K, V> = AssocList.AssocList<K, V>;
+```
 
- Initialize an empty map using an empty list.
- ```motoko name=initialize include=import
- var map : AssocList<Nat, Nat> = List.nil(); // Empty list as an empty map
- map := null; // Alternative: null as empty list.
- map
- ```
+Initialize an empty map using an empty list.
+```motoko name=initialize include=import
+var map : AssocList<Nat, Nat> = List.nil(); // Empty list as an empty map
+map := null; // Alternative: null as empty list.
+map
+```
 
 ## Function `find`
 ``` motoko no-repl
@@ -122,7 +122,7 @@ List.toArray(newMap)
 func mapAppend<K, V, W, X>(map1 : AssocList<K, V>, map2 : AssocList<K, W>, f : (?V, ?W) -> X) : AssocList<K, X>
 ```
 
-:::warning [Deprecated function]
+:::warning Deprecated function
 
 `mapAppend` is deprecated and may be removed in future versions. Consider using an alternative approach.
 :::
@@ -154,23 +154,23 @@ map2 := AssocList.replace(map2, 3, Nat.equal, ?"13").0;
 
 // Map and append the two AssocLists
 let newMap =
-  AssocList.disjDisjoint<Nat, Nat, Text, Text>(
-    map1,
-    map2,
-    func((v1, v2) : (?Nat, ?Text)) {
-      switch(v1, v2) {
-        case(?v1, null) {
-          debug_show(v1) // convert values from map1 to Text
-        };
-        case(null, ?v2) {
-          v2 // keep values from map2 as Text
-        };
-        case _ {
-          trap "These cases will never happen in mapAppend"
-        }
-      }
-    }
-  );
+ AssocList.disjDisjoint<Nat, Nat, Text, Text>(
+   map1,
+   map2,
+   func((v1, v2) : (?Nat, ?Text)) {
+     switch(v1, v2) {
+       case(?v1, null) {
+         debug_show(v1) // convert values from map1 to Text
+       };
+       case(null, ?v2) {
+         v2 // keep values from map2 as Text
+       };
+       case _ {
+         trap "These cases will never happen in mapAppend"
+       }
+     }
+   }
+ );
 
 List.toArray(newMap)
 ```
@@ -188,7 +188,7 @@ Creates a new map by merging entries from `map1` and `map2`, and mapping
 them using `combine`. `combine` is also used to combine the values of colliding keys.
 Keys are compared using the given `equal` function.
 
-:::note [Behaviour guarantee]
+:::note Behavior guarantee
 
 `combine` will never be applied to `(null, null)`.
 
@@ -212,27 +212,27 @@ map2 := AssocList.replace(map2, 3, Nat.equal, ?13).0;
 
 // Merge the two maps using `combine`
 let newMap =
-  AssocList.disj<Nat, Nat, Nat, Nat>(
-    map1,
-    map2,
-    Nat.equal,
-    func((v1, v2) : (?Nat, ?Nat)) : Nat {
-      switch(v1, v2) {
-        case(?v1, ?v2) {
-          v1 + v2 // combine values of colliding keys by adding them
-        };
-        case(?v1, null) {
-          v1 // when a key doesn't collide, keep the original value
-        };
-        case(null, ?v2) {
-          v2
-        };
-        case _ {
-          trap "This case will never happen in disj"
-        }
-      }
-    }
-  );
+ AssocList.disj<Nat, Nat, Nat, Nat>(
+   map1,
+   map2,
+   Nat.equal,
+   func((v1, v2) : (?Nat, ?Nat)) : Nat {
+     switch(v1, v2) {
+       case(?v1, ?v2) {
+         v1 + v2 // combine values of colliding keys by adding them
+       };
+       case(?v1, null) {
+         v1 // when a key doesn't collide, keep the original value
+       };
+       case(null, ?v2) {
+         v2
+       };
+       case _ {
+         trap "This case will never happen in disj"
+       }
+     }
+   }
+ );
 
 List.toArray(newMap)
 ```
