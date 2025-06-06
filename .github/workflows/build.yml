@@ -24,7 +24,7 @@ jobs:
     - name: nix-build
       run: |
         cachix watch-exec ic-hs-test -- \
-          nix build --max-jobs 1 -L \
+          nix build --max-jobs auto -L \
             .#release.moc \
             .#release.mo-doc \
             .#js.moc \
@@ -32,7 +32,7 @@ jobs:
 
         echo "## checks"
         uname -s -m
-        moc="$(nix build --max-jobs 1 .#release.moc --print-out-paths)"
+        moc="$(nix build --max-jobs auto .#release.moc --print-out-paths)"
         "$moc/bin/moc" --version
         file "$moc/bin/moc"
         ldd "$moc/bin/moc" || true
