@@ -738,6 +738,9 @@ module E = struct
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
 
+  let object_pool_size (env: t) : int =
+    StringEnv.cardinal !(env.object_pool)
+
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 

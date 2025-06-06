@@ -8888,9 +8888,10 @@ module GCRoots = struct
       compile_unboxed_const length ^^
       E.call_import env "rts" "initialize_static_variables" ^^
       E.iterate_object_pool env (fun index allocation ->
-        compile_unboxed_const (Int64.of_int index) ^^
-        allocation env ^^
-        E.call_import env "rts" "set_static_variable"
+      Func.share_code0 Func.Always env (Printf.sprintf "alloc_%i" index) [] (fun env ->
+            compile_unboxed_const (Int64.of_int index) ^^
+            allocation env ^^
+              E.call_import env "rts" "set_static_variable")
       )
     )
 end (* GCRoots *)
