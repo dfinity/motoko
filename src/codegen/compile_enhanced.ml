@@ -354,6 +354,9 @@ module Const = struct
     | Opt _ -> 7
     | Lit _ -> 8
 
+  (* Ordering *)
+  type t = v
+
   let rec compare v1 v2 = match v1, v2 with
     | Fun (id1, _, _), Fun (id2, _, _) -> Int32.compare id1 id2
     | Message fi1, Message fi2 ->  Int32.compare fi1 fi2
@@ -471,6 +474,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
+  module ConstEnv = Env.Make(Const)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -480,7 +484,13 @@ module E = struct
     candid_data_segment : int32;
     type_offsets_segment : int32;
     idl_types_segment : int32;
-  }
+    }
+
+  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
+  type shared_value =
+  | Vanilla of int64
+  | SharedObject of int64 (* index in object pool *)
+
   (* Object allocation code. *)
   type object_allocation = t -> G.t
   (* Pool of shared objects.
@@ -517,8 +527,10 @@ module E = struct
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     data_segments : string list ref; (* Passive data segments *)
+
+    constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
-      
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
@@ -552,10 +564,6 @@ module E = struct
     constant_functions : int32 ref;
   }
 
-  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
-  type shared_value = 
-  | Vanilla of int64
-  | SharedObject of int64 (* index in object pool *)
 
   (* The initial global environment *)
   let mk_global mode rts trap_with : t = {
@@ -575,6 +583,7 @@ module E = struct
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
+    constant_pool = ref ConstEnv.empty;
     object_pool = { objects = ref []; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
@@ -9060,8 +9069,16 @@ module StackRep = struct
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.T constant_elements
   | Const.Obj fields ->
-      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields in
+      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields  in
       Object.constant env constant_fields
+
+  let build_constant env value =
+    match E.ConstEnv.find_opt value !(env.E.constant_pool) with
+    | Some r -> r
+    | None ->
+      let r = build_constant env value in
+      env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
+      r
 
   let materialize_constant env value =
     Tagged.materialize_shared_value env (build_constant env value)
