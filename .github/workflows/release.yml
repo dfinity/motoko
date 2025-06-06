@@ -93,12 +93,10 @@ jobs:
         pattern: release-files-*
         merge-multiple: true
 
-    - name: Debug - List downloaded files
+    - name: List downloaded files
       run: |
         echo "Contents of release-assets directory:"
         find release-assets -type f -ls || true
-        echo "Directory structure:"
-        tree release-assets || ls -la release-assets
 
     - name: Upload Release Assets
       uses: svenstaro/upload-release-action@v2
