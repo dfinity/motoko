@@ -113,6 +113,7 @@ exception TooLargeDataSegments of string
 
 
 (* tail-recursive map *)
+(* TODO: can be replaced by [@tail_mod_cons] map (OCaml 0.4.14)/List.map once we upgrade OCaml *)
 let safe_map f l = List.rev (List.rev_map f l)
 
 type imports = (int32 * name) list
