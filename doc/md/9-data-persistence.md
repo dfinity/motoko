@@ -104,7 +104,7 @@ A stable signature `<stab-sig1>` is stable-compatible with another signature `<s
 
 `<stab-sig1>` represents the signature of an older version, and `<stab-sig2>` represents a newer version.
 
-This compatibility ensures that the final value of a field from the old version can be safely used as the initial value of that field in the new version, without loss of data.
+The stable subtyping condition ensures that the final value of a field from the old version can be safely used as the initial value of that field in the new version, without loss of data.
 
 :::tip
 
