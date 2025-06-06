@@ -8,7 +8,7 @@ One key feature of Motoko is its ability to automatically persist the program's 
 
 Motoko data persistence is not simple, but it prevents data corruption or loss while being efficient at the same time. No database, stable memory API, or stable data structure is required to retain state across upgrades. Instead, a simple `stable` keyword is sufficient to declare a data structure of arbitrary shape persistent, even if the structure uses sharing, has a deep complexity, or contains cycles transfers.
 
-In comparison to other supported languages for building canisters, such as Rust, data persistence must be achieved through explicit use of stable data structures and stable memory, as the language is not designed for orthogonal persistence and instead rearranges memory structures in an uncontrolled manner on re-compilation or at runtime.
+In comparison to other supported languages for building canisters, such as Rust, data persistence must be achieved through explicit use of stable data structures and stable memory, as other languages are not designed for orthogonal persistence and instead rearranges memory structures in an uncontrolled manner on re-compilation or at runtime.
 
 ## Declaring stable variables
 
