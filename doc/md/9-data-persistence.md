@@ -141,7 +141,7 @@ If you have a Motoko canister that has already been deployed, then you make chan
 You are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.
 ```
 
-Motoko canisters using enhanced orthogonal persistence implement an extra safe guard in the runtime system to ensure that the stable data is compatible to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about incompatibility and dropping stable variables.
+Motoko canisters using enhanced orthogonal persistence implement an extra safeguard in the runtime system to ensure that the stable data is compatible to exclude any data corruption or misinterpretation. Moreover, `dfx` also warns about incompatibility and dropping stable variables.
 
 ## Data migration
 
