@@ -17,7 +17,7 @@ Upon upgrade, the classical orthogonal persistence mechanism serializes all stab
 :::danger
 The above-mentioned issues can lead to a stuck canister that can no longer be upgraded.
 Therefore, it is absolutely necessary to thoroughly test how much data an upgrade of your application can handle and then conservatively limit the data held by that canister.
-Moreover, it is ideal to have a backup plan to rescue data even if upgrades fail, e.g. by controller-privileged data query calls.
+Moreover, it is ideal to have a backup plan to rescue data even if upgrades fail, e.g. by controller-privileged data query calls. Another option is to [snapshot ](https://internetcomputer.org/docs/building-apps/canister-management/snapshots) the canister before attempting the upgrade.
 :::
 
 These issues are solved by [enhanced orthogonal persistence](enhanced.md).
