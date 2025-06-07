@@ -500,6 +500,7 @@ module E = struct
   *)
   and object_pool = {
     objects: object_allocation list ref;
+    length : int ref;
     frozen: bool ref;
   }
   and t = {
@@ -584,7 +585,7 @@ module E = struct
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
     constant_pool = ref ConstEnv.empty;
-    object_pool = { objects = ref []; frozen = ref false };
+    object_pool = { objects = ref []; length = ref 0; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -827,15 +828,15 @@ module E = struct
 
   let object_pool_add (env : t) (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
-    let index = List.length !(env.object_pool.objects) in
-    env.object_pool.objects := !(env.object_pool.objects) @ [ allocation ];
+    let index = !(env.object_pool.length) in
+    env.object_pool.objects := allocation :: !(env.object_pool.objects);
     Int64.of_int index
 
   let object_pool_size (env : t) : int =
-    List.length !(env.object_pool.objects)
+    !(env.object_pool.length)
 
   let iterate_object_pool (env : t) f =
-    G.concat_mapi f !(env.object_pool.objects)
+    G.concat_mapi f (List.rev !(env.object_pool.objects))
 
   let collect_garbage env force =
     let name = "incremental_gc" in
