@@ -2240,6 +2240,15 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2;
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
+      (*
+        Partial Argument Inference:
+        Goal: Infer the type of the argument and find the best instantiation for the call expression.
+        Problem: Some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
+        Idea:
+         - Split the argument into sub-expressions and defer inference for those that would fail.
+         - Find the instantiation using the inferred sub-expressions.
+         - Substitute and `check_exp` the remaining sub-expressions.
+       *)
       let t2 = infer_exp env exp2 in
       try
         (* i.e. exists minimal ts .
