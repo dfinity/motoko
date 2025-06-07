@@ -499,8 +499,9 @@ module E = struct
      Registered as GC root set and replaced on program upgrade. 
   *)
   and object_pool = {
-    objects: object_allocation list ref;
+    objects: (int * object_allocation) list ref;
     length : int ref;
+    mutboxes : int ref;
     frozen: bool ref;
   }
   and t = {
@@ -585,7 +586,7 @@ module E = struct
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
     constant_pool = ref ConstEnv.empty;
-    object_pool = { objects = ref []; length = ref 0; frozen = ref false };
+    object_pool = { objects = ref []; length = ref 0; mutboxes = ref 0; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -826,17 +827,36 @@ module E = struct
   let get_data_segments (env : t) =
     !(env.data_segments)
 
-  let object_pool_add (env : t) (allocation : t -> G.t) : int64 =
+  let object_pool_add (env : t) line (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
     let index = !(env.object_pool.length) in
-    env.object_pool.objects := allocation :: !(env.object_pool.objects);
+    env.object_pool.objects := (line, allocation) :: !(env.object_pool.objects);
+    env.object_pool.length := index + 1;
     Int64.of_int index
+
+  let object_pool_add_mutbox (env : t)  (allocation : t -> G.t) : int64 =
+      env.object_pool.mutboxes := !(env.object_pool.mutboxes) + 1;
+      object_pool_add env 839 allocation
 
   let object_pool_size (env : t) : int =
     !(env.object_pool.length)
 
+  let object_pool_mutboxes (env : t) : int =
+    !(env.object_pool.mutboxes)
+
+  let object_pool_report (env : t) : string =
+    let e = ref StringEnv.empty in
+    List.iter (fun (l, _) ->
+        let line = Int.to_string l in
+        e := StringEnv.add line
+               (match StringEnv.find_opt line (!e) with
+                | None -> 0
+                | Some i -> i + 1) (!e))
+    !(env.object_pool.objects);
+    StringEnv.fold (fun l c s -> l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+
   let iterate_object_pool (env : t) f =
-    G.concat_mapi f (List.rev !(env.object_pool.objects))
+    G.concat_mapi f (List.map (fun (l,a) -> a) (List.rev !(env.object_pool.objects)))
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -2193,8 +2213,8 @@ module Tagged = struct
     get_object ^^
     allocation_barrier env
 
-  let shared_object env allocation =
-    let index = E.object_pool_add env allocation in
+  let shared_object line env allocation =
+    let index = E.object_pool_add env line allocation in
     E.SharedObject index
 
   let materialize_shared_value env = function
@@ -2202,7 +2222,7 @@ module Tagged = struct
   | E.SharedObject index -> Heap.get_static_variable env index
 
   let share env allocation =
-    materialize_shared_value env (shared_object env allocation)
+    materialize_shared_value env (shared_object __LINE__ env allocation)
 
 end (* Tagged *)
 
@@ -2234,7 +2254,7 @@ module MutBox = struct
     Tagged.store_field env field
   
   let add_global_mutbox env =
-    E.object_pool_add env alloc
+    E.object_pool_add_mutbox env alloc
 end
 
 
@@ -2293,10 +2313,10 @@ module Opt = struct
     )
 
   let constant env = function
-  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
+  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object __LINE__ env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
   | E.Vanilla value -> E.Vanilla value (* not null and no `Opt` object *)
   | shared_value ->
-    Tagged.shared_object env (fun env -> 
+    Tagged.shared_object __LINE__ env (fun env -> 
       let materialized_value = Tagged.materialize_shared_value env shared_value in  
       inject env materialized_value (* potentially wrap in new `Opt` *)
     )
@@ -2416,7 +2436,7 @@ module Closure = struct
 
   let constant env get_fi =
     let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
       compile_unboxed_const 0L
     ])
@@ -2461,7 +2481,7 @@ module BoxedWord64 = struct
     then 
       E.Vanilla (BitTagged.tag_const pty i)
     else
-      Tagged.shared_object env (fun env -> compile_box env pty (compile_unboxed_const i))
+      Tagged.shared_object __LINE__ env (fun env -> compile_box env pty (compile_unboxed_const i))
 
   let box env pty = 
     Func.share_code1 Func.Never env 
@@ -2822,7 +2842,7 @@ module Float = struct
     Tagged.(sanity_check_tag __LINE__ env (Bits64 F)) ^^
     Tagged.load_field_float64 env payload_field
 
-  let constant env f = Tagged.shared_object env (fun env -> 
+  let constant env f = Tagged.shared_object __LINE__ env (fun env -> 
     compile_unboxed_const f ^^ 
     box env)
 
@@ -3660,7 +3680,8 @@ module BigNumLibtommath : BigNumType = struct
     ] @ limbs
     in
 
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
+      (*TODO: Why isn't this just loaded from a segment? *)
       let instructions = 
         let words = StaticBytes.as_words payload in
         List.map compile_unboxed_const words in
@@ -3787,14 +3808,26 @@ module Blob = struct
     G.i (MemoryInit (nr segment_index)) ^^
     get_blob
 
-  let constant env sort payload =
-    Tagged.shared_object env (fun env -> 
+  let constant env sort payload : E.shared_value =
+    Tagged.shared_object __LINE__ env (fun env -> 
       let blob_length = Int64.of_int (String.length payload) in
       let segment_index = E.add_static env StaticBytes.[Bytes payload] in
       load_data_segment env sort segment_index (compile_unboxed_const blob_length)
     )
 
   let lit env sort payload =
+    match sort with
+    | Tagged.B | Tagged.T ->
+      let bytes = payload in
+      let value = Const.Lit (if sort = Tagged.B then Const.Blob bytes else Const.Text bytes) in
+      Tagged.materialize_shared_value env
+      (match E.ConstEnv.find_opt value !(env.E.constant_pool) with
+      | Some shared_value -> shared_value
+      | None ->
+        let sv = constant env sort bytes  in
+        env.E.constant_pool := E.ConstEnv.add value sv !(env.E.constant_pool);
+        sv)
+    | _ ->
     Tagged.materialize_shared_value env (constant env sort payload)
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I64Type) [I64Type; I64Type] (
@@ -4074,9 +4107,15 @@ module Object = struct
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
-        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
+        (* TODO: refactor *)
+        let value = Const.Lit (Const.Blob (StaticBytes.as_bytes hash_payload)) in
+        match E.ConstEnv.find_opt value !(env.E.constant_pool) with
+        | Some shared_value -> shared_value
+        | None ->
+          let r = Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)  in
+          env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
+          r
       in
-      
       (fun env -> 
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
@@ -4107,7 +4146,7 @@ module Object = struct
   let constant env (fs : (string * E.shared_value) list) =
     let materialize_fields = List.map (fun (name, value) -> (name, fun env -> Tagged.materialize_shared_value env value)) fs in
     let allocation = object_builder env materialize_fields in
-    Tagged.shared_object env allocation
+    Tagged.shared_object __LINE__ env allocation
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
@@ -4463,7 +4502,7 @@ module Arr = struct
       ] @ element_instructions)
 
   let constant env sort elements =
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
       let materialized_elements = List.map (fun element -> Tagged.materialize_shared_value env element) elements in
       lit env sort materialized_elements
     )
@@ -9045,13 +9084,16 @@ module StackRep = struct
     | Const _ | Unreachable -> G.nop
 
   let rec build_constant env value =
+    (* build_constant_aux env value *)
     match E.ConstEnv.find_opt value !(env.E.constant_pool) with
     | Some shared_value -> shared_value
     | None ->
-      let r = build_constant_aux env value
-      in
-      env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
-      r
+      let sv = build_constant_aux env value in
+      match sv with
+      | E.SharedObject _ ->
+        env.E.constant_pool := E.ConstEnv.add value sv !(env.E.constant_pool);
+        sv
+      | E.Vanilla _ -> sv
   and build_constant_aux env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
@@ -9067,7 +9109,7 @@ module StackRep = struct
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) ->
       let payload = build_constant env value in
-      Tagged.shared_object env (fun env ->
+      Tagged.shared_object __LINE__ env (fun env ->
         let materialized_payload = Tagged.materialize_shared_value env payload in
         Variant.inject env tag materialized_payload
       )
@@ -13694,5 +13736,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))
   in
-
+  Printf.eprintf "\nshared constants = %i" (E.ConstEnv.cardinal (!(env.E.constant_pool)));
+  Printf.eprintf "\npool size = %i" (E.object_pool_size env);
+  Printf.eprintf "\npool mutboxes = %i" (E.object_pool_mutboxes env);
+  Printf.eprintf "\npool report = %s" (E.object_pool_report env);
+  
   conclude_module env set_serialization_globals start_fi_o
