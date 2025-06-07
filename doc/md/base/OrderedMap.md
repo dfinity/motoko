@@ -12,18 +12,18 @@ and uses this information to balance the tree during the modifying operations.
 
 `n` denotes the number of key-value entries (i.e. nodes) stored in the tree.
 
-:::note [Garbage collection]
+:::note Garbage collection
 
 Unless stated otherwise, operations that iterate over or modify the map (such as insertion, deletion, traversal, and transformation) may create temporary objects with worst-case space usage of `O(log(n))` or `O(n)`. These objects are short-lived and will be collected by the garbage collector automatically.
 
 :::
 
-:::note [Assumptions]
+:::note Assumptions
 
 Runtime and space complexity assumes that `compare`, `equal`, and other functions execute in `O(1)` time and space.
 :::
 
-:::info [Credits]
+:::info Credits
 
 The core of this implementation is derived from:
 
@@ -37,11 +37,11 @@ The core of this implementation is derived from:
 type Map<K, V> = { size : Nat; root : Tree<K, V> }
 ```
 
- Collection of key-value entries, ordered by the keys and key unique.
- The keys have the generic type `K` and the values the generic type `V`.
- If `K` and `V` is stable types then `Map<K, V>` is also stable.
- To ensure that property the `Map<K, V>` does not have any methods, instead
- they are gathered in the functor-like class `Operations` (see example there).
+Collection of key-value entries, ordered by the keys and key unique.
+The keys have the generic type `K` and the values the generic type `V`.
+If `K` and `V` is stable types then `Map<K, V>` is also stable.
+To ensure that property the `Map<K, V>` does not have any methods, instead
+they are gathered in the functor-like class `Operations` (see example there).
 
 ## Class `Operations<K>`
 
@@ -49,55 +49,55 @@ type Map<K, V> = { size : Nat; root : Tree<K, V> }
 class Operations<K>(compare : (K, K) -> O.Order)
 ```
 
- Class that captures key type `K` along with its ordering function `compare`
- and provides all operations to work with a map of type `Map<K, _>`.
+Class that captures key type `K` along with its ordering function `compare`
+and provides all operations to work with a map of type `Map<K, _>`.
 
- An instance object should be created once as a canister field to ensure
- that the same ordering function is used for every operation.
+An instance object should be created once as a canister field to ensure
+that the same ordering function is used for every operation.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
 
- actor {
-   let natMap = Map.Make<Nat>(Nat.compare); // : Operations<Nat>
-   stable var keyStorage : Map.Map<Nat, Text> = natMap.empty<Text>();
+actor {
+  let natMap = Map.Make<Nat>(Nat.compare); // : Operations<Nat>
+  stable var keyStorage : Map.Map<Nat, Text> = natMap.empty<Text>();
 
-   public func addKey(id : Nat, key : Text) : async () {
-     keyStorage := natMap.put(keyStorage, id, key);
-   }
- }
- ```
+  public func addKey(id : Nat, key : Text) : async () {
+    keyStorage := natMap.put(keyStorage, id, key);
+  }
+}
+```
 
 ### Function `fromIter`
 ``` motoko no-repl
 func fromIter<V>(i : I.Iter<(K, V)>) : Map<K, V>
 ```
 
- Returns a new map, containing all entries given by the iterator `i`.
- If there are multiple entries with the same key the last one is taken.
+Returns a new map, containing all entries given by the iterator `i`.
+If there are multiple entries with the same key the last one is taken.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let m = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let m = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(m))));
+Debug.print(debug_show(Iter.toArray(natMap.entries(m))));
 
- // [(0, "Zero"), (1, "One"), (2, "Two")]
- ```
+// [(0, "Zero"), (1, "One"), (2, "Two")]
+```
 
 | Runtime   | Space |
 |----------|------------|
 | `O(n * log(n))`  | `O(n)` (retained memory + garbage) |
 
- Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
 
 ### Function `put`
@@ -105,27 +105,27 @@ func fromIter<V>(i : I.Iter<(K, V)>) : Map<K, V>
 func put<V>(m : Map<K, V>, key : K, value : V) : Map<K, V>
 ```
 
- Insert the value `value` with key `key` into the map `m`. Overwrites any existing entry with key `key`.
- Returns a modified map.
+Insert the value `value` with key `key` into the map `m`. Overwrites any existing entry with key `key`.
+Returns a modified map.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- var map = natMap.empty<Text>();
+let natMap = Map.Make<Nat>(Nat.compare);
+var map = natMap.empty<Text>();
 
- map := natMap.put(map, 0, "Zero");
- map := natMap.put(map, 2, "Two");
- map := natMap.put(map, 1, "One");
+map := natMap.put(map, 0, "Zero");
+map := natMap.put(map, 2, "Two");
+map := natMap.put(map, 1, "One");
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map))));
+Debug.print(debug_show(Iter.toArray(natMap.entries(map))));
 
- // [(0, "Zero"), (1, "One"), (2, "Two")]
- ```
+// [(0, "Zero"), (1, "One"), (2, "Two")]
+```
 
 | Runtime     | Space         |
 |-------------|---------------|
@@ -137,33 +137,33 @@ func put<V>(m : Map<K, V>, key : K, value : V) : Map<K, V>
 func replace<V>(m : Map<K, V>, key : K, value : V) : (Map<K, V>, ?V)
 ```
 
- Insert the value `value` with key `key` into the map `m`. Returns modified map and
- the previous value associated with key `key` or `null` if no such value exists.
+Insert the value `value` with key `key` into the map `m`. Returns modified map and
+the previous value associated with key `key` or `null` if no such value exists.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map0 = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map0 = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- let (map1, old1) = natMap.replace(map0, 0, "Nil");
+let (map1, old1) = natMap.replace(map0, 0, "Nil");
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map1))));
- Debug.print(debug_show(old1));
- // [(0, "Nil"), (1, "One"), (2, "Two")]
- // ?"Zero"
+Debug.print(debug_show(Iter.toArray(natMap.entries(map1))));
+Debug.print(debug_show(old1));
+// [(0, "Nil"), (1, "One"), (2, "Two")]
+// ?"Zero"
 
- let (map2, old2) = natMap.replace(map0, 3, "Three");
+let (map2, old2) = natMap.replace(map0, 3, "Three");
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map2))));
- Debug.print(debug_show(old2));
- // [(0, "Zero"), (1, "One"), (2, "Two"), (3, "Three")]
- // null
- ```
+Debug.print(debug_show(Iter.toArray(natMap.entries(map2))));
+Debug.print(debug_show(old2));
+// [(0, "Zero"), (1, "One"), (2, "Two"), (3, "Three")]
+// null
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -176,38 +176,38 @@ func replace<V>(m : Map<K, V>, key : K, value : V) : (Map<K, V>, ?V)
 func mapFilter<V1, V2>(m : Map<K, V1>, f : (K, V1) -> ?V2) : Map<K, V2>
 ```
 
- Creates a new map by applying `f` to each entry in the map `m`. For each entry
- `(k, v)` in the old map, if `f` evaluates to `null`, the entry is discarded.
- Otherwise, the entry is transformed into a new entry `(k, v2)`, where
- the new value `v2` is the result of applying `f` to `(k, v)`.
+Creates a new map by applying `f` to each entry in the map `m`. For each entry
+`(k, v)` in the old map, if `f` evaluates to `null`, the entry is discarded.
+Otherwise, the entry is transformed into a new entry `(k, v2)`, where
+the new value `v2` is the result of applying `f` to `(k, v)`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- func f(key : Nat, val : Text) : ?Text {
-   if(key == 0) {null}
-   else { ?("Twenty " # val)}
- };
+func f(key : Nat, val : Text) : ?Text {
+  if(key == 0) {null}
+  else { ?("Twenty " # val)}
+};
 
- let newMap = natMap.mapFilter(map, f);
+let newMap = natMap.mapFilter(map, f);
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(newMap))));
+Debug.print(debug_show(Iter.toArray(natMap.entries(newMap))));
 
- // [(1, "Twenty One"), (2, "Twenty Two")]
- ```
+// [(1, "Twenty One"), (2, "Twenty Two")]
+```
 
 | Runtime   | Space |
 |----------|------------|
 | `O(n * log(n))`  | `O(n)` (retained memory + garbage) |
 
- Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
 
 ### Function `get`
@@ -215,29 +215,29 @@ func mapFilter<V1, V2>(m : Map<K, V1>, f : (K, V1) -> ?V2) : Map<K, V2>
 func get<V>(m : Map<K, V>, key : K) : ?V
 ```
 
- Get the value associated with key `key` in the given map `m` if present and `null` otherwise.
+Get the value associated with key `key` in the given map `m` if present and `null` otherwise.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(natMap.get(map, 1)));
- Debug.print(debug_show(natMap.get(map, 42)));
+Debug.print(debug_show(natMap.get(map, 1)));
+Debug.print(debug_show(natMap.get(map, 42)));
 
- // ?"One"
- // null
- ```
+// ?"One"
+// null
+```
 
- Runtime: `O(log(n))`.
- Space: `O(1)`.
- where `n` denotes the number of key-value entries stored in the map and
- assuming that the `compare` function implements an `O(1)` comparison.
+Runtime: `O(log(n))`.
+Space: `O(1)`.
+where `n` denotes the number of key-value entries stored in the map and
+assuming that the `compare` function implements an `O(1)` comparison.
 
 
 ### Function `contains`
@@ -245,21 +245,21 @@ func get<V>(m : Map<K, V>, key : K) : ?V
 func contains<V>(m : Map<K, V>, key : K) : Bool
 ```
 
- Test whether the map `m` contains any binding for the given `key`.
+Test whether the map `m` contains any binding for the given `key`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show natMap.contains(map, 1)); // => true
- Debug.print(debug_show natMap.contains(map, 42)); // => false
- ```
+Debug.print(debug_show natMap.contains(map, 1)); // => true
+Debug.print(debug_show natMap.contains(map, 42)); // => false
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -271,21 +271,21 @@ func contains<V>(m : Map<K, V>, key : K) : Bool
 func maxEntry<V>(m : Map<K, V>) : ?(K, V)
 ```
 
- Retrieves a key-value pair from the map `m` with a maximal key. If the map is empty returns `null`.
+Retrieves a key-value pair from the map `m` with a maximal key. If the map is empty returns `null`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(natMap.maxEntry(map))); // => ?(2, "Two")
- Debug.print(debug_show(natMap.maxEntry(natMap.empty()))); // => null
- ```
+Debug.print(debug_show(natMap.maxEntry(map))); // => ?(2, "Two")
+Debug.print(debug_show(natMap.maxEntry(natMap.empty()))); // => null
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -297,21 +297,21 @@ func maxEntry<V>(m : Map<K, V>) : ?(K, V)
 func minEntry<V>(m : Map<K, V>) : ?(K, V)
 ```
 
- Retrieves a key-value pair from the map `m` with a minimal key. If the map is empty returns `null`.
+Retrieves a key-value pair from the map `m` with a minimal key. If the map is empty returns `null`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Iter "mo:base/Iter";
- import Nat "mo:base/Nat";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Iter "mo:base/Iter";
+import Nat "mo:base/Nat";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(natMap.minEntry(map))); // => ?(0, "Zero")
- Debug.print(debug_show(natMap.minEntry(natMap.empty()))); // => null
- ```
+Debug.print(debug_show(natMap.minEntry(map))); // => ?(0, "Zero")
+Debug.print(debug_show(natMap.minEntry(natMap.empty()))); // => null
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -323,25 +323,25 @@ func minEntry<V>(m : Map<K, V>) : ?(K, V)
 func delete<V>(m : Map<K, V>, key : K) : Map<K, V>
 ```
 
- Deletes the entry with the key `key` from the map `m`. Has no effect if `key` is not
- present in the map. Returns modified map.
+Deletes the entry with the key `key` from the map `m`. Has no effect if `key` is not
+present in the map. Returns modified map.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(natMap.delete(map, 1)))));
- Debug.print(debug_show(Iter.toArray(natMap.entries(natMap.delete(map, 42)))));
+Debug.print(debug_show(Iter.toArray(natMap.entries(natMap.delete(map, 1)))));
+Debug.print(debug_show(Iter.toArray(natMap.entries(natMap.delete(map, 42)))));
 
- // [(0, "Zero"), (2, "Two")]
- // [(0, "Zero"), (1, "One"), (2, "Two")]
- ```
+// [(0, "Zero"), (2, "Two")]
+// [(0, "Zero"), (1, "One"), (2, "Two")]
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -353,33 +353,33 @@ func delete<V>(m : Map<K, V>, key : K) : Map<K, V>
 func remove<V>(m : Map<K, V>, key : K) : (Map<K, V>, ?V)
 ```
 
- Deletes the entry with the key `key`. Returns modified map and the
- previous value associated with key `key` or `null` if no such value exists.
+Deletes the entry with the key `key`. Returns modified map and the
+previous value associated with key `key` or `null` if no such value exists.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map0 = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map0 = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- let (map1, old1) = natMap.remove(map0, 0);
+let (map1, old1) = natMap.remove(map0, 0);
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map1))));
- Debug.print(debug_show(old1));
- // [(1, "One"), (2, "Two")]
- // ?"Zero"
+Debug.print(debug_show(Iter.toArray(natMap.entries(map1))));
+Debug.print(debug_show(old1));
+// [(1, "One"), (2, "Two")]
+// ?"Zero"
 
- let (map2, old2) = natMap.remove(map0, 42);
+let (map2, old2) = natMap.remove(map0, 42);
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map2))));
- Debug.print(debug_show(old2));
- // [(0, "Zero"), (1, "One"), (2, "Two")]
- // null
- ```
+Debug.print(debug_show(Iter.toArray(natMap.entries(map2))));
+Debug.print(debug_show(old2));
+// [(0, "Zero"), (1, "One"), (2, "Two")]
+// null
+```
 
 | Runtime       | Space                       |
 |---------------|-----------------------------|
@@ -391,26 +391,26 @@ func remove<V>(m : Map<K, V>, key : K) : (Map<K, V>, ?V)
 func empty<V>() : Map<K, V>
 ```
 
- Create a new empty map.
+Create a new empty map.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
+let natMap = Map.Make<Nat>(Nat.compare);
 
- let map = natMap.empty<Text>();
+let map = natMap.empty<Text>();
 
- Debug.print(debug_show(natMap.size(map)));
+Debug.print(debug_show(natMap.size(map)));
 
- // 0
- ```
+// 0
+```
 
- Cost of empty map creation
- Runtime: `O(1)`.
- Space: `O(1)`
+Cost of empty map creation
+Runtime: `O(1)`.
+Space: `O(1)`
 
 
 ### Function `entries`
@@ -418,26 +418,26 @@ func empty<V>() : Map<K, V>
 func entries<V>(m : Map<K, V>) : I.Iter<(K, V)>
 ```
 
- Returns an Iterator (`Iter`) over the key-value pairs in the map.
- Iterator provides a single method `next()`, which returns
- pairs in ascending order by keys, or `null` when out of pairs to iterate over.
+Returns an Iterator (`Iter`) over the key-value pairs in the map.
+Iterator provides a single method `next()`, which returns
+pairs in ascending order by keys, or `null` when out of pairs to iterate over.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(map))));
- // [(0, "Zero"), (1, "One"), (2, "Two")]
- var sum = 0;
- for ((k, _) in natMap.entries(map)) { sum += k; };
- Debug.print(debug_show(sum)); // => 3
- ```
+Debug.print(debug_show(Iter.toArray(natMap.entries(map))));
+// [(0, "Zero"), (1, "One"), (2, "Two")]
+var sum = 0;
+for ((k, _) in natMap.entries(map)) { sum += k; };
+Debug.print(debug_show(sum)); // => 3
+```
 | Runtime | Space                               |
 |---------|-------------------------------------|
 | `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
@@ -448,7 +448,7 @@ func entries<V>(m : Map<K, V>) : I.Iter<(K, V)>
 func entriesRev<V>(m : Map<K, V>) : I.Iter<(K, V)>
 ```
 
- Same as `entries` but iterates in the descending order.
+Same as `entries` but iterates in the descending order.
 
 
 ### Function `keys`
@@ -456,24 +456,24 @@ func entriesRev<V>(m : Map<K, V>) : I.Iter<(K, V)>
 func keys<V>(m : Map<K, V>) : I.Iter<K>
 ```
 
- Returns an Iterator (`Iter`) over the keys of the map.
- Iterator provides a single method `next()`, which returns
- keys in ascending order, or `null` when out of keys to iterate over.
+Returns an Iterator (`Iter`) over the keys of the map.
+Iterator provides a single method `next()`, which returns
+keys in ascending order, or `null` when out of keys to iterate over.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(Iter.toArray(natMap.keys(map))));
+Debug.print(debug_show(Iter.toArray(natMap.keys(map))));
 
- // [0, 1, 2]
- ```
+// [0, 1, 2]
+```
 | Runtime | Space                               |
 |---------|-------------------------------------|
 | `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
@@ -484,24 +484,24 @@ func keys<V>(m : Map<K, V>) : I.Iter<K>
 func vals<V>(m : Map<K, V>) : I.Iter<V>
 ```
 
- Returns an Iterator (`Iter`) over the values of the map.
- Iterator provides a single method `next()`, which returns
- values in ascending order of associated keys, or `null` when out of values to iterate over.
+Returns an Iterator (`Iter`) over the values of the map.
+Iterator provides a single method `next()`, which returns
+values in ascending order of associated keys, or `null` when out of values to iterate over.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(Iter.toArray(natMap.vals(map))));
+Debug.print(debug_show(Iter.toArray(natMap.vals(map))));
 
- // ["Zero", "One", "Two"]
- ```
+// ["Zero", "One", "Two"]
+```
 | Runtime | Space                               |
 |---------|-------------------------------------|
 | `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
@@ -512,27 +512,27 @@ func vals<V>(m : Map<K, V>) : I.Iter<V>
 func map<V1, V2>(m : Map<K, V1>, f : (K, V1) -> V2) : Map<K, V2>
 ```
 
- Creates a new map by applying `f` to each entry in the map `m`. Each entry
- `(k, v)` in the old map is transformed into a new entry `(k, v2)`, where
- the new value `v2` is created by applying `f` to `(k, v)`.
+Creates a new map by applying `f` to each entry in the map `m`. Each entry
+`(k, v)` in the old map is transformed into a new entry `(k, v2)`, where
+the new value `v2` is created by applying `f` to `(k, v)`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- func f(key : Nat, _val : Text) : Nat = key * 2;
+func f(key : Nat, _val : Text) : Nat = key * 2;
 
- let resMap = natMap.map(map, f);
+let resMap = natMap.map(map, f);
 
- Debug.print(debug_show(Iter.toArray(natMap.entries(resMap))));
- // [(0, 0), (1, 2), (2, 4)]
- ```
+Debug.print(debug_show(Iter.toArray(natMap.entries(resMap))));
+// [(0, 0), (1, 2), (2, 4)]
+```
 
 | Runtime | Space                        |
 |---------|------------------------------|
@@ -544,21 +544,21 @@ func map<V1, V2>(m : Map<K, V1>, f : (K, V1) -> V2) : Map<K, V2>
 func size<V>(m : Map<K, V>) : Nat
 ```
 
- Determine the size of the map as the number of key-value entries.
+Determine the size of the map as the number of key-value entries.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- Debug.print(debug_show(natMap.size(map)));
- // 3
- ```
+Debug.print(debug_show(natMap.size(map)));
+// 3
+```
 
 | Runtime | Space                        |
 |---------|------------------------------|
@@ -570,27 +570,27 @@ func size<V>(m : Map<K, V>) : Nat
 func foldLeft<Value, Accum>(map : Map<K, Value>, base : Accum, combine : (Accum, K, Value) -> Accum) : Accum
 ```
 
- Collapses the elements in the `map` into a single value by starting with `base`
- and progressively combining keys and values into `base` with `combine`. Iteration runs
- left to right.
+Collapses the elements in the `map` into a single value by starting with `base`
+and progressively combining keys and values into `base` with `combine`. Iteration runs
+left to right.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- func folder(accum : (Nat, Text), key : Nat, val : Text) : ((Nat, Text))
-   = (key + accum.0, accum.1 # val);
+func folder(accum : (Nat, Text), key : Nat, val : Text) : ((Nat, Text))
+  = (key + accum.0, accum.1 # val);
 
- Debug.print(debug_show(natMap.foldLeft(map, (0, ""), folder)));
+Debug.print(debug_show(natMap.foldLeft(map, (0, ""), folder)));
 
- // (3, "ZeroOneTwo")
- ```
+// (3, "ZeroOneTwo")
+```
 
 | Runtime | Space                        |
 |---------|------------------------------|
@@ -602,27 +602,27 @@ func foldLeft<Value, Accum>(map : Map<K, Value>, base : Accum, combine : (Accum,
 func foldRight<Value, Accum>(map : Map<K, Value>, base : Accum, combine : (K, Value, Accum) -> Accum) : Accum
 ```
 
- Collapses the elements in the `map` into a single value by starting with `base`
- and progressively combining keys and values into `base` with `combine`. Iteration runs
- right to left.
+Collapses the elements in the `map` into a single value by starting with `base`
+and progressively combining keys and values into `base` with `combine`. Iteration runs
+right to left.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]));
 
- func folder(key : Nat, val : Text, accum : (Nat, Text)) : ((Nat, Text))
-   = (key + accum.0, accum.1 # val);
+func folder(key : Nat, val : Text, accum : (Nat, Text)) : ((Nat, Text))
+  = (key + accum.0, accum.1 # val);
 
- Debug.print(debug_show(natMap.foldRight(map, (0, ""), folder)));
+Debug.print(debug_show(natMap.foldRight(map, (0, ""), folder)));
 
- // (3, "TwoOneZero")
- ```
+// (3, "TwoOneZero")
+```
 
 | Runtime | Space                        |
 |---------|------------------------------|
@@ -634,23 +634,23 @@ func foldRight<Value, Accum>(map : Map<K, Value>, base : Accum, combine : (K, Va
 func all<V>(m : Map<K, V>, pred : (K, V) -> Bool) : Bool
 ```
 
- Test whether all key-value pairs satisfy a given predicate `pred`.
+Test whether all key-value pairs satisfy a given predicate `pred`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "0"), (2, "2"), (1, "1")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "0"), (2, "2"), (1, "1")]));
 
- Debug.print(debug_show(natMap.all<Text>(map, func (k, v) = (v == debug_show(k)))));
- // true
- Debug.print(debug_show(natMap.all<Text>(map, func (k, v) = (k < 2))));
- // false
- ```
+Debug.print(debug_show(natMap.all<Text>(map, func (k, v) = (v == debug_show(k)))));
+// true
+Debug.print(debug_show(natMap.all<Text>(map, func (k, v) = (k < 2))));
+// false
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -662,23 +662,23 @@ func all<V>(m : Map<K, V>, pred : (K, V) -> Bool) : Bool
 func some<V>(m : Map<K, V>, pred : (K, V) -> Bool) : Bool
 ```
 
- Test if there exists a key-value pair satisfying a given predicate `pred`.
+Test if there exists a key-value pair satisfying a given predicate `pred`.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
- import Iter "mo:base/Iter";
- import Debug "mo:base/Debug";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
 
- let natMap = Map.Make<Nat>(Nat.compare);
- let map = natMap.fromIter<Text>(Iter.fromArray([(0, "0"), (2, "2"), (1, "1")]));
+let natMap = Map.Make<Nat>(Nat.compare);
+let map = natMap.fromIter<Text>(Iter.fromArray([(0, "0"), (2, "2"), (1, "1")]));
 
- Debug.print(debug_show(natMap.some<Text>(map, func (k, v) = (k >= 3))));
- // false
- Debug.print(debug_show(natMap.some<Text>(map, func (k, v) = (k >= 0))));
- // true
- ```
+Debug.print(debug_show(natMap.some<Text>(map, func (k, v) = (k >= 3))));
+// false
+Debug.print(debug_show(natMap.some<Text>(map, func (k, v) = (k >= 0))));
+// true
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -690,24 +690,24 @@ func some<V>(m : Map<K, V>, pred : (K, V) -> Bool) : Bool
 func validate<V>(m : Map<K, V>) : ()
 ```
 
- Debug helper that check internal invariants of the given map `m`.
- Raise an error (for a stack trace) if invariants are violated.
+Debug helper that check internal invariants of the given map `m`.
+Raise an error (for a stack trace) if invariants are violated.
 
 ## Function `Make`
 ``` motoko no-repl
 func Make<K>(compare : (K, K) -> O.Order) : Operations<K>
 ```
 
- Create `OrderedMap.Operations` object capturing key type `K` and `compare` function.
- It is an alias for the `Operations` constructor.
+Create `OrderedMap.Operations` object capturing key type `K` and `compare` function.
+It is an alias for the `Operations` constructor.
 
- Example:
- ```motoko
- import Map "mo:base/OrderedMap";
- import Nat "mo:base/Nat";
+Example:
+```motoko
+import Map "mo:base/OrderedMap";
+import Nat "mo:base/Nat";
 
- actor {
-   let natMap = Map.Make<Nat>(Nat.compare);
-   stable var map : Map.Map<Nat, Text> = natMap.empty<Text>();
- };
- ```
+actor {
+  let natMap = Map.Make<Nat>(Nat.compare);
+  stable var map : Map.Map<Nat, Text> = natMap.empty<Text>();
+};
+```
