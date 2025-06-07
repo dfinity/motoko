@@ -219,4 +219,6 @@ let error_codes : (string * string option) list =
     "M0213", None; (* Parenthetical note on shared functions is disallowed *)
     "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
     "M0215", None; (* Field is lost in record used at supertype *)
+    "M0216", None; (* Value import binds at illegal type *)
+    "M0217", None; (* Value import at Text impossible due to non-UTF-8 encoding *)
   ]
