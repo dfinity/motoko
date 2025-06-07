@@ -244,16 +244,35 @@ module Const = struct
     | Blob of string
     | Null
 
-  let lit_eq l1 l2 = match l1, l2 with
-    | Vanilla i, Vanilla j -> i = j
-    | BigInt i, BigInt j -> Big_int.eq_big_int i j
-    | Word64 (tyi, i), Word64 (tyj, j) -> tyi = tyj && i = j
-    | Float64 i, Float64 j -> i = j
-    | Bool i, Bool j -> i = j
-    | Text s, Text t
-    | Blob s, Blob t -> s = t
-    | Null, Null -> true
-    | _ -> false
+
+  let tag_lit = function
+    | Vanilla _ -> 0
+    | BigInt _ -> 1
+    | Word64 _ -> 2
+    | Float64 _ -> 3
+    | Bool _ -> 4
+    | Text _ -> 5
+    | Blob _ -> 6
+    | Null -> 7
+
+  let compare_lit l1 l2 = match l1, l2 with
+    | Vanilla i, Vanilla j -> Int64.compare i j
+    | BigInt i, BigInt j -> Big_int.compare_big_int i j
+    | Word64 (tyi, i), Word64 (tyj, j) ->
+      (match (Type.Ord.compare (Type.Prim tyi) (Type.Prim tyj)) with
+       | 0 -> Int64.compare i j
+       | ord -> ord)
+    | Float64 i, Float64 j ->
+       Int64.compare
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float i))
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float j))
+    | Bool i, Bool j -> Bool.compare i j
+    | Text s, Text t -> String.compare s t
+    | Blob s, Blob t -> String.compare s t
+    | Null, Null -> 0
+    | _ -> Int.compare (tag_lit l1) (tag_lit l2)
+
+  let lit_eq l1 l2 = compare_lit l1 l2 = 0
 
   (* Inlineable functions
 
@@ -296,24 +315,46 @@ module Const = struct
     | Opt of v
     | Lit of lit
 
-  let rec eq v1 v2 = match v1, v2 with
-    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
-    | Message fi1, Message fi2 -> fi1 = fi2
+  let tag = function
+    | Fun _ -> 0
+    | Message _ -> 1
+    | Obj _ -> 2
+    | Unit -> 3
+    | Array _ -> 4
+    | Tuple _ -> 5
+    | Tag _ -> 6
+    | Opt _ -> 7
+    | Lit _ -> 8
+
+  (* Ordering *)
+
+  type t = v
+
+  let rec compare v1 v2 = match v1, v2 with
+    | Fun (id1, _, _), Fun (id2, _, _) -> Int32.compare id1 id2
+    | Message fi1, Message fi2 ->  Int32.compare fi1 fi2
     | Obj fields1, Obj fields2 ->
-      let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
-      List.for_all2 equal_fields fields1 fields2
-    | Unit, Unit -> true
+      List.compare compare_fields fields1 fields2
+    | Unit, Unit -> 0
     | Array elements1, Array elements2 ->
-      List.for_all2 eq elements1 elements2
+      List.compare compare elements1 elements2
     | Tuple elements1, Tuple elements2 ->
-      List.for_all2 eq elements1 elements2
+      List.compare compare elements1 elements2
     | Tag (name1, tag_value1), Tag (name2, tag_value2) ->
-      (name1 = name2) && (eq tag_value1 tag_value2)
-    | Opt opt_value1, Opt opt_value2 -> eq opt_value1 opt_value2
-    | Lit l1, Lit l2 -> lit_eq l1 l2
-    | Fun _, _ | Message _, _ | Obj _, _ | Unit, _ 
-    | Array _, _ | Tuple _, _ | Tag _, _ | Opt _, _ 
-    | Lit _, _ -> false
+      (match String.compare name1 name2 with
+        | 0 -> compare tag_value1 tag_value2
+        | ord -> ord)
+    | Opt opt_value1, Opt opt_value2 ->
+       compare opt_value1 opt_value2
+    | Lit l1, Lit l2 -> compare_lit l1 l2
+    | _ -> Int.compare (tag v1) (tag v2)
+
+  and compare_fields (name1, field_value1) (name2, field_value2) =
+        match String.compare name1 name2 with
+        | 0 -> compare field_value1 field_value2
+        | ord -> ord
+
+  let eq v1 v2 = compare v1 v2 = 0
 
 end (* Const *)
 
@@ -392,13 +433,13 @@ module E = struct
   (* Utilities, internal to E *)
   let reg (ref : 'a list ref) (x : 'a) : int32 =
       let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ x ];
+      ref := !ref @ [ x ]; (* FIXME: quadratic *)
       i
 
   let reserve_promise (ref : 'a Lib.Promise.t list ref) _s : (int32 * ('a -> unit)) =
       let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
       let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ p ];
+      ref := !ref @ [ p ]; (* FIXME: quadratic *)
       (i, Lib.Promise.fulfill p)
 
 
@@ -407,6 +448,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
+  module ConstEnv = Env.Make(Const)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -416,7 +458,13 @@ module E = struct
     candid_data_segment : int32;
     type_offsets_segment : int32;
     idl_types_segment : int32;
-  }
+    }
+
+  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
+  type shared_value =
+  | Vanilla of int64
+  | SharedObject of int64 (* index in object pool *)
+
   (* Object allocation code. *)
   type object_allocation = t -> G.t
   (* Pool of shared objects.
@@ -425,7 +473,8 @@ module E = struct
      Registered as GC root set and replaced on program upgrade. 
   *)
   and object_pool = {
-    objects: object_allocation list ref;
+    objects: (int * object_allocation) list ref;
+    length : int ref;
     frozen: bool ref;
   }
   and t = {
@@ -453,8 +502,10 @@ module E = struct
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     data_segments : string list ref; (* Passive data segments *)
+
+    constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
-      
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
@@ -488,10 +539,6 @@ module E = struct
     constant_functions : int32 ref;
   }
 
-  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
-  type shared_value = 
-  | Vanilla of int64
-  | SharedObject of int64 (* index in object pool *)
 
   (* The initial global environment *)
   let mk_global mode rts trap_with : t = {
@@ -511,7 +558,8 @@ module E = struct
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
-    object_pool = { objects = ref []; frozen = ref false };
+    constant_pool = ref ConstEnv.empty;
+    object_pool = { objects = ref []; length = ref 0; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -646,7 +694,9 @@ module E = struct
 
   let func_type (env : t) ty =
     let rec go i = function
-      | [] -> env.func_types := !(env.func_types) @ [ ty ]; Int32.of_int i
+      | [] ->
+         env.func_types := !(env.func_types) @ [ ty ]; (* FIXME: quadratic *)
+         Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
@@ -709,7 +759,7 @@ module E = struct
 
   let add_data_segment (env : t) data : int32 =
     let index = List.length !(env.data_segments) in
-    env.data_segments := !(env.data_segments) @ [ data ];
+    env.data_segments := !(env.data_segments) @ [ data ]; (* FIXME: quadratic *)
     Int32.of_int index
 
   let add_fun_ptr (env : t) fi : int32 =
@@ -752,17 +802,46 @@ module E = struct
   let get_data_segments (env : t) =
     !(env.data_segments)
 
-  let object_pool_add (env : t) (allocation : t -> G.t) : int64 =
+  let constant_pool_add env const make_shared_value =
+    match ConstEnv.find_opt const !(env.constant_pool) with
+    | Some shared_value -> shared_value
+    | None ->
+      let sv = make_shared_value() in
+      match sv with
+      | SharedObject _ ->
+        env.constant_pool := ConstEnv.add const sv !(env.constant_pool);
+        sv
+      | Vanilla _ -> sv
+
+  let object_pool_add (env : t) line (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
-    let index = List.length !(env.object_pool.objects) in
-    env.object_pool.objects := !(env.object_pool.objects) @ [ allocation ];
+    let index = !(env.object_pool.length) in
+    env.object_pool.objects := (line, allocation) :: !(env.object_pool.objects);
+    env.object_pool.length := index + 1;
     Int64.of_int index
 
   let object_pool_size (env : t) : int =
-    List.length !(env.object_pool.objects)
+    !(env.object_pool.length)
+
+  let object_pool_report (env : t) : unit =
+    let e = ref StringEnv.empty in
+    List.iter (fun (l, _) ->
+        let line = Int.to_string l in
+        e := StringEnv.add line
+               (match StringEnv.find_opt line (!e) with
+                | None -> 1
+                | Some i -> i + 1) (!e))
+    !(env.object_pool.objects);
+    let profile = StringEnv.fold (fun l c s -> __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+    in
+    begin
+      Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal (!(env.constant_pool)));
+      Printf.eprintf "\npool size = %i" (object_pool_size env);
+      Printf.eprintf "\npool report = %s" profile
+    end
 
   let iterate_object_pool (env : t) f =
-    G.concat_mapi f !(env.object_pool.objects)
+    G.concat_mapi f (List.map (fun (l,a) -> a) (List.rev !(env.object_pool.objects)))
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -2119,8 +2198,8 @@ module Tagged = struct
     get_object ^^
     allocation_barrier env
 
-  let shared_object env allocation =
-    let index = E.object_pool_add env allocation in
+  let shared_object line env allocation =
+    let index = E.object_pool_add env line allocation in
     E.SharedObject index
 
   let materialize_shared_value env = function
@@ -2128,7 +2207,7 @@ module Tagged = struct
   | E.SharedObject index -> Heap.get_static_variable env index
 
   let share env allocation =
-    materialize_shared_value env (shared_object env allocation)
+    materialize_shared_value env (shared_object __LINE__ env allocation)
 
 end (* Tagged *)
 
@@ -2158,9 +2237,9 @@ module MutBox = struct
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
     Tagged.store_field env field
-  
+
   let add_global_mutbox env =
-    E.object_pool_add env alloc
+    E.object_pool_add env __LINE__ alloc
 end
 
 
@@ -2219,10 +2298,10 @@ module Opt = struct
     )
 
   let constant env = function
-  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
+  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object __LINE__ env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
   | E.Vanilla value -> E.Vanilla value (* not null and no `Opt` object *)
   | shared_value ->
-    Tagged.shared_object env (fun env -> 
+    Tagged.shared_object __LINE__ env (fun env -> 
       let materialized_value = Tagged.materialize_shared_value env shared_value in  
       inject env materialized_value (* potentially wrap in new `Opt` *)
     )
@@ -2342,7 +2421,7 @@ module Closure = struct
 
   let constant env get_fi =
     let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
       compile_unboxed_const 0L
     ])
@@ -2387,7 +2466,7 @@ module BoxedWord64 = struct
     then 
       E.Vanilla (BitTagged.tag_const pty i)
     else
-      Tagged.shared_object env (fun env -> compile_box env pty (compile_unboxed_const i))
+      Tagged.shared_object __LINE__ env (fun env -> compile_box env pty (compile_unboxed_const i))
 
   let box env pty = 
     Func.share_code1 Func.Never env 
@@ -2748,7 +2827,7 @@ module Float = struct
     Tagged.(sanity_check_tag __LINE__ env (Bits64 F)) ^^
     Tagged.load_field_float64 env payload_field
 
-  let constant env f = Tagged.shared_object env (fun env -> 
+  let constant env f = Tagged.shared_object __LINE__ env (fun env -> 
     compile_unboxed_const f ^^ 
     box env)
 
@@ -3586,7 +3665,8 @@ module BigNumLibtommath : BigNumType = struct
     ] @ limbs
     in
 
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
+      (*TODO: Why isn't this just loaded from a segment? *)
       let instructions = 
         let words = StaticBytes.as_words payload in
         List.map compile_unboxed_const words in
@@ -3713,15 +3793,24 @@ module Blob = struct
     G.i (MemoryInit (nr segment_index)) ^^
     get_blob
 
-  let constant env sort payload =
-    Tagged.shared_object env (fun env -> 
+  let constant env sort payload : E.shared_value =
+    Tagged.shared_object __LINE__ env (fun env -> 
       let blob_length = Int64.of_int (String.length payload) in
       let segment_index = E.add_static env StaticBytes.[Bytes payload] in
       load_data_segment env sort segment_index (compile_unboxed_const blob_length)
     )
 
   let lit env sort payload =
-    Tagged.materialize_shared_value env (constant env sort payload)
+    let shared_value = match sort with
+      | Tagged.B | Tagged.T ->
+        let bytes = payload in
+        let value = Const.Lit (if sort = Tagged.B then Const.Blob bytes else Const.Text bytes) in 
+        E.constant_pool_add env value (fun () -> constant env sort bytes)
+      | Tagged.P | Tagged.A ->
+        (* TODO: perhaps extend Const.v for principal and actor blobs for sharing *)
+        constant env sort payload
+    in
+    Tagged.materialize_shared_value env shared_value
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I64Type) [I64Type; I64Type] (
     fun env get_x ->
@@ -4000,10 +4089,10 @@ module Object = struct
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
-        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
+        (* NB: Blob.lit shares blobs *)
+        Blob.lit env Tagged.B (StaticBytes.as_bytes hash_payload)
       in
-      
-      (fun env -> 
+      (fun env ->
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
         Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
@@ -4011,7 +4100,7 @@ module Object = struct
 
         (* Set hash_ptr *)
         get_ri ^^
-        Tagged.materialize_shared_value env hash_blob ^^
+        hash_blob ^^
         Tagged.store_field env hash_ptr_field ^^
 
         (* Write all the fields *)
@@ -4033,7 +4122,7 @@ module Object = struct
   let constant env (fs : (string * E.shared_value) list) =
     let materialize_fields = List.map (fun (name, value) -> (name, fun env -> Tagged.materialize_shared_value env value)) fs in
     let allocation = object_builder env materialize_fields in
-    Tagged.shared_object env allocation
+    Tagged.shared_object __LINE__ env allocation
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
@@ -4389,7 +4478,7 @@ module Arr = struct
       ] @ element_instructions)
 
   let constant env sort elements =
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
       let materialized_elements = List.map (fun element -> Tagged.materialize_shared_value env element) elements in
       lit env sort materialized_elements
     )
@@ -4956,6 +5045,8 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
 
   let trap_with env s =
+    (* TODO: instead of pre-allocating a shared constant, allocate
+       s from a segment to reduce pool size *)
     Blob.lit_ptr_len env Tagged.T s ^^ trap_ptr_len env
 
   let trap_text env  =
@@ -6724,7 +6815,7 @@ module Serialization = struct
         if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (Lib.List32.length !typs) !idx;
-          typs := !typs @ [ t ];
+          typs := !typs @ [ t ];  (* FIXME: quadratic *)
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
@@ -8970,7 +9061,10 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec build_constant env = function
+  let rec build_constant env constant =
+    E.constant_pool_add env constant (fun () -> build_constant_aux env constant)
+
+  and build_constant_aux env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
   | Const.Lit (Const.Text payload) -> Blob.constant env Tagged.T payload
@@ -8985,18 +9079,18 @@ module StackRep = struct
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) ->
       let payload = build_constant env value in
-      Tagged.shared_object env (fun env ->
+      Tagged.shared_object __LINE__ env (fun env ->
         let materialized_payload = Tagged.materialize_shared_value env payload in
         Variant.inject env tag materialized_payload
       )
-  | Const.Array elements -> 
+  | Const.Array elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.I constant_elements
-  | Const.Tuple elements -> 
+  | Const.Tuple elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.T constant_elements
   | Const.Obj fields ->
-      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields in
+      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields  in
       Object.constant env constant_fields
 
   let materialize_constant env value =
@@ -13575,6 +13669,9 @@ and conclude_module env set_serialization_globals start_fi_o =
       wasm_features = E.get_features env;
     } in
 
+  (* For debugging *)
+  if !Flags.verbose then E.object_pool_report env;
+
   match E.get_rts env with
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
@@ -13612,5 +13709,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))
   in
-
   conclude_module env set_serialization_globals start_fi_o
