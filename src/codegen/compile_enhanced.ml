@@ -5336,7 +5336,7 @@ module IC = struct
     (* simply tuple canister name and function name *)
     Tagged.(sanity_check_tag __LINE__ env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
-    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [] (
+    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [I64Type] (
       fun env get_actor get_func ->
       Arr.lit env Tagged.S [get_actor; get_func]
    )
