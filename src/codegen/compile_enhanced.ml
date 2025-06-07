@@ -244,16 +244,6 @@ module Const = struct
     | Blob of string
     | Null
 
-  let lit_eq l1 l2 = match l1, l2 with
-    | Vanilla i, Vanilla j -> i = j
-    | BigInt i, BigInt j -> Big_int.eq_big_int i j
-    | Word64 (tyi, i), Word64 (tyj, j) -> tyi = tyj && i = j
-    | Float64 i, Float64 j -> i = j
-    | Bool i, Bool j -> i = j
-    | Text s, Text t
-    | Blob s, Blob t -> s = t
-    | Null, Null -> true
-    | _ -> false
 
   let tag_lit = function
     | Vanilla _ -> 0
@@ -282,6 +272,7 @@ module Const = struct
     | Null, Null -> 0
     | _ -> Int.compare (tag_lit l1) (tag_lit l2)
 
+  let lit_eq l1 l2 = compare_lit l1 l2 = 0
 
   (* Inlineable functions
 
@@ -324,25 +315,6 @@ module Const = struct
     | Opt of v
     | Lit of lit
 
-  let rec eq v1 v2 = match v1, v2 with
-    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
-    | Message fi1, Message fi2 -> fi1 = fi2
-    | Obj fields1, Obj fields2 ->
-      let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
-      List.for_all2 equal_fields fields1 fields2
-    | Unit, Unit -> true
-    | Array elements1, Array elements2 ->
-      List.for_all2 eq elements1 elements2
-    | Tuple elements1, Tuple elements2 ->
-      List.for_all2 eq elements1 elements2
-    | Tag (name1, tag_value1), Tag (name2, tag_value2) ->
-      (name1 = name2) && (eq tag_value1 tag_value2)
-    | Opt opt_value1, Opt opt_value2 -> eq opt_value1 opt_value2
-    | Lit l1, Lit l2 -> lit_eq l1 l2
-    | Fun _, _ | Message _, _ | Obj _, _ | Unit, _ 
-    | Array _, _ | Tuple _, _ | Tag _, _ | Opt _, _ 
-    | Lit _, _ -> false
-
   let tag = function
     | Fun _ -> 0
     | Message _ -> 1
@@ -355,17 +327,13 @@ module Const = struct
     | Lit _ -> 8
 
   (* Ordering *)
+
   type t = v
 
   let rec compare v1 v2 = match v1, v2 with
     | Fun (id1, _, _), Fun (id2, _, _) -> Int32.compare id1 id2
     | Message fi1, Message fi2 ->  Int32.compare fi1 fi2
     | Obj fields1, Obj fields2 ->
-      let compare_fields (name1, field_value1) (name2, field_value2) =
-        match String.compare name1 name2 with
-        | 0 -> compare field_value1 field_value2
-        | ord -> ord
-      in
       List.compare compare_fields fields1 fields2
     | Unit, Unit -> 0
     | Array elements1, Array elements2 ->
@@ -381,6 +349,12 @@ module Const = struct
     | Lit l1, Lit l2 -> compare_lit l1 l2
     | _ -> Int.compare (tag v1) (tag v2)
 
+  and compare_fields (name1, field_value1) (name2, field_value2) =
+        match String.compare name1 name2 with
+        | 0 -> compare field_value1 field_value2
+        | ord -> ord
+
+  let eq v1 v2 = compare v1 v2 = 0
 
 end (* Const *)
 
