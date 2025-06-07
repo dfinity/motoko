@@ -13736,9 +13736,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))
   in
+  (*
   Printf.eprintf "\nshared constants = %i" (E.ConstEnv.cardinal (!(env.E.constant_pool)));
   Printf.eprintf "\npool size = %i" (E.object_pool_size env);
   Printf.eprintf "\npool mutboxes = %i" (E.object_pool_mutboxes env);
   Printf.eprintf "\npool report = %s" (E.object_pool_report env);
-  
+   *)
   conclude_module env set_serialization_globals start_fi_o
