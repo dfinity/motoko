@@ -40,6 +40,8 @@
     # Rust Nightly & Stable
     rust-overlay.overlays.default
     (self: super: {
+      # When you change the rust-nightly version,
+      # make sure to change the rustStdDepsHash in ./rts.nix accordingly.
       rust-nightly = self.rust-bin.nightly."2024-07-28".default.override {
         extensions = [ "rust-src" ];
         targets = [ "wasm32-wasip1" ];
@@ -47,8 +49,8 @@
 
       rust-stable = self.rust-bin.stable."1.86.0".default;
 
-      rustPlatform-stable = self.makeRustPlatform {
-        rustc = self.rust-stable;
+      rustPlatform-stable = self.makeRustPlatform rec {
+        rustc = cargo;
         cargo = self.rust-stable;
       };
     })
