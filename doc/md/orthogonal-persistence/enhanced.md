@@ -80,7 +80,7 @@ Graph-copy-based stabilization can be performed in three steps:
 dfx canister call CANISTER_ID __motoko_stabilize_before_upgrade "()"
 ```
 
-2. Run the actual upgrade:
+2. Run the upgrade:
 
 ```
 dfx deploy CANISTER_ID
