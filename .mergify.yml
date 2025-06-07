@@ -56,7 +56,7 @@ pull_request_rules:
           - autoclose
   - name: Auto-approve auto-PRs
     conditions:
-      - author~=^app/pr-automation-bot-public$
+      - gh_author_login=app/pr-automation-bot-public
       - label=automerge-squash
     actions:
       review:
