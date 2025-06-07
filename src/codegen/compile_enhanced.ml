@@ -475,7 +475,6 @@ module E = struct
   and object_pool = {
     objects: (int * object_allocation) list ref;
     length : int ref;
-    mutboxes : int ref;
     frozen: bool ref;
   }
   and t = {
@@ -560,7 +559,7 @@ module E = struct
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
     constant_pool = ref ConstEnv.empty;
-    object_pool = { objects = ref []; length = ref 0; mutboxes = ref 0; frozen = ref false };
+    object_pool = { objects = ref []; length = ref 0; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -801,6 +800,17 @@ module E = struct
   let get_data_segments (env : t) =
     !(env.data_segments)
 
+  let constant_pool_add env const make_shared_value =
+    match ConstEnv.find_opt const !(env.constant_pool) with
+    | Some shared_value -> shared_value
+    | None ->
+      let sv = make_shared_value() in
+      match sv with
+      | SharedObject _ ->
+        env.constant_pool := ConstEnv.add const sv !(env.constant_pool);
+        sv
+      | Vanilla _ -> sv
+
   let object_pool_add (env : t) line (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
     let index = !(env.object_pool.length) in
@@ -808,17 +818,10 @@ module E = struct
     env.object_pool.length := index + 1;
     Int64.of_int index
 
-  let object_pool_add_mutbox (env : t)  (allocation : t -> G.t) : int64 =
-      env.object_pool.mutboxes := !(env.object_pool.mutboxes) + 1;
-      object_pool_add env 839 allocation
-
   let object_pool_size (env : t) : int =
     !(env.object_pool.length)
 
-  let object_pool_mutboxes (env : t) : int =
-    !(env.object_pool.mutboxes)
-
-  let object_pool_report (env : t) : string =
+  let object_pool_report (env : t) : unit =
     let e = ref StringEnv.empty in
     List.iter (fun (l, _) ->
         let line = Int.to_string l in
@@ -827,7 +830,13 @@ module E = struct
                 | None -> 0
                 | Some i -> i + 1) (!e))
     !(env.object_pool.objects);
-    StringEnv.fold (fun l c s -> l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+    let profile = StringEnv.fold (fun l c s -> l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+    in
+    begin
+      Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal (!(env.constant_pool)));
+      Printf.eprintf "\npool size = %i" (object_pool_size env);
+      Printf.eprintf "\npool report = %s" profile
+    end
 
   let iterate_object_pool (env : t) f =
     G.concat_mapi f (List.map (fun (l,a) -> a) (List.rev !(env.object_pool.objects)))
@@ -2226,9 +2235,9 @@ module MutBox = struct
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
     Tagged.store_field env field
-  
+
   let add_global_mutbox env =
-    E.object_pool_add_mutbox env alloc
+    E.object_pool_add env __LINE__ alloc
 end
 
 
@@ -3790,19 +3799,16 @@ module Blob = struct
     )
 
   let lit env sort payload =
-    match sort with
-    | Tagged.B | Tagged.T ->
-      let bytes = payload in
-      let value = Const.Lit (if sort = Tagged.B then Const.Blob bytes else Const.Text bytes) in
-      Tagged.materialize_shared_value env
-      (match E.ConstEnv.find_opt value !(env.E.constant_pool) with
-      | Some shared_value -> shared_value
-      | None ->
-        let sv = constant env sort bytes  in
-        env.E.constant_pool := E.ConstEnv.add value sv !(env.E.constant_pool);
-        sv)
-    | _ ->
-    Tagged.materialize_shared_value env (constant env sort payload)
+    let shared_value = match sort with
+      | Tagged.B | Tagged.T ->
+        let bytes = payload in
+        let value = Const.Lit (if sort = Tagged.B then Const.Blob bytes else Const.Text bytes) in 
+        E.constant_pool_add env value (fun () -> constant env sort bytes)
+      | Tagged.P | Tagged.A ->
+        (* TODO: perhaps extend Const.v for principal and actor blobs for sharing *)
+        constant env sort payload
+    in
+    Tagged.materialize_shared_value env shared_value
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I64Type) [I64Type; I64Type] (
     fun env get_x ->
@@ -4081,16 +4087,10 @@ module Object = struct
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
-        (* TODO: refactor *)
-        let value = Const.Lit (Const.Blob (StaticBytes.as_bytes hash_payload)) in
-        match E.ConstEnv.find_opt value !(env.E.constant_pool) with
-        | Some shared_value -> shared_value
-        | None ->
-          let r = Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)  in
-          env.E.constant_pool := E.ConstEnv.add value r !(env.E.constant_pool);
-          r
+        (* NB: Blob.lit shares blobs *)
+        Blob.lit env Tagged.B (StaticBytes.as_bytes hash_payload)
       in
-      (fun env -> 
+      (fun env ->
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
         Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
@@ -4098,7 +4098,7 @@ module Object = struct
 
         (* Set hash_ptr *)
         get_ri ^^
-        Tagged.materialize_shared_value env hash_blob ^^
+        hash_blob ^^
         Tagged.store_field env hash_ptr_field ^^
 
         (* Write all the fields *)
@@ -5043,6 +5043,8 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
 
   let trap_with env s =
+    (* TODO: instead of pre-allocating a shared constant, allocate
+       s from a segment to reduce pool size *)
     Blob.lit_ptr_len env Tagged.T s ^^ trap_ptr_len env
 
   let trap_text env  =
@@ -9057,17 +9059,9 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec build_constant env value =
-    (* build_constant_aux env value *)
-    match E.ConstEnv.find_opt value !(env.E.constant_pool) with
-    | Some shared_value -> shared_value
-    | None ->
-      let sv = build_constant_aux env value in
-      match sv with
-      | E.SharedObject _ ->
-        env.E.constant_pool := E.ConstEnv.add value sv !(env.E.constant_pool);
-        sv
-      | E.Vanilla _ -> sv
+  let rec build_constant env constant =
+    E.constant_pool_add env constant (fun () -> build_constant_aux env constant)
+
   and build_constant_aux env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
@@ -13673,6 +13667,9 @@ and conclude_module env set_serialization_globals start_fi_o =
       wasm_features = E.get_features env;
     } in
 
+  (* For debugging *)
+  if !Flags.verbose then E.object_pool_report env;
+
   match E.get_rts env with
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
@@ -13710,10 +13707,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))
   in
-  (*
-  Printf.eprintf "\nshared constants = %i" (E.ConstEnv.cardinal (!(env.E.constant_pool)));
-  Printf.eprintf "\npool size = %i" (E.object_pool_size env);
-  Printf.eprintf "\npool mutboxes = %i" (E.object_pool_mutboxes env);
-  Printf.eprintf "\npool report = %s" (E.object_pool_report env);
-   *)
   conclude_module env set_serialization_globals start_fi_o
