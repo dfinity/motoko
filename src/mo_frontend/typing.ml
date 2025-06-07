@@ -2255,13 +2255,22 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           | WildP
           | VarP _
           | AltP _ -> true (* cases that cannot be inferred, would report errors *)
+          | LitP _
+          | SignP _ -> false
           | TupP pats -> cannot_infer_pats pats
-          | ParP p -> cannot_infer_pat p
-          | _ -> false
+          | ParP p
+          | OptP p
+          | AnnotP (p, _)
+          | TagP (_, p) -> cannot_infer_pat p
+          | ObjP pfs -> cannot_infer_pat_fields pfs
         and cannot_infer_pats pats =
           match pats with
           | [] -> false
           | p::ps -> cannot_infer_pat p || cannot_infer_pats ps
+        and cannot_infer_pat_fields pfs =
+          match pfs with
+          | [] -> false
+          | pf::pfs' -> cannot_infer_pat pf.it.pat || cannot_infer_pat_fields pfs'
         in
         let try_infer_exp env exp =
           match exp.it with
