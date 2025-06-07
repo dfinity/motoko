@@ -433,13 +433,13 @@ module E = struct
   (* Utilities, internal to E *)
   let reg (ref : 'a list ref) (x : 'a) : int32 =
       let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ x ];
+      ref := !ref @ [ x ]; (* FIXME: quadratic *)
       i
 
   let reserve_promise (ref : 'a Lib.Promise.t list ref) _s : (int32 * ('a -> unit)) =
       let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
       let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ p ];
+      ref := !ref @ [ p ]; (* FIXME: quadratic *)
       (i, Lib.Promise.fulfill p)
 
 
@@ -694,7 +694,9 @@ module E = struct
 
   let func_type (env : t) ty =
     let rec go i = function
-      | [] -> env.func_types := !(env.func_types) @ [ ty ]; Int32.of_int i
+      | [] ->
+         env.func_types := !(env.func_types) @ [ ty ]; (* FIXME: quadratic *)
+         Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
@@ -757,7 +759,7 @@ module E = struct
 
   let add_data_segment (env : t) data : int32 =
     let index = List.length !(env.data_segments) in
-    env.data_segments := !(env.data_segments) @ [ data ];
+    env.data_segments := !(env.data_segments) @ [ data ]; (* FIXME: quadratic *)
     Int32.of_int index
 
   let add_fun_ptr (env : t) fi : int32 =
@@ -827,10 +829,10 @@ module E = struct
         let line = Int.to_string l in
         e := StringEnv.add line
                (match StringEnv.find_opt line (!e) with
-                | None -> 0
+                | None -> 1
                 | Some i -> i + 1) (!e))
     !(env.object_pool.objects);
-    let profile = StringEnv.fold (fun l c s -> l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+    let profile = StringEnv.fold (fun l c s -> __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
     in
     begin
       Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal (!(env.constant_pool)));
@@ -6813,7 +6815,7 @@ module Serialization = struct
         if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (Lib.List32.length !typs) !idx;
-          typs := !typs @ [ t ];
+          typs := !typs @ [ t ];  (* FIXME: quadratic *)
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
