@@ -80,8 +80,8 @@ and prim = function
   | GetLastArrayOffset -> Atom "GetLastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
-  | AwaitPrim Type.Fut -> Atom "AwaitPrim"
-  | AwaitPrim Type.Cmp -> Atom "AwaitPrim*"
+  | AwaitPrim (AwaitFut _) -> Atom "AwaitPrim"
+  | AwaitPrim AwaitCmp -> Atom "AwaitPrim*"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
@@ -108,8 +108,8 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
-  | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAwait (AwaitFut _, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
   | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
   | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"

@@ -602,6 +602,7 @@ let is_unit = function Tup [] -> true | _ -> false
 let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
+let is_fut = function Async (Fut, _, _) -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false

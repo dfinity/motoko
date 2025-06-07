@@ -134,7 +134,7 @@ and prim =
   | IdxBlobPrim                       (* blob indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim of Type.async_sort       (* await/await* *)
+  | AwaitPrim of await_sort           (* await/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
@@ -170,7 +170,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.async_sort * Type.typ
+  | CPSAwait of await_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
@@ -185,6 +185,8 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
+
+and await_sort = AwaitFut of bool | AwaitCmp
 
 (* Declarations *)
 
@@ -335,3 +337,7 @@ let map_prim t_typ t_id p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
+
+let to_async_sort = function
+  | AwaitCmp -> Type.Cmp
+  | AwaitFut _ -> Type.Fut
