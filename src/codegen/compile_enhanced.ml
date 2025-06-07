@@ -5262,7 +5262,7 @@ module IC = struct
     (* simply tuple canister name and function name *)
     Tagged.(sanity_check_tag __LINE__ env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
-    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [] (
+    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [I64Type] (
       fun env get_actor get_func ->
       Arr.lit env Tagged.S [get_actor; get_func]
    )
@@ -8888,9 +8888,10 @@ module GCRoots = struct
       compile_unboxed_const length ^^
       E.call_import env "rts" "initialize_static_variables" ^^
       E.iterate_object_pool env (fun index allocation ->
-        compile_unboxed_const (Int64.of_int index) ^^
-        allocation env ^^
-        E.call_import env "rts" "set_static_variable"
+      Func.share_code0 Func.Always env (Printf.sprintf "alloc_%i" index) [] (fun env ->
+            compile_unboxed_const (Int64.of_int index) ^^
+            allocation env ^^
+              E.call_import env "rts" "set_static_variable")
       )
     )
 end (* GCRoots *)

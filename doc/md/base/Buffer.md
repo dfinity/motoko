@@ -6,13 +6,13 @@ You can convert a buffer to a fixed-size array using `Buffer.toArray`, which is 
 
 Like arrays, buffer elements are indexed from `0` to `size - 1`.
 
-:::note [Assumptions]
+:::note Assumptions
 
 Runtime and space complexity assumes that `combine`, `equal`, and other functions execute in `O(1)` time and space.
 
 :::
 
-:::note [Size vs capacity]
+:::note Size vs capacity
 
 - `size`: Number of elements in the buffer.
 - `capacity`: Length of the underlying array.
@@ -20,14 +20,14 @@ Runtime and space complexity assumes that `combine`, `equal`, and other function
 The invariant `capacity >= size` always holds.
 :::
 
-:::warning [Performance caveat]
+:::warning Performance caveat
 
 Operations like `add` are amortized `O(1)` but can take `O(n)` in the worst case.
 For large buffers, these worst cases may exceed the cycle limit per message.
 Use with care when growing buffers dynamically.
 :::
 
-:::info [Constructor behavior]
+:::info Constructor behavior
 
 The `initCapacity` argument sets the initial capacity of the underlying array.
 
@@ -142,6 +142,7 @@ let y = buffer.getOpt(2); // => null
 func put(index : Nat, element : X)
 ```
 
+```motoko include=initialize
 buffer.add(10);
 buffer.put(0, 20); // overwrites 10 at index 0 with 20
 Buffer.toArray(buffer) // => [20]
@@ -150,6 +151,7 @@ Buffer.toArray(buffer) // => [20]
 | Runtime   | Space     |
 |-----------|-----------|
 | `O(1)` | `O(1)` |
+
 
 
 ### Function `removeLast`
@@ -173,6 +175,7 @@ buffer.removeLast(); // => ?11
 | `O(size)`           | `O(1)`               | `O(size)`         | `O(1)`              |
 
 
+
 ### Function `remove`
 ``` motoko no-repl
 func remove(index : Nat) : X
@@ -184,7 +187,7 @@ This may cause a downsizing of the array.
 
 Traps if index >= size.
 
-:::warning [Inefficient pattern]
+:::warning Inefficient pattern
 
 Repeated removal of elements using this method is inefficient and may indicate that a different data structure would better suit your use case.
 :::
@@ -401,7 +404,7 @@ buffer.add(12);
 
 var sum = 0;
 for (element in buffer.vals()) {
-  sum += element;
+ sum += element;
 };
 sum // => 33
 ```
@@ -416,7 +419,7 @@ sum // => 33
 func clone() : Buffer<X>
 ```
 
-:::warning [Deprecated function]
+:::warning Deprecated function
 
 Use the static library function instead of this instance method.
 :::
@@ -427,7 +430,7 @@ Use the static library function instead of this instance method.
 func toArray() : [X]
 ```
 
-:::warning [Deprecated function]
+:::warning Deprecated function
 
 Use the static library function instead of this instance method.
 :::
@@ -438,7 +441,7 @@ Use the static library function instead of this instance method.
 func toVarArray() : [var X]
 ```
 
-:::warning [Deprecated function]
+:::warning Deprecated function
 
 Use the static library function instead of this instance method.
 :::
@@ -1006,24 +1009,24 @@ Buffer.isSuffixOf(suf, buffer, Nat.equal); // => true
 func isStrictSuffixOf<X>(suffix : Buffer<X>, buffer : Buffer<X>, equal : (X, X) -> Bool) : Bool
 ```
 
- Checks if `suffix` is a strict suffix of `buffer`. Uses `equal` to compare
- elements.
+Checks if `suffix` is a strict suffix of `buffer`. Uses `equal` to compare
+elements.
 
- Example:
- ```motoko include=initialize
- import Nat "mo:base/Nat";
+Example:
+```motoko include=initialize
+import Nat "mo:base/Nat";
 
- buffer.add(1);
- buffer.add(2);
- buffer.add(3);
- buffer.add(4);
+buffer.add(1);
+buffer.add(2);
+buffer.add(3);
+buffer.add(4);
 
- let suf = Buffer.Buffer<Nat>(3);
- suf.add(2);
- suf.add(3);
- suf.add(4);
- Buffer.isStrictSuffixOf(suf, buffer, Nat.equal); // => true
- ```
+let suf = Buffer.Buffer<Nat>(3);
+suf.add(2);
+suf.add(3);
+suf.add(4);
+Buffer.isStrictSuffixOf(suf, buffer, Nat.equal); // => true
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -1318,11 +1321,11 @@ buffer.add(2);
 buffer.add(3);
 
 let newBuf = Buffer.mapFilter<Nat, Nat>(buffer, func (x) {
-  if (x > 1) {
-    ?(x * 2);
-  } else {
-    null;
-  }
+ if (x > 1) {
+   ?(x * 2);
+ } else {
+   null;
+ }
 });
 Buffer.toText(newBuf, Nat.toText); // => [4, 6]
 ```
@@ -1349,11 +1352,11 @@ buffer.add(2);
 buffer.add(3);
 
 let result = Buffer.mapResult<Nat, Nat, Text>(buffer, func (k) {
-  if (k > 0) {
-    #ok(k);
-  } else {
-    #err("One or more elements are zero.");
-  }
+ if (k > 0) {
+   #ok(k);
+ } else {
+   #err("One or more elements are zero.");
+ }
 });
 
 Result.mapOk<Buffer.Buffer<Nat>, [Nat], Text>(result, func buffer = Buffer.toArray(buffer)) // => #ok([1, 2, 3])
@@ -1381,10 +1384,10 @@ buffer.add(2);
 buffer.add(3);
 
 let chain = Buffer.chain<Nat, Nat>(buffer, func (x) {
-  let b = Buffer.Buffer<Nat>(2);
-  b.add(x);
-  b.add(x * 2);
-  return b;
+let b = Buffer.Buffer<Nat>(2);
+b.add(x);
+b.add(x * 2);
+return b;
 });
 Buffer.toText(chain, Nat.toText); // => [1, 2, 2, 4, 3, 6]
 ```
@@ -1467,16 +1470,16 @@ Buffer.first(buffer); // => 1
 func last<X>(buffer : Buffer<X>) : X
 ```
 
- Returns the last element of `buffer`. Traps if `buffer` is empty.
+Returns the last element of `buffer`. Traps if `buffer` is empty.
 
- Example:
- ```motoko include=initialize
- buffer.add(1);
- buffer.add(2);
- buffer.add(3);
+Example:
+```motoko include=initialize
+buffer.add(1);
+buffer.add(2);
+buffer.add(3);
 
- Buffer.last(buffer); // => 3
- ```
+Buffer.last(buffer); // => 3
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -1507,19 +1510,19 @@ Buffer.toText(buffer, Nat.toText); // => [1]
 func reverse<X>(buffer : Buffer<X>)
 ```
 
- Reverses the order of elements in `buffer`.
+Reverses the order of elements in `buffer`.
 
- Example:
- ```motoko include=initialize
- import Nat "mo:base/Nat";
+Example:
+```motoko include=initialize
+import Nat "mo:base/Nat";
 
- buffer.add(1);
- buffer.add(2);
- buffer.add(3);
+buffer.add(1);
+buffer.add(2);
+buffer.add(3);
 
- Buffer.reverse(buffer);
- Buffer.toText(buffer, Nat.toText); // => [3, 2, 1]
- ```
+Buffer.reverse(buffer);
+Buffer.toText(buffer, Nat.toText); // => [3, 2, 1]
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -1668,7 +1671,7 @@ let chunks = Buffer.chunk<Nat>(buffer, 3);
 Buffer.toText<Buffer.Buffer<Nat>>(chunks, func buf = Buffer.toText(buf, Nat.toText)); // => [[1, 2, 3], [4, 5, 6]]
 ```
 
- | Runtime   | Space     |
+| Runtime   | Space     |
 |-----------|-----------|
 | `O(number of elements in buffer)` | `O(number of elements in buffer)` |
 
@@ -1730,7 +1733,7 @@ let flat = Buffer.flatten<Nat>(buffer);
 Buffer.toText<Nat>(flat, Nat.toText); // => [1, 2, 3, 4]
 ```
 
- | Runtime   | Space     |
+| Runtime   | Space     |
 |-----------|-----------|
 | `O(number of elements in buffer)` | `O(number of elements in buffer)` |
 
@@ -1760,7 +1763,7 @@ let zipped = Buffer.zip(buffer1, buffer2);
 Buffer.toArray(zipped); // => [(1, 4), (2, 5)]
 ```
 
- | Runtime   | Space     |
+| Runtime   | Space     |
 |-----------|-----------|
 | `O(min(size1, size2))` | `O(min(size1, size2))` |
 
@@ -1792,7 +1795,7 @@ let zipped = Buffer.zipWith<Nat, Nat, Nat>(buffer1, buffer2, func (x, y) { x + y
 Buffer.toArray(zipped) // => [5, 7, 9]
 ```
 
- | Runtime   | Space     |
+| Runtime   | Space     |
 |-----------|-----------|
 | `O(min(size1, size2))` | `O(min(size1, size2))` |
 

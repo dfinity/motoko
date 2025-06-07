@@ -45,7 +45,7 @@ jobs:
       with:
         version: ${{ steps.get_version.outputs.version }}
 
-  tag-release:
+  tag-and-release:
     needs: validate
     runs-on: ubuntu-latest
     # Only when the PR is merged!
@@ -70,3 +70,7 @@ jobs:
       run: |
         git tag ${{ needs.validate.outputs.version }} -m "Motoko ${{ needs.validate.outputs.version }}"
         git push origin ${{ needs.validate.outputs.version }}
+    - name: Trigger release workflow
+      uses: ./.github/workflows/release.yml
+      with:
+        version: ${{ needs.validate.outputs.version }}
