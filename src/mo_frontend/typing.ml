@@ -2249,6 +2249,44 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
          - Find the instantiation using the inferred sub-expressions.
          - Substitute and `check_exp` the remaining sub-expressions.
        *)
+      let infer_subargs_for_bimatch_or_defer env exp target_type =
+        let rec cannot_infer_pat pat =
+          match pat.it with
+          | WildP
+          | VarP _
+          | AltP _ -> true (* cases that cannot be inferred, would report errors *)
+          | TupP pats -> cannot_infer_pats pats
+          | ParP p -> cannot_infer_pat p
+          | _ -> false
+        and cannot_infer_pats pats =
+          match pats with
+          | [] -> false
+          | p::ps -> cannot_infer_pat p || cannot_infer_pats ps
+        in
+        let try_infer_exp env exp =
+          match exp.it with
+          | FuncE (_, _, _, pat, _, _, _) when cannot_infer_pat pat -> None
+          (* Future work: more cases *)
+          | _ -> Some (infer_exp {env with pre = true} exp)
+        in
+        let rec decompose env exp target_type acc =
+          match exp.it, target_type with
+          | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+            print_endline (Source.read_region_with_markers exp.at |> Option.value ~default:"");
+            decompose_list env exps ts acc
+          | _ ->
+            match try_infer_exp env exp with
+            | Some t -> ((t, target_type) :: fst acc, snd acc) (* subtype problem for bi_match *)
+            | None -> (fst acc, (exp, target_type) :: snd acc) (* deferred *)
+        and decompose_list env exps ts acc =
+          match exps, ts with
+          | exp::exps, t::ts -> decompose_list env exps ts (decompose env exp t acc)
+          | [], [] -> acc
+          | _ -> assert false
+        in
+        decompose env exp target_type ([], [])
+      in
+      let subs, deferred = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
       let t2 = infer_exp env exp2 in
       try
         (* i.e. exists minimal ts .
