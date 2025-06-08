@@ -1564,7 +1564,7 @@ and infer_exp'' env exp : T.typ =
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
 
-    let inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
+    let _inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
       let env'' =
         { env' with
           (* labs = T.Env.empty; *)
@@ -1594,14 +1594,14 @@ and infer_exp'' env exp : T.typ =
       leave_scope env ve2 initial_usage;
       res
     ) in
-    Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
+    (* Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
     (* Note: when `ok` there are probably no messages *)
     (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> []) inferred_opt |> Diag.print_messages; *)
     (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> x) inferred_opt |> Diag.print_messages; *)
     let ts2 = match inferred_opt with
       | Ok (ts, _) -> ts
       | Error _ -> ts2
-    in
+    in *)
 
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
@@ -2276,40 +2276,58 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           match exp.it with
           | FuncE (_, _, _, pat, _, _, _) when cannot_infer_pat pat -> None
           (* Future work: more cases *)
-          | _ -> Some (infer_exp {env with pre = true} exp)
+          | _ -> Some (infer_exp env exp)
+          (* | _ -> Some (infer_exp {env with pre = true} exp) *)
+        in
+        let step env acc exp target_type =
+          match try_infer_exp env exp with
+          | Some t -> t, ((t, target_type) :: fst acc, snd acc) (* subtype problem for bi_match *)
+          | None -> target_type, (fst acc, (exp, target_type) :: snd acc) (* deferred *)
         in
         let rec decompose env exp target_type acc =
           match exp.it, target_type with
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
             print_endline (Source.read_region_with_markers exp.at |> Option.value ~default:"");
-            decompose_list env exps ts acc
-          | _ ->
-            match try_infer_exp env exp with
-            | Some t -> ((t, target_type) :: fst acc, snd acc) (* subtype problem for bi_match *)
-            | None -> (fst acc, (exp, target_type) :: snd acc) (* deferred *)
-        and decompose_list env exps ts acc =
+            let acc', acc_ts = decompose_list env exps ts [] acc in
+            T.Tup acc_ts, acc'
+          | _ -> step env acc exp target_type
+        and decompose_list env exps ts acc_ts acc =
           match exps, ts with
-          | exp::exps, t::ts -> decompose_list env exps ts (decompose env exp t acc)
-          | [], [] -> acc
+          | exp::exps, t::ts ->
+            let t', acc' = decompose env exp t acc in
+            decompose_list env exps ts (t' :: acc_ts) acc'
+          | [], [] -> acc, List.rev acc_ts
           | _ -> assert false
         in
         decompose env exp target_type ([], [])
       in
-      let subs, deferred = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      let t2 = infer_exp env exp2 in
+      let (t2', (subs, deferred)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      List.iter (fun (e, t) -> print_endline (Source.read_region_with_markers e.at |> Option.value ~default:"")) deferred;
+      (* begin try
+        let matched = Bi_match.bi_match_subs (scope_of_env env) tbs subs t_expect_opt in
+        List.iter (fun t -> print_endline (Type.string_of_typ t)) matched
+      with Bi_match.Bimatch msg ->
+        print_endline msg
+      end; *)
+
+      (* let t2 = infer_exp env exp2 in *)
       try
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
         let ts =
-          Bi_match.bi_match_call
+          Bi_match.bi_match_call_subs
             (scope_of_env env)
-            (tbs, t_arg, t_ret)
-            t2
-            t_expect_opt
+            tbs subs
+            t_ret t_expect_opt
         in
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
+
+        (* let t2 = T.open_ ts t2' in *)
+        let deferred' = List.map (fun (e, t) -> (e, T.open_ ts t)) deferred in
+        if not env.pre then
+          List.iter (fun (e, t) -> check_exp_strong env t e) deferred';
 (*
         if not env.pre then
           info env at "inferred instantiation <%s>"
@@ -2320,7 +2338,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
-          display_typ t2
+          display_typ t2'
           (match t_expect_opt with
            | None -> ""
            | Some t ->
