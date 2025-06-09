@@ -65,7 +65,6 @@ Motoko does not let you access the optional value without also considering the c
 
 With a `Result` type, you can use pattern matching to handle both success and error cases. Unlike option types, the `#err` case carries detailed information about what went wrong, not just a `null` value.
 
-
 ``` motoko no-repl file=../examples/error-examples.mo#L12-L19
 ```
 
