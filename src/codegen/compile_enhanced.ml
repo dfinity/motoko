@@ -428,6 +428,20 @@ The fields fall into the following categories:
 
 (* Before we can define the environment, we need some auxillary types *)
 
+module Table : sig
+  type 'a t
+  val add : 'a t -> 'a -> int * 'a t
+  val length : 'a t -> int
+  val to_list : 'a t -> 'a list
+  val from_list : 'a list ->'a t
+end = struct
+  type 'a t = int * 'a list
+  let add (l, es) e = (l, (l + 1, e :: es))
+  let length (l, es) = l
+  let to_list (l, es) = List.rev es
+  let from_list es = (List.length es, es)
+end
+
 module E = struct
 
   (* Utilities, internal to E *)
@@ -436,11 +450,12 @@ module E = struct
       ref := !ref @ [ x ]; (* FIXME: quadratic *)
       i
 
-  let reserve_promise (ref : 'a Lib.Promise.t list ref) _s : (int32 * ('a -> unit)) =
-      let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
-      let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ p ]; (* FIXME: quadratic *)
-      (i, Lib.Promise.fulfill p)
+  let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
+    let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
+    let (i, t) = Table.add !ref p in
+    let i32 = Wasm.I32.of_int_u i in
+    ref := t;
+    (i32, Lib.Promise.fulfill p)
 
 
   (* The environment type *)
@@ -493,7 +508,7 @@ module E = struct
     func_imports : import list ref;
     other_imports : import list ref;
     exports : export list ref;
-    funcs : (func * string * local_names) Lib.Promise.t list ref;
+    funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
     globals : (global Lib.Promise.t * string) list ref;
@@ -501,7 +516,7 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    data_segments : string list ref; (* Passive data segments *)
+    data_segments : string Table.t ref; (* Passive data segments *)
 
     constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
@@ -549,7 +564,7 @@ module E = struct
     func_imports = ref [];
     other_imports = ref [];
     exports = ref [];
-    funcs = ref [];
+    funcs = ref (Table.from_list []);
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
     globals = ref [];
@@ -557,7 +572,7 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    data_segments = ref [];
+    data_segments = ref (Table.from_list []);
     constant_pool = ref ConstEnv.empty;
     object_pool = { objects = ref []; length = ref 0; frozen = ref false };
     typtbl_typs = ref [];
@@ -690,7 +705,7 @@ module E = struct
   let get_func_imports (env : t) = !(env.func_imports)
   let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
-  let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
+  let get_funcs (env : t) = List.map Lib.Promise.value (Table.to_list !(env.funcs))
 
   let func_type (env : t) ty =
     let rec go i = function
@@ -705,7 +720,7 @@ module E = struct
   let get_types (env : t) = !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if !(env.funcs) <> [] then
+    if Table.length !(env.funcs) <> 0 then
       raise (CodegenError "Add all imports before all functions!");
 
     let i = {
@@ -758,8 +773,8 @@ module E = struct
   let else_trap_with env msg = if0 G.nop (trap_with env msg)
 
   let add_data_segment (env : t) data : int32 =
-    let index = List.length !(env.data_segments) in
-    env.data_segments := !(env.data_segments) @ [ data ]; (* FIXME: quadratic *)
+    let index, t = Table.add !(env.data_segments) data in
+    env.data_segments := t;
     Int32.of_int index
 
   let add_fun_ptr (env : t) fi : int32 =
@@ -789,18 +804,20 @@ module E = struct
   let replace_data_segment (env : t) (segment_index : int32) (data : StaticBytes.t) : int64 =
     let new_value = StaticBytes.as_bytes data in
     let segment_index = Int32.to_int segment_index in
-    assert (segment_index < List.length !(env.data_segments));
-    env.data_segments := List.mapi (fun index old_value -> 
+    assert (segment_index < Table.length !(env.data_segments));
+    env.data_segments :=
+      Table.from_list (
+      List.mapi (fun index old_value -> 
       if index = segment_index then
         (assert (old_value = "");
         new_value)
       else 
         old_value
-      ) !(env.data_segments);
+      ) (Table.to_list (!(env.data_segments))));
     Int64.of_int (String.length new_value)
 
   let get_data_segments (env : t) =
-    !(env.data_segments)
+    Table.to_list !(env.data_segments)
 
   let constant_pool_add env const make_shared_value =
     match ConstEnv.find_opt const !(env.constant_pool) with
