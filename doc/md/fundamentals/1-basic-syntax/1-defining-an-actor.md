@@ -43,7 +43,7 @@ persistent actor Main {
     "Hello, " # name # "! You are visitor number " # debug_show(count);
   };
 
-  // Define a publically called function to 
+  // Define a publically called function to
   // return the current value of 'count' separately.
   public query func readCount() : async Nat {
     count
