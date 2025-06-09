@@ -10,7 +10,7 @@ In addition to explicit error handling, Motoko provides traps and assertions for
 
 ## Error reporting with `Option` types
 
-When a function might either return a value of type `A` or signal an error, it can return an option type `?A`. In this pattern, `null` is used to indicate an error or missing result, while `?value` wraps a successful outcome. 
+When a function might either return a value of type `A` or signal an error, it can return an option type `?A`. In this pattern, `null` is used to indicate an error or missing result, while `?value` wraps a successful outcome.
 
 In the following example, if the `markDone` function sometimes fails and returns a number of seconds on success, its return type would be `async ?Seconds`. This makes it clear to callers that the result may be absent and must be handled safely.
 
@@ -58,7 +58,7 @@ Function callsite:
 
 The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](./base/Text.md) contents:
 
-``` motoko no-repl file=./examples/error-examples.mo#L3-L10
+``` motoko no-repl file=../examples/error-examples.mo#L3-L10
 ```
 
 Motoko does not let you access the optional value without also considering the case that it is missing.
@@ -66,7 +66,7 @@ Motoko does not let you access the optional value without also considering the c
 With a `Result` type, you can use pattern matching to handle both success and error cases. Unlike option types, the `#err` case carries detailed information about what went wrong, not just a `null` value.
 
 
-``` motoko no-repl file=./examples/error-examples.mo#L12-L19
+``` motoko no-repl file=../examples/error-examples.mo#L12-L19
 ```
 
 Sometimes you need to convert between `Option` and `Result` types. For example, a HashMap lookup returns `null` on failure (an `Option`), but if the caller has more context, they can turn that failure into a meaningful `Result` with an error message. On the other hand, sometimes you don’t need the extra detail from a `Result` and just want to convert any error (`#err`) into `null`.
