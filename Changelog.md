@@ -2,7 +2,8 @@
 
 * motoko (`moc`)
 
-  * bugfix: fix -fshared-code bug (#5230)
+  * optimization: for `--enhanced-orthogonal-persistence`, share many more static allocations in  reducing code-size and compile times (#5233, #5242)
+  * bugfix: fix `-fshared-code` bug (#5230).
   * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
 
 ## 0.14.12 (2025-05-28)
