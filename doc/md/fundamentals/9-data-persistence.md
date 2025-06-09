@@ -37,7 +37,7 @@ Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword
 
 Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.
 
-``` motoko file=../examplesPersistentCounter.mo
+``` motoko file=../examples/PersistentCounter.mo
 ```
 
 ## Stable types
