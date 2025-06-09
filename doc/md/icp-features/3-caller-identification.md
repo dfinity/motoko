@@ -55,7 +55,7 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 ## Recording principals
 
-Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](https://internetcomputer.org/docs/motoko/base/Principal.md) base library.
 
 The data type of `Principal` in Motoko supports equality, ordering, and hashing. `Principal`s both sharable and stable, meaning you can compare them for equality directly.
 

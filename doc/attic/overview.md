@@ -178,7 +178,7 @@ Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 ## Unbounded naturals
 
-[`Nat`](../base/Nat.md)
+[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md)
 
 `{ 0, 1, 2, …​ }`
 
@@ -190,9 +190,9 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat <: Int`
 
-[`Nat`](../base/Nat.md) is a *subtype* of `Int`
+[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) is a *subtype* of `Int`
 
-(you can supply a [`Nat`](../base/Nat.md) wherever an `Int` is expected)
+(you can supply a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) wherever an `Int` is expected)
 
 ## Bounded numbers (trapping)
 
