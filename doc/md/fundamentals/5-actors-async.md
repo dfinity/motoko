@@ -80,7 +80,7 @@ Calling `nonAtomic()` also fails with an error, but the state is partially updat
 
 Here is an example program that uses async functions:
 
-``` motoko file=./examples/counter-actor.mo
+``` motoko file=../examplescounter-actor.mo
 ```
 
 The `Counter` actor declares one field and three public, shared functions:

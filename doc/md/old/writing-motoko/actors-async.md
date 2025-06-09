@@ -34,8 +34,10 @@ In Motoko, actors have dedicated syntax and types:
 
 Consider the following actor declaration:
 
+<!----
 ``` motoko file=../../examples/counter-actor.mo
 ```
+--->
 
 The `Counter` actor declares one field and three public, shared functions:
 
