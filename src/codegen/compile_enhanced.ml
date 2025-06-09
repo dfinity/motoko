@@ -441,7 +441,7 @@ end = struct
   let add (l, es) e = (l, (l + 1, e :: es))
   let length (l, es) = l
   let to_list (l, es) = List.rev es
-  let from_list es = (List.length es, es)
+  let from_list es = (List.length es, List.rev es)
 end
 
 module E = struct
