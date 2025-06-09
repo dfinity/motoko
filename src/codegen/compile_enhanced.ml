@@ -598,10 +598,10 @@ module E = struct
       Thus Mo_types.Hash.hash should not be called directly!
    *)
   let hash (env : t) lab =
-    env.labs := LabSet.add lab (!(env.labs));
+    env.labs := LabSet.add lab !(env.labs);
     Wasm.I64_convert.extend_i32_u (Mo_types.Hash.hash lab)
 
-  let get_labs env = LabSet.elements (!(env.labs))
+  let get_labs env = LabSet.elements !(env.labs)
 
   let mk_fun_env env n_param return_arity =
     { env with
@@ -665,7 +665,8 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list (!(env.globals)))
+  let get_globals (env : t) =
+    List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list !(env.globals))
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
@@ -711,13 +712,13 @@ module E = struct
   let func_type (env : t) ty =
     let rec go i = function
       | [] ->
-         let (i, t) = Table.add (!(env.func_types)) ty in
+         let (i, t) = Table.add !(env.func_types) ty in
          env.func_types := t;
          Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
-    go 0 (Table.to_list (!(env.func_types)))
+    go 0 (Table.to_list !(env.func_types))
 
   let get_types (env : t) = Table.to_list !(env.func_types)
 
@@ -807,15 +808,14 @@ module E = struct
     let new_value = StaticBytes.as_bytes data in
     let segment_index = Int32.to_int segment_index in
     assert (segment_index < Table.length !(env.data_segments));
-    env.data_segments :=
-      Table.from_list (
-      List.mapi (fun index old_value -> 
+    env.data_segments := Table.from_list (
+      List.mapi (fun index old_value ->
       if index = segment_index then
         (assert (old_value = "");
         new_value)
-      else 
+      else
         old_value
-      ) (Table.to_list (!(env.data_segments))));
+      ) (Table.to_list !(env.data_segments)));
     Int64.of_int (String.length new_value)
 
   let get_data_segments (env : t) =
@@ -850,10 +850,11 @@ module E = struct
                 | None -> 1
                 | Some i -> i + 1) (!e))
     (Table.to_list !(env.object_pool.objects));
-    let profile = StringEnv.fold (fun l c s -> __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
+    let profile = StringEnv.fold (fun l c s -> s ^ "\n" ^ __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]") (!e) ""
     in
     begin
-      Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal (!(env.constant_pool)));
+      Printf.eprintf "\ndata segments = %i" (Table.length !(env.data_segments));
+      Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal !(env.constant_pool));
       Printf.eprintf "\npool size = %i" (object_pool_size env);
       Printf.eprintf "\npool report = %s" profile
     end
@@ -873,12 +874,12 @@ module E = struct
     reg env.typtbl_typs ty
 
   let get_typtbl_typs (env : t) : Type.typ list =
-    Table.to_list (!(env.typtbl_typs))
+    Table.to_list !(env.typtbl_typs)
 
   let add_feature (env : t) f =
-    env.features := FeatureSet.add f (!(env.features))
+    env.features := FeatureSet.add f !(env.features)
 
-  let get_features (env : t) = FeatureSet.elements (!(env.features))
+  let get_features (env : t) = FeatureSet.elements !(env.features)
 
   let require_stable_memory (env : t)  =
     if not !(env.requires_stable_memory)
