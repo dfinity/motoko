@@ -623,7 +623,7 @@ module E = struct
   let add_local_name (env : t) li name =
     let _ = reg env.local_names (li, name) in ()
 
-  let get_locals (env : t) = !(env.locals)
+  let get_locals (env : t) = Table.to_list !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = Table.to_list !(env.local_names)
 
   let _add_other_import (env : t) m =
@@ -703,23 +703,23 @@ module E = struct
 
   let get_return_arity (env : t) = env.return_arity
 
-  let get_func_imports (env : t) = !(env.func_imports)
-  let get_other_imports (env : t) = !(env.other_imports)
-  let get_exports (env : t) = !(env.exports)
+  let get_func_imports (env : t) = Table.to_list !(env.func_imports)
+  let get_other_imports (env : t) = Table.to_list !(env.other_imports)
+  let get_exports (env : t) = Table.to_list !(env.exports)
   let get_funcs (env : t) = List.map Lib.Promise.value (Table.to_list !(env.funcs))
 
   let func_type (env : t) ty =
     let rec go i = function
       | [] ->
          let (i, t) = Table.add (!(env.func_types)) ty in
-         env.func_types := t; (* FIXME: quadratic *)
+         env.func_types := t;
          Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
     go 0 (Table.to_list (!(env.func_types)))
 
-  let get_types (env : t) = !(env.func_types)
+  let get_types (env : t) = Table.to_list !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
     if Table.length !(env.funcs) <> 0 then
@@ -1115,7 +1115,7 @@ module Func = struct
       mk_body env1 ^^ FakeMultiVal.store env1 retty
     ) in
     (nr { ftype = nr (E.func_type env ty);
-          locals = Table.to_list (E.get_locals env1);
+          locals = E.get_locals env1;
           body }
     , E.get_local_names env1)
 
@@ -6826,14 +6826,15 @@ module Serialization = struct
     (* Type traversal *)
     (* We do a first traversal to find out the indices of non-primitive types *)
     let (typs, idx) =
-      let typs = ref [] in
+      let typs = ref Table.empty in
       let idx = ref TM.empty in
       let rec go t =
         let t = Type.normalize t in
         if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
-          idx := TM.add t (Lib.List32.length !typs) !idx;
-          typs := !typs @ [ t ];  (* FIXME: quadratic *)
+          let (i, tbl) = Table.add !typs t in
+          typs := tbl;
+          idx := TM.add t (Int32.of_int i) !idx;
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
@@ -6852,7 +6853,7 @@ module Serialization = struct
         end
       in
       List.iter go ts;
-      (!typs, !idx)
+      (Table.to_list !typs, !idx)
     in
 
     (* buffer utilities *)
@@ -13629,7 +13630,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   IC.default_exports env;
 
   let func_imports = E.get_func_imports env in
-  let ni = Table.length func_imports in
+  let ni = List.length func_imports in
   let ni' = Int32.of_int ni in
 
   let other_imports = E.get_other_imports env in
@@ -13653,15 +13654,15 @@ and conclude_module env set_serialization_globals start_fi_o =
   let table_sz = E.get_end_of_table env in
 
   let module_ = {
-      types = List.map nr (Table.to_list (E.get_types env));
+      types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
       elems;
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
       memories;
-      imports = (Table.to_list func_imports) @ (Table.to_list other_imports);
-      exports = Table.to_list (E.get_exports env);
+      imports = func_imports @ other_imports;
+      exports = E.get_exports env;
       datas
     } in
 
