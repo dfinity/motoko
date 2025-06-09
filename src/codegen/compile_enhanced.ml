@@ -430,12 +430,14 @@ The fields fall into the following categories:
 
 module Table : sig
   type 'a t
+  val empty : 'a t
   val add : 'a t -> 'a -> int * 'a t
   val length : 'a t -> int
   val to_list : 'a t -> 'a list
   val from_list : 'a list ->'a t
 end = struct
   type 'a t = int * 'a list
+  let empty = (0, [])
   let add (l, es) e = (l, (l + 1, e :: es))
   let length (l, es) = l
   let to_list (l, es) = List.rev es
@@ -445,10 +447,10 @@ end
 module E = struct
 
   (* Utilities, internal to E *)
-  let reg (ref : 'a list ref) (x : 'a) : int32 =
-      let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ x ]; (* FIXME: quadratic *)
-      i
+  let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
+      let (i, t) = Table.add (!ref) x in
+      ref := t;
+      Wasm.I32.of_int_u i
 
   let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
     let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
@@ -488,8 +490,7 @@ module E = struct
      Registered as GC root set and replaced on program upgrade. 
   *)
   and object_pool = {
-    objects: (int * object_allocation) list ref;
-    length : int ref;
+    objects: (int * object_allocation) Table.t ref;
     frozen: bool ref;
   }
   and t = {
@@ -504,14 +505,14 @@ module E = struct
     (* Immutable *)
 
     (* Mutable *)
-    func_types : func_type list ref;
-    func_imports : import list ref;
-    other_imports : import list ref;
-    exports : export list ref;
+    func_types : func_type Table.t ref;
+    func_imports : import Table.t ref;
+    other_imports : import Table.t ref;
+    exports : export Table.t ref;
     funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
-    globals : (global Lib.Promise.t * string) list ref;
+    globals : (global Lib.Promise.t * string) Table.t ref;
     global_names : int32 NameEnv.t ref;
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
@@ -524,7 +525,7 @@ module E = struct
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
-    typtbl_typs : Type.typ list ref;
+    typtbl_typs : Type.typ Table.t ref;
 
     (* Metadata *)
     args : (bool * string) option ref;
@@ -539,8 +540,8 @@ module E = struct
     return_arity : int; (* Number of return values (for type of Return) *)
 
     (* Mutable *)
-    locals : value_type list ref; (* Types of locals *)
-    local_names : (int32 * string) list ref; (* Names of locals *)
+    locals : value_type Table.t ref; (* Types of locals *)
+    local_names : (int32 * string) Table.t ref; (* Names of locals *)
 
     features : FeatureSet.t ref; (* Wasm features using wasmtime naming *)
 
@@ -560,22 +561,22 @@ module E = struct
     mode;
     rts;
     trap_with;
-    func_types = ref [];
-    func_imports = ref [];
-    other_imports = ref [];
-    exports = ref [];
-    funcs = ref (Table.from_list []);
+    func_types = ref Table.empty;
+    func_imports = ref Table.empty;
+    other_imports = ref Table.empty;
+    exports = ref Table.empty;
+    funcs = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
-    globals = ref [];
+    globals = ref Table.empty;
     global_names = ref NameEnv.empty;
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    data_segments = ref (Table.from_list []);
+    data_segments = ref Table.empty;
     constant_pool = ref ConstEnv.empty;
-    object_pool = { objects = ref []; length = ref 0; frozen = ref false };
-    typtbl_typs = ref [];
+    object_pool = { objects = ref Table.empty; frozen = ref false };
+    typtbl_typs = ref Table.empty;
     (* Metadata *)
     args = ref None;
     service = ref None;
@@ -584,8 +585,8 @@ module E = struct
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
-    locals = ref [];
-    local_names = ref [];
+    locals = ref Table.empty;
+    local_names = ref Table.empty;
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
@@ -606,8 +607,8 @@ module E = struct
     { env with
       n_param;
       return_arity;
-      locals = ref [];
-      local_names = ref [];
+      locals = ref Table.empty;
+      local_names = ref Table.empty;
     }
 
   (* We avoid accessing the fields of t directly from outside of E, so here are a
@@ -623,7 +624,7 @@ module E = struct
     let _ = reg env.local_names (li, name) in ()
 
   let get_locals (env : t) = !(env.locals)
-  let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
+  let get_local_names (env : t) : (int32 * string) list = Table.to_list !(env.local_names)
 
   let _add_other_import (env : t) m =
     ignore (reg env.other_imports m)
@@ -664,11 +665,11 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) !(env.globals)
+  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list (!(env.globals)))
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Int32.of_int (List.length !(env.func_imports)) in
+    let n = Int32.of_int (Table.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -710,12 +711,13 @@ module E = struct
   let func_type (env : t) ty =
     let rec go i = function
       | [] ->
-         env.func_types := !(env.func_types) @ [ ty ]; (* FIXME: quadratic *)
+         let (i, t) = Table.add (!(env.func_types)) ty in
+         env.func_types := t; (* FIXME: quadratic *)
          Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
-    go 0 !(env.func_types)
+    go 0 (Table.to_list (!(env.func_types)))
 
   let get_types (env : t) = !(env.func_types)
 
@@ -832,13 +834,12 @@ module E = struct
 
   let object_pool_add (env : t) line (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
-    let index = !(env.object_pool.length) in
-    env.object_pool.objects := (line, allocation) :: !(env.object_pool.objects);
-    env.object_pool.length := index + 1;
+    let index, t = Table.add !(env.object_pool.objects) (line, allocation) in
+    env.object_pool.objects := t;
     Int64.of_int index
 
   let object_pool_size (env : t) : int =
-    !(env.object_pool.length)
+    Table.length !(env.object_pool.objects)
 
   let object_pool_report (env : t) : unit =
     let e = ref StringEnv.empty in
@@ -848,7 +849,7 @@ module E = struct
                (match StringEnv.find_opt line (!e) with
                 | None -> 1
                 | Some i -> i + 1) (!e))
-    !(env.object_pool.objects);
+    (Table.to_list !(env.object_pool.objects));
     let profile = StringEnv.fold (fun l c s -> __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]\n" ^ s) (!e) ""
     in
     begin
@@ -858,7 +859,7 @@ module E = struct
     end
 
   let iterate_object_pool (env : t) f =
-    G.concat_mapi f (List.map (fun (l,a) -> a) (List.rev !(env.object_pool.objects)))
+    G.concat_mapi f (List.map (fun (l, a) -> a) (Table.to_list !(env.object_pool.objects)))
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -872,7 +873,7 @@ module E = struct
     reg env.typtbl_typs ty
 
   let get_typtbl_typs (env : t) : Type.typ list =
-    !(env.typtbl_typs)
+    Table.to_list (!(env.typtbl_typs))
 
   let add_feature (env : t) f =
     env.features := FeatureSet.add f (!(env.features))
@@ -1114,7 +1115,7 @@ module Func = struct
       mk_body env1 ^^ FakeMultiVal.store env1 retty
     ) in
     (nr { ftype = nr (E.func_type env ty);
-          locals = E.get_locals env1;
+          locals = Table.to_list (E.get_locals env1);
           body }
     , E.get_local_names env1)
 
@@ -13628,7 +13629,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   IC.default_exports env;
 
   let func_imports = E.get_func_imports env in
-  let ni = List.length func_imports in
+  let ni = Table.length func_imports in
   let ni' = Int32.of_int ni in
 
   let other_imports = E.get_other_imports env in
@@ -13652,15 +13653,15 @@ and conclude_module env set_serialization_globals start_fi_o =
   let table_sz = E.get_end_of_table env in
 
   let module_ = {
-      types = List.map nr (E.get_types env);
+      types = List.map nr (Table.to_list (E.get_types env));
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
       elems;
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
       memories;
-      imports = func_imports @ other_imports;
-      exports = E.get_exports env;
+      imports = (Table.to_list func_imports) @ (Table.to_list other_imports);
+      exports = Table.to_list (E.get_exports env);
       datas
     } in
 
