@@ -17,12 +17,12 @@ In the following example, if the `markDone` function sometimes fails and returns
 
 Function definition:
 
-``` motoko no-repl file=./examples/todo-error.mo#L49-L58
+``` motoko no-repl file=../examples/todo-error.mo#L49-L58
 ```
 
 Function callsite:
 
-``` motoko no-repl file=./examples/todo-error.mo#L117-L126
+``` motoko no-repl file=../examples/todo-error.mo#L117-L126
 ```
 
 The main drawback of using option types to signal errors is that all failures are represented by a single, non-descriptive `null` value. This means important information about why something failed is lost. As a result, the only message the program can show the user might be something vague like `"Something went wrong."`
@@ -39,19 +39,19 @@ type Result<Ok, Err> = { #ok : Ok; #err : Err }
 
 Unlike option types, the Result type includes a second type parameter `Err` which allows you to specify exactly what kind of error occurred. This makes error handling more informative and flexible.
 
-``` motoko no-repl file=./examples/todo-error.mo#L60-L60
+``` motoko no-repl file=../examples/todo-error.mo#L60-L60
 ```
 
 The previous example can be revised to use `Result` types:
 
 Function definition:
 
-``` motoko no-repl file=./examples/todo-error.mo#L62-L76
+``` motoko no-repl file=../examples/todo-error.mo#L62-L76
 ```
 
 Function callsite:
 
-``` motoko no-repl file=./examples/todo-error.mo#L128-L141
+``` motoko no-repl file=../examples/todo-error.mo#L128-L141
 ```
 
 ## Pattern matching
@@ -85,12 +85,12 @@ Here’s how the `markDone` function might look using exceptions:
 
 Function definition:
 
-``` motoko no-repl file=./examples/todo-error.mo#L78-L92
+``` motoko no-repl file=../examples/todo-error.mo#L78-L92
 ```
 
 Function callsite:
 
-``` motoko no-repl file=./examples/todo-error.mo#L143-L150
+``` motoko no-repl file=../examples/todo-error.mo#L143-L150
 ```
 
 ## Traps

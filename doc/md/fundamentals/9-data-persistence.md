@@ -28,7 +28,7 @@ You can only use the `stable`, `transient` (or legacy `flexible`) modifier on `l
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
-``` motoko file=./examples/StableCounter.mo
+``` motoko file=../examples/StableCounter.mo
 ```
 
 When you compile and deploy a canister for the first time, all transient and stable variables in the actor are initialized in sequence. When a canister is upgraded, all stable variables that existed in the previous version of the actor are pre-initialized with their old values and the remaining transient and any newly-added stable variables are initialized in sequence.
