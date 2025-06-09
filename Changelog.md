@@ -2,6 +2,7 @@
 
 * motoko (`moc`)
 
+  * bugfix: fix -fshared-code bug (#5230)
   * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
 
 ## 0.14.12 (2025-05-28)

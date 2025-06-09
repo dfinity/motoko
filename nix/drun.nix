@@ -19,9 +19,9 @@ pkgs: pkgs.rustPlatform-stable.buildRustPackage {
     outputHashes = {
       "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
       "cloudflare-0.12.0" = "sha256-67kQWJFRXZXHx+qwlyLa9NLF09b/4iRWxTLzCniCHZE=";
-      "ic-bn-lib-0.1.0" = "sha256-40EQ0oKEjcEnAiQhlqveLjQfvloLMLbqeze1T2QhP5M=";
+      "ic-bn-lib-0.1.0" = "sha256-2fw5kfGpvKr79dUo2onPnEVN1dYu275M6EOblMvgy88=";
       "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
-      "ic-gateway-0.2.0" = "sha256-67nSahWf/IPxmGxhZz5phnZtZUsFyyXx73grkMh6J8E=";
+      "ic-gateway-0.2.0" = "sha256-NHnNRJABkuV0l0mvtAYjbQfUfAO2zuZMelrQdjvGlc0=";
       "ic-vetkeys-0.1.0" = "sha256-h8Jso21fK0QTyuSa14iAYsDvrfMphvI3spJBYOLgq1c=";
       "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
       "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
