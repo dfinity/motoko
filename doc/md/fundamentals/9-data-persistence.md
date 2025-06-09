@@ -207,8 +207,8 @@ to transform a subset of existing stable variables into a subset of replacement 
 Both of these data migration paths are supported by static and dynamic checks that prevent data loss or corruption.
 Of course, a user may still lose data due to coding errors, so should tread carefully.
 
-For more information, see the [example of explicit migration](https://internetcomputer.org/docs/motoko/data-persistence) and the
-reference material on [migration expressions](../reference/language-manual#migration-expressions).
+For more information, see the [example of explicit migration](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence) and the
+reference material on [migration expressions](https://internetcomputer.org/docs/motoko/language-manual#migration-expressions).
 
 ## Legacy features
 

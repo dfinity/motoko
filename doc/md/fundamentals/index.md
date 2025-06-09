@@ -16,7 +16,7 @@ The fundamentals section introduces the core building blocks of Motoko, includin
 
 7. [Messaging](https://internetcomputer.org/docs/motoko/fundamentals/messaging)
 
-8. [Modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/modules-imports)
+8. [Modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/imports)
 
 9. [Data persistence](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence)
 
