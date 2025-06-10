@@ -566,7 +566,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
     | CPSAwait (s, cont_typ), [a; krb] ->
-      let (_, t1) = (*assert (s = AwaitFut false);*)
+      let (_, t1) =
         try T.as_async_sub (to_async_sort s) T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
