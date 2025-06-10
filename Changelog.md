@@ -3,7 +3,11 @@
 * motoko (`moc`)
 
   * Allow `await*` to force `async` values, avoiding the commit point when the future is already fulfilled (#5215).
+
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242)
+
   * bugfix: fix `-fshared-code` bug (#5230).
+
   * bugfix: avoid stack overflow and reduce code complexity for large EOP canisters (#5218).
 
 ## 0.14.12 (2025-05-28)
