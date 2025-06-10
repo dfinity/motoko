@@ -2,8 +2,6 @@
 
 Understand the control flow mechanisms in Motoko.
 
-## Index
-
 - [Types of control flow](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/basic-control-flow)
 
 - [Loops](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/loops)

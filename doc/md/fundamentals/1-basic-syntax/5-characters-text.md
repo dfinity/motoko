@@ -33,11 +33,9 @@ func reverse(t: Text) : Text {
 
 reverse("Motoko");
 ```
+
 The operator `#` concatenates two `Text` values.
 
-```
-
-It would probably be best if this example came after both the sections on Text and Char (not immediately after Char).
 ```motoko
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
