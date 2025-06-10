@@ -125,7 +125,7 @@ discard("abc"); // Allowed, since `Text <: Any`
 
 ## Options
 
-If `T <: U`, then `?T <: ?U` because option subtyping is covariant. This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options-results) of a subtype can be used as an optional value of a supertype.
+If `T <: U`, then `?T <: ?U` because option subtyping is covariant. This means an [optional value](https://internetcomputer.org/docs/motoko/fundamentals/types/options) of a subtype can be used as an optional value of a supertype.
 
 ```motoko no-repl
 let a : ?Nat = ?5;
