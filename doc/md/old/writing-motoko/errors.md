@@ -89,15 +89,20 @@ Callsite:
 
 The first and most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](../base/Text.md) contents:
 
+<!----
 ``` motoko no-repl file=../../examples/error-examples.mo#L3-L10
 ```
+--->
 
 Motoko does not let you access the optional value without also considering the case that it is missing.
 
 In the case of a `Result`, you can also use pattern matching with the difference that you also get an informative value, not just `null`, in the `#err` case:
 
+<!----
 ``` motoko no-repl file=../../examples/error-examples.mo#L12-L19
 ```
+---->
+
 
 ### Higher-order functions
 
