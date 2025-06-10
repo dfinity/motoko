@@ -37,8 +37,10 @@ Using a `persistent` actor can help avoid unintended data loss. It is the recomm
 
 Since Motoko v0.13.5, the recommended way to declare `StableCounter` above is:
 
+<!----
 ``` motoko file=../../examples/PersistentCounter.mo
 ```
+-->
 
 :::note
 

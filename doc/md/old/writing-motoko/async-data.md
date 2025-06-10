@@ -26,8 +26,10 @@ The combination of `async`/`await` constructs simplifies asynchronous programmin
 
 Here is an example program that uses async functions:
 
+<!----
 ``` motoko file=../../examples/counter-actor.mo
 ```
+---->
 
 The `Counter` actor declares one field and three public, shared functions:
 

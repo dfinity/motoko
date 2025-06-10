@@ -217,7 +217,7 @@ To simplify the presentation of available operators, operators and primitive typ
 | O            | Ordered    | Comparison                      |
 | T            | Text       | Concatenation                   |
 
-Some types have several categories. For example, type [`Int`](./base/Int.md) is both arithmetic (A) and ordered (O) and supports both arithmetic addition (`+`) and relational less than (`<`) amongst other operations.
+Some types have several categories. For example, type [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) is both arithmetic (A) and ordered (O) and supports both arithmetic addition (`+`) and relational less than (`<`) amongst other operations.
 
 ### Unary operators
 
@@ -617,30 +617,30 @@ The category of a type determines the operators (unary, binary, relational and i
 
 | Identifier                         | Category | Description                                                            |
 | ---------------------------------- | -------- | ---------------------------------------------------------------------- |
-| [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
-| [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
-| [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
-| [`Float`](./base/Float.md)         | A, O     | 64-bit floating point values                                           |
-| [`Int`](./base/Int.md)             | A, O     | Signed integer values with arithmetic (unbounded)                      |
-| [`Int8`](./base/Int8.md)          | A, O     | Signed 8-bit integer values with checked arithmetic                    |
-| [`Int16`](./base/Int16.md)       | A, O     | Signed 16-bit integer values with checked arithmetic                   |
-| [`Int32`](./base/Int32.md)]       | A, O     | Signed 32-bit integer values with checked arithmetic                   |
-| [`Int64`](./base/Int64.md)         | A, O     | Signed 64-bit integer values with checked arithmetic                   |
-| [`Nat`](./base/Nat.md)             | A, O     | Non-negative integer values with arithmetic (unbounded)                |
-| [`Nat8`](./base/Nat8.md)          | A, O     | Non-negative 8-bit integer values with checked arithmetic              |
-| [`Nat16`](./base/Nat16.md)      | A, O     | Non-negative 16-bit integer values with checked arithmetic             |
-| [`Nat32`](./base/Nat32.md)      | A, O     | Non-negative 32-bit integer values with checked arithmetic             |
-| [`Nat64`](./base/Nat64.md)        | A, O     | Non-negative 64-bit integer values with checked arithmetic             |
-| [`Blob`](./base/Blob.md)          | O        | Binary blobs with iterators                                            |
-| [`Principal`](./base/Principal.md) | O        | Principals                                                             |
-| [`Error`](./base/Error.md)         |          | (Opaque) error values                                                  |
-| [`Region`](./base/Region.md)       |          | (Opaque) stable memory region objects                                  |
+| [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
+| [`Char`](https://internetcomputer.org/docs/motoko/base/Char.md)           | O        | Unicode characters                                                     |
+| [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
+| [`Float`](https://internetcomputer.org/docs/motoko/base/Float.md)         | A, O     | 64-bit floating point values                                           |
+| [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md)             | A, O     | Signed integer values with arithmetic (unbounded)                      |
+| [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8.md)          | A, O     | Signed 8-bit integer values with checked arithmetic                    |
+| [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16.md)       | A, O     | Signed 16-bit integer values with checked arithmetic                   |
+| [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32.md)       | A, O     | Signed 32-bit integer values with checked arithmetic                   |
+| [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64.md)         | A, O     | Signed 64-bit integer values with checked arithmetic                   |
+| [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md)             | A, O     | Non-negative integer values with arithmetic (unbounded)                |
+| [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8.md)          | A, O     | Non-negative 8-bit integer values with checked arithmetic              |
+| [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16.md)      | A, O     | Non-negative 16-bit integer values with checked arithmetic             |
+| [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md)      | A, O     | Non-negative 32-bit integer values with checked arithmetic             |
+| [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64.md)        | A, O     | Non-negative 64-bit integer values with checked arithmetic             |
+| [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)          | O        | Binary blobs with iterators                                            |
+| [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.md) | O        | Principals                                                             |
+| [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md)         |          | (Opaque) error values                                                  |
+| [`Region`](https://internetcomputer.org/docs/motoko/base/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](./base/index.md). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](https://internetcomputer.org/docs/motoko/base/index.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) library provides common functions on `Text` values.
 
-### Type [`Bool`](./base/Bool.md)
+### Type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md)
 
-The type [`Bool`](./base/Bool.md) of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`, `and` and `or` are short-circuiting.
+The type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) of category L (Logical) has values `true` and `false` and is supported by one and two branch `if _ <exp> (else <exp>)?`, `not <exp>`, `_ and _` and `_ or _` expressions. Expressions `if`, `and` and `or` are short-circuiting.
 
 <!--
 TODO: Comparison.
@@ -650,11 +650,11 @@ TODO: Comparison.
 
 A `Char` of category O (Ordered) represents a character as a code point in the unicode character set.
 
-Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](./base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](./base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](./base/Text.md) value.
+Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value.
 
-### Type [`Text`](./base/Text.md)
+### Type [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)
 
-The type [`Text`](./base/Text.md) of categories T and O (Text, Ordered) represents sequences of unicode characters i.e. strings. Function `t.size` returns the number of characters in [`Text`](./base/Text.md) value `t`. Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { …​ c …​ }`.
+The type [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) of categories T and O (Text, Ordered) represents sequences of unicode characters i.e. strings. Function `t.size` returns the number of characters in [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value `t`. Operations on text values include concatenation (`_ # _`) and sequential iteration over characters via `t.chars` as in `for (c : Char in t.chars()) { …​ c …​ }`.
 
 <!--
 TODO: Comparison.
@@ -668,17 +668,17 @@ The semantics of `Float` and its operations is in accordance with standard [IEEE
 
 Common functions and values are defined in base library "base/Float".
 
-### Types [`Int`](./base/Int.md) and [`Nat`](./base/Nat.md)
+### Types [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md)
 
-The types [`Int`](./base/Int.md) and [`Nat`](./base/Nat.md) are signed integral and natural numbers of categories A (Arithmetic) and O (Ordered).
+The types [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) are signed integral and natural numbers of categories A (Arithmetic) and O (Ordered).
 
-Both [`Int`](./base/Int.md) and [`Nat`](./base/Nat.md) are arbitrary precision, with only subtraction `-` on [`Nat`](./base/Nat.md) trapping on underflow.
+Both [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) are arbitrary precision, with only subtraction `-` on [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) trapping on underflow.
 
-The subtype relation `Nat <: Int` holds, so every expression of type [`Nat`](./base/Nat.md) is also an expression of type [`Int`](./base/Int.md) but not vice versa. In particular, every value of type [`Nat`](./base/Nat.md) is also a value of type [`Int`](./base/Int.md), without change of representation.
+The subtype relation `Nat <: Int` holds, so every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) is also an expression of type [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) but not vice versa. In particular, every value of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) is also a value of type [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md), without change of representation.
 
-### Bounded integers [`Int8`](./base/Int8.md), [`Int16`](./base/Int16.md), [`Int32`](./base/Int32.md) and [`Int64`](./base/Int64.md)
+### Bounded integers [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8.md), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16.md), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32.md) and [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64.md)
 
-The types [`Int8`](./base/Int8.md), [`Int16`](./base/Int16.md), [`Int32`](./base/Int32.md) and [`Int64`](./base/Int64.md) represent signed integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
+The types [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8.md), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16.md), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32.md) and [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64.md) represent signed integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -690,15 +690,15 @@ Bounded integer types are not in subtype relationship with each other or with ot
 
 The corresponding module in the base library provides conversion functions:
 
-- Conversion to [`Int`](./base/Int.md).
+- Conversion to [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md).
 
-- Checked and wrapping conversions from [`Int`](./base/Int.md).
+- Checked and wrapping conversions from [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md).
 
 - Wrapping conversion to the bounded natural type of the same size.
 
-### Bounded naturals [`Nat8`](./base/Nat8.md), [`Nat16`](./base/Nat16.md), [`Nat32`](./base/Nat32.md) and [`Nat64`](./base/Nat64.md)
+### Bounded naturals [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8.md), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16.md), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) and [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64.md)
 
-The types [`Nat8`](./base/Nat8.md), [`Nat16`](./base/Nat16.md), [`Nat32`](./base/Nat32.md) and [`Nat64`](./base/Nat64.md) represent unsigned integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
+The types [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8.md), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16.md), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) and [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64.md) represent unsigned integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
@@ -708,19 +708,19 @@ As bitwise types, these types support bitwise operations and (`&`), or (`|`) and
 
 The corresponding module in the base library provides conversion functions:
 
-- Conversion to [`Nat`](./base/Nat.md).
+- Conversion to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md).
 
-- Checked and wrapping conversions from [`Nat`](./base/Nat.md).
+- Checked and wrapping conversions from [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md).
 
 - Wrapping conversion to the bounded, signed integer type of the same size.
 
-### Type [`Blob`](./base/Blob.md)
+### Type [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)
 
-The type [`Blob`](./base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size()` returns the number of characters in [`Blob`](./base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.values()` as in `for (v : Nat8 in b.values()) { …​ v …​ }`.
+The type [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md) of category O (Ordered) represents binary blobs or sequences of bytes. Function `b.size()` returns the number of characters in [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md) value `b`. Operations on blob values include sequential iteration over bytes via function `b.values()` as in `for (v : Nat8 in b.values()) { …​ v …​ }`.
 
-### Type [`Principal`](./base/Principal.md)
+### Type [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.md)
 
-The type [`Principal`](./base/Principal.md) of category O (Ordered) represents opaque principals such as canisters and users that can be used to identify callers of shared functions and used for simple authentication. Although opaque, principals may be converted to binary [`Blob`](./base/Blob.md) values for more efficient hashing and other applications.
+The type [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.md) of category O (Ordered) represents opaque principals such as canisters and users that can be used to identify callers of shared functions and used for simple authentication. Although opaque, principals may be converted to binary [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md) values for more efficient hashing and other applications.
 
 ### Error type
 
@@ -764,13 +764,13 @@ type ErrorCode = {
 
 A constructed error `e = E.reject(t)` has `E.code(e) = #canister_reject` and `E.message(e) = t`.
 
-[`Error`](./base/Error.md) values can be thrown and caught within an `async` expression or `shared` function only. See [throw](#throw) and [try](#try).
+[`Error`](https://internetcomputer.org/docs/motoko/base/Error.md) values can be thrown and caught within an `async` expression or `shared` function only. See [throw](#throw) and [try](#try).
 
 Errors with codes other than `#canister_reject`, i.e. system errors, may be caught and thrown but not user-constructed.
 
 :::note
 
-Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original [`Text`](./base/Text.md) message. This prevents programmatic forgery of system errors.
+Exiting an async block or shared function with a non-`#canister-reject` system error exits with a copy of the error with revised code `#canister_reject` and the original [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) message. This prevents programmatic forgery of system errors.
 
 :::
 
@@ -779,7 +779,7 @@ Exiting an async block or shared function with a non-`#canister-reject` system e
 On ICP, the act of issuing a call to a canister function can fail, so that the call cannot (and will not be) performed.
 This can happen due to a lack of canister resources, typically because the local message queue for the destination canister is full,
 or because performing the call would reduce the current cycle balance of the calling canister to a level below its freezing threshold.
-Such call failures are reported by throwing an [`Error`](./base/Error.md) with code `#call_error { err_code = n }`, where `n` is the non-zero `err_code` value returned by ICP.
+Such call failures are reported by throwing an [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md) with code `#call_error { err_code = n }`, where `n` is the non-zero `err_code` value returned by ICP.
 Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
 
 :::
@@ -790,11 +790,11 @@ The type `Region` represents opaque stable memory regions. Region objects are dy
 
 The region type is stable but not shared and its objects, which are stateful, may be stored in stable variables and data structures.
 
-Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](./docs/motoko/icp-features/stable-memory) and library [Region](./base/Region.md) for more information.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](https://internetcomputer.org/docs/motoko/icp-features/stable-memory) and library [Region](https://internetcomputer.org/docs/motoko/base/Region.md) for more information.
 
 ### Constructed types
 
-`<path> <type-typ-args>?` is the application of a type identifier or path, either built-in (i.e. [`Int`](./base/Int.md)) or user defined, to zero or more type arguments. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
+`<path> <type-typ-args>?` is the application of a type identifier or path, either built-in (i.e. [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md)) or user defined, to zero or more type arguments. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
 
 Though typically a type identifier, more generally, `<path>` may be a `.`-separated sequence of actor, object or module identifiers ending in an identifier accessing a type component of a value (for example, `Acme.Collections.List`).
 
@@ -1042,7 +1042,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 4.   `T` is a type parameter `X` declared with constraint `U`.
 
-5.   `T` is [`Nat`](./base/Nat.md) and `U` is [`Int`](./base/Int.md).
+5.   `T` is [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) and `U` is [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md).
 
 6.   `T` is a tuple `(T0, …​, Tn)`, `U` is a tuple `(U0, …​, Un)`, and for each `0 <= i <= n`, `Ti <: Ui`.
 
@@ -1124,7 +1124,7 @@ A type `T` is **shared** if it is:
 
 -   `Any` or `None`, or
 
--   A primitive type other than [`Error`](./base/Error.md), or
+-   A primitive type other than [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md), or
 
 -   An option type `? V` where `V` is shared, or
 
@@ -1148,7 +1148,7 @@ A type `T` is **stable** if it is:
 
 -   `Any` or `None`, or
 
--   A primitive type other than [`Error`](./base/Error.md), or
+-   A primitive type other than [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md), or
 
 -   An option type `? V` where `V` is stable, or
 
@@ -1282,7 +1282,7 @@ If `<exp>` is:
 
     - The call creates a fresh ICP principal `p`, with settings `s`, and installs the instance to principal `p`.
 
-- `#install p`, where `p` has type [`Principal`](./base/Principal.md):
+- `#install p`, where `p` has type [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.md):
 
     - The call installs the actor to an already created ICP principal `p`. The principal must be empty, having no previously installed code, or the call will return an error.
 
@@ -1335,7 +1335,7 @@ The case sensitivity of file references depends on the host operating system so 
 
 When building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
-Sensible choices for `<pat>` are identifiers, such as [`Array`](./base/Array.md), or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.
+Sensible choices for `<pat>` are identifiers, such as [`Array`](https://internetcomputer.org/docs/motoko/base/Array.md), or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.
 
 ### Declaration fields
 
@@ -1444,7 +1444,7 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 
 -   `timer`: When declared, is called as a response of the canister global timer's expiration. The canister's global timer can be manipulated with the passed-in function argument of type `Nat64 -> ()` (taking an absolute time in nanoseconds) upon which libraries can build their own abstractions. When not declared (and in absence of the `-no-timer` flag), this system action is provided with default implementation by the compiler (additionally `setTimer` and `cancelTimer` are available as primitives).
 
--   `inspect`: When declared, is called as a predicate on every Internet Computer ingress message with the exception of HTTP query calls. The return value, a [`Bool`](./base/Bool.md), indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [inspect](#inspect)).
+-   `inspect`: When declared, is called as a predicate on every Internet Computer ingress message with the exception of HTTP query calls. The return value, a [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md), indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [inspect](#inspect)).
 
 -   `preupgrade`: When declared, is called during an upgrade, immediately before the current values of the retired actor’s stable variables are transferred to the replacement actor.
      Its `<system>` type parameter is implicitly assumed and need not be declared.
@@ -1465,7 +1465,7 @@ During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `p
 
 ##### `inspect`
 
-Given a record of message attributes, this function produces a [`Bool`](./base/Bool.md) that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked by the system on each ingress message issue as an ICP update call, excluding non-replicated query calls. Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` message denial.
+Given a record of message attributes, this function produces a [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked by the system on each ingress message issue as an ICP update call, excluding non-replicated query calls. Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` message denial.
 
 The argument type of `inspect` depends on the interface of the enclosing actor. In particular, the formal argument of `inspect` is a record of fields of the following types:
 
@@ -1944,7 +1944,7 @@ Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the
 
 ### Relational operators
 
-The relational expression `<exp1> <relop> <exp2>` has type [`Bool`](./base/Bool.md) provided:
+The relational expression `<exp1> <relop> <exp2>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) provided:
 
 -   `<exp1>` has type `T`.
 
@@ -2132,15 +2132,15 @@ The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, a
 |            |                 |                         |                                                 |
 | ---------- | --------------- | ----------------------- | ----------------------------------------------- |
 | U          | `<id>`          | T                       | Description                                     |
-| [`Text`](./base/Text.md)    | `size`  | [`Nat`](./base/Nat.md) | Size (or length) in characters        |
-| [`Text`](./base/Text.md)    | `chars` | `{ next: () -> Char? }` | Character iterator, first to last     |
+| [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)    | `size`  | [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) | Size (or length) in characters        |
+| [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)    | `chars` | `{ next: () -> Char? }` | Character iterator, first to last     |
 |            |                 |                         |                                                 |
-| [`Blob`](./base/Blob.md)    | `size`  | [`Nat`](./base/Nat.md) | Size in bytes                         |
-| [`Blob`](./base/Blob.md)    | `get`   | `Nat -> Nat8`           | Indexed read function                 |
-| [`Blob`](./base/Blob.md)    | `keys`  | `{ next: () -> Nat? }`  | Index iterator, by ascending index    |
-| [`Blob`](./base/Blob.md)    | `vals`, `values` | `{ next: () -> Nat8? }` | Byte iterator, first to last |
+| [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)    | `size`  | [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) | Size in bytes                         |
+| [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)    | `get`   | `Nat -> Nat8`           | Indexed read function                 |
+| [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)    | `keys`  | `{ next: () -> Nat? }`  | Index iterator, by ascending index    |
+| [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md)    | `vals`, `values` | `{ next: () -> Nat8? }` | Byte iterator, first to last |
 |            |                 |                         |                                                 |
-| `[var? T]` | `size`          | [`Nat`](./base/Nat.md) | Number of elements                              |
+| `[var? T]` | `size`          | [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) | Number of elements                              |
 | `[var? T]` | `get`           | `Nat -> T`              | Indexed read function                           |
 | `[var? T]` | `keys`          | `{ next: () -> Nat? }`  | Index iterator, by ascending index              |
 | `[var? T]` | `vals`, `values`| `{ next: () -> T? }`    | Value iterator, by ascending index              |
@@ -2238,7 +2238,7 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](./base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.md) invoking the function, typically a user or canister. Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value not shown extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
 A `<parenthetical>`, when present, modifies dynamic attributes of the message send (provided that the return type `T` is of form `async U`, i.e. a future). The recognized attributes are
 - `cycles : Nat` to attach cycles
@@ -2354,19 +2354,19 @@ The expression `<exp> !` evaluates `<exp>` to a result `r`. If `r` is `trap`, th
 
 ### Not
 
-The not expression `not <exp>` has type [`Bool`](./base/Bool.md) provided `<exp>` has type [`Bool`](./base/Bool.md).
+The not expression `not <exp>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) provided `<exp>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 If `<exp>` evaluates to `trap`, the expression returns `trap`. Otherwise, `<exp>` evaluates to a Boolean value `v` and the expression returns `not v`, the Boolean negation of `v`.
 
 ### And
 
-The and expression `<exp1> and <exp2>` has type [`Bool`](./base/Bool.md) provided `<exp1>` and `<exp2>` have type [`Bool`](./base/Bool.md).
+The and expression `<exp1> and <exp2>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) provided `<exp1>` and `<exp2>` have type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`. If `v == false` the expression returns the value `false` (without evaluating `<exp2>`). Otherwise, the expression returns the result of evaluating `<exp2>`.
 
 ### Or
 
-The or expression `<exp1> or <exp2>` has type [`Bool`](./base/Bool.md) provided `<exp1>` and `<exp2>` have type [`Bool`](./base/Bool.md).
+The or expression `<exp1> or <exp2>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md) provided `<exp1>` and `<exp2>` have type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is `trap`, the expression results in `trap`. Otherwise `r1` is a Boolean value `v`. If `v == true` the expression returns the value `true` without evaluating `<exp2>`. Otherwise, the expression returns the result of evaluating `<exp2>`.
 
@@ -2374,7 +2374,7 @@ The expression `<exp1> and <exp2>` evaluates `exp1` to a result `r1`. If `r1` is
 
 The expression `if <exp1> <exp2> (else <exp3>)?` has type `T` provided:
 
--   `<exp1>` has type [`Bool`](./base/Bool.md).
+-   `<exp1>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 -   `<exp2>` has type `T`.
 
@@ -2402,7 +2402,7 @@ The expression evaluates `<exp>` to a result `r`. If `r` is `trap`, the result i
 
 The expression `while <exp1> <exp2>` has type `()` provided:
 
--   `<exp1>` has type [`Bool`](./base/Bool.md).
+-   `<exp1>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 -   `<exp2>` has type `()`.
 
@@ -2420,7 +2420,7 @@ The expression `loop <block-or-exp1> while <exp2>` has type `()` provided:
 
 -   `<block-or-exp1>` has type `()`.
 
--   `<exp2>` has type [`Bool`](./base/Bool.md).
+-   `<exp2>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 The expression evaluates `<block-or-exp1>` to a result `r1`. If `r1` is `trap`, the result is `trap`. Otherwise, evaluation continues with `<exp2>`, producing result `r2`. If `r2` is `trap` the result is `trap`. Otherwise, if `r2` is `true`, the result is the result of re-evaluating `loop <block-or-exp1> while <exp2>`. Otherwise, `r2` is false and the result is `()`.
 
@@ -2648,7 +2648,7 @@ Using `await*` signals that the computation *may* commit state and suspend execu
 
 The `throw` expression `throw <exp>` has type `None` provided:
 
--   `<exp>` has type [`Error`](./base/Error.md).
+-   `<exp>` has type [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md).
 
 -   The `throw` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
@@ -2660,7 +2660,7 @@ The `try` expression `try <block-or-exp1> catch <pat> <block-or-exp2>` has type 
 
 -   `<block-or-exp1>` has type `T`.
 
--   `<pat>` has type [`Error`](./base/Error.md) and `<block-or-exp2>` has type `T` in the context extended with `<pat>`.
+-   `<pat>` has type [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md) and `<block-or-exp2>` has type `T` in the context extended with `<pat>`.
 
 -   The `try` is explicitly enclosed by an `async`-expression or appears in the body of a `shared` function.
 
@@ -2668,7 +2668,7 @@ Expression `try <block-or-exp1> catch <pat> <block-or-exp2>` evaluates `<block-o
 
 :::note
 
-Because the [`Error`](./base/Error.md) type is opaque, the pattern match cannot fail. Typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern.
+Because the [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md) type is opaque, the pattern match cannot fail. Typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern.
 
 :::
 
@@ -2693,7 +2693,7 @@ See [Error type](#error-type).
 
 ### Assert
 
-The assert expression `assert <exp>` has type `()` provided `<exp>` has type [`Bool`](./base/Bool.md).
+The assert expression `assert <exp>` has type `()` provided `<exp>` has type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md).
 
 Expression `assert <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap` evaluation returns `trap`. Otherwise `r` is a Boolean value `v`. The result of `assert <exp>` is:
 
@@ -2721,7 +2721,7 @@ Type annotations have no-runtime cost and cannot be used to perform the checked 
 
 ### Candid serialization
 
-The Candid serialization expression `to_candid ( <exp>,*)` has type [`Blob`](./base/Blob.md) provided:
+The Candid serialization expression `to_candid ( <exp>,*)` has type [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md) provided:
 
 -   `(<exp>,*)` has type `(T1,…​,Tn)`, and each `Ti` is shared.
 
@@ -2731,7 +2731,7 @@ The Candid deserialization expression `from_candid <exp>` has type `?(T1,…​,
 
 -   `?(T1,…​,Tn)` is the expected type from the context.
 
--   `<exp>` has type [`Blob`](./base/Blob.md).
+-   `<exp>` has type [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob.md).
 
 -   `?(T1,…​,Tn)` is shared.
 
@@ -2793,7 +2793,7 @@ The actor reference `actor <exp>` has expected type `T` provided:
 
 -   `T` is an some actor type `actor { …​ }`.
 
--   `<exp>` has type [`Text`](./base/Text.md).
+-   `<exp>` has type [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md).
 
 The argument `<exp>` must be, or evaluate to, the textual format of a canister identifier, specified elsewhere, otherwise the expression traps. The result of the expression is an actor value representing that canister.
 

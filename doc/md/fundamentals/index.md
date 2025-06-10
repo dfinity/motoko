@@ -26,4 +26,4 @@ The fundamentals section introduces the core building blocks of Motoko, includin
 
 12. [Garbage collection](https://internetcomputer.org/docs/motoko/fundamentals/garbage-collection)
 
-13. [Orthogonal persistence](https://internetcomputer.org/docs/motoko/fundamentals/orthogonal-persistence)
+13. [Orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/modes)

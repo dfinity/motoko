@@ -16,7 +16,7 @@ Callees can accept all, some, or none of the available cycles up to limit determ
 Motoko is adopting dedicated syntax and types to support safer programming with cycles. Users can now attach `(where cycles = <amount>)` as a prefix to message sends and async expressions.
 This new syntax will eventually obsolete the use of `ExperimentalCycles.add<system>(cycles)` in the examples that follow.
 
-For now (and until officially deprecating it), we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base/ExperimentalCycles.md) library in package `base`.
+For now (and until officially deprecating it), we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library in package `base`.
 
 :::note
 
@@ -24,9 +24,9 @@ This library is subject to change and likely to be replaced by more high-level s
 
 :::
 
-## The [`ExperimentalCycles`](../base/ExperimentalCycles.md) Library
+## The [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) Library
 
-The [`ExperimentalCycles`](../base/ExperimentalCycles.md) library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
+The [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
 
 The library provides the following operations:
 
@@ -50,7 +50,7 @@ The implicit register of added amounts, incremented on each `add`, is reset to z
 
 ### Example
 
-To illustrate, we will now use the [`ExperimentalCycles`](../base/ExperimentalCycles.md) library to implement a simple piggy bank program for saving cycles.
+To illustrate, we will now use the [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library to implement a simple piggy bank program for saving cycles.
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer withdrawn amounts.
 

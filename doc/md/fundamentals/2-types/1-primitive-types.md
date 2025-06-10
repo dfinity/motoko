@@ -100,12 +100,12 @@ let trigValue = Float.sin(Float.pi / 2); // 1.0
 
 ## Resources
 
-- [`Int`](https://internetcomputer.org/docs/motoko/base/int)
-- [`Nat`](https://internetcomputer.org/docs/motoko/base/nat)
-- [`Bool`](https://internetcomputer.org/docs/motoko/base/bool)
-- [`Blob`](https://internetcomputer.org/docs/motoko/base/blob)
-- [`Char`](https://internetcomputer.org/docs/motoko/base/char)
-- [`Text`](https://internetcomputer.org/docs/motoko/base/text)
-- [`Float`](https://internetcomputer.org/docs/motoko/base/float)
+- [`Int`](https://internetcomputer.org/docs/motoko/base/Int)
+- [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat)
+- [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool)
+- [`Blob`](https://internetcomputer.org/docs/motoko/base/Blob)
+- [`Char`](https://internetcomputer.org/docs/motoko/base/Char)
+- [`Text`](https://internetcomputer.org/docs/motoko/base/Text)
+- [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
