@@ -121,6 +121,15 @@ let err_prim_pkg msgs =
        "M0013"
        "package" "the \"prim\" package is built-in, and cannot be mapped to a directory")
 
+let err_override_missing_package msgs pkg =
+  let open Diag in
+  add_msg msgs
+    (error_message
+       no_region
+       "M0216"
+       "package"
+       (Printf.sprintf "package \"%s\" referenced in --override arg is not defined with --package" pkg))
+
 let append_extension : (string -> bool) -> string -> string =
   fun file_exists f ->
   let file_path = f ^ ".mo" in
@@ -193,7 +202,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     (* TODO support importing local .did file *)
     add_lib_import msgs imported ri_ref at
       { path = in_base base path; package = None }
-  | Ok (Url.Package (pkg,path)) ->
+  | Ok (Url.Package (pkg, path)) ->
     let override_pkg = get_package_override base pkg path in
     if !Flags.verbose && pkg <> override_pkg then Printf.printf "-- Overriding %s -> %s (%s)\n" pkg override_pkg at.left.file;
     begin match M.find_opt override_pkg packages with
@@ -304,6 +313,16 @@ let resolve_flags : flags -> resolved_flags Diag.result
   let open Diag.Syntax in
   let* packages = resolve_packages package_urls in
   let* aliases = resolve_aliases actor_aliases in
+  (* Validate that all packages referenced in --override are defined with --package *)
+  let* () = Diag.with_message_store (fun msgs ->
+    Flags.StringPairMap.iter (fun (_, pkg) override_pkg ->
+      if not (M.mem pkg packages) then
+        err_override_missing_package msgs pkg;
+      if not (M.mem override_pkg packages) then
+        err_override_missing_package msgs override_pkg
+    ) !Flags.package_overrides;
+    Some ()
+  ) in
   Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
