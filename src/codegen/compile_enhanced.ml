@@ -345,7 +345,7 @@ module Const = struct
         | 0 -> compare tag_value1 tag_value2
         | ord -> ord)
     | Opt opt_value1, Opt opt_value2 ->
-       compare opt_value1 opt_value2
+      compare opt_value1 opt_value2
     | Lit l1, Lit l2 -> compare_lit l1 l2
     | _ -> Int.compare (tag v1) (tag v2)
 
