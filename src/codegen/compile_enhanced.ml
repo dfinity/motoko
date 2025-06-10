@@ -448,7 +448,7 @@ module E = struct
 
   (* Utilities, internal to E *)
   let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
-      let (i, t) = Table.add (!ref) x in
+      let i, t = Table.add !ref x in
       ref := t;
       Wasm.I32.of_int_u i
 
