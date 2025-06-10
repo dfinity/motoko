@@ -26,7 +26,7 @@
       flake = false;
     };
     ic-src = {
-      url = "github:luc-blaeser/ic/drun/2025-02-27_03";
+      url = "github:dfinity/ic";
       flake = false;
     };
     ic-wasm-src = {
@@ -204,7 +204,11 @@
 
         inherit (pkgs) nix-build-uncached drun ic-wasm;
 
-        release-files = import ./nix/release-files.nix { inherit self pkgs; };
+        # Platform-specific release files
+        release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
+        "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
+        release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };
+        release-files-macos-latest = import ./nix/release-files-macos-latest.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-tests = pkgs.releaseTools.aggregate {

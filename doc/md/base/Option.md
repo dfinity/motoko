@@ -1,6 +1,4 @@
 # Option
-Typesafe nulls
-
 Optional values can be seen as a typesafe `null`. A value of type `?Int` can
 be constructed with either `null` or `?42`. The simplest way to get at the
 contents of an optional is to use pattern matching:
@@ -136,22 +134,28 @@ Returns true if the optional arguments are equal according to the equality funct
 func assertSome(x : ?Any)
 ```
 
-Asserts that the value is not `null`; fails otherwise.
-@deprecated Option.assertSome will be removed soon; use an assert expression instead
+:::warning Deprecated function
+
+`Option.assertSome` will be removed soon. Use an `assert` expression instead.
+
+:::
 
 ## Function `assertNull`
 ``` motoko no-repl
 func assertNull(x : ?Any)
 ```
 
-Asserts that the value _is_ `null`; fails otherwise.
-@deprecated Option.assertNull will be removed soon; use an assert expression instead
+:::warning Deprecated function
+
+`Option.assertNull` will be removed soon. Use an `assert` expression instead.
+:::
 
 ## Function `unwrap`
 ``` motoko no-repl
 func unwrap<T>(x : ?T) : T
 ```
 
-Unwraps an optional value, i.e. `unwrap(?x) = x`.
+:::warning Deprecated function
 
-@deprecated Option.unwrap is unsafe and fails if the argument is null; it will be removed soon; use a `switch` or `do?` expression instead
+`Option.unwrap` is unsafe and will be removed soon. Use a `switch` or `do?` expression instead.
+:::

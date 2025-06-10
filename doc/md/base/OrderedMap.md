@@ -6,20 +6,31 @@ A red-black tree is a balanced binary search tree ordered by the keys.
 The tree data structure internally colors each of its nodes either red or black,
 and uses this information to balance the tree during the modifying operations.
 
-Performance:
-* Runtime: `O(log(n))` worst case cost per insertion, removal, and retrieval operation.
-* Space: `O(n)` for storing the entire tree.
+| Runtime   | Space |
+|----------|------------|
+| `O(log(n))` (worst case per insertion, removal, or retrieval)  | `O(n)` (for storing the entire tree) |
+
 `n` denotes the number of key-value entries (i.e. nodes) stored in the tree.
 
-Note:
-* Map operations, such as retrieval, insertion, and removal create `O(log(n))` temporary objects that become garbage.
+:::note Garbage collection
 
-Credits:
+Unless stated otherwise, operations that iterate over or modify the map (such as insertion, deletion, traversal, and transformation) may create temporary objects with worst-case space usage of `O(log(n))` or `O(n)`. These objects are short-lived and will be collected by the garbage collector automatically.
+
+:::
+
+:::note Assumptions
+
+Runtime and space complexity assumes that `compare`, `equal`, and other functions execute in `O(1)` time and space.
+:::
+
+:::info Credits
 
 The core of this implementation is derived from:
 
 * Ken Friis Larsen's [RedBlackMap.sml](https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml), which itself is based on:
 * Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
+:::
+
 
 ## Type `Map`
 ``` motoko no-repl
@@ -28,8 +39,8 @@ type Map<K, V> = { size : Nat; root : Tree<K, V> }
 
 Collection of key-value entries, ordered by the keys and key unique.
 The keys have the generic type `K` and the values the generic type `V`.
-If `K` and `V` is stable types then `Map<K, V>` is also stable. 
-To ensure that property the `Map<K, V>` does not have any methods, instead 
+If `K` and `V` is stable types then `Map<K, V>` is also stable.
+To ensure that property the `Map<K, V>` does not have any methods, instead
 they are gathered in the functor-like class `Operations` (see example there).
 
 ## Class `Operations<K>`
@@ -38,10 +49,10 @@ they are gathered in the functor-like class `Operations` (see example there).
 class Operations<K>(compare : (K, K) -> O.Order)
 ```
 
-Class that captures key type `K` along with its ordering function `compare` 
+Class that captures key type `K` along with its ordering function `compare`
 and provides all operations to work with a map of type `Map<K, _>`.
 
-An instance object should be created once as a canister field to ensure 
+An instance object should be created once as a canister field to ensure
 that the same ordering function is used for every operation.
 
 Example:
@@ -52,7 +63,7 @@ import Nat "mo:base/Nat";
 actor {
   let natMap = Map.Make<Nat>(Nat.compare); // : Operations<Nat>
   stable var keyStorage : Map.Map<Nat, Text> = natMap.empty<Text>();
-  
+
   public func addKey(id : Nat, key : Text) : async () {
     keyStorage := natMap.put(keyStorage, id, key);
   }
@@ -82,10 +93,9 @@ Debug.print(debug_show(Iter.toArray(natMap.entries(m))));
 // [(0, "Zero"), (1, "One"), (2, "Two")]
 ```
 
-Runtime: `O(n * log(n))`.
-Space: `O(n)` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime   | Space |
+|----------|------------|
+| `O(n * log(n))`  | `O(n)` (retained memory + garbage) |
 
 Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
@@ -117,14 +127,9 @@ Debug.print(debug_show(Iter.toArray(natMap.entries(map))));
 // [(0, "Zero"), (1, "One"), (2, "Two")]
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(log(n))`.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
-   
-Note: The returned map shares with the `m` most of the tree nodes. 
-Garbage collecting one of maps (e.g. after an assignment `m := natMap.put(m, k)`)
-causes collecting `O(log(n))` nodes.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(log(n))` | `O(log(n))`   |
 
 
 ### Function `replace`
@@ -160,14 +165,10 @@ Debug.print(debug_show(old2));
 // null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(log(n))` retained memory |
 
-Note: The returned map shares with the `m` most of the tree nodes. 
-Garbage collecting one of maps (e.g. after an assignment `m := natMap.replace(m, k).0`)
-causes collecting `O(log(n))` nodes.
 
 
 ### Function `mapFilter`
@@ -202,10 +203,9 @@ Debug.print(debug_show(Iter.toArray(natMap.entries(newMap))));
 // [(1, "Twenty One"), (2, "Twenty Two")]
 ```
 
-Runtime: `O(n * log(n))`.
-Space: `O(n)` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime   | Space |
+|----------|------------|
+| `O(n * log(n))`  | `O(n)` (retained memory + garbage) |
 
 Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
@@ -261,10 +261,9 @@ Debug.print(debug_show natMap.contains(map, 1)); // => true
 Debug.print(debug_show natMap.contains(map, 42)); // => false
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)`.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(1)` |
 
 
 ### Function `maxEntry`
@@ -288,9 +287,9 @@ Debug.print(debug_show(natMap.maxEntry(map))); // => ?(2, "Two")
 Debug.print(debug_show(natMap.maxEntry(natMap.empty()))); // => null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)`.
-where `n` denotes the number of key-value entries stored in the map.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(1)` |
 
 
 ### Function `minEntry`
@@ -314,9 +313,9 @@ Debug.print(debug_show(natMap.minEntry(map))); // => ?(0, "Zero")
 Debug.print(debug_show(natMap.minEntry(natMap.empty()))); // => null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)`.
-where `n` denotes the number of key-value entries stored in the map.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(1)` |
 
 
 ### Function `delete`
@@ -344,14 +343,9 @@ Debug.print(debug_show(Iter.toArray(natMap.entries(natMap.delete(map, 42)))));
 // [(0, "Zero"), (1, "One"), (2, "Two")]
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(log(n))`
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: The returned map shares with the `m` most of the tree nodes. 
-Garbage collecting one of maps (e.g. after an assignment `m := natMap.delete(m, k).0`)
-causes collecting `O(log(n))` nodes.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(log(n))` |
 
 
 ### Function `remove`
@@ -387,14 +381,9 @@ Debug.print(debug_show(old2));
 // null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(log(n))`.
-where `n` denotes the number of key-value entries stored in the map and
-assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: The returned map shares with the `m` most of the tree nodes. 
-Garbage collecting one of maps (e.g. after an assignment `m := natMap.remove(m, k)`)
-causes collecting `O(log(n))` nodes.
+| Runtime       | Space                       |
+|---------------|-----------------------------|
+| `O(log(n))`   | `O(log(n))` |
 
 
 ### Function `empty`
@@ -449,12 +438,9 @@ var sum = 0;
 for ((k, _) in natMap.entries(map)) { sum += k; };
 Debug.print(debug_show(sum)); // => 3
 ```
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map.
-
-Note: Full map iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                               |
+|---------|-------------------------------------|
+| `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
 
 
 ### Function `entriesRev`
@@ -488,12 +474,9 @@ Debug.print(debug_show(Iter.toArray(natMap.keys(map))));
 
 // [0, 1, 2]
 ```
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map.
-
-Note: Full map iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                               |
+|---------|-------------------------------------|
+| `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
 
 
 ### Function `vals`
@@ -519,12 +502,9 @@ Debug.print(debug_show(Iter.toArray(natMap.vals(map))));
 
 // ["Zero", "One", "Two"]
 ```
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map.
-
-Note: Full map iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                               |
+|---------|-------------------------------------|
+| `O(n)`  | `O(log(n))` retained + `O(n)` garbage |
 
 
 ### Function `map`
@@ -554,10 +534,9 @@ Debug.print(debug_show(Iter.toArray(natMap.entries(resMap))));
 // [(0, 0), (1, 2), (2, 4)]
 ```
 
-Cost of mapping all the elements:
-Runtime: `O(n)`.
-Space: `O(n)` retained memory
-where `n` denotes the number of key-value entries stored in the map.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | `O(n)` |
 
 
 ### Function `size`
@@ -581,8 +560,9 @@ Debug.print(debug_show(natMap.size(map)));
 // 3
 ```
 
-Runtime: `O(n)`.
-Space: `O(1)`.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | `O(1)` |
 
 
 ### Function `foldLeft`
@@ -612,12 +592,9 @@ Debug.print(debug_show(natMap.foldLeft(map, (0, ""), folder)));
 // (3, "ZeroOneTwo")
 ```
 
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: depends on `combine` function plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map.
-
-Note: Full map iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | Depends on `combine` + `O(n)` garbage |
 
 
 ### Function `foldRight`
@@ -647,12 +624,9 @@ Debug.print(debug_show(natMap.foldRight(map, (0, ""), folder)));
 // (3, "TwoOneZero")
 ```
 
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: depends on `combine` function plus garbage, see the note below.
-where `n` denotes the number of key-value entries stored in the map.
-
-Note: Full map iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | Depends on `combine` + `O(n)` garbage |
 
 
 ### Function `all`
@@ -678,9 +652,9 @@ Debug.print(debug_show(natMap.all<Text>(map, func (k, v) = (k < 2))));
 // false
 ```
 
-Runtime: `O(n)`.
-Space: `O(1)`.
-where `n` denotes the number of key-value entries stored in the map.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(n)` | `O(1)` |
 
 
 ### Function `some`
@@ -706,9 +680,9 @@ Debug.print(debug_show(natMap.some<Text>(map, func (k, v) = (k >= 0))));
 // true
 ```
 
-Runtime: `O(n)`.
-Space: `O(1)`.
-where `n` denotes the number of key-value entries stored in the map.
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(n)` | `O(1)` |
 
 
 ### Function `validate`
@@ -716,7 +690,7 @@ where `n` denotes the number of key-value entries stored in the map.
 func validate<V>(m : Map<K, V>) : ()
 ```
 
-Debug helper that check internal invariants of the given map `m`. 
+Debug helper that check internal invariants of the given map `m`.
 Raise an error (for a stack trace) if invariants are violated.
 
 ## Function `Make`
@@ -724,7 +698,7 @@ Raise an error (for a stack trace) if invariants are violated.
 func Make<K>(compare : (K, K) -> O.Order) : Operations<K>
 ```
 
-Create `OrderedMap.Operations` object capturing key type `K` and `compare` function. 
+Create `OrderedMap.Operations` object capturing key type `K` and `compare` function.
 It is an alias for the `Operations` constructor.
 
 Example:

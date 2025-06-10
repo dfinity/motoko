@@ -1,9 +1,17 @@
 # Int16
 Provides utility functions on 16-bit signed integers.
 
-Note that most operations are available as built-in operators (e.g. `1 + 1`).
+:::note
+Most operations are available as built-in operators (e.g. `1 + 1`).
+:::
+
+:::info Function form for higher-order use
+
+Several arithmetic and comparison functions (e.g. `add`, `sub`, `bitor`, `bitand`, `pow`) are defined in this module to enable their use as first-class function values, which is not possible with operators like `+`, `-`, `==`, etc., in Motoko. This allows you to pass these operations to higher-order functions such as `map`, `foldLeft`, or `sort`.
+:::
 
 Import from the base library to use this module.
+
 ```motoko name=import
 import Int16 "mo:base/Int16";
 ```
@@ -223,10 +231,6 @@ Example:
 Int16.equal(-1, -1); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `==` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `==`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -252,10 +256,6 @@ Example:
 Int16.notEqual(-1, -2); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `!=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `!=`
-as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
@@ -270,10 +270,6 @@ Example:
 Int16.less(-2, 1); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<`
-as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
@@ -288,10 +284,6 @@ Example:
 Int16.lessOrEqual(-2, -2); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<=`
-as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
@@ -354,10 +346,6 @@ Example:
 Int16.neg(123) // => -123
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 ## Function `add`
 ``` motoko no-repl
@@ -373,10 +361,6 @@ Example:
 Int16.add(100, 23) // => +123
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `+` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `+`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -398,10 +382,6 @@ Example:
 Int16.sub(123, 100) // => +23
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -423,10 +403,6 @@ Example:
 Int16.mul(12, 10) // => +120
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -449,10 +425,6 @@ Example:
 Int16.div(123, 10) // => +12
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `/` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `/`
-as a function value at the moment.
 
 ## Function `rem`
 ``` motoko no-repl
@@ -469,10 +441,6 @@ Example:
 Int16.rem(123, 10) // => +3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `%`
-as a function value at the moment.
 
 ## Function `pow`
 ``` motoko no-repl
@@ -488,10 +456,6 @@ Example:
 Int16.pow(2, 10) // => +1_024
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**`
-as a function value at the moment.
 
 ## Function `bitnot`
 ``` motoko no-repl
@@ -505,10 +469,6 @@ Example:
 Int16.bitnot(-256 /* 0xff00 */) // => +255 // 0xff
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `^` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `^`
-as a function value at the moment.
 
 ## Function `bitand`
 ``` motoko no-repl
@@ -522,10 +482,6 @@ Example:
 Int16.bitand(0x0fff, 0x00f0) // => +240 // 0xf0
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `&` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `&`
-as a function value at the moment.
 
 ## Function `bitor`
 ``` motoko no-repl
@@ -538,10 +494,6 @@ Example:
 ```motoko include=import
 Int16.bitor(0x0f0f, 0x00f0) // => +4_095 // 0x0fff
 ```
-Note: The reason why this function is defined in this library (in addition
-to the existing `|` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `|`
-as a function value at the moment.
 
 ## Function `bitxor`
 ``` motoko no-repl
@@ -554,10 +506,6 @@ Example:
 ```motoko include=import
 Int16.bitxor(0x0fff, 0x00f0) // => +3_855 // 0x0f0f
 ```
-Note: The reason why this function is defined in this library (in addition
-to the existing `^` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `^`
-as a function value at the moment.
 
 ## Function `bitshiftLeft`
 ``` motoko no-repl
@@ -576,10 +524,6 @@ Example:
 Int16.bitshiftLeft(1, 8) // => +256 // 0x100 equivalent to `2 ** 8`.
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<<`
-as a function value at the moment.
 
 ## Function `bitshiftRight`
 ``` motoko no-repl
@@ -598,10 +542,6 @@ Example:
 Int16.bitshiftRight(1024, 8) // => +4 // equivalent to `1024 / (2 ** 8)`
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>>`
-as a function value at the moment.
 
 ## Function `bitrotLeft`
 ``` motoko no-repl
@@ -620,10 +560,6 @@ Example:
 Int16.bitrotLeft(0x2001, 4) // => +18 // 0x12.
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<<>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<<>`
-as a function value at the moment.
 
 ## Function `bitrotRight`
 ``` motoko no-repl
@@ -642,10 +578,6 @@ Example:
 Int16.bitrotRight(0x2010, 8) // => +4_128 // 0x01020.
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<>>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<>>`
-as a function value at the moment.
 
 ## Function `bittest`
 ``` motoko no-repl
@@ -762,10 +694,12 @@ Example:
 Int16.addWrap(2 ** 14, 2 ** 14) // => -32_768 // overflow
 ```
 
-Note: The reason why this function is defined in this library (in addition
+:::info 
+The reason why this function is defined in this library (in addition
 to the existing `+%` operator) is so that you can use it as a function
 value to pass to a higher order function. It is not possible to use `+%`
 as a function value at the moment.
+:::
 
 ## Function `subWrap`
 ``` motoko no-repl
@@ -781,10 +715,6 @@ Example:
 Int16.subWrap(-2 ** 15, 1) // => +32_767 // underflow
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-%`
-as a function value at the moment.
 
 ## Function `mulWrap`
 ``` motoko no-repl
@@ -800,10 +730,6 @@ Example:
 Int16.mulWrap(2 ** 8, 2 ** 8) // => 0 // overflow
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*%`
-as a function value at the moment.
 
 ## Function `powWrap`
 ``` motoko no-repl
@@ -821,7 +747,3 @@ Example:
 Int16.powWrap(2, 15) // => -32_768 // overflow
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**%`
-as a function value at the moment.
