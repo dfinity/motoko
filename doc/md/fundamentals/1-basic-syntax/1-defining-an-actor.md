@@ -23,8 +23,6 @@ In Motoko, actors are defined at the top level of a source file using the `actor
 
 An actor definition is required for a Motoko program to be deployed as a canister on ICP.
 
-
-
 Each actor maintains separate queues of incoming messages, one per sender. Messages are processed in order, ensuring that one message cannot interfere with another. This protects the actor's state from concurrent modification.
 
 Since actors process messages independently, multiple actors can handle messages in parallel, enabling concurrent execution across actors.
@@ -78,6 +76,6 @@ service : {
 
 ## Resources
 
-- [Actors](https://internetcomputer.org/docs/motoko/fundamentals/async-actors)
+- [Actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async)
 
 <img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
