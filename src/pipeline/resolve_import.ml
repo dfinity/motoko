@@ -316,8 +316,6 @@ let resolve_flags : flags -> resolved_flags Diag.result
   (* Validate that all packages referenced in --override are defined with --package *)
   let* () = Diag.with_message_store (fun msgs ->
     Flags.StringPairMap.iter (fun (_, pkg) override_pkg ->
-      if not (M.mem pkg packages) then
-        err_override_missing_package msgs pkg;
       if not (M.mem override_pkg packages) then
         err_override_missing_package msgs override_pkg
     ) !Flags.package_overrides;
