@@ -1014,10 +1014,15 @@ let rec is_explicit_pat p =
   | LitP l | SignP (_, l) -> is_explicit_lit !l
   | OptP p1 | TagP (_, p1) | ParP p1 -> is_explicit_pat p1
   | TupP ps -> List.for_all is_explicit_pat ps
-  (* TODO check if it's really fine to skip all type patterns here? *)
-  | ObjP pfs -> List.for_all is_explicit_pat (List.filter_map pf_pattern pfs)
+  | ObjP pfs -> List.for_all is_explicit_pat_field pfs
   | AltP (p1, p2) -> is_explicit_pat p1 && is_explicit_pat p2
   | AnnotP _ -> true
+
+and is_explicit_pat_field pf =
+  match pf.it with
+  | VarPF(_, p) -> is_explicit_pat p
+  (* NOTE(Christoph): Being conservative here, it might be fine to allow type pattern fields *)
+  | TypPF(_) -> false
 
 let rec is_explicit_exp e =
   match e.it with
@@ -2356,14 +2361,15 @@ and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
 and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_env =
   match pfs with
   | [] -> (T.Object, List.sort T.compare_field ts), ve
-  | { it = TypPF(_); _}::pfs' -> infer_pat_fields at env pfs' ts ve
+  | { it = TypPF(id); _}::pfs' ->
+    if Option.is_none id.note then
+      error env at "M0221" "failed to determine type for type pattern field";
+    infer_pat_fields at env pfs' ts ve
   | { it = VarPF(id, pat); _}::pfs' ->
     let typ, ve1 = infer_pat false env pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     Field_sources.add_src env.srcs id.at;
     infer_pat_fields at env pfs' (T.{lab = id.it; typ; src = {empty_src with track_region = id.at}}::ts) ve'
-  | { it = TypPF(_); at; _ } :: _->
-     error env at "M0221" "can't infer type pattern fields"
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
@@ -2443,9 +2449,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, tfs =
-      try T.as_obj_sub (List.map (fun (pf : pat_field) ->
-        (* TODO: sus *)
-        (pf_id pf).it) pfs') t
+      try T.as_obj_sub (List.map (fun pf -> (pf_id pf).it) pfs') t
       with Invalid_argument _ ->
         error env pat.at "M0113" "object pattern cannot consume expected type%a"
           display_typ_expand t
@@ -2542,7 +2546,9 @@ and check_pats env ts pats ve at : Scope.val_env =
 and check_pat_fields env t tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
-  | _, {it = TypPF(id); _}::pfs' ->
+  | _, {it = TypPF(id); at; _}::pfs' ->
+    if Option.is_none id.note then
+      error env at "M0221" "failed to determine type for type pattern field";
     check_pat_fields env t tfs pfs' ve at
   | [], {it = VarPF(id, _); at; _}::_ ->
     error env at "M0119"
@@ -2551,14 +2557,14 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       display_typ_expand t
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env t tfs' pfs ve at
-  | T.{lab; typ; src}::tfs', ({it = VarPF(id, pat); at; _} as pf)::pfs' ->
+  | T.{lab; typ; src}::tfs', ({it = VarPF(id, pat); _} as pf)::pfs' ->
     match compare id.it lab with
-    | -1 -> check_pat_fields env t [] pfs ve at
-    | +1 -> check_pat_fields env t tfs' pfs ve at
+    | -1 -> check_pat_fields env t [] pfs ve pf.at
+    | +1 -> check_pat_fields env t tfs' pfs ve pf.at
     | _ ->
       if T.is_mut typ then
-        error env at "M0120" "cannot pattern match mutable field %s" lab;
-      check_deprecation env at "field" lab src.T.depr;
+        error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
+      check_deprecation env pf.at "field" lab src.T.depr;
       let val_kind = kind_of_field_pattern pf in
       let ve1 = check_pat_aux env typ pat val_kind in
       let ve' =
@@ -2567,6 +2573,82 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       | {it = VarPF(id', _); at = at';_}::_ when id'.it = lab ->
         error env at' "M0121" "duplicate field %s in object pattern" lab
       | _ -> check_pat_fields env t tfs' pfs' ve' at
+
+and check_pat_typ_dec env t pat : Scope.typ_env =
+  match pat.it, T.promote t with
+  | (WildP, _) | (SignP _, _) | (LitP _, _) ->
+    T.Env.empty
+  | ObjP pfs, T.Obj (s, tfs) ->
+    let pfs' = List.stable_sort compare_pat_field pfs in
+    check_pat_fields_typ_dec env t tfs pfs' T.Env.empty pat.at
+  | TagP (id, pat1), T.Variant tfs ->
+    begin match T.lookup_val_field_opt id.it tfs with
+      | Some t1 -> check_pat_typ_dec env t1 pat1
+      | None -> T.Env.empty
+    end
+  | TupP pats, T.Tup ts ->
+    check_pats_typ_dec env ts pats T.Env.empty pat.at
+  | ParP pat1, _ ->
+    check_pat_typ_dec env t pat1
+  | OptP pat1, T.Opt t_opt ->
+    check_pat_typ_dec env t_opt pat1
+  | AltP (pat1, pat2), _ ->
+    let te1 = check_pat_typ_dec env t pat1 in
+    let te2 = check_pat_typ_dec env t pat2 in
+    if T.Env.keys te1 <> T.Env.keys te2 then
+      error env pat.at "M0189" "different set of type bindings in pattern alternatives";
+    let compare_cons (c1 : T.con) (c2 : T.con) = eq_kind env pat.at (Mo_types.Cons.kind c1) (Mo_types.Cons.kind c2) in
+    let _ = T.Env.merge (fun s con1 con2 ->
+      if not (compare_cons (Option.get con1) (Option.get con2)) then
+        (* TODO Actually report the mismatched types *)
+        error env pat.at "M0189" "mismatched types for type %s in patterns" s
+      else None) te1 te2 in
+    te1
+  | _, _ -> T.Env.empty
+
+and check_pats_typ_dec env ts pats te at : Scope.typ_env =
+  let ts_len = List.length ts in
+  let pats_len = List.length pats in
+  let rec go ts pats te =
+    match ts, pats with
+    | [], [] -> te
+    | t::ts', pat::pats' ->
+        let te1 = check_pat_typ_dec env t pat in
+        let te' = disjoint_union env at "M0017" "duplicate binding for type %s in pattern" te te1 in
+        go ts' pats' te'
+    | _, _ ->
+        error env at "M0118" "tuple pattern has %i components but expected type has %i"
+          pats_len ts_len
+  in
+  go ts pats te
+
+and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env = match tfs, pfs with
+  | _, [] -> te
+  | [], {it = TypPF(id); at; _}::_ ->
+    error env at "M0119"
+      "object type field %s is not contained in expected type%a"
+      id.it
+      display_typ_expand t
+  | [], {it = VarPF(_); _}::pfs' ->
+    check_pat_fields_typ_dec env t tfs pfs' te at
+  | T.{lab; typ = Typ t'; _}::tfs', { it = TypPF(id); _ }::pfs' ->
+    if compare id.it lab = 0 then (
+      id.note <- Some t';
+      let te' = T.Env.add id.it t' te in
+      match pfs' with
+      | {it = TypPF(id'); at = at';_}::_ when id'.it = lab ->
+        error env at' "M0121" "duplicate type field %s in object pattern" lab
+      | _ -> check_pat_fields_typ_dec env t tfs' pfs' te' at
+    ) else
+      check_pat_fields_typ_dec env t tfs' pfs te at
+  | T.{lab; typ; _}::tfs', { it = TypPF(_); _ }::_ ->
+    check_pat_fields_typ_dec env t tfs' pfs te at
+  | T.{lab; typ; _}::tfs', { it = VarPF(id, p); _ }::pfs' ->
+    if compare id.it lab = 0 then
+      let te1 = check_pat_typ_dec env typ p in
+      disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
+    else
+      check_pat_fields_typ_dec env t tfs' pfs te at
 
 (* Objects *)
 
@@ -3290,12 +3372,25 @@ and gather_pat_field env scope pf : Scope.t =
   let val_kind = kind_of_field_pattern pf in
   match pf.it with
   | VarPF (id, pat) -> gather_pat_aux env val_kind scope pat
-  | TypPF id -> scope (* TODO *)
+  | TypPF id -> gather_typ_id env scope id
 
 and gather_id env ve id val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
   T.Env.add id.it (T.Pre, id.at, val_kind) ve
+
+and gather_typ_id env scope id : Scope.t =
+  let open Scope in
+  if T.Env.mem id.it scope.typ_env then
+    error_duplicate env "type " id;
+  (* NOTE: If we decide to require specifying the arity and bounds of
+  type constructors on type pattern fields we need to record them here *)
+  let pre_k = T.Abs ([], T.Pre) in
+  let c = Cons.fresh id.it pre_k in
+  { scope with
+    typ_env = T.Env.add id.it c scope.typ_env;
+    con_env = T.ConSet.disjoint_add c scope.con_env;
+  }
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : Scope.t =
@@ -3335,7 +3430,14 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
        | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
-  | LetD _ | ExpD _ | VarD _ ->
+  | LetD (pat, exp, _) ->
+       begin match infer_val_path env exp with
+       | Some t ->
+          let te = check_pat_typ_dec {env with pre = true} t pat in
+          Scope.{empty with typ_env = te}
+       | None -> Scope.empty
+       end
+  | ExpD _ | VarD _ ->
     Scope.empty
   | TypD (id, typ_binds, typ) ->
     let k = check_typ_def env dec.at (id, typ_binds, typ) in

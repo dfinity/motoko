@@ -888,7 +888,7 @@ pat_field :
     { VarPF(x, annot_pat (VarP x @! x.at) t) @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
     { VarPF(x, annot_pat p t) @@ at $sloc }
-  | TYPE x=id
+  | TYPE x=typ_id
     { TypPF(x) @@ at $sloc }
 
 pat_opt :

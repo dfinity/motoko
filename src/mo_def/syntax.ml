@@ -122,11 +122,11 @@ and pat' =
 and pat_field = pat_field' Source.phrase
 and pat_field' =
   | VarPF of id * pat
-  | TypPF of id
+  | TypPF of typ_id
 
 let pf_id pf = match pf.Source.it with
   | VarPF(id, _) -> id
-  | TypPF(id) -> id
+  | TypPF(id) -> Source.{ it = id.it; at = id.at; note = () }
 
 let pf_pattern pf = match pf.Source.it with
   | VarPF(_, pat) -> Some pat
