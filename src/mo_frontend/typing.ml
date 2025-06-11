@@ -2285,6 +2285,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         in
         let rec decompose env exp target_type acc =
           match exp.it, target_type with
+          | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
             print_endline (Source.read_region_with_markers exp.at |> Option.value ~default:"");
             let (subs, deferred, to_fix), acc_ts = decompose_list env exps ts [] acc in
