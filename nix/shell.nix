@@ -1,6 +1,7 @@
 { pkgs
 , nix-update
 , base-src
+, core-src
 , llvmEnv
 , esm
 , viper-server
