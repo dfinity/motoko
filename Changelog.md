@@ -1,5 +1,97 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242)
+  * bugfix: fix `-fshared-code` bug (#5230).
+  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
+
+## 0.14.12 (2025-05-28)
+
+* motoko (`moc`)
+
+  * Added the `rootKey` primitive (#4994).
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
+
+  * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
+
+## 0.14.10 (2025-05-12)
+
+* motoko (`moc`)
+
+  * Added new primitives for cost calculation:
+    `costCall`, `costCreateCanister`, `costHttpRequest`, `costSignWithEcdsa`, `costSignWithSchnorr` (#5001).
+
+## 0.14.9 (2025-04-25)
+
+* motoko (`moc`)
+
+  * Added new primitives for exploding fixed-width numbers to bytes:
+    `explodeNat16`, `explodeInt16`, `explodeNat32`, `explodeInt32`, `explodeNat64`, `explodeInt64` (#5057).
+
+## 0.14.8 (2025-04-17)
+
+* motoko (`moc`)
+
+  * Add random-access indexing to `Blob`, support special methods `get` and `keys` (#5018).
+
+  * Officializing **enhanced orthogonal persistence** (EOP) after a successful beta testing phase (#5035).
+
+    EOP needs to be explicitly enabled by the `--enhanced-orthogonal-persistence` compiler flag or via `args` in `dfx.json`:
+    ```
+      "type" : "motoko"
+      ...
+      "args" : "--enhanced-orthogonal-persistence"
+    ```
+
+  * Add support for parser error recovery to improve LSP (Serokell, Milestone-2) (#4959).
+
+  * We now provide a proper `motoko-mode` for `emacs` (#5043).
+
+  * bugfix: Avoid generating new Candid `type`s arising from equal homonymous Motoko `type` (if possible)
+    in service definitions (#4309, #5013).
+
+  * bugfix: Provide a more consistent framework for dealing with internally generated type indentifiers,
+    fixing caching bugs, e.g. in the VSCode plugin (#5055).
+
+## 0.14.7 (2025-04-04)
+
+* motoko (`moc`)
+
+  * Preserve and infer named types both to improve displayed types in error messages, and to preserve function signatures when deriving Candid types (#4943).
+    The names remain semantically insignificant and are ignored when comparing types for subtyping and equality.
+
+    For example,
+    ``` motoko
+    func add(x : Int, y : Int) : (res : Int) = x + y;
+    ```
+    now has inferred type:
+    ``` motoko
+    (x : Int, y: Int) -> (res : Int)
+    ```
+    Previously, the type would be inferred as:
+    ``` motoko
+    (Int, Int) -> Int
+    ```
+
+  * Refine the `*.most` stable signature file format to distinguish stable variables that are strictly required by the migration function rather than propagated from the actor body (#4991).
+    This enables the stable compatibility check to verify that a migration function will not fail due to missing required fields.
+    Required fields are declared `in`, not `stable`, in the actor's pre-signature.
+
+  * Added improved LSP cache for typechecking (thanks to Serokell) (#4931).
+
+  * Reduce enhanced-orthogonal-persistence memory requirements using incremental allocation within partitions (#4979).
+
+* motoko-base
+
+  * Deprecated `ExperimentalCycles.add`, use a parenthetical `(with cycles = <amount>) <send>` instead (dfinity/motoko-base#703).
+
 ## 0.14.6 (2025-04-01)
 
 * motoko (`moc`)

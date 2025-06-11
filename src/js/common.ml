@@ -59,7 +59,9 @@ let js_version = Js.string Source_id.id
 
 let js_check source =
   Mo_types.Cons.session (fun _ -> 
-    js_result (Pipeline.check_files [Js.to_string source]) (fun _ -> Js.null))
+    js_result
+      (Pipeline.check_files ~enable_recovery:true [Js.to_string source])
+      (fun _ -> Js.null))
 
 let js_set_run_step_limit limit =
   Mo_interpreter.Interpret.step_limit := limit
@@ -143,13 +145,18 @@ let js_parse_candid s =
   js_result parse_result (fun (prog, _) ->
     Js.some (js_of_sexpr (Idllib.Arrange_idl.prog prog)))
 
-let js_parse_motoko s =
+let js_parse_motoko enable_recovery s =
   let main_file = "" in
-  let parse_result = Pipeline.parse_string main_file (Js.to_string s) in
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
+    then Pipeline.parse_string_with_recovery
+    else Pipeline.parse_string
+  in
+  let parse_result = parse_fn main_file (Js.to_string s) in
   js_result parse_result (fun (prog, _) ->
     let open Mo_def in
     let module Arrange = Arrange.Make (struct
       let include_sources = true
+      let include_type_rep = Arrange.Without_type_rep
       let include_types = false
       let include_docs = Some prog.note.Syntax.trivia
       let include_parenthetical = false
@@ -157,12 +164,16 @@ let js_parse_motoko s =
     end)
     in Js.some (js_of_sexpr (Arrange.prog prog)))
 
-let js_parse_motoko_with_deps path s =
+let js_parse_motoko_with_deps enable_recovery path s =
   let main_file = Js.to_string path in
   let s = Js.to_string s in
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
+    then Pipeline.parse_string_with_recovery
+    else Pipeline.parse_string
+  in
   let prog_and_deps_result =
     let open Diag.Syntax in
-    let* prog, _ = Pipeline.parse_string main_file s in
+    let* prog, _ = parse_fn main_file s in
     let* deps =
       Pipeline.ResolveImport.resolve (Pipeline.resolve_flags ()) prog main_file
     in
@@ -172,6 +183,7 @@ let js_parse_motoko_with_deps path s =
     let open Mo_def in
     let module Arrange = Arrange.Make (struct
       let include_sources = true
+      let include_type_rep = Arrange.Without_type_rep
       let include_types = false
       let include_docs = Some prog.note.Syntax.trivia
       let include_parenthetical = false
@@ -224,7 +236,7 @@ module Map_conversion (Map : Map.S) = struct
   let to_ocaml = from_js
 end
 
-let js_parse_motoko_typed_with_scope_cache_impl paths scope_cache =
+let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cache =
   let paths = paths |> Js.to_array |> Array.to_list |> List.map Js.to_string in
   let module String_map_conversion = Map_conversion (Mo_types.Type.Env) in
   let scope_cache =
@@ -238,32 +250,33 @@ let js_parse_motoko_typed_with_scope_cache_impl paths scope_cache =
            all. Hence, the use of [Obj.magic] is legitimate here. *)
         String_map_conversion.from_js scope_cache Js.to_string Obj.magic)
   in
+  let parse_fn = if Js.Opt.get enable_recovery (fun () -> false)
+    then Pipeline.parse_file_with_recovery
+    else Pipeline.parse_file
+  in
   let load_result =
     Mo_types.Cons.session (fun () ->
       Pipeline.load_progs_cached
-        Pipeline.parse_file
-        paths
-        Pipeline.initial_stat_env
-        scope_cache)
+        parse_fn paths Pipeline.initial_stat_env scope_cache)
   in
   match load_result with
   | Ok ((_libs, progs, _senv, scope_cache), msgs) ->
     let progs =
-      progs |> List.map (fun (prog, immediate_imports) ->
+      progs |> List.map (fun (prog, immediate_imports, sscope) ->
         let open Mo_def in
-        let module Arrange_sources_types = Arrange.Make (struct
+        let module Arrange = Arrange.Make (struct
           let include_sources = true
+          let include_type_rep = Arrange.With_type_rep (Some sscope.Mo_types.Scope.fld_src_env)
           let include_types = true
           let include_docs = Some prog.note.Syntax.trivia
           let include_parenthetical = false
           let main_file = Some prog.at.left.file
         end)
         in
-        ( js_of_sexpr (Arrange_sources_types.prog prog)
+        ( js_of_sexpr (Arrange.prog prog)
         (* , js_of_sexpr (Arrange_sources_types.typ typ) *)
         , immediate_imports |> List.map Js.string |> Array.of_list |> Js.array )
-        )
-      |> Array.of_list
+      ) |> Array.of_list
     in
     let scope_cache =
       String_map_conversion.to_js
@@ -274,9 +287,9 @@ let js_parse_motoko_typed_with_scope_cache_impl paths scope_cache =
     Ok ((progs, scope_cache), msgs)
   | Error msgs -> Error msgs
 
-let js_parse_motoko_typed_with_scope_cache paths scope_cache =
+let js_parse_motoko_typed_with_scope_cache enable_recovery paths scope_cache =
   let result =
-    js_parse_motoko_typed_with_scope_cache_impl paths (Js.Opt.return scope_cache)
+    js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths (Js.Opt.return scope_cache)
   in
   js_result result (fun (progs, scope_cache) ->
     let progs =
@@ -291,7 +304,7 @@ let js_parse_motoko_typed_with_scope_cache paths scope_cache =
     Js.some (Js.array [| Js.Unsafe.inject progs; Js.Unsafe.inject scope_cache |]))
 
 let js_parse_motoko_typed paths =
-  let result = js_parse_motoko_typed_with_scope_cache_impl paths Js.Opt.empty in
+  let result = js_parse_motoko_typed_with_scope_cache_impl Js.Opt.empty paths Js.Opt.empty in
   js_result result (fun (progs, _scope_cache) ->
     let progs =
       progs |> Array.map (fun (ast, _immediate_imports) ->

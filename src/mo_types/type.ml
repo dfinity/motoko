@@ -1,6 +1,9 @@
+open Field_sources
+
 (* Representation *)
 type lab = string
 type var = string
+type name = string
 
 type control =
   | Returns        (* regular local function or one-shot shared function *)
@@ -56,13 +59,14 @@ and typ =
   | Any                                       (* top *)
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
+  | Named of name * typ                       (* named type *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and src = {depr : string option; region : Source.region}
+and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -70,12 +74,12 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-let empty_src = {depr = None; region = Source.no_region}
+let empty_src = {depr = None; track_region = Source.no_region; region = Source.no_region}
 
 (* Stable signatures *)
 type stab_sig =
   | Single of field list
-  | PrePost of field list * field list
+  | PrePost of ((* required *) bool * field) list * field list
 
 (* Efficient comparison *)
 let tag_prim = function
@@ -132,6 +136,7 @@ let tag = function
   | Non -> 12
   | Pre -> 13
   | Typ _ -> 14
+  | Named _ -> 15
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -220,6 +225,10 @@ let rec compare_typ (t1 : typ) (t2 : typ) =
   | Non, Non
   | Pre, Pre -> 0
   | Typ c1, Typ c2 -> Cons.compare c1 c2
+  | Named (n1, t1), Named (n2, t2) ->
+    (match String.compare n1 n2 with
+     | 0 -> compare_typ t1 t2
+     | ord -> ord)
   | _ -> Int.compare (tag t1) (tag t2)
 
 and compare_tb tb1 tb2 =
@@ -420,6 +429,7 @@ let rec shift i n t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -471,6 +481,7 @@ let rec subst sigma t =
                       type parameter cannot mention that parameter
                       (but can mention other (closed) type constructors).
                     *)
+  | Named (name, t) -> Named (name, subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -521,6 +532,7 @@ let rec open' i ts t =
   | Non -> Non
   | Pre -> Pre
   | Typ c -> Typ c
+  | Named (name, t) -> Named (name, open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -565,12 +577,14 @@ let rec normalize = function
     | _ -> t
     )
   | Mut t -> Mut (normalize t)
+  | Named (_, t) -> normalize t
   | t -> t
 
 let rec promote = function
   | Con (con, ts) ->
     let Def (tbs, t) | Abs (tbs, t) = Cons.kind con
     in promote (reduce tbs t ts)
+  | Named (_, t) -> promote t
   | t -> t
 
 
@@ -685,7 +699,7 @@ let lookup_val_field_opt l tfs =
 let lookup_typ_field_opt l tfs =
   let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some {typ = Typ c; _} -> Some c
+  | Some {lab = _; typ = Typ c; src} -> Some c
   | _ -> None
 
 let lookup_val_field l tfs =
@@ -730,6 +744,7 @@ let rec span = function
   | Mut t -> span t
   | Non -> Some 0
   | Typ _ -> Some 1
+  | Named (_, t) -> span t
 
 
 (* Collecting type constructors *)
@@ -761,6 +776,9 @@ let rec cons' inTyp t cs =
     else
       (* don't add c unless mentioned in Cons.kind c *)
       cons_kind' inTyp (Cons.kind c) cs
+  | Named (_ , t) ->
+    cons' inTyp t cs
+
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -815,6 +833,7 @@ let concrete t =
         List.for_all go (List.map (open_ ts) ts2)
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
+      | Named (_, t) -> go t
     end
   in go t
 
@@ -846,6 +865,7 @@ let serializable allow_mut t =
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -880,6 +900,7 @@ let find_unshared t =
         if is_shared_sort s
         then None
         else Some t
+      | Named (n, t) -> go t
     end
   in go t
 
@@ -906,6 +927,69 @@ let stable t = serializable true t
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
+
+
+(* Aggregation of source fields, for use by the language server. *)
+let src_field_updates = ref []
+let src_field_map = ref (empty_srcs_tbl ())
+
+(* Helper to perform source field updates to the given map. *)
+let with_src_field_updates src_fields action =
+  Fun.protect ~finally:(fun () -> src_field_map := empty_srcs_tbl ()) (fun () ->
+    src_field_map := src_fields;
+    action ())
+
+(* Helper to aggregate field updates with an empty list, perform some predicate,
+   commit field updates if the predicate holds, and restore the empty list. It
+   will update the actions given to it in the source fields map . *)
+let with_src_field_updates_predicate src_fields predicate =
+  Fun.protect ~finally:(fun () -> src_field_updates := []; src_field_map := empty_srcs_tbl ()) (fun () ->
+    src_field_updates := [];
+    src_field_map := src_fields;
+    let result = predicate () in
+    (* Do not commit updates if the relation given by the predicate failed. *)
+    if result then
+      List.iter (fun f -> f ()) (List.rev !src_field_updates);
+    result)
+
+(* Updates to the source fields of the inputs depending on the given relation.
+   If you use this function, you'll probably want to ensure the entire relation
+   checking procedure is wrapped in [with_src_field_updates]. You'll probably
+   want to use this with [combine]. *)
+let add_src_field rel lubs glbs f1 f2 =
+  if !Mo_config.Flags.typechecker_combine_srcs then
+    let r1 = f1.src.track_region in
+    let r2 = f2.src.track_region in
+    let src_map = !src_field_map in
+    (* Perhaps we could get away with just adding [r1] and [r2] to each other's
+       tables, but we play safe here and overapproximate. *)
+    let srcs =
+      Source.Region_set.(if rel == lubs then union else inter)
+        (get_srcs src_map r1)
+        (get_srcs src_map r2)
+    in
+    Srcs_tbl.replace src_map r1 srcs;
+    Srcs_tbl.replace src_map r2 srcs
+
+(* Possibly stages an update to the source fields of the inputs in case the
+   relation holds. If you use this function, you'll probably want to ensure the
+   entire relation checking procedure is wrapped in
+   [with_src_field_updates_predicate]. You'll probably want to use it when
+   checking [sub] or [eq]. *)
+let add_src_field_update is_rel rel eq tf1 tf2 =
+  if !Mo_config.Flags.typechecker_combine_srcs && is_rel then
+    let src_field_update () =
+      let r1 = tf1.src.track_region in
+      let r2 = tf2.src.track_region in
+      let src_map = !src_field_map in
+      (* Perhaps we could get away with just adding [r1] and [r2] to each
+         other's tables, but we play safe here and overapproximate. *)
+      let srcs = Source.Region_set.union (get_srcs src_map r1) (get_srcs src_map r2) in
+      if rel == eq then
+        Srcs_tbl.replace src_map r1 srcs;
+      Srcs_tbl.replace src_map r2 srcs
+    in
+    src_field_updates := src_field_update :: !src_field_updates
 
 
 (* Equivalence & Subtyping *)
@@ -967,6 +1051,10 @@ let rec rel_typ d rel eq t1 t2 =
     true
   | Non, _ when rel != eq ->
     true
+  | Named (_n, t1'), t2 ->
+    rel_typ d rel eq t1' t2
+  | t1, Named (_n, t2') ->
+    rel_typ d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
@@ -1036,8 +1124,12 @@ and rel_fields d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ d rel eq tf1.typ tf2.typ &&
-      rel_fields d rel eq tfs1' tfs2'
+      let is_rel =
+        rel_typ d rel eq tf1.typ tf2.typ &&
+        rel_fields d rel eq tfs1' tfs2'
+      in
+      add_src_field_update is_rel rel eq tf1 tf2;
+      is_rel
     | -1 when rel != eq ->
       not (RelArg.is_stable_sub d) &&
       rel_fields d rel eq tfs1' tfs2
@@ -1055,8 +1147,12 @@ and rel_tags d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      rel_typ d rel eq tf1.typ tf2.typ &&
-      rel_tags d rel eq tfs1' tfs2'
+      let is_rel =
+        rel_typ d rel eq tf1.typ tf2.typ &&
+        rel_tags d rel eq tfs1' tfs2'
+      in
+      add_src_field_update is_rel rel eq tf1 tf2;
+      is_rel
     | +1 when rel != eq ->
       rel_tags d rel eq tfs1 tfs2'
     | _ -> false
@@ -1074,15 +1170,6 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 = rel_typ d eq eq t1 t2
-
-and eq t1 t2 : bool =
-  let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2
-
-and sub t1 t2 : bool =
-  rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2
-
-and eq_binds tbs1 tbs2 =
-  let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -1107,7 +1194,21 @@ and eq_con d eq c1 c2 =
     | None -> false
     )
 
-let eq_kind k1 k2 : bool = eq_kind' (ref SS.empty) k1 k2
+let eq_binds ?(src_fields = empty_srcs_tbl ()) tbs1 tbs2 =
+  with_src_field_updates_predicate src_fields (fun () ->
+    let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
+
+let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
+
+let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    eq_kind' (ref SS.empty) k1 k2)
+
+let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
+  with_src_field_updates_predicate src_fields (fun () ->
+    rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
 
@@ -1156,6 +1257,8 @@ let rec compatible_typ co t1 t2 =
     compatible_typ co t12 t22
   | Func _, Func _ ->
     true
+  | Named _, _
+  | _, Named _ -> assert false
   | _, _ ->
     false
   end
@@ -1201,11 +1304,12 @@ let rec inhabited_typ co t =
   | Variant tfs -> List.exists (inhabited_field co) tfs
   | Var _ -> true  (* TODO(rossberg): consider bound *)
   | Con (c, ts) ->
-    match Cons.kind c with
+    (match Cons.kind c with
     | Def (tbs, t') -> (* TBR this may fail to terminate *)
       inhabited_typ co (open_ ts t')
     | Abs (tbs, t') ->
-      inhabited_typ co t'
+      inhabited_typ co t')
+  | Named _ -> assert false
   end
 
 and inhabited_field co tf = inhabited_typ co tf.typ
@@ -1229,6 +1333,7 @@ let rec singleton_typ co t =
   | Variant _ -> false
   | Var _ -> false
   | Con _ -> false
+  | Named _ -> assert false
   end
 
 and singleton_field co tf = singleton_typ co tf.typ
@@ -1324,6 +1429,14 @@ let rec combine rel lubs glbs t1 t2 =
         in
         set_kind c (Def ([], t'));
         t'
+    | Named (n1, t1'), Named (n2, t2') ->
+      if n1 = n2 then
+        Named (n1, combine rel lubs glbs t1' t2')
+      else
+        combine rel lubs glbs t1' t2'
+    | Named (_, t), t'
+    | t, Named (_, t') ->
+      combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
 
@@ -1340,7 +1453,9 @@ and combine_fields rel lubs glbs fs1 fs2 =
     | _ ->
       match combine rel lubs glbs f1.typ f2.typ with
       | typ ->
-       {lab = f1.lab; typ; src = empty_src} :: combine_fields rel lubs glbs fs1' fs2'
+        add_src_field rel lubs glbs f1 f2;
+        let src = {empty_src with track_region = f1.src.track_region} in
+        {lab = f1.lab; typ; src} :: combine_fields rel lubs glbs fs1' fs2'
       | exception Mismatch when rel == lubs ->
         combine_fields rel lubs glbs fs1' fs2'
 
@@ -1354,10 +1469,19 @@ and combine_tags rel lubs glbs fs1 fs2 =
     | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
     | _ ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
-      {lab = f1.lab; typ; src = empty_src} :: combine_tags rel lubs glbs fs1' fs2'
+      add_src_field rel lubs glbs f1 f2;
+      let src = {empty_src with track_region = f1.src.track_region} in
+      {lab = f1.lab; typ; src} :: combine_tags rel lubs glbs fs1' fs2'
 
-let lub t1 t2 = let lubs = ref M.empty in combine lubs lubs (ref M.empty) t1 t2
-let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
+let lub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let lubs = ref M.empty in
+    combine lubs lubs (ref M.empty) t1 t2)
+
+let glb ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates src_fields (fun () ->
+    let glbs = ref M.empty in
+    combine glbs (ref M.empty) glbs t1 t2)
 
 
 (* Environments *)
@@ -1539,24 +1663,28 @@ let string_of_func_sort = function
 
 module type PrettyConfig = sig
   val show_stamps : bool
+  val show_scopes : bool
   val con_sep : string
   val par_sep : string
 end
 
 module ShowStamps = struct
   let show_stamps = true
+  let show_scopes = true
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
 end
 
 module ElideStamps = struct
   let show_stamps = false
+  let show_scopes = true
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
 end
 
 module ParseableStamps = struct
   let show_stamps = true
+  let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
 end
@@ -1608,6 +1736,7 @@ and can_omit n t =
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
+    | Named (n, t) -> go i t
   in go n t
 
 let rec pp_typ_obj vs ppf o =
@@ -1627,11 +1756,19 @@ and pp_typ_variant vs ppf fs =
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
 
+and pp_typ_item vs ppf t =
+  match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
+  | typ -> pp_typ' vs ppf t
+
 and pp_typ_nullary vs ppf t =
   match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
   | Tup ts ->
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
+      (pp_print_list ~pp_sep:comma (pp_typ_item vs)) ts
       (if List.length ts = 1 then "," else "")
   | Pre -> pr ppf "???"
   | Any -> pr ppf "Any"
@@ -1666,7 +1803,7 @@ and pp_typ_pre vs ppf t =
   match t with
   (* No case for grammar production `PRIM s` *)
   | Async (s, t1, t2) ->
-    if Cfg.show_stamps then
+    if Cfg.show_scopes then
       match t1 with
       | Var(_, n) when fst (List.nth vs n) = "" ->
         fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
@@ -1749,12 +1886,21 @@ and pp_stab_field vs ppf {lab; typ; src} =
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
+and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
+  let req = if required then "in" else "stable" in
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>%s var %s :@ %a@]" req lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
+
+
 and pp_tag vs ppf {lab; typ; src} =
   match typ with
-  | Tup [] -> fprintf ppf "#%s" lab
+  | Tup [] ->
+    fprintf ppf "#%s" lab
   | _ ->
-    fprintf ppf "@[<2>#%s :@ %a@]" lab
-      (pp_typ' vs) typ
+    fprintf ppf "@[<2>#%s :@ %a@]" lab (pp_typ' vs) typ
 
 and vars_of_binds vs bs =
   List.map (fun b -> name_of_var vs (b.var, 0)) bs
@@ -1807,7 +1953,7 @@ and pp_kind ppf k =
 and pp_stab_sig ppf sig_ =
   let all_fields = match sig_ with
     | Single tfs -> tfs
-    | PrePost (pre, post) -> pre @ post
+    | PrePost (pre, post) -> List.map snd pre @ post
   in
   let cs = List.fold_right
     (cons_field false)
@@ -1840,7 +1986,7 @@ and pp_stab_sig ppf sig_ =
     | PrePost (pre, post) ->
       fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
         (string_of_obj_sort Actor)
-        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_pre_stab_field vs)) pre
         (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
   in
   fprintf ppf "@[<v 0>%a%a%a;@]"
@@ -1906,16 +2052,19 @@ module type Pretty = sig
   val string_of_typ_expand : typ -> string
 end
 
-include MakePretty(ShowStamps)
+include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
 
 (* Stable signatures *)
-let stable_sub t1 t2 =
-  rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2
+let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
+  with_src_field_updates_predicate src_fields (fun () ->
+    rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function
-  | Single tfs -> tfs
+  | Single tfs ->
+    (* all vars optional *)
+    List.map (fun tf -> (false, tf)) tfs
   | PrePost (tfs, _) -> tfs
 
 let post = function
@@ -1923,20 +2072,20 @@ let post = function
   | PrePost (_, tfs) -> tfs
 
 let rec match_stab_sig sig1 sig2 =
-  let tfs1 = post sig1 in
-  let tfs2 = pre sig2 in
-  match_stab_fields tfs1 tfs2
+  let post_tfs1 = post sig1 in
+  let pre_tfs2 = pre sig2 in
+  match_stab_fields post_tfs1 pre_tfs2
 
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], _ ->
-    (* same amount of fields or new fields ok *)
-    true
+    (* same amount of fields or new, non-required, fields ok *)
+    List.for_all (fun (required, tf) -> not required) tfs2
   | _, [] ->
     (* no dropped fields *)
     false
-  | tf1::tfs1', tf2::tfs2' ->
+  | tf1::tfs1', (required, tf2)::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
        stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
@@ -1946,6 +2095,7 @@ and match_stab_fields tfs1 tfs2 =
        false
      | _ ->
        (* new field ok *)
+       (not required) &&
        match_stab_fields tfs1 tfs2'
     )
 
@@ -1953,5 +2103,5 @@ let string_of_stab_sig stab_sig : string =
   let module Pretty = MakePretty(ParseableStamps) in
   (match stab_sig with
   | Single _ -> "// Version: 1.0.0\n"
-  | PrePost _ -> "// Version: 2.0.0\n") ^
+  | PrePost _ -> "// Version: 3.0.0\n") ^
   Format.asprintf "@[<v 0>%a@]@\n" (fun ppf -> Pretty.pp_stab_sig ppf) stab_sig

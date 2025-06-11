@@ -14,7 +14,7 @@ let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
 let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
-let _WASMTIME_OPTIONS_ = "-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
+let _WASMTIME_OPTIONS_ = "-C cache=n -W nan-canonicalization,memory64,multi-memory,bulk-memory"
 
 (* Argument handling *)
 
@@ -287,4 +287,3 @@ let () =
   if !(counts.fail) + !(counts.unexpected_ok) > 0
   then exit 1
   else exit 0
-

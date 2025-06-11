@@ -1,2 +1,0 @@
-unavailable-constructor.mo:3.17-3.18: type error [M0056], variable C is in scope but not available in compiled code
-unavailable-constructor.mo:6.31-6.32: type error [M0056], variable C is in scope but not available in compiled code

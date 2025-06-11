@@ -7,7 +7,7 @@
 # Options:
 #
 #    -a: Update the files in ok/
-#    -d: Run on in drun (or, if not possible, in ic-ref-run)
+#    -d: Run on in `drun`
 #    -t: Only typecheck
 #    -s: Be silent in sunny-day execution
 #    -i: Only check mo to idl generation
@@ -28,7 +28,6 @@ PERF=no
 VIPER=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
-WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
@@ -96,8 +95,6 @@ function normalize () {
     # Normalize canister id prefixes and timestamps in debug prints
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
         -e 's/^20.*UTC: debug.print:/debug.print:/g' |
-    # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
         -e '/RTS error: Cannot allocate memory/q' |
@@ -207,11 +204,9 @@ then
 fi
 
 HAVE_drun=no
-HAVE_ic_ref_run=no
 HAVE_ic_wasm=no
 
 FLAGS_drun=
-FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
@@ -233,22 +228,6 @@ then
   # then
   #   HAVE_ic_wasm=yes
   # fi
-fi
-
-if [ $DTESTS = yes ]
-then
-  if ic-ref-run --help >& /dev/null
-  then
-    HAVE_ic_ref_run=yes
-  else
-    if [ $ACCEPT = yes ]
-    then
-      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
-    else
-      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
-      HAVE_ic_ref_run=no
-    fi
-  fi
 fi
 
 
@@ -320,6 +299,14 @@ do
       if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
       then
         $ECHO " Skipped (not applicable to enhanced persistence)"
+        continue
+      fi
+    fi
+    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      then
+        $ECHO " Skipped (not applicable to incremental gc)"
         continue
       fi
     fi
@@ -421,7 +408,6 @@ do
         if [ $DTESTS = yes ]
         then
           run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
-          run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
         elif [ $PERF = yes ]
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -435,7 +421,6 @@ do
         if [ "$SKIP_VALIDATE" != yes ]
         then
           run_if wasm valid wasm-validate --enable-memory64 --enable-multi-memory $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate --enable-memory64 --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -460,9 +445,6 @@ do
           then
             if [ $HAVE_drun = yes ]; then
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
-            fi
-            if [ $HAVE_ic_ref_run = yes ]; then
-              run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
             fi
           elif [ $PERF = yes ]
           then
@@ -504,7 +486,7 @@ do
     # The file is a drun script, so a multi-canister project
     mkdir -p $out/$base
 
-    for runner in ic-ref-run drun
+    for runner in drun
     do
       if grep -q "# *SKIP $runner" $(basename $file)
       then
@@ -530,6 +512,19 @@ do
         then
           continue
         fi
+      fi
+      if grep -q "# INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then
+          $ECHO " Skipped (not applicable to incremental gc)"
+          continue
+        fi
+      fi
+      if grep -q "# APPLICATION-SUBNET" $(basename $file)
+      then
+        # set drun args to use application subnet
+        EXTRA_DRUN_ARGS="--subnet-type application"
       fi
       
       have_var_name="HAVE_${runner//-/_}"
@@ -561,7 +556,9 @@ do
 
       # run wrapper
       wrap_var_name="WRAP_${runner//-/_}"
-      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun
+      run $runner ${!wrap_var_name} $out/$base/$base.$runner.drun $EXTRA_DRUN_ARGS
+      # clear EXTRA_DRUN_ARGS.
+      EXTRA_DRUN_ARGS=""
     done
 
   ;;

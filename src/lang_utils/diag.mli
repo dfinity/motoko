@@ -60,5 +60,4 @@ type msg_store
 val is_error_free : msg_store -> bool
 val add_msg : msg_store -> message -> unit
 val add_msgs : msg_store -> messages -> unit
-val with_message_store : (msg_store -> 'a option) -> 'a result
-
+val with_message_store : ?allow_errors:bool -> (msg_store -> 'a option) -> 'a result

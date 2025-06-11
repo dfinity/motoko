@@ -1,14 +1,16 @@
 # CertifiedData
-Certified data.
-
 The Internet Computer allows canister smart contracts to store a small amount of data during
 update method processing so that during query call processing, the canister can obtain
 a certificate about that data.
 
+:::info Intended audience
+
 This module provides a _low-level_ interface to this API, aimed at advanced
-users and library implementors. See the Internet Computer Functional
-Specification and corresponding documentation for how to use this to make query
+users and library implementors. See the Internet Computer interface
+specification and corresponding documentation for how to use this to make query
 calls to your canister tamperproof.
+:::
+
 
 ## Function `set`
 ``` motoko no-repl
@@ -17,10 +19,14 @@ func set(data : Blob) : ()
 
 Set the certified data.
 
+:::note Usage constraints
+
 Must be called from an update method, else traps.
 Must be passed a blob of at most 32 bytes, else traps.
+:::
 
 Example:
+
 ```motoko no-repl
 import CertifiedData "mo:base/CertifiedData";
 import Blob "mo:base/Blob";
@@ -32,7 +38,9 @@ let blob = Blob.fromArray(array);
 CertifiedData.set(blob);
 ```
 
-See a full example on how to use certified variables here: https://github.com/dfinity/examples/tree/master/motoko/cert-var
+:::info
+[See a full example on how to use certified variables](https://github.com/dfinity/examples/tree/master/motoko/cert-var).
+:::
 
 
 ## Function `getCertificate`
@@ -40,18 +48,24 @@ See a full example on how to use certified variables here: https://github.com/df
 func getCertificate() : ?Blob
 ```
 
-Gets a certificate
+Gets a certificate.
+
+:::note When available
 
 Returns `null` if no certificate is available, e.g. when processing an
 update call or inter-canister call. This returns a non-`null` value only
 when processing a query call.
+:::
 
 Example:
+
 ```motoko no-repl
 import CertifiedData "mo:base/CertifiedData";
 // Must be in a query call
 
 CertifiedData.getCertificate();
 ```
-See a full example on how to use certified variables here: https://github.com/dfinity/examples/tree/master/motoko/cert-var
 
+:::info
+[See a full example on how to use certified variables](https://github.com/dfinity/examples/tree/master/motoko/cert-var).
+:::

@@ -18,8 +18,9 @@ Import the module from the base library:
 import Text "mo:base/Text";
 ```
 
-Note: `Text` values are represented as ropes of UTF-8 character sequences with O(1) concatenation.
-
+:::note
+`Text` values are represented as ropes of UTF-8 character sequences with O(1) concatenation.
+:::
 
 ## Type `Text`
 ``` motoko no-repl
@@ -56,8 +57,9 @@ Converts the given `[Char]` to a `Text` value.
 let text = Text.fromArray(['A', 'v', 'o', 'c', 'a', 'd', 'o']); // "Avocado"
 ```
 
-Runtime: O(a.size())
-Space: O(a.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(a.size()) | O(a.size()) |
 
 ## Function `fromVarArray`
 ``` motoko no-repl
@@ -70,8 +72,9 @@ Converts the given `[var Char]` to a `Text` value.
 let text = Text.fromVarArray([var 'E', 'g', 'g', 'p', 'l', 'a', 'n', 't']); // "Eggplant"
 ```
 
-Runtime: O(a.size())
-Space: O(a.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(a.size()) | O(a.size()) |
 
 ## Function `toIter`
 ``` motoko no-repl
@@ -103,8 +106,9 @@ Equivalent to `Iter.toArray(t.chars())`.
 assert Text.toArray("Café") == ['C', 'a', 'f', 'é'];
 ```
 
-Runtime: O(t.size())
-Space: O(t.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `toVarArray`
 ``` motoko no-repl
@@ -119,8 +123,9 @@ Equivalent to `Iter.toArrayMut(t.chars())`.
 assert Text.toVarArray("Café") == [var 'C', 'a', 'f', 'é'];
 ```
 
-Runtime: O(t.size())
-Space: O(t.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `fromIter`
 ``` motoko no-repl
@@ -145,8 +150,9 @@ fromList(?('H', ?('e', ?('l', ?('l', ?('o', null))))));
 // => "Hello"
 ```
 
-Runtime: O(size cs)
-Space: O(size cs)
+| Runtime   | Space     |
+|-----------|-----------|
+| O(size cs) | O(size cs) |
 
 ## Function `toList`
 ``` motoko no-repl
@@ -160,8 +166,9 @@ toList("Hello");
 // => ?('H', ?('e', ?('l', ?('l', ?('o', null)))))
 ```
 
-Runtime: O(t.size())
-Space: O(t.size())
+| Runtime   | Space     |
+|-----------|-----------|
+| O(t.size()) | O(t.size()) |
 
 ## Function `size`
 ``` motoko no-repl
@@ -187,7 +194,9 @@ Returns a hash obtained by using the `djb2` algorithm ([more details](http://www
 let hash = Text.hash("abc");
 ```
 
-Note: this algorithm is intended for use in data structures rather than as a cryptographic hash function.
+:::info
+This algorithm is intended for use in data structures rather than as a cryptographic hash function.
+:::
 
 ## Function `concat`
 ``` motoko no-repl
@@ -500,7 +509,10 @@ func toLowercase(_ : Text) : Text
 ```
 
 Returns the text argument in lowercase.
-WARNING: Unicode compliant only when compiled, not interpreted.
+
+:::warning Compliance
+Unicode compliant only when compiled, not interpreted.
+:::
 
 ```motoko include=import
 let text = Text.toLowercase("Good Day"); // ?"good day"
@@ -512,7 +524,9 @@ func toUppercase(_ : Text) : Text
 ```
 
 Returns the text argument in uppercase. Unicode compliant.
-WARNING: Unicode compliant only when compiled, not interpreted.
+:::warning Compliance
+Unicode compliant only when compiled, not interpreted.
+:::
 
 ```motoko include=import
 let text = Text.toUppercase("Good Day"); // ?"GOOD DAY"
