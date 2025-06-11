@@ -6,7 +6,7 @@
 
   * Added the `rootKey` primitive (#4994).
 
-  * Introduce `await?` to force `async` values, avoiding the commit point when the future is already fulfilled (#5215).
+  * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
 
   * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
 
