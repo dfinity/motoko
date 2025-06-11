@@ -41,6 +41,10 @@
       url = "github:dfinity/motoko-base/next-moc";
       flake = false;
     };
+    motoko-core-src = {
+      url = "github:dfinity/new-motoko-base";
+      flake = false;
+    };
     motoko-matchers-src = {
       url = "github:kritzcreek/motoko-matchers";
       flake = false;
