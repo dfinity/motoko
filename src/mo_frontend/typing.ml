@@ -2278,7 +2278,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           (* Future work: more cases *)
           | _ -> Some (infer_exp env exp)
         in
-        let step env (subs, deferred, to_fix) exp target_type =
+        let infer_or_defer env (subs, deferred, to_fix) exp target_type =
           match try_infer_exp env exp with
           | Some t -> t, ((t, target_type) :: subs, deferred, to_fix) (* subtype problem for bi_match *)
           | None -> target_type, (subs, (exp, target_type) :: deferred, to_fix) (* deferred *)
@@ -2288,16 +2288,17 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
             print_endline (Source.read_region_with_markers exp.at |> Option.value ~default:"");
-            let (subs, deferred, to_fix), acc_ts = decompose_list env exps ts [] acc in
-            let typ = T.Tup acc_ts in
-            typ, (subs, deferred, (exp, target_type) :: to_fix)
-          | _ -> step env acc exp target_type
+            let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
+            let target_type' = T.Tup ts' in
+            (* exp.note would need to be fixed later after the substitution *)
+            target_type', (subs, deferred, (exp, target_type') :: to_fix)
+          | _ -> infer_or_defer env acc exp target_type
         and decompose_list env exps ts acc_ts acc =
           match exps, ts with
           | exp::exps, t::ts ->
             let t', acc' = decompose env exp t acc in
             decompose_list env exps ts (t' :: acc_ts) acc'
-          | [], [] -> acc, List.rev acc_ts
+          | [], [] -> List.rev acc_ts, acc
           | _ -> assert false
         in
         decompose env exp target_type ([], [], [])
