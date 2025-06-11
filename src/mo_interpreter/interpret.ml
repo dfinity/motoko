@@ -216,7 +216,7 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     );
     k (V.Async async)
 
-let await env at async k =
+let await env at short async k =
   if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
@@ -731,14 +731,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
-  | AwaitE (T.AwaitFut _, exp1) ->
+  | AwaitE (T.AwaitFut short, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k)
+      (fun v1 -> await env exp.at short (V.as_async v1) k)
   | AwaitE (T.AwaitCmp, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> match v1 with
-         | V.Async _ -> await env exp.at (V.as_async v1) k
-         | _ -> (V.as_comp v1) k (Option.get env.throws))
+      (fun v1 -> V.as_comp v1 k (Option.get env.throws))
   | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v
