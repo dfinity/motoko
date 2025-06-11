@@ -1762,7 +1762,7 @@ and infer_exp'' env exp : T.typ =
             (if s1 = T.Fut then
               "\nUse keyword 'await*' (not 'await' or 'await?') to consume this type."
             else
-              assert false(*FIXME*))
+              "\nUse keyword 'await' or 'await?' (not 'await*') to consume this type.")
           else "")
     )
   | AssertE (_, exp1) ->

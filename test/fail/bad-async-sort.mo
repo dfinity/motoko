@@ -1,6 +1,6 @@
 actor {
   func f() : async* Nat {
-    await* g(); // accept
+    await* g(); // reject
   };
 
   func g() : async Nat {
@@ -9,10 +9,11 @@ actor {
 
   func anon1() : async () {
     await async* {}; // reject
+    await? async* {}; // reject
   };
 
   func anon2() : async () {
-    await* async {}; // accept
+    await* async {}; // reject
   };
 
   func anon3() : async () {
