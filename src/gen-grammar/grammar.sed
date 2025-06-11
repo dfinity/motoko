@@ -72,6 +72,7 @@ s/ROTLASSIGN/\'<<>=\'/g
 s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
+s/AWAITQUEST/\'await?\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
@@ -137,7 +138,6 @@ s/CATASSIGN/\'@=\'/g
 s/CASE/\'case\'/g
 s/BREAK/\'break\'/g
 s/BOOL/<bool>/g
-s/AWAITQUEST/\'await?\'/g
 s/AWAITSTAR/\'await*\'/g
 s/AWAIT/\'await\'/g
 s/ASYNCSTAR/\'async*\'/g
