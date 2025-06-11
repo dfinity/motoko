@@ -2256,11 +2256,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           | VarP _
           | AltP _ -> true (* cases that cannot be inferred, would report errors *)
           | LitP _
+          | AnnotP _
           | SignP _ -> false
           | TupP pats -> cannot_infer_pats pats
           | ParP p
           | OptP p
-          | AnnotP (p, _)
           | TagP (_, p) -> cannot_infer_pat p
           | ObjP pfs -> cannot_infer_pat_fields pfs
         and cannot_infer_pats pats =
