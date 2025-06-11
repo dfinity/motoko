@@ -1,12 +1,12 @@
 # Motoko compiler changelog
 
-* motoko (`moc`)
-
 ## 0.14.12 (FUTURE)
+
+* motoko (`moc`)
 
   * Added the `rootKey` primitive (#4994).
 
-  * Allow `await*` to force `async` values, avoiding the commit point when the future is already fulfilled (#5215).
+  * Introduce `await?` to force `async` values, avoiding the commit point when the future is already fulfilled (#5215).
 
   * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
 
