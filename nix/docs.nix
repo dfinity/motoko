@@ -1,4 +1,4 @@
-{ pkgs, js, base-src }:
+{ pkgs, js, base-src, core-src }:
 pkgs.stdenv.mkDerivation {
   name = "docs";
   src = ../doc;
