@@ -1,19 +1,28 @@
 // moc lambdas.mo --package base $MOTOKO_BASE
 import Array "mo:base/Array";
-// import Iter "mo:base/Iter";
 
-func map<T>(ar : [T], _f : T -> T) : [T] = ar;
+func mapMono<T>(ar : [T], _f : T -> T) : [T] = ar;
 // func forEach<T>(_ar : [T], _f : T -> ()) {};
 
-func __main1(_szczebrzeszyn : [Nat]) : [Nat] {
-  // let l = map(_szczebrzeszyn, func x = x + 1);
-  map(_szczebrzeszyn, func(x : Nat) = x + 1);
-  // Array.map<Nat, Nat>(ar, func x = x + 1);
+func map2<T>(ar : [T], _ar2 : [T], _f : T -> T) : [T] = ar;
+func _useMap2() {
+  let ar1 : [Nat] = [1, 2, 3];
+  let ar2 : [Int] = [4, 5, 6];
+  let _ = map2(ar1, ar2, func(x : Int) : Int = x + 1);
 };
 
-func __main2(_szczebrzeszyn : [Nat]) : [Nat] {
-  Array.map(_szczebrzeszyn, func(x : Nat) = x + 1);
+func __main0(_szczebrzeszyn : [Nat]) : [Nat] {
+  let _ = mapMono(_szczebrzeszyn, func x = x + 1);
 };
+
+// func __main1(_szczebrzeszyn : [Nat]) : [Nat] {
+//   // Array.map<Nat, Nat>(_szczebrzeszyn, func x = x + 1);
+//   Array.map(_szczebrzeszyn, func x = x + 1);
+// };
+
+// func __main2(_szczebrzeszyn : [Nat]) : [Nat] {
+//   Array.map(_szczebrzeszyn, func(x : Nat) = x + 1);
+// };
 
 func _regressionReturnUnit() {
   loop { if true return };
@@ -40,7 +49,7 @@ func regressionFunctionToAny2(_szczebrzeszyn : Nat) {
   };
 };
 func _useFunctionToAny() {
-  // regressionFunctionToAny1(1);
+  regressionFunctionToAny1(1);
   regressionFunctionToAny2(1);
 };
 func letReturnsFunction1() : () -> () {
@@ -58,7 +67,7 @@ func letReturnsFunction() {
 func _useLetReturnsFunction() {
   ignore letReturnsFunction1();
   letReturnsFunction2();
-  // letReturnsFunction(); // TODO: broken
+  letReturnsFunction();
   ();
 };
 
@@ -83,7 +92,7 @@ func _m2() {
 
 func _m3() {
   let array1 = [1, 2, 3];
-  let array2 = Array.map(array1, func(x : Nat) : Nat = x * 2);
+  // let array2 = Array.map(array1, func(x : Nat) : Nat = x * 2);
 };
 
 func _m3_2() {
@@ -102,14 +111,3 @@ func _n2() {
   // let array2 = array1 |> Iter.fromArray(_) |> Iter.map(_, func(x : Nat) = x + 1) |> Iter.toArray(_)
   // cannot infer type of variableMotoko(M0103)
 };
-
-// module AsyncStuff {
-//   func call<T>(f : () -> T) : T {
-//     f()
-//   };
-//   func u() : async () = async {};
-
-//   func main() {
-//     ignore call(func() = async { await u })
-//   }
-// }
