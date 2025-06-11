@@ -1,1 +1,1 @@
-//MOC-FLAG --package pkg lib --override . undefined-pkg pkg
+//MOC-FLAG --package pkg lib --override . pkg undefined-pkg
