@@ -7,6 +7,7 @@ type name = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
+type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared

@@ -731,10 +731,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
-  | AwaitE (T.Fut, exp1) ->
+  | AwaitE (T.AwaitFut _, exp1) ->
     interpret_exp env exp1
       (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AwaitE (T.Cmp, exp1) ->
+  | AwaitE (T.AwaitCmp, exp1) ->
     interpret_exp env exp1
       (fun v1 -> match v1 with
          | V.Async _ -> await env exp.at (V.as_async v1) k
