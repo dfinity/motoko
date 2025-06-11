@@ -56,7 +56,6 @@ val bi_match_subs :
                                 determining polarities *)
   typ list (* raises Bimatch *)
 
-
 (* Parameter inference for function calls *)
 val bi_match_call :
   scope option ->
@@ -64,3 +63,11 @@ val bi_match_call :
   typ ->                     (* argument type *)
   typ option ->              (* optional expected result type *)
   typ list (* raises Bimatch *)
+
+val bi_match_call_subs :
+  scope option ->
+  bind list ->
+  (typ * typ) list ->
+  typ ->
+  typ option ->
+  typ list

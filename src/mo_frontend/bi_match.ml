@@ -335,3 +335,16 @@ let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
     bi_match_subs scope_opt tbs
       [(arg_typ, dom_typ); (rng_typ, ret_typ)]
       None
+
+let bi_match_call_subs scope_opt tbs subs rng_typ ret_typ_opt =
+  match ret_typ_opt with
+  | None ->
+    (* no ret_typ: use polarities of tbs in rng_typ to
+       choose principal instantiation, if any *)
+    bi_match_subs scope_opt tbs
+      subs
+      (Some rng_typ)
+  | Some ret_typ ->
+    bi_match_subs scope_opt tbs
+      ((rng_typ, ret_typ) :: subs)
+      None
