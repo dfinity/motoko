@@ -219,7 +219,7 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
 let await env at short async k =
   if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
-  get_async async (fun v ->
+  get_async async (if short then k else fun v ->
     Scheduler.queue (fun () ->
       if env.flags.trace then
         trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
@@ -228,7 +228,7 @@ let await env at short async k =
       )
     )
     (let r = Option.get (env.throws) in
-     fun v ->
+     if short then r else fun v ->
        Scheduler.queue (fun () ->
          if env.flags.trace then
            trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
