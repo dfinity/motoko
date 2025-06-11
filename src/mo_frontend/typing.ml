@@ -1737,10 +1737,10 @@ and infer_exp'' env exp : T.typ =
   | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
+    let s1 = match s with
+      | T.AwaitFut _ -> T.Fut (* we can await/await? an async *)
+      | T.AwaitCmp -> T.Cmp in (* we can await* an async* *)
     (try
-       let s1 = match s, t1 with
-         | T.(Cmp, Async(Fut, _, _)) -> T.Fut (* we can await* an async *)
-         | _ -> s in
        let (t2, t3) = T.as_async_sub s1 t0 t1 in
        if not (eq env exp.at t0 t2) then begin
           local_error env exp1.at "M0087"
@@ -1756,13 +1756,13 @@ and infer_exp'' env exp : T.typ =
      with Invalid_argument _ ->
        error env exp1.at "M0088"
          "expected async%s type, but expression has type%a%s"
-         (if s = T.Fut then "" else "*")
+         (if s1 = T.Fut then "" else "*")
          display_typ_expand t1
          (if T.is_async t1 then
-            (if s = T.Fut then
-              "\nUse keyword 'await*' (not 'await') to consume this type."
+            (if s1 = T.Fut then
+              "\nUse keyword 'await*' (not 'await' or 'await?') to consume this type."
             else
-              assert false)
+              "\nUse keyword 'await' or 'await?' (not 'await*') to consume this type.")
           else "")
     )
   | AssertE (_, exp1) ->

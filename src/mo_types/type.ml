@@ -17,6 +17,7 @@ type obj_sort =
  | Memory          (* (codegen only): stable memory serialization format *)
 
 type async_sort = Fut | Cmp
+type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared

@@ -80,9 +80,9 @@ and prim = function
   | GetLastArrayOffset -> Atom "GetLastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
-  | AwaitPrim (AwaitFut true) -> Atom "AwaitPrim?"
-  | AwaitPrim (AwaitFut _) -> Atom "AwaitPrim"
-  | AwaitPrim AwaitCmp -> Atom "AwaitPrim*"
+  | AwaitPrim (Type.AwaitFut false) -> Atom "AwaitPrim"
+  | AwaitPrim (Type.AwaitFut true) -> Atom "AwaitPrim?"
+  | AwaitPrim Type.AwaitCmp -> Atom "AwaitPrim*"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
@@ -109,9 +109,9 @@ and prim = function
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait (AwaitFut true, t) -> "CPSAwait?" $$ [typ t]
-  | CPSAwait (AwaitFut _, t) -> "CPSAwait" $$ [typ t]
-  | CPSAwait (AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAwait (Type.AwaitFut false, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (Type.AwaitFut true, t) -> "CPSAwait?" $$ [typ t]
+  | CPSAwait (Type.AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
   | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
   | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"

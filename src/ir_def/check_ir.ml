@@ -1162,6 +1162,8 @@ and gather_dec env scope dec : scope =
     let val_info = {typ = t; const = false; loc_known = false} in
     { val_env = T.Env.add id val_info scope.val_env }
 
+and to_async_sort = Type.(function | AwaitCmp -> Cmp | AwaitFut _ -> Fut)
+
 (* Programs *)
 
 let check_comp_unit env = function

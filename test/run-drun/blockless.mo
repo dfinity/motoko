@@ -10,7 +10,7 @@ actor A {
         await a;
         ignore async debugPrint "Peek-a-boo!";
         if shortCircuit
-          await* a // fast await
+          await? a // fast await
         else
           await a; // proper await
         assert false;
@@ -25,7 +25,7 @@ actor A {
         await a;
         changed := true;
         if shortCircuit
-          await* a // fast await
+          await? a // fast await
         else
           await a; // proper await
         assert false;
@@ -34,7 +34,7 @@ actor A {
     };
 
     public func go() : async () {
-      ignore await* A.foo();
+      ignore await? A.foo();
       await A.queue true;
       await A.queue false;
       await A.state false;

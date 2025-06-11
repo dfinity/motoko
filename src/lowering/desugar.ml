@@ -253,9 +253,7 @@ and exp' at note = function
                        | T.Async (_, t, _) -> t
                        | _ -> assert false) in
     (blockE ds { at; note; it }).it
-  | S.AwaitE (T.Cmp, e) when T.is_fut e.note.S.note_typ -> I.PrimE I.(AwaitPrim (AwaitFut true), [exp e])
-  | S.AwaitE (T.Cmp, e) -> I.PrimE I.(AwaitPrim AwaitCmp, [exp e])
-  | S.AwaitE (T.Fut, e) -> I.PrimE I.(AwaitPrim (AwaitFut false), [exp e])
+  | S.AwaitE (sort, e) -> I.PrimE I.(AwaitPrim sort, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
