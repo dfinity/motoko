@@ -70,6 +70,9 @@ let print_exp env exp =
   if is_my_env env then
     print_endline (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
 
+let print_exp' exp =
+  print_endline (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+
 let print_typ env typ =
   if is_my_env env then
     print_endline (Wasm.Sexpr.to_string 80 (Arrange.typ typ))
@@ -79,6 +82,9 @@ let print_ttyp env typ =
     print_endline (Type.string_of_typ typ)
 
 let stack_trace () = flush_all(); let r = Unix.fork() in if r == 0 then raise Exit
+
+let debug_print_region at =
+  print_endline (Source.read_region_with_markers at |> Option.value ~default:"")
 
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
@@ -1402,7 +1408,7 @@ and infer_exp'' env exp : T.typ =
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
   | OptE exp1 ->
-    let t1 = infer_exp env exp1 in
+    let t1 = infer_exp env exp1 in (* TODO: add to split context? *)
     T.Opt t1
   | DoOptE exp1 ->
     let env' = add_lab env "!" (T.Prim T.Null) in
@@ -2242,12 +2248,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       (*
         Partial Argument Inference:
-        Goal: Infer the type of the argument and find the best instantiation for the call expression.
-        Problem: Some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
+        We need to infer the type of the argument and find the best instantiation for the call expression.
+        However, some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
         Idea:
-         - Split the argument into sub-expressions and defer inference for those that would fail.
-         - Find the instantiation using the inferred sub-expressions.
-         - Substitute and `check_exp` the remaining sub-expressions.
+        - Decompose the argument into sub-expressions and defer inference for those that would fail.
+        - Find the instantiation using the inferred sub-expressions.
+        - Substitute and `check_exp` the remaining sub-expressions.
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
         let rec cannot_infer_pat pat =
@@ -2256,21 +2262,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           | VarP _
           | AltP _ -> true (* cases that cannot be inferred, would report errors *)
           | LitP _
-          | AnnotP _
+          | AnnotP _ (* annotated patterns can be inferred *)
           | SignP _ -> false
-          | TupP pats -> cannot_infer_pats pats
+          | TupP pats -> List.exists cannot_infer_pat pats
           | ParP p
           | OptP p
           | TagP (_, p) -> cannot_infer_pat p
-          | ObjP pfs -> cannot_infer_pat_fields pfs
-        and cannot_infer_pats pats =
-          match pats with
-          | [] -> false
-          | p::ps -> cannot_infer_pat p || cannot_infer_pats ps
-        and cannot_infer_pat_fields pfs =
-          match pfs with
-          | [] -> false
-          | pf::pfs' -> cannot_infer_pat pf.it.pat || cannot_infer_pat_fields pfs'
+          | ObjP pfs -> List.exists (fun (pf : pat_field) -> cannot_infer_pat pf.it.pat) pfs
         in
         let try_infer_exp env exp =
           match exp.it with
@@ -2287,11 +2285,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           match exp.it, target_type with
           | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            print_endline (Source.read_region_with_markers exp.at |> Option.value ~default:"");
+            debug_print_region exp.at;
             let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
             let target_type' = T.Tup ts' in
             (* exp.note would need to be fixed later after the substitution *)
             target_type', (subs, deferred, (exp, target_type') :: to_fix)
+          (* Future work: more cases *)
           | _ -> infer_or_defer env acc exp target_type
         and decompose_list env exps ts acc_ts acc =
           match exps, ts with
@@ -2304,7 +2303,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         decompose env exp target_type ([], [], [])
       in
       let (t2', (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      List.iter (fun (e, t) -> print_endline (Source.read_region_with_markers e.at |> Option.value ~default:"")) deferred;
+      List.iter (fun (e, t) -> debug_print_region e.at) deferred;
       (* begin try
         let matched = Bi_match.bi_match_subs (scope_of_env env) tbs subs t_expect_opt in
         List.iter (fun t -> print_endline (Type.string_of_typ t)) matched
@@ -2323,6 +2322,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             tbs subs
             t_ret t_expect_opt
         in
+        (*
+          TODO: unconstrained type variables are problematic
+          0. This produces misleading errors like `Nat </: None`, variables are fixed to None or upper bound...
+          1. Maybe we should only include tvars that appear in subs? And bi_match after on the deferred etc.
+          2. For now we can do better error handling:
+            - deferred terms with types containing unconstrained tvars can simply fail by calling infer on them
+         *)
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
 
