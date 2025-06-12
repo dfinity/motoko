@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Adds a Prim.Array_tabulateVar function, that allows faster initialization of mutable Arrays
+
 ## 0.14.12 (2025-06-12)
 
 * motoko (`moc`)
