@@ -4,9 +4,9 @@
 
 * motoko (`moc`)
 
-  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242)
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
   * bugfix: fix `-fshared-code` bug (#5230).
-  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
+  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218).
   * Added the `rootKey` primitive (#4994).
 
 ## 0.14.11 (2025-05-16)
