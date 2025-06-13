@@ -18,6 +18,7 @@ overview-slides.html : overview-slides.md
 	  # # -V maxScale=2
 
 base:
+	mo-doc --source $(MOTOKO_CORE) --output $(OUT)/core --format plain
 	mo-doc --source $(MOTOKO_BASE) --output $(OUT)/base --format plain
 
 html:
