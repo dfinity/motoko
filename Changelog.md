@@ -1,12 +1,14 @@
 # Motoko compiler changelog
 
-## 0.14.12 (FUTURE)
+## 0.14.13 (FUTURE)
 
 * motoko (`moc`)
 
-  * Added the `rootKey` primitive (#4994).
-
   * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
+
+## 0.14.12 (2025-06-12)
+
+  * Added the `rootKey` primitive (#4994).
 
   * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
 
@@ -304,7 +306,7 @@
 * motoko (`moc`)
 
   * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
-    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4719).
 
   * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
 

@@ -1121,6 +1121,9 @@ Buffer.toArray<Nat>(buffer); // => [1, 2, 3]
 func toVarArray<X>(buffer : Buffer<X>) : [var X]
 ```
 
+func toVarArray<X>(buffer : Buffer<X>) : [var X]
+```
+
 Creates a mutable array containing elements from `buffer`.
 
 Example:

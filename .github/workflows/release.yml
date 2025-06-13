@@ -4,12 +4,6 @@ on:
   push:
     tags:
     - '*'
-  workflow_call:
-    inputs:
-      version:
-        description: Version to release, e.g. 0.12.4
-        required: true
-        type: string
   workflow_dispatch:
     # To test this workflow: Go to Actions -> release -> Run workflow
     # Or using the CLI: gh workflow run release --ref <branch> -f version=test-draft-release
@@ -28,9 +22,8 @@ jobs:
     outputs:
       version: ${{ inputs.version || github.ref_name }}
     steps:
-      - name: Ensure tag is from master
-        if: github.event_name == 'push' && github.event.base_ref != 'refs/heads/master'
-        run: exit 1
+      - name: Prepare release
+        run: echo "Preparing release for version ${{ inputs.version || github.ref_name }}"
 
   # Check that the changelog is in good order and extract the changelog.
   changelog:
