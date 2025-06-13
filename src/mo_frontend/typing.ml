@@ -2302,8 +2302,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         in
         decompose env exp target_type ([], [], [])
       in
-      let (t2', (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      List.iter (fun (e, t) -> debug_print_region e.at) deferred;
+      let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      List.iter (fun (e, t) -> debug_print_region e.at; print_endline (Type.string_of_typ t)) deferred;
       (* begin try
         let matched = Bi_match.bi_match_subs (scope_of_env env) tbs subs t_expect_opt in
         List.iter (fun t -> print_endline (Type.string_of_typ t)) matched
@@ -2311,13 +2311,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         print_endline msg
       end; *)
 
-      (* let t2 = infer_exp env exp2 in *)
+      let open Bi_match in
       try
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let ts =
-          Bi_match.bi_match_call_subs
+        let ts, { ts_partial; unused } =
+          bi_match_call_subs
             (scope_of_env env)
             tbs subs
             t_ret t_expect_opt
@@ -2332,9 +2332,23 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
 
-        (* let t2 = T.open_ ts t2' in *)
         if not env.pre then begin
-          List.iter (fun (e, t) -> check_exp_strong env (T.open_ ts t) e) deferred;
+          List.iter (fun (e, t) ->
+            let t = T.open_ ts_partial t in
+            (* Unused are inferred to a default bound, e.g. Non, which leads to confusing errors *)
+            if T.ConSet.disjoint unused (T.cons t) then
+              (* Only check the deferred terms that do not contain unused type variables *)
+              check_exp_strong env t e
+            else
+              raise (Bimatch (Printf.sprintf "cannot infer %s" (String.concat ", " 
+                (List.map Cons.name (T.ConSet.elements (T.ConSet.inter unused (T.cons t)))))));
+              (* Call infer which will fail in order to preserve the original error *)
+              (* Future work: Do another round of bi_match, substitute all but unused and try inferring more
+                Deferred terms are funcs for now. We can try to infer the body when the pattern can be inferred.
+                So if the input type is closed (no unused) then we can check the pattern and infer the body.
+                Could be further generalized by decomposing instead of full inferring...
+               *)
+          ) deferred;
           List.iter (fun (e, t) -> let _ = infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e in ()) to_fix;
         end;
 (*
@@ -2343,11 +2357,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
         ts, t_arg', t_ret'
-      with Bi_match.Bimatch msg ->
+      with Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
-          display_typ t2'
+          display_typ t2
           (match t_expect_opt with
            | None -> ""
            | Some t ->

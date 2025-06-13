@@ -46,6 +46,11 @@ open Type
 
 exception Bimatch of string
 
+type unused_ctx = {
+  ts_partial : typ list;
+  unused : ConSet.t;
+}
+
 (* General parameter inference for a conjunction of subtype problems *)
 val bi_match_subs :
   scope option ->
@@ -54,7 +59,7 @@ val bi_match_subs :
                                 left or right, but never both sides *)
   typ option ->              (* optional return type mentioning tbs
                                 determining polarities *)
-  typ list (* raises Bimatch *)
+  typ list * unused_ctx (* raises Bimatch *)
 
 (* Parameter inference for function calls *)
 val bi_match_call :
@@ -62,7 +67,7 @@ val bi_match_call :
   (bind list * typ * typ) -> (* function type *)
   typ ->                     (* argument type *)
   typ option ->              (* optional expected result type *)
-  typ list (* raises Bimatch *)
+  typ list * unused_ctx (* raises Bimatch *)
 
 val bi_match_call_subs :
   scope option ->
@@ -70,4 +75,4 @@ val bi_match_call_subs :
   (typ * typ) list ->
   typ ->
   typ option ->
-  typ list
+  typ list * unused_ctx
