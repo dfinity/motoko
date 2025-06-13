@@ -364,10 +364,6 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
 
   var cleanup : @BailCont = @cleanup;
 
-  func clean() {
-      cleanup();
-  };
-
   func enqueue(k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
     #suspend;
     #schedule : () -> ();
@@ -391,16 +387,16 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
         };
         #suspend
       };
-      case (? (#ok (r, t))) {
-        #schedule (func () { @refund := r; k(t) });
+      case (?#ok (r, t)) {
+        #schedule (func() { @refund := r; k(t) })
       };
-      case (? (#error e)) {
-        #schedule (func () { r(e) });
+      case (?#error e) {
+        #schedule (func _ = r(e))
       };
     };
   };
 
-  (enqueue, fulfill, fail, clean)
+  (enqueue, fulfill, fail, func() = cleanup())
 };
 
 // Subset of IC management canister interface required for our use

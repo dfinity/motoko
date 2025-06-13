@@ -19,7 +19,7 @@ In Motoko, actors have dedicated syntax and type rules that support asynchronous
 
 * A **future**, `f`, has the type `async T` and represents a value of type `T` that will be available later.
 
-* To retrieve the result of a future, use `await f`, which pauses execution until the future is resolved and returns a value of type `T`.
+* To retrieve the result of a future, use `await f`, which pauses execution until the future is resolved and returns a value of type `T`. `await? f` can be used when the the future is likely resolved and the state commit semantics is irrelevant.
 
 * These restrictions help prevent shared mutable state from being introduced via messaging. Only immutable, shared data can be sent between actors through shared functions.
 
@@ -95,7 +95,7 @@ The `Counter` actor declares one field and three public, shared functions:
 
 The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
 
-## Using `await` to consume async futures
+## Using `await` to consume `async` futures
 
 The caller of a shared function typically receives a future, a value of type `async T` for some `T`.
 
@@ -123,6 +123,24 @@ let n : Nat = await Counter.read();
 Unlike a local function call, which waits for the result before continuing, a shared function call returns a future immediately without blocking. Later, calling `await` on that future pauses the current task until the future is finished. When the future completes, `await` either returns the result or throws an error if the future ended with one.
 
 If you `await` the same future again, it just returns the same result or error. Even if the future is already done, `await` will briefly suspend all pending state changes and outgoing messages. This means that you can rely on every `await` to commit state, whether its future is still in progress or already completed.
+
+## Using `await?` to efficiently resolve concurrent `async` futures
+
+When several futures are being completed in parallel and their timing is not predictable it might be beneficial to opt out of the state committing behaviour of `await`, and instead proceed immediately with the resolved value.
+
+``` motoko no-repl
+let a : async Nat = CounterA.read();
+let b : async Nat = CounterB.read();
+let sum : Nat = (await a) + (await? b);
+```
+
+Here two message responses are racing, and it is likely that `await a` also fulfills the future `b`. `await? b` makes sure that its result is used immediately in this case.
+
+:::danger
+
+Since a commit of global state may not happen when using `await?`, this construct should be only used when the commit can be safely omitted.
+
+:::
 
 
 ## Using parentheticals to modify message send modalities

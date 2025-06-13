@@ -216,22 +216,23 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     );
     k (V.Async async)
 
-let await env at async k =
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+let await env at short async k =
+  let adorn, schedule = if short then "?", (|>) () else "", Scheduler.queue in
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-    Scheduler.queue (fun () ->
-      if env.flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
-      incr trace_depth;
-      k v
+      schedule (fun () ->
+        if env.flags.trace then
+          trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
+        incr trace_depth;
+        k v
       )
     )
-    (let r = Option.get (env.throws) in
+    (let r = Option.get env.throws in
      fun v ->
-       Scheduler.queue (fun () ->
+       schedule (fun () ->
          if env.flags.trace then
-           trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+           trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
          incr trace_depth;
          r v))
 
@@ -731,12 +732,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
-  | AwaitE (T.Fut, exp1) ->
+  | AwaitE (T.AwaitFut short, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> await env exp.at (V.as_async v1) k)
-  | AwaitE (T.Cmp, exp1) ->
+      (fun v1 -> await env exp.at short (V.as_async v1) k)
+  | AwaitE (T.AwaitCmp, exp1) ->
     interpret_exp env exp1
-      (fun v1 -> (V.as_comp v1) k (Option.get env.throws))
+      (fun v1 -> V.as_comp v1 k (Option.get env.throws))
   | AssertE (Runtime, exp1) ->
     interpret_exp env exp1 (fun v ->
       if V.as_bool v

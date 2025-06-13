@@ -41,6 +41,7 @@ and path' =
   | DotH of path * id
 
 and async_sort = Type.async_sort
+and await_sort = Type.await_sort
 
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
@@ -190,7 +191,7 @@ and exp' =
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
-  | AwaitE of async_sort * exp                 (* await *)
+  | AwaitE of await_sort * exp                 (* await *)
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
