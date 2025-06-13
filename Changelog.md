@@ -1,9 +1,12 @@
 # Motoko compiler changelog
 
-## 0.14.12 (2025-05-28)
+## 0.14.12 (2025-06-12)
 
 * motoko (`moc`)
 
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
+  * bugfix: fix `-fshared-code` bug (#5230).
+  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218).
   * Added the `rootKey` primitive (#4994).
 
 ## 0.14.11 (2025-05-16)
@@ -296,7 +299,7 @@
 * motoko (`moc`)
 
   * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
-    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4719).
 
   * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
 
