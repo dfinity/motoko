@@ -180,19 +180,20 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
   k (V.Async async)
 
 let await env at short async k r =
+  let adorn, schedule = if short then "?", fun f -> f () else "", Scheduler.queue in
   if env.flags.trace then trace "=> await %s" (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-    Scheduler.queue (fun () ->
+      schedule (fun () ->
       if env.flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+        trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       k v)
     )
     (fun v ->
-      Scheduler.queue (fun () ->
+      schedule (fun () ->
       if env.flags.trace then
-        trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+        trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       r v)
     )
@@ -414,7 +415,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
          | [vf; vr] ->
            let (_, f) = V.as_func vf in
            let (_, r) = V.as_func vr in
-           await env exp.at false(*FIXME*) (V.as_async v1)
+           await env exp.at (sort <> T.AwaitFut false)(*FIXME?*) (V.as_async v1)
              (fun v -> f (context env) v k)
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
