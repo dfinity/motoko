@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/fundamentals/5-actors-async.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/fundamentals/5-actors-async.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#actors--async-data" id="toc-actors--async-data">Actors
+&amp; async data</a>
+<ul>
+<li><a href="#async--await" id="toc-async--await"><code>async</code> /
+<code>await</code></a></li>
+<li><a href="#traps-and-commit-points"
+id="toc-traps-and-commit-points">Traps and commit points</a>
+<ul>
+<li><a href="#commit-points" id="toc-commit-points">Commit
+points</a></li>
+<li><a href="#traps" id="toc-traps">Traps</a></li>
+</ul></li>
+<li><a href="#async-functions" id="toc-async-functions">Async
+functions</a></li>
+<li><a href="#using-await-to-consume-async-futures"
+id="toc-using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</a></li>
+<li><a href="#using-parentheticals-to-modify-message-send-modalities"
+id="toc-using-parentheticals-to-modify-message-send-modalities">Using
+parentheticals to modify message send modalities</a></li>
+<li><a href="#async-actors" id="toc-async-actors">Async actors</a>
+<ul>
+<li><a href="#example" id="toc-example">Example</a></li>
+</ul></li>
+<li><a href="#async--await-1"
+id="toc-async--await-1"><code>async*</code> / <code>await*</code></a>
+<ul>
+<li><a href="#example-1" id="toc-example-1">Example</a></li>
+</ul></li>
+<li><a href="#tryfinally"
+id="toc-tryfinally"><code>try/finally</code></a></li>
+<li><a href="#trycatchfinally"
+id="toc-trycatchfinally"><code>try/catch/finally</code></a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="actors--async-data">Actors &amp; async data</h1>
+<p>The actor programming model was designed to solve concurrency issues
+by encapsulating <a
+href="https://internetcomputer.org/docs/motoko/fundamentals/state">state</a>
+and computation within independent units called
+<strong>actors</strong>.</p>
+<p>The actor model is built on four key principles:</p>
+<ul>
+<li><strong>Isolation</strong>: Actors are isolated and communicate
+solely through message passing.</li>
+<li><strong>Concurrency</strong>: Actors can receive and process
+messages concurrently.</li>
+<li><strong>Fault tolerance</strong>: Actors operate independently and
+can fail without affecting others.</li>
+<li><strong>Location transparency</strong>: Actors can reside on any
+machine within a distributed system.</li>
+</ul>
+<p>In Motoko, actors have dedicated syntax and type rules that support
+asynchronous, message-based communication:</p>
+<ul>
+<li><p><strong>Shared functions</strong> handle messaging between
+actors. These functions return <strong>futures</strong> (values of type
+<code>async T</code>) and are accessible to remote callers. Shared
+functions come with restrictions. Both their arguments and return values
+must be <strong>shared types</strong>, a subset of types that includes
+immutable data, actor references, and shared function references, but
+excludes local function references and mutable data (like
+<code>var</code> or mutable arrays).</p></li>
+<li><p>A <strong>future</strong>, <code>f</code>, has the type
+<code>async T</code> and represents a value of type <code>T</code> that
+will be available later.</p></li>
+<li><p>To retrieve the result of a future, use <code>await f</code>,
+which pauses execution until the future is resolved and returns a value
+of type <code>T</code>.</p></li>
+<li><p>These restrictions help prevent shared mutable state from being
+introduced via messaging. Only immutable, shared data can be sent
+between actors through shared functions.</p></li>
+<li><p>All mutable state should be encapsulated within the actor or
+actor class. A Motoko source file defining an actor typically starts
+with <code>import</code> statements, followed by the <code>actor</code>
+or <code>actor class</code> declaration.</p></li>
+</ul>
+<h2 id="async--await"><code>async</code> / <code>await</code></h2>
+<p>Motoko, like many other languages, offers <code>async</code> and
+<code>await</code> to support convenient programming with asynchronous
+functions and computations.</p>
+<p>When you run an asynchronous expression, like calling a shared
+function or creating a local <code>async</code> block, it returns a
+<strong>future</strong>, which is a placeholder for a result that will
+be available later.</p>
+<p>Instead of making the caller wait, the message is sent and queued,
+and the future is immediately returned. The caller can continue doing
+other work and later use <code>await</code> to pause until the future is
+ready and get the result.</p>
+<p>You can also attach extra information to an async call using a
+prefixed parenthetical in the form
+<code>(base with attr₁ = v₁; attr₂ = v₂; …)</code> where
+<code>base</code> is an optional record containing (e.g., default)
+attributes. Accepted attributes are currently <code>cycles : Nat</code>,
+specifying the amount of cycles to be sent along with the message, and
+<code>timeout : Nat32</code> to modify the deadline and restrict the
+time span while the receiver can reply.</p>
+<p>The combination of <code>async</code>/<code>await</code> constructs
+simplifies asynchronous programming by allowing <code>await</code>s to
+be embedded within ordinary sequential code, without requiring tricky
+management of asynchronous callbacks.</p>
+<h2 id="traps-and-commit-points">Traps and commit points</h2>
+<p>A trap is a non-recoverable runtime failure in Motoko, caused by
+errors such as:</p>
+<ul>
+<li>Division by zero.</li>
+<li>Out-of-bounds array access.</li>
+<li>Numeric overflow.</li>
+<li>Exceeding cycle limits.</li>
+<li>Failing an assertion.</li>
+<li>An explicit call to <code>Debug.trap()</code>.
+<!-- FUTURE: `Runtime.trap() in new base --></li>
+</ul>
+<p>When a shared function executes without evaluating an
+<code>await</code> expression, it never suspend and thus runs
+atomically, meaning its execution cannot be interleaved with that of
+another message. Functions that don't contain any <code>await</code>
+expressions are syntactically atomic and guarantee interference-free
+execution from start to finish.</p>
+<h3 id="commit-points">Commit points</h3>
+<p>If an atomic shared function traps during execution, it has no
+visible effect. Any state changes are reverted, and messages sent are
+revoked. This is because all changes are tentative during execution and
+only become permanent once a commit point is reached.</p>
+<p>The commit points, where tentative state changes and message sends
+are irrevocably committed, are:</p>
+<ul>
+<li><p>Implicit exit from a shared function by producing a
+result.</p></li>
+<li><p>Explicit exit via <code>return</code> or <code>throw</code>
+expressions.</p></li>
+<li><p>Execution of an <code>await</code> expression, which suspends the
+function and commits all changes up to that point.</p></li>
+</ul>
+<h3 id="traps">Traps</h3>
+<p>A trap will only revoke changes made since the last commit point. In
+particular, in a non-atomic function that does multiple awaits, a trap
+will only revoke changes attempted since the last await. All preceding
+effects will have been committed and cannot be undone.</p>
+<p>Consider the following stateful <code>Atomicity</code> actor:</p>
+<pre class="motoko"><code></code></pre>
+<p>Calling the shared function <code>atomic()</code> results in an error
+because it traps before completing. Since the trap happens before any
+<code>await</code> or return, all changes are discarded. The variable
+<code>s</code> stays at 0, and <code>pinged</code> remains false. Even
+though <code>atomic()</code> calls <code>ping()</code>, that message is
+only queued and never sent because no commit point is reached.</p>
+<p>Calling <code>nonAtomic()</code> also fails with an error, but the
+state is partially updated. In this case, <code>s</code> ends up as 3,
+and <code>pinged</code> is true. This happens because the first
+<code>await</code> commits all prior changes, including the message
+send. The second <code>await</code> causes another commit and suspends
+execution, allowing other messages to be processed before the trap
+occurs.</p>
+<h2 id="async-functions">Async functions</h2>
+<p>Here is an example program that uses async functions:</p>
+<pre class="motoko"><code></code></pre>
+<p>The <code>Counter</code> actor declares one field and three public,
+shared functions:</p>
+<ul>
+<li><p>The field <code>count</code> is mutable, initialized to zero and
+implicitly <code>private</code>.</p></li>
+<li><p>Function <code>inc()</code> asynchronously increments the counter
+and returns a future of type <code>async ()</code> for
+synchronization.</p></li>
+<li><p>Function <code>read()</code> asynchronously reads the counter
+value and returns a future of type <code>async Nat</code> containing its
+value.</p></li>
+<li><p>Function <code>bump()</code> asynchronously increments and reads
+the counter.</p></li>
+</ul>
+<p>The only way to read or modify the state (<code>count</code>) of the
+<code>Counter</code> actor is through its shared functions.</p>
+<h2 id="using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</h2>
+<p>The caller of a shared function typically receives a future, a value
+of type <code>async T</code> for some <code>T</code>.</p>
+<p>The only thing the caller can do with this future is wait for it to
+be completed by the producer, throw it away, or store it for later
+use.</p>
+<p>To access the result of an <code>async</code> value, the receiver of
+the future uses an <code>await</code> expression.</p>
+<p>For example, to use the result of <code>Counter.read()</code> above,
+we can first bind the future to an identifier <code>a</code>, and then
+<code>await a</code> to retrieve the underlying <a
+href="./base/Nat.md"><code>Nat</code></a>, <code>n</code>:</p>
+<pre class="motoko"><code>let a : async Nat = Counter.read();
+let n : Nat = await a;</code></pre>
+<p>The first line immediately receives a future of the counter value,
+but does not wait for it, and thus cannot use it as a natural number
+yet.</p>
+<p>The second line <code>await</code>s this future and extracts the
+result, a natural number. This line may suspend execution until the
+future has been completed.</p>
+<p>Typically, one rolls the two steps into one and just awaits an
+asynchronous call directly:</p>
+<pre class="motoko"><code>let n : Nat = await Counter.read();</code></pre>
+<p>Unlike a local function call, which waits for the result before
+continuing, a shared function call returns a future immediately without
+blocking. Later, calling <code>await</code> on that future pauses the
+current task until the future is finished. When the future completes,
+<code>await</code> either returns the result or throws an error if the
+future ended with one.</p>
+<p>If you <code>await</code> the same future again, it just returns the
+same result or error. Even if the future is already done,
+<code>await</code> will briefly suspend all pending state changes and
+outgoing messages. This means that you can rely on every
+<code>await</code> to commit state, whether its future is still in
+progress or already completed.</p>
+<h2 id="using-parentheticals-to-modify-message-send-modalities">Using
+parentheticals to modify message send modalities</h2>
+<p>In the examples above, messages sent to the <code>Counter</code>
+actor do not include cycles and will never timeout when waiting for
+their results. However, you can change these behaviors by adding a
+parenthetical expression that modifies the message’s attributes.</p>
+<p>To send cycles with a message, you can write:</p>
+<pre class="motoko"><code>let a = (with cycles = 42_000_000) Counter.bump();</code></pre>
+<p>To set a timeout for awaiting the message result, which is useful
+when you want a best-effort response rather than a guaranteed one, you
+can write:</p>
+<pre class="motoko"><code>let a = (with timeout = 25) Counter.bump();</code></pre>
+<p>You can also define a custom default set of attributes as a record
+and then extend it with additional attributes in the parenthetical:</p>
+<pre class="motoko"><code>let boundedWait = { timeout = 25 };
+let a = (boundedWait with cycles = 42_000_000) Counter.bump();</code></pre>
+<p>This approach lets you easily customize message sending with cycles
+and timeouts.</p>
+<p>:::danger</p>
+<p>A function that does not use <code>await</code> runs atomically,
+meaning nothing else can change the actor’s state while it’s running.
+But if the function uses <code>await</code>, it can be paused, and
+during that pause, other messages may change the actor’s state. It’s up
+to the programmer to handle these possible changes safely. However, any
+state changes made before the <code>await</code> are guaranteed to be
+saved.</p>
+<p>For example, the implementation of <code>bump()</code> above is
+guaranteed to increment and read the value of <code>count</code>, in one
+atomic step. The following alternative implementation does not have the
+same semantics and allows another client of the actor to interfere with
+its operation.</p>
+<pre class="motoko"><code>  public shared func bump() : async Nat {
+    await inc();
+    await read();
+  };</code></pre>
+<p>Each <code>await</code> suspends execution, allowing an interloper to
+change the state of the actor. By design, the explicit
+<code>await</code>s make the potential points of interference clear to
+the reader.</p>
+<p>:::</p>
+<h2 id="async-actors">Async actors</h2>
+<p>In Motoko, each communicating component is an actor, encapsulating
+its own state and behavior. Here's a simple three-line example that
+demonstrates basic actor usage:</p>
+<pre class="motoko"><code>let result1 = service1.computeAnswer(params);
+let result2 = service2.computeAnswer(params);
+finalStep(await result1, await result2)</code></pre>
+<p>This program’s behavior can be summarized as:</p>
+<ol type="1">
+<li><p>The program makes two requests (lines 1 and 2) to two distinct
+services, each implemented as a Motoko actor or canister smart contract
+implemented in some other language.</p></li>
+<li><p>The program waits for each result to be ready (line 3) using the
+keyword <code>await</code> on each result value.</p></li>
+<li><p>The program uses both results in the final step (line 3) by
+calling the <code>finalStep</code> function.</p></li>
+</ol>
+<p>Services <strong>interleave</strong> their execution to reduce
+latency instead of waiting for each other. Without language support,
+this kind of interleaving quickly becomes complex and hard to
+manage.</p>
+<p>Even with just a single async call, Motoko’s abstractions help keep
+the code clear. By using <code>await</code>, the programmer tells the
+compiler where interleaving can happen, avoiding the need to restructure
+logic to fit the system’s message-passing loop.</p>
+<p>In other languages without these features, developers often need to
+use advanced patterns like callbacks and event handlers. This low-level,
+systems-style programming can be powerful but is error-prone, as it
+breaks high-level logic into scattered events and shared state.</p>
+<h3 id="example">Example</h3>
+<p>To demonstrate how asynchronous actors work, consider the following
+example.</p>
+<p>Customers place orders at a pizza restaurant, but the chef can only
+make one pizza at a time. Orders are taken <strong><a
+href="https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await">asynchronously</a></strong>,
+meaning customers do not have to wait for previous orders to be
+completed before placing their own. However, each pizza is prepared
+sequentially. This is representative of an asynchronous actor.</p>
+<!-- TODO(FUTURE): It would be cleaner to use a Deque or Queue pushing new order to the end and popping the next order to make from the front. -->
+
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+import Text &quot;mo:base/Text&quot;;
+
+persistent actor PizzaParlor {
+    var orders : [Text] = [];
+
+    public shared func placeOrder(order : Text) : async Text {
+        // Use Array.tabulate to create a new array with the additional element
+        let newOrders = Array.tabulate&lt;Text&gt;(orders.size() + 1, func(i) {
+            if (i &lt; orders.size()) { orders[i] } else { order }
+        });
+        orders := newOrders;
+        return &quot;Order received: &quot; # order;
+    };
+
+    public shared func makePizza() : async Text {
+        if (orders.size() == 0) {
+            return &quot;No orders to make.&quot;;
+        };
+
+        let currentOrder = orders[0];
+        // Use Array.filter to remove the first order, assuming orders are unique
+        orders := Array.filter&lt;Text&gt;(orders, func(o) {
+            not Text.equal(o, currentOrder)
+        });
+        return &quot;Made a delicious &quot; # currentOrder # &quot; pizza!&quot;;
+    };
+
+    public query func getOrders() : async [Text] {
+        return orders;
+    };
+}</code></pre>
+<h2 id="async--await-1"><code>async*</code> / <code>await*</code></h2>
+<p>You can move asynchronous code into a local <code>async</code>
+function and replace repeated code with calls to it. Since these calls
+return futures, you need to <code>await</code> each one to get the
+result. However, this approach has drawbacks:</p>
+<ul>
+<li><p>Each call sends an extra message to the actor.</p></li>
+<li><p>Every call must be awaited, adding overhead.</p></li>
+<li><p>Each <code>await</code> suspends execution, increasing chances of
+interference from other concurrent messages.</p></li>
+</ul>
+<p>To reduce the overhead and risks of extra <code>await</code>s, Motoko
+provides computation types, written as <code>async* T</code>. Like
+futures (<code>async T</code>), computations can represent asynchronous
+tasks.</p>
+<p>An <code>async</code> expression creates a future by starting its
+execution immediately, while an <code>async*</code> expression creates a
+computation by delaying execution until needed. Similarly,
+<code>await</code> gets the result of a future, and <code>await*</code>
+gets the result of a computation by triggering its next step.</p>
+<p>From a typing perspective, futures and computations are similar, but
+they behave differently at runtime. A future is a stateful object
+representing a scheduled asynchronous task, while a computation is an
+inactive value that describes a task.</p>
+<p>When you use <code>await</code> on a future, it suspends the caller
+until the task finishes. But <code>await*</code> on a computation
+doesn’t suspend the caller; it immediately runs the computation like a
+normal function call.</p>
+<p>This means that <code>await*</code> only causes suspension if the
+computation’s body itself uses a regular <code>await</code>. The
+<code>*</code> indicates that the computation might include zero or more
+<code>await</code> calls and so may be interleaved with other message
+executions.</p>
+<p>You create an <code>async*</code> value by using an
+<code>async*</code> expression, but usually, it’s done by defining a
+local function that returns an <code>async*</code> type.</p>
+<p>To get the result of an <code>async*</code> computation, you use
+<code>await*</code>.</p>
+<p>:::danger</p>
+<p>Use <code>async*</code> and <code>await*</code> carefully. In Motoko,
+a regular <code>await</code> is a commit point. State changes are saved
+before the function pauses.</p>
+<p><code>await*</code> is not a commit point because the computation it
+runs may not pause or commit at a predictable time. This means if a trap
+happens inside an <code>await*</code> computation, the actor’s state
+will roll back to the last commit point before the <code>await*</code>,
+not to the point of the <code>await*</code> itself.</p>
+<p>:::</p>
+<h3 id="example-1">Example</h3>
+<pre class="motoko"><code>persistent actor class (Logger : actor { log : Text -&gt; async () }) {
+
+  var logging = true;
+
+  func maybeLog(msg : Text) : async* () {
+    if (logging) { await Logger.log(msg) };
+  };
+
+  func doStuff() : async () {
+    // do stuff
+    await* maybeLog(&quot;Log entry #1&quot;);
+    // do more stuff
+    await* maybeLog(&quot;Log entry #2&quot;);
+  }
+}</code></pre>
+<h2 id="tryfinally"><code>try/finally</code></h2>
+<p>The <code>try/finally</code> construct ensures that a block of code
+in the <code>finally</code> clause executes regardless of whether an
+exception occurs in the <code>try</code> block. This is particularly
+useful for cleanup operations, such as logging or finalizing an action,
+ensuring that necessary steps are taken even if an error interrupts
+execution.</p>
+<p>In the <code>placeOrder</code> function below:</p>
+<ul>
+<li>The <code>try</code> block processes an order and appends it to the
+<code>orders</code> array.</li>
+<li>The <code>finally</code> block logs that the order has been
+processed, ensuring that this message is always printed, whether the
+function succeeds or fails.</li>
+</ul>
+<pre class="motoko"><code>public shared func placeOrder(order : Text) : async Text {
+    try {
+      Debug.print(&quot;Processing order: &quot; # order);
+
+      let newOrders = Array.tabulate&lt;Text&gt;(
+        orders.size() + 1,
+        func(i) {
+          if (i &lt; orders.size()) {orders[i]} else {order}
+        }
+      );
+
+      orders := newOrders;
+      return &quot;Order received: &quot; # order
+    } finally {
+      Debug.print(&quot;Order processed : &quot; # order)
+    };
+
+};</code></pre>
+<h2 id="trycatchfinally"><code>try/catch/finally</code></h2>
+<p>A <code>catch</code> block can be inserted inside a
+<code>try/finally</code> expression to catch an error.</p>
+<pre class="motoko"><code>    try {
+    // Code that might throw an error
+    } catch (e) {
+    // Handle the error
+    } finally {
+    // Cleanup code that always runs
+    }</code></pre>
+<p>When <code>catch</code> is used, the <code>finally</code> clause is
+optional. The <code>catch</code> block only catches errors in certain
+scenarios:</p>
+<ol type="1">
+<li>Explicit throws: When code in the <code>try</code> block explicitly
+throws an error using the <code>throw</code> keyword:</li>
+</ol>
+<pre class="motoko"><code>    try {
+        throw Error.reject(&quot;Intentional error&quot;);
+    } catch (e) {
+        // This will catch the explicitly thrown error
+    }</code></pre>
+<ol start="2" type="1">
+<li>Errors from awaited calls: If an <code>await</code> expression in
+the <code>try</code> block returns an error:</li>
+</ol>
+<pre class="motoko"><code>    try {
+        let result = await someAsyncFunction(); // If this returns an error
+    } catch (e) {
+        // The error will be caught here
+    }</code></pre>
+<p><code>catch</code> blocks <strong>do not</strong> catch errors in the
+following scenarios:</p>
+<ol type="1">
+<li>Local traps.</li>
+<li>Pre-await traps in async functions.</li>
+<li>Traps after <code>await</code>.</li>
+</ol>
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
+</body>
+</html>
