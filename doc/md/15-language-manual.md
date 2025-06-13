@@ -90,7 +90,7 @@ The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
 
-actor and assert async async* await await* break case catch class
+actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
 from_candid func if ignore import in module not null persistent object or label
 let loop private public query return shared stable switch system throw
@@ -522,6 +522,7 @@ The syntax of an expression is as follows:
   return <exp>?                                  Return
   <parenthetical>? async <block-or-exp>          Async expression
   await <block-or-exp>                           Await future (only in async)
+  await? <block-or-exp>                          Await future (only in async) without state commit when completed
   async* <block-or-exp>                          Delay an asynchronous computation
   await* <block-or-exp>                          Await a delayed computation (only in async)
   throw <exp>                                    Raise an error (only in async)
@@ -2572,6 +2573,12 @@ Such failures will result in the call immediately throwing an error with `code` 
 
 The error is produced eagerly, without suspending nor committing state.
 Earlier versions of Motoko would trap in such situations, making it difficult for the consumer of the `await` to mitigate such failures. Now, the consumer can handle these errors by using an enclosing `try ... catch ...` expression, if desired.
+
+#### Avoiding suspension for completed futures
+
+In rare circumstances one wishes to mask the state commit coming with `await` (and the corresponding delay). This can be safely done when several messages are being completed concurrently, and the order of responses is indeterministic while no global state is changed between the `await`s.
+
+The `await? <exp>` construct is provided for the purpose that execution is to immediately continue if the future is already completed, opting out of the state commit. Otherwise `await?` has the same properties and constraints as `await`, described above.
 
 :::
 
