@@ -181,7 +181,7 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
 
 let await env at short async k r =
   let adorn, schedule = if short then "?", fun f -> f () else "", Scheduler.queue in
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
       schedule (fun () ->

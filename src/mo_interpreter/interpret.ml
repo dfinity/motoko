@@ -217,33 +217,22 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     k (V.Async async)
 
 let await env at short async k =
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+  let adorn, schedule = if short then "?", fun f -> f () else "", Scheduler.queue in
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
-  get_async async (if short
-    then fun v ->
-      if env.flags.trace then
-        trace "<- await? %s%s" (string_of_region at) (string_of_arg env v);
-      incr trace_depth;
-      k v
-    else fun v ->
-      Scheduler.queue (fun () ->
+  get_async async (fun v ->
+      schedule (fun () ->
         if env.flags.trace then
-          trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+          trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
         incr trace_depth;
         k v
       )
     )
-    (let r = Option.get (env.throws) in
-     if short
-     then fun v ->
-       if env.flags.trace then
-         trace "<- await? %s threw %s" (string_of_region at) (string_of_arg env v);
-       incr trace_depth;
-       r v
-     else fun v ->
-       Scheduler.queue (fun () ->
+    (let r = Option.get env.throws in
+     fun v ->
+       schedule (fun () ->
          if env.flags.trace then
-           trace "<- await %s threw %s" (string_of_region at) (string_of_arg env v);
+           trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
          incr trace_depth;
          r v))
 
