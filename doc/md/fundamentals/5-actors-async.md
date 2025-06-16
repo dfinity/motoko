@@ -124,9 +124,12 @@ Unlike a local function call, which waits for the result before continuing, a sh
 
 If you `await` the same future again, it just returns the same result or error. Even if the future is already done, `await` will briefly suspend all pending state changes and outgoing messages. This means that you can rely on every `await` to commit state, whether its future is still in progress or already completed.
 
-## Using `await?` to efficiently resolve concurrent `async` futures
+## Using `await?` to efficiently await concurrent futures
 
-When several futures are being completed in parallel and their timing is not predictable it might be beneficial to opt out of the state committing behaviour of `await`, and instead proceed immediately with the resolved value.
+An `await` will always suspend execution and commit state, even if its future is already complete.
+
+When several futures are issued in parallel and racing to complete, it can be more efficient to opt out of the unconditional behavior of `await`
+and immediately continue with a result when it is available:
 
 ``` motoko no-repl
 let a : async Nat = CounterA.read();
@@ -134,7 +137,8 @@ let b : async Nat = CounterB.read();
 let sum : Nat = (await a) + (await? b);
 ```
 
-Here two message responses are racing, and it is likely that `await a` also fulfills the future `b`. `await? b` makes sure that its result is used immediately in this case.
+Here the futures `a` and `b` are racing to complete, and it is likely that the first `await` on `a` will resume with `b` already completed.
+Using `await? b` ensures that `b`'s result can be used immediately, if available, without an unnecessary suspension.
 
 :::danger
 
