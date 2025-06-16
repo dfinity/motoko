@@ -1,0 +1,4 @@
+# APPLICATION-SUBNET
+
+install $ID starved-timer/repro.mo ""
+ingress $ID test "DIDL\x00\x00"
