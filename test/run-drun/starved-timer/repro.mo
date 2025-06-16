@@ -4,12 +4,12 @@ actor {
 
   var count = 0;
 
-  func tick() : async () { print ("tick: " # debug_show count); count += 1 };
+  func tick() : async () { print ("tick: " # debug_show count # ", balance: " # debug_show cyclesBalance()); count += 1 };
 
   public func test() : async () {
     let balance = cyclesBalance();
     print (debug_show balance);
-    //ignore burn (balance - 1805_000_000);
+    ignore burn (balance - 12_000_000_000);
     print (debug_show cyclesBalance());
   };
 
@@ -17,5 +17,5 @@ actor {
       while (count < 3) await async ();
   };
 
-  ignore setTimer(2_000_000_000, true, tick)
+  ignore setTimer(500_000_000, true, tick)
 }

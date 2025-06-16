@@ -1,11 +1,19 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: 99_996_840_594_433
-debug.print: 99_996_840_594_433
+debug.print: 99_996_840_445_048
+debug.print: 12_000_000_000
 ingress Completed: Reply: 0x4449444c0000
-debug.print: tick: 0
-debug.print: tick: 1
-debug.print: tick: 2
-debug.print: tick: 3
+debug.print: tick: 0, balance: 773_083_623
+debug.print: tick: 1, balance: 612_659_043
+debug.print: tick: 2, balance: 452_258_547
+debug.print: tick: 3, balance: 3_688_525_471
 ingress Completed: Reply: 0x4449444c0000
-debug.print: tick: 4
+debug.print: tick: 4, balance: 3_686_549_830
+debug.print: tick: 5, balance: 3_684_574_186
+debug.print: tick: 6, balance: 3_682_598_543
+debug.print: tick: 7, balance: 3_680_622_901
+debug.print: tick: 8, balance: 3_678_647_260
+debug.print: tick: 9, balance: 3_676_671_616
+debug.print: tick: 10, balance: 3_674_695_828
+debug.print: tick: 11, balance: 3_672_720_040
+debug.print: tick: 12, balance: 3_670_744_329
