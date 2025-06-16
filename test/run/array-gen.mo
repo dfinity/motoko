@@ -17,6 +17,17 @@ for (i in b.keys()) {
   assert (b[i] == i);
 };
 
+let c = Prim.Array_tabulateVar<Nat>(10,func (x : Nat) : Nat = x);
+
+for (i in c.keys()) {
+  c[i] += 1;
+};
+
+assert(c.size() == 10);
+for (i in c.keys()) {
+  assert (c[i] == i + 1);
+};
+
 func init(length: Nat) {
     let array1 = Prim.Array_init<Nat>(length, 42);
     assert array1.size() == length;
