@@ -2574,6 +2574,8 @@ Such failures will result in the call immediately throwing an error with `code` 
 The error is produced eagerly, without suspending nor committing state.
 Earlier versions of Motoko would trap in such situations, making it difficult for the consumer of the `await` to mitigate such failures. Now, the consumer can handle these errors by using an enclosing `try ... catch ...` expression, if desired.
 
+:::
+
 ### Await?
 
 Similar to `await`, the `await?` expression `await? <exp>` has type `T` provided:
