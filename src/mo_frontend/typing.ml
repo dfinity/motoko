@@ -2326,15 +2326,17 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let to_fix = ref to_fix in
         let ts = if deferred = [] then ts else
           let subs = deferred |> List.map (fun (exp, typ) ->
-            (* Substitute the fixed type variables *)
+            (* Substitute fixed type variables *)
             let typ' = T.open_ ts_fixed_only typ in
-            (* print_endline (Printf.sprintf "subst: %s ~> %s" (Type.string_of_typ typ) (Type.string_of_typ typ')); *)
             match exp.it, typ' with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+              (* Check the function input type and prepare for inferring the body
+                NB: This could fail when the input type is not closed (contains unused type variables)
+                TODO: write a test that fails here
+               *)
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
-              (* print_endline (Printf.sprintf "expected: %s, actual: %s" (Type.string_of_typ expected_t) (Type.string_of_typ actual_t)); *)
               to_fix := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix;
               (actual_t, expected_t)
             | _ ->
@@ -2353,25 +2355,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               t'
             | _ -> t) ts_fixed_only ts'
         in
-        print_endline (String.concat ", " (List.map Type.string_of_typ ts));
 
         if not env.pre then begin
-          (* List.iter (fun (e, t) ->
-            let t = T.open_ ts_partial t in
-            (* Unused are inferred to a default bound, e.g. Non, which leads to confusing errors *)
-            if T.ConSet.disjoint unused (T.cons t) then
-              (* Only check the deferred terms that do not contain unused type variables *)
-              check_exp_strong env t e
-            else
-              raise (Bimatch (Printf.sprintf "cannot infer %s" (String.concat ", " 
-                (List.map Cons.name (T.ConSet.elements (T.ConSet.inter unused (T.cons t)))))));
-              (* Call infer which will fail in order to preserve the original error *)
-              (* Future work: Do another round of bi_match, substitute all but unused and try inferring more
-                Deferred terms are funcs for now. We can try to infer the body when the pattern can be inferred.
-                So if the input type is closed (no unused) then we can check the pattern and infer the body.
-                Could be further generalized by decomposing instead of full inferring...
-               *)
-          ) deferred; *)
           (* Fix the manually decomposed terms as if they were inferred *)
           List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e)) !to_fix;
         end;
