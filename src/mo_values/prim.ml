@@ -310,6 +310,7 @@ let prim trap =
     | _ -> assert false
     )
   | "Array.tabulate" -> fun c v k ->
+    (* TODO: optimize these (https://github.com/dfinity/motoko/pull/5256#discussion_r2143573548) *)
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
