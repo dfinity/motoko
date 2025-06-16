@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260). Reduces need for `-no-check-ir` flag.
+
 ## 0.14.12 (2025-06-12)
 
 * motoko (`moc`)
