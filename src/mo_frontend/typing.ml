@@ -2342,20 +2342,16 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               (infer_exp env exp, typ)
           ) in
 
-          (* Include the deferred terms in the instantiation*)
+          (* Include the deferred terms in the instantiation *)
           let ts', _ = solve subs in
 
           (* Create a combined instantiation *)
           List.map2 (fun t t' ->
-            match t, t' with
-            | T.Var _, typ
-            | typ, T.Var _ ->
-              (* Check that the instantiation is complete *)
-              assert (not (T.is_var typ));
-              typ
-            | _ ->
-              (* The variable should be fixed by now *)
-              assert false) ts_fixed_only ts'
+            match t with
+            | T.Var _ ->
+              assert (not (T.is_var t'));
+              t'
+            | _ -> t) ts_fixed_only ts'
         in
         print_endline (String.concat ", " (List.map Type.string_of_typ ts));
 
