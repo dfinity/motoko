@@ -2586,7 +2586,7 @@ Similar to `await`, the `await?` expression `await? <exp>` has type `T` provided
 
 Expression `await? <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future. If the `future` is incomplete, that is, its evaluation is still pending, `await? <exp>` suspends evaluation of the neared enclosing `async` or `shared`-function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed, if ever.
 If the future is complete with value `v`, then `await? <exp>` immediately continues execution with the value `v`.
-If the future is complete with thrown error value `e`, then `await <exp>` immediately continues execution by re-throwing the error `e`.
+If the future is complete with thrown error value `e`, then `await? <exp>` immediately continues execution by re-throwing the error `e`.
 
 Thus `await?` behaves like `await` on an incomplete future, but does not suspend execution and simply continues when the future is already complete.
 
