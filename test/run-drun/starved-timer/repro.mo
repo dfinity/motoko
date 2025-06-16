@@ -14,7 +14,7 @@ actor {
   };
 
   public func poll() : async () {
-      while (count < 3) await async ();
+      while (count < 5) await async ();
   };
 
   ignore setTimer(500_000_000, true, tick)
