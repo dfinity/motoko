@@ -203,6 +203,7 @@ rule token mode = parse
   | "assert" { ASSERT }
   | "await" { AWAIT }
   | "await*" { AWAITSTAR }
+  | "await?" { AWAITQUEST }
   | "break" { BREAK }
   | "case" { CASE }
   | "catch" { CATCH }

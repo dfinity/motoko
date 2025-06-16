@@ -13,6 +13,7 @@ type token =
   | RCURLY
   | AWAIT
   | AWAITSTAR
+  | AWAITQUEST
   | ASYNC
   | ASYNCSTAR
   | BREAK
@@ -145,6 +146,7 @@ let to_parser_token :
   | RCURLY -> Ok Parser.RCURLY
   | AWAIT -> Ok Parser.AWAIT
   | AWAITSTAR -> Ok Parser.AWAITSTAR
+  | AWAITQUEST -> Ok Parser.AWAITQUEST
   | ASYNC -> Ok Parser.ASYNC
   | ASYNCSTAR -> Ok Parser.ASYNCSTAR
   | BREAK -> Ok Parser.BREAK
@@ -276,6 +278,7 @@ let string_of_parser_token = function
   | Parser.RCURLY -> "RCURLY"
   | Parser.AWAIT -> "AWAIT"
   | Parser.AWAITSTAR -> "AWAIT*"
+  | Parser.AWAITQUEST -> "AWAIT?"
   | Parser.ASYNC -> "ASYNC"
   | Parser.ASYNCSTAR -> "ASYNC*"
   | Parser.BREAK -> "BREAK"

@@ -221,7 +221,7 @@ and objblock eo s id ty dec_fields =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
+%token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
@@ -715,9 +715,11 @@ exp_un(B) :
   | ASYNCSTAR e=exp_nest
     { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
-    { AwaitE(Type.Fut, e) @? at $sloc }
+    { AwaitE(Type.AwaitFut false, e) @? at $sloc }
+  | AWAITQUEST e=exp_nest
+    { AwaitE(Type.AwaitFut true, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
-    { AwaitE(Type.Cmp, e) @? at $sloc }
+    { AwaitE(Type.AwaitCmp, e) @? at $sloc }
   | ASSERT e=exp_nest
     { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
@@ -931,7 +933,7 @@ obj_or_class_dec :
           let default_stab = if persistent then Stable else Flexible in
           let id = if named then Some x else None in
           AwaitE
-            (Type.Fut,
+            (Type.AwaitFut false,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc

@@ -163,7 +163,7 @@ let asyncE s typ_bind e typ1 =
   }
 
 let awaitE s e =
-  let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
+  let (_, _ , typ) = T.as_async (T.normalize (typ e)) in
   { it = PrimE (AwaitPrim s, [e]);
     at = no_region;
     note = Note.{ def with typ; eff = T.Await }

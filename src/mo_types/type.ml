@@ -17,6 +17,7 @@ type obj_sort =
  | Memory          (* (codegen only): stable memory serialization format *)
 
 type async_sort = Fut | Cmp
+type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -602,6 +603,7 @@ let is_unit = function Tup [] -> true | _ -> false
 let is_pair = function Tup [_; _] -> true | _ -> false
 let is_func = function Func _ -> true | _ -> false
 let is_async = function Async _ -> true | _ -> false
+let is_fut = function Async (Fut, _, _) -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false

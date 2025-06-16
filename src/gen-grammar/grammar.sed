@@ -72,6 +72,7 @@ s/ROTLASSIGN/\'<<>=\'/g
 s/RETURN/\'return\'/g
 s/RCURLY/\'}\'/g
 s/RBRACKET/\']\'/g
+s/AWAITQUEST/\'await?\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
