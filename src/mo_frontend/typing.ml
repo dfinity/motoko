@@ -2105,34 +2105,8 @@ and check_exp' env0 t exp : T.typ =
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
-    let sort, ve = check_shared_pat env shared_pat in
-    if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
-        "a shared function is only allowed as a public field of an actor";
-    let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
-    let ve2 = T.Env.adjoin ve ve1 in
-    let codom = T.codom c (fun () -> assert false) ts2 in
-    let t2 = match typ_opt with
-      | None -> codom
-      | Some typ -> check_typ env typ
-    in
-    if sort <> s then
-      error env exp.at "M0094"
-        "%sshared function does not match expected %sshared function type"
-        (if sort = T.Local then "non-" else "")
-        (if s = T.Local then "non-" else "");
-    if not (sub env Source.no_region t2 codom) then
-      error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a"
-        display_typ_expand t2
-        display_typ_expand codom;
-    let env' =
-      { env with
-        labs = T.Env.empty;
-        rets = Some t2;
-        async = C.NullCap; }
-    in
-    check_exp_strong (adjoin_vals env' ve2) t2 exp;
+    let env', t2 = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
+    check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
@@ -2178,6 +2152,36 @@ and check_exp_field env (ef : exp_field) fts =
     check_exp env t exp
   | None ->
     ignore (infer_exp env exp)
+
+and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : (env * T.typ) =
+  let sort, ve = check_shared_pat env shared_pat in
+  if not env.pre && not in_actor && T.is_shared_sort sort then
+    error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
+      "a shared function is only allowed as a public field of an actor";
+  let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
+  let ve2 = T.Env.adjoin ve ve1 in
+  let codom = T.codom c (fun () -> assert false) ts2 in
+  let t2 = match typ_opt with
+    | None -> codom
+    | Some typ -> check_typ env typ
+  in
+  if sort <> s then
+    error env exp.at "M0094"
+      "%sshared function does not match expected %sshared function type"
+      (if sort = T.Local then "non-" else "")
+      (if s = T.Local then "non-" else "");
+  if not (sub env Source.no_region t2 codom) then
+    error env exp.at "M0095"
+      "function return type%a\ndoes not match expected return type%a"
+      display_typ_expand t2
+      display_typ_expand codom;
+  let env' =
+    { env with
+      labs = T.Env.empty;
+      rets = Some t2;
+      async = C.NullCap; }
+  in
+  (adjoin_vals env' ve2), t2
 
 and detect_lost_fields env t = function
   | _ when env.pre || not (T.is_obj t) -> ()
@@ -2285,7 +2289,6 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           match exp.it, target_type with
           | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            debug_print_region exp.at;
             let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
             let target_type' = T.Tup ts' in
             (* exp.note would need to be fixed later after the substitution *)
@@ -2304,36 +2307,60 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       in
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
       List.iter (fun (e, t) -> debug_print_region e.at; print_endline (Type.string_of_typ t)) deferred;
-      (* begin try
-        let matched = Bi_match.bi_match_subs (scope_of_env env) tbs subs t_expect_opt in
-        List.iter (fun t -> print_endline (Type.string_of_typ t)) matched
-      with Bi_match.Bimatch msg ->
-        print_endline msg
-      end; *)
+
+      (* Incorporate the return type into the subtyping constraints *)
+      let ret_typ_opt, subs = 
+        match t_expect_opt with
+        | None -> Some t_ret, subs
+        | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+      in
 
       let open Bi_match in
       try
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let ts, { ts_partial; unused } =
-          bi_match_call_subs
-            (scope_of_env env)
-            tbs subs
-            t_ret t_expect_opt
+        let solve = bi_match_subs (scope_of_env env) tbs ret_typ_opt in
+        let ts, { ts_partial; ts_fixed_only; unused } = solve subs in
+
+        let to_fix = ref to_fix in
+        let ts = if deferred = [] then ts else
+          let subs = deferred |> List.map (fun (exp, typ) ->
+            (* Substitute the fixed type variables *)
+            let typ' = T.open_ ts_fixed_only typ in
+            (* print_endline (Printf.sprintf "subst: %s ~> %s" (Type.string_of_typ typ) (Type.string_of_typ typ')); *)
+            match exp.it, typ' with
+            | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+              let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+              (* Future work: we could decompose instead of infer if we want to iterate the process *)
+              let actual_t = infer_exp env' body in
+              (* print_endline (Printf.sprintf "expected: %s, actual: %s" (Type.string_of_typ expected_t) (Type.string_of_typ actual_t)); *)
+              to_fix := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix;
+              (actual_t, expected_t)
+            | _ ->
+              (* We can try to infer the subexpression, but it will most likely fail *)
+              (infer_exp env exp, typ)
+          ) in
+
+          (* Include the deferred terms in the instantiation*)
+          let ts', _ = solve subs in
+
+          (* Create a combined instantiation *)
+          List.map2 (fun t t' ->
+            match t, t' with
+            | T.Var _, typ
+            | typ, T.Var _ ->
+              (* Check that the instantiation is complete *)
+              assert (not (T.is_var typ));
+              typ
+            | _ ->
+              (* The variable should be fixed by now *)
+              assert false) ts_fixed_only ts'
         in
-        (*
-          TODO: unconstrained type variables are problematic
-          0. This produces misleading errors like `Nat </: None`, variables are fixed to None or upper bound...
-          1. Maybe we should only include tvars that appear in subs? And bi_match after on the deferred etc.
-          2. For now we can do better error handling:
-            - deferred terms with types containing unconstrained tvars can simply fail by calling infer on them
-         *)
-        let t_arg' = T.open_ ts t_arg in
-        let t_ret' = T.open_ ts t_ret in
+        print_endline (String.concat ", " (List.map Type.string_of_typ ts));
 
         if not env.pre then begin
-          List.iter (fun (e, t) ->
+          (* List.iter (fun (e, t) ->
             let t = T.open_ ts_partial t in
             (* Unused are inferred to a default bound, e.g. Non, which leads to confusing errors *)
             if T.ConSet.disjoint unused (T.cons t) then
@@ -2348,15 +2375,16 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
                 So if the input type is closed (no unused) then we can check the pattern and infer the body.
                 Could be further generalized by decomposing instead of full inferring...
                *)
-          ) deferred;
-          List.iter (fun (e, t) -> let _ = infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e in ()) to_fix;
+          ) deferred; *)
+          (* Fix the manually decomposed terms as if they were inferred *)
+          List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e)) !to_fix;
         end;
 (*
         if not env.pre then
           info env at "inferred instantiation <%s>"
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
-        ts, t_arg', t_ret'
+        ts, T.open_ ts t_arg, T.open_ ts t_ret
       with Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"

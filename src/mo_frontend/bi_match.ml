@@ -26,6 +26,7 @@ exception Bimatch of string
 
 type unused_ctx = {
   ts_partial : typ list;
+  ts_fixed_only : typ list;
   unused : ConSet.t;
 }
 
@@ -47,15 +48,39 @@ let verify_inst tbs subs ts =
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
   List.for_all (fun (t1, t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
-let bi_match_subs scope_opt tbs subs typ_opt =
-  let ts = open_binds tbs in
+let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 
-  let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
-  let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
+let fail_open_bound c bd =
+  let c = Cons.name c in
+  raise (Bimatch (Format.asprintf
+    "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+    c (Lib.Format.display pp_typ) bd))
+
+let bi_match_subs scope_opt tbs typ_opt =
+  let ts = open_binds tbs in
 
   let cs = List.map (fun t -> fst (as_con t)) ts in
 
   let cons = ConSet.of_list cs in
+
+  (* Check that type parameters have closed bounds *)
+  let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
+  List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
+
+  (* Initialize lower and upper bounds for type parameters *)
+  let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
+  let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
+  let l, u = match scope_opt, tbs with
+    | Some c, {sort = Scope; _}::tbs ->
+      let c0 = List.hd cs in
+      ConEnv.add c0 c l,
+      ConEnv.add c0 c u
+    | None, {sort = Scope; _}::tbs ->
+      raise (Bimatch "scope instantiation required but no scope available")
+    | _, _ ->
+      l,
+      u
+  in
 
   let flexible c = ConSet.mem c cons in
 
@@ -66,20 +91,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | None ->
       ConSet.fold (fun c ce -> ConEnv.add c Variance.Bivariant ce) cons ConEnv.empty
   in
-
   let variance c = ConEnv.find c variances in
-
-  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
-
-  (* Find unused type variables *)
-  let unused = 
-    let cons1 = Type.cons_typs ts1 in
-    let cons2 = Type.cons_typs ts2 in
-    let cons3 = Option.fold ~none:ConSet.empty ~some:Type.cons typ_opt in
-    let used = ConSet.union cons1 cons2 |> ConSet.union cons3 in
-    ConSet.diff cons used
-  in
-  print_endline ("unused: " ^ String.concat ", " (List.map Cons.name (ConSet.elements unused)));
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -278,30 +290,20 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))
 
-  and fail_open_bound c bd =
-    let c = Cons.name c in
-    raise (Bimatch (Format.asprintf
-      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
-      c (Lib.Format.display pp_typ) bd))
+  in fun subs ->
+    let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
+    let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
-  in
-    let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
-    List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
-
-    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
-    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
-
-    let l, u = match scope_opt, tbs with
-      | Some c, {sort = Scope; _}::tbs ->
-        let c0 = List.hd cs in
-        ConEnv.add c0 c l,
-        ConEnv.add c0 c u
-      | None, {sort = Scope; _}::tbs ->
-        raise (Bimatch "scope instantiation required but no scope available")
-      | _, _ ->
-        l,
-        u
+    (* Find unused type variables *)
+    let unused = 
+      let cons1 = Type.cons_typs ts1 in
+      let cons2 = Type.cons_typs ts2 in
+      let cons3 = Option.fold ~none:ConSet.empty ~some:Type.cons typ_opt in
+      let used = ConSet.union cons1 cons2 |> ConSet.union cons3 in
+      ConSet.diff cons used
     in
+    (* print_endline ("unused: " ^ String.concat ", " (List.map Cons.name (ConSet.elements unused))); *)
+
     match
       bi_match_list bi_match_typ
         (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2
@@ -320,10 +322,18 @@ let bi_match_subs scope_opt tbs subs typ_opt =
               fail_over_constrained lb c ub)
         cs
       in
-      List.iter2 (fun c u -> print_endline (Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ u)) cs us;
+      (* List.iter2 (fun c u -> print_endline (Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ u)) cs us; *)
       if verify_inst tbs subs us then
         let ts_partial = List.map2 (fun c u -> if ConSet.mem c unused then Type.Con (c, []) else u) cs us in
-        us, { ts_partial; unused }
+        let ts_fixed_only = List.combine tbs ts_partial |> List.mapi (fun i ({ var; _ }, t) ->
+          match t with
+          | Type.Con (c, _) when ConSet.mem c unused ->
+            assert (Cons.name c = var);
+            Type.Var (var, i)
+          | _ -> t)
+        in
+        print_endline (String.concat ", " (List.map2 (fun c t -> Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ t) cs ts_fixed_only));
+        us, { ts_partial; ts_fixed_only; unused }
       else
         raise (Bimatch
           (Printf.sprintf
@@ -341,18 +351,18 @@ let bi_match_subs scope_opt tbs subs typ_opt =
             Format.asprintf "%a" display_rel (t1, "<:", t2))
             tts))))
 
-let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
+(* let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
   match ret_typ_opt with
   | None ->
     (* no ret_typ: use polarities of tbs in rng_typ to
        choose principal instantiation, if any *)
     bi_match_subs scope_opt tbs
-      [(arg_typ, dom_typ) (*; (rng_typ, Any) *)]
       (Some rng_typ)
+      [(arg_typ, dom_typ) (*; (rng_typ, Any) *)]
   | Some ret_typ ->
     bi_match_subs scope_opt tbs
-      [(arg_typ, dom_typ); (rng_typ, ret_typ)]
       None
+      [(arg_typ, dom_typ); (rng_typ, ret_typ)]
 
 let bi_match_call_subs scope_opt tbs subs rng_typ ret_typ_opt =
   match ret_typ_opt with
@@ -360,9 +370,9 @@ let bi_match_call_subs scope_opt tbs subs rng_typ ret_typ_opt =
     (* no ret_typ: use polarities of tbs in rng_typ to
        choose principal instantiation, if any *)
     bi_match_subs scope_opt tbs
-      subs
       (Some rng_typ)
+      subs
   | Some ret_typ ->
     bi_match_subs scope_opt tbs
-      ((rng_typ, ret_typ) :: subs)
       None
+      ((rng_typ, ret_typ) :: subs) *)

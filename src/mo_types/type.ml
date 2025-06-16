@@ -605,6 +605,7 @@ let is_async = function Async _ -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false
+let is_var = function Var _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
