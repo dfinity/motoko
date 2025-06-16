@@ -61,6 +61,31 @@ type env =
     srcs : Field_sources.t;
   }
 
+let is_my_env env =
+  (* env.vals |> T.Env.keys |> String.concat ", " |> Format.printf "vals: %s\n"; *)
+  (* (!(env.used_identifiers)) |> S.elements |> String.concat ", " |> Format.printf "used_identifiers: %s\n"; *)
+  env.vals |> T.Env.mem "_szczebrzeszyn"
+
+let print_exp env exp =
+  if is_my_env env then
+    print_endline (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+
+let print_exp' exp =
+  print_endline (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
+
+let print_typ env typ =
+  if is_my_env env then
+    print_endline (Wasm.Sexpr.to_string 80 (Arrange.typ typ))
+
+let print_ttyp env typ =
+  if is_my_env env then
+    print_endline (Type.string_of_typ typ)
+
+let stack_trace () = flush_all(); let r = Unix.fork() in if r == 0 then raise Exit
+
+let debug_print_region at =
+  print_endline (Source.read_region_with_markers at |> Option.value ~default:"")
+
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
@@ -1383,7 +1408,7 @@ and infer_exp'' env exp : T.typ =
     let ts = List.map (infer_exp env) exps in
     T.Tup ts
   | OptE exp1 ->
-    let t1 = infer_exp env exp1 in
+    let t1 = infer_exp env exp1 in (* TODO: add to split context? *)
     T.Opt t1
   | DoOptE exp1 ->
     let env' = add_lab env "!" (T.Prim T.Null) in
@@ -1539,11 +1564,51 @@ and infer_exp'' env exp : T.typ =
     let sort, ve = check_shared_pat env shared_pat in
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
-    check_shared_return env typ.at sort c ts2;
+    check_shared_return env typ.at sort c ts2; (* TODO: Move it after inferring the body? *)
     let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
+
+    let _inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
+      let env'' =
+        { env' with
+          (* labs = T.Env.empty; *)
+          pre = true;
+          msgs;
+          rets = Some T.Pre;
+          (* async = None; *)
+        }
+      in
+      let initial_usage = enter_scope env'' in
+      let res =
+        try
+          match infer_exp (adjoin_vals env'' ve2) exp1 with
+          | T.Tup [] -> None (* Exclude: no changes compared to the default unit *)
+          (* Exclude implicit conversions to unit (when pre = true):
+           * e.g. `loop { if true return }` is inferred as None, but it's `()`
+           * e.g. func f<A <: ()>(a : A) { if true return; a } is inferred as `A`, but it's `()`
+           * For backward compatibility, every unannotated return type might be unit `()`.
+           * Or traverse expressions fully to check every return (any other problematic cases?)
+           *)
+          | t when T.sub t T.unit -> None
+          | T.Tup ts -> Some ts
+          | t -> Some [t]
+        with Recover ->
+          None
+      in
+      leave_scope env ve2 initial_usage;
+      res
+    ) in
+    (* Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
+    (* Note: when `ok` there are probably no messages *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> []) inferred_opt |> Diag.print_messages; *)
+    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> x) inferred_opt |> Diag.print_messages; *)
+    let ts2 = match inferred_opt with
+      | Ok (ts, _) -> ts
+      | Error _ -> ts2
+    in *)
+
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -1554,8 +1619,9 @@ and infer_exp'' env exp : T.typ =
           (* async = None; *) }
       in
       let initial_usage = enter_scope env'' in
-      check_exp_strong (adjoin_vals env'' ve2) codom exp1;
+      check_exp_strong (adjoin_vals env'' ve2) codom exp1; (* TODO: Try infering the body when there is no return type *)
       leave_scope env ve2 initial_usage;
+
       if Type.is_shared_sort sort then begin
         check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
@@ -1588,7 +1654,7 @@ and infer_exp'' env exp : T.typ =
     let t = infer_call env exp1 inst exp2 exp.at None in
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t
-  | BlockE decs ->
+            | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
   | NotE exp1 ->
@@ -2007,7 +2073,7 @@ and check_exp' env0 t exp : T.typ =
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with
-        labs = T.Env.empty;
+          labs = T.Env.empty;
         rets = Some t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
@@ -2180,27 +2246,118 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2;
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      let t2 = infer_exp env exp2 in
+      (*
+        Partial Argument Inference:
+        We need to infer the type of the argument and find the best instantiation for the call expression.
+        However, some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
+        Idea:
+        - Decompose the argument into sub-expressions and defer inference for those that would fail.
+        - Find the instantiation using the inferred sub-expressions.
+        - Substitute and `check_exp` the remaining sub-expressions.
+       *)
+      let infer_subargs_for_bimatch_or_defer env exp target_type =
+        let rec cannot_infer_pat pat =
+          match pat.it with
+          | WildP
+          | VarP _
+          | AltP _ -> true (* cases that cannot be inferred, would report errors *)
+          | LitP _
+          | AnnotP _ (* annotated patterns can be inferred *)
+          | SignP _ -> false
+          | TupP pats -> List.exists cannot_infer_pat pats
+          | ParP p
+          | OptP p
+          | TagP (_, p) -> cannot_infer_pat p
+          | ObjP pfs -> List.exists (fun (pf : pat_field) -> cannot_infer_pat pf.it.pat) pfs
+        in
+        let try_infer_exp env exp =
+          match exp.it with
+          | FuncE (_, _, _, pat, _, _, _) when cannot_infer_pat pat -> None
+          (* Future work: more cases *)
+          | _ -> Some (infer_exp env exp)
+        in
+        let infer_or_defer env (subs, deferred, to_fix) exp target_type =
+          match try_infer_exp env exp with
+          | Some t -> t, ((t, target_type) :: subs, deferred, to_fix) (* subtype problem for bi_match *)
+          | None -> target_type, (subs, (exp, target_type) :: deferred, to_fix) (* deferred *)
+        in
+        let rec decompose env exp target_type acc =
+          match exp.it, target_type with
+          | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
+          | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+            debug_print_region exp.at;
+            let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
+            let target_type' = T.Tup ts' in
+            (* exp.note would need to be fixed later after the substitution *)
+            target_type', (subs, deferred, (exp, target_type') :: to_fix)
+          (* Future work: more cases *)
+          | _ -> infer_or_defer env acc exp target_type
+        and decompose_list env exps ts acc_ts acc =
+          match exps, ts with
+          | exp::exps, t::ts ->
+            let t', acc' = decompose env exp t acc in
+            decompose_list env exps ts (t' :: acc_ts) acc'
+          | [], [] -> List.rev acc_ts, acc
+          | _ -> assert false
+        in
+        decompose env exp target_type ([], [], [])
+      in
+      let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      List.iter (fun (e, t) -> debug_print_region e.at; print_endline (Type.string_of_typ t)) deferred;
+      (* begin try
+        let matched = Bi_match.bi_match_subs (scope_of_env env) tbs subs t_expect_opt in
+        List.iter (fun t -> print_endline (Type.string_of_typ t)) matched
+      with Bi_match.Bimatch msg ->
+        print_endline msg
+      end; *)
+
+      let open Bi_match in
       try
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let ts =
-          Bi_match.bi_match_call
+        let ts, { ts_partial; unused } =
+          bi_match_call_subs
             (scope_of_env env)
-            (tbs, t_arg, t_ret)
-            t2
-            t_expect_opt
+            tbs subs
+            t_ret t_expect_opt
         in
+        (*
+          TODO: unconstrained type variables are problematic
+          0. This produces misleading errors like `Nat </: None`, variables are fixed to None or upper bound...
+          1. Maybe we should only include tvars that appear in subs? And bi_match after on the deferred etc.
+          2. For now we can do better error handling:
+            - deferred terms with types containing unconstrained tvars can simply fail by calling infer on them
+         *)
         let t_arg' = T.open_ ts t_arg in
         let t_ret' = T.open_ ts t_ret in
+
+        if not env.pre then begin
+          List.iter (fun (e, t) ->
+            let t = T.open_ ts_partial t in
+            (* Unused are inferred to a default bound, e.g. Non, which leads to confusing errors *)
+            if T.ConSet.disjoint unused (T.cons t) then
+              (* Only check the deferred terms that do not contain unused type variables *)
+              check_exp_strong env t e
+            else
+              raise (Bimatch (Printf.sprintf "cannot infer %s" (String.concat ", " 
+                (List.map Cons.name (T.ConSet.elements (T.ConSet.inter unused (T.cons t)))))));
+              (* Call infer which will fail in order to preserve the original error *)
+              (* Future work: Do another round of bi_match, substitute all but unused and try inferring more
+                Deferred terms are funcs for now. We can try to infer the body when the pattern can be inferred.
+                So if the input type is closed (no unused) then we can check the pattern and infer the body.
+                Could be further generalized by decomposing instead of full inferring...
+               *)
+          ) deferred;
+          List.iter (fun (e, t) -> let _ = infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e in ()) to_fix;
+        end;
 (*
         if not env.pre then
           info env at "inferred instantiation <%s>"
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
         ts, t_arg', t_ret'
-      with Bi_match.Bimatch msg ->
+      with Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
@@ -3005,12 +3162,13 @@ and infer_block_decs env decs at : Scope.t =
 and infer_block_exps env decs : T.typ =
   match decs with
   | [] -> T.unit
-  | [dec] -> infer_dec env dec
+  | [dec] -> infer_dec env dec (* Why is this not unit? *)
   | dec::decs' ->
     if not env.pre then recover (check_dec env T.unit) dec;
     infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
+  (* TODO: disable lambda body inference for declarations, func and let func *)
   let t =
   match dec.it with
   | ExpD exp -> infer_exp env exp

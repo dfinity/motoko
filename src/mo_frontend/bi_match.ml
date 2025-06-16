@@ -24,6 +24,11 @@ let display_rel = Lib.Format.display pp_rel
 
 exception Bimatch of string
 
+type unused_ctx = {
+  ts_partial : typ list;
+  unused : ConSet.t;
+}
+
 module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
@@ -65,6 +70,16 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   let variance c = ConEnv.find c variances in
 
   let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
+
+  (* Find unused type variables *)
+  let unused = 
+    let cons1 = Type.cons_typs ts1 in
+    let cons2 = Type.cons_typs ts2 in
+    let cons3 = Option.fold ~none:ConSet.empty ~some:Type.cons typ_opt in
+    let used = ConSet.union cons1 cons2 |> ConSet.union cons3 in
+    ConSet.diff cons used
+  in
+  print_endline ("unused: " ^ String.concat ", " (List.map Cons.name (ConSet.elements unused)));
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -296,6 +311,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         (fun c ->
           match ConEnv.find c l, ConEnv.find c u with
           | lb, ub ->
+            assert (not (ConSet.mem c unused) || (eq lb Type.Non && eq ub (bound c))); (* unused implies default constraint *)
             if eq lb ub then
               ub
             else if sub lb ub then
@@ -304,8 +320,10 @@ let bi_match_subs scope_opt tbs subs typ_opt =
               fail_over_constrained lb c ub)
         cs
       in
+      List.iter2 (fun c u -> print_endline (Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ u)) cs us;
       if verify_inst tbs subs us then
-        us
+        let ts_partial = List.map2 (fun c u -> if ConSet.mem c unused then Type.Con (c, []) else u) cs us in
+        us, { ts_partial; unused }
       else
         raise (Bimatch
           (Printf.sprintf
@@ -334,4 +352,17 @@ let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
   | Some ret_typ ->
     bi_match_subs scope_opt tbs
       [(arg_typ, dom_typ); (rng_typ, ret_typ)]
+      None
+
+let bi_match_call_subs scope_opt tbs subs rng_typ ret_typ_opt =
+  match ret_typ_opt with
+  | None ->
+    (* no ret_typ: use polarities of tbs in rng_typ to
+       choose principal instantiation, if any *)
+    bi_match_subs scope_opt tbs
+      subs
+      (Some rng_typ)
+  | Some ret_typ ->
+    bi_match_subs scope_opt tbs
+      ((rng_typ, ret_typ) :: subs)
       None
