@@ -124,7 +124,7 @@ Unlike a local function call, which waits for the result before continuing, a sh
 
 If you `await` the same future again, it just returns the same result or error. Even if the future is already done, `await` will briefly suspend all pending state changes and outgoing messages. This means that you can rely on every `await` to commit state, whether its future is still in progress or already completed.
 
-## Using `await?` to efficiently await concurrent `async` futures
+## Using `await?` to efficiently await concurrent futures
 
 An `await` will always suspend execution and commit state, even if its future is already complete.
 
