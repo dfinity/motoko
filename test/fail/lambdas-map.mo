@@ -14,7 +14,7 @@
 //   Nat
 // does not have expected type
 //   None
-func map<I,O>(ar : [I], f : I -> O) : [O] = [];
+func map<I, O>(ar : [I], f : I -> O) : [O] = [];
 
 func _useMap() {
   let ar : [Nat] = [1, 2, 3];
