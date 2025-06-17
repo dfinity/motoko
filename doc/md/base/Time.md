@@ -1,4 +1,5 @@
 # Time
+System time
 
 ## Type `Time`
 ``` motoko no-repl

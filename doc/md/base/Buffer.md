@@ -419,10 +419,7 @@ sum // => 33
 func clone() : Buffer<X>
 ```
 
-:::warning Deprecated function
-
-Use the static library function instead of this instance method.
-:::
+@deprecated Use the static library function instead of this instance method.
 
 
 ### Function `toArray`
@@ -430,10 +427,7 @@ Use the static library function instead of this instance method.
 func toArray() : [X]
 ```
 
-:::warning Deprecated function
-
-Use the static library function instead of this instance method.
-:::
+@deprecated Use the static library function instead of this instance method.
 
 
 ### Function `toVarArray`
@@ -441,10 +435,7 @@ Use the static library function instead of this instance method.
 func toVarArray() : [var X]
 ```
 
-:::warning Deprecated function
-
-Use the static library function instead of this instance method.
-:::
+@deprecated Use the static library function instead of this instance method.
 
 ## Function `isEmpty`
 ``` motoko no-repl
@@ -1118,9 +1109,6 @@ Buffer.toArray<Nat>(buffer); // => [1, 2, 3]
 
 ## Function `toVarArray`
 ``` motoko no-repl
-func toVarArray<X>(buffer : Buffer<X>) : [var X]
-```
-
 func toVarArray<X>(buffer : Buffer<X>) : [var X]
 ```
 

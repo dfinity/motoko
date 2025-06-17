@@ -590,7 +590,7 @@ ignore Nat64.addWrap(Nat64.maximumValue, 1); // => 0
 Nat64.maximumValue +% (1 : Nat64) // => 0
 ```
 
-:::info 
+:::info
 The reason why this function is defined in this library (in addition
 to the existing `+%` operator) is so that you can use it as a function
 value to pass to a higher order function. It is not possible to use `+%`
