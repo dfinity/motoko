@@ -571,7 +571,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some c -> T.Con(c, [])
       | None -> error env exp.at "misplaced await" in
       let t1 = T.promote (typ exp1) in
-      let (t2, t3) = try T.as_async_sub s t0 t1
+      let (t2, t3) = try T.as_async_sub (to_async_sort s) t0 t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
@@ -600,7 +600,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt (T.seq ots) <: t
     | CPSAwait (s, cont_typ), [a; krb] ->
       let (_, t1) =
-        try T.as_async_sub s T.Non (T.normalize (typ a))
+        try T.as_async_sub (to_async_sort s) T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
       (match cont_typ with
@@ -1194,6 +1194,8 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let val_info = {typ = t; const = false; loc_known = false} in
     { val_env = T.Env.add id val_info scope.val_env }
+
+and to_async_sort = Type.(function | AwaitCmp -> Cmp | AwaitFut _ -> Fut)
 
 (* Programs *)
 
