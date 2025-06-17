@@ -587,7 +587,7 @@ func fromInt(_ : Int) : Float
 
 Conversion from `Int`. May result in `Inf`.
 
-:::note 
+:::note
 The floating point number may be imprecise for large or small Int values.
 Returns `inf` if the integer is greater than the maximum floating point number.
 Returns `-inf` if the integer is less than the minimum floating point number.
@@ -606,9 +606,8 @@ func equal(x : Float, y : Float) : Bool
 ```
 
 Returns `x == y`.
-:::warning Deprecated function
-Use `Float.equalWithin()` as this function does not consider numerical errors.
-:::
+
+@deprecated `Float.equalWithin()` as this function does not consider numerical errors.
 
 ## Function `notEqual`
 ``` motoko no-repl
@@ -616,9 +615,8 @@ func notEqual(x : Float, y : Float) : Bool
 ```
 
 Returns `x != y`.
-:::warning Deprecated function
-Use `Float.notEqualWithin()` as this function does not consider numerical errors.
-:::
+
+@deprecated Use `Float.notEqualWithin()` as this function does not consider numerical errors.
 
 ## Function `equalWithin`
 ``` motoko no-repl
@@ -773,7 +771,7 @@ func compare(x : Float, y : Float) : {#less; #equal; #greater}
 
 Defines a total order of `x` and `y` for use in sorting.
 
-:::note 
+:::note
 Using this operation to determine equality or inequality is discouraged for two reasons:
 * It does not consider numerical errors, see comment above. Use `equalWithin(x, y, espilon)` or
   `notEqualWithin(x, y, epsilon)` to test for equality or inequality, respectively.
@@ -886,7 +884,7 @@ func mul(x : Float, y : Float) : Float
 
 Returns the product of `x` and `y`, `x * y`.
 
-:::info 
+:::info
 Numerical errors may occur, see comment above.
 :::
 
@@ -916,7 +914,7 @@ func div(x : Float, y : Float) : Float
 
 Returns the division of `x` by `y`, `x / y`.
 
-:::info 
+:::info
 Numerical errors may occur, see comment above.
 :::
 
@@ -950,7 +948,7 @@ func rem(x : Float, y : Float) : Float
 Returns the floating point division remainder `x % y`,
 which is defined as `x - trunc(x / y) * y`.
 
-:::info 
+:::info
 Numerical errors may occur, see comment above.
 :::
 
@@ -981,7 +979,7 @@ func pow(x : Float, y : Float) : Float
 
 Returns `x` to the power of `y`, `x ** y`.
 
-:::info 
+:::info
 Numerical errors may occur, see comment above.
 :::
 

@@ -4569,7 +4569,7 @@ module Arr = struct
     Tagged.allocation_barrier env
 
 
-  let tabulate env =
+  let tabulate env sort =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
@@ -4578,7 +4578,7 @@ module Arr = struct
     (* Allocate *)
     BigNum.to_word64 env ^^
     set_r ^^
-    alloc env Tagged.I get_r ^^
+    alloc env sort get_r ^^
     set_r ^^
 
     (* Initial index *)
@@ -12495,7 +12495,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
-    const_sr SR.Vanilla (Arr.tabulate env)
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.I)
+  | OtherPrim "Array.tabulateVar", [_;_] ->
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.M)
   | OtherPrim "btst8", [_;_] ->
     (* TODO: btstN returns Bool, not a small value *)
     const_sr (SR.UnboxedWord64 Type.Nat8) (TaggedSmallWord.btst_kernel env Type.Nat8)

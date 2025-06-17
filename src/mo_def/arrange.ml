@@ -147,8 +147,9 @@ module Make (Cfg : Config) = struct
     | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
     | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
-    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
-    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
+    | AwaitE (Type.AwaitFut false, e)   -> "AwaitE" $$ [exp e]
+    | AwaitE (Type.AwaitFut true, e)    -> "AwaitE?" $$ [exp e]
+    | AwaitE (Type.AwaitCmp, e)  -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
     | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
     | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
