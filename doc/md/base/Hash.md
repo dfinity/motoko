@@ -33,28 +33,23 @@ Test if two hashes are equal.
 func hash(n : Nat) : Hash
 ```
 
-:::warning Deprecated function
-This function computes a hash from the least significant 32 bits of `n`, ignoring other bits.
-For large `Nat` values, consider using a bespoke hash function that considers all of the argument's bits.
-:::
+Computes a hash from the least significant 32-bits of `n`, ignoring other bits.
+
+@deprecated For large `Nat` values consider using a bespoke hash function that considers all of the argument's bits.
 
 ## Function `debugPrintBits`
 ``` motoko no-repl
 func debugPrintBits(bits : Hash)
 ```
 
-:::warning Deprecated function
-This function will be removed in a future version.
-:::
+@deprecated This function will be removed in future.
 
 ## Function `debugPrintBitsRev`
 ``` motoko no-repl
 func debugPrintBitsRev(bits : Hash)
 ```
 
-:::warning Deprecated function
-This function will be removed in a future version.
-:::
+@deprecated This function will be removed in future.
 
 ## Function `hashNat8`
 ``` motoko no-repl
@@ -67,6 +62,5 @@ func hashNat8(key : [Hash]) : Hash
 The input type should actually be `[Nat8]`.
 Be sure to explode each `Nat8` of a `Nat32` into its own `Nat32`, and shift into the lower 8 bits.
 :::
-:::warning Deprecated function
-This function may be removed or changed in a future version.
-:::
+
+@deprecated This function may be removed or changed in future.

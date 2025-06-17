@@ -79,22 +79,17 @@ Int.max(2, -3) // => 2
 func hash(i : Int) : Hash.Hash
 ```
 
-:::warning Deprecated function
-
-The function `hash` is deprecated. It computes a hash using only the least significant 32 bits of the `Int`, ignoring the rest.
-For large integers, this may lead to hash collisions. Use a bespoke hash function that considers all bits of the value instead.
-:::
+Computes a hash from the least significant 32-bits of `i`, ignoring other bits.
+@deprecated For large `Int` values consider using a bespoke hash function that considers all of the argument's bits.
 
 ## Function `hashAcc`
 ``` motoko no-repl
 func hashAcc(h1 : Hash.Hash, i : Int) : Hash.Hash
 ```
 
-:::warning Deprecated function
+Computes an accumulated hash from `h1` and the least significant 32-bits of `i`, ignoring other bits in `i`.
 
-The function `hashAcc` is deprecated. It accumulates a hash using only the least significant 32 bits of the `Int`, ignoring other bits.
-This limits its effectiveness for large integers. Prefer using a custom hash function that processes the full integer input.
-:::
+@deprecated For large `Int` values consider using a bespoke hash function that considers all of the argument's bits.
 
 ## Function `equal`
 ``` motoko no-repl

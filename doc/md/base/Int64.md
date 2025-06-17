@@ -676,7 +676,7 @@ Example:
 Int64.addWrap(2 ** 62, 2 ** 62) // => -9_223_372_036_854_775_808 // overflow
 ```
 
-:::info 
+:::info
 The reason why this function is defined in this library (in addition
 to the existing `+%` operator) is so that you can use it as a function
 value to pass to a higher order function. It is not possible to use `+%`
