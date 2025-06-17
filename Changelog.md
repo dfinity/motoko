@@ -6,6 +6,9 @@
 
   * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
 
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260).
+    Reduces need for `-no-check-ir` flag.
+
 ## 0.14.12 (2025-06-12)
 
   * Added the `rootKey` primitive (#4994).
