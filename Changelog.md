@@ -1,13 +1,25 @@
 # Motoko compiler changelog
 
-## 0.14.12 (2025-06-12)
+## 0.14.13 (FUTURE)
 
 * motoko (`moc`)
 
-  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
-  * bugfix: fix `-fshared-code` bug (#5230).
-  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218).
+  * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
+
+  * Adds a `Prim.Array_tabulateVar` function, that allows faster initialization of mutable arrays (#5256).
+
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260).
+    Reduces need for `-no-check-ir` flag.
+
+## 0.14.12 (2025-06-12)
+
   * Added the `rootKey` primitive (#4994).
+
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
+
+  * bugfix: fix `-fshared-code` bug (#5230).
+
+  * bugfix: avoid stack overflow and reduce code complexity for large EOP canisters (#5218).
 
 ## 0.14.11 (2025-05-16)
 

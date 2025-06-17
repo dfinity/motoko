@@ -578,7 +578,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.IfE(e, s1, s2) ->
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
-  | M.(AwaitE(T.Fut, { it = AsyncE (_, T.Fut, _, e); at; _ })) -> (* gross hack *)
+  | M.(AwaitE(T.AwaitFut _, { it = AsyncE (_, T.Fut, _, e); at; _ })) -> (* gross hack *)
      let id = fresh_id "$message_async" in
      let (!!) p = !!! (s.at) p in
      let (!@) p = !!! at p in

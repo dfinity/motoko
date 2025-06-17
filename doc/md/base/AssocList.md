@@ -122,10 +122,7 @@ List.toArray(newMap)
 func mapAppend<K, V, W, X>(map1 : AssocList<K, V>, map2 : AssocList<K, W>, f : (?V, ?W) -> X) : AssocList<K, X>
 ```
 
-:::warning Deprecated function
-
-`mapAppend` is deprecated and may be removed in future versions. Consider using an alternative approach.
-:::
+@deprecated `mapAppend` is deprecated and may be removed in future versions. Consider using an alternative approach.
 
 ## Function `disjDisjoint`
 ``` motoko no-repl
