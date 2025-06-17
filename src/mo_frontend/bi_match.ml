@@ -332,7 +332,7 @@ let bi_match_subs scope_opt tbs typ_opt =
             Type.Var (var, i)
           | _ -> t)
         in
-        print_endline (String.concat ", " (List.map2 (fun c t -> Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ t) cs ts_fixed_only));
+        (* print_endline (String.concat ", " (List.map2 (fun c t -> Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ t) cs ts_fixed_only)); *)
         us, { ts_partial; ts_fixed_only; unused }
       else
         raise (Bimatch

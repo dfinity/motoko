@@ -2309,7 +2309,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         decompose env exp target_type ([], [], [])
       in
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      List.iter (fun (e, t) -> debug_print_region e.at; print_endline (Type.string_of_typ t)) deferred;
+      (* List.iter (fun (e, t) -> debug_print_region e.at; print_endline (Type.string_of_typ t)) deferred; *)
 
       (* Incorporate the return type into the subtyping constraints *)
       let ret_typ_opt, subs = 
