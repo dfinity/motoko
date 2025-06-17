@@ -2,15 +2,16 @@
 
 * motoko (`moc`)
 
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260). Reduces need for `-no-check-ir` flag.
   * Adds a Prim.Array_tabulateVar function, that allows faster initialization of mutable Arrays
 
 ## 0.14.12 (2025-06-12)
 
 * motoko (`moc`)
 
-  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242)
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
   * bugfix: fix `-fshared-code` bug (#5230).
-  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218)
+  * bugfix: avoid stack overflow and reduce code complexity for large eop canisters (#5218).
   * Added the `rootKey` primitive (#4994).
 
 ## 0.14.11 (2025-05-16)
@@ -303,7 +304,7 @@
 * motoko (`moc`)
 
   * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
-    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4719).
 
   * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
 
