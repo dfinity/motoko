@@ -128,8 +128,7 @@ If you `await` the same future again, it just returns the same result or error. 
 
 An `await` will always suspend execution and commit state, even if its future is already complete.
 
-When several futures are issued in parallel and racing to complete, it can be more efficient to opt out of the unconditional behavior of `await`
-and immediately continue with a result when it is available:
+When several futures are issued in parallel and racing to complete, it can be more efficient to opt out of the unconditional behavior of `await` and immediately continue with a result when it is available:
 
 ``` motoko no-repl
 let a : async Nat = CounterA.read();
