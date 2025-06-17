@@ -415,7 +415,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
          | [vf; vr] ->
            let (_, f) = V.as_func vf in
            let (_, r) = V.as_func vr in
-           await env exp.at (sort <> T.AwaitFut false)(*FIXME?*) (V.as_async v1)
+           await env exp.at (sort <> T.AwaitFut false) (V.as_async v1)
              (fun v -> f (context env) v k)
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
