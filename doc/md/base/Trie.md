@@ -5,7 +5,7 @@ Provides an applicative (purely functional) hash map, called a *trie*, where eac
 
 Operations use `Key` records that group the key value with its precomputed hash.
 
-For imperative or object-oriented alternatives, see [`TrieMap`](./TrieMap.md) or [`HashMap`](./HashMap.md).
+For imperative or object-oriented alternatives, see [`TrieMap`](../TrieMap) or [`HashMap`](../HashMap).
 
 :::warning Hash collision limit
 Each trie node supports at most 8 distinct keys with the same hash (`MAX_LEAF_SIZE = 8`). Exceeding this will cause a trap.
@@ -840,7 +840,7 @@ Remove the entry for the given key from the trie, by returning the reduced trie.
 Also returns the removed value if the key existed and `null` otherwise.
 Compares keys using the provided function `k_eq`.
 
-:::note 
+:::note
 The removal of an existing key shrinks the trie.
 :::
 

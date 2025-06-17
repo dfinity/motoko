@@ -613,7 +613,7 @@ ignore Nat16.addWrap(65532, 5); // => 1
 (65532 : Nat16) +% (5 : Nat16) // => 1
 ```
 
-:::info 
+:::info
 The reason why this function is defined in this library (in addition
 to the existing `+%` operator) is so that you can use it as a function
 value to pass to a higher order function. It is not possible to use `+%`

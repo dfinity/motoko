@@ -90,7 +90,7 @@ The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
 
-actor and assert async async* await await* break case catch class
+actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
 from_candid func if ignore import in module not null persistent object or label
 let loop private public query return shared stable switch system throw
@@ -522,6 +522,7 @@ The syntax of an expression is as follows:
   return <exp>?                                  Return
   <parenthetical>? async <block-or-exp>          Async expression
   await <block-or-exp>                           Await future (only in async)
+  await? <block-or-exp>                          Await future (only in async) without state commit when completed
   async* <block-or-exp>                          Delay an asynchronous computation
   await* <block-or-exp>                          Await a delayed computation (only in async)
   throw <exp>                                    Raise an error (only in async)
@@ -2572,6 +2573,32 @@ Such failures will result in the call immediately throwing an error with `code` 
 
 The error is produced eagerly, without suspending nor committing state.
 Earlier versions of Motoko would trap in such situations, making it difficult for the consumer of the `await` to mitigate such failures. Now, the consumer can handle these errors by using an enclosing `try ... catch ...` expression, if desired.
+
+:::
+
+### Await?
+
+Similar to `await`, the `await?` expression `await? <exp>` has type `T` provided:
+
+-   `<exp>` has type `async T`.
+
+-   `T` is shared.
+
+-   The `await?` is explicitly enclosed by an `async` expression or appears in the body of a `shared` function.
+
+Expression `await? <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, evaluation returns `trap`. Otherwise `r` is a future. If the `future` is incomplete, that is, its evaluation is still pending, `await? <exp>` suspends evaluation of the neared enclosing `async` or `shared` function, adding the suspension to the wait-queue of the `future`. Execution of the suspension is resumed once the future is completed, if ever.
+If the future is complete with value `v`, then `await? <exp>` immediately continues execution with the value `v`.
+If the future is complete with thrown error value `e`, then `await? <exp>` immediately continues execution by re-throwing the error `e`.
+
+Thus `await?` behaves like `await` on an incomplete future, but does not suspend execution and simply continues when the future is already complete.
+
+This conditional suspension, dependent on the state of the future, enables performance optimization in cases where a definite commit point is not required.
+
+:::danger
+
+As with `await`, between suspension and resumption of a computation, the state of the enclosing actor may change due to concurrent processing of other incoming actor messages. It is the programmer’s responsibility to guard against non-synchronized state changes.
+
+Using `await?` signals that the computation may commit its current state and suspend execution, potentially allowing concurrent modification of state.
 
 :::
 
