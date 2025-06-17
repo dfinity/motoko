@@ -69,9 +69,9 @@ type env =
     async : T.con option;
     seen : con_env ref;
     check_run : int;
-    typ_set : Set.t ref;
-    sub_map : bool MapPair.t ref;
-    lub_map : T.typ MapPair.t ref;
+    check_typ_cache : Set.t ref;
+    sub_cache : bool MapPair.t ref;
+    lub_cache : T.typ MapPair.t ref;
   }
 
 let last_run : int ref = ref 0
@@ -90,27 +90,27 @@ let initial_env flavor : env =
                        | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SystemCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
-    typ_set = ref Set.empty;
-    sub_map = ref MapPair.empty;
-    lub_map = ref MapPair.empty
+    check_typ_cache = ref Set.empty;
+    sub_cache = ref MapPair.empty;
+    lub_cache = ref MapPair.empty
   }
 
 let sub env t1 t2 =
   if t1 == t2 then true else
-  match MapPair.find_opt (t1, t2) !(env.sub_map) with
+  match MapPair.find_opt (t1, t2) !(env.sub_cache) with
   | Some b -> b
   | None ->
     let b = T.sub t1 t2 in
-    env.sub_map := MapPair.add (t1, t2) b !(env.sub_map);
+    env.sub_cache := MapPair.add (t1, t2) b !(env.sub_cache);
     b
 
 let lub env t1 t2 =
   if t1 == t2 then t1 else
-  match MapPair.find_opt (t1, t2) !(env.lub_map) with
+  match MapPair.find_opt (t1, t2) !(env.lub_cache) with
   | Some t -> t
   | None ->
     let t = T.lub t1 t2 in
-    env.lub_map := MapPair.add (t1, t2) t !(env.lub_map);
+    env.lub_cache := MapPair.add (t1, t2) t !(env.lub_cache);
     t
 
 (* More error bookkeeping *)
@@ -355,9 +355,9 @@ and check_inst_bounds env tbs typs at =
   check_typ_bounds env tbs typs at
 
 let check_typ env typ =
-  if Set.mem typ !(env.typ_set) then () else
+  if Set.mem typ !(env.check_typ_cache) then () else
   check_typ env typ;
-  env.typ_set := Set.add typ !(env.typ_set);
+  env.check_typ_cache := Set.add typ !(env.check_typ_cache);
 
 (* Literals *)
 
