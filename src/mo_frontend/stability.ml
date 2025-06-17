@@ -31,7 +31,7 @@ let error_sub s tf1 tf2 =
 
 let error_stable_sub s tf1 tf2 =
   Diag.add_msg s
-    (Diag.error_message Source.no_region "M0170" cat
+    (Diag.error_message Source.no_region "M0216" cat
       (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a without data loss. Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
