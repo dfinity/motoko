@@ -6,6 +6,8 @@
 
   * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
 
+  * Adds a `Prim.Array_tabulateVar` function, that allows faster initialization of mutable arrays (#5256).
+
   * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260).
     Reduces need for `-no-check-ir` flag.
 
