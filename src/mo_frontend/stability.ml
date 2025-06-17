@@ -24,7 +24,15 @@ let error_discard s tf =
 let error_sub s tf1 tf2 =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a without data loss. Use an explicit migration function."
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at unrelated type%a. Use an explicit migration function."
+        tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ))
+
+let error_stable_sub s tf1 tf2 =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0170" cat
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a without data loss. Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
@@ -65,8 +73,11 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
       | tf1::tfs1', (is_required, tf2)::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-            if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-              error_sub s tf1 tf2;
+            begin
+              if not (Type.sub (as_immut tf1.typ) (as_immut tf2.typ)) then
+                error_sub s tf1 tf2 else
+                if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then                error_stable_sub s tf1 tf2;
+            end;
             go tfs1' tfs2'
          | -1 ->
            (* dropped field rejected, recurse on tfs1' *)
