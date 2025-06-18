@@ -134,28 +134,24 @@ Returns true if the optional arguments are equal according to the equality funct
 func assertSome(x : ?Any)
 ```
 
-:::warning Deprecated function
+Asserts that the value is not `null`; fails otherwise.
 
-`Option.assertSome` will be removed soon. Use an `assert` expression instead.
-
-:::
+@deprecated Option.assertSome will be removed soon; use an assert expression instead
 
 ## Function `assertNull`
 ``` motoko no-repl
 func assertNull(x : ?Any)
 ```
 
-:::warning Deprecated function
+Asserts that the value _is_ `null`; fails otherwise.
 
-`Option.assertNull` will be removed soon. Use an `assert` expression instead.
-:::
+@deprecated Option.assertNull will be removed soon; use an assert expression instead
 
 ## Function `unwrap`
 ``` motoko no-repl
 func unwrap<T>(x : ?T) : T
 ```
 
-:::warning Deprecated function
+Unwraps an optional value, i.e. `unwrap(?x) = x`.
 
-`Option.unwrap` is unsafe and will be removed soon. Use a `switch` or `do?` expression instead.
-:::
+@deprecated Option.unwrap is unsafe and fails if the argument is null; it will be removed soon; use a `switch` or `do?` expression instead
