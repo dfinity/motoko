@@ -652,7 +652,7 @@ let fill_item_import module_name item_name new_base uses_memory64 (m : module_')
     in go 0 m.imports in
 
     let new_base_value = if uses_memory64 then
-      Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base)
+      Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base)(* FIXME: use int -> int64 *)
     else
       Wasm_exts.Values.I32 new_base
     in
@@ -668,13 +668,9 @@ let fill_item_import module_name item_name new_base uses_memory64 (m : module_')
 let fill_memory_base_import new_base uses_memory64 : module_' -> module_' =
   fill_item_import "env" "__memory_base" new_base uses_memory64
 
-let fill_table_base_import new_base uses_memory64 : module_' -> module_' = fun m ->
-  let m = fill_item_import "env" "__table_base" new_base uses_memory64 m in
-  if uses_memory64 then
-    fill_item_import "env" "__table_base32" new_base uses_memory64 m
-  else
-    m
-   
+let fill_table_base_import new_base uses_memory64 : module_' -> module_' =
+  fill_item_import "env" "__table_base" new_base uses_memory64
+
 (* Concatenation of modules *)
 
 let join_modules
