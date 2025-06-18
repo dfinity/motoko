@@ -1,0 +1,11 @@
+(unknown location): Compatibility error [M0216], stable variable one of previous type
+  var {field : Nat}
+cannot be consumed at supertype
+  var {}
+without loss of data. Use an explicit migration function.
+(unknown location): Compatibility error [M0216], stable variable two of previous type
+  var Nat
+cannot be consumed at supertype
+  var Any
+without loss of data. Use an explicit migration function.
+FALSE
