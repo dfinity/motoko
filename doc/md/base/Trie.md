@@ -840,7 +840,7 @@ Remove the entry for the given key from the trie, by returning the reduced trie.
 Also returns the removed value if the key existed and `null` otherwise.
 Compares keys using the provided function `k_eq`.
 
-:::note 
+:::note
 The removal of an existing key shrinks the trie.
 :::
 
