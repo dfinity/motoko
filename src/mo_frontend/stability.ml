@@ -17,7 +17,7 @@ let display_typ_expand = Lib.Format.display Type.pp_typ_expand
 let error_discard s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\n cannot be implicitly discarded. This may cause data loss. Use an explicit migration function."
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be implicitly discarded. This may cause data loss. Use an explicit migration function."
         tf.lab
         display_typ tf.typ))
 
@@ -32,7 +32,7 @@ let error_sub s tf1 tf2 =
 let error_stable_sub s tf1 tf2 =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0216" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a without data loss. Use an explicit migration function."
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a\nwithout loss of data. Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
         display_typ_expand tf2.typ))
@@ -40,7 +40,7 @@ let error_stable_sub s tf1 tf2 =
 let error_required s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\n is required but not provided."
+      (Format.asprintf "stable variable %s of previous type%a\nis required but not provided."
         tf.lab
         display_typ tf.typ))
 
@@ -75,8 +75,9 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
          | 0 ->
             begin
               if not (Type.sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-                error_sub s tf1 tf2 else
-                if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then                error_stable_sub s tf1 tf2;
+                error_sub s tf1 tf2
+              else if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
+                error_stable_sub s tf1 tf2;
             end;
             go tfs1' tfs2'
          | -1 ->
