@@ -179,15 +179,23 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
     );
   k (V.Async async)
 
-let await env at async k =
-  if env.flags.trace then trace "=> await %s" (string_of_region at);
+let await env at short async k r =
+  let adorn, schedule = if short then "?", (|>) () else "", Scheduler.queue in
+  if env.flags.trace then trace "=> await%s %s" adorn (string_of_region at);
   decr trace_depth;
   get_async async (fun v ->
-    Scheduler.queue (fun () ->
+      schedule (fun () ->
       if env.flags.trace then
-        trace "<- await %s%s" (string_of_region at) (string_of_arg env v);
+        trace "<- await%s %s%s" adorn (string_of_region at) (string_of_arg env v);
       incr trace_depth;
       k v)
+    )
+    (fun v ->
+      schedule (fun () ->
+      if env.flags.trace then
+        trace "<- await%s %s threw %s" adorn (string_of_region at) (string_of_arg env v);
+      incr trace_depth;
+      r v)
     )
 
 
@@ -369,10 +377,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
-      | AwaitPrim Type.Fut, [v1] ->
+      | AwaitPrim (T.AwaitFut short), [v1] ->
         assert env.flavor.has_await;
-        await env exp.at (V.as_async v1) k (Option.get env.throws)
-      | AwaitPrim Type.Cmp, [v1] ->
+        await env exp.at short (V.as_async v1) k (Option.get env.throws)
+      | AwaitPrim T.AwaitCmp, [v1] ->
         assert env.flavor.has_await;
         (V.as_comp v1) k (Option.get env.throws)
       | AssertPrim, [v1] ->
@@ -401,13 +409,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
             k
         | _ -> assert false
         end
-      | CPSAwait _, [v1; v2] ->
+      | CPSAwait (sort, _), [v1; v2] ->
         assert (not env.flavor.has_await && env.flavor.has_async_typ);
         begin match V.as_tup v2 with
          | [vf; vr] ->
            let (_, f) = V.as_func vf in
            let (_, r) = V.as_func vr in
-           await env exp.at (V.as_async v1)
+           await env exp.at (sort <> T.AwaitFut false) (V.as_async v1)
              (fun v -> f (context env) v k)
              (fun e -> r (context env) e k) (* TBR *)
         | _ -> assert false
