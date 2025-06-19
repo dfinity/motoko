@@ -19,18 +19,11 @@ open Wasm_exts.Ast
 open Wasm_exts.Types
 open Source
 
-(* Re-shadow Source.(@@), to get Stdlib.(@@) *)
-let (@@) = Stdlib.(@@)
-
-module G = InstrList
-let (^^) = G.(^^) (* is this how we import a single operator from a module that we otherwise use qualified? *)
+open Compile_common
 
 (* WebAssembly pages are 64kb. *)
 let page_size = Int64.of_int (64 * 1024)
 let page_size_bits = 16
-
-(* Our code depends on OCaml int having at least 32 bits *)
-let _ = assert (Sys.int_size >= 32)
 
 (* Scalar Tagging Scheme *)
 
@@ -165,17 +158,6 @@ See documentation of module BitTagged for more detail.
 let ptr_skew = -1L
 
 let ptr_unskew = 1L
-
-(* Generating function names for functions parametrized by prim types *)
-let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
-
-(* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = Wasm.Source.{ it = x; at = no_region }
-
-let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
-
-exception CodegenError of string
-let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
 module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
@@ -425,52 +407,17 @@ The fields fall into the following categories:
     Example: Name and type of locals.
 
 **)
-
-(* Before we can define the environment, we need some auxillary types *)
-
-module Table : sig
-  type 'a t
-  val empty : 'a t
-  val add : 'a t -> 'a -> int * 'a t
-  val length : 'a t -> int
-  val to_list : 'a t -> 'a list
-  val from_list : 'a list ->'a t
-end = struct
-  type 'a t = int * 'a list
-  let empty = (0, [])
-  let add (l, es) e = (l, (l + 1, e :: es))
-  let length (l, es) = l
-  let to_list (l, es) = List.rev es
-  let from_list es = (List.length es, List.rev es)
-end
-
 module E = struct
-
-  (* Utilities, internal to E *)
-  let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
-      let i, t = Table.add !ref x in
-      ref := t;
-      Wasm.I32.of_int_u i
-
-  let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
-    let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
-    let (i, t) = Table.add !ref p in
-    let i32 = Wasm.I32.of_int_u i in
-    ref := t;
-    (i32, Lib.Promise.fulfill p)
-
+  include Compile_common.E
 
   (* The environment type *)
-  module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
   module ConstEnv = Env.Make(Const)
 
   module FunEnv = Env.Make(Int32)
-  type local_names = (int32 * string) list (* For the debug section: Names of locals *)
-  type func_with_names = func * local_names
-  type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
+  
   type type_descriptor = {
     candid_data_segment : int32;
     type_offsets_segment : int32;
@@ -505,16 +452,13 @@ module E = struct
     (* Immutable *)
 
     (* Mutable *)
-    func_types : func_type Table.t ref;
-    func_imports : import Table.t ref;
+    imports : Imports.t;
     other_imports : import Table.t ref;
     exports : export Table.t ref;
-    funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
     globals : (global Lib.Promise.t * string) Table.t ref;
     global_names : int32 NameEnv.t ref;
-    named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     data_segments : string Table.t ref; (* Passive data segments *)
@@ -561,16 +505,13 @@ module E = struct
     mode;
     rts;
     trap_with;
-    func_types = ref Table.empty;
-    func_imports = ref Table.empty;
+    imports = Imports.empty ();
     other_imports = ref Table.empty;
     exports = ref Table.empty;
-    funcs = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
     globals = ref Table.empty;
     global_names = ref NameEnv.empty;
-    named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     data_segments = ref Table.empty;
@@ -668,17 +609,9 @@ module E = struct
   let get_globals (env : t) =
     List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list !(env.globals))
 
-  let reserve_fun (env : t) name =
-    let (j, fill) = reserve_promise env.funcs name in
-    let n = Int32.of_int (Table.length !(env.func_imports)) in
-    let fi = Int32.add j n in
-    let fill_ (f, local_names) = fill (f, name, local_names) in
-    (fi, fill_)
+  let reserve_fun (env : t) = Imports.reserve_fun env.imports
 
-  let add_fun (env : t) name (f, local_names) =
-    let (fi, fill) = reserve_fun env name in
-    fill (f, local_names);
-    fi
+  let add_fun (env : t) = Imports.add_fun env.imports
 
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
@@ -704,51 +637,21 @@ module E = struct
 
   let get_return_arity (env : t) = env.return_arity
 
-  let get_func_imports (env : t) = Table.to_list !(env.func_imports)
   let get_other_imports (env : t) = Table.to_list !(env.other_imports)
   let get_exports (env : t) = Table.to_list !(env.exports)
-  let get_funcs (env : t) = List.map Lib.Promise.value (Table.to_list !(env.funcs))
+  let get_funcs (env : t) = Imports.get_funcs env.imports
 
-  let func_type (env : t) ty =
-    let rec go i = function
-      | [] ->
-         let (i, t) = Table.add !(env.func_types) ty in
-         env.func_types := t;
-         Int32.of_int i
-      | ty'::tys when ty = ty' -> Int32.of_int i
-      | _ :: tys -> go (i+1) tys
-       in
-    go 0 (Table.to_list !(env.func_types))
+  let func_type (env : t) = Imports.func_type env.imports
 
-  let get_types (env : t) = Table.to_list !(env.func_types)
+  let get_types (env : t) = Imports.get_types env.imports
 
-  let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if Table.length !(env.funcs) <> 0 then
-      raise (CodegenError "Add all imports before all functions!");
+  let add_func_import (env : t) = Imports.add_func_import env.imports
 
-    let i = {
-      module_name = Lib.Utf8.decode modname;
-      item_name = Lib.Utf8.decode funcname;
-      idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
-    } in
-    let fi = reg env.func_imports (nr i) in
-    let name = modname ^ "." ^ funcname in
-    assert (not (NameEnv.mem name !(env.named_imports)));
-    env.named_imports := NameEnv.add name fi !(env.named_imports)
+  let call_import (env : t) = Imports.call_import env.imports
 
-  let call_import (env : t) modname funcname =
-    let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> G.i (Call (nr fi))
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+  let reuse_import (env : t) = Imports.reuse_import env.imports
 
-  let reuse_import (env : t) modname funcname =
-    let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> fi
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+  let finalize_func_imports (env : t) = Imports.finalize_func_imports env.imports
 
   let get_rts (env : t) = env.rts
 
@@ -13632,7 +13535,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   IC.default_exports env;
 
-  let func_imports = E.get_func_imports env in
+  let func_imports, remapping = E.finalize_func_imports env in
   let ni = List.length func_imports in
   let ni' = Int32.of_int ni in
 
@@ -13656,7 +13559,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let table_sz = E.get_end_of_table env in
 
-  let module_ = {
+  let module_ = rename_funcs remapping {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
