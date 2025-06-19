@@ -303,10 +303,11 @@ let render_docs : Common.render_input -> string =
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf
 
-let make_index : Common.render_input list -> string =
- fun (inputs : Common.render_input list) ->
+let make_index : string option -> Common.render_input list -> string =
+ fun package_opt inputs ->
   let buf = Buffer.create 1024 in
-  bprintf buf "# Index\n\n";
+  bprintf buf "# Index%s\n\n"
+    (match package_opt with None -> "" | Some s -> " of package "^s);
   List.iter
     (fun (input : Common.render_input) ->
       bprintf buf "* [%s](%s) %s\n" input.current_path

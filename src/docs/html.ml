@@ -353,8 +353,8 @@ let html_of_docs : render_input -> Cow.Html.t =
 let render_docs : render_input -> string =
  fun input -> Format.asprintf "%s" (Cow.Html.to_string (html_of_docs input))
 
-let make_index : render_input list -> string =
- fun inputs ->
+let make_index : string option -> render_input list -> string =
+ fun package_opt inputs ->
   let header =
     head
       ~attrs:[ ("title", "Motoko docs") ]
@@ -370,7 +370,10 @@ let make_index : render_input list -> string =
   in
   let bdy =
     div ~cls:"index-container"
-      (h1 ~cls:"index-header" (string "Index of modules")
+      (h1 ~cls:"index-header"
+         (string (match package_opt with
+                  | None -> "Index of modules"
+                  | Some s -> "Index of module in package " ^ s))
       ++ ul ~cls:"index-listing" ~licls:"index-item" (List.map make_link inputs)
       )
   in

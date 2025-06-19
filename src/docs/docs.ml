@@ -101,7 +101,7 @@ let start : output_format -> string -> string -> string option -> unit =
         inputs;
       write_file
         (Filename.concat out "index.md")
-        (Plain.make_index (List.map snd inputs))
+        (Plain.make_index package_opt (List.map snd inputs))
   | Adoc ->
       let inputs = make_render_inputs src out package_opt in
       List.iter
@@ -117,4 +117,4 @@ let start : output_format -> string -> string -> string option -> unit =
         inputs;
       write_file
         (Filename.concat out "index.html")
-        (Html.make_index (List.map snd inputs))
+        (Html.make_index package_opt (List.map snd inputs))
