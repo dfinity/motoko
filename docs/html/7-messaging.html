@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/fundamentals/7-messaging.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/fundamentals/7-messaging.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#messaging" id="toc-messaging">Messaging</a>
+<ul>
+<li><a href="#inter-canister-calls"
+id="toc-inter-canister-calls">Inter-canister calls</a>
+<ul>
+<li><a href="#canister-imports" id="toc-canister-imports">Canister
+imports</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="messaging">Messaging</h1>
+<p>ICP enforces rules on when and how <a
+href="https://internetcomputer.org/docs/building-apps/essentials/canisters">canisters</a>
+communicate. Motoko includes static (compile-time) messaging
+restrictions to help prevent certain execution errors.</p>
+<p>For example, a canister cannot send messages during installation,
+which helps avoid errors during deployment. Query functions cannot send
+messages either, because they run locally and do not trigger updates.
+Additionally, shared functions cannot be called in a synchronous context
+since shared calls require asynchronous execution.</p>
+<p>Only async contexts support <a
+href="https://internetcomputer.org/docs/motoko/fundamentals/error-handling">error
+handling</a> with <code>try/catch</code> because messaging errors only
+occur asynchronously.</p>
+<p>In Motoko, an expression is considered to be in an async context if
+it appears inside an <code>async</code> function. Query functions are
+read-only, so they do not create an async context and therefore cannot
+use <code>await</code> or send messages.</p>
+<pre class="motoko"><code>persistent actor Counter {
+    var count : Nat = 0;
+
+    public func increment() : async () {
+        count += 1;
+    };
+
+    public query func getCount() : async Nat {
+        return count;  // Allowed: No state change
+    };
+
+    public func invalidCall() : Nat {
+        return await getCount();  // Error: Query function cannot be awaited in a sync function
+    };
+};</code></pre>
+<h2 id="inter-canister-calls">Inter-canister calls</h2>
+<p>One of the key features of ICP is the ability for canisters to invoke
+functions in other canisters. This capability, known as inter-canister
+calls, allows canisters to interact with each other.</p>
+<p>There are different methods for making inter-canister calls. The
+primary and recommended method is direct import, which is used when the
+target canister is part of the same project and explicitly imported. For
+example, <code>import Subscriber "canister:subscriber";</code> allows
+direct access to that canister’s functions.</p>
+<p>The second method uses actor type annotations and should be rarely
+used. This approach applies when calling an external canister that is
+part of the project but deployed separately. An example is
+<code>let sub = actor(canisterId) : actor { notify : Text -&gt; async (); };</code>,
+which creates a typed reference to the external canister.</p>
+<p>The third method involves dynamic calls. This is useful when calling
+unknown functions or when the arguments are dynamic. For example,
+<code>await IC.call(canisterId, methodName, encodedArgs);</code> lets
+you make flexible calls without static typing.</p>
+<h3 id="canister-imports">Canister imports</h3>
+<p>When a canister exists in the project directory, it can be imported
+using the <code>import</code> statement. This ensures strong typing and
+allows safe function calls.</p>
+<p>In this example, a publisher canister maintains a list of subscribers
+and sends notifications when an event occurs. Each subscriber canister
+receives and processes notifications.</p>
+<h4 id="publisher">Publisher</h4>
+<pre class="motoko"><code>import Subscriber &quot;canister:subscriber&quot;;
+import Array &quot;mo:base/Array&quot;;
+
+actor Publisher {
+    stable var subscribers : [Subscriber.Subscriber] = [];
+
+    public shared func subscribe(subscriber : Subscriber.Subscriber) : async () {
+        if (Array.find&lt;Subscriber.Subscriber&gt;(subscribers, func(s) { s == subscriber }) == null) {
+            let newSubscribers = Array.tabulate&lt;Subscriber.Subscriber&gt;(
+                subscribers.size() + 1,
+                func(i) { if (i &lt; subscribers.size()) subscribers[i] else subscriber }
+            );
+            subscribers := newSubscribers;
+        };
+    };
+
+    public shared func publish(message : Text) : async () {
+        for (sub in subscribers) {
+            ignore await sub.notify(message);
+        };
+    };
+};
+</code></pre>
+<h4 id="subscriber">Subscriber</h4>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+
+actor Subscriber {
+    public shared func notify(message : Text) : async () {
+        Debug.print(&quot;Received message: &quot; # message);
+    };
+};
+</code></pre>
+<!---- This should be corrected and moved to a section on actor references
+
+### Actor type annotation
+
+Actor type annotations offer flexibility when working with external canisters, but there’s no guarantee that the function signatures will match at runtime. If the signatures don’t align, the calls will fail.
+
+```motoko no-repl
+import Array "mo:base/Array";
+
+actor Publisher {
+    stable var subscribers : [Principal] = [];
+
+    public shared func subscribe(subscriber : Principal) : async () {
+        if (Array.find<Principal>(subscribers, func(s) { s == subscriber }) == null) {
+            let newSubscribers = Array.tabulate<Principal>(
+                subscribers.size() + 1,
+                func(i) { if (i < subscribers.size()) subscribers[i] else subscriber }
+            );
+            subscribers := newSubscribers;
+        };
+    };
+
+    public shared func publish(message : Text) : async () {
+        for (sub in subscribers) {
+            let subActor = actor(sub) : actor { notify : (Text) -> async () };
+            ignore await subActor.notify(message);
+        };
+    };
+};
+```
+
+---->
+
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
+</body>
+</html>
