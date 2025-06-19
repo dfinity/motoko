@@ -360,6 +360,14 @@ struct
     then (take n xs, drop n xs)
     else (xs, [])
 
+  let mapi2 f xs ys =
+    let rec loop i l1 l2 =
+      match l1, l2 with
+      | [], [] -> []
+      | x::xs, y::ys -> f i x y :: loop (i+1) xs ys
+      | _ -> failwith "mapi2"
+    in loop 0 xs ys
+
   let hd_opt = function
     | x :: _ -> Some x
     | _ -> None

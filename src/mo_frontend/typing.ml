@@ -2284,13 +2284,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
         let solve = bi_match_subs (scope_of_env env) tbs ret_typ_opt in
-        let ts, { ts_partial; ts_fixed_only; unused } = solve subs in
+        let r1 = solve subs in
 
         let to_fix = ref to_fix in
-        let ts = if deferred = [] then ts else
+        let ts = if deferred = [] then r1.ts else
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
-            let typ' = T.open_ ts_fixed_only typ in
+            let typ' = T.open_ r1.ts_partial typ in
             match exp.it, typ' with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
               (* Check the function input type and prepare for inferring the body
@@ -2307,16 +2307,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               (infer_exp env exp, typ)
           ) in
 
+          (* TODO: what happens when every variable is fixed already
+             OR when subs contain only fixed type variables? *)
           (* Include the deferred terms in the instantiation *)
-          let ts', _ = solve subs in
+          let r2 = solve subs in
 
-          (* Create a combined instantiation *)
-          List.map2 (fun t t' ->
-            match t with
-            | T.Var _ ->
-              assert (not (T.is_var t'));
-              t'
-            | _ -> t) ts_fixed_only ts'
+          (* Combine the instantiations *)
+          combine r1 r2
         in
 
         if not env.pre then begin

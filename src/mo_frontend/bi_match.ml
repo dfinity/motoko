@@ -24,10 +24,9 @@ let display_rel = Lib.Format.display pp_rel
 
 exception Bimatch of string
 
-type unused_ctx = {
+type result = {
+  ts : typ list;
   ts_partial : typ list;
-  ts_fixed_only : typ list;
-  unused : ConSet.t;
 }
 
 module SS = Set.Make (OrdPair)
@@ -295,6 +294,7 @@ let bi_match_subs scope_opt tbs typ_opt =
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
     (* Find unused type variables *)
+    (* TODO: add a context to the analysis, keep a ref and update it as we go *)
     let unused = 
       let cons1 = Type.cons_typs ts1 in
       let cons2 = Type.cons_typs ts2 in
@@ -324,16 +324,10 @@ let bi_match_subs scope_opt tbs typ_opt =
       in
       (* List.iter2 (fun c u -> print_endline (Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ u)) cs us; *)
       if verify_inst tbs subs us then
-        let ts_partial = List.map2 (fun c u -> if ConSet.mem c unused then Type.Con (c, []) else u) cs us in
-        let ts_fixed_only = List.combine tbs ts_partial |> List.mapi (fun i ({ var; _ }, t) ->
-          match t with
-          | Type.Con (c, _) when ConSet.mem c unused ->
-            assert (Cons.name c = var);
-            Type.Var (var, i)
-          | _ -> t)
+        let ts_partial = Lib.List.mapi2 (fun i c u ->
+          if ConSet.mem c unused then Type.Var (Cons.name c, i) else u) cs us
         in
-        (* print_endline (String.concat ", " (List.map2 (fun c t -> Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ t) cs ts_fixed_only)); *)
-        us, { ts_partial; ts_fixed_only; unused }
+        { ts = us; ts_partial }
       else
         raise (Bimatch
           (Printf.sprintf
@@ -350,3 +344,19 @@ let bi_match_subs scope_opt tbs typ_opt =
           (List.map (fun (t1, t2) ->
             Format.asprintf "%a" display_rel (t1, "<:", t2))
             tts))))
+
+let combine r1 r2 =
+  (* check that the partial solutions are disjoint *)
+  assert (List.for_all2 (fun t t' -> Type.is_var t || Type.is_var t') r1.ts_partial r2.ts_partial);
+
+  (* combine the solutions *)
+  List.map2 (fun t1 t2 ->
+    match t1 with
+    | Type.Var _ ->
+      (* non-partial has a solution for all type variables *)
+      assert (not (Type.is_var t2));
+      t2
+    | _ ->
+      (* variable fixed by the first solution *)
+      t1
+    ) r1.ts_partial r2.ts
