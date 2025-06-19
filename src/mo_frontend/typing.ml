@@ -1569,46 +1569,6 @@ and infer_exp'' env exp : T.typ =
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ_item env') ts2 in
-
-    let _inferred_opt = if typ_opt <> None then Error [] else Diag.with_message_store ~allow_errors:true (fun msgs ->
-      let env'' =
-        { env' with
-          (* labs = T.Env.empty; *)
-          pre = true;
-          msgs;
-          rets = Some T.Pre;
-          (* async = None; *)
-        }
-      in
-      let initial_usage = enter_scope env'' in
-      let res =
-        try
-          match infer_exp (adjoin_vals env'' ve2) exp1 with
-          | T.Tup [] -> None (* Exclude: no changes compared to the default unit *)
-          (* Exclude implicit conversions to unit (when pre = true):
-           * e.g. `loop { if true return }` is inferred as None, but it's `()`
-           * e.g. func f<A <: ()>(a : A) { if true return; a } is inferred as `A`, but it's `()`
-           * For backward compatibility, every unannotated return type might be unit `()`.
-           * Or traverse expressions fully to check every return (any other problematic cases?)
-           *)
-          | t when T.sub t T.unit -> None
-          | T.Tup ts -> Some ts
-          | t -> Some [t]
-        with Recover ->
-          None
-      in
-      leave_scope env ve2 initial_usage;
-      res
-    ) in
-    (* Result.iter (fun (ts, _) -> print_endline (T.string_of_typ_expand (T.seq ts))) inferred_opt;
-    (* Note: when `ok` there are probably no messages *)
-    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> []) inferred_opt |> Diag.print_messages; *)
-    (* Result.fold ~ok:(fun (_, m) -> m) ~error:(fun x -> x) inferred_opt |> Diag.print_messages; *)
-    let ts2 = match inferred_opt with
-      | Ok (ts, _) -> ts
-      | Error _ -> ts2
-    in *)
-
     typ.note <- T.seq ts2; (* HACK *)
     let codom = T.codom c (fun () -> T.Con(List.hd cs,[])) ts2 in
     if not env.pre then begin
@@ -1654,7 +1614,7 @@ and infer_exp'' env exp : T.typ =
     let t = infer_call env exp1 inst exp2 exp.at None in
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t
-            | BlockE decs ->
+  | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
     t
   | NotE exp1 ->
@@ -2076,7 +2036,7 @@ and check_exp' env0 t exp : T.typ =
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
     let env' =
       {(adjoin_typs env ce_scope cs) with
-          labs = T.Env.empty;
+        labs = T.Env.empty;
         rets = Some t';
         async = next_cap c;
         scopes = T.ConEnv.add c exp.at env.scopes;
@@ -2368,6 +2328,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           info env at "inferred instantiation <%s>"
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
+        (* TODO: t2 vs t_arg check which one to use *)
         ts, T.open_ ts t_arg, T.open_ ts t_ret
       with Bimatch msg ->
         error env at "M0098"

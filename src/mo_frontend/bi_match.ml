@@ -350,29 +350,3 @@ let bi_match_subs scope_opt tbs typ_opt =
           (List.map (fun (t1, t2) ->
             Format.asprintf "%a" display_rel (t1, "<:", t2))
             tts))))
-
-(* let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
-  match ret_typ_opt with
-  | None ->
-    (* no ret_typ: use polarities of tbs in rng_typ to
-       choose principal instantiation, if any *)
-    bi_match_subs scope_opt tbs
-      (Some rng_typ)
-      [(arg_typ, dom_typ) (*; (rng_typ, Any) *)]
-  | Some ret_typ ->
-    bi_match_subs scope_opt tbs
-      None
-      [(arg_typ, dom_typ); (rng_typ, ret_typ)]
-
-let bi_match_call_subs scope_opt tbs subs rng_typ ret_typ_opt =
-  match ret_typ_opt with
-  | None ->
-    (* no ret_typ: use polarities of tbs in rng_typ to
-       choose principal instantiation, if any *)
-    bi_match_subs scope_opt tbs
-      (Some rng_typ)
-      subs
-  | Some ret_typ ->
-    bi_match_subs scope_opt tbs
-      None
-      ((rng_typ, ret_typ) :: subs) *)
