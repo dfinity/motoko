@@ -69,8 +69,8 @@ let list_files : string -> string -> (string * string * string) list =
       |> fun f -> (file, Filename.concat output f, f))
     all_files
 
-let make_render_inputs : string -> string -> string option -> (string * Common.render_input) list
-    =
+let make_render_inputs :
+    string -> string -> string option -> (string * Common.render_input) list =
  fun source output package_opt ->
   let all_files = List.sort compare (list_files source output) in
   let all_modules = List.map (fun (_, _, rel) -> rel) all_files in
@@ -80,7 +80,8 @@ let make_render_inputs : string -> string -> string option -> (string * Common.r
         (fun { module_comment; docs; lookup_type } ->
           ( output,
             Common.
-              { package_opt;
+              {
+                package_opt;
                 all_modules;
                 current_path;
                 lookup_type;

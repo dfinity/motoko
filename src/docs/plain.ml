@@ -298,7 +298,9 @@ and plain_of_doc : Buffer.t -> level -> doc -> unit =
 let render_docs : Common.render_input -> string =
  fun Common.{ package_opt; module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "# %s%s\n" (match package_opt with Some s -> s^"/" | None -> "") current_path;
+  bprintf buf "# %s%s\n"
+    (match package_opt with Some s -> s ^ "/" | None -> "")
+    current_path;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf
@@ -307,7 +309,7 @@ let make_index : string option -> Common.render_input list -> string =
  fun package_opt inputs ->
   let buf = Buffer.create 1024 in
   bprintf buf "# Index%s\n\n"
-    (match package_opt with None -> "" | Some s -> " of package "^s);
+    (match package_opt with None -> "" | Some s -> " of package " ^ s);
   List.iter
     (fun (input : Common.render_input) ->
       bprintf buf "* [%s](%s) %s\n" input.current_path

@@ -177,10 +177,18 @@ and adoc_of_doc : Buffer.t -> env -> doc -> unit =
   adoc_of_declaration buf env xref doc_comment declaration
 
 let render_docs : Common.render_input -> string =
- fun Common.{ package_opt; module_comment; declarations; current_path; lookup_type; _ } ->
+ fun Common.
+       {
+         package_opt;
+         module_comment;
+         declarations;
+         current_path;
+         lookup_type;
+         _;
+       } ->
   let buf = Buffer.create 1024 in
   bprintf buf "[[module.%s]]\n= %s%s\n\n" current_path
-    (match package_opt with Some s -> s^"/" | None -> "")
+    (match package_opt with Some s -> s ^ "/" | None -> "")
     current_path;
   Option.iter (bprintf buf "%s\n\n") module_comment;
   let env = { lookup_type } in
