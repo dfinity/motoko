@@ -416,7 +416,7 @@ module E = struct
 
     (* Mutable *)
     func_types : func_type list ref;
-    func_imports : import list ref;
+    potential_func_imports : (import * bool ref) list ref;
     other_imports : import list ref;
     exports : export list ref;
     funcs : (func * string * local_names) Lib.Promise.t list ref;
@@ -475,7 +475,7 @@ module E = struct
     rts;
     trap_with;
     func_types = ref [];
-    func_imports = ref [];
+    potential_func_imports = ref [];
     other_imports = ref [];
     exports = ref [];
     funcs = ref [];
@@ -596,7 +596,7 @@ module E = struct
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Int32.of_int (List.length !(env.func_imports)) in
+    let n = Int32.of_int (List.length !(env.potential_func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -624,8 +624,6 @@ module E = struct
     Lib.AllocOnUse.def  (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
-
-  let get_func_imports (env : t) = !(env.func_imports)
   let get_other_imports (env : t) = !(env.other_imports)
   let get_exports (env : t) = !(env.exports)
   let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
@@ -649,24 +647,25 @@ module E = struct
       item_name = Lib.Utf8.decode funcname;
       idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
     } in
-    let fi = reg env.func_imports (nr i) in
+    let fi = reg env.potential_func_imports (nr i, ref false) in
     let name = modname ^ "." ^ funcname in
     assert (not (NameEnv.mem name !(env.named_imports)));
     env.named_imports := NameEnv.add name fi !(env.named_imports)
 
-  let call_import (env : t) modname funcname =
-    let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> G.i (Call (nr fi))
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
-
   let reuse_import (env : t) modname funcname =
     let name = modname ^ "." ^ funcname in
     match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> fi
+      | Some fi ->
+        (* optimize *)
+        let _imp, used_ref = List.nth !(env.potential_func_imports) (Int32.to_int fi) in
+        used_ref := true;
+        fi
       | _ ->
         raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+
+  let call_import (env : t) modname funcname =
+    let fi = reuse_import env modname funcname in
+    G.i (Call (nr fi))
 
   let get_rts (env : t) = env.rts
 
@@ -1272,6 +1271,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "unused" [] [];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -13376,9 +13376,48 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   IC.default_exports env;
 
-  let func_imports = E.get_func_imports env in
+  (* let fake_import =
+    let i = {
+      module_name = Lib.Utf8.decode "rts";
+      item_name = Lib.Utf8.decode "unused";
+      idesc = nr (FuncImport (nr (E.func_type env (FuncType ([], [])))))
+    } in
+    nr i
+  in
+  let func_imports = !(env.E.potential_func_imports)
+    |> List.map (fun (imp, used_ref) -> if !used_ref then imp else fake_import)
+  in *)
+  
+  let module M = Map.Make(struct type t = int32 let compare = Int32.compare end) in
+  let id = ref 0l in
+  let func_imports, import_remap =
+    let import_remap = ref M.empty in
+    let imports = !(env.E.potential_func_imports)
+      (* make tail recursive *)
+      |> List.filteri (fun i (_, used_ref) -> 
+        !used_ref && begin
+          import_remap := M.add (Int32.of_int i) !id !import_remap;
+          id := Int32.add !id 1l;
+          true
+        end)
+      |> List.map (fun (imp, _) -> imp)
+    in
+    imports, !import_remap
+  in
   let ni = List.length func_imports in
   let ni' = Int32.of_int ni in
+  let remapping =
+    let old_num_imports = List.length !(env.E.potential_func_imports) |> Int32.of_int in
+    let offset = Int32.sub old_num_imports ni' in
+    fun old_index ->
+      if old_index < old_num_imports then
+        (* It's an import. Find its new index in the map. *)
+        (* This should raise an exception if a call to an unused import is found. *)
+        M.find old_index import_remap
+      else
+        (* It's a module-defined function. Adjust its index. *)
+        Int32.sub old_index offset
+  in
 
   let other_imports = E.get_other_imports env in
 
@@ -13402,7 +13441,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let table_sz = E.get_end_of_table env in
 
-  let module_ = {
+  let module_ = rename_funcs remapping {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
