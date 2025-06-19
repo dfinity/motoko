@@ -1,4 +1,4 @@
-# Error
+# base/Error
 Error values and inspection.
 
 The `Error` type is the argument to `throw`, parameter of `catch`.

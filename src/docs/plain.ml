@@ -296,9 +296,9 @@ and plain_of_doc : Buffer.t -> level -> doc -> unit =
   declaration_header buf lvl doc_comment declaration
 
 let render_docs : Common.render_input -> string =
- fun Common.{ module_comment; declarations; current_path; _ } ->
+ fun Common.{ package_opt; module_comment; declarations; current_path; _ } ->
   let buf = Buffer.create 1024 in
-  bprintf buf "# %s\n" current_path;
+  bprintf buf "# %s%s\n" (match package_opt with Some s -> s^"/" | None -> "") current_path;
   Option.iter (bprintf buf "%s\n") module_comment;
   List.iter (plain_of_doc buf 2) declarations;
   Buffer.contents buf

@@ -298,7 +298,7 @@ and html_of_doc : env -> Extract.doc -> t =
     ++ p (html_of_comment (doc_comment |> Option.value ~default:"")))
 
 let html_of_docs : render_input -> Cow.Html.t =
- fun { all_modules; module_comment; declarations; lookup_type; current_path } ->
+ fun { package_opt; all_modules; module_comment; declarations; lookup_type; current_path } ->
   let env = { lookup_type } in
   let path_to_root =
     String.split_on_char '/' current_path
@@ -344,7 +344,7 @@ let html_of_docs : render_input -> Cow.Html.t =
     body
       (navigation
       ++ div ~cls:"documentation"
-           (h1 (string current_path)
+           (h1 (string (Printf.sprintf "%s%s" (match package_opt with Some s -> s^"/" | None -> "") current_path ))
            ++ html_of_comment (Option.value ~default:"" module_comment)
            ++ list (List.map (html_of_doc env) declarations)))
   in
