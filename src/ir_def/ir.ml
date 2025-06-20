@@ -134,7 +134,7 @@ and prim =
   | IdxBlobPrim                       (* blob indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim of Type.async_sort       (* await/await* *)
+  | AwaitPrim of Type.await_sort      (* await/await?/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
@@ -170,7 +170,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.async_sort * Type.typ
+  | CPSAwait of Type.await_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC

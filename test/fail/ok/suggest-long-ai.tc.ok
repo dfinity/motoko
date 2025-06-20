@@ -13,6 +13,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
       };
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
+    Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
     Ret : <T>() -> T;
     Types :
       module {
@@ -228,6 +229,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     regionStoreNat64 : (r : Region, offset : Nat64, val : Nat64) -> ();
     regionStoreNat8 : (r : Region, offset : Nat64, val : Nat8) -> ();
     replyDeadline : () -> Nat64;
+    rootKey : () -> Blob;
     rts_callback_table_count : () -> Nat;
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;

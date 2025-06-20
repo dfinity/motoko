@@ -1,8 +1,5 @@
 # Func
-Functions on functions, creating functions from simpler inputs.
-
-(Most commonly used when programming in functional style using higher-order
-functions.)
+Create functions from simpler inputs, most commonly used when programming in functional style using higher-order functions.
 
 ## Function `compose`
 ``` motoko no-repl

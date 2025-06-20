@@ -1,5 +1,4 @@
 # Char
-Characters
 
 ## Type `Char`
 ``` motoko no-repl

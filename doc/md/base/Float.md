@@ -4,12 +4,16 @@ Double precision (64-bit) floating-point numbers in IEEE 754 representation.
 This module contains common floating-point constants and utility functions.
 
 Notation for special values in the documentation below:
+
 `+inf`: Positive infinity
+
 `-inf`: Negative infinity
+
 `NaN`: "not a number" (can have different sign bit values, but `NaN != NaN` regardless of the sign).
 
-Note:
+:::note
 Floating point numbers have limited precision and operations may inherently result in numerical errors.
+:::
 
 Examples of numerical errors:
   ```motoko
@@ -20,7 +24,6 @@ Examples of numerical errors:
  1e16 + 1.0 != 1e16 // => false
   ```
 
- (and many more cases)
 
 Advice:
 * Floating point number comparisons by `==` or `!=` are discouraged. Instead, it is better to compare
@@ -36,12 +39,12 @@ Advice:
   Float.equalWithin(x, y, epsilon) // => true
   ```
 
-* For absolute precision, it is recommened to encode the fraction number as a pair of a Nat for the base
-  and a Nat for the exponent (decimal point).
+* For absolute precision, it is recommend to encode the fraction number as a pair of a `Nat` for the base
+  and a `Nat` for the exponent (decimal point).
 
-NaN sign:
-* The NaN sign is only applied by `abs`, `neg`, and `copySign`. Other operations can have an arbitrary
-  sign bit for NaN results.
+`NaN` sign:
+* The `NaN` sign is only applied by `abs`, `neg`, and `copySign`. Other operations can have an arbitrary
+  sign bit for `NaN` results.
 
 ## Type `Float`
 ``` motoko no-repl
@@ -74,8 +77,8 @@ func isNaN(number : Float) : Bool
 Determines whether the `number` is a `NaN` ("not a number" in the floating point representation).
 Notes:
 * Equality test of `NaN` with itself or another number is always `false`.
-* There exist many internal `NaN` value representations, such as positive and negative NaN,
-  signalling and quiet NaNs, each with many different bit representations.
+* There exist many internal `NaN` value representations, such as positive and negative `NaN`,
+  signalling and quiet `NaN`s, each with many different bit representations.
 
 Example:
 ```motoko
@@ -495,7 +498,8 @@ formatting directive `fmt`, which can take one of the following forms:
 Positive infinity is formatted as "inf".
 Negative infinity is formatted as "-inf".
 
-Note: The numerical precision and the text format can vary between
+:::info
+The numerical precision and the text format can vary between
 Motoko versions and runtime configuration. Moreover, `NaN` can be printed
 differently, i.e. "NaN" or "nan", potentially omitting the `NaN` sign.
 
@@ -511,7 +515,7 @@ Float.format(#exp 3, 123.0) // => "1.230e+02"
 func toText(_ : Float) : Text
 ```
 
-Conversion to Text. Use `format(fmt, x)` for more detailed control.
+Conversion to `Text`. Use `format(fmt, x)` for more detailed control.
 
 `-0.0` is formatted with negative sign bit.
 Positive infinity is formatted as `inf`.
@@ -530,7 +534,7 @@ Float.toText(0.12) // => "0.12"
 func toInt64(_ : Float) : Int64
 ```
 
-Conversion to Int64 by truncating Float, equivalent to `toInt64(trunc(f))`
+Conversion to `Int64` by truncating Float, equivalent to `toInt64(trunc(f))`
 
 Traps if the floating point number is larger or smaller than the representable Int64.
 Also traps for `inf`, `-inf`, and `NaN`.
@@ -547,9 +551,11 @@ Float.toInt64(-12.3) // => -12
 func fromInt64(_ : Int64) : Float
 ```
 
-Conversion from Int64.
+Conversion from `Int64`.
 
-Note: The floating point number may be imprecise for large or small Int64.
+:::note
+The floating point number may be imprecise for large or small `Int64`.
+:::
 
 Example:
 ```motoko
@@ -563,7 +569,7 @@ Float.fromInt64(-42) // => -42.0
 func toInt(_ : Float) : Int
 ```
 
-Conversion to Int.
+Conversion to `Int`.
 
 Traps for `inf`, `-inf`, and `NaN`.
 
@@ -579,11 +585,13 @@ Float.toInt(1.2e6) // => +1_200_000
 func fromInt(_ : Int) : Float
 ```
 
-Conversion from Int. May result in `Inf`.
+Conversion from `Int`. May result in `Inf`.
 
-Note: The floating point number may be imprecise for large or small Int values.
+:::note
+The floating point number may be imprecise for large or small Int values.
 Returns `inf` if the integer is greater than the maximum floating point number.
 Returns `-inf` if the integer is less than the minimum floating point number.
+:::
 
 Example:
 ```motoko
@@ -598,7 +606,8 @@ func equal(x : Float, y : Float) : Bool
 ```
 
 Returns `x == y`.
-@deprecated Use `Float.equalWithin()` as this function does not consider numerical errors.
+
+@deprecated `Float.equalWithin()` as this function does not consider numerical errors.
 
 ## Function `notEqual`
 ``` motoko no-repl
@@ -606,6 +615,7 @@ func notEqual(x : Float, y : Float) : Bool
 ```
 
 Returns `x != y`.
+
 @deprecated Use `Float.notEqualWithin()` as this function does not consider numerical errors.
 
 ## Function `equalWithin`
@@ -614,7 +624,7 @@ func equalWithin(x : Float, y : Float, epsilon : Float) : Bool
 ```
 
 Determines whether `x` is equal to `y` within the defined tolerance of `epsilon`.
-The `epsilon` considers numerical erros, see comment above.
+The `epsilon` considers numerical errors, see comment above.
 Equivalent to `Float.abs(x - y) <= epsilon` for a non-negative epsilon.
 
 Traps if `epsilon` is negative or `NaN`.
@@ -643,7 +653,7 @@ func notEqualWithin(x : Float, y : Float, epsilon : Float) : Bool
 ```
 
 Determines whether `x` is not equal to `y` within the defined tolerance of `epsilon`.
-The `epsilon` considers numerical erros, see comment above.
+The `epsilon` considers numerical errors, see comment above.
 Equivalent to `not equal(x, y, epsilon)`.
 
 Traps if `epsilon` is negative or `NaN`.
@@ -761,21 +771,23 @@ func compare(x : Float, y : Float) : {#less; #equal; #greater}
 
 Defines a total order of `x` and `y` for use in sorting.
 
-Note: Using this operation to determine equality or inequality is discouraged for two reasons:
+:::note
+Using this operation to determine equality or inequality is discouraged for two reasons:
 * It does not consider numerical errors, see comment above. Use `equalWithin(x, y, espilon)` or
   `notEqualWithin(x, y, epsilon)` to test for equality or inequality, respectively.
 * `NaN` are here considered equal if their sign matches, which is different to the standard equality
    by `==` or when using `equal()` or `notEqual()`.
+:::
 
 Total order:
-* negative NaN (no distinction between signalling and quiet negative NaN)
+* negative `NaN` (no distinction between signalling and quiet negative `NaN`)
 * negative infinity
 * negative numbers (including negative subnormal numbers in standard order)
 * negative zero (`-0.0`)
 * positive zero (`+0.0`)
 * positive numbers (including positive subnormal numbers in standard order)
 * positive infinity
-* positive NaN (no distinction between signalling and quiet positive NaN)
+* positive `NaN` (no distinction between signalling and quiet positive `NaN`)
 
 Example:
 ```motoko
@@ -817,7 +829,9 @@ func add(x : Float, y : Float) : Float
 
 Returns the sum of `x` and `y`, `x + y`.
 
-Note: Numerical errors may occur, see comment above.
+:::info
+Numerical errors may occur, see comment above.
+:::
 
 Special cases:
 ```
@@ -870,7 +884,9 @@ func mul(x : Float, y : Float) : Float
 
 Returns the product of `x` and `y`, `x * y`.
 
-Note: Numerical errors may occur, see comment above.
+:::info
+Numerical errors may occur, see comment above.
+:::
 
 Special cases:
 ```
@@ -898,7 +914,9 @@ func div(x : Float, y : Float) : Float
 
 Returns the division of `x` by `y`, `x / y`.
 
-Note: Numerical errors may occur, see comment above.
+:::info
+Numerical errors may occur, see comment above.
+:::
 
 Special cases:
 ```
@@ -930,7 +948,9 @@ func rem(x : Float, y : Float) : Float
 Returns the floating point division remainder `x % y`,
 which is defined as `x - trunc(x / y) * y`.
 
-Note: Numerical errors may occur, see comment above.
+:::info
+Numerical errors may occur, see comment above.
+:::
 
 Special cases:
 ```
@@ -959,7 +979,9 @@ func pow(x : Float, y : Float) : Float
 
 Returns `x` to the power of `y`, `x ** y`.
 
-Note: Numerical errors may occur, see comment above.
+:::info
+Numerical errors may occur, see comment above.
+:::
 
 Special cases:
 ```

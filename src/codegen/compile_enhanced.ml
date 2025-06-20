@@ -244,16 +244,35 @@ module Const = struct
     | Blob of string
     | Null
 
-  let lit_eq l1 l2 = match l1, l2 with
-    | Vanilla i, Vanilla j -> i = j
-    | BigInt i, BigInt j -> Big_int.eq_big_int i j
-    | Word64 (tyi, i), Word64 (tyj, j) -> tyi = tyj && i = j
-    | Float64 i, Float64 j -> i = j
-    | Bool i, Bool j -> i = j
-    | Text s, Text t
-    | Blob s, Blob t -> s = t
-    | Null, Null -> true
-    | _ -> false
+
+  let tag_lit = function
+    | Vanilla _ -> 0
+    | BigInt _ -> 1
+    | Word64 _ -> 2
+    | Float64 _ -> 3
+    | Bool _ -> 4
+    | Text _ -> 5
+    | Blob _ -> 6
+    | Null -> 7
+
+  let compare_lit l1 l2 = match l1, l2 with
+    | Vanilla i, Vanilla j -> Int64.compare i j
+    | BigInt i, BigInt j -> Big_int.compare_big_int i j
+    | Word64 (tyi, i), Word64 (tyj, j) ->
+      (match (Type.Ord.compare (Type.Prim tyi) (Type.Prim tyj)) with
+       | 0 -> Int64.compare i j
+       | ord -> ord)
+    | Float64 i, Float64 j ->
+       Int64.compare
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float i))
+       (Int64.bits_of_float (Mo_values.Numerics.Float.to_float j))
+    | Bool i, Bool j -> Bool.compare i j
+    | Text s, Text t -> String.compare s t
+    | Blob s, Blob t -> String.compare s t
+    | Null, Null -> 0
+    | _ -> Int.compare (tag_lit l1) (tag_lit l2)
+
+  let lit_eq l1 l2 = compare_lit l1 l2 = 0
 
   (* Inlineable functions
 
@@ -296,24 +315,46 @@ module Const = struct
     | Opt of v
     | Lit of lit
 
-  let rec eq v1 v2 = match v1, v2 with
-    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
-    | Message fi1, Message fi2 -> fi1 = fi2
+  let tag = function
+    | Fun _ -> 0
+    | Message _ -> 1
+    | Obj _ -> 2
+    | Unit -> 3
+    | Array _ -> 4
+    | Tuple _ -> 5
+    | Tag _ -> 6
+    | Opt _ -> 7
+    | Lit _ -> 8
+
+  (* Ordering *)
+
+  type t = v
+
+  let rec compare v1 v2 = match v1, v2 with
+    | Fun (id1, _, _), Fun (id2, _, _) -> Int32.compare id1 id2
+    | Message fi1, Message fi2 ->  Int32.compare fi1 fi2
     | Obj fields1, Obj fields2 ->
-      let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
-      List.for_all2 equal_fields fields1 fields2
-    | Unit, Unit -> true
+      List.compare compare_fields fields1 fields2
+    | Unit, Unit -> 0
     | Array elements1, Array elements2 ->
-      List.for_all2 eq elements1 elements2
+      List.compare compare elements1 elements2
     | Tuple elements1, Tuple elements2 ->
-      List.for_all2 eq elements1 elements2
+      List.compare compare elements1 elements2
     | Tag (name1, tag_value1), Tag (name2, tag_value2) ->
-      (name1 = name2) && (eq tag_value1 tag_value2)
-    | Opt opt_value1, Opt opt_value2 -> eq opt_value1 opt_value2
-    | Lit l1, Lit l2 -> lit_eq l1 l2
-    | Fun _, _ | Message _, _ | Obj _, _ | Unit, _ 
-    | Array _, _ | Tuple _, _ | Tag _, _ | Opt _, _ 
-    | Lit _, _ -> false
+      (match String.compare name1 name2 with
+        | 0 -> compare tag_value1 tag_value2
+        | ord -> ord)
+    | Opt opt_value1, Opt opt_value2 ->
+      compare opt_value1 opt_value2
+    | Lit l1, Lit l2 -> compare_lit l1 l2
+    | _ -> Int.compare (tag v1) (tag v2)
+
+  and compare_fields (name1, field_value1) (name2, field_value2) =
+        match String.compare name1 name2 with
+        | 0 -> compare field_value1 field_value2
+        | ord -> ord
+
+  let eq v1 v2 = compare v1 v2 = 0
 
 end (* Const *)
 
@@ -387,19 +428,36 @@ The fields fall into the following categories:
 
 (* Before we can define the environment, we need some auxillary types *)
 
+module Table : sig
+  type 'a t
+  val empty : 'a t
+  val add : 'a t -> 'a -> int * 'a t
+  val length : 'a t -> int
+  val to_list : 'a t -> 'a list
+  val from_list : 'a list ->'a t
+end = struct
+  type 'a t = int * 'a list
+  let empty = (0, [])
+  let add (l, es) e = (l, (l + 1, e :: es))
+  let length (l, es) = l
+  let to_list (l, es) = List.rev es
+  let from_list es = (List.length es, List.rev es)
+end
+
 module E = struct
 
   (* Utilities, internal to E *)
-  let reg (ref : 'a list ref) (x : 'a) : int32 =
-      let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ x ];
-      i
+  let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
+      let i, t = Table.add !ref x in
+      ref := t;
+      Wasm.I32.of_int_u i
 
-  let reserve_promise (ref : 'a Lib.Promise.t list ref) _s : (int32 * ('a -> unit)) =
-      let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
-      let i = Wasm.I32.of_int_u (List.length !ref) in
-      ref := !ref @ [ p ];
-      (i, Lib.Promise.fulfill p)
+  let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
+    let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
+    let (i, t) = Table.add !ref p in
+    let i32 = Wasm.I32.of_int_u i in
+    ref := t;
+    (i32, Lib.Promise.fulfill p)
 
 
   (* The environment type *)
@@ -407,6 +465,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
+  module ConstEnv = Env.Make(Const)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -416,7 +475,13 @@ module E = struct
     candid_data_segment : int32;
     type_offsets_segment : int32;
     idl_types_segment : int32;
-  }
+    }
+
+  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
+  type shared_value =
+  | Vanilla of int64
+  | SharedObject of int64 (* index in object pool *)
+
   (* Object allocation code. *)
   type object_allocation = t -> G.t
   (* Pool of shared objects.
@@ -425,7 +490,7 @@ module E = struct
      Registered as GC root set and replaced on program upgrade. 
   *)
   and object_pool = {
-    objects: object_allocation list ref;
+    objects: (int * object_allocation) Table.t ref;
     frozen: bool ref;
   }
   and t = {
@@ -440,25 +505,27 @@ module E = struct
     (* Immutable *)
 
     (* Mutable *)
-    func_types : func_type list ref;
-    func_imports : import list ref;
-    other_imports : import list ref;
-    exports : export list ref;
-    funcs : (func * string * local_names) Lib.Promise.t list ref;
+    func_types : func_type Table.t ref;
+    func_imports : import Table.t ref;
+    other_imports : import Table.t ref;
+    exports : export Table.t ref;
+    funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
-    globals : (global Lib.Promise.t * string) list ref;
+    globals : (global Lib.Promise.t * string) Table.t ref;
     global_names : int32 NameEnv.t ref;
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    data_segments : string list ref; (* Passive data segments *)
+    data_segments : string Table.t ref; (* Passive data segments *)
+
+    constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
-      
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
-    typtbl_typs : Type.typ list ref;
+    typtbl_typs : Type.typ Table.t ref;
 
     (* Metadata *)
     args : (bool * string) option ref;
@@ -473,8 +540,8 @@ module E = struct
     return_arity : int; (* Number of return values (for type of Return) *)
 
     (* Mutable *)
-    locals : value_type list ref; (* Types of locals *)
-    local_names : (int32 * string) list ref; (* Names of locals *)
+    locals : value_type Table.t ref; (* Types of locals *)
+    local_names : (int32 * string) Table.t ref; (* Names of locals *)
 
     features : FeatureSet.t ref; (* Wasm features using wasmtime naming *)
 
@@ -488,31 +555,28 @@ module E = struct
     constant_functions : int32 ref;
   }
 
-  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
-  type shared_value = 
-  | Vanilla of int64
-  | SharedObject of int64 (* index in object pool *)
 
   (* The initial global environment *)
   let mk_global mode rts trap_with : t = {
     mode;
     rts;
     trap_with;
-    func_types = ref [];
-    func_imports = ref [];
-    other_imports = ref [];
-    exports = ref [];
-    funcs = ref [];
+    func_types = ref Table.empty;
+    func_imports = ref Table.empty;
+    other_imports = ref Table.empty;
+    exports = ref Table.empty;
+    funcs = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
-    globals = ref [];
+    globals = ref Table.empty;
     global_names = ref NameEnv.empty;
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    data_segments = ref [];
-    object_pool = { objects = ref []; frozen = ref false };
-    typtbl_typs = ref [];
+    data_segments = ref Table.empty;
+    constant_pool = ref ConstEnv.empty;
+    object_pool = { objects = ref Table.empty; frozen = ref false };
+    typtbl_typs = ref Table.empty;
     (* Metadata *)
     args = ref None;
     service = ref None;
@@ -521,8 +585,8 @@ module E = struct
     (* Actually unused outside mk_fun_env: *)
     n_param = 0l;
     return_arity = 0;
-    locals = ref [];
-    local_names = ref [];
+    locals = ref Table.empty;
+    local_names = ref Table.empty;
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
@@ -534,17 +598,17 @@ module E = struct
       Thus Mo_types.Hash.hash should not be called directly!
    *)
   let hash (env : t) lab =
-    env.labs := LabSet.add lab (!(env.labs));
+    env.labs := LabSet.add lab !(env.labs);
     Wasm.I64_convert.extend_i32_u (Mo_types.Hash.hash lab)
 
-  let get_labs env = LabSet.elements (!(env.labs))
+  let get_labs env = LabSet.elements !(env.labs)
 
   let mk_fun_env env n_param return_arity =
     { env with
       n_param;
       return_arity;
-      locals = ref [];
-      local_names = ref [];
+      locals = ref Table.empty;
+      local_names = ref Table.empty;
     }
 
   (* We avoid accessing the fields of t directly from outside of E, so here are a
@@ -559,8 +623,8 @@ module E = struct
   let add_local_name (env : t) li name =
     let _ = reg env.local_names (li, name) in ()
 
-  let get_locals (env : t) = !(env.locals)
-  let get_local_names (env : t) : (int32 * string) list = !(env.local_names)
+  let get_locals (env : t) = Table.to_list !(env.locals)
+  let get_local_names (env : t) : (int32 * string) list = Table.to_list !(env.local_names)
 
   let _add_other_import (env : t) m =
     ignore (reg env.other_imports m)
@@ -601,11 +665,12 @@ module E = struct
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
-  let get_globals (env : t) = List.map (fun (g,n) -> Lib.Promise.value g) !(env.globals)
+  let get_globals (env : t) =
+    List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list !(env.globals))
 
   let reserve_fun (env : t) name =
     let (j, fill) = reserve_promise env.funcs name in
-    let n = Int32.of_int (List.length !(env.func_imports)) in
+    let n = Int32.of_int (Table.length !(env.func_imports)) in
     let fi = Int32.add j n in
     let fill_ (f, local_names) = fill (f, name, local_names) in
     (fi, fill_)
@@ -639,23 +704,26 @@ module E = struct
 
   let get_return_arity (env : t) = env.return_arity
 
-  let get_func_imports (env : t) = !(env.func_imports)
-  let get_other_imports (env : t) = !(env.other_imports)
-  let get_exports (env : t) = !(env.exports)
-  let get_funcs (env : t) = List.map Lib.Promise.value !(env.funcs)
+  let get_func_imports (env : t) = Table.to_list !(env.func_imports)
+  let get_other_imports (env : t) = Table.to_list !(env.other_imports)
+  let get_exports (env : t) = Table.to_list !(env.exports)
+  let get_funcs (env : t) = List.map Lib.Promise.value (Table.to_list !(env.funcs))
 
   let func_type (env : t) ty =
     let rec go i = function
-      | [] -> env.func_types := !(env.func_types) @ [ ty ]; Int32.of_int i
+      | [] ->
+         let (i, t) = Table.add !(env.func_types) ty in
+         env.func_types := t;
+         Int32.of_int i
       | ty'::tys when ty = ty' -> Int32.of_int i
       | _ :: tys -> go (i+1) tys
        in
-    go 0 !(env.func_types)
+    go 0 (Table.to_list !(env.func_types))
 
-  let get_types (env : t) = !(env.func_types)
+  let get_types (env : t) = Table.to_list !(env.func_types)
 
   let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if !(env.funcs) <> [] then
+    if Table.length !(env.funcs) <> 0 then
       raise (CodegenError "Add all imports before all functions!");
 
     let i = {
@@ -708,8 +776,8 @@ module E = struct
   let else_trap_with env msg = if0 G.nop (trap_with env msg)
 
   let add_data_segment (env : t) data : int32 =
-    let index = List.length !(env.data_segments) in
-    env.data_segments := !(env.data_segments) @ [ data ];
+    let index, t = Table.add !(env.data_segments) data in
+    env.data_segments := t;
     Int32.of_int index
 
   let add_fun_ptr (env : t) fi : int32 =
@@ -739,30 +807,60 @@ module E = struct
   let replace_data_segment (env : t) (segment_index : int32) (data : StaticBytes.t) : int64 =
     let new_value = StaticBytes.as_bytes data in
     let segment_index = Int32.to_int segment_index in
-    assert (segment_index < List.length !(env.data_segments));
-    env.data_segments := List.mapi (fun index old_value -> 
+    assert (segment_index < Table.length !(env.data_segments));
+    env.data_segments := Table.from_list (
+      List.mapi (fun index old_value ->
       if index = segment_index then
         (assert (old_value = "");
         new_value)
-      else 
+      else
         old_value
-      ) !(env.data_segments);
+      ) (Table.to_list !(env.data_segments)));
     Int64.of_int (String.length new_value)
 
   let get_data_segments (env : t) =
-    !(env.data_segments)
+    Table.to_list !(env.data_segments)
 
-  let object_pool_add (env : t) (allocation : t -> G.t) : int64 =
+  let constant_pool_add env const make_shared_value =
+    match ConstEnv.find_opt const !(env.constant_pool) with
+    | Some shared_value -> shared_value
+    | None ->
+      let sv = make_shared_value() in
+      match sv with
+      | SharedObject _ ->
+        env.constant_pool := ConstEnv.add const sv !(env.constant_pool);
+        sv
+      | Vanilla _ -> sv
+
+  let object_pool_add (env : t) line (allocation : t -> G.t) : int64 =
     if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
-    let index = List.length !(env.object_pool.objects) in
-    env.object_pool.objects := !(env.object_pool.objects) @ [ allocation ];
+    let index, t = Table.add !(env.object_pool.objects) (line, allocation) in
+    env.object_pool.objects := t;
     Int64.of_int index
 
   let object_pool_size (env : t) : int =
-    List.length !(env.object_pool.objects)
+    Table.length !(env.object_pool.objects)
+
+  let object_pool_report (env : t) : unit =
+    let e = ref StringEnv.empty in
+    List.iter (fun (l, _) ->
+        let line = Int.to_string l in
+        e := StringEnv.add line
+               (match StringEnv.find_opt line (!e) with
+                | None -> 1
+                | Some i -> i + 1) (!e))
+    (Table.to_list !(env.object_pool.objects));
+    let profile = StringEnv.fold (fun l c s -> s ^ "\n" ^ __FILE__^ ", line " ^ l ^ "[" ^ Int.to_string c ^ "]") (!e) ""
+    in
+    begin
+      Printf.eprintf "\ndata segments = %i" (Table.length !(env.data_segments));
+      Printf.eprintf "\nshared constants = %i" (ConstEnv.cardinal !(env.constant_pool));
+      Printf.eprintf "\npool size = %i" (object_pool_size env);
+      Printf.eprintf "\npool report = %s" profile
+    end
 
   let iterate_object_pool (env : t) f =
-    G.concat_mapi f !(env.object_pool.objects)
+    G.concat_mapi f (List.map (fun (l, a) -> a) (Table.to_list !(env.object_pool.objects)))
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -776,12 +874,12 @@ module E = struct
     reg env.typtbl_typs ty
 
   let get_typtbl_typs (env : t) : Type.typ list =
-    !(env.typtbl_typs)
+    Table.to_list !(env.typtbl_typs)
 
   let add_feature (env : t) f =
-    env.features := FeatureSet.add f (!(env.features))
+    env.features := FeatureSet.add f !(env.features)
 
-  let get_features (env : t) = FeatureSet.elements (!(env.features))
+  let get_features (env : t) = FeatureSet.elements !(env.features)
 
   let require_stable_memory (env : t)  =
     if not !(env.requires_stable_memory)
@@ -2119,8 +2217,8 @@ module Tagged = struct
     get_object ^^
     allocation_barrier env
 
-  let shared_object env allocation =
-    let index = E.object_pool_add env allocation in
+  let shared_object line env allocation =
+    let index = E.object_pool_add env line allocation in
     E.SharedObject index
 
   let materialize_shared_value env = function
@@ -2128,7 +2226,7 @@ module Tagged = struct
   | E.SharedObject index -> Heap.get_static_variable env index
 
   let share env allocation =
-    materialize_shared_value env (shared_object env allocation)
+    materialize_shared_value env (shared_object __LINE__ env allocation)
 
 end (* Tagged *)
 
@@ -2158,9 +2256,9 @@ module MutBox = struct
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
     Tagged.store_field env field
-  
+
   let add_global_mutbox env =
-    E.object_pool_add env alloc
+    E.object_pool_add env __LINE__ alloc
 end
 
 
@@ -2219,10 +2317,10 @@ module Opt = struct
     )
 
   let constant env = function
-  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
+  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object __LINE__ env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
   | E.Vanilla value -> E.Vanilla value (* not null and no `Opt` object *)
   | shared_value ->
-    Tagged.shared_object env (fun env -> 
+    Tagged.shared_object __LINE__ env (fun env -> 
       let materialized_value = Tagged.materialize_shared_value env shared_value in  
       inject env materialized_value (* potentially wrap in new `Opt` *)
     )
@@ -2342,7 +2440,7 @@ module Closure = struct
 
   let constant env get_fi =
     let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
       compile_unboxed_const 0L
     ])
@@ -2387,7 +2485,7 @@ module BoxedWord64 = struct
     then 
       E.Vanilla (BitTagged.tag_const pty i)
     else
-      Tagged.shared_object env (fun env -> compile_box env pty (compile_unboxed_const i))
+      Tagged.shared_object __LINE__ env (fun env -> compile_box env pty (compile_unboxed_const i))
 
   let box env pty = 
     Func.share_code1 Func.Never env 
@@ -2748,7 +2846,7 @@ module Float = struct
     Tagged.(sanity_check_tag __LINE__ env (Bits64 F)) ^^
     Tagged.load_field_float64 env payload_field
 
-  let constant env f = Tagged.shared_object env (fun env -> 
+  let constant env f = Tagged.shared_object __LINE__ env (fun env -> 
     compile_unboxed_const f ^^ 
     box env)
 
@@ -3586,7 +3684,8 @@ module BigNumLibtommath : BigNumType = struct
     ] @ limbs
     in
 
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
+      (*TODO: Why isn't this just loaded from a segment? *)
       let instructions = 
         let words = StaticBytes.as_words payload in
         List.map compile_unboxed_const words in
@@ -3713,15 +3812,24 @@ module Blob = struct
     G.i (MemoryInit (nr segment_index)) ^^
     get_blob
 
-  let constant env sort payload =
-    Tagged.shared_object env (fun env -> 
+  let constant env sort payload : E.shared_value =
+    Tagged.shared_object __LINE__ env (fun env -> 
       let blob_length = Int64.of_int (String.length payload) in
       let segment_index = E.add_static env StaticBytes.[Bytes payload] in
       load_data_segment env sort segment_index (compile_unboxed_const blob_length)
     )
 
   let lit env sort payload =
-    Tagged.materialize_shared_value env (constant env sort payload)
+    let shared_value = match sort with
+      | Tagged.B | Tagged.T ->
+        let bytes = payload in
+        let value = Const.Lit (if sort = Tagged.B then Const.Blob bytes else Const.Text bytes) in 
+        E.constant_pool_add env value (fun () -> constant env sort bytes)
+      | Tagged.P | Tagged.A ->
+        (* TODO: perhaps extend Const.v for principal and actor blobs for sharing *)
+        constant env sort payload
+    in
+    Tagged.materialize_shared_value env shared_value
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I64Type) [I64Type; I64Type] (
     fun env get_x ->
@@ -4000,10 +4108,10 @@ module Object = struct
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
-        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
+        (* NB: Blob.lit shares blobs *)
+        Blob.lit env Tagged.B (StaticBytes.as_bytes hash_payload)
       in
-      
-      (fun env -> 
+      (fun env ->
         (* Allocate memory *)
         let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
         Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
@@ -4011,7 +4119,7 @@ module Object = struct
 
         (* Set hash_ptr *)
         get_ri ^^
-        Tagged.materialize_shared_value env hash_blob ^^
+        hash_blob ^^
         Tagged.store_field env hash_ptr_field ^^
 
         (* Write all the fields *)
@@ -4033,7 +4141,7 @@ module Object = struct
   let constant env (fs : (string * E.shared_value) list) =
     let materialize_fields = List.map (fun (name, value) -> (name, fun env -> Tagged.materialize_shared_value env value)) fs in
     let allocation = object_builder env materialize_fields in
-    Tagged.shared_object env allocation
+    Tagged.shared_object __LINE__ env allocation
 
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
@@ -4389,7 +4497,7 @@ module Arr = struct
       ] @ element_instructions)
 
   let constant env sort elements =
-    Tagged.shared_object env (fun env ->
+    Tagged.shared_object __LINE__ env (fun env ->
       let materialized_elements = List.map (fun element -> Tagged.materialize_shared_value env element) elements in
       lit env sort materialized_elements
     )
@@ -4461,7 +4569,7 @@ module Arr = struct
     Tagged.allocation_barrier env
 
 
-  let tabulate env =
+  let tabulate env sort =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
@@ -4470,7 +4578,7 @@ module Arr = struct
     (* Allocate *)
     BigNum.to_word64 env ^^
     set_r ^^
-    alloc env Tagged.I get_r ^^
+    alloc env sort get_r ^^
     set_r ^^
 
     (* Initial index *)
@@ -4762,6 +4870,8 @@ module IC = struct
     E.add_func_import env "ic0" "canister_self_size" [] [i];
     E.add_func_import env "ic0" "canister_status" [] [I32Type];
     E.add_func_import env "ic0" "canister_version" [] [I64Type];
+    E.add_func_import env "ic0" "root_key_copy" (is 3) [];
+    E.add_func_import env "ic0" "root_key_size" [] [i];
     E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
     E.add_func_import env "ic0" "is_controller" (is 2) [I32Type];
     E.add_func_import env "ic0" "subnet_self_copy" (is 3) [];
@@ -4954,6 +5064,8 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
 
   let trap_with env s =
+    (* TODO: instead of pre-allocating a shared constant, allocate
+       s from a segment to reduce pool size *)
     Blob.lit_ptr_len env Tagged.T s ^^ trap_ptr_len env
 
   let trap_text env  =
@@ -5134,6 +5246,18 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get actor-subnet-reference when running locally"
 
+  let get_root_key env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "root_key" [i] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "root_key_size")
+          (fun env -> system_call env "root_key_copy")
+          (fun env -> compile_unboxed_const 0L)
+      )
+    | _ ->
+      E.trap_with env "cannot get root-key when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5248,7 +5372,7 @@ module IC = struct
     (* simply tuple canister name and function name *)
     Tagged.(sanity_check_tag __LINE__ env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
-    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [] (
+    Func.share_code2 Func.Never env "actor_public_field" (("actor", I64Type), ("func", I64Type)) [I64Type] (
       fun env get_actor get_func ->
       Arr.lit env Tagged.S [get_actor; get_func]
    )
@@ -6703,14 +6827,15 @@ module Serialization = struct
     (* Type traversal *)
     (* We do a first traversal to find out the indices of non-primitive types *)
     let (typs, idx) =
-      let typs = ref [] in
+      let typs = ref Table.empty in
       let idx = ref TM.empty in
       let rec go t =
         let t = Type.normalize t in
         if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
-          idx := TM.add t (Lib.List32.length !typs) !idx;
-          typs := !typs @ [ t ];
+          let (i, tbl) = Table.add !typs t in
+          typs := tbl;
+          idx := TM.add t (Int32.of_int i) !idx;
           match t with
           | Tup ts -> List.iter go ts
           | Obj (_, fs) ->
@@ -6729,7 +6854,7 @@ module Serialization = struct
         end
       in
       List.iter go ts;
-      (!typs, !idx)
+      (Table.to_list !typs, !idx)
     in
 
     (* buffer utilities *)
@@ -8874,9 +8999,10 @@ module GCRoots = struct
       compile_unboxed_const length ^^
       E.call_import env "rts" "initialize_static_variables" ^^
       E.iterate_object_pool env (fun index allocation ->
-        compile_unboxed_const (Int64.of_int index) ^^
-        allocation env ^^
-        E.call_import env "rts" "set_static_variable"
+      Func.share_code0 Func.Always env (Printf.sprintf "alloc_%i" index) [] (fun env ->
+            compile_unboxed_const (Int64.of_int index) ^^
+            allocation env ^^
+              E.call_import env "rts" "set_static_variable")
       )
     )
 end (* GCRoots *)
@@ -8955,7 +9081,10 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec build_constant env = function
+  let rec build_constant env constant =
+    E.constant_pool_add env constant (fun () -> build_constant_aux env constant)
+
+  and build_constant_aux env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
   | Const.Lit (Const.Text payload) -> Blob.constant env Tagged.T payload
@@ -8970,18 +9099,18 @@ module StackRep = struct
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) ->
       let payload = build_constant env value in
-      Tagged.shared_object env (fun env ->
+      Tagged.shared_object __LINE__ env (fun env ->
         let materialized_payload = Tagged.materialize_shared_value env payload in
         Variant.inject env tag materialized_payload
       )
-  | Const.Array elements -> 
+  | Const.Array elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.I constant_elements
-  | Const.Tuple elements -> 
+  | Const.Tuple elements ->
       let constant_elements = List.map (build_constant env) elements in
       Arr.constant env Tagged.T constant_elements
   | Const.Obj fields ->
-      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields in
+      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields  in
       Object.constant env constant_fields
 
   let materialize_constant env value =
@@ -12359,11 +12488,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "canister_subnet", [] ->
     SR.Vanilla, IC.get_subnet_reference env
 
+  | OtherPrim "root_key", [] ->
+    SR.Vanilla, IC.get_root_key env
+
   (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
-    const_sr SR.Vanilla (Arr.tabulate env)
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.I)
+  | OtherPrim "Array.tabulateVar", [_;_] ->
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.M)
   | OtherPrim "btst8", [_;_] ->
     (* TODO: btstN returns Bool, not a small value *)
     const_sr (SR.UnboxedWord64 Type.Nat8) (TaggedSmallWord.btst_kernel env Type.Nat8)
@@ -13557,6 +13691,9 @@ and conclude_module env set_serialization_globals start_fi_o =
       wasm_features = E.get_features env;
     } in
 
+  (* For debugging *)
+  if !Flags.verbose then E.object_pool_report env;
+
   match E.get_rts env with
   | None -> emodule
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
@@ -13594,5 +13731,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     | Flags.WasmMode ->
       Some (nr (E.built_in env "init"))
   in
-
   conclude_module env set_serialization_globals start_fi_o

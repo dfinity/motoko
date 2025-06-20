@@ -738,6 +738,9 @@ module E = struct
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
 
+  let object_pool_size (env: t) : int =
+    StringEnv.cardinal !(env.object_pool)
+
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 
@@ -4823,7 +4826,7 @@ module Arr = struct
     get_r ^^
     Tagged.allocation_barrier env
 
-  let tabulate env =
+  let tabulate env sort =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
     let (set_i, get_i) = new_local env "i" in
@@ -4832,7 +4835,7 @@ module Arr = struct
     (* Allocate *)
     BigNum.to_word32 env ^^
     set_r ^^
-    alloc env Tagged.I get_r ^^
+    alloc env sort get_r ^^
     set_r ^^
 
     (* Initial index *)
@@ -5105,6 +5108,8 @@ module IC = struct
     E.add_func_import env "ic0" "canister_self_size" [] [i];
     E.add_func_import env "ic0" "canister_status" [] [I32Type];
     E.add_func_import env "ic0" "canister_version" [] [I64Type];
+    E.add_func_import env "ic0" "root_key_copy" (is 3) [];
+    E.add_func_import env "ic0" "root_key_size" [] [i];
     E.add_func_import env "ic0" "in_replicated_execution" [] [I32Type];
     E.add_func_import env "ic0" "is_controller" (is 2) [I32Type];
     E.add_func_import env "ic0" "subnet_self_copy" (is 3) [];
@@ -5414,6 +5419,18 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get actor-subnet-reference when running locally"
 
+  let get_root_key env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "root_key" [i] (fun env ->
+        Blob.of_size_copy env Tagged.A
+          (fun env -> system_call env "root_key_size")
+          (fun env -> system_call env "root_key_copy")
+          (fun env -> compile_unboxed_const 0l)
+      )
+    | _ ->
+      E.trap_with env "cannot get root-key when running locally"
+
   let get_system_time env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5515,7 +5532,7 @@ module IC = struct
     (* simply tuple canister name and function name *)
     Tagged.(sanity_check_tag __LINE__ env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
-    Func.share_code2 Func.Never env "actor_public_field" (("actor", I32Type), ("func", I32Type)) [] (
+    Func.share_code2 Func.Never env "actor_public_field" (("actor", I32Type), ("func", I32Type)) [I32Type] (
       fun env get_actor get_func ->
       Arr.lit env Tagged.S [get_actor; get_func]
    )
@@ -12239,11 +12256,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "canister_subnet", [] ->
     SR.Vanilla, IC.get_subnet_reference env
 
+  | OtherPrim "root_key", [] ->
+    SR.Vanilla, IC.get_root_key env
+
   (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
   | OtherPrim "Array.tabulate", [_;_] ->
-    const_sr SR.Vanilla (Arr.tabulate env)
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.I)
+  | OtherPrim "Array.tabulateVar", [_;_] ->
+    const_sr SR.Vanilla (Arr.tabulate env Tagged.M)
   | OtherPrim "btst8", [_;_] ->
     (* TODO: btstN returns Bool, not a small value *)
     const_sr (SR.UnboxedWord32 Type.Nat8) (TaggedSmallWord.btst_kernel env Type.Nat8)

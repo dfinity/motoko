@@ -310,6 +310,7 @@ let prim trap =
     | _ -> assert false
     )
   | "Array.tabulate" -> fun c v k ->
+    (* TODO: optimize these (https://github.com/dfinity/motoko/pull/5256#discussion_r2143573548) *)
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
@@ -318,6 +319,18 @@ let prim trap =
         if i == len_nat
         then k (Array (Array.of_list (prefix [])))
         else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
+      in go (fun xs -> xs) k 0
+    | _ -> assert false
+    )
+  | "Array.tabulateVar" -> fun c v k ->
+    (match Value.as_tup v with
+    | [len; g] ->
+      let len_nat = Int.to_int (as_int len) in
+      let (_, g') = Value.as_func g in
+      let rec go prefix k i =
+        if i == len_nat
+        then k (Array (Array.of_list (prefix [])))
+        else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (Mut (ref x)::tl)) k (i + 1))
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
@@ -417,6 +430,9 @@ let prim trap =
       fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
   | "canister_subnet" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
+  | "root_key" ->
       fun _ v k -> as_unit v; k (Blob "")
 
   (* fake *)

@@ -152,6 +152,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_BOOL) -> simple_token "<bool>"
   | X (T T_AWAIT) -> simple_token "await"
   | X (T T_AWAITSTAR) -> simple_token "await*"
+  | X (T T_AWAITQUEST) -> simple_token "await?"
   | X (T T_ASYNC) -> simple_token "async"
   | X (T T_ASYNCSTAR) -> simple_token "async*"
   | X (T T_ASSIGN) -> simple_token ":="
