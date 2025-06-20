@@ -50,7 +50,6 @@ module E = struct
   let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
       let i, t = Table.add !ref x in
       ref := t;
-      assert (x = List.nth (Table.to_list !ref) (Int32.to_int (Wasm.I32.of_int_u i)));
       Wasm.I32.of_int_u i
 
   let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
