@@ -70,7 +70,7 @@ module Imports = struct
     func_types : func_type Table.t ref;
     potential_func_imports : (import * bool ref) Table.t ref;
     funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
-    named_imports : int32 NameEnv.t ref;
+    named_imports : (int32 * bool ref) NameEnv.t ref;
   }
 
   let empty () = {
@@ -116,18 +116,17 @@ module Imports = struct
       item_name = Lib.Utf8.decode funcname;
       idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
     } in
-    let fi = reg env.potential_func_imports (nr i, ref false) in
+    let used = ref false in
+    let fi = reg env.potential_func_imports (nr i, used) in
     let name = modname ^ "." ^ funcname in
     assert (not (NameEnv.mem name !(env.named_imports)));
-    env.named_imports := NameEnv.add name fi !(env.named_imports)
+    env.named_imports := NameEnv.add name (fi, used) !(env.named_imports)
 
   let reuse_import env modname funcname =
     let name = modname ^ "." ^ funcname in
     match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi ->
-        (* TODO: optimize *)
-        let _imp, used_ref = List.nth (Table.to_list !(env.potential_func_imports)) (Int32.to_int fi) in
-        used_ref := true;
+      | Some (fi, used) ->
+        used := true;
         fi
       | _ ->
         raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
@@ -138,23 +137,26 @@ module Imports = struct
 
   let finalize_func_imports env : import list * int32 * (int32 -> int32) =
     let module M = Map.Make(struct type t = int32 let compare = Int32.compare end) in
-    let id = ref 0l in
-    let func_imports, import_remap =
-      let import_remap = ref M.empty in
-      let imports = Table.to_list !(env.potential_func_imports)
-        (* make tail recursive *)
-        |> List.filteri (fun i (_, used_ref) -> 
-          !used_ref && begin
-            import_remap := M.add (Int32.of_int i) !id !import_remap;
-            id := Int32.add !id 1l;
-            true
-          end)
-        |> List.map (fun (imp, _) -> imp)
+    (* Skip unused imports and build the remapping for the used ones *)
+    let func_imports, ni', import_remap =
+      let i' = ref 0 in
+      let remap = ref M.empty in
+      let rec go i acc = function
+        | [] -> 
+          assert (i = Table.length !(env.potential_func_imports));
+          List.rev acc
+        | (imp, used) :: imps ->
+          if !used then begin
+            remap := M.add (Int32.of_int i) (Int32.of_int !i') !remap;
+            i' := !i' + 1;
+            go (i + 1) (imp :: acc) imps
+          end else
+            go (i + 1) acc imps
       in
-      imports, !import_remap
+      let imports = go 0 [] (Table.to_list !(env.potential_func_imports)) in
+      assert (!i' = List.length imports);
+      imports, Int32.of_int !i', !remap
     in
-    let ni = List.length func_imports in
-    let ni' = Int32.of_int ni in
     let remapping =
       let old_num_imports = Table.length !(env.potential_func_imports) |> Int32.of_int in
       let offset = Int32.sub old_num_imports ni' in
