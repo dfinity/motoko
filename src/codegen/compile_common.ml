@@ -1,3 +1,6 @@
+(* 
+This module contains common definitions for both compile_classical.ml and compile_enhanced.ml.
+*)
 open Mo_types
 
 open Wasm_exts.Ast
@@ -23,6 +26,7 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
+(* Table used for fast adding to the end of the sequence *)
 module Table : sig
   type 'a t
   val empty : 'a t
@@ -39,6 +43,7 @@ end = struct
   let from_list es = (List.length es, List.rev es)
 end
 
+(* Common definitions for the Compiler Environment *)
 module E = struct
 
   (* Utilities, internal to E *)
@@ -63,6 +68,7 @@ module E = struct
   type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
 end
 
+(* Module for managing imports *)
 module Imports = struct
   open E
 
