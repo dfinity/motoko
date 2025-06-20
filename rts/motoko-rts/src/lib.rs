@@ -68,10 +68,6 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn unused() {}
-
 #[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {

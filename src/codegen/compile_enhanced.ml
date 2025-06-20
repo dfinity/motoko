@@ -453,7 +453,6 @@ module E = struct
 
     (* Mutable *)
     imports : Imports.t;
-    other_imports : import Table.t ref;
     exports : export Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
@@ -506,7 +505,6 @@ module E = struct
     rts;
     trap_with;
     imports = Imports.empty ();
-    other_imports = ref Table.empty;
     exports = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
@@ -566,9 +564,6 @@ module E = struct
 
   let get_locals (env : t) = Table.to_list !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = Table.to_list !(env.local_names)
-
-  let _add_other_import (env : t) m =
-    ignore (reg env.other_imports m)
 
   let add_export (env : t) e =
     ignore (reg env.exports e)
@@ -637,7 +632,6 @@ module E = struct
 
   let get_return_arity (env : t) = env.return_arity
 
-  let get_other_imports (env : t) = Table.to_list !(env.other_imports)
   let get_exports (env : t) = Table.to_list !(env.exports)
   let get_funcs (env : t) = Imports.get_funcs env.imports
 
@@ -13535,11 +13529,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   IC.default_exports env;
 
-  let func_imports, remapping = E.finalize_func_imports env in
-  let ni = List.length func_imports in
-  let ni' = Int32.of_int ni in
-
-  let other_imports = E.get_other_imports env in
+  let func_imports, ni, remapping = E.finalize_func_imports env in
 
   let initial_memory_pages = Int64.(add (div dynamic_heap_start page_size) 1L) in
   let memories = E.get_memories env initial_memory_pages in
@@ -13567,7 +13557,7 @@ and conclude_module env set_serialization_globals start_fi_o =
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
       memories;
-      imports = func_imports @ other_imports;
+      imports = func_imports;
       exports = E.get_exports env;
       datas
     } in
@@ -13576,10 +13566,10 @@ and conclude_module env set_serialization_globals start_fi_o =
     let open Wasm_exts.CustomModule in
     { module_;
       dylink0 = [];
-      name = { empty_name_section with function_names =
-                 List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-               locals_names =
-                 List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
+      name = { empty_name_section with
+        function_names = List.mapi (fun i (f,n,_) -> Int32.(add ni (of_int i), n)) funcs;
+        locals_names = List.mapi (fun i (f,_,ln) -> Int32.(add ni (of_int i), ln)) funcs;
+      };
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);

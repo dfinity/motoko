@@ -136,7 +136,7 @@ module Imports = struct
     let fi = reuse_import env modname funcname in
     G.i (Call (nr fi))
 
-  let finalize_func_imports env : import list * (int32 -> int32) =
+  let finalize_func_imports env : import list * int32 * (int32 -> int32) =
     let module M = Map.Make(struct type t = int32 let compare = Int32.compare end) in
     let id = ref 0l in
     let func_imports, import_remap =
@@ -167,6 +167,6 @@ module Imports = struct
           (* It's a module-defined function. Adjust its index. *)
           Int32.sub old_index offset
     in
-    func_imports, remapping
+    func_imports, ni', remapping
 end
 
