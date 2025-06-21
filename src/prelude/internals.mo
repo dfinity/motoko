@@ -41,35 +41,35 @@ func @reset_cycles() {
 // Note that these return functions!
 // (Some optimizations in the backend might be feasible.)
 
-func @immut_array_get<A>(xs : [A]) : Nat -> A =
+let @immut_array_get = func<A>(xs : [A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
-func @mut_array_get<A>(xs : [var A]) : Nat -> A =
+let @mut_array_get = func<A>(xs : [var A]) : Nat -> A =
   func (n : Nat) : A = xs[n];
-func @immut_array_size<A>(xs : [A]) : () -> Nat =
+let @immut_array_size = func<A>(xs : [A]) : () -> Nat =
   func () : Nat = (prim "array_len" : [A] -> Nat) xs;
-func @mut_array_size<A>(xs : [var A]) : () -> Nat =
+let @mut_array_size = func<A>(xs : [var A]) : () -> Nat =
   func () : Nat = (prim "array_len" : [var A] -> Nat) xs;
-func @mut_array_put<A>(xs : [var A]) : (Nat, A) -> () =
+let @mut_array_put = func<A>(xs : [var A]) : (Nat, A) -> () =
   func (n : Nat, x : A) = (xs[n] := x);
-func @immut_array_keys<A>(xs : [A]) : () -> @Iter<Nat> =
+let @immut_array_keys = func<A>(xs : [A]) : () -> @Iter<Nat> =
   func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.size();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   };
-func @mut_array_keys<A>(xs : [var A]) : () -> @Iter<Nat> =
+let @mut_array_keys = func<A>(xs : [var A]) : () -> @Iter<Nat> =
   func () : @Iter<Nat> = object {
     var i = 0;
     let l = xs.size();
     public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
   };
-func @immut_array_vals<A>(xs : [A]) : () -> @Iter<A> =
+let @immut_array_vals = func<A>(xs : [A]) : () -> @Iter<A> =
   func () : @Iter<A> = object {
     var i = 0;
     let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
-func @mut_array_vals<A>(xs : [var A]) : () -> @Iter<A> =
+let @mut_array_vals = func<A>(xs : [var A]) : () -> @Iter<A> =
   func () : @Iter<A> = object {
     var i = 0;
     let l = xs.size();
@@ -228,7 +228,7 @@ func @text_needs_parens(t : Text) : Bool {
   }
 };
 
-func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
+let @text_of_option = func<T>(f : T -> Text, x : ?T) : Text {
   switch (x) {
     case (?y) {
       let fy = f y;
@@ -239,14 +239,14 @@ func @text_of_option<T>(f : T -> Text, x : ?T) : Text {
   }
 };
 
-func @text_of_variant<T>(l : Text, f : T -> Text, x : T) : Text {
+let @text_of_variant = func<T>(l : Text, f : T -> Text, x : T) : Text {
   let fx = f x;
   if (fx == "()") "#" # l
   else if (@text_has_parens(fx)) "#" # l # fx
   else "#" # l # "(" # fx # ")"
 };
 
-func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
+let @text_of_array = func<T>(f : T -> Text, xs : [T]) : Text {
   var text = "[";
   var first = true;
   for (x in xs.values()) {
@@ -260,7 +260,7 @@ func @text_of_array<T>(f : T -> Text, xs : [T]) : Text {
   text # "]"
 };
 
-func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
+let @text_of_array_mut = func<T>(f : T -> Text, xs : [var T]) : Text {
   var text = "[var";
   var first = true;
   for (x in xs.values()) {
@@ -275,7 +275,7 @@ func @text_of_array_mut<T>(f : T -> Text, xs : [var T]) : Text {
   text # "]"
 };
 
-func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
+let @equal_array = func<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
   if (a.size() != b.size()) {
     return false;
   };
@@ -319,7 +319,7 @@ func @getSystemRefund() : @Refund {
 func @cleanup() {
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
+let @new_async = func<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCont) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -572,7 +572,7 @@ func @nextExpiration(n : ?@Node) : Nat64 = switch n {
 // Function called by backend to run eligible timed actions.
 // DO NOT RENAME without modifying compilation.
 func @timer_helper() : async () {
-  func Array_init<T>(len : Nat,  x : T) : [var T] {
+  let Array_init = func<T>(len : Nat,  x : T) : [var T] {
     (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
   };
 

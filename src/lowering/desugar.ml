@@ -112,7 +112,7 @@ and exp' at note = function
     let t = T.as_array note.Note.typ in
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, _, closure, e) ->
+  | S.FuncE (name, sp, tbs, p, typ_opt, _, closure, e) ->
     let s, po = match sp.it with
       | T.Local ls -> (T.Local ls, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
@@ -122,6 +122,7 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
+    let (s, _, _, _, _) = T.as_func note.Note.typ in
     I.FuncE (name, s, control, tbs', args, tys, !closure, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
