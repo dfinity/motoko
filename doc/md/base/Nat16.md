@@ -1,4 +1,4 @@
-# Nat16
+# base/Nat16
 Provides utility functions on 16-bit unsigned integers.
 
 :::note

@@ -1,4 +1,4 @@
-# Hash
+# base/Hash
 
 ## Type `Hash`
 ``` motoko no-repl

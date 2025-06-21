@@ -1,4 +1,4 @@
-# Int64
+# base/Int64
 Provides utility functions on 64-bit signed integers.
 
 :::note

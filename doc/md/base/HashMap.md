@@ -1,4 +1,4 @@
-# HashMap
+# base/HashMap
 Class `HashMap<K, V>` provides a hashmap from keys of type `K` to values of type `V`.
 The class is parameterized by the key's equality and hash functions, and an initial capacity.
 However, the underlying allocation occurs only upon the first insertion.

@@ -1,4 +1,4 @@
-# Index
+# Index of package base
 
 * [Array](Array.md) Provides extended utility functions on Arrays.
 * [AssocList](AssocList.md) Map implemented as a linked-list of key-value pairs ("Associations").

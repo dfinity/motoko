@@ -1,4 +1,4 @@
-# Deque
+# base/Deque
 Double-ended queue (deque) of a generic element type `T`.
 
 The interface of deques is purely functional, not imperative, and deques are immutable values.

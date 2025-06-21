@@ -1,4 +1,4 @@
-# Nat32
+# base/Nat32
 Provides utility functions on 32-bit unsigned integers.
 
 :::note

@@ -1,4 +1,4 @@
-# Nat
+# base/Nat
 Natural numbers with infinite precision.
 
 :::note

@@ -1,4 +1,4 @@
-# Random
+# base/Random
 A module for obtaining randomness on the Internet Computer (IC).
 
 This module provides the fundamentals for user abstractions to build on.

@@ -1,4 +1,4 @@
-# Text
+# base/Text
 Utility functions for `Text` values.
 
 A `Text` value represents human-readable text as a sequence of characters of type `Char`.

@@ -1,6 +1,7 @@
 open Mo_def
 
 type render_input = {
+  package_opt : string option;
   all_modules : string list;  (** Needed so we can generate a navigation *)
   current_path : string;  (** The path for the current module *)
   module_comment : string option;

@@ -1,4 +1,4 @@
-# Option
+# base/Option
 Optional values can be seen as a typesafe `null`. A value of type `?Int` can
 be constructed with either `null` or `?42`. The simplest way to get at the
 contents of an optional is to use pattern matching:
