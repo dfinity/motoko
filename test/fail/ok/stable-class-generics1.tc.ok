@@ -1,0 +1,21 @@
+stable-class-generics1.mo:56.34-56.47: type error [M0096], expression of type
+  stable <K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) ->
+    SimpleHashMap<K, V>
+cannot produce expected type
+  <K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) ->
+    {get : stable K -> ?V; put : stable (K, V) -> ()}
+stable-class-generics1.mo:60.12-60.22: type error [M0097], expected function type, but expression produces type
+  ?(() -> Text)
+stable-class-generics1.mo:60.22: info, this looks like an unintended function call, perhaps a missing ';'?
+stable-class-generics1.mo:60.28-60.32: type error [M0096], expression of type
+  ?Text
+cannot produce expected type
+  None
+stable-class-generics1.mo:61.27-61.30: type error [M0050], literal of type
+  Text
+does not have expected type
+  () -> Text
+stable-class-generics1.mo:62.12-62.30: type error [M0060], operator is not defined for operand types
+  ?(() -> Text)
+and
+  ?(() -> Text)

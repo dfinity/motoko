@@ -1045,7 +1045,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    rel_sort s1 s2 && c1 = c2 &&
+    rel_sort s1 s2 tbs1 && c1 = c2 &&
     (match rel_binds d eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -1059,9 +1059,13 @@ let rec rel_typ d rel eq t1 t2 =
   | _, _ -> false
   end
 
-and rel_sort s1 s2 =
+and rel_sort s1 s2 tbs1 =
   match s1, s2 with
-  | Local Stable, Local Flexible -> true (* stable function can be assigned to flexible function *)
+  | Local Stable, Local Flexible -> 
+    not (List.exists (fun b -> b.sort = Type) tbs1)
+    (* Stable functions can only be assigned to flexible functions, if they have no generic type parameters.
+       This is because type parameters of stable functions are implied to be stable too, while this is 
+       not necessarily the case for flexible function types. *)
   | _, _ -> s1 = s2
 
 and rel_fields d rel eq tfs1 tfs2 =
