@@ -424,6 +424,10 @@ struct
       (match list with
        | [] -> false
        | hd' :: tl' -> equal hd hd' && is_prefix equal tl tl')
+  
+  (* tail-recursive map *)
+  (* TODO: can be replaced by [@tail_mod_cons] map (OCaml 0.4.14)/List.map once we upgrade OCaml *)
+  let safe_map f l = List.rev (List.rev_map f l)
 end
 
 module List32 =

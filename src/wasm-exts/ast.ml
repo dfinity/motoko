@@ -324,3 +324,42 @@ let is_dwarf_like = function
   | Meta m -> is_dwarf_like' m
   | _ -> false
 
+
+(* AST traversals *)
+
+let phrase f x = { x with it = f x.it }
+
+let rename_funcs rn : module_' -> module_' = fun m ->
+  let var' = rn in
+  let var = phrase var' in
+
+  let rec instr' = function
+    | Call v -> Call (var v)
+    | Block (ty, is) -> Block (ty, instrs is)
+    | Loop (ty, is) -> Loop (ty, instrs is)
+    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+    | i -> i
+  and instr i = phrase instr' i
+  and instrs is = Lib.List.safe_map instr is in
+
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = Lib.List.safe_map func in
+
+  let edesc' = function
+    | FuncExport v -> FuncExport (var v)
+    | e -> e in
+  let edesc = phrase edesc' in
+  let export' e = { e with edesc = edesc e.edesc } in
+  let export = phrase export' in
+  let exports = Lib.List.safe_map export in
+
+  let segment' f s = { s with init  = f s.init } in
+  let segment f = phrase (segment' f) in
+
+  { m with
+    funcs = funcs m.funcs;
+    exports = exports m.exports;
+    start = Option.map var m.start;
+    elems = Lib.List.safe_map (segment (Lib.List.safe_map var)) m.elems;
+  }
