@@ -122,14 +122,7 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    let is_async = match typ_opt with
-      | Some { it = AsyncT _; _ } -> true
-      | _ -> false
-    in
-    let s = match s, is_async with
-    | T.Local T.Stable, true -> T.Local T.Flexible
-    | _ -> s
-    in
+    let (s, _, _, _, _) = T.as_func note.Note.typ in
     I.FuncE (name, s, control, tbs', args, tys, !closure, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
