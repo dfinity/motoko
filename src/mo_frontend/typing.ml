@@ -1207,6 +1207,7 @@ let error_bin_op env at t1 t2 =
     display_typ_expand t1
     display_typ_expand t2
 
+(* NOTE: Keep in sync with mo_types/type.ml:compare_field *)
 let compare_pat_field pf1 pf2 = match pf1.it, pf2.it with
   | TypPF(id1), TypPF(id2) -> compare id1.it id2.it
   | TypPF(_), _ -> -1
