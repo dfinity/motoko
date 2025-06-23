@@ -86,7 +86,7 @@ and over_exp_field (v : visitor) (ef : exp_field) : exp_field =
 
 and over_pat_field (v : visitor) (pf : pat_field) : pat_field =
   match pf.it with
-  | VarPF (id, p) -> { pf with it = VarPF(id, over_pat v p) }
+  | ValPF (id, p) -> { pf with it = ValPF(id, over_pat v p) }
   | TypPF (_) -> pf
 
 and over_case (v : visitor) (case : case) : case =

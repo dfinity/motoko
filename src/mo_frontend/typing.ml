@@ -115,7 +115,7 @@ let compare_unused_warning first second =
 let sorted_unused_warnings list = List.sort compare_unused_warning list
 
 let kind_of_field_pattern pf = match pf.it with
-  | VarPF(id, { it = VarP pat_id; _ }) when id = pat_id -> Scope.FieldReference
+  | ValPF(id, { it = VarP pat_id; _ }) when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
 (* Error bookkeeping *)
@@ -1020,7 +1020,7 @@ let rec is_explicit_pat p =
 
 and is_explicit_pat_field pf =
   match pf.it with
-  | VarPF(_, p) -> is_explicit_pat p
+  | ValPF(_, p) -> is_explicit_pat p
   (* NOTE(Christoph): Being conservative here, it might be fine to allow type pattern fields *)
   | TypPF(_) -> false
 
@@ -1211,7 +1211,7 @@ let compare_pat_field pf1 pf2 = match pf1.it, pf2.it with
   | TypPF(id1), TypPF(id2) -> compare id1.it id2.it
   | TypPF(_), _ -> -1
   | _, TypPF(_) -> 1
-  | VarPF(id1, _), VarPF(id2, _) -> compare id1.it id2.it
+  | ValPF(id1, _), ValPF(id2, _) -> compare id1.it id2.it
 
 let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
   match tfs, pfs with
@@ -1220,7 +1220,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
     combine_pat_fields_srcs env t tfs' pfs
   | T.{lab; typ; src}::tfs', {it = TypPF(_); _}::pfs' ->
     combine_pat_fields_srcs env t tfs' pfs'
-  | T.{lab; typ; src}::tfs', {it = VarPF(id, pat); _}::pfs' ->
+  | T.{lab; typ; src}::tfs', {it = ValPF(id, pat); _}::pfs' ->
     match compare id.it lab with
     | -1 -> combine_pat_fields_srcs env t [] pfs
     | +1 -> combine_pat_fields_srcs env t tfs' pfs
@@ -2365,7 +2365,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     if Option.is_none id.note then
       error env at "M0221" "failed to determine type for type pattern field";
     infer_pat_fields at env pfs' ts ve
-  | { it = VarPF(id, pat); _}::pfs' ->
+  | { it = ValPF(id, pat); _}::pfs' ->
     let typ, ve1 = infer_pat false env pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     Field_sources.add_src env.srcs id.at;
@@ -2550,14 +2550,14 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
     if Option.is_none id.note then
       error env at "M0221" "failed to determine type for type pattern field";
     check_pat_fields env t tfs pfs' ve at
-  | [], {it = VarPF(id, _); at; _}::_ ->
+  | [], {it = ValPF(id, _); at; _}::_ ->
     error env at "M0119"
       "object field %s is not contained in expected type%a"
       id.it
       display_typ_expand t
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env t tfs' pfs ve at
-  | T.{lab; typ; src}::tfs', ({it = VarPF(id, pat); _} as pf)::pfs' ->
+  | T.{lab; typ; src}::tfs', ({it = ValPF(id, pat); _} as pf)::pfs' ->
     match compare id.it lab with
     | -1 -> check_pat_fields env t [] pfs ve pf.at
     | +1 -> check_pat_fields env t tfs' pfs ve pf.at
@@ -2570,7 +2570,7 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       match pfs' with
-      | {it = VarPF(id', _); at = at';_}::_ when id'.it = lab ->
+      | {it = ValPF(id', _); at = at';_}::_ when id'.it = lab ->
         error env at' "M0121" "duplicate field %s in object pattern" lab
       | _ -> check_pat_fields env t tfs' pfs' ve' at
 
@@ -2629,7 +2629,7 @@ and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env = match tfs, pf
       "object type field %s is not contained in expected type%a"
       id.it
       display_typ_expand t
-  | [], {it = VarPF(_); _}::pfs' ->
+  | [], {it = ValPF(_); _}::pfs' ->
     check_pat_fields_typ_dec env t tfs pfs' te at
   | T.{lab; typ = Typ t'; _}::tfs', { it = TypPF(id); _ }::pfs' ->
     if compare id.it lab = 0 then (
@@ -2643,7 +2643,7 @@ and check_pat_fields_typ_dec env t tfs pfs te at : Scope.typ_env = match tfs, pf
       check_pat_fields_typ_dec env t tfs' pfs te at
   | T.{lab; typ; _}::tfs', { it = TypPF(_); _ }::_ ->
     check_pat_fields_typ_dec env t tfs' pfs te at
-  | T.{lab; typ; _}::tfs', { it = VarPF(id, p); _ }::pfs' ->
+  | T.{lab; typ; _}::tfs', { it = ValPF(id, p); _ }::pfs' ->
     if compare id.it lab = 0 then
       let te1 = check_pat_typ_dec env typ p in
       disjoint_union env at "M0017" "duplicate binding for %s in pattern" te te1
@@ -2693,7 +2693,7 @@ and vis_pat src pat xs : visibility_env =
 
 and vis_pat_field src pf xs =
   match pf.it with
-  | VarPF(_, pat) -> vis_pat src pat xs
+  | ValPF(_, pat) -> vis_pat src pat xs
   | TypPF(id) -> (* TODO? *) xs
 
 and vis_typ_id src id (xs, ys) : visibility_env =
@@ -3371,7 +3371,7 @@ and gather_pat_aux env val_kind scope pat : Scope.t =
 and gather_pat_field env scope pf : Scope.t =
   let val_kind = kind_of_field_pattern pf in
   match pf.it with
-  | VarPF (id, pat) -> gather_pat_aux env val_kind scope pat
+  | ValPF (id, pat) -> gather_pat_aux env val_kind scope pat
   | TypPF id -> gather_typ_id env scope id
 
 and gather_id env ve id val_kind : Scope.val_env =

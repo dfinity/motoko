@@ -136,7 +136,7 @@ struct
 
   and extract_pat_field pf =
     match pf.it with
-    | Syntax.VarPF (id, { it = Syntax.AnnotP (_, typ); _ }) ->
+    | Syntax.ValPF (id, { it = Syntax.AnnotP (_, typ); _ }) ->
         Some { name = id.it; typ = Some typ; doc = None }
     | _ -> None
 

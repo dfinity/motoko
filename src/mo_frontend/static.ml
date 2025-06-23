@@ -124,7 +124,7 @@ and pat m p = match p.it with
   | _ -> pat_err m p.at
 
 and pat_field m pf = match pf.it with
-  | VarPF(_, p) -> pat m p
+  | ValPF(_, p) -> pat m p
   | TypPF(_) -> ()
 
 let prog p =

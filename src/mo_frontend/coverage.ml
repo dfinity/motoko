@@ -306,7 +306,7 @@ and match_tup ctxt descs_r descs pats ts sets =
 and match_obj ctxt ldescs (pat_fields : pat_field list) tfs sets =
   match pat_fields with
   | [] -> succeed ctxt (Obj ldescs) sets
-  | {it = VarPF(id, p); _}::pat_fields' ->
+  | {it = ValPF(id, p); _}::pat_fields' ->
     let l = id.it in
     (* TODO: This seems wrong even before the addition of typed pattern fields? *)
     let tf = List.find (fun tf -> tf.T.lab = l) tfs in
