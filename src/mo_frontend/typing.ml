@@ -1737,8 +1737,11 @@ and infer_exp'' env exp : T.typ =
   | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
+    let s1 = match s with
+      | T.AwaitFut _ -> T.Fut (* we can await/await? an async *)
+      | T.AwaitCmp -> T.Cmp in (* we can await* an async* *)
     (try
-       let (t2, t3) = T.as_async_sub s t0 t1 in
+       let (t2, t3) = T.as_async_sub s1 t0 t1 in
        if not (eq env exp.at t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
@@ -1753,13 +1756,13 @@ and infer_exp'' env exp : T.typ =
      with Invalid_argument _ ->
        error env exp1.at "M0088"
          "expected async%s type, but expression has type%a%s"
-         (if s = T.Fut then "" else "*")
+         (if s1 = T.Fut then "" else "*")
          display_typ_expand t1
          (if T.is_async t1 then
-            (if s = T.Fut then
-              "\nUse keyword 'await*' (not 'await') to consume this type."
+            (if s1 = T.Fut then
+              "\nUse keyword 'await*' (not 'await' or 'await?') to consume this type."
             else
-              "\nUse keyword 'await' (not 'await*') to consume this type.")
+              "\nUse keyword 'await' or 'await?' (not 'await*') to consume this type.")
           else "")
     )
   | AssertE (_, exp1) ->
@@ -2770,7 +2773,7 @@ and check_system_fields env sort scope tfs dec_fields =
               else if id.it = "timer" && not !Mo_config.Flags.global_timer then
                 local_error env df.at "M0182" "system function timer is present but -no-timer flag is specified"
             end
-          else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+         else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"

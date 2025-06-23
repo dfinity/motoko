@@ -290,6 +290,10 @@ func Array_tabulate<T>(len : Nat, gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T]) <T>(len, gen);
 };
 
+func Array_tabulateVar<T>(len : Nat, gen : Nat -> T) : [var T] {
+  (prim "Array.tabulateVar" : <T>(Nat, Nat -> T) -> [var T]) <T>(len, gen);
+};
+
 func blobToArray(b : Blob) : [Nat8] = (prim "blobToArray" : (Blob) -> [Nat8]) b;
 func blobToArrayMut(b : Blob) : [var Nat8] = (prim "blobToArrayMut" : (Blob) -> [var Nat8]) b;
 func arrayToBlob(a : [Nat8]) : Blob = (prim "arrayToBlob" : [Nat8] -> Blob) a;
