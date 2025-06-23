@@ -134,6 +134,22 @@
         "type": "github"
       }
     },
+    "motoko-core-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750433128,
+        "narHash": "sha256-5KtoipVfWWYY0i5FUPwNp4xbKUGveJZ9flfMRn21Ni0=",
+        "owner": "dfinity",
+        "repo": "new-motoko-base",
+        "rev": "3fe83326eb2c5385fba5602cbd523011c1aa2f3d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "new-motoko-base",
+        "type": "github"
+      }
+    },
     "motoko-matchers-src": {
       "flake": false,
       "locked": {
@@ -229,6 +245,7 @@
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
+        "motoko-core-src": "motoko-core-src",
         "motoko-matchers-src": "motoko-matchers-src",
         "nix-update-flake": "nix-update-flake",
         "nixpkgs": "nixpkgs",
