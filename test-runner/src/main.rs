@@ -2,6 +2,7 @@ use candid::Principal;
 use hex::decode;
 use pocket_ic::{PocketIc, PocketIcBuilder, RejectResponse};
 use std::io::Read;
+use std::ops::Index;
 use std::path::PathBuf;
 use std::str::Chars;
 
@@ -556,7 +557,23 @@ impl TestRunner {
 /// The program reads stdin where the .drun file contents are piped in.
 /// It then runs the commands in the .drun file and writes the output to stdout.
 fn main() {
-    // Read stdin
+    // Parse command line arguments.
+    let args = std::env::args().collect::<Vec<String>>();
+    // Go through the arguments and check for "--subnet-type application".
+    // These are two elements in the args vector.
+    // Check first for "--subnet-type" index and then check for subnet type and the next index.
+    let subnet_type =
+        args.iter()
+            .position(|arg| arg == "--subnet-type")
+            .map_or(SubnetType::System, |index| {
+                if args[index + 1] == "application" {
+                    SubnetType::Application
+                } else {
+                    SubnetType::System
+                }
+            });
+
+    // Read stdin.
     let mut stdin = std::io::stdin();
     let mut buffer = String::new();
     let _ = stdin.read_to_string(&mut buffer);
@@ -566,7 +583,7 @@ fn main() {
     let commands = TestCommands::new(buffer).parse();
     match commands {
         Ok(commands) => {
-            let test_runner = TestRunner::new(commands, SubnetType::System);
+            let test_runner = TestRunner::new(commands, subnet_type);
             let _ = test_runner.run();
         }
         Err(e) => {
