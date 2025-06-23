@@ -56,7 +56,7 @@ Function callsite:
 
 ## Pattern matching
 
-The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](./base/Text.md) contents:
+The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](https://internetcomputer.org/docs/motoko/base/Text) contents:
 
 ``` motoko no-repl file=../examples/error-examples.mo#L3-L10
 ```

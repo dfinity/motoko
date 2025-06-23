@@ -41,7 +41,7 @@ persistent actor Main {
     "Hello, " # name # "! You are visitor number " # debug_show(count);
   };
 
-  // Define a publically called function to
+  // Define a publicly called function to
   // return the current value of 'count' separately.
   public query func readCount() : async Nat {
     count
@@ -53,7 +53,6 @@ persistent actor Main {
 This code defines an actor that can be deployed on ICP.
 The actor is declared as `persistent` so that its state, `count`, will be preserved
 when the actor is upgraded.
-<!---TODO update persistence link?---->
 Learn more about [persistence](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence).
 :::
 
