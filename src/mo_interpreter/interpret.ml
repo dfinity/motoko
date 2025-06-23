@@ -920,7 +920,7 @@ and match_pat_fields pfs vs ve : val_env option =
   | [] -> Some ve
   | { it = TypPF(_); _ }::pfs' ->
      match_pat_fields pfs' vs ve
-  | { it = VarPF(id, p); _ }::pfs' ->
+  | { it = ValPF(id, p); _ }::pfs' ->
     let v = V.Env.find id.it vs in
     begin match match_pat p v with
     | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')

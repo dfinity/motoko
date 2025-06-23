@@ -163,7 +163,7 @@ and pats msgs ps : fd = union_binders (pat msgs) ps
 and pat_fields msgs pfs =
   union_binders (fun pf ->
       match pf.it with
-      | VarPF(_, p) -> pat msgs p
+      | ValPF(_, p) -> pat msgs p
       | TypPF(_) -> (M.empty, S.empty)) pfs
 
 and shared_pat msgs shared_pat =
