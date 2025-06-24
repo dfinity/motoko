@@ -1,4 +1,4 @@
-# Index of package core
+# Motoko core library
 
 * [Array](Array.md) Provides extended utility functions on immutable Arrays (values of type `[T]`).
 * [Blob](Blob.md) Module for working with Blobs (immutable sequences of bytes).
