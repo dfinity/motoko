@@ -1,6 +1,7 @@
 { pkgs
 , nix-update
 , base-src
+, core-src
 , llvmEnv
 , esm
 , viper-server
@@ -80,6 +81,7 @@ pkgs.mkShell {
   TOMMATHSRC = pkgs.sources.libtommath-src;
   LOCALE_ARCHIVE = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.glibcLocales}/lib/locale/locale-archive";
   MOTOKO_BASE = base-src;
+  MOTOKO_CORE = core-src;
   CANDID_TESTS = "${pkgs.sources.candid-src}/test";
   VIPER_SERVER = "${viper-server}";
 
