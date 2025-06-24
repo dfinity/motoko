@@ -75,7 +75,7 @@ object Motoko = {
 };
 ```
 
-Since `private` is the default accessibility for the declarations inside an object, the second form is just an abbrevation (syntactic sugar) for the previous `let`-declared object.
+Since `private` is the default accessibility for the declarations inside an object, the second form is just an abbreviation (syntactic sugar) for the previous `let`-declared object.
 
 ### Accessing object fields
 

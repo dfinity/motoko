@@ -46,7 +46,7 @@ This recommendation also applies to all `var` declarations, not just record fiel
 
 The values of the fields are `"Motoko"` and `25` respectively.  
 
-The type of the `persion` value is `{age : Nat; name : Text}`, or, equivalently,  `{name: Text; age : Nat}`.  
+The type of the `person` value is `{age : Nat; name : Text}`, or, equivalently,  `{name: Text; age : Nat}`.
 Unlike tuples, the order of record fields is immaterial and all record types with the same field names and types are considered equivalent, regardless of field ordering. 
 
 ## Accessing fields
