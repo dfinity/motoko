@@ -5,8 +5,6 @@ hide_table_of_contents: true
 
 # Mutable state
 
-<!----This page's content was dramatically shorter than the old docs page. I've ported over most of the old content and made editorial revisions.--->
-
 In Motoko, each actor can use internal mutable state but cannot share it directly with other actors. Immutable data, however, can be shared among actors and accessed via their external entry points, which act as shareable functions.
 
 Mutable state is private to the actor that owns it and can be modified internally. In contrast, immutable values cannot be changed after creation and can be safely shared between actors. 

@@ -39,6 +39,7 @@ type User = {  age : Nat; username : Text };
 ```
 
 Structural typing means that the types `User` and `Person` are interchangeable because their definitions are equivalent (after expanding all definitions). In other languages, `User` and `Person` might be considered incompatible types.
+
 ## Record types
 
 In Motoko, a type can define a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) with labeled fields. Each field has a specific type, and you can access them using dot notation. Records are useful for organizing related data clearly and safely.

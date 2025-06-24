@@ -36,7 +36,7 @@ func exampleFunction(x : Nat) : Nat {
 
 :::info Understanding function types
 
-Motoko functions vary by access and behaviour:
+Motoko functions vary by access and behavior:
 
 The public functions of an actor are a special kind of function called shared functions. These functions can only be declared within actors and, unlike ordinary functions, their values can be sent to (i.e., shared with) other actors.
 Shared functions come in several forms:
