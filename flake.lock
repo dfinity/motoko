@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1749667091,
-        "narHash": "sha256-HcDNprwRK9NN2KT+3+IOPdUrNaZlmVi3enbsxewnLQQ=",
+        "lastModified": 1750411381,
+        "narHash": "sha256-RFKidkIMlY3C65i7n/NEPDSsJMmvs5SHtSwbtviEQos=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "f3f91a08f1e34199ce8a57fdcde18678fe25be3a",
+        "rev": "8edf4b97822f2a4ccf2609d427d6bc0bf2af680b",
         "type": "github"
       },
       "original": {
@@ -175,11 +175,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1750032400,
-        "narHash": "sha256-sOHpHtpq0j7tqH4KPw4HPBOcKuuUZ3nek5jBKkucMyk=",
+        "lastModified": 1750637224,
+        "narHash": "sha256-MA+tc/vn0xybsMLbi4mK5B7HmJXFXPk+6FStSVlplko=",
         "owner": "Mic92",
         "repo": "nix-update",
-        "rev": "74cbcedc6f0f1ecb3bfcd4d7a8d62db3fac3968d",
+        "rev": "8731482463ba29848d1da38372931a5dca2d6846",
         "type": "github"
       },
       "original": {
