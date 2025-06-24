@@ -1,4 +1,4 @@
-# Prelude
+# base/Prelude
 This prelude file proposes standard library features that _may_
 belong in the _language_ (compiler-internal) prelude sometime, after
 some further experience and discussion.  Until then, they live here.

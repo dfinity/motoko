@@ -1,4 +1,4 @@
-# Nat8
+# base/Nat8
 Provides utility functions on 8-bit unsigned integers.
 
 :::note
