@@ -58,7 +58,7 @@ intBox.open();
 
 ## Recursive types
 
-Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base library utilizes recursive types to define linked lists.
+Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base package utilizes recursive types to define linked lists.
 
 ```motoko no-repl
 type List = ?(Nat, List);

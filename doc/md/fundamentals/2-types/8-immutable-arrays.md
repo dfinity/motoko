@@ -132,7 +132,7 @@ Unlike some languages, Motoko does not compare arrays by reference; instead, it 
 
 ## Transforming arrays
 
-Motoko's base library [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
+Motoko's base package [`Array`](https://internetcomputer.org/docs/motoko/base/Array) provides built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
 ```motoko
 import Array "mo:base/Array";
