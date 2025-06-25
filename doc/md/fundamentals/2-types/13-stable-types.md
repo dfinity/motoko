@@ -10,19 +10,19 @@ Storing a value in a `stable` declaration ensures that it persists across canist
 The set of stable types defines the kinds of values that can be transferred from an actor to its future upgraded versions.
 Types that cannot be transferred include those whose values depend on the actor's current code, such as non-shared functions or, more generally, objects containing function members. These types are not stable because their behavior cannot be preserved independently of the code that defines them.
 
-:::info  
+:::info
 In Motoko, the treatment of private declarations depends on whether an actor is declared with the `persistent` keyword:
 
 - In actors **without** the `persistent` keyword, all private declarations are considered **transient** by default, unless explicitly marked `stable`.
 
 - In **`persistent` actors**, all private declarations (except function declarations) are considered **stable** by default, unless explicitly marked `transient`.
 
-Stable variables must have types that belong to the set of stable types.  
+Stable variables must have types that belong to the set of stable types.
 Transient variables are not subject to this restriction and may have any type, including non-stable types such as functions or objects with function members.
 
 :::
 
-To give the user more flexibility, the set of stable types is larger than the set of shared types and includes mutable types. This means that programmers can store their application state using a wide range of imperative (stateful) as well as functional (stateless) data structures. 
+To give the user more flexibility, the set of stable types is larger than the set of shared types and includes mutable types. This means that programmers can store their application state using a wide range of imperative (stateful) as well as functional (stateless) data structures.
 
 ## Stable vs shared types
 
@@ -170,4 +170,3 @@ persistent actor {
 };
 ```
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
