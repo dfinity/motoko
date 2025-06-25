@@ -28,7 +28,7 @@ Make sure Docker is running, then navigate into your project's directory. Create
 ```json
 {
   "name": "ICP Dev Environment",
-  "image": "ghcr.io/dfinity/icp-dev-env-slim:13",
+  "image": "ghcr.io/dfinity/icp-dev-env-slim:latest",
   "forwardPorts": [4943, 5173],
   "portsAttributes": {
     "4943": {

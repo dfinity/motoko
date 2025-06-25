@@ -47,3 +47,27 @@ For example, the following is a syntax error:
 ```motoko no-repl
 var (a, b) = (1, 2); // Not supported
 ```
+
+### Special assignment operations
+
+The assignment operation `:=` is general and works for all types.
+
+Motoko provides special assignment operators that combine assignment with a binary operation. These operators update a variable by applying the operation between its current value and a given operand.
+
+For example, numbers permit a combination of assignment and addition:
+
+``` motoko
+var count = 2;
+count += 40;
+```
+
+After the second line, the variable `count` holds `42`.
+
+Motoko includes other compound assignments as well, such as `#=`:
+
+``` motoko
+var text = "Motoko";
+text #= " Ghost"
+```
+
+As with `+=`, this combined form avoids repeating the assigned variable’s name on the right hand side of the special assignment operator `#=`.
