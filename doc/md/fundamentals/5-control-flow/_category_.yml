@@ -1,4 +1,4 @@
-position: 2
-label: 'Basic syntax'
+position: 6
+label: 'Control flow'
 collapsible: true # make the category collapsible
 collapsed: true 
