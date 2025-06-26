@@ -637,7 +637,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md)         |          | (Opaque) error values                                                  |
 | [`Region`](https://internetcomputer.org/docs/motoko/base/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](https://internetcomputer.org/docs/motoko/base/index.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base package providing related [functions and values](https://internetcomputer.org/docs/motoko/base/index.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) library provides common functions on `Text` values.
 
 ### Type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md)
 
@@ -651,7 +651,7 @@ TODO: Comparison.
 
 A `Char` of category O (Ordered) represents a character as a code point in the unicode character set.
 
-Base library function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value.
+Base package function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value.
 
 ### Type [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)
 
@@ -667,7 +667,7 @@ The type `Float` represents 64-bit floating point values of categories A (Arithm
 
 The semantics of `Float` and its operations is in accordance with standard [IEEE 754-2019](https://ieeexplore.ieee.org/document/8766229) (See [References](#references)).
 
-Common functions and values are defined in base library "base/Float".
+Common functions and values are defined in base package "base/Float".
 
 ### Types [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md)
 
@@ -689,7 +689,7 @@ As bitwise types, these types support bitwise operations and (`&`), or (`|`) and
 
 Bounded integer types are not in subtype relationship with each other or with other arithmetic types, and their literals need type annotation if the type cannot be inferred from context, e.g. `(-42 : Int16)`.
 
-The corresponding module in the base library provides conversion functions:
+The corresponding module in the base package provides conversion functions:
 
 - Conversion to [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md).
 
@@ -707,7 +707,7 @@ The operations `+%`, `-%`, `*%` and `**%` provide access to the modular, wrap-on
 
 As bitwise types, these types support bitwise operations and (`&`), or (`|`) and exclusive-or (`^`). Further, they can be rotated left (`<<>`), right (`<>>`), and shifted left (`<<`), right (`>>`). The right-shift is logical. All shift and rotate amounts are considered modulo the number’s bit width *n*.
 
-The corresponding module in the base library provides conversion functions:
+The corresponding module in the base package provides conversion functions:
 
 - Conversion to [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md).
 
@@ -725,7 +725,7 @@ The type [`Principal`](https://internetcomputer.org/docs/motoko/base/Principal.m
 
 ### Error type
 
-Assuming base library import:
+Assuming base package import:
 
 ``` motoko no-repl
 import E "mo:base/Error";
@@ -791,7 +791,7 @@ The type `Region` represents opaque stable memory regions. Region objects are dy
 
 The region type is stable but not shared and its objects, which are stateful, may be stored in stable variables and data structures.
 
-Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](https://internetcomputer.org/docs/motoko/icp-features/stable-memory) and library [Region](https://internetcomputer.org/docs/motoko/base/Region.md) for more information.
+Objects of type `Region` are created and updated using the functions provided by base package `Region`. See [stable regions](https://internetcomputer.org/docs/motoko/icp-features/stable-memory) and library [Region](https://internetcomputer.org/docs/motoko/base/Region.md) for more information.
 
 ### Constructed types
 

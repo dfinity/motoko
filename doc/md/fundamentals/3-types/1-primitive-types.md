@@ -10,7 +10,7 @@ The primitive types are supported by a large set of familiar built-in operators 
 
 More esoteric functions, not supported by dedicated operators, can be found in the corresponding libraries.  
 
-For example, the library function `Int.toText: Int -> Text`, declared in base library `Int`, returns the textual representation of its argument.  
+For example, the library function `Int.toText: Int -> Text`, declared in base package `Int`, returns the textual representation of its argument.
 
 ```motoko name=int
 import Int "mo:base/Int";
