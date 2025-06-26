@@ -25,7 +25,7 @@ import Debug "mo:base/Debug";
 Debug.print("hello world");
 ```
 
-This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base/` base package path and the module name [`Debug`](../base/Debug.md).
+This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base` package and the module name [`Debug`](../base/Debug.md).
 
 You can also selectively import a subset of named values from a module by using the object pattern syntax:
 
