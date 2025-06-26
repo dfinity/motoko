@@ -171,7 +171,7 @@ The type of an imported canister function might differ from the type of the orig
 
 Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there’s no requirement for you to do so. For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
 
-The following example illustrates different names you might use when importing the `List` base package module, avoiding a clash with another `List` library from a fictional `collections` package:
+The following example illustrates different names you might use when importing the `List` module in the base package, avoiding a clash with another `List` library from a fictional `collections` package:
 
 ``` motoko no-repl
 import List "mo:base/List:";
