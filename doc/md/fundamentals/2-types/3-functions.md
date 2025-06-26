@@ -44,7 +44,7 @@ Motoko provides different types of functions based on where in the program they 
 
 ## Local functions
 
-Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.  
+Local functions run within the canister's [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async). They cannot call other [canisters](https://internetcomputer.org/docs/building-apps/essentials/canisters). Local functions are cheap to call and execute synchronously.
 
 ```motoko
 persistent actor CommonDivisor{
@@ -64,9 +64,9 @@ let greatestCommonDivisor : Nat = gcd(108, 54); // Synchronous execution
 };
 ```
 
-The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals as the input argument and returns a natural as a result.  
+The type of `gcd` is `(Nat, Nat) -> Nat` indicating that it expects a pair of naturals as the input argument and returns a natural as a result.
 
-**Example use case:** Local computations that do not require communication with other actors or canisters.  
+**Example use case:** Local computations that do not require communication with other actors or canisters.
 
 ## Generic functions
 
@@ -88,9 +88,9 @@ Type arguments can be omitted from calls when the compiler can infer them from t
 let result = swap(2021, "Motoko"); // Inferred as <Nat, Text>
 ```
 
-## Local asynchronous functions  
+## Local asynchronous functions
 
-Local function that have an `async` or `async*` return type are asynchronous and can interact with other canisters by calling shared functions.  
+Local function that have an `async` or `async*` return type are asynchronous and can interact with other canisters by calling shared functions.
 
 They are useful for defining asynchronous logic used in the implementation of public `shared` functions.
 
@@ -103,18 +103,18 @@ persistent actor {
     Logger.log(Time.now() + msg); // sends a message
   };
   public shared func doStuff() : async () {
-    await log("doingStuff"); 
-  } 
+    await log("doingStuff");
+  }
 }
 ```
 
-A more efficient variation is to use `async*` and `await*` , which avoids the overhead of using ordinary `await` just to call a local function:  
+A more efficient variation is to use `async*` and `await*` , which avoids the overhead of using ordinary `await` just to call a local function:
 
 ```motoko no-repl
 import Time "mo:base/Time"
 import Logger "canister:Logger";
 
-persistent actor {  
+persistent actor {
   private func log(msg : Text) : async* () {
     Logger.log(Time.now() + msg); // sends a message
   };
@@ -122,13 +122,13 @@ persistent actor {
   public shared func doStuff() : async () {
     await* log("doingStuff");
   }
-}  
+}
 ```
 
 ## Shared functions
 
 The public functions of an actor determine its external interface. All public functions in an actor must be shared and can be either `shared`, `shared query` or `shared composite query` functions. Private functions cannot be `shared`.
-Since an actor's public functions must be shared, the `shared` keyword is optional and can be omitted.  
+Since an actor's public functions must be shared, the `shared` keyword is optional and can be omitted.
 
 `shared` functions permanently update the state of an actor, while `query` and `composite` `query` functions are only executed for their result.
 
@@ -182,7 +182,7 @@ Such a function is called a _one-way_ (or _fire-and-forget_) function.
 
 An example of this might be a variant of `Account.deposit`, `Account.credit`, that merely updates the balance without returning its new value:
 
-```motoko no-repl 
+```motoko no-repl
 persistent actor Account {
   var balance = 0;
   public func credit(amount : Nat) : () {
@@ -204,7 +204,7 @@ Again, the shared keyword is optional. Note that `Account.credit(100` just retur
 
 ## Query functions
 
-[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot permanently update [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and execute faster than [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) function.  
+[Query](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls) functions are designed for retrieving data. They cannot permanently update [state](https://internetcomputer.org/docs/motoko/fundamentals/state) and execute faster than [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) functions because they do not go through consensus. Query functions are identified with the `query` keyword. Any function without the `query` keyword is an [update](https://internetcomputer.org/docs/building-apps/interact-with-canisters/update-calls) function.
 
 ```motoko no-repl
   public query func greet(name : Text) : async Text {
@@ -242,11 +242,11 @@ The `getBalance` function has function type `shared query () -> async Nat`.
 
 [Composite queries](https://internetcomputer.org/docs/building-apps/interact-with-canisters/query-calls#composite-queries) chain multiple query calls together within the same function.
 
-A good example of a composite query might be a bank that holds references to its individual accounts, implemented as separate actors, and provides a composite query that sums the deposits in all its accounts:  
+A good example of a composite query might be a bank that holds references to its individual accounts, implemented as separate actors, and provides a composite query that sums the deposits in all its accounts:
 
 ```motoko no-repl
 persistent actor Bank {
-  type Account = 
+  type Account =
     actor { getBalance() : query () -> async Nat };
 
   var accounts : [Account] = []
@@ -295,7 +295,7 @@ A function can take a single argument of a specific type.
 
 ### Multiple arguments and returns
 
-Functions can accept multiple arguments and return multiple results by enclosing them in parentheses separated by commas.  
+Functions can accept multiple arguments and return multiple results by enclosing them in parentheses separated by commas.
 
 ```motoko no-repl
   func divRem(x : Nat, y : Nat) : (Nat, Nat) {
@@ -325,4 +325,3 @@ A collection of values can be passed as a single array argument.
   }
 ```
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

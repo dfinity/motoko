@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach keeps the language simple. 
+Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach keeps the language simple.
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
@@ -185,4 +185,3 @@ persistent actor CountToTen {
 
 `Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
