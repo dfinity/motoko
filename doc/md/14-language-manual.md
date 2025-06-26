@@ -637,7 +637,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Error`](https://internetcomputer.org/docs/motoko/base/Error.md)         |          | (Opaque) error values                                                  |
 | [`Region`](https://internetcomputer.org/docs/motoko/base/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](https://internetcomputer.org/docs/motoko/base/index.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](https://internetcomputer.org/docs/motoko/base/Array.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) library provides common functions on `Text` values.
 
 ### Type [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool.md)
 
@@ -2857,4 +2857,4 @@ In general, this means that an expression of a more specific type may appear whe
 -   **IEEE Standard for Floating-Point Arithmetic**, in IEEE Std 754-2019 (Revision of IEEE 754-2008), vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
 
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+

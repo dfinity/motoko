@@ -8,7 +8,7 @@ Conditionals in Motoko come in two forms: **if-expressions** and **if-statements
 
 ## `if-else`
 
-An `if-else` expression, `if <c> <b1> else <b2>`, has three parts: 
+An `if-else` expression, `if <c> <b1> else <b2>`, has three parts:
 
 1. A condition `<c>` that evaluates to a boolean value.
 2. Two branches `<b1>` and `<b2>`. These branches can be simple expressions or blocks `{ ... }`.
@@ -35,7 +35,7 @@ let identity : Text =
 The result of the `if-else` is assigned to `identity`. Here, both branches have the same type ([`Text`](https://internetcomputer.org/docs/motoko/base/Text) in this case) as does the entire `if-else`.
 
 ``` motoko no-repl
-let n : Nat = 0; 
+let n : Nat = 0;
 let parity = if (n % 2 == 0) #even else #odd;
 ```
 Here, the first branch has type `{#even}` and the second branch has type `{#odd}`. These types are different but they have a common supertype `{#even; #odd}`. The type of the `if-else` is then `{#even; #odd}`.
@@ -43,7 +43,7 @@ Here, the first branch has type `{#even}` and the second branch has type `{#odd}
 Motoko will infer the common supertype for you, choosing the most specific one possible. If the types are inconsistent and only have the useless common supertype `Any`, Motoko will issue a warning:
 
 ``` motoko
-let n : Nat = 0; 
+let n : Nat = 0;
 let oops = if (n % 2 == 0) #even else 0;
 ```
 
@@ -83,4 +83,3 @@ if (age < 18) {
 ```
 
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -8,9 +8,9 @@ Motoko provides several primitive types that form the foundation of all computat
 
 The primitive types are supported by a large set of familiar built-in operators such as `+`, `-` and so on.
 
-More esoteric functions, not supported by dedicated operators, can be found in the corresponding libraries.  
+More esoteric functions, not supported by dedicated operators, can be found in the corresponding libraries.
 
-For example, the library function `Int.toText: Int -> Text`, declared in base library `Int`, returns the textual representation of its argument.  
+For example, the library function `Int.toText: Int -> Text`, declared in base library `Int`, returns the textual representation of its argument.
 
 ```motoko name=int
 import Int "mo:base/Int";
@@ -24,13 +24,13 @@ Motoko supports both signed integers and unsigned naturals. Signed numbers can r
 - Signed integers: [`Int`](https://internetcomputer.org/docs/motoko/base/Int), [`Int8`](https://internetcomputer.org/docs/motoko/base/Int8), [`Int16`](https://internetcomputer.org/docs/motoko/base/Int16), [`Int32`](https://internetcomputer.org/docs/motoko/base/Int32), [`Int64`](https://internetcomputer.org/docs/motoko/base/Int64)
 - Unsigned naturals: [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Nat8`](https://internetcomputer.org/docs/motoko/base/Nat8), [`Nat16`](https://internetcomputer.org/docs/motoko/base/Nat16), [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32), [`Nat64`](https://internetcomputer.org/docs/motoko/base/Nat64)
 
-The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.  
+The [`Int`](https://internetcomputer.org/docs/motoko/base/Int) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types prevent overflow and underflow since they can represent values of arbitrary size. Of course, subtraction on a `Nat` can still result in underflow if the result would be negative.
 
 In Motoko, [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int), since the set of non-negative integers is a subset of all integers.
 
-This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) without any need for conversion. The opposite is not true.  
+This means that every expression of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) can implicitly serve as an [`Int`](https://internetcomputer.org/docs/motoko/base/Int) without any need for conversion. The opposite is not true.
 
-An [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type only contains non-negative numbers. 
+An [`Int`](https://internetcomputer.org/docs/motoko/base/Int) cannot be directly assigned to a [`Nat`](https://internetcomputer.org/docs/motoko/base/) since it may be a negative number and the [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) type only contains non-negative numbers.
 
 ```motoko
 let x : Int = -5;
@@ -75,13 +75,13 @@ let words = Text.split("apple,banana,cherry", #char ','); // apple -> banana -> 
 
 The [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) type represents boolean values, `true` or `false`, and supports logical operations.
 
-The logical operators `and` and `or` will only evaluate their second operand if necessary.  
+The logical operators `and` and `or` will only evaluate their second operand if necessary.
 
 ```motoko
 let flag : Bool = true or false; // true
 let opposite = not flag; // false
 
-let isEqual =  true == false ; // false  
+let isEqual =  true == false ; // false
 ```
 
 ## Float
@@ -89,7 +89,7 @@ let isEqual =  true == false ; // false
 [`Float`](https://internetcomputer.org/docs/motoko/base/Float) is a 64-bit floating-point type that provides mathematical operations.
 
 ```motoko
-import Float "mo:base/Float"; 
+import Float "mo:base/Float";
 let pi = Float.pi;
 let radius : Float = 2.5;
 let area = Float.pow(radius, 2) * pi; // Area of a circle
@@ -108,4 +108,3 @@ let trigValue = Float.sin(Float.pi / 2); // 1.0
 - [`Text`](https://internetcomputer.org/docs/motoko/base/Text)
 - [`Float`](https://internetcomputer.org/docs/motoko/base/Float)
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

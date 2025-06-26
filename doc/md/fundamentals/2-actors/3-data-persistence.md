@@ -194,4 +194,4 @@ If `preupgrade` raises a trap, hits the instruction limit, or hits another IC co
 
 `postupgrade` is not needed, as the equal effect can be achieved by introducing initializing expressions in the actor, e.g. non-stable `let` expressions or expression statements.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+

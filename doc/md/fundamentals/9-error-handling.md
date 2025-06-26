@@ -175,4 +175,3 @@ Using sentinel values to report errors is generally a bad practice and strongly 
 | M0197 | A function that requires (system) capabilities was called in a context that does not provide them. | ```func invalidCycleAddition(): () { ExperimentalCycles.add(1000);}``` | Calling a function requiring system capabilities from a context without them. |
 | M0198 | A field identifier was specified in an object pattern without referencing this identifier later. | ```func process(obj) { let { id } = obj; }``` | The extracted `id` field is never used in the function body. |
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

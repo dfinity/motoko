@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Block expressions
 
-A block expression in Motoko is a sequence of declarations enclosed in `{ ... }`. 
+A block expression in Motoko is a sequence of declarations enclosed in `{ ... }`.
 Since every expression is also a declaration, the sequence can include expressions.
 Intermediate expressions, that produce values other than `()`, must be prefixed with `ignore`.
 
@@ -67,4 +67,3 @@ do {
 };
 ```
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

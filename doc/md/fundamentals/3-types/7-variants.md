@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Variants
 
-Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.  
+Variant type describe values that take on one of several forms, each labeled with a distinct  tag. Unlike [records](https://internetcomputer.org/docs/motoko/fundamentals/types/records), where all fields exist at once, a value of a variant type holds exactly one of the type's possible values. This makes variants useful for representing mutually exclusive alternatives such as states, enumerations, categories and even trees.
 
 ## Defining a variant
 
@@ -16,7 +16,7 @@ type Status = {
 };
 ```
 
-`#Active` and `#Inactive` are constant tags, with an implicit `()` argument, meaning they only store trivial data. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.  
+`#Active` and `#Inactive` are constant tags, with an implicit `()` argument, meaning they only store trivial data. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.
 
 ## Assigning variants
 
@@ -198,15 +198,14 @@ type Tree<T> = {
 
 With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
 
-## Subtyping  
+## Subtyping
 
-In Motoko, a variant with fewer tags is a subtype of a variant with more tags:  
+In Motoko, a variant with fewer tags is a subtype of a variant with more tags:
 
 ```motoko no-repl
 type WorkDay = { #mon; #tues; #wed; #thurs; #fri };
 type Day = { #sun; #mon; #tues; #wed; #thurs; #fri; #sat};
 ```
 
-This means that every `WordDay` is also a `Day` and, for example,  a function on `Day` can also be applied to any `WorkDay`.  
+This means that every `WordDay` is also a `Day` and, for example,  a function on `Day` can also be applied to any `WorkDay`.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
