@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 1
 ---
 
 # Actors & async data
@@ -68,7 +68,7 @@ A trap will only revoke changes made since the last commit point. In particular,
 
 Consider the following stateful `Atomicity` actor:
 
-``` motoko no-repl file=../examples/atomicity.mo
+``` motoko no-repl file=../../examples/atomicity.mo
 ```
 
 Calling the shared function `atomic()` results in an error because it traps before completing. Since the trap happens before any `await` or return, all changes are discarded. The variable `s` stays at 0, and `pinged` remains false. Even though `atomic()` calls `ping()`, that message is only queued and never sent because no commit point is reached.
@@ -80,7 +80,7 @@ Calling `nonAtomic()` also fails with an error, but the state is partially updat
 
 Here is an example program that uses async functions:
 
-``` motoko file=../examples/counter-actor.mo
+``` motoko file=../../examples/counter-actor.mo
 ```
 
 The `Counter` actor declares one field and three public, shared functions:
@@ -378,3 +378,4 @@ When `catch` is used, the `finally` clause is optional. The `catch` block only c
 3. Traps after `await`.
 
 
+<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
