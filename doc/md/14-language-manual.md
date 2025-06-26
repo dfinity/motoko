@@ -651,7 +651,7 @@ TODO: Comparison.
 
 A `Char` of category O (Ordered) represents a character as a code point in the unicode character set.
 
-base package function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value.
+Base package function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/base/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md) value.
 
 ### Type [`Text`](https://internetcomputer.org/docs/motoko/base/Text.md)
 
