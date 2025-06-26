@@ -12,11 +12,11 @@ A `switch` expression is a control flow construct that, given a value, selects a
  A switch is constructed from an expression and a sequence of cases. Each case consists of a [pattern](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) guarding an expression or block that defines a possible branch of execution.
 
 Switch evaluates its expression and based on its value, selects the first case whose pattern matches the value.
-Any identifiers bound by the pattern are available in the selected branch, allowing you to access case-specific data in the branch. 
+Any identifiers bound by the pattern are available in the selected branch, allowing you to access case-specific data in the branch.
 
 Only one branch is ever executed in a switch, the first one that matches. If no case matches the value, execution traps.
 
-Motoko will warn you if any of the cases are redundant and can never matched due to previous cases. 
+Motoko will warn you if any of the cases are redundant and can never matched due to previous cases.
 
 Motoko will also warn you if the cases don't cover all possible values, meaning that the switch could fail with a trap at runtime.
 
@@ -110,4 +110,3 @@ This function returns the size of a list by using pattern matching to recurse on
 Notice that the second pattern consists of an option pattern containing a tuple pattern with a wildcard `_` and an identifier pattern, `tail`,  inside it.
 
 In this example, the branches are enclosed in blocks to demonstrate that it is supported. This can be useful if you need to add some local declarations to a branch.
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

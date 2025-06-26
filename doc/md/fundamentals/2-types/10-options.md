@@ -168,7 +168,7 @@ The `do ? <block>` construct is similar to the `?` operator in Rust, providing a
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
 func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
   do ? {
-    n! + m!  
+    n! + m!
   }
 }
 ```
@@ -216,4 +216,3 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 - [`Option`](https://internetcomputer.org/docs/motoko/base/Option)
 
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -184,7 +184,7 @@ However, both `A` and `B` are still subtypes of `C`, since `C` lacks the `age` f
 
 [Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) also support subtyping, both in the allowed fields and the types of those fields.
 
-A variant type `T` is a subtype of another variant type `U` if every value in `T` also appears in `U`, and the associated types in `T` are subtypes of those in `U`. `T` may allow fewer fields than `U`. 
+A variant type `T` is a subtype of another variant type `U` if every value in `T` also appears in `U`, and the associated types in `T` are subtypes of those in `U`. `T` may allow fewer fields than `U`.
 
 In other words, `T` can define a subset of the fields defined in `U`, as long as their types are compatible (i.e., subtypes).
 
@@ -346,4 +346,3 @@ let rt : RedTree<Nat> = #leaf;
 let rbt : RedBlackTree<Nat> = rt;  // Allowed, since `RedTree<Nat> <: RedBlackTree<Nat>`
 ```
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

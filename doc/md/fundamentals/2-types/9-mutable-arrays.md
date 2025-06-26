@@ -119,7 +119,7 @@ debug_show(numbers[0]);  // 100
 
 The size of an array `a` is available as `a.size()`, a `Nat`.  Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 
-Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). 
+Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps).
 
 ```motoko no-repl
 let numbers : [var Nat] = [var 10, 20, 30];
@@ -138,11 +138,11 @@ There are two primary ways to iterate through the elements in an array in Motoko
 
 Both methods achieve the same result, but `array.values()` is often preferred for its readability and simplicity.
 
-### Using `array.values()` and `array.keys()`  
+### Using `array.values()` and `array.keys()`
 
-The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.  
+The `array.values()` function returns an iterator that is used to iterate over the array's elements without manually managing indices.
 
-The `array.keys()` function returns an iterator that is used to iterate over the array's valid indices (in increasing order).  
+The `array.keys()` function returns an iterator that is used to iterate over the array's valid indices (in increasing order).
 
 ### Using a `for` loop
 
@@ -150,7 +150,7 @@ A `for` loop can also be used to iterate over an array by accessing elements via
 
 ```motoko no-repl
 let arr = [var "a", "b", "c"];
-for (i in arr.keys()) {  
+for (i in arr.keys()) {
     Debug.print(arr[i]);
 }
 ```
@@ -244,11 +244,10 @@ is[0] := -1; // [var Nat] is not a subtype of [var Int] — even though Nat <: I
 ns[0] // -1
 ```
 
-Here, `ns` starts out as an array of non-negative `Nat`s, storing `0` in its only element. 
+Here, `ns` starts out as an array of non-negative `Nat`s, storing `0` in its only element.
 Declaring `is`, of type to `[var Int]` creates an alias of `ns`, but at the super type `[var Int]`. Now since `is` can store `Int`s, we can assign `-1` to `is[0]`, and then read `-1` from `ns[0]`, breaking the promise that `ns` is an array of non-negative numbers.
 
 ## Resources
 
 - [`Array`](https://internetcomputer.org/docs/current/motoko/base/Array)
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
