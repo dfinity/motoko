@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 3
 ---
 
 # Data persistence
@@ -28,7 +28,7 @@ You can only use the `stable`, `transient` (or legacy `flexible`) modifier on `l
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
-``` motoko file=../examples/StableCounter.mo
+``` motoko file=../../examples/StableCounter.mo
 ```
 
 When you compile and deploy a canister for the first time, all transient and stable variables in the actor are initialized in sequence. When a canister is upgraded, all stable variables that existed in the previous version of the actor are pre-initialized with their old values and the remaining transient and any newly-added stable variables are initialized in sequence.
@@ -37,7 +37,7 @@ Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword
 
 Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.
 
-``` motoko file=../examples/PersistentCounter.mo
+``` motoko file=../../examples/PersistentCounter.mo
 ```
 
 ## Stable types
@@ -70,7 +70,7 @@ Unlike stable data structures in the Rust CDK, these modules do not use stable m
 
 For example, the stable type `TemperatureSeries` covers the persistent data, while the non-stable type `Weather` wraps this with additional methods (local function types).
 
-``` motoko no-repl file=../examples/WeatherActor.mo
+``` motoko no-repl file=../../examples/WeatherActor.mo
 ```
 
 __Discouraged and not recommended__: [Pre- and post-upgrade hooks](#preupgrade-and-postupgrade-system-methods) allow copying non-stable types to stable types during upgrades. This approach is error-prone and does not scale for large data. **Per best practices, using these methods should be avoided if possible.** Conceptually, it also does not align well with the idea of orthogonal persistence.

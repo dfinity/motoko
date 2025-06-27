@@ -30,7 +30,7 @@ One can force a nonnegative constant to be interpreted as an [`Int`](../base/Int
 
 For convenience, in-place updates of a variable or array element can be written by using a compound assignment operator, combining an arithmetic operation with the assignment operator `:=` . E.g. `x += 1` is short-hand for `x := x + 1` and combines addition `+` with assignment.
 
-Motoko does not provide any implicit conversions between numeric types. Instead, base library functions like `Nat8.toNat`  and `Nat8.fromNat` should be used for explicit conversion.
+Motoko does not provide any implicit conversions between numeric types. Instead, base package functions like `Nat8.toNat`  and `Nat8.fromNat` should be used for explicit conversion.
 
 To illustrate working with numbers, here is an example calculator program that creates a single actor with several public entry-point functions to perform basic arithmetic operations using integers.
 
