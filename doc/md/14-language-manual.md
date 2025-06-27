@@ -791,7 +791,7 @@ The type `Region` represents opaque stable memory regions. Region objects are dy
 
 The region type is stable but not shared and its objects, which are stateful, may be stored in stable variables and data structures.
 
-Objects of type `Region` are created and updated using the functions provided by base package `Region`. See [stable regions](https://internetcomputer.org/docs/motoko/icp-features/stable-memory) and library [Region](https://internetcomputer.org/docs/motoko/base/Region.md) for more information.
+Objects of type `Region` are created and updated using the functions provided by base libary `Region`. See [stable regions](https://internetcomputer.org/docs/motoko/icp-features/stable-memory) and library [Region](https://internetcomputer.org/docs/motoko/base/Region.md) for more information.
 
 ### Constructed types
 
