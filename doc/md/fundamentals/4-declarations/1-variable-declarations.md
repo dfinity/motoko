@@ -52,7 +52,7 @@ var (a, b) = (1, 2); // Not supported
 
 The assignment operation `:=` is general and works for all types.
 
-Motoko provides special assignment operators that combine assignment with a binary operation. These operators update a variable by applying the operation between its current value and a given operand.
+Motoko provides special assignment operators that combine assignment with a binary operation. These compound operators update a variable by applying the operation between its current value and a given operand.
 
 For example, numbers permit a combination of assignment and addition:
 
