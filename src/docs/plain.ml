@@ -308,7 +308,7 @@ let render_docs : Common.render_input -> string =
 let make_index : string option -> Common.render_input list -> string =
  fun package_opt inputs ->
   let buf = Buffer.create 1024 in
-  bprintf buf "# Motoko %slibrary\n\n"
+  bprintf buf "# Motoko %spackage\n\n"
     (match package_opt with None -> "" | Some s -> s ^ " ");
   List.iter
     (fun (input : Common.render_input) ->
