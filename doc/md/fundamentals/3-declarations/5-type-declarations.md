@@ -29,16 +29,17 @@ func greet(name : Username, age : Age) : Text {
 They can also be used in other type definitions:
 
 ```  motoko no-repl
-type Person = { username : Username; age : Age}; 
+type Person = { username : Username; age : Age};
 ```
 
 Given a similar type `User`:
 
 ``` motoko no-repl
-type User = {  age : Nat; username : Text }; 
+type User = {  age : Nat; username : Text };
 ```
 
 Structural typing means that the types `User` and `Person` are interchangeable because their definitions are equivalent (after expanding all definitions). In other languages, `User` and `Person` might be considered incompatible types.
+
 ## Record types
 
 In Motoko, a type can define a structured [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) with labeled fields. Each field has a specific type, and you can access them using dot notation. Records are useful for organizing related data clearly and safely.
@@ -149,4 +150,3 @@ type Seq<T> = ?(T, Seq<[T]>);
 
 <!-- TODO(future) explain variance of type definition parameters, perhaps using InvBox<T> (r/w) CoBox<T> (ro) and ContraBox<T> (wo) as examples -->
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -103,7 +103,7 @@ The only thing the caller can do with this future is wait for it to be completed
 
 To access the result of an `async` value, the receiver of the future uses an `await` expression.
 
-For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](./base/Nat.md), `n`:
+For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), `n`:
 
 ``` motoko no-repl
 let a : async Nat = Counter.read();
@@ -378,4 +378,3 @@ When `catch` is used, the `finally` clause is optional. The `catch` block only c
 3. Traps after `await`.
 
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

@@ -1,4 +1,4 @@
-{ pkgs, js, base-src }:
+{ pkgs, js, base-src, core-src }:
 pkgs.stdenv.mkDerivation {
   name = "docs";
   src = ../doc;
@@ -9,6 +9,7 @@ pkgs.stdenv.mkDerivation {
     export HOME=$PWD
     export MOC_JS=${js.moc}/bin/moc.js
     export MOTOKO_BASE=${base-src}
+    export MOTOKO_CORE=${core-src}
     make
   '';
 

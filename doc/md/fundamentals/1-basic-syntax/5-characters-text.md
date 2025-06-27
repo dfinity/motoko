@@ -55,7 +55,7 @@ persistent actor Alternator {
     // Apply a case function to each char
     let modified = Iter.map<Char, Text>(chars, func(c: Char) : Text {
       let charAsText = Char.toText(c);
-      let transformedText = 
+      let transformedText =
         if (index % 2 == 0) {
           Text.toUppercase(charAsText)
         } else {
@@ -74,7 +74,7 @@ persistent actor Alternator {
 
 - `Char` can be converted to a single-character `Text` using `Char.toText(c)`.
 - `Char` can be converted to its 32-bit Unicode scalar value using `Char.toNat32(c)`.
-- A `Char` can be converted from a 32-bit Unicode scalar value using `Char.fromNat32(n)` (the function traps on invalid codes). 
+- A `Char` can be converted from a 32-bit Unicode scalar value using `Char.fromNat32(n)` (the function traps on invalid codes).
 :::
 
 ## Text
@@ -93,15 +93,15 @@ The `#` operator concatenates two `Text` values:
 "ICP " # "❤️" # " Motoko" // "ICP ❤️ Motoko"
 ```
 
-`t.size()` can be used to return the number of characters in the text `t`.  
+`t.size()` can be used to return the number of characters in the text `t`.
 
 ```motoko
 "abc".size() == 3
 ```
 
-`t.chars()` returns an iterator enumerating the characters in `t`. For example:  
+`t.chars()` returns an iterator enumerating the characters in `t`. For example:
 
-```motoko  
+```motoko
 import Char "mo:base/Char";
 import Debug "mo:base/Debug";
 
@@ -118,4 +118,3 @@ Text values can be compared using "==", "<" and all the other relational operato
 - [`Text`](https://internetcomputer.org/docs/motoko/base/Text)
 - [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter)
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

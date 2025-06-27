@@ -4,10 +4,10 @@ sidebar_position: 5
 
 # Records
 
-Records allow you to group related values using named fields, with each field potentially having a different type.  
+Records allow you to group related values using named fields, with each field potentially having a different type.
 Unlike [tuples](https://internetcomputer.org/docs/motoko/fundamentals/types/tuples), which use positional access, records provide field-based access, improving readability and maintainability.
 
-Records also support **mutable fields**, declared using the `var` keyword.  
+Records also support **mutable fields**, declared using the `var` keyword.
 In contrast, all fields in a tuple are always **immutable**.
 
 ## Defining a record
@@ -21,7 +21,7 @@ let person = {
 
 :::info Inferred types
 Type annotations on immutable record fields are optional, as the compiler can infer their types automatically.
-However, for mutable fields (`var`), it's good practice to explicitly declare the type.  
+However, for mutable fields (`var`), it's good practice to explicitly declare the type.
 Without an explicit annotation, the compiler might infer a more specific type than intended, which can restrict future assignments to broader types.
 
 Example:
@@ -44,10 +44,10 @@ This recommendation also applies to all `var` declarations, not just record fiel
 
 `person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
 
-The values of the fields are `"Motoko"` and `25` respectively.  
+The values of the fields are `"Motoko"` and `25` respectively.
 
-The type of the `persion` value is `{age : Nat; name : Text}`, or, equivalently,  `{name: Text; age : Nat}`.  
-Unlike tuples, the order of record fields is immaterial and all record types with the same field names and types are considered equivalent, regardless of field ordering. 
+The type of the `person` value is `{age : Nat; name : Text}`, or, equivalently,  `{name: Text; age : Nat}`.
+Unlike tuples, the order of record fields is immaterial and all record types with the same field names and types are considered equivalent, regardless of field ordering.
 
 ## Accessing fields
 
@@ -65,7 +65,7 @@ let personAge = person.age;    // 25
 person;
 ```
 
-Attempting to access a field that isn't available in the type of the record is a compile-time type error.  
+Attempting to access a field that isn't available in the type of the record is a compile-time type error.
 
 ## Record mutability
 
@@ -78,7 +78,7 @@ let person = {
 };
 ```
 
-This `person` has type `{var age : Nat; var name : Text}`.  
+This `person` has type `{var age : Nat; var name : Text}`.
 
 `var name` and `var age` allow the values to be updated later.
 
@@ -139,11 +139,11 @@ let individual : Individual = {
     address = { street = "101 Broadway"; city = "New York"; zip = 10001 };
 };
 
-let { name; address = { city = cityName }} = individual;  
+let { name; address = { city = cityName }} = individual;
 ```
 
-The pattern both defines `name` as the contents of eponymous field `individual.name` and `cityName` as the contents of field `individual.address.city`.  Irrelevant fields need not be listed in the pattern.  
-The field pattern `name` is just shorthand for `name = name`: it binds the contents of the field called `name`, to the variable called `name`.  
+The pattern both defines `name` as the contents of eponymous field `individual.name` and `cityName` as the contents of field `individual.address.city`.  Irrelevant fields need not be listed in the pattern.
+The field pattern `name` is just shorthand for `name = name`: it binds the contents of the field called `name`, to the variable called `name`.
 
 ## Using records in collections
 
@@ -228,16 +228,15 @@ Tuples and records both allow grouping values, but they have key differences in 
 |----------------|------------------------------------------|----------------------------------------|
 | Structure      | Ordered collection of values             | Unordered collection of named fields  |
 | Projection     | By position (`.n`)                       | By field name (`.fieldName`)          |
-| Pattern matching| Complete, using ordered tuple patterns                       | Selective, using unordered record patterns  |  
+| Pattern matching| Complete, using ordered tuple patterns                       | Selective, using unordered record patterns  |
 | Mutability     | Immutable after creation                 | Can have mutable fields               |
-| Naming         | Fields are anonymous  | Fields are named               |  
+| Naming         | Fields are anonymous  | Fields are named               |
 | Subtyping     | Fields cannot be removed | Fields can be removed |
 | Use case       | Positional grouping of related values, e.g. vectors     |  Structured data types        |
 
-Motoko's records support more flexible subtyping than tuples.  
-With records, subtyping allows fields to be omitted in the subtype (a concept known as **width subtyping**).  
+Motoko's records support more flexible subtyping than tuples.
+With records, subtyping allows fields to be omitted in the subtype (a concept known as **width subtyping**).
 In contrast, tuple subtyping requires tuples to have the **same length**, making them less flexible in this regard.
 
-For example, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.  
+For example, `{x : Int, y : Int, z : Int}` is a subtype of `{x : Int, y : Int}`, but `(Int, Int, Int)` is not a subtype of `(Int, Int)`.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

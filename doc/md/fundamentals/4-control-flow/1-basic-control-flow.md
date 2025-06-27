@@ -119,7 +119,7 @@ These blocks represented as `do ? {...}` allow safe unwrapping of optional value
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
 func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
   do ? {
-    n! + m!  
+    n! + m!
   }
 };
 // let o1 = addOpt(?5, ?2);       // ?7
@@ -179,9 +179,9 @@ As with `return`, you can omit the value argument to a `break` when the type of 
 
 ```motoko no-repl
 func breakControlFlow() : Int {
-  let numbers : [Int] = [3, -1, 0, 5, -2, 7];  
+  let numbers : [Int] = [3, -1, 0, 5, -2, 7];
   var sum : Int = 0;
-  label processNumbers {  
+  label processNumbers {
     for (num in numbers.values()) {
       if (num < 0) {
         break processNumbers; // Break from processNumbers
@@ -281,4 +281,3 @@ Execution begins in `functionCallControlFlow()`, where the function `processNumb
 
 Function calls temporarily interrupt the normal sequential flow by shifting execution to a separate block of logic. Once the called function completes, control resumes at the point where the call was made, continuing with its result.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

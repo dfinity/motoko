@@ -135,7 +135,7 @@ If a loop is labeled with a label `l` then you continue to the next iteration of
 ```motoko no-repl
 var count = 8;
 label l while (count > 0) {
-  if (count % 2 == 1) continue l; 
+  if (count % 2 == 1) continue l;
   Debug.print("Counting down...");
   count -= 1;
 };
@@ -145,4 +145,3 @@ label l while (count > 0) {
 
 While each type of loop has its own exit conditions and continues execution afterward, you can always exit a loop early using `return`, `throw`, `break`, or `!` (a `null` break) when supported. These provide more control over when and how the loop ends.
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
