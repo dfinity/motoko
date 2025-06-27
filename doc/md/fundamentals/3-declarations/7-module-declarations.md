@@ -91,11 +91,11 @@ A module can declare classes that use state, provided it doesn't instantiate tho
 For example, a module can define a class of stateful `Counters` :
 
 ``` motoko no-repl
-module Counters { 
+module Counters {
    public class Counter() {
       var count : Nat = 0;
-      public func inc() : Nat { 
-        count += 1; 
+      public func inc() : Nat {
+        count += 1;
         count
       }
    }
@@ -141,4 +141,3 @@ let id4 = identity(4);
 ```
 <!-- TODO (future): short section on module classes, perhaps for square (n*n) matrices? -->
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />
