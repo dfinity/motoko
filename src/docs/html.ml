@@ -384,7 +384,7 @@ let make_index : string option -> render_input list -> string =
       (h1 ~cls:"index-header"
          (string
             (match package_opt with
-            | None -> "Motoko library"
+            | None -> "Motoko package"
             | Some s -> "Motoko " ^ s ^ " library"))
       ++ ul ~cls:"index-listing" ~licls:"index-item" (List.map make_link inputs)
       )
