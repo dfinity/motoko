@@ -48,7 +48,7 @@ For example, the following is a syntax error:
 var (a, b) = (1, 2); // Not supported
 ```
 
-### Special assignment operations
+### Compound assignment operations
 
 The assignment operation `:=` is general and works for all types.
 
