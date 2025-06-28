@@ -29,7 +29,7 @@ function attachOnRunButton() {
     script.addEventListener("load", () => {
       addPackage("base", "dfinity/motoko-base", `moc-${BASE_VERSION}`, "src")
         .then(() => {
-          console.log(`base library version: ${BASE_VERSION}`);
+          console.log(`base package version: ${BASE_VERSION}`);
           // Run code
           const btns = document.getElementsByClassName("run-button run");
           for (var i = 0; i < btns.length; i++) {

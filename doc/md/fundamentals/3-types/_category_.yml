@@ -1,4 +1,4 @@
-position: 3
-label: 'Declarations'
+position: 4
+label: 'Types'
 collapsible: true # make the category collapsible
 collapsed: true 

@@ -10,7 +10,7 @@ The network provides a **verifiable random function (VRF)** through the [managem
 
 The VRF generates 256-bit random `Blob`s in each execution round. A canister can request one of these random `Blob`s via the management canister's `raw_rand` method.
 
-<!--PRNG to be mentioned here when the new base library is published? -->
+<!--PRNG to be mentioned here when the new base package is published? -->
 
 Motoko provides multiple options for incorporating randomness into your code, each suited for different scenarios. The right method for your application depends on its security, performance, and reproducibility requirements.
 

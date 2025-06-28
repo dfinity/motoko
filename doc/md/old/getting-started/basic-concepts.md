@@ -160,15 +160,15 @@ The rules that Motoko applies to verify the correctness of code before compiling
 The type system is a safety feature that prevents a slew of errors that would otherwise have to be detected and reported at runtime, when they would be difficult or impossible to address.
 
 
-## Motoko base library
+## Motoko base package
 
 For various practical language engineering reasons, the design of Motoko strives to minimize built-in types and operations.
 
-Instead, whenever possible, the Motoko base library provides the types and operations that make the language feel complete. However, this base library is still under development, and is still incomplete.
+Instead, whenever possible, the Motoko base package provides the types and operations that make the language feel complete. However, this base package is still under development, and is still incomplete.
 
-The [Motoko base library](../base/index.md) lists a selection of modules, focusing on core features used in the examples that are unlikely to change radically. The base library APIs will likely evolve over time and in particular, grow in size and number as Motoko matures.
+The [Motoko base package](../base/index.md) lists a selection of modules, focusing on core features used in the examples that are unlikely to change radically. The base package APIs will likely evolve over time and in particular, grow in size and number as Motoko matures.
 
-To import from the base library, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
+To import from the base package, use the `import` keyword. Give a local module name to introduce, in this example `D` for “**D**ebug”, and a URL where the `import` declaration may locate the imported module:
 
 ``` motoko file=../../examples/print.mo
 ```

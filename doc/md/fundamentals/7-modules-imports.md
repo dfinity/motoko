@@ -1,22 +1,22 @@
 ---
-sidebar_position: 8
+sidebar_position: 7
 ---
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base library of modules to provide essential functionality. This modular approach keeps the language simple.
+Motoko minimizes built-in types and operations, relying on a base package of modules to provide essential functionality. This modular approach keeps the language simple.
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
 :::caution
 
-The base library is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+The base package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
 
 :::
 
-## Importing from the base library
+## Importing from the base package
 
-The Motoko base library includes common utilities for working with data structures, debugging, and other functionality. To import from the base library, use the `import` keyword, followed by the `mo:base/<name>` module path.
+The Motoko base package includes common utilities for working with data structures, debugging, and other functionality. To import from the base package, use the `import` keyword, followed by the `mo:base/<name>` module path.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
