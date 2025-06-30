@@ -1,4 +1,5 @@
 %{
+open Mo_config
 open Mo_def
 open Mo_types
 open Mo_values
@@ -832,7 +833,7 @@ stab :
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
 %inline persistent :
-  | (* empty *) { false }
+  | (* empty *) { !Flags.persistent }
   | PERSISTENT { true }
 
 (* Patterns *)

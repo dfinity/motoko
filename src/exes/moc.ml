@@ -197,6 +197,15 @@ let argspec = [
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
   " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
 
+  (* persistence *)
+  "--persistent",
+  Arg.Unit (fun () -> Flags.persistent := true),
+  " Declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --non-persistent)";
+
+  "--non-persistent",
+  Arg.Unit (fun () -> Flags.persistent := false),
+  " In non-`persistent` actors, default actor fields to `transient` (default)";
+
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = limit; 
