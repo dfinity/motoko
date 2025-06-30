@@ -33,7 +33,7 @@ the top-level `default.nix`:
 * `moc`: contains `bin/moc`
 * `mo-doc`: contains `bin/mo-doc`
 * `didc`: contains `bin/didc`
-* `base-src`: contains the base library, directly in the top level directory,
+* `base-src`: contains the base package, directly in the top level directory,
   as `*.mo` files. It does not contain extra files (test files, for example)
 
 

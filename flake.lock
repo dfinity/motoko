@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1749667091,
-        "narHash": "sha256-HcDNprwRK9NN2KT+3+IOPdUrNaZlmVi3enbsxewnLQQ=",
+        "lastModified": 1751046516,
+        "narHash": "sha256-Ck43Jv6+VqdeMPBq9VYGUd0EqKX5ZBWSNK80NolfdXY=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "f3f91a08f1e34199ce8a57fdcde18678fe25be3a",
+        "rev": "ed164144684940d220749eff658916498683627b",
         "type": "github"
       },
       "original": {
@@ -120,17 +120,33 @@
     "motoko-base-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1750096717,
-        "narHash": "sha256-TCmEwoDpZYcMFTnVCYERZhkMW8G6fvvd/j0anQO5xmo=",
+        "lastModified": 1750229907,
+        "narHash": "sha256-S8EHGmfi40jBqzg5H3awpkewh4yIDP3pl4l+KYR9rNk=",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "def367171a044ac596b9ebd1e432960dda25fab8",
+        "rev": "ae893346ce94d8d83a36484eda6a61b66b151f25",
         "type": "github"
       },
       "original": {
         "owner": "dfinity",
         "ref": "next-moc",
         "repo": "motoko-base",
+        "type": "github"
+      }
+    },
+    "motoko-core-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750075415,
+        "narHash": "sha256-x50yCm6F5QI54fwOd0pzs7x0CkSFYWXUdcik2ofodHo=",
+        "owner": "dfinity",
+        "repo": "motoko-core",
+        "rev": "7e107b85058cea0fb992a0c239eda674bcdbfe1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dfinity",
+        "repo": "motoko-core",
         "type": "github"
       }
     },
@@ -159,11 +175,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1750032400,
-        "narHash": "sha256-sOHpHtpq0j7tqH4KPw4HPBOcKuuUZ3nek5jBKkucMyk=",
+        "lastModified": 1751242003,
+        "narHash": "sha256-4O4jfNCbPl6Nb6qxrWAzBFN/2I0mDDfGuuIuv2wyn58=",
         "owner": "Mic92",
         "repo": "nix-update",
-        "rev": "74cbcedc6f0f1ecb3bfcd4d7a8d62db3fac3968d",
+        "rev": "0e366c09ae7769a4e334e7fb98acdfcd78dc1f66",
         "type": "github"
       },
       "original": {
@@ -229,6 +245,7 @@
         "ic-wasm-src": "ic-wasm-src",
         "libtommath-src": "libtommath-src",
         "motoko-base-src": "motoko-base-src",
+        "motoko-core-src": "motoko-core-src",
         "motoko-matchers-src": "motoko-matchers-src",
         "nix-update-flake": "nix-update-flake",
         "nixpkgs": "nixpkgs",
@@ -282,11 +299,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1749194973,
-        "narHash": "sha256-eEy8cuS0mZ2j/r/FE0/LYBSBcIs/MKOIVakwHVuqTfk=",
+        "lastModified": 1750931469,
+        "narHash": "sha256-0IEdQB1nS+uViQw4k3VGUXntjkDp7aAlqcxdewb/hAc=",
         "owner": "numtide",
         "repo": "treefmt-nix",
-        "rev": "a05be418a1af1198ca0f63facb13c985db4cb3c5",
+        "rev": "ac8e6f32e11e9c7f153823abc3ab007f2a65d3e1",
         "type": "github"
       },
       "original": {

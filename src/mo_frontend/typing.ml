@@ -2897,7 +2897,7 @@ and check_system_fields env sort scope tfs dec_fields =
               else if id.it = "timer" && not !Mo_config.Flags.global_timer then
                 local_error env df.at "M0182" "system function timer is present but -no-timer flag is specified"
             end
-          else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+         else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"

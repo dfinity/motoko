@@ -1,4 +1,4 @@
-# Principal
+# base/Principal
 Module for interacting with Principals (users, canisters, or other entities).
 
 Principals are used to identify entities that can interact with the Internet

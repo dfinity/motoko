@@ -1,4 +1,4 @@
-# Text
+# base/Text
 Utility functions for `Text` values.
 
 A `Text` value represents human-readable text as a sequence of characters of type `Char`.
@@ -12,7 +12,7 @@ let concat = text # " 👋"; // "Hello! 👋"
 
 The `"mo:base/Text"` module defines additional operations on `Text` values.
 
-Import the module from the base library:
+Import the module from the base package:
 
 ```motoko name=import
 import Text "mo:base/Text";
