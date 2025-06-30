@@ -44,7 +44,7 @@ let result4 = intToNat(-5);   // 5
 <!--
 :::info `Nat` to `Int` conversions functions
 
-`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the base library.
+`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the base package.
 
 :::
 ----->
