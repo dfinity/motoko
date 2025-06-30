@@ -1,7 +1,7 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 actor {};
 
-// CHECK:  (func $@motoko_async_destabilization (type 0)
+// CHECK:  (func $@motoko_async_destabilization
 // CHECK:         call $@initialize_main_actor
 
 // CHECK:  (func $canister_init
