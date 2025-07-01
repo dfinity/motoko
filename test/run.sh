@@ -548,7 +548,7 @@ do
         fi
         moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc --legacy-persistence $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
