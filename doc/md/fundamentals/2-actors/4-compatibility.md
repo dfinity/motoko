@@ -157,22 +157,22 @@ For this purpose, a user-instructed migration can be done in three steps:
 
     While the previous attempt of changing state from [`Int`](https://internetcomputer.org/docs/motoko/base/Int.md) to [`Nat`](https://internetcomputer.org/docs/motoko/base/Float.md) was invalid, you now can realize the desired change as follows:
 
-    ``` motoko no-repl file=../../examples/count-v5.mo
-    ```
+``` motoko no-repl file=../../examples/count-v5.mo
+```
 
-    To also keep the Candid interface, the `readFloat` has been added, while the old `read` is retired by keeping its declaration and raising a trap internally.
+To also keep the Candid interface, the `readFloat` has been added, while the old `read` is retired by keeping its declaration and raising a trap internally.
 
-3. Drop the old declarations once all data has been migrated:
+3. Drop the old declarations once all data has been migrated.
 
-   In versions of Motoko prior to 0.14.6, you could simply remove the old variable, or keep it but change the type to `Any`, implying that the variable is no longer useful.
+In versions of Motoko prior to 0.14.6, you could simply remove the old variable or keep it but change the type to `Any`, implying that the variable is no longer useful.
 
-    ``` motoko no-repl file=../../examples/count-v6.mo
-    ```
+``` motoko no-repl file=../../examples/count-v6.mo
+```
 
-   For added safety, since version 0.14.6 you can only discard data, or promote it to a lossy supertype such as `Any`, using a migration function:
+For added safety, since version 0.14.6 you can only discard data or promote it to a lossy supertype such as `Any`, using a migration function:
 
-    ``` motoko no-repl file=../../examples/count-v6b.mo
-    ```
+``` motoko no-repl file=../../examples/count-v6b.mo
+```
 
 ### Explicit migration using a migration function
 
@@ -218,14 +218,14 @@ existing field, even when its type has changed:
 ``` motoko no-repl file=../../examples/count-v8.mo
 ```
 
-Here, we've put the migration code in a separate library:
+Here, the migration code is in a separate library:
 
 ``` motoko no-repl file=../../examples/Migration.mo
 ```
 
 The migration function can be selective and only consume or produce a subset of the old and new stable variables. Other stable variables can be declared as usual.
 
-For example, here, with the same migration function, we also declare a new stable variable, `lastModified` that records the time of the last update,
+For example, here, with the same migration function, you can also declare a new stable variable, `lastModified` that records the time of the last update,
 without having to mention that field in the migration function:
 
 ``` motoko no-repl file=../../examples/count-v9.mo
@@ -273,10 +273,10 @@ cannot be consumed at new type
   var Float
 ```
 
-With [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
+With [enhanced orthogonal persistence](/docs/motoko/fundamentals/actors/orthogonal-persistence/enhanced), compatibility errors of stable variables are always detected in the runtime system and if failing, the upgrade is safely rolled back.
 
 :::danger
-With [classical orthogonal persistence](orthogonal-persistence/classical.md), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
+With [classical orthogonal persistence](/docs/motoko/fundamentals/actors/orthogonal-persistence/classical), however, an upgrade attempt from `v2.wasm` to `v3.wasm` is unpredictable and may lead to partial or complete data loss if the `dfx` warning is ignored.
 :::
 
 ## Adding record fields
@@ -311,14 +311,14 @@ Do you want to proceed? yes/No
 It is recommended not to continue, as you will lose the state in older versions of Motoko that use [classical orthogonal persistence](orthogonal-persistence/classical.md).
 Upgrading with [enhanced orthogonal persistence](orthogonal-persistence/enhanced.md) will trap and roll back, keeping the old state.
 
-Adding a new record field to the type of existing stable variable is not supported. The reason is simple: The upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
+Adding a new record field to the type of existing stable variable is not supported. The reason is simple: the upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the `description` field of every existing `card` in `map`. Moreover, allowing adding optional fields is also a problem, as a record can be shared from various variables with different static types, some of them already declaring the added field or adding a same-named optional field with a potentially different type (and/or different semantics).
 
 To resolve this issue, some form of  [explicit data migration](#explicit-migration) is needed.
 
 
-We present two solutions, the first using a sequence of simple upgrades, and a second, recommended solution, that uses a single upgrade with a migration function.
+There are two solutions: using a sequence of simple upgrades, or the second, recommended solution, that uses a single upgrade with a migration function.
 
-### Solution 1 using two plain upgrades
+### Solution 1: Using two plain upgrades
 
 1. You must keep the old variable `map` with the same structural type. However, you are allowed to change type alias name (`Card` to `OldCard`).
 2. You can introduce a new variable `newMap` and copy the old state to the new one, initializing the new field as needed.
@@ -327,7 +327,7 @@ We present two solutions, the first using a sequence of simple upgrades, and a s
 ``` motoko no-repl file=../../examples/Card-v1a.mo
 ```
 
-4. **After** we have successfully upgraded to this new version, we can upgrade once more to a version, that drops the old `map`.
+4. **After** you have successfully upgraded to this new version, you can upgrade once more to a version, that drops the old `map`.
 
 
 ``` motoko no-repl file=../../examples/Card-v1b.mo
@@ -335,7 +335,7 @@ We present two solutions, the first using a sequence of simple upgrades, and a s
 
 `dfx` will issue a warning that `map` will be dropped.
 
-Make sure, you have previously migrated the old state to `newMap` before applying this final reduced version.
+Make sure you have previously migrated the old state to `newMap` before applying this final reduced version.
 
 ```
 Stable interface compatibility check issued a WARNING for canister ...
@@ -344,9 +344,9 @@ Stable interface compatibility check issued a WARNING for canister ...
  will be discarded. This may cause data loss. Are you sure?
 ```
 
-### Solution 2 using a migration function and single upgrade
+### Solution 2: Using a migration function and single upgrade
 
-Instead of the previous two step solution, we can upgrade in one step using a migration function.
+Instead of the previous two step solution, you can upgrade in one step using a migration function.
 
 1. Define a migration module and function that transforms the old stable variable, at its current type, into the new stable variable at its new type.
 
@@ -360,7 +360,7 @@ Instead of the previous two step solution, we can upgrade in one step using a mi
 ``` motoko no-repl file=../../examples/Card-v1c.mo
 ```
 
-**After** we have successfully upgraded to this new version, we can also upgrade once more to a version that drops the migration code.
+**After** you have successfully upgraded to this new version, you can also upgrade once more to a version that drops the migration code.
 
 
 ``` motoko no-repl file=../../examples/Card-v1d.mo
@@ -370,4 +370,3 @@ However, removing or adjusting the migration code can also be delayed to the nex
 
 Note that with this solution, there is no need to rename `map` to `newMap` and the migration code is nicely isolated from the main code.
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
