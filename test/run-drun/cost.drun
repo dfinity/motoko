@@ -1,6 +1,6 @@
 # APPLICATION-SUBNET
 # CLASSICAL-PERSISTENCE-ONLY
-# DEFAULT-GC-ONLY
+# INCREMENTAL-GC-ONLY
 
 install $ID cost/cost-simple-classical.mo ""
 ingress $ID test "DIDL\x00\x00"

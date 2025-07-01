@@ -315,11 +315,17 @@ do
     fi
     if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
     then
-      # Skip if using legacy persistence with non-incremental GC.
-      if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || \
-        [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || \
-        [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]]
+      # Allow incremental GC tests to run if:
+      # 1. Explicit --incremental-gc flag, OR  
+      # 2. Default EOP mode (no legacy persistence + no other GC flags)
+      if [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]] || \
+         [[ $EXTRA_MOC_ARGS != *"--legacy-persistence"* && \
+            $EXTRA_MOC_ARGS != *"--copying-gc"* && \
+            $EXTRA_MOC_ARGS != *"--compacting-gc"* && \
+            $EXTRA_MOC_ARGS != *"--generational-gc"* ]]
       then
+        : # Test should run
+      else
         $ECHO " Skipped (not applicable to incremental gc)"
         continue
       fi
