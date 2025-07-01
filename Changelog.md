@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## 0.14.14 (2025-06-30)
+
+* motoko (`moc`)
+
+  * Lazy WASM imports: avoids unnecessary function imports from the runtime, improving compatibility with more runtime versions (#5276).
+
+  * Improved stable compatibility error messages to be more concise and clear during canister upgrades (#5271).
+
 ## 0.14.13 (2025-06-17)
 
 * motoko (`moc`)

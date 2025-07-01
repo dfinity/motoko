@@ -43,6 +43,8 @@ sig
   val is_prefix : ('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
+
+  val safe_map : ('a -> 'b) -> 'a list -> 'b list
 end
 
 module List32 :
