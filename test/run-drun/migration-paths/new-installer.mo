@@ -1,4 +1,3 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
 import Prim "mo:⛔";
 import TestCanister "test_canister";
 

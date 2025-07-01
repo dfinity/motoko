@@ -1,4 +1,3 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
 import Prim "mo:⛔";
 import Cycles = "../cycles/cycles";
 import Lib "node1"; // new version!
@@ -19,7 +18,7 @@ actor a {
 
   type Node = Lib.Node;
 
-  stable let savedNodes : [var ?(actor{})] = Prim.Array_init(n, null);
+  stable let savedNodes : [var ?(actor {})] = Prim.Array_init(n, null);
 
   let nodes : [var ?Node] = Prim.Array_init(n, null);
 
@@ -48,53 +47,50 @@ actor a {
   public func remove(k : Key) : async () {
     let i = k % n;
     let node = switch (nodes[i]) {
-      case null { };
+      case null {};
       case (?node) {
         await node.remove(k);
-      }
+      };
     };
   };
 
-  system func preupgrade () {
-     for (i in nodes.keys()) {
-       savedNodes[i] := nodes[i];
-     }
+  system func preupgrade() {
+    for (i in nodes.keys()) {
+      savedNodes[i] := nodes[i];
+    };
   };
 
   public func upgradeNodes() : async () {
-    for(i in savedNodes.keys()) {
-       switch (savedNodes[i]) {
-         case null {};
-         case (?n) {
-           nodes[i] :=
-             ? (await (system Lib.Node)(#upgrade n)(i)); // upgrade!
-         }
-       }
-    }
+    for (i in savedNodes.keys()) {
+      switch (savedNodes[i]) {
+        case null {};
+        case (?n) {
+          nodes[i] := ?(await (system Lib.Node)(#upgrade n)(i)); // upgrade!
+        };
+      };
+    };
   };
 
   public func upgradeNodesKeepMainMemory() : async () {
-    for(i in savedNodes.keys()) {
-       switch (savedNodes[i]) {
-         case null {};
-         case (?n) {
-           nodes[i] :=
-             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #keep; canister = n })(i)); // upgrade!
-         }
-       }
-    }
+    for (i in savedNodes.keys()) {
+      switch (savedNodes[i]) {
+        case null {};
+        case (?n) {
+          nodes[i] := ?(await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #keep; canister = n })(i)); // upgrade!
+        };
+      };
+    };
   };
 
   public func upgradeNodesReplaceMainMemory() : async () {
-    for(i in savedNodes.keys()) {
-       switch (savedNodes[i]) {
-         case null {};
-         case (?n) {
-           nodes[i] :=
-             ? (await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #replace; canister = n })(i)); // upgrade!
-         }
-       }
-    }
+    for (i in savedNodes.keys()) {
+      switch (savedNodes[i]) {
+        case null {};
+        case (?n) {
+          nodes[i] := ?(await (system Lib.Node)(#upgrade_with_persistence { wasm_memory_persistence = #replace; canister = n })(i)); // upgrade!
+        };
+      };
+    };
   };
 
   type IncrementalStabilization = actor {
@@ -107,28 +103,27 @@ actor a {
   };
 
   public func stabilizeNodes() : async () {
-    for(i in savedNodes.keys()) {
-       switch (savedNodes[i]) {
-         case null {};
-         case (?n) {
-           let a = useIncrementalStabilization(n);
-           await a.__motoko_stabilize_before_upgrade();
-         }
-       }
-    }
+    for (i in savedNodes.keys()) {
+      switch (savedNodes[i]) {
+        case null {};
+        case (?n) {
+          let a = useIncrementalStabilization(n);
+          await a.__motoko_stabilize_before_upgrade();
+        };
+      };
+    };
   };
 
   stable var k = 0;
   // add 2 next keys on each call
   public func go() : async () {
     // To get lots of cycles in drun
-    if (Cycles.balance() == 0)
-      await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
+    if (Cycles.balance() == 0) await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
     var i = 0;
     while (i < 2) {
       k += 1;
-      let t = debug_show(k);
+      let t = debug_show (k);
       assert (null == (await lookup(k)));
       await insert(k, t);
       assert (?t == (await lookup(k)));

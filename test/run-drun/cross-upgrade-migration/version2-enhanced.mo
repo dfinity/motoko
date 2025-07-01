@@ -1,4 +1,3 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
 import Prim "mo:prim";
 import Migration "Migration2";
 
@@ -6,14 +5,14 @@ import Migration "Migration2";
 (with migration = Migration.run)
 actor {
 
-   Prim.debugPrint("Version 2");
+  Prim.debugPrint("Version 2");
 
-   stable var zero : Nat = Prim.trap "unreachable"; // inherited
-   assert zero == 0;
+  stable var zero : Nat = Prim.trap "unreachable"; // inherited
+  assert zero == 0;
 
-   stable var four : [var (Nat, Text)] = [var];
+  stable var four : [var (Nat, Text)] = [var];
 
-   public func check(): async() {
-     Prim.debugPrint(debug_show{zero; four});
-   }
+  public func check() : async () {
+    Prim.debugPrint(debug_show { zero; four });
+  };
 };

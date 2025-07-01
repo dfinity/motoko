@@ -75,27 +75,27 @@ let
 
   snty_compacting_gc_subdir = dir: deps:
     (test_subdir dir deps).overrideAttrs {
-      EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      EXTRA_MOC_ARGS = "--sanity-checks --legacy-persistence --compacting-gc";
     };
 
   snty_generational_gc_subdir = dir: deps:
     (test_subdir dir deps).overrideAttrs {
-      EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
+      EXTRA_MOC_ARGS = "--sanity-checks --legacy-persistence --generational-gc";
     };
 
   snty_incremental_gc_subdir = dir: deps:
     (test_subdir dir deps).overrideAttrs {
-      EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      EXTRA_MOC_ARGS = "--sanity-checks --legacy-persistence --incremental-gc";
     };
 
-  enhanced_orthogonal_persistence_subdir = dir: deps:
+  legacy_persistence_subdir = dir: deps:
     (test_subdir dir deps).overrideAttrs {
-      EXTRA_MOC_ARGS = "--enhanced-orthogonal-persistence";
+      EXTRA_MOC_ARGS = "--legacy-persistence";
     };
 
-  snty_enhanced_orthogonal_persistence_subdir = dir: deps:
+  snty_legacy_persistence_subdir = dir: deps:
     (test_subdir dir deps).overrideAttrs {
-      EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
+      EXTRA_MOC_ARGS = "--sanity-checks --legacy-persistence";
     };
 
   perf_subdir = accept: dir: deps:
@@ -212,26 +212,33 @@ let
 in
 fix_names
   {
-    run-release = test_subdir "run" [ moc ];
-    run-debug = snty_subdir "run" [ moc ];
-    run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    drun-release = test_subdir "run-drun" [ moc pkgs.drun ];
-    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ];
+    #### EOP-based tests ####
+    run-release = test_subdir "run" [ moc ]; # EOP 
+    run-debug = snty_subdir "run" [ moc ]; # EOP 
+    drun-release = test_subdir "run-drun" [ moc pkgs.drun ]; # EOP 
+    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ]; # EOP 
+
+    #### Classical-based tests ####
+    run-legacy-release = legacy_persistence_subdir "run" [ moc ]; # Classical
+    run-legacy-debug = snty_legacy_persistence_subdir "run" [ moc ]; # Classical
+    drun-legacy-release = legacy_persistence_subdir "run-drun" [ moc pkgs.drun ]; # Classical
+    drun-legacy-debug = snty_legacy_persistence_subdir "run-drun" [ moc pkgs.drun ]; # Classical
+
+    #### GC-based tests, running on legacy persistence ####
     drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun ];
     drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun ];
     drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
+
+    #### Other tests ####
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
-    ld-eop = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
+    ld-legacy = legacy_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
     idl = test_subdir "idl" [ didc ];
     mo-idl = test_subdir "mo-idl" [ moc didc ];
-    mo-idl-eop = enhanced_orthogonal_persistence_subdir "mo-idl" [ moc didc ];
+    mo-idl-legacy = legacy_persistence_subdir "mo-idl" [ moc didc ];
     trap = test_subdir "trap" [ moc ];
-    trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
+    trap-legacy = legacy_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
     perf = perf_subdir false "perf" [ moc pkgs.drun ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];

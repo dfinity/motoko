@@ -1,4 +1,3 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
 import Cost "cost-simple-class";
 
 persistent actor {

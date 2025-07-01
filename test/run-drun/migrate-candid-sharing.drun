@@ -1,5 +1,4 @@
-# CLASSICAL-PERSISTENCE-ONLY
-# DEFAULT-GC-ONLY
+
 install $ID migrate-candid-sharing/old-stabilization.mo ""
 upgrade $ID migrate-candid-sharing/new-stabilization.mo ""
 upgrade $ID migrate-candid-sharing/new-stabilization.mo ""

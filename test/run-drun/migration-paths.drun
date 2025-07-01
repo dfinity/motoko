@@ -1,5 +1,3 @@
-# CLASSICAL-PERSISTENCE-ONLY
-# DEFAULT-GC-ONLY
 
 # Start with classical persistence
 install $ID migration-paths/old-installer.mo ""

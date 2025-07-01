@@ -288,23 +288,37 @@ do
     fi
     if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
     then
-      if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+      if [[ $EXTRA_MOC_ARGS == *"--legacy-persistence"* ]]
       then
-        $ECHO " Skipped (not applicable to classical orthogonal persistence)"
+        $ECHO " Skipped (not applicable to legacy/classical persistence)"
         continue
       fi
     fi
     if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo
     then
-      if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+      if [[ $EXTRA_MOC_ARGS != *"--legacy-persistence"* ]]
       then
-        $ECHO " Skipped (not applicable to enhanced persistence)"
+        $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
         continue
       fi
     fi
+    # Check for incompatible combinations.
+    if [[ "${EXTRA_MOC_ARGS:-}" == *"--legacy-persistence"* ]] && grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    then
+      $ECHO " Skipped (legacy persistence not compatible with EOP-only test)"
+      continue
+    fi
+    if [[ "${EXTRA_MOC_ARGS:-}" != *"--legacy-persistence"* ]] && grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo  
+    then
+      $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
+      continue
+    fi
     if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
     then
-      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      # Skip if using legacy persistence with non-incremental GC.
+      if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || \
+        [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || \
+        [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]]
       then
         $ECHO " Skipped (not applicable to incremental gc)"
         continue
@@ -494,14 +508,14 @@ do
       fi
       if grep -q "# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $(basename $file)
       then
-        if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+        if [[ $EXTRA_MOC_ARGS == *"--legacy-persistence"* ]]
         then
           continue
         fi
       fi
       if grep -q "# CLASSICAL-PERSISTENCE-ONLY" $(basename $file)
       then
-        if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+        if [[ $EXTRA_MOC_ARGS != *"--legacy-persistence"* ]]
         then
           continue
         fi
@@ -515,8 +529,17 @@ do
       fi
       if grep -q "# INCREMENTAL-GC-ONLY" $(basename $file)
       then
-        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        # Allow incremental GC tests to run if:
+        # 1. Explicit --incremental-gc flag, OR  
+        # 2. Default EOP mode (no legacy persistence + no other GC flags)
+        if [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]] || \
+           [[ $EXTRA_MOC_ARGS != *"--legacy-persistence"* && \
+              $EXTRA_MOC_ARGS != *"--copying-gc"* && \
+              $EXTRA_MOC_ARGS != *"--compacting-gc"* && \
+              $EXTRA_MOC_ARGS != *"--generational-gc"* ]]
         then
+          : # Test should run
+        else
           $ECHO " Skipped (not applicable to incremental gc)"
           continue
         fi
@@ -536,6 +559,26 @@ do
 
       # collect all .mo files referenced from the file
       mo_files="$(grep -o '[^[:space:]]\+\.mo' $base.drun |sort -u)"
+
+      # Auto-detect mixed persistence tests and skip if using global --legacy-persistence.
+      has_classical=false
+      for mo_file in $mo_files
+      do
+        if grep -q "//MOC-FLAG --legacy-persistence" $mo_file
+        then
+          has_classical=true
+          break
+        fi
+      done
+
+      if [[ "$has_classical" == "true" ]]
+      then
+        if [[ "${EXTRA_MOC_ARGS:-}" == *"--legacy-persistence"* ]]
+        then
+          $ECHO " Skipped (mixed persistence test incompatible with global --legacy-persistence)"
+          continue
+        fi
+      fi
 
       for mo_file in $mo_files
       do

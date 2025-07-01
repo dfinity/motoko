@@ -1,4 +1,3 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
 import Prim "mo:prim";
 
 actor {
@@ -13,7 +12,7 @@ actor {
    };
    stable var counter = 0;
 
-   Prim.debugPrint("INITIALIZED: " # debug_show(counter));
+   Prim.debugPrint("INITIALIZED: " # debug_show (counter));
 
    func insert<K, V>(list : List<K, V>, key : K, value : V) {
       let node : Node<K, V> = ?{ key; value; var next = null };
