@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
+    Flag `--enhanced-orthogonal-persistence` is on by default.
+    Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
+    Flag --legacy-persistence is required to select the legacy `--copying-gc` (the previous default), `--compacting-gc`,  or `generational-gc`.
+
 ## 0.14.14 (2025-06-30)
 
 * motoko (`moc`)
