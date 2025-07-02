@@ -4,7 +4,7 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 import StableMemory "mo:base/ExperimentalStableMemory";
 
-persistent actor StableLog {
+actor StableLog {
 
   func ensure(offset : Nat64) {
     let pages = (offset + 65536) >> 16;

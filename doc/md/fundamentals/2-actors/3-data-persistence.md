@@ -14,11 +14,16 @@ In comparison to other supported languages for building canisters, such as Rust,
 
 Within an actor, you can configure which part of the program is considered to be persistent (retained across upgrades) and which part is ephemeral (reset on upgrades).
 
-More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `transient`. If you don’t provide a modifier, the variable is assumed to be `transient` by default.
+More precisely, each `let` and `var` variable declaration in an actor can specify whether the variable is `stable` or `transient`.
+If you don’t provide a modifier, the variable is assumed to be `stable` by default.
 
 * `stable` means that all values directly or indirectly reachable from that stable variable are considered persistent and are automatically retained across upgrades. This is the primary choice for most of the program's state.
 
 * `transient` means that the variable is re-initialized on upgrade such that the values referenced by the transient variable are discarded, unless the values are transitively reachable by other variables that are stable. `transient` is only used for temporary state or references to high-order types, such as local function references.
+
+:::note
+In versions of Motoko prior to v0.15.0, the default annotation on `let` and `var` declarations was `transient`, not `stable`. You can opt-in to the old behavior using `moc` compiler flag `--non-persistent`.
+:::
 
 :::note
 
@@ -28,17 +33,31 @@ You can only use the `stable`, `transient` (or legacy `flexible`) modifier on `l
 
 The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
 
+``` motoko file=../../examples/Counter.mo
+```
+
+Thanks to defaulting of actor fields to `stable`, this is equivalent to:
+
 ``` motoko file=../../examples/StableCounter.mo
 ```
 
 When you compile and deploy a canister for the first time, all transient and stable variables in the actor are initialized in sequence. When a canister is upgraded, all stable variables that existed in the previous version of the actor are pre-initialized with their old values and the remaining transient and any newly-added stable variables are initialized in sequence.
 
-Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
 
-Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.
+Defaulting all actor fields to `stable` can help prevent unintended data loss.
+
+:::tip
+
+Starting with Motoko v0.13.5, you could prefix the `actor` keyword with the keyword `persistent`, to indicate that all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables would need require an explicit `transient` declaration.
+
+Starting with Motoko v0.15.0, since the default for non-`persistent` actor fields has been changed from `transient` to `stable`, the `persistent` keyword is actually redundant and can be removed if desired.
+
+Although redundant, the `persistent` keyword remains supported for backwards compatibility.
 
 ``` motoko file=../../examples/PersistentCounter.mo
 ```
+
+:::
 
 ## Stable types
 
