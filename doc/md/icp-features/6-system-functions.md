@@ -62,7 +62,7 @@ After upgrading, the `postupgrade()` function (#postupgrade) can restore the sav
 import Iter "mo:base/Iter";
 import HashMap "mo:base/HashMap";
 
-persistent actor Token {
+actor Token {
 
   transient var balances = HashMap.HashMap<Text, Nat>(10, Text.equal, Text.hash); // Non-stable
   var savedBalances : [(Text, Nat)] = []; // implicit stable storage
@@ -83,7 +83,7 @@ This example restores the `balances` `HashMap` using the data that was saved by 
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
 
-persistent actor Token {
+actor Token {
 
   transient var balances = HashMap.HashMap<Text, Nat>(10, Text.equal, Text.hash);
   var savedBalances : [(Text, Nat)] = [];
@@ -122,8 +122,8 @@ The following properties apply to the low memory hook:
 ## `inspect()`
 
 The [`inspect()` system function](https://internetcomputer.org/docs/references/ic-interface-spec#system-api-inspect-message) allows a canister to inspect ingress messages before execution, determining whether to accept or reject them. The function receives a record of message attributes, including the caller’s principal, the raw argument `Blob`, and a variant identifying the target function.
- 
-It returns a `Bool`, where `true` permits execution and `false` rejects the message. Similar to a [query](https://internetcomputer.org/docs/building-apps/essentials/message-execution), any side effects are discarded. If `inspect()` traps, it is equivalent to returning `false`. Unlike other system functions, the argument type of `inspect()` depends on the actor's exposed interface, meaning it can selectively handle different methods or ignore unnecessary fields. 
+
+It returns a `Bool`, where `true` permits execution and `false` rejects the message. Similar to a [query](https://internetcomputer.org/docs/building-apps/essentials/message-execution), any side effects are discarded. If `inspect()` traps, it is equivalent to returning `false`. Unlike other system functions, the argument type of `inspect()` depends on the actor's exposed interface, meaning it can selectively handle different methods or ignore unnecessary fields.
 
 However, `inspect()` should not be used for definitive access control because it runs on a single replica without going through consensus, making it susceptible to boundary node spoofing. Additionally, `inspect()` only applies to [ingress messages](https://internetcomputer.org/docs/building-apps/essentials/message-execution), not [inter-canister calls](https://internetcomputer.org/docs/references/async-code), meaning secure access control must still be enforced within shared functions.
 
@@ -132,8 +132,8 @@ The following actor defines an inspect function that blocks anonymous callers, l
 ```motoko no-repl
 import Principal "mo:base/Principal";
 
-persistent actor Counter {
-  
+actor Counter {
+
   var c = 0;
 
   public func inc() : async () { c += 1 };

@@ -11,11 +11,7 @@ The set of stable types defines the kinds of values that can be transferred from
 Types that cannot be transferred include those whose values depend on the actor's current code, such as non-shared functions or, more generally, objects containing function members. These types are not stable because their behavior cannot be preserved independently of the code that defines them.
 
 :::info
-In Motoko, the treatment of private declarations depends on whether an actor is declared with the `persistent` keyword:
-
-- In actors **without** the `persistent` keyword, all private declarations are considered **transient** by default, unless explicitly marked `stable`.
-
-- In **`persistent` actors**, all private declarations (except function declarations) are considered **stable** by default, unless explicitly marked `transient`.
+In Motoko, all private declarations (except function declarations) are considered **stable** by default, unless explicitly declared `transient`.
 
 Stable variables must have types that belong to the set of stable types.
 Transient variables are not subject to this restriction and may have any type, including non-stable types such as functions or objects with function members.
@@ -58,7 +54,7 @@ Non-shared functions and futures (`async T`) and computations (`async* T`) depen
 Most [primitive types](https://internetcomputer.org/docs/motoko/fundamentals/types/primitive-types) in Motoko are stable.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Numbers, text, booleans and other primitive types are stable
   var counter : Nat = 0;
   var greeting : Text = "Welcome";
@@ -72,7 +68,7 @@ persistent actor {
 Both immutable and mutable collections of stable types are stable.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Immutable arrays are stable
   var usernames : [Text] = ["Motoko", "Ghost"];
 
@@ -86,7 +82,7 @@ persistent actor {
 [Records](https://internetcomputer.org/docs/motoko/fundamentals/types/records) that contain only stable types remain stable, regardless of whether their fields are mutable or immutable.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Records with immutable fields are stable
   var config = {
     appName = "My_Motoko_App";
@@ -107,7 +103,7 @@ persistent actor {
 [Variants](https://internetcomputer.org/docs/motoko/fundamentals/types/variants) are stable when their tags contain only stable types.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Variants with stable tags are stable
   type UserStatus = {
       #online;
@@ -125,7 +121,7 @@ persistent actor {
 [Option](https://internetcomputer.org/docs/motoko/fundamentals/types/options) types are stable when they contain stable types.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Option types with stable inner types are stable
   var optionalDeadline : ?Nat = ?1640995200000;
   var optionalMessage : ?Text = null;
@@ -137,7 +133,7 @@ persistent actor {
 The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Regions are stable
   var storage : Region = Region.new();
   }
@@ -148,7 +144,7 @@ persistent actor {
 References to [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) are stable, allowing stable canister-to-canister interactions.
 
 ```motoko no-repl
-persistent actor {
+actor {
   // Actor types are stable
   type LoggerActor = actor {
       log : shared (message : Text) -> async ();
@@ -162,7 +158,7 @@ persistent actor {
 Simple objects with mutable fields (but no methods) are stable. Such simple objects are the same as records.
 
 ```motoko no-repl
-persistent actor {
+actor {
   object user = {
       var name = "Motoko";
       var loginCount = 0;

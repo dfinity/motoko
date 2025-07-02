@@ -256,7 +256,7 @@ A function call executes a function by passing arguments and receiving a result.
 ```motoko no-repl
 import Nat "mo:base/Nat";
 
-persistent actor {
+actor {
 
   func processNumbers(numbers : [Int]) : Int {
     var sum : Int = 0;
