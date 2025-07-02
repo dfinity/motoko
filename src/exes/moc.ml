@@ -194,8 +194,9 @@ let argspec = [
 
   (* persistence *)
   "--enhanced-orthogonal-persistence",
-  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true;
+                      Flags.explicit_enhanced_orthogonal_persistence := true),
+  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory. Also, enable upgrade from classical to enhanced orthogonal persistence";
 
   (* persistence *)
   "--legacy-persistence",
