@@ -23,4 +23,8 @@ Classical orthogonal persistence, the default compilation mode in previous versi
 
 Although it is possible to upgrade a canister compiled with classical persistence to one compiled with enhanced-orthogonal-persistence, downgrades from enhanced to classical are *not* supported.
 
+As a safeguard, to protect users from unwittingly, and irreversibly, upgrading from classical to enhanced orthogonal persistence, such upgrades will fail unless the new code is compiled with flag `--enhanced-orthogonal-persistence` explicitly set.
+
+New projects should not require the flag at all (#5308) and will simply adopt enhanced mode. Only projects that wish to transition from classical to enhanced orthogonal persistence should explicitly set `--enhanced-orthogonal-persistence` to disable the safeguard and opt-in to enhanced mode.
+
 :::

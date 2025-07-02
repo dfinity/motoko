@@ -203,6 +203,10 @@ let argspec = [
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
   " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
 
+  "-unguarded-enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
+  "  (internal testing only)";
+
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = limit;
