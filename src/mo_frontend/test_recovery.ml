@@ -63,7 +63,7 @@ let%expect_test "test1" =
                   (AnnotE (LitE (PreLit 1 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
               (DecField
                 (LetD
@@ -71,7 +71,7 @@ let%expect_test "test1" =
                   (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
               (DecField
                 (LetD
@@ -79,7 +79,7 @@ let%expect_test "test1" =
                   (AnnotE (LitE (PreLit 3 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
               (DecField
                 (LetD
@@ -87,7 +87,7 @@ let%expect_test "test1" =
                   (AnnotE (LitE (PreLit 4 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
             )
           )
@@ -169,7 +169,7 @@ let%expect_test "test2" =
                   )
                 )
                 Private
-                Flexible
+                Stable
               )
               (DecField
                 (LetD
@@ -177,7 +177,7 @@ let%expect_test "test2" =
                   (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
             )
           )
@@ -248,7 +248,7 @@ let%expect_test "test3" =
                   (AnnotE (LitE (PreLit 2 Nat)) (PathT (IdH (ID Int))))
                 )
                 Private
-                Flexible
+                Stable
               )
             )
           )
@@ -297,7 +297,7 @@ actor Main {
               _
               Actor
               Main
-              (DecField (LetD (VarP (ID x)) (LitE (PreLit 1 Nat))) Private Flexible)
+              (DecField (LetD (VarP (ID x)) (LitE (PreLit 1 Nat))) Private Stable)
               (DecField
                 (ExpD
                   (FuncE
