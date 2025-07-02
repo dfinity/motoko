@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Classical orthogonal persistence
 
-Classical orthogonal persistence is the legacy implementation of Motoko's orthogonal persistence. Classical persistence will be deprecated in the future in favor of enhanced orthogonal persistence.
+Classical orthogonal persistence is the legacy implementation of Motoko's orthogonal persistence. Classical persistence is deprecated in favor of enhanced orthogonal persistence.
 
 Upon upgrade, the classical orthogonal persistence mechanism serializes all stable data to the stable memory and then deserializes it back to the main memory. This has several downsides:
 
@@ -21,3 +21,22 @@ Moreover, it is ideal to have a backup plan to rescue data even if upgrades fail
 :::
 
 These issues are solved by [enhanced orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/enhanced).
+
+
+:::info
+Classical orthogonal persistence was previously the default compilation mode for Motoko code. Going forward, the default compilation mode is enhanced orthogonal persistence,
+previously available only with `moc` compiler flag `--enhanced-orthogonal-persistence`.
+
+Users unwilling or unable to migrate their code can re-enable support for classical orthogonal persistence using the new compiler flag `--legacy-persistence`.
+
+To re-activate classical orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+```
+...
+    "type" : "motoko"
+    ...
+    "args" : "--legacy-persistence"
+...
+```
+:::
+
