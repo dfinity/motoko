@@ -21,7 +21,7 @@ Example for use on the ICP:
 ```motoko no-repl
 import Cycles "mo:core/Cycles";
 
-actor {
+persistent actor {
   public func main() : async () {
     let initialBalance = Cycles.balance();
     await (with cycles = 15_000_000) operation(); // accepts 10_000_000 cycles
@@ -51,7 +51,7 @@ Example for use on the ICP:
 ```motoko no-repl
 import Cycles "mo:core/Cycles";
 
-actor {
+persistent actor {
   public func main() : async() {
     let balance = Cycles.balance();
     assert balance > 0;
@@ -74,7 +74,7 @@ Example for use on the ICP:
 ```motoko no-repl
 import Cycles "mo:core/Cycles";
 
-actor {
+persistent actor {
   public func main() : async() {
     let available = Cycles.available();
     assert available >= 0;
@@ -95,7 +95,7 @@ Example for use on the ICP (for simplicity, only transferring cycles to itself):
 ```motoko no-repl
 import Cycles "mo:core/Cycles";
 
-actor {
+persistent actor {
   public func main() : async() {
     await (with cycles = 15_000_000) operation(); // accepts 10_000_000 cycles
   };
@@ -122,7 +122,7 @@ Example for use on the ICP (for simplicity, only transferring cycles to itself):
 ```motoko no-repl
 import Cycles "mo:core/Cycles";
 
-actor {
+persistent actor {
   func operation() : async() {
     ignore Cycles.accept<system>(10_000_000);
   };

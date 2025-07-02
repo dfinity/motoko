@@ -13,7 +13,7 @@ of where you might see Principals, you can access the Principal of the
 caller of your shared function.
 
 ```motoko no-repl
-actor {
+persistent actor {
   public shared(msg) func foo() {
     let caller : Principal = msg.caller;
   };

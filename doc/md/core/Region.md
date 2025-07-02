@@ -68,7 +68,7 @@ Allocate a new, isolated Region of size 0.
 Example:
 
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     assert Region.size(region) == 0;
@@ -90,7 +90,7 @@ Allocate a new, isolated Region of size 0.
 Example:
 
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     assert Region.id(region) == 16;
@@ -111,7 +111,7 @@ stable memory.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let beforeSize = Region.size(region);
@@ -139,7 +139,7 @@ Example:
 ```motoko no-repl include=import
 import Error "mo:core/Error";
 
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let beforeSize = Region.grow(region, 10);
@@ -162,7 +162,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -183,7 +183,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -204,7 +204,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -225,7 +225,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -246,7 +246,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -267,7 +267,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -288,7 +288,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -309,7 +309,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -330,7 +330,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -351,7 +351,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -372,7 +372,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -393,7 +393,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -414,7 +414,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -435,7 +435,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -456,7 +456,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -477,7 +477,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -498,7 +498,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -519,7 +519,7 @@ Traps on an out-of-bounds access.
 
 Example:
 ```motoko no-repl include=import
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -542,7 +542,7 @@ Example:
 ```motoko no-repl include=import
 import Blob "mo:core/Blob";
 
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;
@@ -566,7 +566,7 @@ Example:
 ```motoko no-repl include=import
 import Blob "mo:core/Blob";
 
-actor {
+persistent actor {
   public func example() : async () {
     let region = Region.new();
     let offset : Nat64 = 0;

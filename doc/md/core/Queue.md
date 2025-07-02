@@ -11,7 +11,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let orders = Queue.empty<Text>();
   Queue.pushBack(orders, "Motoko");
   Queue.pushBack(orders, "Mops");
@@ -47,7 +47,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   let pureQueue = Queue.toPure<Nat>(queue);
 }
@@ -69,7 +69,7 @@ Example:
 import Queue "mo:core/Queue";
 import PureQueue "mo:core/pure/Queue";
 
-actor {
+persistent actor {
   let pureQueue = PureQueue.fromIter<Nat>([1, 2, 3].values());
   let queue = Queue.fromPure<Nat>(pureQueue);
 }
@@ -90,7 +90,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.empty<Text>();
   assert Queue.size(queue) == 0;
 }
@@ -110,7 +110,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.singleton<Nat>(123);
   assert Queue.size(queue) == 1;
 }
@@ -130,7 +130,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   Queue.clear(queue);
   assert Queue.isEmpty(queue);
@@ -151,7 +151,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let original = Queue.fromIter<Nat>([1, 2, 3].values());
   let copy = Queue.clone(original);
   Queue.clear(original);
@@ -175,7 +175,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Text>(["A", "B", "C"].values());
   assert Queue.size(queue) == 3;
 }
@@ -195,7 +195,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.empty<Nat>();
   assert Queue.isEmpty(queue);
 }
@@ -216,7 +216,7 @@ Example:
 import Queue "mo:core/Queue";
 import Nat "mo:core/Nat";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.contains(queue, Nat.equal, 2);
 }
@@ -238,7 +238,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.peekFront(queue) == ?1;
 }
@@ -259,7 +259,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.peekBack(queue) == ?3;
 }
@@ -279,7 +279,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.empty<Nat>();
   Queue.pushFront(queue, 1);
   assert Queue.peekFront(queue) == ?1;
@@ -300,7 +300,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.empty<Nat>();
   Queue.pushBack(queue, 1);
   assert Queue.peekBack(queue) == ?1;
@@ -322,7 +322,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.popFront(queue) == ?1;
   assert Queue.size(queue) == 2;
@@ -344,7 +344,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.popBack(queue) == ?3;
   assert Queue.size(queue) == 2;
@@ -365,7 +365,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Text>(["A", "B", "C"].values());
   assert Queue.size(queue) == 3;
 }
@@ -386,7 +386,7 @@ Iterates from front to back.
 Example:
 ```motoko
 import Queue "mo:core/Queue";
-actor {
+persistent actor {
   let queue = Queue.fromIter<Text>(["A", "B", "C"].values());
   transient let iter = Queue.values(queue);
   assert iter.next() == ?"A";
@@ -410,7 +410,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([2, 4, 6].values());
   assert Queue.all<Nat>(queue, func(x) { x % 2 == 0 });
 }
@@ -430,7 +430,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.any<Nat>(queue, func (x) { x > 2 });
 }
@@ -451,7 +451,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   var sum = 0;
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   Queue.forEach<Nat>(queue, func(x) { sum += x });
@@ -474,7 +474,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   let doubled = Queue.map<Nat, Nat>(queue, func(x) { x * 2 });
   assert Queue.peekFront(doubled) == ?2;
@@ -496,7 +496,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3, 4].values());
   let evens = Queue.filter<Nat>(queue, func(x) { x % 2 == 0 });
   assert Queue.size(evens) == 2;
@@ -519,7 +519,7 @@ Example:
 ```motoko
 import Queue "mo:core/Queue";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3, 4].values());
   let evenDoubled = Queue.filterMap<Nat, Nat>(
     queue,
@@ -547,7 +547,7 @@ Example:
 import Queue "mo:core/Queue";
 import Nat "mo:core/Nat";
 
-actor {
+persistent actor {
   let queue1 = Queue.fromIter<Nat>([1, 2, 3].values());
   let queue2 = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.equal(queue1, queue2, Nat.equal);
@@ -570,7 +570,7 @@ Example:
 import Queue "mo:core/Queue";
 import Nat "mo:core/Nat";
 
-actor {
+persistent actor {
   let queue = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.toText(queue, Nat.toText) == "Queue[1, 2, 3]";
 }
@@ -593,7 +593,7 @@ Example:
 import Queue "mo:core/Queue";
 import Nat "mo:core/Nat";
 
-actor {
+persistent actor {
   let queue1 = Queue.fromIter<Nat>([1, 2].values());
   let queue2 = Queue.fromIter<Nat>([1, 2, 3].values());
   assert Queue.compare(queue1, queue2, Nat.compare) == #less;

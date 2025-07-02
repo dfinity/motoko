@@ -19,7 +19,7 @@ Example:
 import IC "mo:core/InternetComputer";
 import Principal "mo:core/Principal";
 
-actor {
+persistent actor {
   type OutputType = { decimals : Nat32 };
 
   public func example() : async ?OutputType {

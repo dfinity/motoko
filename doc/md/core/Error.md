@@ -95,7 +95,7 @@ Example:
 import Error "mo:core/Error";
 import Debug "mo:core/Debug";
 
-actor {
+persistent actor {
   type CallableActor = actor {
     call : () -> async ()
   };

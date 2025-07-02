@@ -7,7 +7,7 @@ The following example illustrates using the system time:
 import Int = "mo:core/Int";
 import Time = "mo:core/Time";
 
-actor {
+persistent actor {
   var lastTime = Time.now();
 
   public func greet(name : Text) : async Text {
