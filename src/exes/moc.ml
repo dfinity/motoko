@@ -150,19 +150,19 @@ let argspec = [
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC (only available with classical persistence)";
+  " use generational GC (only available with legacy/classical persistence)";
 
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC (default with enhanced orthogonal persistence)";
+  " use incremental GC (default, works with both enhanced orthogonal persistence and legacy/classical persistence)";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC (only available with classical persistence)";
+  " use compacting GC (only available with legacy/classical persistence)";
 
   "--copying-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default and only available with classical persistence)";
+  " use copying GC (only available with legacy/classical persistence)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
@@ -195,23 +195,23 @@ let argspec = [
   (* persistence *)
   "--enhanced-orthogonal-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " Use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory.";
 
   (* persistence *)
   "--legacy-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
-  " Use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
+  " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
-    upgrade = limit; 
+    upgrade = limit;
     update_call = limit;
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   "--stable-memory-access-limit",
   Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
-    upgrade = limit; 
+    upgrade = limit;
     update_call = limit;
   })),
   "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
