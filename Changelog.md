@@ -2,6 +2,12 @@
 
 * motoko (`moc`)
 
+  * Breaking change: in non-`persistent` actors and actor classes, actor fields are now implicitly `stable` unless explicitly declared `transient` (#5310).
+    This flips the defaults for non-`persistent` actors. It also makes the `persistent` keyword redundant. Code that uses the `persistent` keyword is free to delete it.
+    Code that did not use the persistent keyword when declaring actor (classes) should carefully review all actor (class) fields, declare previously defaulting actor declarations `transient` and consider removing any explicit `stable` modifiers.
+
+    A new compiler flag, `--non-persistent`, may be used to revert the compiler to the previous behaviour, defaulting declarations in non-`persistent` actors to `transient` (as before).
+
   * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
     Flag `--enhanced-orthogonal-persistence` is on by default.
     Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
