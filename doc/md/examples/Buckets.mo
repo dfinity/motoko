@@ -1,7 +1,7 @@
 import Nat "mo:base/Nat";
 import Map "mo:base/OrderedMap";
 
-persistent actor class Bucket(n : Nat, i : Nat) {
+actor class Bucket(n : Nat, i : Nat) {
 
   type Key = Nat;
   type Value = Text;

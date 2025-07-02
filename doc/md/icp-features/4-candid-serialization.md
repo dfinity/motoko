@@ -105,7 +105,7 @@ In this example, use the imported `call` function to make a dynamic call on the 
 import Principal "mo:base/Principal";
 import {call} "mo:base/ExperimentalInternetComputer";
 
-persistent actor This {
+actor This {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";

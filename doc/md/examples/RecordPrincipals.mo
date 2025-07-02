@@ -2,7 +2,7 @@ import Principal "mo:base/Principal";
 import OrderedSet "mo:base/OrderedSet";
 import Error "mo:base/Error";
 
-persistent actor {
+actor {
 
     transient let principalSet = OrderedSet.Make<Principal>(Principal.compare);
 

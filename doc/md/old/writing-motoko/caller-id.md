@@ -29,7 +29,7 @@ The calls to the `inc()` function do not change. At each call site, the callerâ€
 To access the caller of an actor class constructor, you use the same syntax on the actor class declaration. For example:
 
 ``` motoko
-shared(msg) persistent actor class Counter(init : Nat) {
+shared(msg) actor class Counter(init : Nat) {
   // ... msg.caller ...
 }
 ```
@@ -72,7 +72,7 @@ import Principal "mo:base/Principal";
 import OrderedSet "mo:base/OrderedSet";
 import Error "mo:base/Error";
 
-persistent actor {
+actor {
 
     // Create set to store principals
     transient var principalSet = Set.Make(Principal.compare);

@@ -30,7 +30,7 @@ Since actors process messages independently, multiple actors can handle messages
 
 ```motoko name=Main
 // Declares an actor named Main.
-persistent actor Main {
+actor Main {
   // Define a private variable called 'count' to track the number of greetings.
   var count : Nat = 0;
 

@@ -1,7 +1,7 @@
 import Text "mo:base/Text";
 import Debug "mo:base/Debug";
 
-persistent actor {
+actor {
 
   public func tryFunction() {
    try {

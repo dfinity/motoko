@@ -8,7 +8,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([3, 1, 2, 3].values(), Nat.compare);
   assert Set.size(set) == 3;
   assert not Set.contains(set, Nat.compare, 4);
@@ -59,7 +59,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.fromIter([3, 1, 2, 1].values(), Nat.compare);
   assert Iter.toArray(Set.values(set)) == [1, 2, 3];
 }
@@ -88,7 +88,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set0 = Set.empty<Nat>();
   let set1 = Set.add(set0, Nat.compare, 2);
   let set2 = Set.add(set1, Nat.compare, 1);
@@ -124,7 +124,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set0 = Set.empty();
   do {
     let (set1, new1) = Set.insert(set0, Nat.compare, 2);
@@ -160,7 +160,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.fromIter([1, 2, 3].values(), Nat.compare);
 
   let set1 = Set.remove(set, Nat.compare, 2);
@@ -193,7 +193,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.fromIter([1, 2, 3].values(), Nat.compare);
   do {
     let (set1, contained1) = Set.delete(set, Nat.compare, 2);
@@ -229,7 +229,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Bool "mo:core/Bool";
 
-persistent actor {
+actor {
   let set = Set.fromIter([3, 1, 2].values(), Nat.compare);
 
   assert Set.contains(set, Nat.compare, 1);
@@ -254,7 +254,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter<Nat>([0, 2, 1].values(), Nat.compare);
   let set2 = Set.empty<Nat>();
   assert Set.max(set1) == ?2;
@@ -279,7 +279,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter<Nat>([2, 0, 1].values(), Nat.compare);
   let set2 = Set.empty<Nat>();
   assert Set.min(set1) == ?0;
@@ -307,7 +307,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([1, 2, 3].values(), Nat.compare);
   let set2 = Set.fromIter([3, 4, 5].values(), Nat.compare);
   let union = Set.union(set1, set2, Nat.compare);
@@ -336,7 +336,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([0, 1, 2].values(), Nat.compare);
   let set2 = Set.fromIter([1, 2, 3].values(), Nat.compare);
   let intersection = Set.intersection(set1, set2, Nat.compare);
@@ -365,7 +365,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([1, 2, 3].values(), Nat.compare);
   let set2 = Set.fromIter([3, 4, 5].values(), Nat.compare);
   let difference = Set.difference(set1, set2, Nat.compare);
@@ -396,7 +396,7 @@ import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let numbers = Set.fromIter([3, 1, 2].values(), Nat.compare);
 
   let textNumbers =
@@ -425,7 +425,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let numbers = Set.fromIter([0, 3, 1, 2].values(), Nat.compare);
 
   var text = "";
@@ -456,7 +456,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let numbers = Set.fromIter([0, 3, 1, 2].values(), Nat.compare);
 
   let evenNumbers = Set.filter<Nat>(numbers, Nat.compare, func (number) {
@@ -488,7 +488,7 @@ import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let numbers = Set.fromIter([3, 0, 2, 1].values(), Nat.compare);
 
   let evenTextNumbers = Set.filterMap<Nat, Text>(numbers, Text.compare, func (number) {
@@ -527,7 +527,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([1, 2].values(), Nat.compare);
   let set2 = Set.fromIter([2, 1, 0].values(), Nat.compare);
   let set3 = Set.fromIter([3, 4].values(), Nat.compare);
@@ -554,7 +554,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([1, 2].values(), Nat.compare);
   let set2 = Set.fromIter([2, 1].values(), Nat.compare);
   let set3 = Set.fromIter([2, 1, 0].values(), Nat.compare);
@@ -593,7 +593,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([0, 1].values(), Nat.compare);
   let set2 = Set.fromIter([0, 2].values(), Nat.compare);
 
@@ -623,7 +623,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([0, 2, 3, 1].values(), Nat.compare);
 
   var text = "";
@@ -653,7 +653,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([0, 2, 3, 1].values(), Nat.compare);
 
   var tmp = "";
@@ -683,7 +683,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.empty<Nat>();
   assert Iter.toArray(Set.values(set)) == [];
 }
@@ -705,7 +705,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.singleton(0);
   assert Iter.toArray(Set.values(set)) == [0];
 }
@@ -726,7 +726,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([0, 3, 2, 1, 3].values(), Nat.compare);
 
   assert Set.size(set) == 4;
@@ -749,7 +749,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([0, 3, 2, 1].values(), Nat.compare);
 
   let text = Set.foldLeft<Nat, Text>(
@@ -780,7 +780,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter([0, 3, 2, 1].values(), Nat.compare);
 
   let text = Set.foldRight<Nat, Text>(
@@ -810,7 +810,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set1 = Set.empty<Nat>();
   let set2 = Set.singleton<Nat>(1);
 
@@ -836,7 +836,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter<Nat>([0, 3, 1, 2].values(), Nat.compare);
 
   let belowTen = Set.all<Nat>(set, func (number) {
@@ -864,7 +864,7 @@ Example:
 import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let set = Set.fromIter<Nat>([0, 3, 1, 2].values(), Nat.compare);
 
   let aboveTen = Set.any<Nat>(set, func (number) {
@@ -900,7 +900,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set = Set.fromIter<Nat>([0, 3, 1, 2].values(), Nat.compare);
 
   assert Set.toText(set, Nat.toText) == "PureSet{0, 1, 2, 3}";
@@ -933,7 +933,7 @@ import Nat "mo:core/Nat";
 import Order "mo:core/Order";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   func setCompare(first: Set.Set<Nat>, second: Set.Set<Nat>) : Order.Order {
      Set.compare(first, second, Nat.compare)
   };
@@ -970,7 +970,7 @@ import Set "mo:core/pure/Set";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let set1 = Set.fromIter([1, 2, 3].values(), Nat.compare);
   let set2 = Set.fromIter([3, 4, 5].values(), Nat.compare);
   let set3 = Set.fromIter([5, 6, 7].values(), Nat.compare);

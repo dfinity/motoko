@@ -175,7 +175,7 @@ For example, you can write a `Counter` class that takes an argument of type `Nat
 ``` motoko no-repl
 import Nat "mo:base/Nat";
 
-persistent actor {
+actor {
 
   class Counter(init : Nat, flag : Bool) {
     var c = init;

@@ -8,7 +8,7 @@ Example:
 import Stack "mo:core/Stack";
 import Debug "mo:core/Debug";
 
-persistent actor {
+actor {
   let levels = Stack.empty<Text>();
   Stack.push(levels, "Inner");
   Stack.push(levels, "Middle");
@@ -47,7 +47,7 @@ import Stack "mo:core/Stack";
 import PureList "mo:core/pure/List";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let mutableStack = Stack.empty<Nat>();
   Stack.push(mutableStack, 3);
   Stack.push(mutableStack, 2);
@@ -75,7 +75,7 @@ import Stack "mo:core/Stack";
 import PureList "mo:core/pure/List";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let immutableList = PureList.fromIter<Nat>([1, 2, 3].values());
   let mutableStack = Stack.fromPure<Nat>(immutableList);
   assert Iter.toArray(Stack.values(mutableStack)) == [1, 2, 3];
@@ -98,7 +98,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Text>();
   assert Stack.size(stack) == 0;
 }
@@ -121,7 +121,7 @@ Example:
 import Stack "mo:core/Stack";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let stack = Stack.tabulate<Nat>(3, func(i) { 2 * i });
   assert Iter.toArray(Stack.values(stack)) == [4, 2, 0];
 }
@@ -143,7 +143,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.singleton<Text>("motoko");
   assert Stack.peek(stack) == ?"motoko";
 }
@@ -163,7 +163,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   Stack.clear(stack);
   assert Stack.isEmpty(stack);
@@ -185,7 +185,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let original = Stack.fromIter<Nat>([3, 2, 1].values());
   let copy = Stack.clone(original);
   assert Stack.equal(copy, original, Nat.equal);
@@ -207,7 +207,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   assert Stack.isEmpty(stack);
 }
@@ -227,7 +227,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.size(stack) == 3;
 }
@@ -249,7 +249,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.contains(stack, 2, Nat.equal);
 }
@@ -271,7 +271,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 42);
   assert Stack.peek(stack) == ?42;
@@ -293,7 +293,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -317,7 +317,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -345,7 +345,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Char>();
   Stack.push(stack, 'c');
   Stack.push(stack, 'b');
@@ -372,7 +372,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -402,7 +402,7 @@ import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -426,7 +426,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([2, 4, 6].values());
   assert Stack.all<Nat>(stack, func(n) = n % 2 == 0);
 }
@@ -448,7 +448,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.any<Nat>(stack, func(n) = n == 2);
 }
@@ -472,7 +472,7 @@ import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 import Debug "mo:core/Debug";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -501,7 +501,7 @@ Example:
 import Stack "mo:core/Stack";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 3);
   Stack.push(stack, 2);
@@ -531,7 +531,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 4);
   Stack.push(stack, 3);
@@ -562,7 +562,7 @@ Example:
 ```motoko
 import Stack "mo:core/Stack";
 
-persistent actor {
+actor {
   let stack = Stack.empty<Nat>();
   Stack.push(stack, 4);
   Stack.push(stack, 3);
@@ -598,7 +598,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let stack1 = Stack.fromIter<Nat>([3, 2, 1].values());
   let stack2 = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.equal(stack1, stack2, Nat.equal);
@@ -624,7 +624,7 @@ Example:
 import Stack "mo:core/Stack";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Iter.toArray(Stack.values(stack)) == [1, 2, 3];
 }
@@ -647,7 +647,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let stack = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.toText(stack, Nat.toText) == "Stack[1, 2, 3]";
 }
@@ -670,7 +670,7 @@ Example:
 import Stack "mo:core/Stack";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let stack1 = Stack.fromIter<Nat>([2, 1].values());
   let stack2 = Stack.fromIter<Nat>([3, 2, 1].values());
   assert Stack.compare(stack1, stack2, Nat.compare) == #less;

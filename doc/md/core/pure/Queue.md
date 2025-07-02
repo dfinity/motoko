@@ -45,7 +45,7 @@ Create a new empty queue.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.empty<Nat>();
   assert Queue.isEmpty(queue);
 }
@@ -65,7 +65,7 @@ Returns true if `queue` is empty, otherwise `false`.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.empty<Nat>();
   assert Queue.isEmpty(queue);
 }
@@ -84,7 +84,7 @@ Create a new queue comprising a single element.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.singleton(25);
   assert Queue.size(queue) == 1;
 }
@@ -103,7 +103,7 @@ Determine the number of elements contained in a queue.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.singleton(42);
   assert Queue.size(queue) == 1;
 }
@@ -127,7 +127,7 @@ Example:
 ```motoko include=import
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   assert Queue.contains(queue, Nat.equal, 2);
   assert not Queue.contains(queue, Nat.equal, 4);
@@ -148,7 +148,7 @@ Returns `null` if `queue` is empty. Otherwise, the front element of `queue`.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.pushFront(Queue.pushFront(Queue.empty(), 2), 1);
   assert Queue.peekFront(queue) == ?1;
 }
@@ -168,7 +168,7 @@ Returns `null` if `queue` is empty. Otherwise, the back element of `queue`.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.pushBack(Queue.pushBack(Queue.empty(), 1), 2);
   assert Queue.peekBack(queue) == ?2;
 }
@@ -190,7 +190,7 @@ This may involve dynamic rebalancing of the two, internally used lists.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.pushFront(Queue.pushFront(Queue.empty(), 2), 1);
   assert Queue.peekFront(queue) == ?1;
   assert Queue.peekBack(queue) == ?2;
@@ -216,7 +216,7 @@ This may involve dynamic rebalancing of the two, internally used lists.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.pushBack(Queue.pushBack(Queue.empty(), 1), 2);
   assert Queue.peekBack(queue) == ?2;
   assert Queue.size(queue) == 2;
@@ -244,7 +244,7 @@ Example:
 ```motoko include=import
 import Runtime "mo:core/Runtime";
 
-persistent actor {
+actor {
   let initial = Queue.pushBack(Queue.pushBack(Queue.empty(), 1), 2);
   // initial queue with elements [1, 2]
   switch (Queue.popFront(initial)) {
@@ -279,7 +279,7 @@ Example:
 ```motoko include=import
 import Runtime "mo:core/Runtime";
 
-persistent actor {
+actor {
   let initial = Queue.pushBack(Queue.pushBack(Queue.empty(), 1), 2);
   // initial queue with elements [1, 2]
   let reduced = Queue.popBack(initial);
@@ -309,7 +309,7 @@ func fromIter<T>(iter : Iter.Iter<T>) : Queue<T>
 Turn an iterator into a queue, consuming it.
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([0, 1, 2, 3, 4].values());
   assert Queue.size(queue) == 5;
 }
@@ -332,7 +332,7 @@ Example:
 ```motoko include=import
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   assert Iter.toArray(Queue.values(queue)) == [1, 2, 3];
 }
@@ -353,7 +353,7 @@ Example:
 ```motoko include=import
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let queue1 = Queue.fromIter([1, 2].values());
   let queue2 = Queue.fromIter([1, 2].values());
   let queue3 = Queue.fromIter([1, 3].values());
@@ -376,7 +376,7 @@ elements.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   let allGreaterThanOne = Queue.all<Nat>(queue, func n = n > 1);
   assert not allGreaterThanOne; // false because 1 is not > 1
@@ -399,7 +399,7 @@ the given predicate `f` is true.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   let hasGreaterThanOne = Queue.any<Nat>(queue, func n = n > 1);
   assert hasGreaterThanOne; // true because 2 and 3 are > 1
@@ -422,7 +422,7 @@ The order of visiting elements is front-to-back.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   var text = "";
   let queue = Queue.fromIter(["A", "B", "C"].values());
   Queue.forEach<Text>(queue, func n = text #= n);
@@ -451,7 +451,7 @@ Example:
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let queue = Queue.fromIter([0, 1, 2].values());
   let textQueue = Queue.map<Nat, Text>(queue, Nat.toText);
   assert Iter.toArray(Queue.values(textQueue)) == ["0", "1", "2"];
@@ -476,7 +476,7 @@ Note: The order of visiting elements is undefined with the current implementatio
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([0, 1, 2, 1].values());
   let filtered = Queue.filter<Nat>(queue, func n = n != 1);
   assert Queue.size(filtered) == 2;
@@ -501,7 +501,7 @@ Note: The order of visiting elements is undefined with the current implementatio
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   let doubled = Queue.filterMap<Nat, Nat>(
     queue,
@@ -529,7 +529,7 @@ Example:
 ```motoko include=import
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   assert Queue.toText(queue, Nat.toText) == "PureQueue[1, 2, 3]";
 }
@@ -550,7 +550,7 @@ Example:
 ```motoko include=import
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let queue1 = Queue.fromIter([1, 2].values());
   let queue2 = Queue.fromIter([1, 3].values());
   assert Queue.compare(queue1, queue2, Nat.compare) == #less;
@@ -573,7 +573,7 @@ This operation is cheap, it does NOT require copying the elements.
 
 Example:
 ```motoko include=import
-persistent actor {
+actor {
   let queue = Queue.fromIter([1, 2, 3].values());
   let reversed = Queue.reverse(queue);
   assert Queue.peekFront(reversed) == ?3;

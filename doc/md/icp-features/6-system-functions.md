@@ -62,7 +62,7 @@ After upgrading, the `postupgrade()` function (#postupgrade) can restore the sav
 import Iter "mo:base/Iter";
 import HashMap "mo:base/HashMap";
 
-persistent actor Token {
+actor Token {
 
   transient var balances = HashMap.HashMap<Text, Nat>(10, Text.equal, Text.hash); // Non-stable
   var savedBalances : [(Text, Nat)] = []; // implicit stable storage
@@ -83,7 +83,7 @@ This example restores the `balances` `HashMap` using the data that was saved by 
 ```motoko no-repl
 import HashMap "mo:base/HashMap";
 
-persistent actor Token {
+actor Token {
 
   transient var balances = HashMap.HashMap<Text, Nat>(10, Text.equal, Text.hash);
   var savedBalances : [(Text, Nat)] = [];
@@ -132,7 +132,7 @@ The following actor defines an inspect function that blocks anonymous callers, l
 ```motoko no-repl
 import Principal "mo:base/Principal";
 
-persistent actor Counter {
+actor Counter {
   
   var c = 0;
 

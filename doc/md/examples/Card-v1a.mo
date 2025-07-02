@@ -1,6 +1,6 @@
 import Array "mo:base/Array";
 
-persistent actor {
+actor {
   type OldCard = {
     title : Text;
   };

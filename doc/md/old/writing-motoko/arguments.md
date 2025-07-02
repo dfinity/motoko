@@ -13,7 +13,7 @@ Arguments can be passed to an actor's function for the function to use as input.
 First, define an argument that has a `location` function and the `name` argument with a `city` argument:
 
 ```motoko
-persistent actor {
+actor {
   public func location(city : Text) : async Text {
     return "Hello, " # city # "!";
   };
@@ -33,7 +33,7 @@ You might want to try modifying the source code to return different results. For
 Revise the `location` function with two new functions:
 
 ```motoko
-persistent actor {
+actor {
 
   public func location(cities : [Text]) : async Text {
     return "Hello, from " # (debug_show cities) # "!";

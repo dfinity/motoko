@@ -1,6 +1,6 @@
 import Cycles "mo:base/ExperimentalCycles";
 
-shared(msg) persistent actor class PiggyBank(
+shared(msg) actor class PiggyBank(
   benefit : shared () -> async (),
   capacity: Nat
   ) {

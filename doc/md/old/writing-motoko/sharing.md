@@ -43,7 +43,7 @@ The publisher side of the code stores an array of subscribers. For simplicity, a
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-persistent actor Publisher {
+actor Publisher {
 
   var subs : [Subscriber] = [];
 
@@ -74,7 +74,7 @@ In the simplest case, the subscriber actor has the following methods:
 The following code illustrates implementing these methods:
 
 ``` motoko no-repl
-persistent actor Subscriber {
+actor Subscriber {
 
   var count : Nat = 0;
 
@@ -133,7 +133,7 @@ Notably, the `actor` keyword means that this latter type is not an ordinary reco
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
 ``` motoko no-repl
-persistent actor Subscriber {
+actor Subscriber {
 
   var count : Nat = 0;
 
@@ -158,7 +158,7 @@ Likewise, we can update the publisher to have a matching interface:
 ``` motoko no-repl
 import Array "mo:base/Array";
 
-persistent actor Publisher {
+actor Publisher {
 
   var subs : [SubscribeMessage] = [];
 

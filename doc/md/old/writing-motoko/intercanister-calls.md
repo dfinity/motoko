@@ -40,7 +40,7 @@ Below is an example implementation of `foo` (`src/Foo.mo`) which calls the `bar`
 ```motoko no-repl
 import Bar "canister:bar";
 
-persistent actor Foo {
+actor Foo {
 
   public func main() : async Nat {
     let value = await Bar.getValue(); // Call a method on the `bar` canister
@@ -55,7 +55,7 @@ Below is an implementation for `bar` (`src/Bar.mo`):
 ```motoko
 import Debug "mo:base/Debug";
 
-persistent actor Bar {
+actor Bar {
 
   public func getValue() : async Nat {
     Debug.print("Hello from the `bar` canister!");
@@ -81,7 +81,7 @@ The output should resemble the following:
 You can also use a canister ID to access a previously deployed canister as shown in this alternate implementation of `foo`:
 
 ```motoko
-persistent actor Foo {
+actor Foo {
   public func main(canisterId: Text) : async Nat {
     let Bar = actor(canisterId): actor {
       getValue: () -> async Nat; // Define the expected canister interface
@@ -109,7 +109,7 @@ Here is an example which you can modify for your specific use case:
 import IC "mo:base/ExperimentalInternetComputer";
 import Debug "mo:base/Debug";
 
-persistent actor AdvancedCanister1 {
+actor AdvancedCanister1 {
 
   public func main(canisterId : Principal) : async Nat {
     // Define the method name and input args
@@ -131,7 +131,7 @@ persistent actor AdvancedCanister1 {
 ```motoko
 import Debug "mo:base/Debug";
 
-persistent actor AdvancedCanister2 {
+actor AdvancedCanister2 {
 
   public func getValue(number: Nat) : async Nat {
      Debug.print("Hello from advanced canister 2!");

@@ -10,7 +10,7 @@ hide_table_of_contents: true
 Below is an example of "Hello, world!" written in Motoko:
 
 ```motoko
-persistent actor HelloWorld {
+actor HelloWorld {
   // We store the greeting in a stable variable such that it gets persisted over canister upgrades.
   var greeting : Text = "Hello, ";
 

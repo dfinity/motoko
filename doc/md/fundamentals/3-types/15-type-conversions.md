@@ -61,7 +61,7 @@ import Char "mo:base/Char";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 
-persistent actor CharConverter{
+actor CharConverter{
   func nat8ToChar(n : Nat8) : Char {
     Char.fromNat32(Nat32.fromNat(Nat8.toNat(n)));
   };
@@ -76,7 +76,7 @@ Motoko provides a built-in function `Text.toLowercase`, which converts all chara
 ```motoko no-repl
 import Text "mo:base/Text";
 
-persistent actor CaseConverter{
+actor CaseConverter{
   func toLowercaseExample(s : Text) : Text {
     return Text.toLowercase(s);
   };
@@ -92,7 +92,7 @@ persistent actor CaseConverter{
 ```motoko no-repl
 import Text "mo:base/Text";
 
-persistent actor TextToBlobConverter {
+actor TextToBlobConverter {
   func textToOptionalBlob(s : Text) : ?Blob {
     ?Text.encodeUtf8(s);
   };
@@ -144,7 +144,7 @@ Motoko does not provide a built-in function for converting `Time` into a date-ti
 import Text "mo:base/Text";
 import Array "mo:base/Array";
 
-persistent actor ArrayConverter{
+actor ArrayConverter{
   func arrayToText(arr : [Char]) : Text {
     Text.fromArray(arr);
   };
@@ -160,7 +160,7 @@ import Text "mo:base/Text";
 import Array "mo:base/Array";
 import Nat "mo:base/Nat";
 
-persistent actor NatArrayConverter{
+actor NatArrayConverter{
   func arrayOfNatToText(arr : [Nat]) : Text {
     Text.join(" ", Array.map<Nat, Text>(arr, Nat.toText).values())
   };
@@ -176,7 +176,7 @@ Motoko lacks support for dynamic objects, so an array of tuples is converted int
 import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 
-persistent actor MapConverter{
+actor MapConverter{
   func arrayToMap(arr : [(Text, Nat)]) : HashMap.HashMap<Text, Nat> {
     let map = HashMap.HashMap<Text, Nat>(arr.size(), Text.equal, Text.hash);
         for ((key, value) in arr.vals()) {
@@ -196,7 +196,7 @@ type User = {
     name : Text;
     age : Nat;
 };
-persistent actor TupleConverter{
+actor TupleConverter{
   func tuplesToUsers(arr : [(Text, Nat)]) : [User] {
     Array.map<(Text, Nat), User>(arr, func((name, age)) {
         { name = name; age = age }

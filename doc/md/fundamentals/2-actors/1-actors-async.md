@@ -222,7 +222,7 @@ Customers place orders at a pizza restaurant, but the chef can only make one piz
 import Array "mo:base/Array";
 import Text "mo:base/Text";
 
-persistent actor PizzaParlor {
+actor PizzaParlor {
     var orders : [Text] = [];
 
     public shared func placeOrder(order : Text) : async Text {
@@ -288,7 +288,7 @@ Use `async*` and `await*` carefully. In Motoko, a regular `await` is a commit po
 ### Example
 
 ``` motoko no-repl
-persistent actor class (Logger : actor { log : Text -> async () }) {
+actor class (Logger : actor { log : Text -> async () }) {
 
   var logging = true;
 

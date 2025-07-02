@@ -13,7 +13,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   // creation
   let empty = Map.empty<Nat, Text>();
   // insertion
@@ -68,7 +68,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.empty<Nat, Text>();
   assert Map.size(map) == 0;
 }
@@ -89,7 +89,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map0 = Map.empty<Nat, Text>();
   let map1 = Map.add(map0, Nat.compare, 0, "Zero");
 
@@ -133,7 +133,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Map.containsKey(map, Nat.compare, 1);
@@ -158,7 +158,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Map.get(map, Nat.compare, 1) == ?"One";
@@ -185,7 +185,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map0 = Map.empty<Nat, Text>();
 
   do {
@@ -223,7 +223,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   var map = Map.empty<Nat, Text>();
 
   map := Map.add(map, Nat.compare, 0, "Zero");
@@ -258,7 +258,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map0 = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   do {
@@ -295,7 +295,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let singleton = Map.singleton(0, "Zero");
 
   do {
@@ -330,7 +330,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map0 =
     Map.fromIter<Nat, Text>([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
@@ -365,7 +365,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map0 =
     Map.fromIter<Nat, Text>([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
@@ -403,7 +403,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map0 =  Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   do {
@@ -439,7 +439,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Map.maxEntry(map) == ?(2, "Two");
@@ -463,7 +463,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Map.minEntry(map) == ?(0, "Zero");
@@ -490,7 +490,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Iter.toArray(Map.entries(map)) == [(0, "Zero"), (1, "One"), (2, "Two")];
@@ -523,7 +523,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Iter.toArray(Map.reverseEntries(map)) == [(2, "Two"), (1, "One"), (0, "Zero")];
@@ -556,7 +556,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Iter.toArray(Map.keys(map)) == [0, 1, 2];
@@ -584,7 +584,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
 let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   assert Iter.toArray(Map.values(map)) == ["Zero", "One", "Two"];
@@ -611,7 +611,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   transient let iter =
     Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]);
 
@@ -643,7 +643,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   func f(key : Nat, _val : Text) : Nat = key * 2;
@@ -673,7 +673,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   func folder(accum : (Nat, Text), key : Nat, val : Text) : ((Nat, Text))
@@ -704,7 +704,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   func folder(key : Nat, val : Text, accum : (Nat, Text)) : ((Nat, Text))
@@ -733,7 +733,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "0"), (2, "2"), (1, "1")].values(), Nat.compare);
 
   assert Map.all<Nat, Text>(map, func (k, v) = v == Nat.toText(k));
@@ -757,7 +757,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "0"), (2, "2"), (1, "1")].values(), Nat.compare);
 
   assert Map.any<Nat, Text>(map, func (k, v) = (k >= 0));
@@ -781,7 +781,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.singleton<Nat, Text>(0, "Zero");
   assert Iter.toArray(Map.entries(map)) == [(0, "Zero")];
 }
@@ -803,7 +803,7 @@ Example:
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
   var sum = 0;
   var text = "";
@@ -835,7 +835,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let numberNames = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   let evenNames = Map.filter<Nat, Text>(numberNames, Nat.compare, func (key, value) {
@@ -868,7 +868,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
 
   func f(key : Nat, val : Text) : ?Text {
@@ -908,7 +908,7 @@ Converts the `map` to its textual representation using `keyFormat` and `valueFor
 import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 
-persistent actor {
+actor {
   let map = Map.fromIter([(0, "Zero"), (2, "Two"), (1, "One")].values(), Nat.compare);
   assert Map.toText<Nat, Text>(map, Nat.toText, func t { t }) == "PureMap{(0, Zero), (1, One), (2, Two)}";
 }
@@ -934,7 +934,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 
-persistent actor {
+actor {
   let map1 = Map.fromIter([(0, "Zero"), (1, "One"), (2, "Two")].values(), Nat.compare);
   let map2 = Map.fromIter<Nat, Text>([(2, "Two"), (1, "One"), (0, "Zero")].values(), Nat.compare);
   assert(Map.equal(map1, map2, Nat.compare, Text.equal));
@@ -973,7 +973,7 @@ import Map "mo:core/pure/Map";
 import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 
-persistent actor {
+actor {
   let map1 = Map.fromIter([(0, "Zero"), (1, "One")].values(), Nat.compare);
   let map2 = Map.fromIter([(0, "Zero"), (2, "Two")].values(), Nat.compare);
 
