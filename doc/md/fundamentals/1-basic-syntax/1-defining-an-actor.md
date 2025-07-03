@@ -30,7 +30,7 @@ Since actors process messages independently, multiple actors can handle messages
 
 ```motoko name=Main
 // Declares an actor named Main.
-persistent actor Main {
+actor Main {
   // Define a private variable called 'count' to track the number of greetings.
   var count : Nat = 0;
 
@@ -51,8 +51,7 @@ persistent actor Main {
 
 :::info
 This code defines an actor that can be deployed on ICP.
-The actor is declared as `persistent` so that its state, `count`, will be preserved
-when the actor is upgraded.
+Its state, `count`, is implicitly `stable` and will be preserved when the actor is upgraded.
 Learn more about [persistence](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence).
 :::
 

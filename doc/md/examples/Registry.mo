@@ -3,7 +3,7 @@ import Map "mo:base/HashMap";
 
 actor Registry {
 
-  let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
+  transient let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
 
   public func register(name : Text) : async () {
     switch (map.get(name)) {

@@ -1,7 +1,7 @@
 import Debug "mo:base/Debug";
 import Float "mo:base/Float";
 
-persistent actor Counter_v5 {
+actor Counter_v5 {
   var state : Int = 0; // implicitly `stable`
   var newState : Float = Float.fromInt(state); // implicitly `stable`
 

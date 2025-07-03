@@ -53,6 +53,8 @@ You can use the following options with the `moc` command.
 | `-no-timer`                               | Disables timer API imports and hides timer primitives.                                                                                                |
 | `-o <file>`                               | Specifies the output file.                                                                                                                            |
 | `-p <n>`                                  | Sets the print depth.                                                                                                                                 |
+| `--persistent`                            | In all actors (`persistent` or not) default actor fields to `stable` (default). That is, treat all actors as if declared `persistent`                 |
+| `--non-persistent`                        | In `persistent` actors, default actor fields to `stable`. In non-`persistent` actors, default actor fields to `transient` (legacy behavior).          |
 | `--package <package-name> <package-path>` | Specifies a `<package-name>` `<package-path>` pair, separated by a space.                                                                             |
 | `--public-metadata <name>`                | Emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`) as `public` (default is `private`).|
 | `--omit-metadata <name>`                  | Omit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`).                                   |

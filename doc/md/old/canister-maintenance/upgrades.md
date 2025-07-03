@@ -27,10 +27,16 @@ Previous versions of Motoko (up to version 0.13.4) used the keyword `flexible` i
 
 :::note
 
-The following is a simple example of how to declare a stable counter that can be upgraded while preserving the counter’s value:
+The following is a simple example of how to declare a counter that can be upgraded while preserving the counter’s value:
+
+``` motoko file=../../examples/Counter.mo
+```
+
+Due to the defaulting of actor fields, this is equivalent to:
 
 ``` motoko file=../../examples/StableCounter.mo
 ```
+
 
 Starting with Motoko v0.13.5, if you prefix the `actor` keyword with the keyword `persistent`, then all `let` and `var` declarations of the actor or actor class are implicitly declared `stable`. Only `transient` variables will need an explicit `transient` declaration.
 Using a `persistent` actor can help avoid unintended data loss. It is the recommended declaration syntax for actors and actor classes. The non-`persistent` declaration is provided for backwards compatibility.

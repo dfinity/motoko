@@ -41,7 +41,7 @@ import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 import Char "mo:base/Char";
 
-persistent actor Alternator {
+actor Alternator {
 
   // Turn text into an iterator of Char
   func textToChars(t: Text) : Iter.Iter<Char> {

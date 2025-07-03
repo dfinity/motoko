@@ -32,7 +32,7 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
-
+MOC_ARGS="--legacy-persistence --non-persistent"
 export WASMTIME_NEW_CLI=1
 
 while getopts "adpstirv" o; do
@@ -322,7 +322,7 @@ do
     then
       TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
     fi
-    moc_with_flags="env $moc_extra_env moc --legacy-persistence $moc_extra_flags $TEST_MOC_ARGS"
+    moc_with_flags="env $moc_extra_env moc $MOC_ARGS $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
@@ -548,7 +548,7 @@ do
         fi
         moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc --legacy-persistence $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $MOC_ARGS $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script

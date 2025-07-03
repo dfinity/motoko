@@ -467,9 +467,10 @@ The **visibility** qualifier `<vis>?` determines the accessibility of every fiel
 The **stability** qualifier `<stab>` determines the **upgrade** behavior of actor fields:
 
 -   A stability qualifier should appear on `let` and `var` declarations that are actor fields.
-    Within a `persistent` actor or actor class, an absent stability qualifier defaults to `stable`.
-    Within a non-`persistent` actor or actor class, an absent stability qualifier defaults to `flexible` (or `transient`).
+    Within every actor or actor class, an absent stability qualifier defaults to `stable`.
     The keywords `transient` and `flexible` are interchangeable.
+    The `persistent` modifier on a class has no effect, but is allowed for
+    backwards compatibility.
 
 -   `<stab>` qualifiers must not appear on fields of objects or modules.
 
@@ -1346,8 +1347,7 @@ Any identifier bound by a `public` declaration appears in the type of enclosing 
 
 An identifier bound by a `private` or `system` declaration is excluded from the type of the enclosing object, module or actor and thus inaccessible.
 
-In a `persistent` actor or actor class, all declarations are implicitly `stable` unless explicitly declared otherwise.
-In a non-`persistent` actor or actor class, all declarations are implicitly `transient` (equivalently `flexible`) unless explicitly declared otherwise.
+In an actor or actor class, all declarations are implicitly `stable` unless explicitly declared otherwise.
 
 The declaration field has type `T` provided:
 
@@ -1355,7 +1355,7 @@ The declaration field has type `T` provided:
 
 -   If `<stab>?` is `stable`  then `T` must be a stable type (see [stability](#stability)).
 
--   If `<stab>?` is absent and the actor or actor class is `persistent`, then `T` must be a stable type (see [stability](#stability)).
+-   If `<stab>?` is absent and the actor or actor class, then `T` must be a stable type (see [stability](#stability)).
 
 Actor fields declared `transient` (or legacy `flexible`) can have any type, but will not be preserved across upgrades.
 

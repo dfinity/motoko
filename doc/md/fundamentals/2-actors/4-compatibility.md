@@ -18,29 +18,27 @@ Moreover, with [enhanced orthogonal persistence](orthogonal-persistence/enhanced
 
 The following is a simple example of how to declare a stateful counter:
 
-``` motoko no-repl file=../../examples/count-v0.mo
-```
-
-Importantly, in this example, when the counter is upgraded, its state is lost.
-This is because actor variables are by default `transient`, meaning they get reinitialized on an upgrade.
-The above actor is equivalent to using the `transient` declaration:
-
 ``` motoko no-repl file=../../examples/count-v0transient.mo
 ```
 
+Importantly, in this example, when the counter is upgraded, its state is lost.
+This is because the state variable is declared `transient` and will be re-initialized on upgrade.
 
-To fix this, you can declare a `stable` variable that is retained across upgrades:
+To fix this, you can remove the `transient` keyword, to make the `state` variable `stable`.
+Stable variables are retained across upgrades:
 
+This is equivalent to:
 
 ``` motoko no-repl file=../../examples/count-v1stable.mo
 ```
 
-To make `stable` the default for all declarations and `transient` optional, you can prefix the actor declaration with the keyword `persistent`.
+`stable` is the default for all actor fields, so you can also just write:
 
 ``` motoko no-repl file=../../examples/count-v1.mo
 ```
 
-If the variable `state` were not declared `stable`, either explicitly or by applying `persistent` to the `actor` keyword, `state` would restart from `0` on upgrade.
+If the variable `state` were declared `transient`,
+`state` would restart from `0` on upgrade.
 
 ## Evolving the stable declarations
 

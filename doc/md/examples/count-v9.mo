@@ -4,8 +4,7 @@ import Time "mo:base/Time";
 import {migration} "Migration";
 
 (with migration) // use the imported migration function
-persistent actor
-  Counter_v9 {
+actor Counter_v9 {
 
   var state : Float = 0.0; // expicitly migrated
 

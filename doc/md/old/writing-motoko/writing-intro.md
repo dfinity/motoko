@@ -78,9 +78,8 @@ The `value` was declared `stable`, meaning the current state, *n*, of the servic
 The new interface is compatible with the previous one, allowing existing clients referencing the canister to continue to work. New clients will be able to exploit its upgraded functionality, in this example the additional `reset` function.
 
 To make it more convenient to declare stable variables, and to prevent missing
-`stable` declarations,
-Motoko allows you to prefix the entire actor with the keyword `persistent`. In a `persistent` actor,
-all declarations are `stable` by default. Only declarations that are explicitly marked `transient` will be discarded on upgrade.
+`stable` declarations, in an actor all declarations are `stable` by default.
+Only declarations that are explicitly marked `transient` will be discarded on upgrade.
 
 ``` motoko file=../../examples/PersistentStableCounter.mo
 ```

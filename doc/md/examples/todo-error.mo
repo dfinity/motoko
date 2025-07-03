@@ -5,7 +5,7 @@ import Time "mo:base/Time";
 import Result "mo:base/Result";
 import Error "mo:base/Error";
 
-persistent actor Todo {
+actor Todo {
 
   type Time = Int;
   type Seconds = Int;

@@ -1,7 +1,7 @@
 import Array "mo:base/Array";
 import Buckets "Buckets";
 
-persistent actor Map {
+actor Map {
 
   let n = 8; // number of buckets
 
