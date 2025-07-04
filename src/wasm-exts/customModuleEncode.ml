@@ -1201,10 +1201,22 @@ let encode (em : extended_module) =
             (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
-            let source_indices = !source_path_indices in
+            (* let source_indices = !source_path_indices in *)
+
+            let rec find_basename_index_opt basename i = function
+              | [] -> None
+              | (b, _) :: t -> if b = basename then Some i else find_basename_index_opt basename (i+1) t
+            in
+            let find_basename_index basename list =
+              match find_basename_index_opt basename 0 list with
+              | None -> failwith ("find_basename_index: " ^ basename)
+              | Some i -> i + 1 (* DWARF file numbers are 1-based *)
+            in
 
             let mapping epi (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
+              let filename = if file = "" then "prim" else file in
+              let basename = Filename.basename filename in
+              let file' = find_basename_index basename !source_names in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
               Dwarf5.Machine.{ ip = addr'; loc = { file = file'; line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
