@@ -805,7 +805,8 @@ let adjust_flags () =
       | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
       | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
       (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
-      Flags.rtti := true
+      Flags.rtti := true;
+      Flags.persistent := true
     end
   else
     begin
@@ -814,7 +815,7 @@ let adjust_flags () =
       (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
         invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence");
       (if !Flags.stable_memory_access_limit <> Flags.stable_memory_access_limit_default then
-        invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
+         invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
     end
 
 (* This transforms the flat list of libs (some of which are classes)
