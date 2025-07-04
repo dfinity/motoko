@@ -991,6 +991,12 @@ impl PartitionedHeap {
         None
     }
 
+    unsafe fn is_large_object_marked(&self, large_object: *mut Obj) -> bool {
+        debug_assert_eq!(large_object as usize % PARTITION_SIZE, 0);
+        let start_partition = large_object as usize / PARTITION_SIZE;
+        self.get_partition(start_partition).marked_size > 0
+    }
+
     unsafe fn occupied_partition_range(large_object: *mut Obj) -> Range<usize> {
         debug_assert_eq!(large_object as usize % PARTITION_SIZE, 0);
         let start_partition = large_object as usize / PARTITION_SIZE;
@@ -1040,22 +1046,16 @@ impl PartitionedHeap {
     // Optimization: Returns true if it has not yet been marked before.
     #[inline(never)]
     unsafe fn mark_large_object(&mut self, object: *mut Obj) -> bool {
-        let range = Self::occupied_partition_range(object);
-        if self.get_partition(range.start).marked_size > 0 {
+        if self.is_large_object_marked(object) {
             return false;
         }
+        let range = Self::occupied_partition_range(object);
         for index in range.start..range.end - 1 {
             self.mutable_partition(index).marked_size = PARTITION_SIZE;
         }
         let object_size = block_size(object as usize).to_bytes().as_usize();
         self.mutable_partition(range.end - 1).marked_size = object_size % PARTITION_SIZE;
         true
-    }
-
-    #[cfg(debug_assertions)]
-    unsafe fn is_large_object_marked(&self, object: *mut Obj) -> bool {
-        let range = Self::occupied_partition_range(object);
-        self.get_partition(range.start).marked_size > 0
     }
 }
 
