@@ -607,6 +607,7 @@ let is_fut = function Async (Fut, _, _) -> true | _ -> false
 let is_mut = function Mut _ -> true | _ -> false
 let is_typ = function Typ _ -> true | _ -> false
 let is_con = function Con _ -> true | _ -> false
+let is_var = function Var _ -> true | _ -> false
 
 let invalid s = raise (Invalid_argument ("Type." ^ s))
 
@@ -801,6 +802,7 @@ and cons_kind' inTyp k cs =
 
 let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
+let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
 
 (* Checking for concrete types *)
 
