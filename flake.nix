@@ -200,6 +200,7 @@
       common-constituents = rec {
         samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
         base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        core-tests = import ./nix/core-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
         base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
         report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
 
