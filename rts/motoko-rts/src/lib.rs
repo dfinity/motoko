@@ -7,7 +7,8 @@
     proc_macro_hygiene,
     // // We do not need simd but this flag enables `core::arch:wasm64`.
     // // See https://github.com/rust-lang/rust/issues/90599
-    simd_wasm64
+    simd_wasm64,
+    unsafe_extern_blocks
 )]
 #![allow(internal_features)]
 
