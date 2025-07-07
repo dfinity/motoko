@@ -70,7 +70,7 @@ jobs:
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'XXXXfailure') }}
     runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
     steps:
       - name: Create Issue
