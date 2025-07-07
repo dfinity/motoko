@@ -47,13 +47,9 @@ jobs:
           test-name: macos-13-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-
-
-
-
   motoko-core-tests:
     needs: systems-go-tests
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,14 +58,8 @@ jobs:
       - uses: dfinity/motoko-core/.github/actions/setup@main
       - run: npm test
 
-
-
-
-
-
-
   create-issue:
-    needs: [common-tests, gc-tests, systems-go-tests]
+    needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
     if: ${{ always() && contains(needs.*.result, 'XXXXfailure') }}
     runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
     steps:
