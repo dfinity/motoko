@@ -59,7 +59,7 @@ jobs:
         with:
           repository: dfinity/motoko-core
           fetch-depth: "0"
-      - uses: dfinity/motoko-core/actions/setup@main
+      - uses: dfinity/motoko-core@main/actions/setup
       - run: npm test
 
 
