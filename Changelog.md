@@ -24,7 +24,6 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
-	
 
 ## 0.14.14 (2025-06-30)
 
