@@ -47,6 +47,27 @@ jobs:
           test-name: macos-13-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+
+
+
+
+  motoko-core-tests:
+    needs: systems-go-tests
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dfinity/motoko-core
+          fetch-depth: "0"
+      - uses: dfinity/motoko-core/setup@main
+      - run: npm test
+
+
+
+
+
+
+
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
