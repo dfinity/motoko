@@ -60,6 +60,14 @@ jobs:
           test-target: debug-systems-go
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Look around first
+        run: |
+          pwd
+          ls -l .
+          ls -l ..
+          ls -ld /nix/store || true
+          ls /nix/store/*-moc/bin/moc || true
+          file /nix/store/*-moc/bin/moc || true
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
         with:
@@ -67,13 +75,13 @@ jobs:
           fetch-depth: "0"
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
-      - name: Look around
+      - name: Look around again
         run: |
           pwd
           ls -l .
           ls -l ..
-          ls /nix/store/*-moc/bin/moc
-          file /nix/store/*-moc/bin/moc
+          ls /nix/store/*-moc/bin/moc || true
+          file /nix/store/*-moc/bin/moc || true
           ls .mops/
           ls -l .mops/moc-*
           echo $(cat .mops/moc-*)
