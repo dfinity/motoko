@@ -169,7 +169,7 @@ let share_stab default_stab stab_opt dec =
     (match dec.it with
      | VarD _
      | LetD _ ->
-	Some (default_stab @@ no_region)
+	Some default_stab
      | _ -> None)
   | _ -> stab_opt
 
@@ -185,7 +185,7 @@ let share_dec_field default_stab (df : dec_field) =
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab Flexible df.it.stab df.it.dec}}
+      stab = share_stab (Flexible @@ no_region) df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
@@ -203,7 +203,7 @@ let share_dec_field default_stab (df : dec_field) =
              | ExpD _
              | TypD _
              | ClassD _ -> None
-             | _ -> Some (default_stab @@ no_region))
+             | _ -> Some default_stab)
           | some -> some}
     }
 
@@ -931,7 +931,7 @@ obj_or_class_dec :
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
-          let default_stab = if persistent.it then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           let id = if named then Some x else None in
           AwaitE
             (Type.AwaitFut false,
@@ -951,7 +951,7 @@ obj_or_class_dec :
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
-          let default_stab = if persistent.it then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
