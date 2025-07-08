@@ -66,7 +66,7 @@ jobs:
           ls -l .
           ls -l ..
           ls -ld /nix/store || true
-          ls /nix/store/*-moc/bin/moc || true
+          nix develop --command bash -c 'ls /nix/store/*-moc/bin/moc || true'
           file /nix/store/*-moc/bin/moc || true
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
@@ -82,10 +82,10 @@ jobs:
           ls -l ..
           ls /nix/store/*-moc/bin/moc || true
           file /nix/store/*-moc/bin/moc || true
-          ls .mops/
-          ls -l .mops/moc-*
-          echo $(cat .mops/moc-*)
-          file $(cat .mops/moc-*)
+          ls .mops/ || true
+          ls -l .mops/moc-* || true
+          echo $(cat .mops/moc-*) || true
+          file $(cat .mops/moc-*) || true
       - name: Run `motoko-core` Tests
         run: npm test
 
