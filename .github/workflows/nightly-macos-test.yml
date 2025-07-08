@@ -67,6 +67,7 @@ jobs:
           ls -l ..
           ls -ld /nix/store || true
           nix develop --command bash -c 'ls /nix/store/*-moc/bin/moc || true'
+          nix build .#moc --print-out-paths
           file /nix/store/*-moc/bin/moc || true
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
