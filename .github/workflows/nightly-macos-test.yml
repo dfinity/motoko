@@ -67,6 +67,17 @@ jobs:
           fetch-depth: "0"
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Look around
+        run: |
+          pwd
+          ls -l .
+          ls -l ..
+          ls /nix/store/*-moc/bin/moc
+          file /nix/store/*-moc/bin/moc
+          ls .mops/
+          ls -l .mops/moc-*
+          echo $(cat .mops/moc-*)
+          file $(cat .mops/moc-*)
       - name: Run `motoko-core` Tests
         run: npm test
 
