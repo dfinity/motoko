@@ -2930,7 +2930,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
 
 and check_stable_defaults env sort dec_fields =
   if sort.it <> T.Actor then () else
-  let declared_persistent = sort.note in
+  let declared_persistent = sort.note.it in
   if declared_persistent then
     begin
       List.iter (fun dec_field ->
@@ -2940,8 +2940,8 @@ and check_stable_defaults env sort dec_fields =
             warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
         | _ -> ())
       dec_fields;
-      if !Flags.persistent then
-        warn env sort.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed"
+      if !Flags.persistent && sort.note.at <> no_region then
+        warn env sort.note.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed"
       end
   else
     (* non-`persistent` *)
@@ -2959,7 +2959,7 @@ and check_stable_defaults env sort dec_fields =
         false dec_fields
     in
     if not (!Flags.persistent) && not has_implicit_flexible && not declared_persistent then
-      local_error env sort.at "M0220" "this actor or class should be declared `persistent`"
+      local_error env sort.at "M0220" "this actor or actor class should be declared `persistent`"
 
 and check_stab env sort scope dec_fields =
   let check_stable id at =
@@ -3444,7 +3444,6 @@ and infer_dec_valdecs env dec : Scope.t =
     }
 
 (* Programs *)
-
 let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
     : (T.typ * Scope.t) Diag.result
   =

@@ -381,13 +381,13 @@ seplist1(X, SEP) :
   | MODULE {Type.Module @@ at $sloc }
 
 %inline obj_sort :
-  | OBJECT { (false, Type.Object @@ at $sloc) }
+  | OBJECT { (false @@ no_region, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
-  | MODULE { (false, Type.Module @@ at $sloc) }
+  | MODULE { (false @@ no_region, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
   | os=obj_sort { os }
-  | (* empty *) { (false, Type.Object @@ no_region) }
+  | (* empty *) { (false @@ no_region, Type.Object @@ no_region) }
 
 %inline query:
   | QUERY { Type.Query }
@@ -833,8 +833,8 @@ stab :
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
 %inline persistent :
-  | (* empty *) { !Flags.persistent }
-  | PERSISTENT { true }
+  | (* empty *) { !Flags.persistent @@ no_region }
+  | PERSISTENT { true @@ at $sloc }
 
 (* Patterns *)
 
@@ -931,7 +931,7 @@ obj_or_class_dec :
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = if persistent.it then Stable else Flexible in
           let id = if named then Some x else None in
           AwaitE
             (Type.AwaitFut false,
@@ -951,7 +951,7 @@ obj_or_class_dec :
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = if persistent.it then Stable else Flexible in
           (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)

@@ -80,14 +80,14 @@ let obj_decs obj_sort at note id_opt fields =
   match id_opt with
   | None -> [
     { it = ExpD {
-        it = ObjBlockE ( None, { it = obj_sort; at; note = false }, (None, None), fields);
+        it = ObjBlockE ( None, { it = obj_sort; at; note = false @@ no_region }, (None, None), fields);
         at;
         note };
       at; note }]
   | Some id -> [
     { it = LetD (
         { it = VarP id; at; note = note.note_typ },
-        { it = ObjBlockE ( None, { it = obj_sort; at; note = false }, (None, None), fields);
+        { it = ObjBlockE ( None, { it = obj_sort; at; note = false @@ no_region }, (None, None), fields);
           at; note; },
         None);
       at; note
@@ -117,7 +117,7 @@ let decs_of_lib (cu : comp_unit) =
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (eo, csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false}, i, tbs, p, t, i', efs);
+    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

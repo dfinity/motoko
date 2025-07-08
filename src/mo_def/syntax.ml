@@ -28,7 +28,7 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 (* Types *)
 
-type persistence = bool
+type persistence = bool Source.phrase
 type 'note obj_sort = (Type.obj_sort, 'note) Source.annotated_phrase
 type func_sort = Type.func_sort Source.phrase
 
