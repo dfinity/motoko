@@ -2933,15 +2933,15 @@ and check_stable_defaults env sort dec_fields =
   let declared_persistent = sort.note.it in
   if declared_persistent then
     begin
+      if !Flags.persistent && sort.note.at <> no_region then
+        warn env sort.note.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed";
       List.iter (fun dec_field ->
         match dec_field.it.stab, dec_field.it.dec.it with
         | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
           if at <> Source.no_region then
             warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
         | _ -> ())
-      dec_fields;
-      if !Flags.persistent && sort.note.at <> no_region then
-        warn env sort.note.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed"
+      dec_fields
       end
   else
     (* non-`persistent` *)
