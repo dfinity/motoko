@@ -55,7 +55,11 @@ and class_doc = {
   sort : unit Syntax.obj_sort;
 }
 
-and object_doc = { name : string; fields : doc list; sort : unit Syntax.obj_sort }
+and object_doc = {
+  name : string;
+  fields : doc list;
+  sort : unit Syntax.obj_sort;
+}
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
