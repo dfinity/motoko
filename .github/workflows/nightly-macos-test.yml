@@ -58,6 +58,8 @@ jobs:
           fetch-depth: "0"
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Get `motoko` Repo
+        uses: actions/checkout@v4
       - name: Populate `moc`
         uses: ./.github/actions/test-blueprint
         with:
