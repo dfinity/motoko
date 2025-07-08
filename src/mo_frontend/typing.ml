@@ -1438,7 +1438,7 @@ and infer_exp'' env exp : T.typ =
           async = C.SystemCap C.top_cap }
       else env
     in
-    let t = infer_obj env' obj_sort.it exp_opt dec_fields exp.at in
+    let t = infer_obj env' obj_sort exp_opt dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
@@ -2665,7 +2665,8 @@ and is_typ_dec dec : bool = match dec.it with
   | TypD _ -> true
   | _ -> false
 
-and infer_obj env s exp_opt dec_fields at : T.typ =
+and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
+  let s = obj_sort.it in
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
@@ -2714,7 +2715,7 @@ and infer_obj env s exp_opt dec_fields at : T.typ =
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
-    let stab_tfs = check_stab env s scope dec_fields in
+    let stab_tfs = check_stab env obj_sort scope dec_fields in
     check_migration env stab_tfs exp_opt
   end;
   t
@@ -2927,6 +2928,30 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 
+and check_stable_defaults env sort dec_fields =
+  let declared_persistent = sort.note in
+  if sort.it <> T.Actor then () else
+  begin
+    if !Flags.persistent && declared_persistent then
+      warn env sort.at "MOXXX" "with flag --persistent, the `persistent` keyword is redundant and can be removed";
+    let has_implicit_flexible = ref false in
+    List.iter (fun dec_field ->
+    match declared_persistent, dec_field.it.stab, dec_field.it.dec.it with
+    | true, Some {it = Stable; at; _}, (LetD _ | VarD _) ->
+      if at <> Source.no_region then
+      warn env at "M0XXX" "redundant `stable` keyword, this declaration is implicitly stable"
+    | false, Some {it = Flexible; at; _}, (LetD _ | VarD _) when not !Flags.persistent->
+       if at = Source.no_region then
+       begin
+         has_implicit_flexible := true;
+         local_error env at "M0XXX" "this declaration is currently implicitly transient, please declare it explicitly `transient`"
+       end
+    | _ -> ())
+    dec_fields;
+    if not (!Flags.persistent) && not !has_implicit_flexible && not declared_persistent then
+      local_error env sort.at "M0XXX" "this actor or class can now be declared `persistent`"
+  end
+
 and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
@@ -2939,7 +2964,7 @@ and check_stab env sort scope dec_fields =
           display_typ t1;
   in
   let idss = List.map (fun df ->
-    match sort, df.it.stab, df.it.dec.it with
+    match sort.it, df.it.stab, df.it.dec.it with
     | (T.Object | T.Module), None, _ -> []
     | (T.Object | T.Module), Some stab, _ ->
       local_error env stab.at "M0132"
@@ -2961,6 +2986,7 @@ and check_stab env sort scope dec_fields =
   in
   let ids = List.concat idss in
   check_ids env "actor type" "stable variable" ids;
+  check_stable_defaults env sort dec_fields;
   List.sort T.compare_field
     (List.map
       (fun id ->
@@ -3071,7 +3097,7 @@ and infer_dec env dec : T.typ =
         }
       in
       let initial_usage = enter_scope env''' in
-      let t' = infer_obj { env''' with check_unused = true } obj_sort.it exp_opt dec_fields dec.at in
+      let t' = infer_obj { env''' with check_unused = true } obj_sort exp_opt dec_fields dec.at in
       leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
@@ -3309,7 +3335,7 @@ and infer_dec_typdecs env dec : Scope.t =
           async = async_cap;
           in_actor}
     in
-    let t = infer_obj { env'' with check_unused = false } obj_sort.it exp_opt dec_fields dec.at in
+    let t = infer_obj { env'' with check_unused = false } obj_sort exp_opt dec_fields dec.at in
     let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with

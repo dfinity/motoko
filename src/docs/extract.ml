@@ -52,10 +52,10 @@ and class_doc = {
   type_args : Syntax.typ_bind list;
   constructor : function_arg_doc list;
   fields : doc list;
-  sort : Syntax.obj_sort;
+  sort : unit Syntax.obj_sort;
 }
 
-and object_doc = { name : string; fields : doc list; sort : Syntax.obj_sort }
+and object_doc = { name : string; fields : doc list; sort : unit Syntax.obj_sort }
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
@@ -203,7 +203,7 @@ struct
                     name;
                     fields =
                       List.filter_map (extract_dec_field mk_field_xref) fields;
-                    sort;
+                    sort = { sort with note = () };
                   } )
         | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Let rhs name)
         )
@@ -218,7 +218,7 @@ struct
                     name;
                     fields =
                       List.filter_map (extract_dec_field mk_field_xref) fields;
-                    sort;
+                    sort = { sort with note = () };
                   } )
         | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Var rhs name)
         )
@@ -259,7 +259,7 @@ struct
                 constructor = extract_func_args ctor;
                 fields =
                   List.filter_map (extract_dec_field mk_field_xref) fields;
-                sort = obj_sort;
+                sort = { obj_sort with note = () };
               } )
     | unknown ->
         print_endline "Failed to extract documentation for declaration:";

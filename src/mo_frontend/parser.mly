@@ -169,7 +169,7 @@ let share_stab default_stab stab_opt dec =
     (match dec.it with
      | VarD _
      | LetD _ ->
-       Some (default_stab @@ dec.at)
+	Some (default_stab @@ no_region)
      | _ -> None)
   | _ -> stab_opt
 
@@ -191,7 +191,7 @@ let share_dec_field default_stab (df : dec_field) =
     {df with it =
        {df.it with stab =
           match df.it.stab with
-          | None -> Some (Flexible @@ df.it.dec.at)
+          | None -> Some (Flexible @@ no_region)
           | some -> some}
     }
   | _ ->
@@ -203,7 +203,7 @@ let share_dec_field default_stab (df : dec_field) =
              | ExpD _
              | TypD _
              | ClassD _ -> None
-             | _ -> Some (default_stab @@ df.it.dec.at))
+             | _ -> Some (default_stab @@ no_region))
           | some -> some}
     }
 
@@ -936,9 +936,9 @@ obj_or_class_dec :
           AwaitE
             (Type.AwaitFut false,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock eo { s with note = persistent } id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock eo s None t efs @? at $sloc
+        else objblock eo { s with note = persistent } None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS
@@ -958,7 +958,7 @@ obj_or_class_dec :
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, s, cid, tps', p, t', x, dfs') @? at $sloc }
+      ClassD(eo, sp, {s with note = persistent}, cid, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
