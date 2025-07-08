@@ -255,6 +255,8 @@
               ++ builtins.attrValues js;
         };
 
+        inherit (debug) moc;
+
         default = release-systems-go;
       };
 
