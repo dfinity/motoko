@@ -220,7 +220,8 @@ let error_codes : (string * string option) list =
     "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
     "M0215", None; (* Field is lost in record used at supertype *)
     "M0216", None; (* Stable variable must stable subtype *)
-    "M0217", None; (* `persistent` redundant *)
-    "M0218", None; (* Redundant stable keyword *)
+    "M0217", None; (* Redundant `persistent` *)
+    "M0218", None; (* Redundant `stable` *)
+    "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
   ]
