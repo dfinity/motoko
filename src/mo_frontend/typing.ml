@@ -2930,28 +2930,36 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
 
 and check_stable_defaults env sort dec_fields =
   if sort.it <> T.Actor then () else
-  if not !Flags.persistent && not !Flags.persistent_diagnostics then () else
   let declared_persistent = sort.note in
-  begin
-    if !Flags.persistent && declared_persistent then
-      warn env sort.at "MOXXX" "with flag --persistent, the `persistent` keyword is redundant and can be removed";
-    let has_implicit_flexible = ref false in
-    List.iter (fun dec_field ->
-    match declared_persistent, dec_field.it.stab, dec_field.it.dec.it with
-    | true, Some {it = Stable; at; _}, (LetD _ | VarD _) ->
-      if at <> Source.no_region then
-      warn env at "M0XXX" "redundant `stable` keyword, this declaration is implicitly stable"
-    | false, Some {it = Flexible; at; _}, (LetD _ | VarD _) when not !Flags.persistent->
-       if at = Source.no_region then
-       begin
-         has_implicit_flexible := true;
-         local_error env at "M0XXX" "this declaration is currently implicitly transient, please declare it explicitly `transient`"
-       end
-    | _ -> ())
-    dec_fields;
-    if not (!Flags.persistent) && not !has_implicit_flexible && not declared_persistent then
-      local_error env sort.at "M0XXX" "this actor or class can now be declared `persistent`"
-  end
+  if declared_persistent then
+    begin
+      List.iter (fun dec_field ->
+        match dec_field.it.stab, dec_field.it.dec.it with
+        | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
+          if at <> Source.no_region then
+            warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
+        | _ -> ())
+      dec_fields;
+      if !Flags.persistent then
+        warn env sort.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed"
+      end
+  else
+    (* non-`persistent` *)
+    if not !Flags.persistent && !Flags.persistent_diagnostics then
+    let has_implicit_flexible =
+      List.fold_left (fun acc dec_field ->
+        match dec_field.it.stab, dec_field.it.dec.it with
+        | Some {it = Flexible; at; _}, (LetD _ | VarD _) ->
+           if at = Source.no_region
+           then
+             (local_error env at "M0219" "this declaration is currently implicitly transient, please declare it explicitly `transient`";
+              true)
+           else acc
+        | _ -> acc)
+        false dec_fields
+    in
+    if not (!Flags.persistent) && not has_implicit_flexible && not declared_persistent then
+      local_error env sort.at "M0220" "this actor or class should be declared `persistent`"
 
 and check_stab env sort scope dec_fields =
   let check_stable id at =

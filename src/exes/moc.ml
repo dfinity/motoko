@@ -210,7 +210,7 @@ let argspec = [
   "--non-persistent",
   Arg.Unit (fun () -> Flags.persistent := false;
                       Flags.persistent_diagnostics := true),
-  " In non-`persistent` actors, default actor fields to `transient` (default) but emit diagnostics";
+  " In non-`persistent` actors, default actor fields to `transient` but emit diagnostics (default) ";
 
   "--legacy-non-persistent",
   Arg.Unit (fun () -> Flags.persistent := false;
