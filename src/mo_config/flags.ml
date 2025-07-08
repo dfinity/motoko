@@ -36,6 +36,7 @@ let max_stable_pages : int ref = ref max_stable_pages_default
 let measure_rts_stack = ref false
 let persistent_default = false
 let persistent = ref persistent_default
+let persistent_diagnostics = ref true
 let pre_ref : string option ref = ref None
 let post_ref : string option ref = ref None
 let profile = ref false

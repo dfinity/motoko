@@ -208,8 +208,15 @@ let argspec = [
   " Declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --non-persistent)";
 
   "--non-persistent",
-  Arg.Unit (fun () -> Flags.persistent := false),
-  " In non-`persistent` actors, default actor fields to `transient` (default)";
+  Arg.Unit (fun () -> Flags.persistent := false;
+                      Flags.persistent_diagnostics := true),
+  " In non-`persistent` actors, default actor fields to `transient` (default) but emit diagnostics";
+
+  "--legacy-non-persistent",
+  Arg.Unit (fun () -> Flags.persistent := false;
+                      Flags.persistent_diagnostics := false),
+  " In non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
+
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {

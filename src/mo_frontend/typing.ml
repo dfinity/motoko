@@ -2929,8 +2929,9 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
 
 
 and check_stable_defaults env sort dec_fields =
-  let declared_persistent = sort.note in
   if sort.it <> T.Actor then () else
+  if not !Flags.persistent && not !Flags.persistent_diagnostics then () else
+  let declared_persistent = sort.note in
   begin
     if !Flags.persistent && declared_persistent then
       warn env sort.at "MOXXX" "with flag --persistent, the `persistent` keyword is redundant and can be removed";
