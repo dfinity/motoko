@@ -51,12 +51,13 @@ jobs:
     needs: systems-go-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Run `motoko-core` Tests
+        uses: actions/checkout@v4
         with:
           repository: dfinity/motoko-core
           fetch-depth: "0"
-      - uses: dfinity/motoko-core/.github/actions/setup@main
-      - run: npm test
+        uses: dfinity/motoko-core/.github/actions/setup@main
+        run: npm test
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
