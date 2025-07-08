@@ -51,13 +51,6 @@ jobs:
     needs: systems-go-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Get `motoko-core` Repo
-        uses: actions/checkout@v4
-        with:
-          repository: dfinity/motoko-core
-          fetch-depth: "0"
-      - name: Set up `mops`
-        uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Get `motoko` Repo
         uses: actions/checkout@v4
       - name: Populate `moc`
@@ -67,6 +60,13 @@ jobs:
           test-target: debug-systems-go
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Get `motoko-core` Repo
+        uses: actions/checkout@v4
+        with:
+          repository: dfinity/motoko-core
+          fetch-depth: "0"
+      - name: Set up `mops`
+        uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Run `motoko-core` Tests
         run: npm test
 
