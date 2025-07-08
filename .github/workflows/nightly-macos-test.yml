@@ -75,6 +75,8 @@ jobs:
           fetch-depth: "0"
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Set up `mops` cache
+        run: npx ${DFX_MOC_PATH} --version
       - name: Look around again
         run: |
           pwd
