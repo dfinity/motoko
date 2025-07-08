@@ -10220,6 +10220,9 @@ module Persistence = struct
           begin
             use_candid_destabilization env ^^
             E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            if not (!Flags.explicit_enhanced_orthogonal_persistence) then
+              E.trap_with env "Detected implicit upgrade from classical orthogonal persistence to enhanced orthogonal persistence. Recompile with explicit flag --enhanced-orthogonal-persistence and redeploy to enable this irreversible migration."
+            else G.nop ^^
             OldStabilization.load env actor_type (NewStableMemory.upgrade_version_from_candid env) ^^
             EnhancedOrthogonalPersistence.initialize env actor_type
           end
