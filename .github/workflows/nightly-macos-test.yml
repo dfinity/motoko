@@ -64,7 +64,7 @@ jobs:
         uses: ./.github/actions/test-blueprint
         with:
           os: ubuntu-latest
-          test-target: moc
+          test-target: debug-systems-go
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Run `motoko-core` Tests
