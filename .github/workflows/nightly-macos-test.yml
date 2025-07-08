@@ -63,8 +63,8 @@ jobs:
       - name: Look around first
         run: |
           pwd
-          ls -l .
-          ls -l ..
+          ls -la .
+          ls -la ..
           ls -ld /nix/store || true
           nix build .#moc --print-out-paths
           file /nix/store/*-moc/bin/moc || true
@@ -80,27 +80,33 @@ jobs:
       - name: Look around again
         run: |
           pwd
-          ls -l .
-          ls -l ..
+          ls -la .
+          ls -la ..
           ls /nix/store/*-moc/bin/moc || true
           file /nix/store/*-moc/bin/moc || true
           ls .mops/ || true
           ls -l .mops/moc-* || true
           echo $(cat .mops/moc-*) || true
           file $(cat .mops/moc-*) || true
+          $(cat .mops/moc-*) --version
+      - name: Fixup `mops` cache
+        run: |
+          ln -f /nix/store/*-moc/bin/moc $(cat .mops/moc-*)
+          npx ${DFX_MOC_PATH} --version
       - name: Run `motoko-core` Tests
         run: npm test
       - name: Look around after
         run: |
           pwd
-          ls -l .
-          ls -l ..
+          ls -la .
+          ls -la ..
           ls /nix/store/*-moc/bin/moc || true
           file /nix/store/*-moc/bin/moc || true
           ls .mops/ || true
           ls -l .mops/moc-* || true
           echo $(cat .mops/moc-*) || true
           file $(cat .mops/moc-*) || true
+          $(cat .mops/moc-*) --version
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
