@@ -56,8 +56,8 @@ jobs:
         with:
           repository: dfinity/motoko-core
           fetch-depth: "0"
-      - name: Run `motoko-core` Tests
         uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Run `motoko-core` Tests
         run: npm test
 
   create-issue:
