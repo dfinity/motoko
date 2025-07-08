@@ -58,6 +58,13 @@ jobs:
           fetch-depth: "0"
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Populate `moc`
+        uses: ./.github/actions/test-blueprint
+        with:
+          os: ubuntu-latest
+          test-target: moc
+          test-name: fetch-moc
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Run `motoko-core` Tests
         run: npm test
 
