@@ -9,12 +9,12 @@
     In the near future, the `persistent` keyword will be made optional again, and `let` and `var` declarations within actor and actor classes will be `stable` (by default) unless declared `transient`, inverting the previous default for non-`persistent` actors.
     The goal of this song and dance is to *always* default actor declarations to stable unless declared `transient` and make the `persistent` keyword redundant.
     New flags:
-      * `--non-persistent`: rejects code with non-`persistent` actors emitting
-        diagnostics to force transition to `persistent` actors. Current default.
-      * `--persistent`: allows non-`persistent` actors but defaults to `stable`, not `transient`.
-        Future default.
-      * `--legacy-non-persistent`: compiles code with legacy semantics and no diagnostics.
-        For internal use and those that can't adjust their code just now.
+    * `--non-persistent`: rejects code with non-`persistent` actors emitting
+       diagnostics to force transition to `persistent` actors. Current default.
+    * `--persistent`: allows non-`persistent` actors but defaults to `stable`, not `transient`.
+       Future default.
+    * `--legacy-non-persistent`: compiles code with legacy semantics and no diagnostics.
+       For internal use and those that can't adjust their code just now.
 
   * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
     Flag `--enhanced-orthogonal-persistence` is on by default.
