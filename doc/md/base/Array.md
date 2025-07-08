@@ -1,15 +1,15 @@
-# Array
+# base/Array
 Provides extended utility functions on Arrays.
 
 :::warning
 
- If you are looking for a list that can grow and shrink in size,
+If you are looking for a list that can grow and shrink in size,
 it is recommended you use either the `Buffer` or `List` data structure for
 those purposes.
 
 :::
 
-:::note [Assumptions]
+:::note Assumptions
 
 Runtime and space complexity assumes that `generator`, `equal`, and other functions execute in `O(1)` time and space.
 :::
@@ -153,7 +153,7 @@ func append<X>(array1 : [X], array2 : [X]) : [X]
 
 Create a new array by appending the values of `array1` and `array2`.
 
-:::note [Efficient appending]
+:::note Efficient appending
 
 `Array.append` copies its arguments and runs in linear time.
 For better performance in loops, consider using `Buffer` and `Buffer.append` instead.
@@ -291,10 +291,10 @@ import {toText} "mo:base/Nat";
 
 let array = [4, 2, 0, 1];
 let newArray =
-  Array.mapFilter<Nat, Text>( // mapping from Nat to Text values
-    array,
-    func x = if (x == 0) { null } else { ?toText(100 / x) } // can't divide by 0, so return null
-  );
+ Array.mapFilter<Nat, Text>( // mapping from Nat to Text values
+   array,
+   func x = if (x == 0) { null } else { ?toText(100 / x) } // can't divide by 0, so return null
+ );
 ```
 
 | Runtime   | Space     |
@@ -307,21 +307,21 @@ let newArray =
 func mapResult<X, Y, E>(array : [X], f : X -> Result.Result<Y, E>) : Result.Result<[Y], E>
 ```
 
- Creates a new array by applying `f` to each element in `array`.
- If any invocation of `f` produces an `#err`, returns an `#err`. Otherwise
- returns an `#ok` containing the new array.
+Creates a new array by applying `f` to each element in `array`.
+If any invocation of `f` produces an `#err`, returns an `#err`. Otherwise
+returns an `#ok` containing the new array.
 
- ```motoko include=import
- let array = [4, 3, 2, 1, 0];
- // divide 100 by every element in the array
- Array.mapResult<Nat, Nat, Text>(array, func x {
-   if (x > 0) {
-     #ok(100 / x)
-   } else {
-     #err "Cannot divide by zero"
-   }
- })
- ```
+```motoko include=import
+let array = [4, 3, 2, 1, 0];
+// divide 100 by every element in the array
+Array.mapResult<Nat, Nat, Text>(array, func x {
+  if (x > 0) {
+    #ok(100 / x)
+  } else {
+    #err "Cannot divide by zero"
+  }
+})
+```
 
 | Runtime   | Space     |
 |-----------|-----------|
@@ -362,11 +362,11 @@ import {add} "mo:base/Nat";
 
 let array = [4, 2, 0, 1];
 let sum =
-  Array.foldLeft<Nat, Nat>(
-    array,
-    0, // start the sum at 0
-    func(sumSoFar, x) = sumSoFar + x // this entire function can be replaced with `add`!
-  );
+ Array.foldLeft<Nat, Nat>(
+   array,
+   0, // start the sum at 0
+   func(sumSoFar, x) = sumSoFar + x // this entire function can be replaced with `add`!
+ );
 ```
 
 | Runtime   | Space     |
@@ -434,7 +434,7 @@ Returns an Iterator (`Iter`) over the elements of `array`.
 Iterator provides a single method `next()`, which returns
 elements in order, or `null` when out of elements to iterate over.
 
-:::note [Alternative approach]
+:::note Alternative approach
 
 Alternatively, you can use `array.size()` to achieve the same result. See the example below.
 :::
@@ -443,7 +443,7 @@ Alternatively, you can use `array.size()` to achieve the same result. See the ex
 let array = [10, 11, 12];
 var sum = 0;
 for (element in array.vals()) {
-  sum += element;
+ sum += element;
 };
 sum
 ```
@@ -461,7 +461,7 @@ Returns an Iterator (`Iter`) over the indices of `array`.
 Iterator provides a single method `next()`, which returns
 indices in order, or `null` when out of index to iterate over.
 
-:::note [Alternative approach]
+:::note Alternative approach
 You can also use `array.keys()` instead of this function. See example
 below.
 
@@ -471,7 +471,7 @@ below.
 let array = [10, 11, 12];
 var sum = 0;
 for (element in array.keys()) {
-  sum += element;
+ sum += element;
 };
 sum
 ```
@@ -487,7 +487,7 @@ func size<X>(array : [X]) : Nat
 
 Returns the size of `array`.
 
-:::note [Alternative approach]
+:::note Alternative approach
 
 Alternatively, you can use `array.size()` to achieve the same result. See the example below.
 :::
@@ -508,8 +508,8 @@ func subArray<X>(array : [X], start : Nat, length : Nat) : [X]
 
 Returns a new subarray from the given array provided the start index and length of elements in the subarray.
 
-:::note [Limitations]
- Traps if the start index + length is greater than the size of the array.
+:::note Limitations
+Traps if the start index + length is greater than the size of the array.
 :::
 
 ```motoko include=import
@@ -545,7 +545,7 @@ assert Array.indexOf<Char>('g', array, Char.equal) == null;
 func nextIndexOf<X>(element : X, array : [X], fromInclusive : Nat, equal : (X, X) -> Bool) : ?Nat
 ```
 
-Returns the index of the next occurence of `element` in the `array` starting from the `from` index (inclusive).
+Returns the index of the next occurrence of `element` in the `array` starting from the `from` index (inclusive).
 
 ```motoko include=import
 import Char "mo:base/Char";
@@ -586,7 +586,7 @@ assert Array.lastIndexOf<Char>('g', array, Char.equal) == null;
 func prevIndexOf<T>(element : T, array : [T], fromExclusive : Nat, equal : (T, T) -> Bool) : ?Nat
 ```
 
-Returns the index of the previous occurance of `element` in the `array` starting from the `from` index (exclusive).
+Returns the index of the previous occurrence of `element` in the `array` starting from the `from` index (exclusive).
 
 ```motoko include=import
 import Char "mo:base/Char";

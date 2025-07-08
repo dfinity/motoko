@@ -1,9 +1,9 @@
-# CertifiedData
+# base/CertifiedData
 The Internet Computer allows canister smart contracts to store a small amount of data during
 update method processing so that during query call processing, the canister can obtain
 a certificate about that data.
 
-:::info [Intended audience]
+:::info Intended audience
 
 This module provides a _low-level_ interface to this API, aimed at advanced
 users and library implementors. See the Internet Computer interface
@@ -19,7 +19,7 @@ func set(data : Blob) : ()
 
 Set the certified data.
 
-:::note [Usage constraints]
+:::note Usage constraints
 
 Must be called from an update method, else traps.
 Must be passed a blob of at most 32 bytes, else traps.
@@ -50,7 +50,7 @@ func getCertificate() : ?Blob
 
 Gets a certificate.
 
-:::note [When available]
+:::note When available
 
 Returns `null` if no certificate is available, e.g. when processing an
 update call or inter-canister call. This returns a non-`null` value only

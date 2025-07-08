@@ -7,6 +7,7 @@ type name = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
+type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
@@ -136,6 +137,7 @@ val is_unit : typ -> bool
 val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
+val is_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool

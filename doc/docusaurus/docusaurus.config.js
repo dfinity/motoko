@@ -70,6 +70,12 @@ const config = {
             label: 'Base',
           },
           {
+            type: 'doc',
+            docId: 'core/index',
+            position: 'left',
+            label: 'Core',
+          },
+          {
             href: 'https://github.com/dfinity/motoko',
             label: 'GitHub',
             position: 'right',

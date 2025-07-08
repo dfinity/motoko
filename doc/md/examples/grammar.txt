@@ -217,6 +217,7 @@
     <parenthetical>? 'async' <exp_nest>
     'async*' <exp_nest>
     'await' <exp_nest>
+    'await?' <exp_nest>
     'await*' <exp_nest>
     'assert' <exp_nest>
     'label' <id> (':' <typ>)? <exp_nest>

@@ -45,16 +45,23 @@ jobs:
       with:
         version: ${{ steps.get_version.outputs.version }}
 
-  tag-release:
+  tag-and-release:
     needs: validate
     runs-on: ubuntu-latest
     # Only when the PR is merged!
     if: github.event.pull_request.merged
     steps:
+    - name: Create GitHub App Token
+      uses: actions/create-github-app-token@v2
+      id: app-token
+      with:
+        app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
+        private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
     - uses: actions/checkout@v4
       with:
         # Checkout the merge commit so we can tag it
         ref: ${{ github.event.pull_request.merge_commit_sha }}
+        token: ${{ steps.app-token.outputs.token }}
     - name: Sanity check that the commit is correct
       run: |
         set -euo pipefail

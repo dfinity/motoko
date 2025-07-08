@@ -1,90 +1,103 @@
 name: release
 
-# We trigger this on all tags and on the `master` branch. The job
-# `changelog` will fail for tags that don’t have a
-# changelog entry, so that seems good enough.
-# For `master` this check is skipped as well as uploads.
-
 on:
   push:
     tags:
     - '*'
-    branches:
-    - 'master'
+  workflow_dispatch:
+    # To test this workflow: Go to Actions -> release -> Run workflow
+    # Or using the CLI: gh workflow run release --ref <branch> -f version=test-draft-release
+    # This creates a draft release tagged with the specified version
+    # Remember to delete the draft release after testing!
+    inputs:
+      version:
+        description: 'Version for draft release (default: test-draft-release)'
+        required: false
+        default: test-draft-release
+        type: string
 
 jobs:
-  # first check that the changelog is in good order and extract the changelog
-  # This will fail for non-release tags.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ inputs.version || github.ref_name }}
+    steps:
+      - name: Prepare release
+        run: echo "Preparing release for version ${{ inputs.version || github.ref_name }}"
+
+  # Check that the changelog is in good order and extract the changelog.
   changelog:
     runs-on: ubuntu-latest
+    needs: prepare
     steps:
     - uses: actions/checkout@v4
     - name: Extract changelog
+      # Skip this step for draft releases. Leave the release body empty.
+      if: ${{ github.event_name != 'workflow_dispatch' }}
       id: read_changelog
-      if: startsWith(github.ref, 'refs/tags/')
       uses: ./.github/actions/extract-changelog
       with:
-        version: ${{ github.ref_name }}
+        version: ${{ needs.prepare.outputs.version }}
     outputs:
       release_body: ${{ steps.read_changelog.outputs.release_body }}
 
-  # Now build the release on both linux and darwin
   build:
+    needs: prepare
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest ]
-    needs: changelog
+    concurrency:
+      group: release-build-${{ matrix.os }}-${{ needs.prepare.outputs.version }}
+      cancel-in-progress: true
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
-      with:
-        extra_nix_config: experimental-features = nix-command flakes ca-derivations
     - uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: "nix-build"
-      # these are the dependencies listed in release-files. Sorry for the duplication
-      run: |
-        cachix watch-exec ic-hs-test -- \
-          nix build --max-jobs 1 -L \
-            .#release.moc \
-            .#release.mo-doc \
-            .#js.moc \
-            .#js.moc_interpreter
+        # NB: No auth token, we don't expect to push new stuff here
 
-        echo "## checks"
+    - name: Build platform-specific release files
+      run: nix build --max-jobs 1 '.#"release-files-${{ matrix.os }}"'
+
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-files-${{ matrix.os }}
+        path: result/*
+
+    - name: Test release files
+      run: |
         uname -s -m
         moc="$(nix build --max-jobs 1 .#release.moc --print-out-paths)"
         "$moc/bin/moc" --version
         file "$moc/bin/moc"
         ldd "$moc/bin/moc" || true
 
-  # Finally do the upload. Hopefully the previous job has uploaded the
-  # build product to the cachix cache, as we cannot build the darwin products on
-  # linux
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: 'ubuntu-latest'
-    needs: [ changelog, build ]
+  publish:
+    runs-on: ubuntu-latest
+    needs: [prepare, changelog, build]
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
+    - name: Download all release artifacts
+      uses: actions/download-artifact@v4
       with:
-        extra_nix_config: experimental-features = nix-command flakes ca-derivations
-    - uses: cachix/cachix-action@v16
-      with:
-        name: ic-hs-test
-        # NB: No auth token, we don’t expect to push new stuff here
+        path: release-assets
+        pattern: release-files-*
+        merge-multiple: true
 
-    - run: nix build --max-jobs 1 .#release-files
+    - name: List downloaded files
+      run: |
+        echo "Contents of release-assets directory:"
+        find release-assets -type f -ls || true
 
     - name: Upload Release Assets
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
-        file: result/*
+        tag: ${{ needs.prepare.outputs.version }}
+        file: release-assets/*
         file_glob: true
-        body: ${{ needs.changelog.outputs.release_body }}
+        body: ${{ needs.changelog.outputs.release_body || 'Draft release created for testing purposes' }}
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
+        prerelease: ${{ github.event_name == 'workflow_dispatch' }}

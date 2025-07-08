@@ -1,3 +1,18 @@
+- [Nix setup](#nix-setup)
+- [Installation using Nix](#installation-using-nix)
+  - [Other tools](#other-tools)
+- [Development using Nix](#development-using-nix)
+- [Replicating CI locally](#replicating-ci-locally)
+- [Making releases](#making-releases)
+  - [1. Update Changelog](#1-update-changelog)
+  - [2. Open a release PR](#2-open-a-release-pr)
+  - [3. Wait for the release to complete, and verify it](#3-wait-for-the-release-to-complete-and-verify-it)
+  - [4. Update `motoko-base`](#4-update-motoko-base)
+  - [Downstream](#downstream)
+- [Coverage report](#coverage-report)
+- [Profile the compiler](#profile-the-compiler)
+- [Benchmarking the RTS](#benchmarking-the-rts)
+
 ## Nix setup
 
 The Motoko build system relies on [Nix](https://nixos.org/) to manage
@@ -10,7 +25,7 @@ sh <(curl -L https://nixos.org/nix/install) --daemon
 This repository is also a Nix Flake which means you need to
 allow this feature by making sure the following is present in `/etc/nix/nix.conf`:
 ```
-extra-experimental-features = nix-command flakes ca-derivations
+extra-experimental-features = nix-command flakes
 ```
 
 You should also enable a nix cache to get all dependencies pre-built.
@@ -149,6 +164,20 @@ export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1
 echo MOC_MINOR=$MOC_MINOR
 ```
 
+Run the following command to create the release PR:
+
+```bash
+(test -n "$MOC_MINOR" || (echo "MOC_MINOR is not set" && false)) && \
+git switch -c $USER/0.14.$MOC_MINOR && \
+git add Changelog.md && \
+git commit -m "chore: Releasing 0.14."$MOC_MINOR && \
+git push --set-upstream origin $USER/0.14.$MOC_MINOR && \
+gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+```
+
+<details>
+<summary>Or click here for detailed steps:</summary>
+
 Switch to a new release branch (creating it if it doesn't exist):
 
 ```bash
@@ -175,6 +204,13 @@ Create a PR from this commit:
 To create the PR, you can use `gh` CLI:
 ```bash
 gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+```
+</details>
+
+The PR will be merged automatically once the CI passes.
+You can check the status of the PR on GitHub with
+```bash
+gh pr view --web
 ```
 
 After the PR is merged, the `release-pr.yml` workflow should automatically create a tag and push it to the remote repository starting the release process.
@@ -210,36 +246,40 @@ on GitHub's UI.
 
 ### 4. Update `motoko-base`
 
-After releasing the compiler you can update `motoko-base`'s `master`
-branch to the `next-moc` branch.
+After releasing the compiler, update `motoko-base`'s `master` branch to the `next-moc` branch.
 
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base` and pull the latest `next-moc`
 ```bash
 git switch next-moc; git pull
 ```
-* Create a new branch for the update
-```bash
-git switch -c $USER/update-moc-0.14.$MOC_MINOR
-```
 * Revise and update the `CHANGELOG.md`, by adding a top entry for the release
-* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml`
-  to the new released version:
-```bash
-perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml
-```
-* Add the changed files and commit the changes
-```bash
-git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR
-```
-* Push the branch
-```bash
-git push --set-upstream origin $USER/update-moc-0.14.$MOC_MINOR
-```
 
-Make a PR off of that branch, targeting `master`, and merge it using a _normal merge_ (not
-squash merge) once CI passes. It will eventually be imported into this
-repo by a scheduled `niv-updater-action`.
+* Bump `moc` and create a PR:
+```bash
+# Create a new branch for the update
+git switch -c $USER/update-moc-0.14.$MOC_MINOR && \
+
+# Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml` to the new released version
+perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml && \
+
+# Add the changed files and commit the changes
+git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR && \
+
+# Push the branch
+git push --set-upstream origin $USER/update-moc-0.14.$MOC_MINOR && \
+
+# Create a PR targeting `master`
+gh pr create --title "Motoko 0.14."$MOC_MINOR --base master --head $USER/update-moc-0.14.$MOC_MINOR --body ""
+```
+* You can check the status of the PR on GitHub with
+```bash
+gh pr view --web
+```
+* Once CI passes, merge the PR using the _normal merge_ (not squash merge).
+  > **Note:** To allow merge commits, go to the repository settings and enable merge commits. Remember to **disable it after the merge**. Unfortunately, `gh` CLI cannot update this setting without admin permissions.
+
+It will eventually be imported into this repo by a scheduled `niv-updater-action`.
 
 Finally tag the base release (so the documentation interpreter can do the right thing):
 First, switch to `master`, pull the latest changes and verify we are at the right commit:
