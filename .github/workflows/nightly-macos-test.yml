@@ -82,12 +82,14 @@ jobs:
           pwd
           ls -la .
           ls -la ..
-          ls /nix/store/*-moc/bin/moc || true
-          file /nix/store/*-moc/bin/moc || true
-          ls .mops/ || true
-          ls -l .mops/moc-* || true
-          echo $(cat .mops/moc-*) || true
-          file $(cat .mops/moc-*) || true
+          ls /nix/store/*-moc/bin/moc
+          file /nix/store/*-moc/bin/moc
+          /nix/store/*-moc/bin/moc --version
+          ls .mops/
+          ls -l .mops/moc-*
+          echo $(cat .mops/moc-*)
+          ls -l $(cat .mops/moc-*)
+          file $(cat .mops/moc-*)
           $(cat .mops/moc-*) --version
       - name: Fixup `mops` cache
         run: |
