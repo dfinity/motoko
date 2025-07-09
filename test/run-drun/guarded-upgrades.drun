@@ -1,0 +1,4 @@
+# CLASSICAL-PERSISTENCE-ONLY
+install $ID guarded-upgrades/version0.mo ""
+upgrade $ID guarded-upgrades/version1.mo ""
+upgrade $ID guarded-upgrades/version2.mo ""
