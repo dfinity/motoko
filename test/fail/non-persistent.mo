@@ -6,7 +6,7 @@ actor {
   type T = ?T;
   class _C() {};
   module _M = {};
-  object _O = {};
-  public func s(){};
+  object _O = {}; // error
   func f(){};
+  public /*shared*/ func g(){};
 }

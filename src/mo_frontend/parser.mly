@@ -185,13 +185,13 @@ let share_dec_field default_stab (df : dec_field) =
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab (Flexible @@ no_region) df.it.stab df.it.dec}}
+      stab = share_stab (Flexible @@ df.it.dec.at) df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
        {df.it with stab =
           match df.it.stab with
-          | None -> Some (Flexible @@ no_region)
+          | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
     }
   | _ ->
