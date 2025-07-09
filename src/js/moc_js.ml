@@ -12,8 +12,6 @@ let () =
   Flags.debug_info := false;
   Flags.actor_idl_path := Some "idl/";
   Flags.error_detail := 4; (* unexpected token with expected symbols and examples *)
-  Flags.persistent := false;
-  Flags.persistent_diagnostics := true;
   Js.export "Motoko"
     (object%js
       val version = js_version
@@ -30,10 +28,7 @@ let () =
       method setRunStepLimit limit = js_set_run_step_limit limit
       method setTypecheckerCombineSrcs combineSrcs = Flags.typechecker_combine_srcs := combineSrcs
       method gcFlags option = gc_flags option
-      method run list s =
-        Flags.persistent := false;
-        Flags.persistent_diagnostics := true;
-        Flags.compiled := false; wrap_output (fun _ -> js_run list s)
+      method run list s = Flags.compiled := false; wrap_output (fun _ -> js_run list s)
       method check s = Flags.compiled := false; js_check s
       method viper filenames = js_viper filenames
       method candid s = Flags.compiled := true; js_candid s

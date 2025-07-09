@@ -12,8 +12,6 @@ let () =
   Flags.debug_info := false;
   Flags.compiled := false;
   Flags.actor_idl_path := Some "idl/";
-  Flags.persistent := false;
-  Flags.persistent_diagnostics := true;
   Js.export "Motoko"
     (object%js
       val version = js_version

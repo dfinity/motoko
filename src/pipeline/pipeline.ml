@@ -806,7 +806,6 @@ let adjust_flags () =
       | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
       (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
       Flags.rtti := true;
-      Flags.persistent := true
     end
   else
     begin
