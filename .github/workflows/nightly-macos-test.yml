@@ -60,6 +60,10 @@ jobs:
           test-target: moc
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Save the `test-blueprint`
+        run: cp -r ./.github/actions/test-blueprint ..
+
       - name: Look around first
         run: |
           pwd
@@ -77,6 +81,10 @@ jobs:
         uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Set up `mops` cache
         run: npx ${DFX_MOC_PATH} --version
+
+      - name: Restore the `test-blueprint`
+        run:  mv ../test-blueprint ./.github/actions
+
       - name: Look around again
         run: |
           pwd
