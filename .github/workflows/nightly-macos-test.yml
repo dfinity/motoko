@@ -63,15 +63,6 @@ jobs:
 
       - name: Save the `test-blueprint`
         run: cp -r ./.github/actions/test-blueprint ..
-
-      - name: Look around first
-        run: |
-          pwd
-          ls -la .
-          ls -la ..
-          ls -ld /nix/store || true
-          nix build .#moc --print-out-paths
-          file /nix/store/*-moc/bin/moc || true
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
         with:
@@ -80,11 +71,11 @@ jobs:
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Set up `mops` cache
-        run: npx ${DFX_MOC_PATH} --version
-
+        run: |
+          npx mops --version
+          npx ${DFX_MOC_PATH} --version
       - name: Restore the `test-blueprint`
         run:  mv ../test-blueprint ./.github/actions
-
       - name: Look around again
         run: |
           pwd
@@ -105,18 +96,6 @@ jobs:
           npx ${DFX_MOC_PATH} --version
       - name: Run `motoko-core` Tests
         run: npm test
-      - name: Look around after
-        run: |
-          pwd
-          ls -la .
-          ls -la ..
-          ls /nix/store/*-moc/bin/moc || true
-          file /nix/store/*-moc/bin/moc || true
-          ls .mops/ || true
-          ls -l .mops/moc-* || true
-          echo $(cat .mops/moc-*) || true
-          file $(cat .mops/moc-*) || true
-          $(cat .mops/moc-*) --version
 
   create-issue:
     needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
