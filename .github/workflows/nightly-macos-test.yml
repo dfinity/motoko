@@ -60,7 +60,10 @@ jobs:
           test-target: moc
           test-name: fetch-moc
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
+      - name: Build `moc`
+        run: |
+          nix build .#moc --print-out-paths
+          file /nix/store/*-moc/bin/moc || true
       - name: Save the `test-blueprint`
         run: cp -r ./.github/actions/test-blueprint ..
       - name: Get `motoko-core` Repo
