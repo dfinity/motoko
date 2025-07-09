@@ -63,6 +63,9 @@ let
         mkdir -p $out/share
         cp -v ${dir}/ok/*.ok $out/share
       '';
+    } // pkgs.lib.optionalAttrs (builtins.elem test-runner deps) {
+      POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+      POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
     });
 
   test_subdir = dir: deps: acceptable_subdir false dir deps;
