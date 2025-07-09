@@ -148,7 +148,7 @@ let%expect_test "" =
   run_get_sources_test s;
   [%expect {|
     Diagnostics:
-    (unknown location): type error [M0219], this declaration is currently implicitly transient, please declare it explicitly `transient` |}]
+    test-field-srcs.mo:1.1-1.6: type error [M0220], this actor or actor class should be declared `persistent` |}]
 
 let run_compare_typed_asts_test filename =
   let open Diag.Syntax in
