@@ -1,8 +1,9 @@
-use candid::Principal;
+use candid::{CandidType, Principal};
 use hex::decode;
-use pocket_ic::{PocketIc, PocketIcBuilder, RejectResponse};
+use pocket_ic::common::rest::RawEffectivePrincipal;
+use pocket_ic::{call_candid_as, PocketIc, PocketIcBuilder, RejectResponse};
+use serde::Serialize;
 use std::io::Read;
-use std::ops::Index;
 use std::path::PathBuf;
 use std::str::Chars;
 
@@ -68,6 +69,40 @@ pub enum TestCommand {
         args: String,
     },
 }
+
+#[derive(CandidType, Serialize, Debug, PartialEq)]
+pub enum WasmMemoryPersistence {
+    /// Preserve heap memory.
+    #[serde(rename = "keep")]
+    Keep,
+    /// Clear heap memory.
+    #[serde(rename = "replace")]
+    Replace,
+}
+#[derive(CandidType, Serialize, Debug, PartialEq)]
+pub struct UpgradeFlags {
+    pub skip_pre_upgrade: Option<bool>,
+    pub wasm_memory_persistence: Option<WasmMemoryPersistence>,
+}
+
+#[derive(CandidType, Serialize, Debug, PartialEq)]
+pub enum CanisterInstallModeV2 {
+    #[serde(rename = "install")]
+    Install,
+    #[serde(rename = "reinstall")]
+    Reinstall,
+    #[serde(rename = "upgrade")]
+    Upgrade(Option<UpgradeFlags>),
+}
+
+#[derive(CandidType, Serialize, Debug, PartialEq)]
+pub struct InstallCodeArgument {
+    pub mode: CanisterInstallModeV2,
+    pub canister_id: Principal,
+    pub wasm_module: Vec<u8>,
+    pub arg: Vec<u8>,
+}
+
 #[derive(Debug)]
 enum Radix {
     Bin = 2,
@@ -153,6 +188,21 @@ fn parse_str_args(input_str: &str) -> Result<Vec<u8>, String> {
     }
 }
 
+fn contains_icp_private_custom_section(wasm_binary: &[u8], name: &str) -> Result<bool, String> {
+    use wasmparser::{Parser, Payload::CustomSection};
+
+    let icp_section_name = format!("icp:private {name}");
+    let parser = Parser::new(0);
+    for payload in parser.parse_all(wasm_binary) {
+        if let CustomSection(reader) = payload.map_err(|e| format!("Wasm parsing error: {}", e))? {
+            if reader.name() == icp_section_name {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
 trait ResultExtractor {
     fn extract(&self, command: TestCommand) -> String;
 }
@@ -193,15 +243,11 @@ impl ResultExtractor for Vec<u8> {
 }
 
 impl TestCommand {
-    fn install_command(
-        &self,
-        server: &mut PocketIc,
-        canister_id: &str,
-        wasm_path: &PathBuf,
-        init_args: &str,
-    ) -> std::io::Result<()> {
+    fn create_canister(&self, server: &mut PocketIc, canister_id: &str) -> std::io::Result<()> {
+        //println!("Creating canister: {}", canister_id);
         let canister_principal = Principal::from_text(canister_id).unwrap();
         let result = server.create_canister_with_id(None, None, canister_principal);
+        server.add_cycles(canister_principal, 1_000_000_000_000_000);
 
         if let Err(e) = result {
             return Err(std::io::Error::new(
@@ -211,9 +257,17 @@ impl TestCommand {
         } else {
             println!("ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101");
         }
+        Ok(())
+    }
 
+    fn install_command(
+        &self,
+        server: &mut PocketIc,
+        canister_id: &str,
+        wasm_path: &PathBuf,
+        init_args: &str,
+    ) -> std::io::Result<()> {
         let wasm_bytes = std::fs::read(wasm_path).unwrap();
-
         let args = match parse_str_args(init_args) {
             Ok(args) => args,
             Err(e) => {
@@ -223,6 +277,7 @@ impl TestCommand {
                 ));
             }
         };
+        let canister_principal = Principal::from_text(canister_id).unwrap();
         server.install_canister(canister_principal, wasm_bytes, args, None);
         println!("ingress Completed: Reply: 0x4449444c0000");
         Ok(())
@@ -298,7 +353,39 @@ impl TestCommand {
                 ));
             }
         };
-        let res = server.upgrade_canister(canister_principal, wasm_bytes, args, None);
+        // Use the call_candid_as method instead of upgrade_canister.
+        // This is important because it will allow us to specify whether the wasm memory
+        // can be kept or not.
+        let wasm_memory_persistence = if contains_icp_private_custom_section(
+            wasm_bytes.as_ref(),
+            "enhanced-orthogonal-persistence",
+        )
+        .unwrap_or(false)
+        {
+            Some(UpgradeFlags {
+                skip_pre_upgrade: Some(false),
+                wasm_memory_persistence: Some(WasmMemoryPersistence::Keep),
+            })
+        } else {
+            Some(UpgradeFlags {
+                skip_pre_upgrade: Some(false),
+                wasm_memory_persistence: None,
+            })
+        };
+        let arg = InstallCodeArgument {
+            mode: CanisterInstallModeV2::Upgrade(wasm_memory_persistence),
+            canister_id: canister_principal,
+            wasm_module: wasm_bytes,
+            arg: args,
+        };
+        let res: Result<(), _> = call_candid_as(
+            &server,
+            Principal::management_canister(),
+            RawEffectivePrincipal::CanisterId(canister_principal.as_slice().to_vec()),
+            Principal::anonymous(),
+            "install_code",
+            (arg,),
+        );
         println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
@@ -311,7 +398,6 @@ impl TestCommand {
         args: &str,
     ) -> std::io::Result<()> {
         let canister_principal = Principal::from_text(canister_id).unwrap();
-        //println!("!!args: {:?}", args);
         let payload = match parse_str_args(args) {
             Ok(payload) => payload,
             Err(e) => {
@@ -321,7 +407,6 @@ impl TestCommand {
                 ));
             }
         };
-
         let res = match method_name {
             "__motoko_stabilize_before_upgrade" => server.update_call(
                 canister_principal,
@@ -546,6 +631,16 @@ impl TestRunner {
         }
         .build();
 
+        // Get the first canister id found in the commands.
+        let canister_id = self.commands.iter().find_map(|command| match command {
+            TestCommand::Install { canister_id, .. }
+            | TestCommand::Reinstall { canister_id, .. }
+            | TestCommand::Upgrade { canister_id, .. } => Some(canister_id),
+            _ => None,
+        });
+        if let Some(canister_id) = canister_id {
+            self.commands[0].create_canister(&mut server, canister_id)?;
+        }
         for command in &self.commands {
             // command: {:?}", command);
             command.execute(&mut server)?;
@@ -577,8 +672,6 @@ fn main() {
     let mut stdin = std::io::stdin();
     let mut buffer = String::new();
     let _ = stdin.read_to_string(&mut buffer);
-
-    //println!("buffer: {}", buffer);
 
     let commands = TestCommands::new(buffer).parse();
     match commands {

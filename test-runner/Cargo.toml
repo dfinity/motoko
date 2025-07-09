@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pocket-ic = { path = "/nix/store/z6d4aqwrwz4k28crinz3flmz00sjcx7c-source/packages/pocket-ic" }  # This will be replaced by the shell hook
+pocket-ic = { path = "/nix/store/wqdx4nfb1ja6nsar14cixyvcn35frxj1-source/packages/pocket-ic" }  # This will be replaced by the shell hook
 candid = "0.10.14"
 serde = "1.0.219"
 hex = "0.4.3"
+wasmparser = "0.228.0"

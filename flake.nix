@@ -242,8 +242,8 @@
           POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
           
           # Update Cargo.toml with the correct path
-          preBuild = ''
-            sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" Cargo.toml
+          preBuild = ''           
+            sed -i "s|pocket-ic = { path = \".*\" }|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" Cargo.toml
           '';
         };
 
