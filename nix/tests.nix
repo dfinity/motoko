@@ -237,13 +237,13 @@ fix_names
     run-debug = snty_subdir "run" [ moc ];
     run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
     run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    drun-release = test_subdir "run-drun" [ moc pkgs.drun ];
-    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ];
-    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
+    drun-release = test_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun test-runner ];
+    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun test-runner ];
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
@@ -254,11 +254,11 @@ fix_names
     trap = test_subdir "trap" [ moc ];
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
-    perf = perf_subdir false "perf" [ moc pkgs.drun ];
+    perf = perf_subdir false "perf" [ moc pkgs.drun test-runner ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
     inherit qc unit candid coverage test-runner;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)
-  (fix_names { bench = perf_subdir true "bench" [ moc pkgs.drun pkgs.ic-wasm ]; })
+  (fix_names { bench = perf_subdir true "bench" [ moc pkgs.drun test-runner pkgs.ic-wasm ]; })

@@ -243,9 +243,35 @@ impl ResultExtractor for Vec<u8> {
 }
 
 impl TestCommand {
+    fn principal_from_text(text: &str) -> Result<Principal, std::io::Error> {
+        Principal::from_text(text).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to parse canister id: {}", e),
+            )
+        })
+    }
+
+    fn read_wasm_file(wasm_path: &PathBuf) -> Result<Vec<u8>, std::io::Error> {
+        std::fs::read(wasm_path).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to read wasm file: {}", e),
+            )
+        })
+    }
+
+    fn parse_args(input_str: &str) -> Result<Vec<u8>, std::io::Error> {
+        parse_str_args(input_str).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to parse args: {}", e),
+            )
+        })
+    }
+
     fn create_canister(&self, server: &mut PocketIc, canister_id: &str) -> std::io::Result<()> {
-        //println!("Creating canister: {}", canister_id);
-        let canister_principal = Principal::from_text(canister_id).unwrap();
+        let canister_principal = Self::principal_from_text(canister_id)?;
         let result = server.create_canister_with_id(None, None, canister_principal);
         server.add_cycles(canister_principal, 1_000_000_000_000_000);
 
@@ -267,17 +293,9 @@ impl TestCommand {
         wasm_path: &PathBuf,
         init_args: &str,
     ) -> std::io::Result<()> {
-        let wasm_bytes = std::fs::read(wasm_path).unwrap();
-        let args = match parse_str_args(init_args) {
-            Ok(args) => args,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse init args: {}", e),
-                ));
-            }
-        };
-        let canister_principal = Principal::from_text(canister_id).unwrap();
+        let wasm_bytes = Self::read_wasm_file(wasm_path)?;
+        let args = Self::parse_args(init_args)?;
+        let canister_principal = Self::principal_from_text(canister_id)?;
         server.install_canister(canister_principal, wasm_bytes, args, None);
         println!("ingress Completed: Reply: 0x4449444c0000");
         Ok(())
@@ -317,18 +335,9 @@ impl TestCommand {
         wasm_path: &PathBuf,
         init_args: &str,
     ) -> std::io::Result<()> {
-        let canister_principal = Principal::from_text(canister_id).unwrap();
-        let wasm_bytes = std::fs::read(wasm_path).unwrap();
-
-        let args = match parse_str_args(init_args) {
-            Ok(args) => args,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse init args: {}", e),
-                ));
-            }
-        };
+        let canister_principal = Self::principal_from_text(canister_id)?;
+        let wasm_bytes = Self::read_wasm_file(wasm_path)?;
+        let args = Self::parse_args(init_args)?;
         let res = server.reinstall_canister(canister_principal, wasm_bytes, args, None);
         println!("{}", self.handle_result_and_get_response(res));
         Ok(())
@@ -341,18 +350,10 @@ impl TestCommand {
         wasm_path: &PathBuf,
         upgrade_args: &str,
     ) -> std::io::Result<()> {
-        let canister_principal = Principal::from_text(canister_id).unwrap();
-        let wasm_bytes = std::fs::read(wasm_path).unwrap();
+        let canister_principal = Self::principal_from_text(canister_id)?;
+        let wasm_bytes = Self::read_wasm_file(wasm_path)?;
+        let args = Self::parse_args(upgrade_args)?;
 
-        let args = match parse_quoted(upgrade_args) {
-            Ok(args) => args,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse upgrade args: {}", e),
-                ));
-            }
-        };
         // Use the call_candid_as method instead of upgrade_canister.
         // This is important because it will allow us to specify whether the wasm memory
         // can be kept or not.
@@ -379,7 +380,7 @@ impl TestCommand {
             arg: args,
         };
         let res: Result<(), _> = call_candid_as(
-            &server,
+            server,
             Principal::management_canister(),
             RawEffectivePrincipal::CanisterId(canister_principal.as_slice().to_vec()),
             Principal::anonymous(),
@@ -397,16 +398,9 @@ impl TestCommand {
         method_name: &str,
         args: &str,
     ) -> std::io::Result<()> {
-        let canister_principal = Principal::from_text(canister_id).unwrap();
-        let payload = match parse_str_args(args) {
-            Ok(payload) => payload,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse args: {}", e),
-                ));
-            }
-        };
+        let canister_principal = Self::principal_from_text(canister_id)?;
+        let payload = Self::parse_args(args)?;
+
         let res = match method_name {
             "__motoko_stabilize_before_upgrade" => server.update_call(
                 canister_principal,
@@ -445,16 +439,9 @@ impl TestCommand {
         method_name: &str,
         args: &str,
     ) -> std::io::Result<()> {
-        let canister_principal = Principal::from_text(canister_id).unwrap();
-        let payload = match parse_str_args(args) {
-            Ok(payload) => payload,
-            Err(e) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to parse args: {}", e),
-                ));
-            }
-        };
+        let canister_principal = Self::principal_from_text(canister_id)?;
+        let payload = Self::parse_args(args)?;
+
         let res = server.query_call(
             canister_principal,
             Principal::anonymous(),
@@ -466,7 +453,7 @@ impl TestCommand {
     }
 
     pub fn execute(&self, server: &mut PocketIc) -> std::io::Result<()> {
-        let res = match self {
+        match self {
             TestCommand::Install {
                 canister_id,
                 wasm_path,
@@ -492,10 +479,7 @@ impl TestCommand {
                 method_name,
                 args,
             } => self.query_command(server, canister_id, method_name, args),
-        };
-        if let Err(e) = res {
-            return Err(e);
-        }
+        }?;
         Ok(())
     }
 }
