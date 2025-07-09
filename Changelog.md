@@ -13,8 +13,6 @@
        diagnostics to force transition to `persistent` actors. Current default.
     * `--persistent`: allows non-`persistent` actors but defaults to `stable`, not `transient`.
        Future default.
-    * `--legacy-non-persistent`: compiles code with legacy semantics and no diagnostics.
-       For internal use and those that can't adjust their code just now.
 
   * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
     Flag `--enhanced-orthogonal-persistence` is on by default.

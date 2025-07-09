@@ -36,6 +36,8 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
+let _UNDOCUMENTED_ = ""
+
 let argspec = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -202,7 +204,7 @@ let argspec = [
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
   " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
 
-  (* persistence *)
+  (* default stability *)
   "--persistent",
   Arg.Unit (fun () -> Flags.persistent := true),
   " Declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --non-persistent)";
@@ -215,8 +217,8 @@ let argspec = [
   "--legacy-non-persistent",
   Arg.Unit (fun () -> Flags.persistent := false;
                       Flags.persistent_diagnostics := false),
-  " In non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
-
+  _UNDOCUMENTED_;
+  (*" In non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)"; *)
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
