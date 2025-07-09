@@ -2952,7 +2952,7 @@ and check_stable_defaults env sort dec_fields =
         | Some {it = Flexible; at; _}, (LetD _ | VarD _) ->
            if at = Source.no_region
            then
-             (local_error env at "M0219" "this declaration is currently implicitly transient, please declare it explicitly `transient`";
+             (local_error env dec_field.it.dec.at "M0219" "this declaration is currently implicitly transient, please declare it explicitly `transient`";
               true)
            else acc
         | _ -> acc)
