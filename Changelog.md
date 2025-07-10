@@ -2,6 +2,13 @@
 
 * motoko (`moc`)
 
+  * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
+    This is a transitional restriction to force users to declare transient declarations as `transient` and actor/actor classes as `persistent`.
+    New error messages and warnings will iteratively guide you to insert `transient` and `persistent` as required, after which any `stable` keywords can be removed. Use the force.
+
+    In the near future, the `persistent` keyword will be made optional again, and `let` and `var` declarations within actor and actor classes will be `stable` (by default) unless declared `transient`, inverting the previous default for non-`persistent` actors.
+    The goal of this song and dance is to *always* default actor declarations to stable unless declared `transient` and make the `persistent` keyword redundant.
+
   * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
     Flag `--enhanced-orthogonal-persistence` is on by default.
     Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
