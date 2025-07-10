@@ -81,7 +81,7 @@ jobs:
       - name: Fixup `mops` cache
         run: |
           ln -sf /nix/store/*-moc/bin/moc $(cat .mops/moc-*)
-          ${DFX_MOC_PATH} --version
+          npx ${DFX_MOC_PATH} --version
       - name: Run `motoko-core` Tests
         run: npm test
 
