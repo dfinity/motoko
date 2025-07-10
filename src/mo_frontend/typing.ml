@@ -2933,8 +2933,8 @@ and check_stable_defaults env sort dec_fields =
   let declared_persistent = sort.note.it in
   if declared_persistent then
     begin
-      if !Flags.persistent && sort.note.at <> no_region then
-        warn env sort.note.at "M0217" "with flag --persistent, the `persistent` keyword is redundant and can be removed";
+      if !Flags.actors = Flags.DefaultPersistentActors && sort.note.at <> no_region then
+        warn env sort.note.at "M0217" "with flag --default-persistent-actors, the `persistent` keyword is redundant and can be removed";
       List.iter (fun dec_field ->
         match dec_field.it.stab, dec_field.it.dec.it with
         | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
@@ -2945,7 +2945,7 @@ and check_stable_defaults env sort dec_fields =
       end
   else
     (* non-`persistent` *)
-    if not !Flags.persistent && !Flags.persistent_diagnostics then
+    if !Flags.actors = Flags.RequirePersistentActors then
     let has_implicit_flexible =
       List.fold_left (fun acc dec_field ->
         match dec_field.it.stab, dec_field.it.dec.it with
@@ -2958,7 +2958,7 @@ and check_stable_defaults env sort dec_fields =
         | _ -> acc)
         false dec_fields
     in
-    if not (!Flags.persistent) && not has_implicit_flexible && not declared_persistent then
+    if not has_implicit_flexible then
       local_error env sort.at "M0220" "this actor or actor class should be declared `persistent`"
 
 and check_stab env sort scope dec_fields =

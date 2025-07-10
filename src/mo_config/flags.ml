@@ -11,6 +11,7 @@ type instruction_limits = {
   update_call: int;
 }
 
+type actors = LegacyActors | RequirePersistentActors | DefaultPersistentActors
 let ai_errors = ref false
 let trace = ref false
 let verbose = ref false
@@ -34,9 +35,7 @@ let actor_idl_path : string option ref = ref None
 let max_stable_pages_default = 65536
 let max_stable_pages : int ref = ref max_stable_pages_default
 let measure_rts_stack = ref false
-let persistent_default = false
-let persistent = ref persistent_default
-let persistent_diagnostics = ref true
+let actors = ref RequirePersistentActors
 let pre_ref : string option ref = ref None
 let post_ref : string option ref = ref None
 let profile = ref false

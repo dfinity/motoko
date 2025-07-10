@@ -833,7 +833,7 @@ stab :
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
 %inline persistent :
-  | (* empty *) { !Flags.persistent @@ no_region }
+  | (* empty *) { (!Flags.actors = Flags.DefaultPersistentActors) @@ no_region }
   | PERSISTENT { true @@ at $sloc }
 
 (* Patterns *)
