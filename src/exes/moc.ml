@@ -197,13 +197,18 @@ let argspec = [
 
   (* persistence *)
   "--enhanced-orthogonal-persistence",
-  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true;
+                      Flags.explicit_enhanced_orthogonal_persistence := true),
+  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory. Also, enable upgrade from classical to enhanced orthogonal persistence";
 
   (* persistence *)
   "--legacy-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
   " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
+
+  "-unguarded-enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
+  _UNDOCUMENTED_ "  (internal testing only)";
 
   (* default stability *)
   "--default-persistent-actors",
