@@ -125,7 +125,7 @@ let run_get_sources_test source =
     ~finally:(fun () -> Mo_config.Flags.typechecker_combine_srcs := false)
 
 let%expect_test "" =
-  let s = {|actor {
+  let s = {|persistent actor {
   class Class1() = self {
     public func meth(_ : Int) : Nat {
       return 1
@@ -147,8 +147,18 @@ let%expect_test "" =
   in
   run_get_sources_test s;
   [%expect {|
-    Diagnostics:
-    test-field-srcs.mo:1.1-1.6: type error [M0220], this actor or actor class should be declared `persistent` |}]
+    Ok:
+    Collected sources:
+    (meth
+      (@@ test-field-srcs.mo (Pos 3 16) (Pos 3 20))
+      (@@ test-field-srcs.mo (Pos 9 16) (Pos 9 20))
+    )
+    Sources table:
+    test-field-srcs.mo:2.9-2.15: test-field-srcs.mo:2.9-2.15
+    test-field-srcs.mo:3.17-3.21: test-field-srcs.mo:3.17-3.21
+    test-field-srcs.mo:8.9-8.15: test-field-srcs.mo:8.9-8.15
+    test-field-srcs.mo:9.17-9.21: test-field-srcs.mo:3.17-3.21 test-field-srcs.mo:9.17-9.21
+    test-field-srcs.mo:14.15-14.19: test-field-srcs.mo:14.15-14.19 |}]
 
 let run_compare_typed_asts_test filename =
   let open Diag.Syntax in
