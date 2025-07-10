@@ -74,7 +74,7 @@ jobs:
         uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Set up `mops` cache
         run: |
-          mops --version
+          npx ic-mops --version
           ${DFX_MOC_PATH} --version
       - name: Restore the `test-blueprint`
         run:  mv ../test-blueprint ./.github/actions
