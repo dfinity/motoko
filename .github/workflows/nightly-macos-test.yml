@@ -75,7 +75,7 @@ jobs:
       - name: Set up `mops` cache
         run: |
           npx ic-mops --version
-          ${DFX_MOC_PATH} --version
+          npx ${DFX_MOC_PATH} --version
       - name: Restore the `test-blueprint`
         run:  mv ../test-blueprint ./.github/actions
       - name: Fixup `mops` cache
