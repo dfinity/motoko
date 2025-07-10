@@ -3521,7 +3521,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
+            | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in
