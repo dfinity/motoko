@@ -64,6 +64,9 @@ jobs:
         run: |
           nix build .#moc --print-out-paths
       - name: Save the `test-blueprint` action
+        # This is needed by the "Post Populate `moc`" step (cleanup)
+        # but since the checkout of `motoko-core` destroys the `pwd` contents
+        # we have to keep it elsewhere and restore later.
         run: cp -r ./.github/actions/test-blueprint ..
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
