@@ -1,4 +1,4 @@
-//MOC-FLAG --non-persistent
+//MOC-FLAG --require-persistent-actors
 actor {
   transient let _x = #x;
   var _y = #y; // error

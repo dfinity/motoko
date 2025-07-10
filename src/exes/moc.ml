@@ -36,7 +36,8 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
-let _UNDOCUMENTED_ = ""
+(* suppress documentation *)
+let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
 
 let argspec = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
@@ -205,18 +206,20 @@ let argspec = [
   " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
 
   (* default stability *)
-  "--persistent",
+  "--default-persistent-actors",
   Arg.Unit (fun () -> Flags.actors := Flags.DefaultPersistentActors),
-  " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
+  _UNDOCUMENTED_
+   " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
 
-  "--non-persistent",
+  "--require-persistent-actors",
   Arg.Unit (fun () -> Flags.actors := Flags.RequirePersistentActors),
-  " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
+  _UNDOCUMENTED_
+    " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
 
-  "--legacy-non-persistent",
+  "--legacy-actors",
   Arg.Unit (fun () -> Flags.actors := Flags.LegacyActors),
-  _UNDOCUMENTED_;
-  (*" in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)"; *)
+  _UNDOCUMENTED_
+    " in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {

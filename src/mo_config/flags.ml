@@ -65,7 +65,7 @@ let stabilization_instruction_limit_default = {
   update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
 }
 let stabilization_instruction_limit = ref stabilization_instruction_limit_default
-let stable_memory_access_limit_default = 
+let stable_memory_access_limit_default =
   let gigabyte = 1024 * 1024 * 1024 in {
   upgrade = 6 * gigabyte; (* 8 GB limit with 2 GB reserves *)
   update_call = 1 * gigabyte; (* 2 GB limit with 1 GB reserve *)

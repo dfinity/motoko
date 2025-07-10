@@ -1,4 +1,4 @@
-//MOC-FLAG --non-persistent
+//MOC-FLAG --require-persistent-actors
 actor {
   let _x = #x; // error
   var _y = #y; // error

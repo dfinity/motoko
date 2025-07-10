@@ -32,7 +32,7 @@ SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
-MOC_ARGS="--legacy-persistence --legacy-non-persistent"
+MOC_ARGS="--legacy-persistence --legacy-actors"
 
 export WASMTIME_NEW_CLI=1
 
