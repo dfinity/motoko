@@ -82,7 +82,7 @@ let html_of_func_sort : Syntax.func_sort -> t =
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 
-let html_of_obj_sort : 'note Syntax.obj_sort -> t =
+let html_of_obj_sort : 'note Syntax.sort -> t =
  fun sort ->
   Mo_types.Type.(
     match sort.Source.it with

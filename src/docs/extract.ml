@@ -52,13 +52,13 @@ and class_doc = {
   type_args : Syntax.typ_bind list;
   constructor : function_arg_doc list;
   fields : doc list;
-  sort : unit Syntax.obj_sort;
+  sort : Syntax.typ_obj_sort;
 }
 
 and object_doc = {
   name : string;
   fields : doc list;
-  sort : unit Syntax.obj_sort;
+  sort : Syntax.typ_obj_sort;
 }
 
 let un_prog prog =
