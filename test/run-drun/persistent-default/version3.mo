@@ -1,4 +1,4 @@
-//MOC-FLAG --persistent
+//MOC-FLAG --default-persistent-actors
 import Prim "mo:⛔";
 actor {
 
@@ -8,3 +8,4 @@ actor {
   Prim.debugPrint(debug_show {x;y;z});
 
 }
+

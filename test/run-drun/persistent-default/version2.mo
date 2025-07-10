@@ -1,4 +1,4 @@
-//MOC-FLAG --persistent
+//MOC-FLAG --default-persistent-actors
 import Prim "mo:⛔";
 actor {
 
