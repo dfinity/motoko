@@ -63,21 +63,21 @@ jobs:
       - name: Build `moc`
         run: |
           nix build .#moc --print-out-paths
-      - name: Save the `test-blueprint`
+      - name: Save the `test-blueprint` action
         run: cp -r ./.github/actions/test-blueprint ..
       - name: Get `motoko-core` Repo
         uses: actions/checkout@v4
         with:
           repository: dfinity/motoko-core
           fetch-depth: "0"
+      - name: Restore the `test-blueprint` action
+        run:  mv ../test-blueprint ./.github/actions
       - name: Set up `mops`
         uses: dfinity/motoko-core/.github/actions/setup@main
       - name: Set up `mops` cache
         run: |
           npx ic-mops --version
           npx ${DFX_MOC_PATH} --version
-      - name: Restore the `test-blueprint`
-        run:  mv ../test-blueprint ./.github/actions
       - name: Fixup `mops` cache
         run: |
           ln -sf /nix/store/*-moc/bin/moc $(cat .mops/moc-*)
