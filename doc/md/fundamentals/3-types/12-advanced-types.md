@@ -201,3 +201,32 @@ But the function can also be used to return the maximum of two `Nat`s and still 
 max<Nat>(5, 10); // returns 10 : Nat
 ```
 
+## Actor type annotation
+
+Actor type annotations offer flexibility when working with external canisters, but there’s no guarantee that the function signatures will match at runtime. If the signatures don’t align, the calls will fail.
+
+```motoko no-repl
+import Array "mo:base/Array";
+import Principal "mo:base/Principal";
+
+actor Publisher {
+    stable var subscribers : [Principal] = [];
+
+    public shared func subscribe(subscriber : Principal) : async () {
+        if (Array.find<Principal>(subscribers, func(s) { s == subscriber }) == null) {
+            let newSubscribers = Array.tabulate<Principal>(
+                subscribers.size() + 1,
+                func(i) { if (i < subscribers.size()) subscribers[i] else subscriber }
+            );
+            subscribers := newSubscribers;
+        };
+    };
+
+    public shared func publish(message : Text) : async () {
+        for (sub in subscribers.vals()) {
+            let subActor = actor(Principal.toText(sub)) : actor { notify : (Text) -> async () };
+            await subActor.notify(message);
+        };
+    };
+};
+```

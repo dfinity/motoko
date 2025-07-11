@@ -77,41 +77,6 @@ object class Account(initialBalance : Nat) {
 }
 ```
 
-## Modules
-
-Modules are similar to objects, containing public and private declarations, but are restricted to be stateless. They are typically used to implement libraries of types, functions and values, and, unlike objects, can be imported from other files.
-
-```motoko name=float
-import Float "mo:base/Float";
-
-module CurrencyConverter {
-  public func toUSD(amount : Nat) : Float {
-    Float.fromInt(amount) * 1.1;
-    };
-};
-```
-
-### Module classes
-
-A module class can be used to produce multiple modules with different configurations.
-
-```motoko no-repl
-import Debug "mo:base/Debug";
-
-module class ExchangeRate(baseRate : Float) {
-    public func convert(amount : Nat) : Float {
-        return Float.fromInt(amount) * baseRate;
-    };
-};
-
-// Creating different currency converters
-let usdConverter = ExchangeRate(1.1);
-let eurConverter = ExchangeRate(0.9);
-
-Debug.print(debug_show(Float.toText(usdConverter.convert(100))));  // "110.0"
-Debug.print(debug_show(Float.toText(eurConverter.convert(100))));  // "90.0"
-```
-
 ## Object subtyping
 
 Object subtyping allows objects with more fields to be treated as subtypes of objects with fewer fields. This enables flexibility in function arguments and object compatibility.

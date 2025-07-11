@@ -28,6 +28,7 @@ func bumpUsers() : Nat {
 ```
 
 In Motoko, expressions of type `()` play the role of statements in other languages.
+
 ## Basic usage
 
 Expression declarations are commonly used for functions or operations that produce side effects, such as printing or modifying [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
@@ -60,3 +61,20 @@ let y = 5;
 
 The expression `x * 2;` returns a value of type `Nat`, but since it is not assigned to a variable and is not the last declaration, this is invalid. Declaration expressions in intermediate positions must return `()` or be marked `ignore`.
 
+## Anonymous functions
+
+Motoko supports anonymous functions as a type of expression.
+
+``` motoko no-repl
+func applyFunction(f :  Int -> Int, value : Int) : Int { f(value) };
+applyFunction( func (x : Int) : Int { x * 2 } , 2);
+```
+
+In this example, the first argument to `applyFunction` is the anonymous function `func (x : Int) : Int { x * 2 }`.
+This is just an anonymous version of the function named `double` above.
+
+The compiler can infer the argument and result types of anonymous functions, when the types are determined from the context, so you can even just write:
+
+``` motoko no-repl
+applyFunction( func x { x * 2 } , 2);
+```

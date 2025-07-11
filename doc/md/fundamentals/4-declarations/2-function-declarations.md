@@ -55,28 +55,6 @@ applyFunction(double, 10);
 
 In the call, the function `double` is passed as an argument.
 
-<!-- anonymous functions are expressions, not declarations, perhaps move this section elsewhere 
-Commenting out for now, revisit in future iteration 
-
-## Anonymous functions
-Motoko supports functions without names (anonymous). They can be used in expressions or passed as arguments.
-
-``` motoko no-repl
-func applyFunction(f :  Int -> Int, value : Int) : Int { f(value) };
-applyFunction( func (x : Int) : Int { x * 2 } , 2);
-```
-
-In this example, the first argument to `applyFunction` is the anonymous function `func (x : Int) : Int { x * 2 }`.
-This is just an anonymous version of the function named `double` above.
-
-The compiler can infer the argument and result types of anonymous functions, when the types are determined from the context, so you can even just write:
-
-``` motoko no-repl
-applyFunction( func x { x * 2 } , 2);
-```
-
--->
-
 ## Recursive functions
 
 A function that calls itself is a recursive function. Recursion enables looping behavior by having a function repeatedly invoke itself, typically with smaller arguments, until a base case is reached. 

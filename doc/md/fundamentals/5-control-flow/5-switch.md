@@ -5,11 +5,9 @@ hide_table_of_contents: true
 
 # Switch
 
-<!-- TODO(future): add more examples, unless covered elsewhere -->
-
 A `switch` expression is a control flow construct that, given a value, selects a control flow path based on the pattern or shape of the value.
 
- A switch is constructed from an expression and a sequence of cases. Each case consists of a [pattern](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) guarding an expression or block that defines a possible branch of execution.
+A switch is constructed from an expression and a sequence of cases. Each case consists of a [pattern](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching) guarding an expression or block that defines a possible branch of execution.
 
 Switch evaluates its expression and based on its value, selects the first case whose pattern matches the value.
 Any identifiers bound by the pattern are available in the selected branch, allowing you to access case-specific data in the branch.
@@ -110,3 +108,37 @@ This function returns the size of a list by using pattern matching to recurse on
 Notice that the second pattern consists of an option pattern containing a tuple pattern with a wildcard `_` and an identifier pattern, `tail`,  inside it.
 
 In this example, the branches are enclosed in blocks to demonstrate that it is supported. This can be useful if you need to add some local declarations to a branch.
+
+A more complex example can be found below:
+
+```motoko
+type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
+func eval(e : Exp) : ? Nat {
+  do ? {
+    switch e {
+      case (#Lit n) { n };
+      case (#Div (e1, e2)) {
+        let v1 = eval e1 !;  // If eval e1 returns null, exit with null
+        let v2 = eval e2 !;  // If eval e2 returns null, exit with null
+        if (v2 == 0)
+          null !  // Explicitly exit with null for division by zero
+        else v1 / v2
+        };
+      case (#If (e1, e2, e3)) {
+        if (eval e1 ! == 0)  // Unwrap and check if zero
+          eval e2 !  // Return result of e2 (or null if it's null)
+        else
+          eval e3 !  // Return result of e3 (or null if it's null)
+      };
+    };
+  };
+};
+
+let expr : Exp = #If(
+  #Div(#Lit 10, #Lit 2),   // 10 / 2 = 5 (non-zero, so evaluate e3)
+  #Lit 0,                  // e2 (ignored because e1 ≠ 0)
+  #Div(#Lit 6, #Lit 3)     // e3 → 6 / 3 = 2
+);
+
+eval(expr);
+```
