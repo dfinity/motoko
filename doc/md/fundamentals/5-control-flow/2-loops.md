@@ -24,7 +24,7 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 var count : Nat = 0;
@@ -39,7 +39,7 @@ label countLoop loop {
 
 A `loop-while` executes the loop body at least once, then repeats as long as the condition remains true.
 
-``` motoko _no-repl
+``` motoko no-repl
 import Debug "mo:base/Debug";
 
 var count = 0;
@@ -57,7 +57,7 @@ Even if the condition starts as false, the body runs at least once.
 
 A `for` loop in Motoko is used to iterate over the elements of a collection using the following structure:
 
-```motoko _no-repl
+```motoko no-repl
 for (pattern in iterator) {
   // Code to run for each item
 }
@@ -79,7 +79,7 @@ The `for` loop's iterator is evaluated once at the start. Each time through the 
 
 If evaluating the iterator causes a trap (error), the loop stops immediately.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 let numbers = [0, 1, 2, 3, 4];
@@ -91,7 +91,7 @@ for (num in numbers.vals()) {
 
 The pattern can also match on values, for example:
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 let pairs = [(1, 2), (3, 4)];
@@ -105,7 +105,7 @@ for ((fst, snd) in pairs.vals()) {
 
 A `while` loop in Motoko repeatedly executes a block of code as long as a given condition is `true`.
 
-```motoko _no-repl
+```motoko no-repl
 while (condition) {
   // Code to run while the condition is true
 }
@@ -125,7 +125,7 @@ The `while` loop first evaluates the condition:
 
 Once the condition becomes false, the loop stops, and the final result is `()`.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 var count = 3;
@@ -139,7 +139,7 @@ while (count > 0) {
 
 If a loop is labeled with a label `l` then you continue to the next iteration of the loop using the expression `continue l`.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 
 var count = 8;

@@ -25,7 +25,7 @@ A `return` statement immediately exits a function or `async` block with a result
 
 Consider this function that computes the product of an array of integers.
 
-```motoko _no-repl
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -39,7 +39,7 @@ This function doesn't require an explicit `return`. It just returns the result o
 
 However, `prod` will remain `0` once it becomes `0` so you can save some work by using `return` to return from the function early, exiting both the loop and the function with result `0`.
 
-```motoko _no-repl
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -52,7 +52,7 @@ func product(numbers : [Int]) : Int {
 
 This also works with asynchronous functions that produce futures:
 
-```motoko _no-repl
+```motoko no-repl
 func asyncProduct(numbers : [Int]) : async Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -69,7 +69,7 @@ If the expected return type is `()` then you can just write `return` instead of 
 
 A `switch` expression matches a value against multiple cases and executes the block of code associated with the first matching case.
 
-```motoko _no-repl
+```motoko no-repl
 import Nat "mo:base/Nat";
 
 type HttpRequestStatus = {
@@ -91,7 +91,7 @@ The `let-else` construct allows conditional binding of the variables in a patter
 
 Since the code following the `let` cannot execute without its matching bindings, the `else` clause must have type `None`, typically by diverting control using `return`, `throw`, `break` or `continue`.
 
-```motoko _no-repl
+```motoko no-repl
 import Nat "mo:base/Nat";
 
 type HttpRequestStatus = {
@@ -115,7 +115,7 @@ These blocks represented as `do ? {...}` allow safe unwrapping of optional value
 
 A simple example uses an option block to concisely add optional number, return `null` when either is `null`.
 
-```motoko _no-repl
+```motoko no-repl
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
 func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
   do ? {
@@ -144,7 +144,7 @@ If the type is not `()` those breaks must have an argument, to use as the result
 Just as `return` exits a function early with a result, `break` exits its label early with a result.
 Indeed, you can think of `return` as a `break` from the enclosing function.
 
-```motoko _no-repl
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   label l for (number in numbers.vals()) {
@@ -157,7 +157,7 @@ func product(numbers : [Int]) : Int {
 
 If the block produces a non-`()` result, as in this minor refactoring, the `break` should include a value:
 
-```motoko _no-repl
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   label result : Int {
     var prod : Int = 1;
@@ -191,7 +191,7 @@ loop {
 
 A `loop-while` expression repeatedly executes a block of code (at least once) until the while condition evaluates to `false`.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 
@@ -208,7 +208,7 @@ loop {
 A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
 If the condition is initially `false`, the block is never executed.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 
@@ -223,7 +223,7 @@ while (i < 5) {
 
 A `for` loop iterates over the elements of an iterator, and object of type `{ next: () -> ?T }`, executing a block of code for each element.
 
-```motoko _no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 
@@ -242,7 +242,7 @@ A `continue` expression skips the remainder of the current iteration in a loop a
 
 For example, computing the product we can skip a multiplication when the number is `1`.
 
-``` motoko _no-repl
+``` motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   label l for (number in numbers.vals()) {
@@ -262,7 +262,7 @@ You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or usi
 
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls can be synchronous (executing immediately within the same [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters)) or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) (message passing between canisters). Asynchronous calls use `async`/`await` and are essential for inter-canister communication.
 
-```motoko _no-repl
+```motoko no-repl
 import Nat "mo:base/Nat";
 
 persistent actor {
