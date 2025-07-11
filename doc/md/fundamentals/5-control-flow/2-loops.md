@@ -2,6 +2,8 @@
 sidebar_position: 2
 ---
 
+<!-- TODO: consolidate with basic-control-flow - some redundant material here -->
+
 # Loops
 
 In Motoko, loops provide flexible control over repetition, such as iterating over collections, looping while some condition holds, or just looping until an explicit exit from the loop.
@@ -22,17 +24,14 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
-```motoko no-repl
-func unconditionalLoop() : Nat {
-  var count : Nat = 0;
+```motoko _no-repl
+import Debug "mo:base/Debug";
 
-  label countLoop loop {
-    count += 1;
-    if (count == 5) {
-      break countLoop;
-    };
-  };
-  return count;
+var count : Nat = 0;
+label countLoop loop {
+  if (count > 5) break countLoop;
+  Debug.print(debug_show(count));
+  count += 1;
 }
 ```
 
@@ -40,13 +39,13 @@ func unconditionalLoop() : Nat {
 
 A `loop-while` executes the loop body at least once, then repeats as long as the condition remains true.
 
-``` motoko no-repl
+``` motoko _no-repl
 import Debug "mo:base/Debug";
 
 var count = 0;
 loop {
+  Debug.print(debug_show(count));
   count += 1;
-  Debug.print(debug_show(count))
 } while (count < 5);
 ```
 
@@ -58,7 +57,7 @@ Even if the condition starts as false, the body runs at least once.
 
 A `for` loop in Motoko is used to iterate over the elements of a collection using the following structure:
 
-```motoko no-repl
+```motoko _no-repl
 for (pattern in iterator) {
   // Code to run for each item
 }
@@ -80,10 +79,10 @@ The `for` loop's iterator is evaluated once at the start. Each time through the 
 
 If evaluating the iterator causes a trap (error), the loop stops immediately.
 
-```motoko no-repl
+```motoko _no-repl
 import Debug "mo:base/Debug";
 
-let numbers = [1, 2, 3, 4, 5];
+let numbers = [0, 1, 2, 3, 4];
 
 for (num in numbers.vals()) {
   Debug.print(debug_show(num));
@@ -92,7 +91,7 @@ for (num in numbers.vals()) {
 
 The pattern can also match on values, for example:
 
-```motoko no-repl
+```motoko _no-repl
 import Debug "mo:base/Debug";
 
 let pairs = [(1, 2), (3, 4)];
@@ -106,7 +105,7 @@ for ((fst, snd) in pairs.vals()) {
 
 A `while` loop in Motoko repeatedly executes a block of code as long as a given condition is `true`.
 
-```motoko no-repl
+```motoko _no-repl
 while (condition) {
   // Code to run while the condition is true
 }
@@ -126,7 +125,7 @@ The `while` loop first evaluates the condition:
 
 Once the condition becomes false, the loop stops, and the final result is `()`.
 
-```motoko no-repl
+```motoko _no-repl
 import Debug "mo:base/Debug";
 
 var count = 3;
@@ -140,14 +139,14 @@ while (count > 0) {
 
 If a loop is labeled with a label `l` then you continue to the next iteration of the loop using the expression `continue l`.
 
-```motoko no-repl
+```motoko _no-repl
 import Debug "mo:base/Debug";
 
 var count = 8;
 label l while (count > 0) {
-  if (count % 2 == 1) continue l;
-  Debug.print("Counting down...");
   count -= 1;
+  if (count % 2 == 0) continue l;
+  Debug.print("Counting down...");
 };
 ```
 

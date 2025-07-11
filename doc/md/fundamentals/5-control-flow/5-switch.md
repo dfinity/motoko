@@ -111,6 +111,41 @@ In this example, the branches are enclosed in blocks to demonstrate that it is s
 
 A more complex example can be found below:
 
+```motoko _no-repl
+type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
+func eval(e : Exp) : ? Nat {
+  switch e {
+    case (#Lit n) { ?n };
+    case (#Div (e1, e2)) {
+      switch (eval e1, eval e2) {
+        case (?v1, ?v2) {
+          if (v2 == 0) null
+          else ?(v1 / v2)
+        };
+        case _ { null }
+      }
+    };
+    case (#If (e1, e2, e3)) {
+      switch (eval e1) {
+        case (?0) { eval e2 };
+        case (?_) { eval e3 };
+        case _ { null }
+      };
+    };
+  };
+};
+
+let expr : Exp = #If(
+  #Div(#Lit 10, #Lit 2),   // 10 / 2 = 5 (non-zero, so evaluate e3)
+  #Lit 0,                  // e2 (ignored because e1 ≠ 0)
+  #Div(#Lit 6, #Lit 3)     // e3 → 6 / 3 = 2
+);
+
+eval(expr);
+```
+
+Using option blocks this code can be rewritten to reduce the need for nested switches, if that's preferred:
+
 ```motoko
 type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
 func eval(e : Exp) : ? Nat {
@@ -123,7 +158,7 @@ func eval(e : Exp) : ? Nat {
         if (v2 == 0)
           null !  // Explicitly exit with null for division by zero
         else v1 / v2
-        };
+      };
       case (#If (e1, e2, e3)) {
         if (eval e1 ! == 0)  // Unwrap and check if zero
           eval e2 !  // Return result of e2 (or null if it's null)
