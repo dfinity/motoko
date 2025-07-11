@@ -29,7 +29,10 @@ type typ_id = (string, Type.con option) Source.annotated_phrase
 
 (* Types *)
 
-type obj_sort = Type.obj_sort Source.phrase
+type 'note sort = (Type.obj_sort, 'note) Source.annotated_phrase
+type typ_obj_sort = unit sort
+type persistence = bool Source.phrase
+type obj_sort = persistence sort
 type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
@@ -42,12 +45,13 @@ and path' =
   | DotH of path * id
 
 and async_sort = Type.async_sort
+and await_sort = Type.await_sort
 
 type typ = (typ', Type.typ) Source.annotated_phrase
 and typ' =
   | PathT of path * typ list                       (* type path *)
   | PrimT of string                                (* primitive *)
-  | ObjT of obj_sort * typ_field list              (* object *)
+  | ObjT of typ_obj_sort * typ_field list          (* object *)
   | ArrayT of mut * typ                            (* array *)
   | OptT of typ                                    (* option *)
   | VariantT of typ_tag list                       (* variant *)
@@ -191,7 +195,7 @@ and exp' =
   | RetE of exp                                (* return *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of exp option * async_sort * typ_bind * exp (* future / computation *)
-  | AwaitE of async_sort * exp                 (* await *)
+  | AwaitE of await_sort * exp                 (* await *)
   | AssertE of assert_kind * exp               (* assertion *)
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
@@ -251,10 +255,10 @@ and import' = pat * string * resolved_import ref
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
- | ActorU of exp option * id option * dec_field list      (* main IC actor *)
+ | ActorU of persistence * exp option * id option * dec_field list      (* main IC actor *)
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
-     exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+     persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
  | FileU of string                           (* literal file value *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase

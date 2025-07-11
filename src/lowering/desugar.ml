@@ -253,7 +253,7 @@ and exp' at note = function
                        | T.Async (_, t, _) -> t
                        | _ -> assert false) in
     (blockE ds { at; note; it }).it
-  | S.AwaitE (s, e) -> I.PrimE (I.AwaitPrim s, [exp e])
+  | S.AwaitE (sort, e) -> I.PrimE I.(AwaitPrim sort, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
   | S.AnnotE (e, _) -> assert false
@@ -454,7 +454,7 @@ and call_system_func_opt name es obj_typ =
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
         | "lowmemory" ->
-          awaitE T.Cmp 
+          awaitE T.AwaitCmp
             (callE (varE (var id.it note)) [T.scope_bound] (unitE()))
         | name ->
            let inst = match name with
@@ -1158,7 +1158,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
   let { body; _ } = lib.it in
   let id = match body.it with
-    | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
+    | S.ActorClassU (_, _, _, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
   let fun_typ = T.normalize body.note.S.note_typ in
@@ -1193,7 +1193,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
     (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
       (letE principal
-        (awaitE T.Cmp
+        (awaitE T.AwaitCmp
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
@@ -1259,7 +1259,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (_persistence, exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
@@ -1286,7 +1286,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
-  | S.ActorU (exp_opt, self_id, fields) ->
+  | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
     let actor_expression = build_actor u.at [] eo self_id fields u.note.S.note_typ in
     begin match actor_expression with
@@ -1326,7 +1326,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
     raise (Invalid_argument "Desugar: Cannot import actor")
   | I.ActorU (Some as_, ds, fs, up, actor_t) ->
     let id = match body.it with
-      | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
+      | S.ActorClassU (persistence, _, _, id, _, _, _, _, _) -> id.it
       | _ -> assert false
     in
     let s, cntrl, tbs, ts1, ts2 = T.as_func t in

@@ -1,4 +1,5 @@
 %{
+open Mo_config
 open Mo_def
 open Mo_types
 open Mo_values
@@ -168,7 +169,7 @@ let share_stab default_stab stab_opt dec =
     (match dec.it with
      | VarD _
      | LetD _ ->
-       Some (default_stab @@ dec.at)
+	Some default_stab
      | _ -> None)
   | _ -> stab_opt
 
@@ -184,7 +185,7 @@ let share_dec_field default_stab (df : dec_field) =
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
-      stab = share_stab Flexible df.it.stab df.it.dec}}
+      stab = share_stab (Flexible @@ df.it.dec.at) df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
@@ -202,7 +203,7 @@ let share_dec_field default_stab (df : dec_field) =
              | ExpD _
              | TypD _
              | ClassD _ -> None
-             | _ -> Some (default_stab @@ df.it.dec.at))
+             | _ -> Some default_stab)
           | some -> some}
     }
 
@@ -221,7 +222,7 @@ and objblock eo s id ty dec_fields =
 
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
+%token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
 %token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
@@ -380,13 +381,13 @@ seplist1(X, SEP) :
   | MODULE {Type.Module @@ at $sloc }
 
 %inline obj_sort :
-  | OBJECT { (false, Type.Object @@ at $sloc) }
+  | OBJECT { (false @@ no_region, Type.Object @@ at $sloc) }
   | po=persistent ACTOR { (po, Type.Actor @@ at $sloc) }
-  | MODULE { (false, Type.Module @@ at $sloc) }
+  | MODULE { (false @@ no_region, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
   | os=obj_sort { os }
-  | (* empty *) { (false, Type.Object @@ no_region) }
+  | (* empty *) { (false @@ no_region, Type.Object @@ no_region) }
 
 %inline query:
   | QUERY { Type.Query }
@@ -715,9 +716,11 @@ exp_un(B) :
   | ASYNCSTAR e=exp_nest
     { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
-    { AwaitE(Type.Fut, e) @? at $sloc }
+    { AwaitE(Type.AwaitFut false, e) @? at $sloc }
+  | AWAITQUEST e=exp_nest
+    { AwaitE(Type.AwaitFut true, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
-    { AwaitE(Type.Cmp, e) @? at $sloc }
+    { AwaitE(Type.AwaitCmp, e) @? at $sloc }
   | ASSERT e=exp_nest
     { AssertE(Runtime, e) @? at $sloc }
   | LABEL x=id rt=annot_opt e=exp_nest
@@ -830,8 +833,8 @@ stab :
   | TRANSIENT { Some (Flexible @@ at $sloc) }
 
 %inline persistent :
-  | (* empty *) { false }
-  | PERSISTENT { true }
+  | (* empty *) { (!Flags.actors = Flags.DefaultPersistentActors) @@ no_region }
+  | PERSISTENT { true @@ at $sloc }
 
 (* Patterns *)
 
@@ -928,14 +931,14 @@ obj_or_class_dec :
       let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           let id = if named then Some x else None in
           AwaitE
-            (Type.Fut,
+            (Type.AwaitFut false,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock eo s id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
+                    objblock eo { s with note = persistent } id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock eo s None t efs @? at $sloc
+        else objblock eo { s with note = persistent } None t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS
@@ -948,14 +951,14 @@ obj_or_class_dec :
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
-          let default_stab = if persistent then Stable else Flexible in
+          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           (List.map (share_dec_field default_stab) dfs,
 	   ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
 	   ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, s, cid, tps', p, t', x, dfs') @? at $sloc }
+      ClassD(eo, sp, {s with note = persistent}, cid, tps', p, t', x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var

@@ -1,8 +1,72 @@
 # Motoko compiler changelog
 
-## 0.14.11 (FUTURE)
+* motoko (`moc`)
+
+  * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
+    This is a transitional restriction to force users to declare transient declarations as `transient` and actor/actor classes as `persistent`.
+    New error messages and warnings will iteratively guide you to insert `transient` and `persistent` as required, after which any `stable` keywords can be removed. Use the force.
+
+    In the near future, the `persistent` keyword will be made optional again, and `let` and `var` declarations within actor and actor classes will be `stable` (by default) unless declared `transient`, inverting the previous default for non-`persistent` actors.
+    The goal of this song and dance is to *always* default actor declarations to stable unless declared `transient` and make the `persistent` keyword redundant.
+
+  * Breaking change: enhanced orthogonal persistence is now the default compilation mode for `moc` (#5305).
+    Flag `--enhanced-orthogonal-persistence` is on by default.
+    Users not willing or able to migrate their code can opt in to the behavior of moc prior to this release with the new flag `--legacy-persistence`.
+    Flag `--legacy-persistence` is required to select the legacy `--copying-gc` (the previous default), `--compacting-gc`,  or `generational-gc`.
+
+    As a safeguard, to protect users from unwittingly, and irreversibly, upgrading from legacy to enhanced orthogonal persistence, such upgrades will fail unless the new code is compiled with flag `--enhanced-orthogonal-persistence` explicitly set.
+    New projects should not require the flag at all (#5308) and will simply adopt enhanced mode.
+
+    To recap, enhanced orthogonal persistence implements scalable and efficient orthogonal persistence (stable variables) for Motoko:
+    * The Wasm main memory (heap) is retained on upgrade with new program versions directly picking up this state.
+    * The Wasm main memory has been extended to 64-bit to scale as large as stable memory in the future.
+    * The runtime system checks that data changes of new program versions are compatible with the old state.
+
+    Implications:
+    * Upgrades become extremely fast, only depending on the number of types, not on the number of heap objects.
+    * Upgrades will no longer hit the IC instruction limit, even for maximum heap usage.
+    * The change to 64-bit increases the memory demand on the heap, in worst case by a factor of two.
+    * For step-wise release handling, the IC initially only offers a limited capacity of the 64-bit space (e.g. 4GB or 6GB), that will be gradually increased in future to the capacity of stable memory.
+    * There is moderate performance regression of around 10% for normal execution due to combined related features (precise tagging, change to incremental GC, and handling of compile-time-known data).
+    * The garbage collector is fixed to incremental GC and cannot be chosen.
+    * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
+    * The debug print format of `NaN` changes (originally `nan`).
+
+## 0.14.14 (2025-06-30)
 
 * motoko (`moc`)
+
+  * Lazy WASM imports: avoids unnecessary function imports from the runtime, improving compatibility with more runtime versions (#5276).
+
+  * Improved stable compatibility error messages to be more concise and clear during canister upgrades (#5271).
+
+## 0.14.13 (2025-06-17)
+
+* motoko (`moc`)
+
+  * Introduce `await?` to synchronize `async` futures, avoiding the commit point when already fulfilled (#5215).
+
+  * Adds a `Prim.Array_tabulateVar` function, that allows faster initialization of mutable arrays (#5256).
+
+  * optimization: accelerate IR type checking with caching of sub, lub and check_typ tests (#5260).
+    Reduces need for `-no-check-ir` flag.
+
+## 0.14.12 (2025-06-12)
+
+  * Added the `rootKey` primitive (#4994).
+
+  * optimization: for `--enhanced-orthogonal-persistence`, reduce code-size and compile-time by sharing more static allocations (#5233, #5242).
+
+  * bugfix: fix `-fshared-code` bug (#5230).
+
+  * bugfix: avoid stack overflow and reduce code complexity for large EOP canisters (#5218).
+
+## 0.14.11 (2025-05-16)
+
+* motoko (`moc`)
+
+  * Enhance syntax error messages with examples and support _find-references_ and _go-to-definition_
+    functionality for fields in the language server (Serokell, Milestone-3) (#5076).
 
   * bugfix: `mo-doc` now correctly extracts record-patterned function arguments (#5128).
 
@@ -287,7 +351,7 @@
 * motoko (`moc`)
 
   * Made the `actor`'s _self_ identifier available in the toplevel block. This also allows using
-    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4720).
+    functions that refer to _self_ from the initialiser (e.g. calls to `setTimer`) (#4719).
 
   * bugfix: `actor <exp>` now correctly performs definedness tracking (#4731).
 

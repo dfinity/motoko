@@ -1439,7 +1439,7 @@ and infer_exp'' env exp : T.typ =
           async = C.SystemCap C.top_cap }
       else env
     in
-    let t = infer_obj env' obj_sort.it exp_opt dec_fields exp.at in
+    let t = infer_obj env' obj_sort exp_opt dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
@@ -1738,8 +1738,11 @@ and infer_exp'' env exp : T.typ =
   | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
+    let s1 = match s with
+      | T.AwaitFut _ -> T.Fut (* we can await/await? an async *)
+      | T.AwaitCmp -> T.Cmp in (* we can await* an async* *)
     (try
-       let (t2, t3) = T.as_async_sub s t0 t1 in
+       let (t2, t3) = T.as_async_sub s1 t0 t1 in
        if not (eq env exp.at t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
@@ -1754,13 +1757,13 @@ and infer_exp'' env exp : T.typ =
      with Invalid_argument _ ->
        error env exp1.at "M0088"
          "expected async%s type, but expression has type%a%s"
-         (if s = T.Fut then "" else "*")
+         (if s1 = T.Fut then "" else "*")
          display_typ_expand t1
          (if T.is_async t1 then
-            (if s = T.Fut then
-              "\nUse keyword 'await*' (not 'await') to consume this type."
+            (if s1 = T.Fut then
+              "\nUse keyword 'await*' (not 'await' or 'await?') to consume this type."
             else
-              "\nUse keyword 'await' (not 'await*') to consume this type.")
+              "\nUse keyword 'await' or 'await?' (not 'await*') to consume this type.")
           else "")
     )
   | AssertE (_, exp1) ->
@@ -2668,7 +2671,8 @@ and is_typ_dec dec : bool = match dec.it with
   | TypD _ -> true
   | _ -> false
 
-and infer_obj env s exp_opt dec_fields at : T.typ =
+and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
+  let s = obj_sort.it in
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
@@ -2717,7 +2721,7 @@ and infer_obj env s exp_opt dec_fields at : T.typ =
     end;
     if s = T.Module then Static.dec_fields env.msgs dec_fields;
     check_system_fields env s scope tfs dec_fields;
-    let stab_tfs = check_stab env s scope dec_fields in
+    let stab_tfs = check_stab env obj_sort scope dec_fields in
     check_migration env stab_tfs exp_opt
   end;
   t
@@ -2776,7 +2780,7 @@ and check_system_fields env sort scope tfs dec_fields =
               else if id.it = "timer" && not !Mo_config.Flags.global_timer then
                 local_error env df.at "M0182" "system function timer is present but -no-timer flag is specified"
             end
-          else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
+         else warn env id.at "M0128" "this function has the name of a system method, but is declared without system visibility and will not be called by the system"
         | None ->
           if vis = System then
             local_error env id.at "M0129" "unexpected system method named %s, expected %s"
@@ -2930,6 +2934,39 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    if unrecognised <> [] then warn env exp.at "M0212" "unrecognised attribute %s in parenthetical note" (List.hd unrecognised);
 
 
+and check_stable_defaults env sort dec_fields =
+  if sort.it <> T.Actor then () else
+  let declared_persistent = sort.note.it in
+  if declared_persistent then
+    begin
+      if !Flags.actors = Flags.DefaultPersistentActors && sort.note.at <> no_region then
+        warn env sort.note.at "M0217" "with flag --default-persistent-actors, the `persistent` keyword is redundant and can be removed";
+      List.iter (fun dec_field ->
+        match dec_field.it.stab, dec_field.it.dec.it with
+        | Some {it = Stable; at; _}, (LetD _ | VarD _) ->
+          if at <> Source.no_region then
+            warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
+        | _ -> ())
+      dec_fields
+      end
+  else
+    (* non-`persistent` *)
+    if !Flags.actors = Flags.RequirePersistentActors then
+    let has_implicit_flexible =
+      List.fold_left (fun acc dec_field ->
+        match dec_field.it.stab, dec_field.it.dec.it with
+        | Some {it = Flexible; at; _}, (LetD _ | VarD _) ->
+           if at = Source.no_region
+           then
+             (local_error env dec_field.it.dec.at "M0219" "this declaration is currently implicitly transient, please declare it explicitly `transient`";
+              true)
+           else acc
+        | _ -> acc)
+        false dec_fields
+    in
+    if not has_implicit_flexible then
+      local_error env sort.at "M0220" "this actor or actor class should be declared `persistent`"
+
 and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
@@ -2942,7 +2979,7 @@ and check_stab env sort scope dec_fields =
           display_typ t1;
   in
   let idss = List.map (fun df ->
-    match sort, df.it.stab, df.it.dec.it with
+    match sort.it, df.it.stab, df.it.dec.it with
     | (T.Object | T.Module), None, _ -> []
     | (T.Object | T.Module), Some stab, _ ->
       local_error env stab.at "M0132"
@@ -2964,6 +3001,7 @@ and check_stab env sort scope dec_fields =
   in
   let ids = List.concat idss in
   check_ids env "actor type" "stable variable" ids;
+  check_stable_defaults env sort dec_fields;
   List.sort T.compare_field
     (List.map
       (fun id ->
@@ -3078,7 +3116,7 @@ and infer_dec env dec : T.typ =
         }
       in
       let initial_usage = enter_scope env''' in
-      let t' = infer_obj { env''' with check_unused = true } obj_sort.it exp_opt dec_fields dec.at in
+      let t' = infer_obj { env''' with check_unused = true } obj_sort exp_opt dec_fields dec.at in
       leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
@@ -3316,7 +3354,7 @@ and infer_dec_typdecs env dec : Scope.t =
           async = async_cap;
           in_actor}
     in
-    let t = infer_obj { env'' with check_unused = false } obj_sort.it exp_opt dec_fields dec.at in
+    let t = infer_obj { env'' with check_unused = false } obj_sort exp_opt dec_fields dec.at in
     let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
@@ -3431,7 +3469,6 @@ and infer_dec_valdecs env dec : Scope.t =
     }
 
 (* Programs *)
-
 let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
     : (T.typ * Scope.t) Diag.result
   =
@@ -3509,7 +3546,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
+            | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in

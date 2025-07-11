@@ -17,9 +17,9 @@ inputs:
   is_fork:
     required: true
     description: "Whether this is a fork PR"
-  niv_updater_token:
+  token:
     required: true
-    description: "Token for updating niv dependencies"
+    description: "Token for pushing commits"
 
 runs:
   using: "composite"
@@ -37,7 +37,7 @@ runs:
       with:
         default_author: github_actions
         author_name: Cycle and memory benchmark updater
-        github_token: ${{ inputs.niv_updater_token }}
+        github_token: ${{ inputs.token }}
         committer_name: GitHub Actions
         committer_email: actions@github.com
         message: "Updating `test/bench` numbers"

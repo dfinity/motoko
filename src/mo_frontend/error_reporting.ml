@@ -114,6 +114,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_BOOL -> BOOL false
       | T_AWAIT -> AWAIT
       | T_AWAITSTAR -> AWAITSTAR
+      | T_AWAITQUEST -> AWAITQUEST
       | T_ASYNC -> ASYNC
       | T_ASYNCSTAR -> ASYNCSTAR
       | T_ASSIGN -> ASSIGN

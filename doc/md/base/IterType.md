@@ -1,5 +1,4 @@
-# IterType
-The Iterator type
+# base/IterType
 
 ## Type `Iter`
 ``` motoko no-repl

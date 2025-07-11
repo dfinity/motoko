@@ -1,4 +1,4 @@
-# OrderedSet
+# base/OrderedSet
 Stable ordered set implemented as a red-black tree.
 
 A red-black tree is a balanced binary search tree ordered by the elements.
@@ -6,17 +6,31 @@ A red-black tree is a balanced binary search tree ordered by the elements.
 The tree data structure internally colors each of its nodes either red or black,
 and uses this information to balance the tree during the modifying operations.
 
-Performance:
-* Runtime: `O(log(n))` worst case cost per insertion, removal, and retrieval operation.
-* Space: `O(n)` for storing the entire tree.
-`n` denotes the number of elements (i.e. nodes) stored in the tree.
+| Runtime   | Space |
+|----------|------------|
+| `O(log(n))` (worst case per insertion, removal, or retrieval)  | `O(n)` (for storing the entire tree) |
 
-Credits:
+`n` denotes the number of key-value entries (i.e. nodes) stored in the tree.
+
+:::note Garbage collection
+
+Unless stated otherwise, operations that iterate over or modify the map (such as insertion, deletion, traversal, and transformation) may create temporary objects with worst-case space usage of `O(log(n))` or `O(n)`. These objects are short-lived and will be collected by the garbage collector automatically.
+
+:::
+
+:::note Assumptions
+
+Runtime and space complexity assumes that `compare`, `equal`, and other functions execute in `O(1)` time and space.
+:::
+
+:::info Credits
 
 The core of this implementation is derived from:
 
 * Ken Friis Larsen's [RedBlackMap.sml](https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml), which itself is based on:
 * Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
+:::
+
 
 ## Type `Set`
 ``` motoko no-repl
@@ -48,11 +62,11 @@ import Nat "mo:base/Nat";
 actor {
   let natSet = Set.Make<Nat>(Nat.compare); // : Operations<Nat>
   stable var usedIds : Set.Set<Nat> = natSet.empty();
-  
+
   public func createId(id : Nat) : async () {
     usedIds := natSet.put(usedIds, id);
   };
-  
+
   public func idIsUsed(id: Nat) : async Bool {
      natSet.contains(usedIds, id)
   }
@@ -81,12 +95,9 @@ Debug.print(debug_show(Iter.toArray(natSet.vals(set))));
 // [0, 1, 2]
 ```
 
-Runtime: `O(n * log(n))`.
-Space: `O(n)` retained memory plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set and
-assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+| Runtime   | Space |
+|----------|------------|
+| `O(n * log(n))`  | `O(n)` (retained memory + garbage) |
 
 
 ### Function `put`
@@ -120,7 +131,7 @@ Space: `O(log(n))`.
 where `n` denotes the number of elements stored in the set and
 assuming that the `compare` function implements an `O(1)` comparison.
 
-Note: The returned set shares with the `s` most of the tree nodes. 
+Note: The returned set shares with the `s` most of the tree nodes.
 Garbage collecting one of sets (e.g. after an assignment `m := natSet.delete(m, k)`)
 causes collecting `O(log(n))` nodes.
 
@@ -149,14 +160,9 @@ Debug.print(debug_show(Iter.toArray(natSet.vals(natSet.delete(set, 42)))));
 // [0, 1, 2]
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(log(n))`.
-where `n` denotes the number of elements stored in the set and
-assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: The returned set shares with the `s` most of the tree nodes. 
-Garbage collecting one of sets (e.g. after an assignment `m := natSet.delete(m, k)`)
-causes collecting `O(log(n))` nodes.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(log(n))` | `O(log(n))`   |
 
 
 ### Function `contains`
@@ -180,10 +186,9 @@ Debug.print(debug_show natSet.contains(set, 1)); // => true
 Debug.print(debug_show natSet.contains(set, 42)); // => false
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set and
-assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(log(n))` | `O(1)`   |
 
 
 ### Function `max`
@@ -208,9 +213,9 @@ Debug.print(debug_show(natSet.max(s1))); // => ?2
 Debug.print(debug_show(natSet.max(s2))); // => null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)`.
-where `n` denotes the number of elements in the set
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(log(n))` | `O(1)`   |
 
 
 ### Function `min`
@@ -235,9 +240,9 @@ Debug.print(debug_show(natSet.min(s1))); // => ?0
 Debug.print(debug_show(natSet.min(s2))); // => null
 ```
 
-Runtime: `O(log(n))`.
-Space: `O(1)`.
-where `n` denotes the number of elements in the set
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(log(n))` | `O(log(1))`   |
 
 
 ### Function `union`
@@ -262,11 +267,9 @@ Debug.print(debug_show Iter.toArray(natSet.vals(natSet.union(set1, set2))));
 // [0, 1, 2, 3, 4]
 ```
 
-Runtime: `O(m * log(n))`.
-Space: `O(m)`, retained memory plus garbage, see the note below.
-where `m` and `n` denote the number of elements in the sets, and `m <= n`.
-
-Note: Creates `O(m * log(n))` temporary objects that will be collected as garbage.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(m* log(n))` | `O(m)`retained + garbage   |
 
 
 ### Function `intersect`
@@ -291,9 +294,9 @@ Debug.print(debug_show Iter.toArray(natSet.vals(natSet.intersect(set1, set2))));
 // [1, 2]
 ```
 
-Runtime: `O(m * log(n))`.
-Space: `O(m)`, retained memory plus garbage, see the note below.
-where `m` and `n` denote the number of elements in the sets, and `m <= n`.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(m* log(n))` | `O(m)`retained + garbage   |
 
 Note: Creates `O(m)` temporary objects that will be collected as garbage.
 
@@ -320,11 +323,9 @@ Debug.print(debug_show Iter.toArray(natSet.vals(natSet.diff(set1, set2))));
 // [0]
 ```
 
-Runtime: `O(m * log(n))`.
-Space: `O(m)`, retained memory plus garbage, see the note below.
-where `m` and `n` denote the number of elements in the sets, and `m <= n`.
-
-Note: Creates `O(m * log(n))` temporary objects that will be collected as garbage.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(m* log(n))` | `O(m)`retained + garbage   |
 
 
 ### Function `map`
@@ -356,11 +357,10 @@ Debug.print(debug_show(Iter.toArray(natSet.vals(resSet))));
 ```
 
 Cost of mapping all the elements:
-Runtime: `O(n * log(n))`.
-Space: `O(n)` retained memory
-where `n` denotes the number of elements stored in the set.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(n* log(n))` | `O(n)`retained + garbage   |
 
-Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
 
 
 ### Function `mapFilter`
@@ -394,12 +394,9 @@ Debug.print(debug_show(Iter.toArray(natSet.vals(newRbSet))));
 // [2, 4, 6]
 ```
 
-Runtime: `O(n * log(n))`.
-Space: `O(n)` retained memory plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set and
-assuming that the `compare` function implements an `O(1)` comparison.
-
-Note: Creates `O(n * log(n))` temporary objects that will be collected as garbage.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(n* log(n))` | `O(n)`retained + garbage   |
 
 
 ### Function `isSubset`
@@ -423,10 +420,9 @@ let set2 = natSet.fromIter(Iter.fromArray([0, 2, 1]));
 Debug.print(debug_show natSet.isSubset(set1, set2)); // => true
 ```
 
-Runtime: `O(m * log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
-where `m` and `n` denote the number of elements stored in the sets set1 and set2, respectively,
-and assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(n* log(n))` | `O(1)`   |
 
 
 ### Function `equals`
@@ -451,10 +447,9 @@ Debug.print(debug_show natSet.equals(set1, set1)); // => true
 Debug.print(debug_show natSet.equals(set1, set2)); // => false
 ```
 
-Runtime: `O(m * log(n))`.
-Space: `O(1)` retained memory plus garbage, see the note below.
-where `m` and `n` denote the number of elements stored in the sets set1 and set2, respectively,
-and assuming that the `compare` function implements an `O(1)` comparison.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(m * log(n))` | `O(1)`   |
 
 
 ### Function `vals`
@@ -479,12 +474,9 @@ let set = natSet.fromIter(Iter.fromArray([0, 2, 1]));
 Debug.print(debug_show(Iter.toArray(natSet.vals(set))));
 // [0, 1, 2]
 ```
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set.
-
-Note: Full set iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(n)` | `O(log(n))` retained + garbage  |
 
 
 ### Function `valsRev`
@@ -507,12 +499,9 @@ let set = natSet.fromIter(Iter.fromArray([0, 2, 1]));
 Debug.print(debug_show(Iter.toArray(natSet.valsRev(set))));
 // [2, 1, 0]
 ```
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: `O(log(n))` retained memory plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set.
-
-Note: Full set iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(n)` | `O(log(n))` retained + garbage  |
 
 
 ### Function `empty`
@@ -559,8 +548,9 @@ let set = natSet.fromIter(Iter.fromArray([0, 2, 1]));
 Debug.print(debug_show(natSet.size(set))); // => 3
 ```
 
-Runtime: `O(1)`.
-Space: `O(1)`.
+| Runtime     | Space         |
+|-------------|---------------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `foldLeft`
@@ -588,12 +578,9 @@ Debug.print(debug_show(natSet.foldLeft(set, 0, folder)));
 // 3
 ```
 
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: depends on `combine` function plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set.
-
-Note: Full set iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | Depends on `combine` + `O(n)` garbage |
 
 
 ### Function `foldRight`
@@ -621,12 +608,9 @@ Debug.print(debug_show(natSet.foldRight(set, 0, folder)));
 // 3
 ```
 
-Cost of iteration over all elements:
-Runtime: `O(n)`.
-Space: depends on `combine` function plus garbage, see the note below.
-where `n` denotes the number of elements stored in the set.
-
-Note: Full set iteration creates `O(n)` temporary objects that will be collected as garbage.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | Depends on `combine` + `O(n)` garbage |
 
 
 ### Function `isEmpty`
@@ -675,9 +659,9 @@ Debug.print(debug_show(natSet.all(set, func (v) = (v < 2))));
 // false
 ```
 
-Runtime: `O(n)`.
-Space: `O(1)`.
-where `n` denotes the number of elements stored in the set.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | `O(n)` |
 
 
 ### Function `some`
@@ -703,9 +687,9 @@ Debug.print(debug_show(natSet.some(set, func (v) = (v >= 0))));
 // true
 ```
 
-Runtime: `O(n)`.
-Space: `O(1)`.
-where `n` denotes the number of elements stored in the set.
+| Runtime | Space                        |
+|---------|------------------------------|
+| `O(n)`  | `O(1)` |
 
 
 ### Function `validate`
@@ -713,7 +697,7 @@ where `n` denotes the number of elements stored in the set.
 func validate(s : Set<T>) : ()
 ```
 
-Test helper that check internal invariant for the given set `s`. 
+Test helper that check internal invariant for the given set `s`.
 Raise an error (for a stack trace) if invariants are violated.
 
 ## Function `Make`
@@ -721,7 +705,7 @@ Raise an error (for a stack trace) if invariants are violated.
 func Make<T>(compare : (T, T) -> O.Order) : Operations<T>
 ```
 
-Create `OrderedSet.Operations` object capturing element type `T` and `compare` function. 
+Create `OrderedSet.Operations` object capturing element type `T` and `compare` function.
 It is an alias for the `Operations` constructor.
 
 Example:

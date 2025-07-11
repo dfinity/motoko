@@ -62,6 +62,13 @@ jobs:
           test-name: ${{ matrix.os }}-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - name: Create GitHub App Token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
+          private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
+
       - name: Run Performance Tests
         if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && runner.os == 'Linux' && runner.arch == 'X64' && matrix.build_type == 'release'
         uses: ./.github/actions/performance
@@ -71,7 +78,7 @@ jobs:
           base_ref: ${{ github.base_ref }}
           pr_number: ${{ github.event.pull_request.number }}
           is_fork: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
-          niv_updater_token: ${{ secrets.NIV_UPDATER_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
   reports:
     if: github.ref == 'refs/heads/master'

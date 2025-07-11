@@ -1,5 +1,5 @@
-# Stack
-Class `Stack<X>` provides a Minimal LIFO stack of elements of type `X`.
+# base/Stack
+Class `Stack<X>` provides a minimal LIFO stack of elements of type `X`.
 
 See library `Deque` for mixed LIFO/FIFO behavior.
 
@@ -9,9 +9,9 @@ import Stack "mo:base/Stack";
 
 let stack = Stack.Stack<Nat>(); // create a stack
 ```
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 ## Class `Stack<T>`
 
@@ -34,10 +34,9 @@ stack.push(2);
 stack.push(3);
 stack.peek(); // examine the top most element
 ```
-
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `isEmpty`
@@ -52,9 +51,9 @@ Example:
 stack.isEmpty();
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `peek`
@@ -72,9 +71,9 @@ stack.push(3);
 stack.peek();
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |
 
 
 ### Function `pop`
@@ -91,6 +90,6 @@ ignore stack.pop();
 stack.isEmpty();
 ```
 
-Runtime: O(1)
-
-Space: O(1)
+| Runtime   | Space     |
+|-----------|-----------|
+| `O(1)` | `O(1)` |

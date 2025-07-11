@@ -1,4 +1,4 @@
-# Region
+# base/Region
 Byte-level access to isolated, (virtual) stable memory _regions_.
 
 This is a moderately lightweight abstraction over IC _stable memory_ and supports persisting
@@ -13,7 +13,7 @@ The `Region` type is stable and can be used in stable data structures.
 A new, empty `Region` is allocated using function `new()`.
 
 Regions are stateful objects and can be distinguished by the numeric identifier returned by function `id(region)`.
-Every region owns an initially empty, but growable sequence of virtual IC stable memory pages. 
+Every region owns an initially empty, but growable sequence of virtual IC stable memory pages.
 The current size, in pages, of a region is returned by function `size(region)`.
 The size of a region determines the range, [ 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of `load`/`store` operations on the region.
 
@@ -22,7 +22,7 @@ A call to `grow` may succeed, returning the previous size of the region, or fail
 
 A size of a region can only grow and never shrink.
 In addition, the stable memory pages allocated to a region will *not* be reclaimed by garbage collection, even
-if the region object itself becomes unreachable. 
+if the region object itself becomes unreachable.
 
 Growth is capped by a soft limit on physical page count controlled by compile-time flag
 `--max-stable-pages <n>` (the default is 65536, or 4GiB).

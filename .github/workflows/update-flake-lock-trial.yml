@@ -24,9 +24,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@main
+      - name: Create GitHub App Token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.PR_AUTOMATION_BOT_PUBLIC_APP_ID }}
+          private-key: ${{ secrets.PR_AUTOMATION_BOT_PUBLIC_PRIVATE_KEY }}
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@main
         with:
+          branch: "update_flake_lock_action_trial"
           inputs: |
             nixpkgs
             ic-src
@@ -46,4 +53,4 @@ jobs:
             This PR is just to test if the above dependency bumps cause issues.
             If checks fail this PR remains open so we can investigate.
             If all checks succeed this PR is automatically closed.
-          token: ${{ secrets.NIV_UPDATER_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}

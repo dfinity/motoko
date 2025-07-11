@@ -83,6 +83,13 @@ module Make (Cfg : Config) = struct
   let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+
   (* TODO: For the language server, we occasionally need not only the resulting
      [typ] of a node but also its [Arrange_type.typ] (which motivated these
      changes). Arranging the type for every node would be expensive; there
@@ -147,8 +154,9 @@ module Make (Cfg : Config) = struct
     | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
     | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
-    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
-    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
+    | AwaitE (Type.AwaitFut false, e)   -> "AwaitE" $$ [exp e]
+    | AwaitE (Type.AwaitFut true, e)    -> "AwaitE?" $$ [exp e]
+    | AwaitE (Type.AwaitCmp, e)  -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
     | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
     | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
@@ -224,11 +232,6 @@ module Make (Cfg : Config) = struct
       sexps
     else sexps
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"

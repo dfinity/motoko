@@ -26,7 +26,7 @@
       flake = false;
     };
     ic-src = {
-      url = "github:luc-blaeser/ic/drun/2025-02-27_03";
+      url = "github:dfinity/ic";
       flake = false;
     };
     ic-wasm-src = {
@@ -39,6 +39,10 @@
     };
     motoko-base-src = {
       url = "github:dfinity/motoko-base/next-moc";
+      flake = false;
+    };
+    motoko-core-src = {
+      url = "github:dfinity/motoko-core";
       flake = false;
     };
     motoko-matchers-src = {
@@ -72,6 +76,7 @@
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
+    , motoko-core-src
     , motoko-matchers-src
     , ocaml-vlq-src
     , wasm-spec-src
@@ -87,6 +92,7 @@
             ic-wasm-src
             libtommath-src
             motoko-base-src
+            motoko-core-src
             motoko-matchers-src
             ocaml-vlq-src
             wasm-spec-src
@@ -156,10 +162,10 @@
                 matchRelease == null &&
                 matchGC == null;
             in {
-              "debug" = matchDebug != null;
-              "release" = matchRelease != null;
-              "gc" = matchGC != null;
-              "common" = matchCommon;
+              debug = matchDebug != null;
+              release = matchRelease != null;
+              gc = matchGC != null;
+              common = matchCommon;
             }.${type})
           tests);
 
@@ -168,9 +174,14 @@
         paths = [ "${pkgs.sources.motoko-base-src}/src" ];
       };
 
+      core-src = pkgs.symlinkJoin {
+        name = "core-src";
+        paths = [ "${pkgs.sources.motoko-core-src}/src" ];
+      };
+
       js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
-      docs = import ./nix/docs.nix { inherit pkgs js base-src; };
+      docs = import ./nix/docs.nix { inherit pkgs js base-src core-src; };
 
       checks = {
         check-formatting = import ./nix/check-formatting.nix { inherit pkgs; };
@@ -182,7 +193,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
+        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
         inherit (checks) check-rts-formatting;
       };
 
@@ -192,19 +203,23 @@
         base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
         report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
 
-        inherit rts base-src docs shell;
+        inherit rts base-src core-src docs shell;
       };
     in
     {
       packages = checks // common-constituents // rec {
-        "release" = buildableReleaseMoPackages;
-        "debug" = buildableDebugMoPackages;
+        release = buildableReleaseMoPackages;
+        debug = buildableDebugMoPackages;
 
         inherit nix-update tests js;
 
         inherit (pkgs) nix-build-uncached drun ic-wasm;
 
-        release-files = import ./nix/release-files.nix { inherit self pkgs; };
+        # Platform-specific release files
+        release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
+        "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
+        release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };
+        release-files-macos-latest = import ./nix/release-files-macos-latest.nix { inherit self pkgs; };
 
         # Common tests version - includes non-GC, non-release/debug specific tests.
         common-tests = pkgs.releaseTools.aggregate {
@@ -239,6 +254,8 @@
               filterTests "debug"  # Only include debug tests
               ++ builtins.attrValues js;
         };
+
+        inherit (debug) moc;
 
         default = release-systems-go;
       };
