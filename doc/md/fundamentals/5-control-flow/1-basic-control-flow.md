@@ -149,32 +149,41 @@ Instead of having to switch on the options `n` and `m` in a verbose manner the u
 
 A `label` assigns a name with an optional type to a block of code that executes like any other block, but its result can be produced early using a `break` to the label. The type on the label should indicate the type of the block and defaults to `()` when omitted.
 
-If the block produces a non-`()` result, the `break` can include a value. Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
 When a labeled block runs, it evaluates the block to produce a result. Labels don’t change how the block executes but enable early exits from the block using a `break` to that label. If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression. Just as `return` exits a function early with a result, `break` exits its label early with a result.
 
-```motoko no-repl
-public func breakControlFlow() : async Int {
-  let result = label computeProduct : Int {
-    let numbers : [Int] = [3, 1, 5, 0, 2, 7];
-    var prod : Int = 1;
 
-    label loop1 for (number in numbers.vals()) {
-      if (number < 0) {
-        break computeProduct 0;
-      };
+```motoko no-repl
+func product(numbers : [Int]) : Int {
+  var prod : Int = 1;
+  label l for (number in numbers.vals()) {
+    prod *= number;
+    if (prod == 0) break l;
+  };
+  prod; // The implicit result of the block and function
+}
+
+If the block produces a non-`()` result, the `break` can include a value.
+
+
+```motoko no-repl
+func product(numbers : [Int]) : Int {
+  label ret : Int {
+    var prod : Int = 1;
+    for (number in numbers.vals()) {
       prod *= number;
-      if (prod == 0) return 0; // an early return can save work
+      if (prod == 0) break ret 0;
     };
     prod
-  };
-  return result;
-};
+ }
+}
 ```
+
+Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
 
 ### `break` within a labeled block
 
-A `break` expression immediately exits a labeled block and returns a specified value. However, `break` must always refer to a label identifier; it cannot be used without one.
+A `break` expression immediately exits a labeled expression and returns a specified value. However, `break` must always refer to a label identifier; it cannot be used without one.
 
 ```motoko no-repl
   func breakControlFlow() : Int {
@@ -195,6 +204,7 @@ A `break` expression immediately exits a labeled block and returns a specified v
     return result;
   };
 ```
+
 As with `return`, you can omit the value argument to a `break` when the type of the label is `()`, as in this restructured code:
 
 ```motoko no-repl
@@ -217,9 +227,41 @@ As with `return`, you can omit the value argument to a `break` when the type of 
   };
 ```
 
+## `loop`
+
+A `loop` expression repeatedly executes a block of code (forever).
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+var i = 0;
+loop {
+  Debug.print(Nat.toText(i));
+  i += 1;
+}
+```
+
+## `loop-while`
+
+A `loop-while` expression repeatedly executes a block of code (at least once) until the while condition evaluates to `false`.
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+var i = 0;
+loop {
+  Debug.print(Nat.toText(i));
+  i += 1;
+} while (i < 5)
+```
+
+
 ## `while`
 
 A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
+If the condition is initially `false`, the block is never executed.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
@@ -234,7 +276,7 @@ while (i < 5) {
 
 ## `for`
 
-A `for` loop iterates over the elements of an iterator, executing a block of code for each element.
+A `for` loop iterates over the elements of an iterator, and object of type `{ next: () -> ?T }`, executing a block of code for each element.
 
 ``` motoko no-repl
 import Debug "mo:base/Debug";
@@ -246,13 +288,11 @@ for (num in numbers.vals()) {
 }
 ```
 
-## Program flows
+It will run forever if the iterator's `next` method never returns `null`.
 
-In Motoko, code executes sequentially, evaluating expressions and declarations in order. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
+## `continue`
 
-### `continue`
-
-A `continue` expression skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled `while`, `for` or `loop` expression.
+A `continue` expression skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled `while`, `for` or `loop` or `loop-while` expression.
 
 ```motoko no-repl
   func breakControlFlow() : Int {
@@ -273,6 +313,14 @@ A `continue` expression skips the remainder of the current iteration in a loop a
     result
   };
 ```
+## loop exits
+
+You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or using `break` and any loop in a function using `return` or (in an asynchronous function) `throw`.
+
+## Program flows
+
+In Motoko, code executes sequentially, evaluating expressions and declarations in order. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
+
 
 ### Function calls
 
