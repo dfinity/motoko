@@ -111,7 +111,7 @@ In this example, the branches are enclosed in blocks to demonstrate that it is s
 
 A more complex example can be found below:
 
-```motoko _no-repl
+``` motoko no-repl
 type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
 func eval(e : Exp) : ? Nat {
   switch e {
@@ -146,7 +146,7 @@ eval(expr);
 
 Using option blocks this code can be rewritten to reduce the need for nested switches, if that's preferred:
 
-```motoko
+``` motoko no-repl
 type Exp = {#Lit : Nat; #Div : (Exp, Exp); #If : (Exp, Exp, Exp)};
 func eval(e : Exp) : ? Nat {
   do ? {
