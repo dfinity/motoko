@@ -121,7 +121,6 @@ func validateAge(age : Nat) : () {
 
 Using sentinel values to report errors is generally a bad practice and strongly discouraged. For example, you might have `markDone` return `-1` to indicate failure. In that case, the caller has to remember to check for that special value every time. It’s easy to forget, which can cause errors to go unnoticed or be detected too late.
 
-
 ## Error code reference
 <!-- this should be its own section and has nothing to do with programmatic error handling -->
 
