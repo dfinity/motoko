@@ -2,6 +2,8 @@
 sidebar_position: 2
 ---
 
+<!-- TODO: consolidate with basic-control-flow - some redundant material here -->
+
 # Loops
 
 In Motoko, loops provide flexible control over repetition, such as iterating over collections, looping while some condition holds, or just looping until an explicit exit from the loop.
@@ -23,16 +25,13 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
 ```motoko no-repl
-func unconditionalLoop() : Nat {
-  var count : Nat = 0;
+import Debug "mo:base/Debug";
 
-  label countLoop loop {
-    count += 1;
-    if (count == 5) {
-      break countLoop;
-    };
-  };
-  return count;
+var count : Nat = 0;
+label countLoop loop {
+  if (count > 5) break countLoop;
+  Debug.print(debug_show(count));
+  count += 1;
 }
 ```
 
@@ -45,8 +44,8 @@ import Debug "mo:base/Debug";
 
 var count = 0;
 loop {
+  Debug.print(debug_show(count));
   count += 1;
-  Debug.print(debug_show(count))
 } while (count < 5);
 ```
 
@@ -83,7 +82,7 @@ If evaluating the iterator causes a trap (error), the loop stops immediately.
 ```motoko no-repl
 import Debug "mo:base/Debug";
 
-let numbers = [1, 2, 3, 4, 5];
+let numbers = [0, 1, 2, 3, 4];
 
 for (num in numbers.vals()) {
   Debug.print(debug_show(num));
@@ -145,9 +144,9 @@ import Debug "mo:base/Debug";
 
 var count = 8;
 label l while (count > 0) {
-  if (count % 2 == 1) continue l;
-  Debug.print("Counting down...");
   count -= 1;
+  if (count % 2 == 0) continue l;
+  Debug.print("Counting down...");
 };
 ```
 
