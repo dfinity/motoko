@@ -44,7 +44,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE (_eo, {it = Type.Module; _}, _t, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD e; _} ] when is_actor_def e ->
+    | [{it = ExpD e; _}] when is_actor_def e ->
       let persistence, eo, fields, note, at = as_actor_def e in
       finish imports { it = ActorU (persistence, eo, None, fields); note; at }
     | [{it = ClassD (eo, sp, {it = Type.Actor; note = persistence; _}, tid, tbs, p, typ_ann, self_id, fields); _} as d] ->
@@ -73,6 +73,11 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   in
   go [] prog.it
 
+(* Lib as a single value *)
+let comp_unit_of_value full_path : comp_unit =
+  let at = Source.no_region in
+  let prog_typ_note = { empty_typ_note with note_typ = Type.blob } in
+  Source.{ it = { imports = []; body = { it = FileU (Lib.FilePath.contents full_path); note = prog_typ_note; at } }; note = { filename = full_path; trivia = Trivia.empty_triv_table}; at }
 
 (* Lib as decs *)
 let obj_decs obj_sort at note id_opt fields =
@@ -102,15 +107,14 @@ let obj_decs obj_sort at note id_opt fields =
 let decs_of_lib (cu : comp_unit) =
   let open Source in
   let { imports; body = cub; _ } = cu.it in
-  let import_decs = List.map (fun { it = (pat, fp, ri); at; note} ->
+  let import_decs = List.map (fun {it = (pat, fp, ri); at; note} ->
+    let note = { empty_typ_note with note_typ = note } in
     { it = LetD (
-      pat,
-      { it = ImportE (fp, ri);
-        at;
-        note = { empty_typ_note with note_typ = note } },
-      None);
+               pat,
+               { it = ImportE (fp, ri); at; note },
+               None);
       at;
-      note = { empty_typ_note with note_typ = note } }) imports
+      note }) imports
   in
   import_decs,
   match cub.it with
@@ -120,6 +124,7 @@ let decs_of_lib (cu : comp_unit) =
     [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs);
        at = cub.at;
        note = cub.note;}];
+  | FileU _ -> []
   | ProgU _
   | ActorU _ ->
     assert false

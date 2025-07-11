@@ -222,7 +222,7 @@ module MakeState() = struct
     let open E in
     let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
     match cub.it with
-    | ProgU _ | ModuleU _ -> None
+    | ProgU _ | ModuleU _ | FileU _ -> None
     | ActorU _ -> Some (typ cub.note.note_typ)
     | ActorClassU _ ->
        (match normalize cub.note.note_typ with
