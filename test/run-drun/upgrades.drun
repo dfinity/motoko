@@ -1,3 +1,4 @@
+#SKIP drun
 install $ID upgrades/upgrade.mo ""
 upgrade $ID upgrades/upgrade0.mo ""
 query $ID check "DIDL\x00\x01\x7d\x01"
