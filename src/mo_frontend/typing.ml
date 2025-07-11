@@ -1086,7 +1086,7 @@ let check_text env at s =
 
 let check_text_import env at path s =
   if not (Lib.Utf8.is_valid s) then
-    local_error env at "M0217" "imported string literal from file \"%s\" is not valid utf8" (String.escaped path)
+    local_error env at "M0222" "imported string literal from file \"%s\" is not valid utf8" (String.escaped path)
 
 let infer_lit env lit at : T.prim =
   match !lit with
@@ -3417,7 +3417,7 @@ and infer_dec_valdecs env dec : Scope.t =
     (match T.normalize typ with
      | T.(Prim (Text | Blob)) -> ()
      | _ ->
-       error env pat.at "M0216" "value import pattern can only bind `Blob` or `Text`, but asks for type%a"
+       error env pat.at "M0221" "value import pattern can only bind `Blob` or `Text`, but asks for type%a"
          display_typ typ);
     Scope.{empty with val_env}
   | LetD (pat, exp, fail) ->

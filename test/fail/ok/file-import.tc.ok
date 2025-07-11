@@ -1,2 +1,2 @@
-file-import.mo:1.8-1.17: type error [M0216], value import pattern can only bind `Blob` or `Text`, but asks for type
+file-import.mo:1.8-1.17: type error [M0221], value import pattern can only bind `Blob` or `Text`, but asks for type
   Nat
