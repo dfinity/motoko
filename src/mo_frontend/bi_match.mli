@@ -46,21 +46,19 @@ open Type
 
 exception Bimatch of string
 
+type result = {
+  ts : typ list;
+  ts_partial : typ list;
+}
+
 (* General parameter inference for a conjunction of subtype problems *)
 val bi_match_subs :
   scope option ->
   bind list ->               (* type parameters to instantiate *)
-  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
-                                left or right, but never both sides *)
   typ option ->              (* optional return type mentioning tbs
                                 determining polarities *)
-  typ list (* raises Bimatch *)
+  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
+                                left or right, but never both sides *)
+  result (* raises Bimatch *)
 
-
-(* Parameter inference for function calls *)
-val bi_match_call :
-  scope option ->
-  (bind list * typ * typ) -> (* function type *)
-  typ ->                     (* argument type *)
-  typ option ->              (* optional expected result type *)
-  typ list (* raises Bimatch *)
+val combine : result -> result -> typ list
