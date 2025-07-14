@@ -83,6 +83,13 @@ module Make (Cfg : Config) = struct
   let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+
   (* TODO: For the language server, we occasionally need not only the resulting
      [typ] of a node but also its [Arrange_type.typ] (which motivated these
      changes). Arranging the type for every node would be expensive; there
@@ -225,11 +232,6 @@ module Make (Cfg : Config) = struct
       sexps
     else sexps
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"

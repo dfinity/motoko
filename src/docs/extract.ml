@@ -72,8 +72,8 @@ let un_prog prog =
   match body.it with
   | ProgU decs -> Ok ([], []) (* treat all fields as private *)
   | ModuleU (_, decs) -> Ok (imports, decs)
-  | ActorU (_, _, decs) -> Ok (imports, decs)
-  | ActorClassU (_, _, _, _, _, _, _, decs) ->
+  | ActorU (_, _, _, decs) -> Ok (imports, decs)
+  | ActorClassU (_, _, _, _, _, _, _, _, decs) ->
       let _, decs = CompUnit.decs_of_lib comp_unit in
       let decs =
         List.map
