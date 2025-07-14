@@ -1,4 +1,4 @@
-# Int
+# base/Int
 Signed integer numbers with infinite precision (also called big integers).
 
 :::note

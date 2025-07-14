@@ -17,7 +17,7 @@ Motoko.saveFile("ok.mo", "1");
 Motoko.saveFile("bad.mo", "1+");
 Motoko.saveFile(
   "actor.mo",
-  'actor { type A<B> = B; public query func main() : async A<Text> { "abc" } }'
+  'persistent actor { type A<B> = B; public query func main() : async A<Text> { "abc" } }'
 );
 Motoko.saveFile(
   "ast.mo",
@@ -26,11 +26,11 @@ Motoko.saveFile(
       multi-line */
   import Prim "mo:prim";
 
-  actor {
+  persistent actor {
     /// Type comment
     type T = Nat;
     /// Variable comment
-    stable var x : T = 0;
+    var x : T = 0;
     /** Function comment */
     public query func main() : async T { x };
     /// Sub-module comment

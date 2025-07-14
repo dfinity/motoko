@@ -55,7 +55,7 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 ## Recording principals
 
-Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](https://internetcomputer.org/docs/motoko/base/Principal.md) base library.
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](https://internetcomputer.org/docs/motoko/base/Principal) base library.
 
 The data type of `Principal` in Motoko supports equality, ordering, and hashing. `Principal`s both sharable and stable, meaning you can compare them for equality directly.
 
@@ -64,4 +64,4 @@ Below is an example of how you can record a function's caller `Principal`s in a 
 ``` motoko file=../examples/RecordPrincipals.mo
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+
