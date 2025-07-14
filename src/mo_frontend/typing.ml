@@ -2368,7 +2368,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
     infer_pat_fields at env pfs' ts ve
   | { it = ValPF(id, pat); _}::pfs' ->
     let typ, ve1 = infer_pat false env pat in
-    let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
+    let ve' = disjoint_union env id.at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     Field_sources.add_src env.srcs id.at;
     infer_pat_fields at env pfs' (T.{lab = id.it; typ; src = {empty_src with track_region = id.at}}::ts) ve'
 
