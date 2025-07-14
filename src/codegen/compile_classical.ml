@@ -1205,6 +1205,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    if !Flags.wasm_components then (
+      E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
+      E.add_func_import env "rts" "cabi_realloc" [I32Type; I32Type; I32Type; I32Type] [I32Type]);
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -10903,6 +10906,10 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
+let starts_with ~prefix s =
+  let prefix_len = String.length prefix in
+  String.length s >= prefix_len &&
+  String.sub s 0 prefix_len = prefix
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces
@@ -11705,6 +11712,31 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
+
+  | OtherPrim maybe_component, es when starts_with ~prefix:"component:" maybe_component ->
+    assert !Flags.wasm_components;
+    SR.Vanilla,
+    (* Parse the component name and function name *)
+    let parts = String.split_on_char ':' maybe_component in
+    (* parts[0] == "wit", parts[1] == <component-name>, parts[2] = <function-name> *)
+    let component_name = List.nth parts 1 in
+    let function_name = List.nth parts 2 in 
+    (* Read blob pointer and length *)
+    let set_blob, get_blob = new_local env "blob" in
+    let e = List.nth es 0 in
+
+    compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
+    (* Allocate return value *)
+    let set_ret, get_ret = new_local env "ret" in
+    (* TODO: optimize? *)
+    (* Blob.lit env "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ *)(* pointer, length *)
+    (* Call component export *)
+    get_blob ^^ Blob.payload_ptr_unskewed env ^^
+    get_blob ^^ Blob.len env ^^
+    get_ret ^^ Blob.payload_ptr_unskewed env ^^
+    E.call_import env component_name function_name ^^
+    get_ret ^^ Blob.payload_ptr_unskewed env ^^
+    E.call_import env "rts" "blob_of_cabi"
 
   (* Other prims, nullary *)
 
@@ -13383,6 +13415,16 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
+
+  let add_import component_name function_name = 
+      E.add_func_import env component_name function_name [I32Type; I32Type; I32Type] [] in
+
+  (*
+  Wasm.Sexpr.print 80 (Import_components_ir.prog_fun add_import prog);
+  *)
+  let _prog_text = (Import_components_ir.prog_fun add_import prog) in
+  (*Wasm.Sexpr.print 80 _prog_text;*)
+  
 
   IC.system_imports env;
   RTS.system_imports env;

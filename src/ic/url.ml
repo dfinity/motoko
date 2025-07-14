@@ -42,6 +42,7 @@ type parsed =
   | Relative of string
   | Ic of string
   | IcAlias of string
+  | Component of (string * string)
   | Prim
 
 let string_of_parsed = function
@@ -49,6 +50,7 @@ let string_of_parsed = function
   | Relative x -> Printf.sprintf "Relative %s" x
   | Ic x -> Printf.sprintf "Ic %s" x
   | IcAlias x -> Printf.sprintf "IcAlias %s" x
+  | Component (package_name, function_name) -> Printf.sprintf "Component (%s, %s)" package_name function_name
   | Prim -> "Prim"
 
 let parse (f: string) : (parsed, string) result =
@@ -79,10 +81,22 @@ let parse (f: string) : (parsed, string) result =
       match Lib.String.chop_prefix "canister:" f with
       | Some suffix -> Ok (IcAlias suffix)
       | None ->
-        begin match Stdlib.String.index_opt f ':' with
-        | Some _ -> Error "Unrecognized URL"
-        | None -> Ok (Relative (Lib.FilePath.normalise f))
-        end
+        match Lib.String.chop_prefix "component:" f with
+        | Some suffix -> 
+          begin match Stdlib.String.index_opt suffix '/' with
+          | None -> Error "component import must have a package and a function name"
+          | Some i ->
+              let pkg = Stdlib.String.sub suffix 0 i in
+              let path = Stdlib.String.sub suffix (i+1) (Stdlib.String.length suffix - (i+1)) in
+              if Option.is_some (Lib.String.chop_prefix ".." (Lib.FilePath.normalise path))
+                then Error (Printf.sprintf "Component imports musn't access parent directories: %s is invalid." path)
+              else Ok (Component (pkg, path))
+          end
+        | None ->
+          begin match Stdlib.String.index_opt f ':' with
+          | Some _ -> Error "Unrecognized URL"
+          | None -> Ok (Relative (Lib.FilePath.normalise f))
+          end
 
 
 (* Basename of the IDL file searched (see DFX-Interface.md) *)
