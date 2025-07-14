@@ -1,5 +1,4 @@
-
-import { type T; type Result } "type-pattern-fields/lib";
+import { type T; type Result } "M0221/lib";
 
 func _unableToDetermineType() {
   // Only able to infer type fields for val paths at the moment
