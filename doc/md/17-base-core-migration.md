@@ -1,13 +1,17 @@
+---
+sidebar_position: 12
+---
+
 # Motoko `base` to `core` migration guide
 
 * [GitHub repository](https://github.com/dfinity/motoko-core)
 * [Documentation](https://internetcomputer.org/docs/motoko/core/)
 
 The `core` package is a new and improved standard library for Motoko, focusing on:
-* AI-friendly design patterns
-* Familiarity coming from languages such as JavaScript, Python, Java, and Rust
-* Simplified usage of data structures in stable memory
-* Consistent naming conventions and parameter ordering
+* AI-friendly design patterns.
+* Familiarity coming from languages such as JavaScript, Python, Java, and Rust.
+* Simplified usage of data structures in stable memory.
+* Consistent naming conventions and parameter ordering.
 
 This page provides a comprehensive guide for migrating from the `base` Motoko package to the new `core` package.
 
@@ -29,7 +33,7 @@ When updating to the `core` package:
 - All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks.
 - `range()` functions in the `core` library are now exclusive rather than inclusive! Keep this in mind when replacing `Iter.range()` with `Nat.range()`.
 - Functions previously named `vals()` are renamed to `values()`. This also applies to fields. For example, `array.vals()` can be replaced with `array.values()`.
-- Hash-based data structures are no longer included in the standard library. We now encourage using ordered maps and sets for improved security.
+- Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
 In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
 
 For details on function signatures, please refer to the official [documentation](https://internetcomputer.org/docs/motoko/core/).
@@ -57,7 +61,7 @@ The following modules are **new** in the `core` package:
 
 ### 2. Renamed modules
 
-| Base Module | Core Module | Notes |
+| Base module | Core module | Notes |
 |-------------|-------------|-------|
 | `ExperimentalCycles` | `Cycles` | Stabilized module for cycle management |
 | `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface |
@@ -66,7 +70,9 @@ The following modules are **new** in the `core` package:
 | `OrderedMap` | `pure/Map` | Ordered map moved to `pure/` namespace |
 | `OrderedSet` | `pure/Set` | Ordered set moved to `pure/` namespace |
 
-**Note**: The last three entries represent the migration of immutable data structures to the `pure/` namespace. The `core` package introduces a clear separation between mutable data structures (root namespace) and purely functional data structures (`pure/` namespace).
+:::info
+The last three entries represent the migration of immutable data structures to the `pure/` namespace. The `core` package introduces a clear separation between mutable data structures (root namespace) and purely functional data structures (`pure/` namespace).
+:::
 
 ### 3. Removed modules
 
@@ -86,7 +92,9 @@ The following modules have been **removed** in the core package:
 - `TrieMap` - Use `Map` or `pure/Map` instead
 - `TrieSet` - Use `Set` or `pure/Set` instead
 
-**Note**: Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in core but with modified APIs.
+:::info
+Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in core but with modified APIs.
+:::
 
 ## Data structure improvements
 
@@ -207,7 +215,7 @@ persistent actor {
 }
 ```
 
-We also included `rangeInclusive()` for use cases with an inclusive upper bound. The original `Iter.range()` corresponds to `Nat.rangeInclusive()`.
+`rangeInclusive()` is included for use cases with an inclusive upper bound. The original `Iter.range()` corresponds to `Nat.rangeInclusive()`.
 
 Helper functions have been added, such as `allValues()`, for each finite type in the base library.
 
