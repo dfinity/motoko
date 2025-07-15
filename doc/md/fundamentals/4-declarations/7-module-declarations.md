@@ -144,6 +144,8 @@ let id4 = identity(4);
 
 A module class can be used to produce multiple modules with different configurations.
 
+<!-- TODO: a better example would have type fields, e.g. a simple vector lib -->
+
 ```motoko no-repl
 import Debug "mo:base/Debug";
 
