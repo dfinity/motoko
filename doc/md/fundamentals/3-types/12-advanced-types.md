@@ -253,6 +253,10 @@ This `flipWith` takes a strongly-typed actor, not a weakly-typed `Principal`.
 
 Actor type annotations offer flexibility when working with external canisters, but there’s no guarantee that the function signatures will match at runtime. If the signatures don’t align, the calls will fail.
 
+As another example of using actor reference expressions, we present a simple `Publisher` actor that tracks sets of subscribers by their `Principal` and uses an actor reference expression access the `notify` of each subscriber when a message is `published`:
+
+<!-- TODO: improve or remove sample (e.g. use a set of subscribers and oneway notify that returns `()` not `async ()` -->
+
 ```motoko no-repl
 import Array "mo:base/Array";
 import Principal "mo:base/Principal";
