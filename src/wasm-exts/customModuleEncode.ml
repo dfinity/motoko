@@ -760,13 +760,21 @@ let encode (em : extended_module) =
 
     let (here_dir, asset_dir) = (0, 1) (* reversed indices in dir_names, below *)
     let source_names =
-      ref [ "prelude", (Promise.make (), asset_dir)
-          ; "prim", (Promise.make (), asset_dir)
-          ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+      [ "prelude", (Promise.make (), asset_dir)
+      ; "prim", (Promise.make (), asset_dir)
+      ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
+
+    (* Note: we use it like a key-value store and since file names are not unique, we need to add the directory index to the key *)
+    let source_names = ref (List.map (fun (n, ((_, i) as t)) -> (n, i), t) source_names)
+
     let dir_names = (* ditto, but reversed: 6.2.4.1 Standard Content Descriptions *)
       ref [ "<moc-asset>", (Promise.make (), asset_dir)
           ; Filename.dirname "", (Promise.make (), here_dir) ]
-    let source_path_indices = ref (List.map (fun (p, (_, i)) -> p, i) !source_names)
+
+    (* Initialize indices for source_names *)
+    let source_path_indices =
+      let n = List.length !source_names in
+      ref (List.mapi (fun i ((p, _), (_, _)) -> p, n - 1 - i) !source_names)
     let add_source_name =
       let source_adder dir_index _ = Promise.make (), dir_index in
       let add_source_path_index (_, _) = function
@@ -776,11 +784,11 @@ let encode (em : extended_module) =
       function
       | "" -> ()
       | ("prelude" | "prim" | "rts.wasm") as asset ->
-        add_source_path_index (add_string (source_adder asset_dir) source_names asset) asset
+        add_source_path_index (add_string (source_adder asset_dir) source_names (asset, asset_dir)) asset
       | path ->
         let dir, basename = Filename.(dirname path, basename path) in
         let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
-        let promise = add_string (source_adder dir_index) source_names basename in
+        let promise = add_string (source_adder dir_index) source_names (basename, dir_index) in
         add_source_path_index promise path
 
     let code f =
@@ -1145,7 +1153,7 @@ let encode (em : extended_module) =
             strings t in
         strings dirs;
         strings sources in
-      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, !source_names) true
+      custom_section ".debug_line_str" debug_line_strings_section_body (!dir_names, List.map (fun ((n, _), p) -> n, p) !source_names) true
 
     (* Debug line machine section, see DWARF5: "6.2 Line Number Information" *)
 
@@ -1201,22 +1209,10 @@ let encode (em : extended_module) =
             (* generate the line section *)
             let code_start = !code_section_start in
             let rel addr = addr - code_start in
-            (* let source_indices = !source_path_indices in *)
-
-            let rec find_basename_index_opt basename i = function
-              | [] -> None
-              | (b, _) :: t -> if b = basename then Some i else find_basename_index_opt basename (i+1) t
-            in
-            let find_basename_index basename list =
-              match find_basename_index_opt basename 0 list with
-              | None -> failwith ("find_basename_index: " ^ basename)
-              | Some i -> i
-            in
+            let source_indices = !source_path_indices in
 
             let mapping epi (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
-              let filename = if file = "" then "prim" else file in
-              let basename = Filename.basename filename in
-              let file' = find_basename_index basename !source_names in
+              let file' = List.(snd (hd source_indices) - assoc (if file = "" then "prim" else file) source_indices) in
               let stmt = Instrs.mem loc statement_positions || is_statement_at loc (* FIXME TODO: why ||? *) in
               let addr' = rel addr in
               Dwarf5.Machine.{ ip = addr'; loc = { file = file'; line; col = column + 1 }; disc = 0; stmt; bb = false; mode = if addr' = epi then Epilogue else Regular }
