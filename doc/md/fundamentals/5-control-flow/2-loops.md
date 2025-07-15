@@ -2,9 +2,9 @@
 sidebar_position: 2
 ---
 
-<!-- TODO: consolidate with basic-control-flow - some redundant material here -->
-
 # Loops
+
+<!-- TODO: consolidate with basic-control-flow - some redundant material here -->
 
 In Motoko, loops provide flexible control over repetition, such as iterating over collections, looping while some condition holds, or just looping until an explicit exit from the loop.
 

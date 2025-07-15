@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+# Basic control flow
+
 In Motoko, code normally executes sequentially, evaluating expressions and declarations in order.
 However, certain constructs can alter the flow of control, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
 
@@ -16,7 +18,9 @@ However, certain constructs can alter the flow of control, such as exiting a blo
 | `let-else` | Destructure a pattern and handle the failure case inline. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
-| `while` | Runs while a condition is `true`. |
+| `loop` | Iterates indefinitely |
+| `loop ... while` | Iterates until some condition is false |
+| `while` | Iterates while a condition is `true`. |
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
 
 ## `return`
@@ -253,7 +257,7 @@ func product(numbers : [Int]) : Int {
 }
 ```
 
-## loop exits
+## Loop exits
 
 You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or using `break` and any loop in a function using `return` or (in an asynchronous function) `throw`.
 
