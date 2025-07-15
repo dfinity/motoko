@@ -1210,7 +1210,7 @@ let encode (em : extended_module) =
             let find_basename_index basename list =
               match find_basename_index_opt basename 0 list with
               | None -> failwith ("find_basename_index: " ^ basename)
-              | Some i -> i + 1 (* DWARF file numbers are 1-based *)
+              | Some i -> i
             in
 
             let mapping epi (addr, {file; line; column} as loc) : Dwarf5.Machine.state =
