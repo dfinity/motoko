@@ -40,7 +40,7 @@ Also, feel free to ask for help by posting on the [ICP developer forum](https://
 
 ### 1. New modules
 
-The following modules are **new** in the core package:
+The following modules are **new** in the `core` package:
 
 - `List` - Mutable list
 - `Map` - Mutable map
