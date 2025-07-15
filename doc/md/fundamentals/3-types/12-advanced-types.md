@@ -206,7 +206,7 @@ max<Nat>(5, 10); // returns 10 : Nat
 
 The *actor reference* expression `actor <exp>` compute a reference to an actor from a text argument `<exp>`, the textual encoding of a canister id. The expression is typically combined with an (actor) type annotation,  `actor <exp> : <typ>`  that declares the expected type of the actor reference. The argument  can either be a text literal, identifier, or, when enclosed in parentheses, a more complicated expression that computes a textual id.
 
-A simple example of using actor references is to access the management canister with textual address `"aaaaa-aa"`. Amongst other things, it has a method `raw-rand` for generating cryptographically random bytes as a `Blob`.
+A simple example of using actor references is to access the management canister with textual address `"aaaaa-aa"`. Amongst other things, it has a method `raw_rand` for generating cryptographically random bytes as a `Blob`.
 
 ```motoko
 persistent actor Coin {
