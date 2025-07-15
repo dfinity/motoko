@@ -144,7 +144,7 @@ The core package introduces a fundamental reorganization of data structures with
 - `toText()` - Convert array to text representation
 
 #### Removed functions
-- `take()` - Use `sliceToArray()` or `subArray()` instead
+- `take()` - Use `sliceToArray()` instead
 - `sortInPlace()` - Use `VarArray.sortInPlace()` instead
 - `tabulateVar()` - Use `VarArray.tabulate()` instead
 
