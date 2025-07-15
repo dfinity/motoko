@@ -2,10 +2,12 @@
 sidebar_position: 1
 ---
 
-# Types of control flow
+# Basic control flow
 
-<!-- TODO(Future): the examples using  `sum` are ok, but artificial. Rewriting them to use  `product` would be more meaningful since you can exit early when a factor is 0 and skip the `*=` when factors are 1 -->
+In Motoko, code normally executes sequentially, evaluating expressions and declarations in order.
+However, certain constructs can alter the flow of control, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
 
+# Control flow expressions
 
 | Construct | Description |
 |--------------|---------------|
@@ -16,17 +18,18 @@ sidebar_position: 1
 | `let-else` | Destructure a pattern and handle the failure case inline. |
 | `option block` | Evaluates an expression and wraps the result in an option type, allowing scoped handling of `null` values. |
 | `label/break` | Allows exiting loops early. |
-| `while` | Runs while a condition is `true`. |
+| `loop` | Iterates indefinitely |
+| `loop ... while` | Iterates until some condition is false |
+| `while` | Iterates while a condition is `true`. |
 | `for` | Iterates over elements in a collection, terminating when no elements remain. |
 
 ## `return`
 
 A `return` statement immediately exits a function or `async` block with a result. Unlike `break` or `continue`, which jump to a labeled point within the same function, `return` does not target a label. Instead, it exits the current function entirely, either returning control to the caller or, in asynchronous contexts, completing a future and resuming the caller that's awaiting the result.
 
-```motoko
 Consider this function that computes the product of an array of integers.
 
-``` motoko
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -38,9 +41,9 @@ func product(numbers : [Int]) : Int {
 
 This function doesn't require an explicit `return`. It just returns the result of its body, `prod`.
 
-However, `prod` will remain `0` once it becomes `0` so you can save some work by returning from the function early, exiting both the loop and the function with result `0`.
+However, `prod` will remain `0` once it becomes `0` so you can save some work by using `return` to return from the function early, exiting both the loop and the function with result `0`.
 
-``` motoko
+```motoko no-repl
 func product(numbers : [Int]) : Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -53,7 +56,7 @@ func product(numbers : [Int]) : Int {
 
 This also works with asynchronous functions that produce futures:
 
-``` motoko
+```motoko no-repl
 func asyncProduct(numbers : [Int]) : async Int {
   var prod : Int = 1;
   for (number in numbers.vals()) {
@@ -114,6 +117,7 @@ Unlike a `switch`, `let-else` discards any additional error information from non
 
 These blocks represented as `do ? {...}` allow safe unwrapping of optional values using the postfix operator `!`, which short-circuits and exits the block with `null` if any value is `null`, simplifying code that handles multiple options. The result of the inner block, if any, is returned in an option.
 
+A simple example uses an option block to concisely add optional number, return `null` when either is `null`.
 
 ```motoko no-repl
  // Returns the sum of optional values `n` and `m` or `null`, if either is `null`
@@ -122,79 +126,91 @@ func addOpt(n : ?Nat, m : ?Nat) : ?Nat {
     n! + m!
   }
 };
-// let o1 = addOpt(?5, ?2);       // ?7
-// let o2 = addOpt(null, ?2);    // null
-// let o3 = addOpt(?5, null);    // null
-// let o4 = addOpt(null, null);  // null
+let o1 = addOpt(?5, ?2);       // ?7
+let o2 = addOpt(null, ?2);    // null
+let o3 = addOpt(?5, null);    // null
+let o4 = addOpt(null, null);  // null
 ```
-<!-- TODO(future): better, complete example. Perhaps there's one already the option section -->
+
 Instead of having to switch on the options `n` and `m` in a verbose manner the use of the postfix operator `!` makes it easy to unwrap their values but exit the block with `null` when either is `null`.
 
-## `label`
+A more interesting example of option blocks can be found at the end of the section on [switch](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch).
 
-A `label` assigns a name with an optional type to a block of code that executes like any other block, but its result can be produced early using a `break` to the label. The type on the label should indicate the type of the block and defaults to `()` when omitted.
+## `label` and `break`
 
-If the block produces a non-`()` result, the `break` can include a value. Labels provide more control over execution, allowing clear exit points and helping to structure complex logic effectively.
+A `label` assigns a name with an optional type to a block of code that executes like any other block.
+The type on the label should indicate the type of the block and defaults to `()` when omitted.
 
-When a labeled block runs, it evaluates the block to produce a result. Labels don’t change how the block executes but enable early exits from the block using a `break` to that label. If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression. Just as `return` exits a function early with a result, `break` exits its label early with a result.
+When a labeled block runs, it evaluates the block to produce a result.
+Labels don’t change how the block executes but enable early exits from the block using a `break` to that label.
+If the type is not `()` those breaks must have an argument, to use as the result of the labelled expression.
+
+Just as `return` exits a function early with a result, `break` exits its label early with a result.
+Indeed, you can think of `return` as a `break` from the enclosing function.
 
 ```motoko no-repl
-func labelControlFlow() : Int {
-  let result = label processNumbers : Int {
-    let numbers : [Int] = [3, -1, 0, 5, -2, 7];
-    var sum : Int = 0;
-
-    for (number in numbers.values()) {
-      sum += number;
-    };
-    sum; // The final result of the block
+func product(numbers : [Int]) : Int {
+  var prod : Int = 1;
+  label l for (number in numbers.vals()) {
+    prod *= number;
+    if (prod == 0) break l;
   };
-  return result;
+  prod; // The implicit result of the block and function
 }
 ```
 
-### `break` within a labeled block
-
-A `break` expression immediately exits a labeled block and returns a specified value. However, `break` must always refer to a label identifier; it cannot be used without one.
+If the block produces a non-`()` result, as in this minor refactoring, the `break` should include a value:
 
 ```motoko no-repl
-func breakControlFlow() : Int {
-  let result = label processNumbers: Int {
-    let numbers : [Int] = [3, -1, 0, 5, -2, 7];
-    var sum : Int = 0;
-
-    for (num in numbers.values()) {
-      if (num < 0) {
-        break processNumbers sum; // Exit early with current sum
-      };
-      sum += num;
+func product(numbers : [Int]) : Int {
+  label result : Int {
+    var prod : Int = 1;
+    for (number in numbers.vals()) {
+      prod *= number;
+      if (prod == 0) break result 0;
     };
-    sum // This is returned if no break occurs
-  };
-  return result;
+    prod
+ }
 }
 ```
 
-As with `return`, you can omit the value argument to a `break` when the type of the label is `()`, as in this restructured code:
+Labels provide fine control over execution, allowing early exits and helping to structure complex logic.
+
+## `loop`
+
+A `loop` expression repeatedly executes a block of code (forever).
 
 ```motoko no-repl
-func breakControlFlow() : Int {
-  let numbers : [Int] = [3, -1, 0, 5, -2, 7];
-  var sum : Int = 0;
-  label processNumbers {
-    for (num in numbers.values()) {
-      if (num < 0) {
-        break processNumbers; // Break from processNumbers
-      };
-      sum += num;
-    };
-  };
-  sum;
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+var i = 0;
+loop {
+  Debug.print(Nat.toText(i));
+  i += 1;
 }
+```
+
+## `loop-while`
+
+A `loop-while` expression repeatedly executes a block of code (at least once) until the while condition evaluates to `false`.
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+var i = 0;
+loop {
+  Debug.print(Nat.toText(i));
+  i += 1;
+} while (i < 5)
+```
+
 
 ## `while`
 
 A `while` loop repeatedly executes a block of code as long as a specified condition evaluates to `true`.
+If the condition is initially `false`, the block is never executed.
 
 ```motoko no-repl
 import Debug "mo:base/Debug";
@@ -209,47 +225,44 @@ while (i < 5) {
 
 ## `for`
 
-A `for` loop iterates over the elements of an iterator, executing a block of code for each element.
+A `for` loop iterates over the elements of an iterator, and object of type `{ next: () -> ?T }`, executing a block of code for each element.
 
-``` motoko no-repl
+```motoko no-repl
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 
-let numbers = [1, 2, 3, 4, 5];
+let numbers = [0, 1, 2, 3, 4];
 for (num in numbers.vals()) {
-    Debug.print(Nat.toText(num));
+  Debug.print(Nat.toText(num));
 }
 ```
 
-## Program flows
+It will run forever if the iterator's `next` method never returns `null`.
 
-In Motoko, code executes sequentially, evaluating expressions and declarations in order. However, certain constructs can alter this flow, such as exiting a block early, skipping iterations in a loop, returning a value from a function, or invoking another function.
+## `continue`
 
-### `continue`
+A `continue` expression skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled `while`, `for` or `loop` or `loop-while` expression.
 
-A `continue` expression skips the remainder of the current iteration in a loop and immediately proceeds to the next iteration. Like `break`, `continue` must reference a label and only works within a labeled `while`, `for` or `loop` expression.
 
-```motoko no-repl
-func continueControlFlow() : Int {
+For example, computing the product we can skip a multiplication when the number is `1`.
 
-  // Labeled block
-  label processNumbers : Int {
-    let numbers : [Int] = [3, -1, 0, 5, -2, 7];
-    var sum : Int = 0;
-
-    // Labeled loop
-    label processing for (num in numbers.vals()) {
-      if (num < 0) {
-        continue processing; // Skip negative numbers
-      };
-      sum += num;
-    };
-    sum
+``` motoko no-repl
+func product(numbers : [Int]) : Int {
+  var prod : Int = 1;
+  label l for (number in numbers.vals()) {
+    if (number == 1) continue l;
+    prod *= number;
   };
+  prod;
 }
 ```
 
-### Function calls
+## Loop exits
+
+You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or using `break` and any loop in a function using `return` or (in an asynchronous function) `throw`.
+
+
+## Function calls
 
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls can be synchronous (executing immediately within the same [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters)) or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) (message passing between canisters). Asynchronous calls use `async`/`await` and are essential for inter-canister communication.
 
@@ -258,26 +271,28 @@ import Nat "mo:base/Nat";
 
 persistent actor {
 
-  func processNumbers(numbers : [Int]) : Int {
-    var sum : Int = 0;
+  func product(numbers : [Int]) : Int {
+    var prod : Int = 1;
     for (num in numbers.values()) {
-      if (num < 0) {
-        return sum;
-      };
-      sum += num;
+      prod += num;
+      if (prod == 0) return 0; // an early return can save work
     };
-    return sum;
+    prod;
   };
 
-  shared func functionCallControlFlow() : async Int {
-    let numbers : [Int] = [3, 1, 5, -1, -2, 7];
-    return processNumbers(numbers); // Function call
+  public func asyncProduct(numbers : [Int]) : async Int {
+    return product(numbers); // function call
   };
 
 }
 ```
 
-Execution begins in `functionCallControlFlow()`, where the function `processNumbers()` is invoked, transferring control to its logic. Inside `processNumbers()`, the numbers are processed one by one. If a negative number is encountered, a `return` statement immediately halts the function and returns the current sum. Control then flows back to `functionCallControlFlow()`, which receives the result and returns it.
+<!-- TODO: should we add a test method that await's asyncProduct -->
+
+Execution begins in `asyncProduct()`, where the local function `product()` is invoked, transferring control to its logic. Inside `product()`, the numbers are processed one by one. If a zero is encountered, a `return` statement immediately exits the call to `product()` and returns 0.
+Control then flows back to `asyncProduct()`, which just returns the result, completing the asynchronous call.
 
 Function calls temporarily interrupt the normal sequential flow by shifting execution to a separate block of logic. Once the called function completes, control resumes at the point where the call was made, continuing with its result.
+
+
 

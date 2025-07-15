@@ -4,10 +4,6 @@ sidebar_position: 5
 
 # Stable memory and regions
 
-<!---The small code blocks in this these snippets build upon each other, it might be useful to have a single program run in the backend to eliminate unbound errors-->
-
-<!---This section could also benefit from illustrations but i'm not sure what md will allow-->
-
 Canisters have two types of storage: Wasm memory and stable memory. The Wasm memory is often referred to as the [heap memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#heap-memory). It is automatically used for heap-allocated objects and has a maximum size limitation of 4 GiB or 6 GiB respective to whether you are using 32-bit or 64-bit heap storage without enhanced orthogonal persistence. When a canister is upgraded, the heap memory is cleared, only retaining data stored in stable variables.
 
 Stable memory has a maximum size of 500 GiB and is preserved across canister upgrades. Motoko utilizes [stable memory](https://internetcomputer.org/docs/building-apps/canister-management/storage#stable-memory) through the [stable storage feature](https://internetcomputer.org/docs/building-apps/canister-management/storage#motoko-storage-handling) to preserve data across canister upgrades. Stable regions extend this functionality to allow more structured and flexible memory management.
