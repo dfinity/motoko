@@ -217,7 +217,7 @@ persistent actor {
 
 `rangeInclusive()` is included for use cases with an inclusive upper bound. The original `Iter.range()` corresponds to `Nat.rangeInclusive()`.
 
-Helper functions have been added, such as `allValues()`, for each finite type in the base library.
+Helper functions have been added, such as `allValues()`, for each finite type in the `base` package.
 
 ### Int
 
