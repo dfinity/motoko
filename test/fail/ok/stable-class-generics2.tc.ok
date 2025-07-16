@@ -1,6 +1,6 @@
-stable-class-generics2.mo:49.15-49.68: type error [M0218], Type argument
+stable-class-generics2.mo:49.15-49.68: type error [M0223], Type argument
   () -> Text
 has to be of a stable type to match the type parameter 
-stable-class-generics2.mo:49.15-49.68: type error [M0218], Type argument
+stable-class-generics2.mo:49.15-49.68: type error [M0223], Type argument
   () -> Text
 has to be of a stable type to match the type parameter 
