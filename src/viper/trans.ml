@@ -232,7 +232,7 @@ let rec unit reqs (u : M.comp_unit) : prog Diag.result =
 and unit' reqs (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
-  | M.ActorU(eo_, id_opt, decs) ->
+  | M.ActorU(_persistence, eo_, id_opt, decs) ->
     (* TODO eo *)
     let ctxt = {
       self = None;
@@ -578,7 +578,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.IfE(e, s1, s2) ->
     !!([],
        [ !!(IfS(exp ctxt e, stmt ctxt s1, stmt ctxt s2))])
-  | M.(AwaitE(T.Fut, { it = AsyncE (_, T.Fut, _, e); at; _ })) -> (* gross hack *)
+  | M.(AwaitE(T.AwaitFut _, { it = AsyncE (_, T.Fut, _, e); at; _ })) -> (* gross hack *)
      let id = fresh_id "$message_async" in
      let (!!) p = !!! (s.at) p in
      let (!@) p = !!! at p in

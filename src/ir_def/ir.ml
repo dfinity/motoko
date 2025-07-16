@@ -134,9 +134,10 @@ and prim =
   | ActorDotPrim of Type.lab          (* actor field access *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
+  | IdxBlobPrim                       (* blob indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim of Type.async_sort       (* await/await* *)
+  | AwaitPrim of Type.await_sort      (* await/await?/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)
@@ -172,7 +173,7 @@ and prim =
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
-  | CPSAwait of Type.async_sort * Type.typ
+  | CPSAwait of Type.await_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
   | ICPerformGC
@@ -289,6 +290,7 @@ let map_prim t_typ t_id p =
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
   | IdxPrim
+  | IdxBlobPrim
   | NextArrayOffset
   | EqArrayOffset
   | DerefArrayOffset

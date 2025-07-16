@@ -1,6 +1,7 @@
 import ExecutionEnvironment from "@docusaurus/ExecutionEnvironment";
 
-const MOC_VERSION = "0.14.0"; /* This may be slightly behind the base files we have locally in nix/sources.json */
+const BASE_VERSION = "0.14.8"; /* This may be slightly behind the base files we have locally in nix/sources.json */
+const CORE_VERSION = "0.5.0"; /* This may be slightly behind the base files we have locally in nix/sources.json */
 
 async function addPackage(name, repo, version, dir) {
   const meta_url = `https://data.jsdelivr.com/v1/package/gh/${repo}@${version}/flat`;
@@ -26,9 +27,18 @@ function attachOnRunButton() {
     script.src = `/moc_interpreter.js`;
 
     script.addEventListener("load", () => {
-      addPackage("base", "dfinity/motoko-base", `moc-${MOC_VERSION}`, "src")
+      addPackage("base", "dfinity/motoko-base", `moc-${BASE_VERSION}`, "src")
         .then(() => {
-          console.log(`moc ${MOC_VERSION} loaded`);
+          console.log(`base package version: ${BASE_VERSION}`);
+          // Run code
+          const btns = document.getElementsByClassName("run-button run");
+          for (var i = 0; i < btns.length; i++) {
+            btns[i].click();
+          }
+        });
+      addPackage("core", "dfinity/motoko-core", `preview-${CORE_VERSION}`, "src")
+        .then(() => {
+          console.log(`core library version: ${CORE_VERSION}`);
           // Run code
           const btns = document.getElementsByClassName("run-button run");
           for (var i = 0; i < btns.length; i++) {

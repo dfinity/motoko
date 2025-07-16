@@ -75,8 +75,16 @@ let @mut_array_vals = func<A>(xs : [var A]) : () -> @Iter<A> =
     let l = xs.size();
     public func next() : ?A { if (i >= l) null else {let j = i; i += 1; ?xs[j]} };
   };
-func @blob_size(xs : Blob) : () -> Nat =
-  func () : Nat = (prim "blob_size" : Blob -> Nat) xs;
+func @blob_size(b : Blob) : () -> Nat =
+  func () : Nat = (prim "blob_size" : Blob -> Nat) b;
+func @blob_keys(b : Blob) : () -> @Iter<Nat> =
+  func () : @Iter<Nat> = object {
+    var i = 0;
+    let l = (prim "blob_size" : Blob -> Nat) b;
+    public func next() : ?Nat { if (i >= l) null else {let j = i; i += 1; ?j} };
+  };
+func @blob_get(b : Blob) : Nat -> Nat8 =
+  func (n : Nat) : Nat8 = b[n];
 func @blob_vals(xs : Blob) : () -> @Iter<Nat8> =
   func () : @Iter<Nat8> = object {
     type BlobIter = Any; // not exposed
@@ -356,10 +364,6 @@ let @new_async = func<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCo
 
   var cleanup : @BailCont = @cleanup;
 
-  func clean() {
-      cleanup();
-  };
-
   func enqueue(k : @Cont<T>, r : @Cont<Error>, b : @BailCont) : {
     #suspend;
     #schedule : () -> ();
@@ -383,16 +387,16 @@ let @new_async = func<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCo
         };
         #suspend
       };
-      case (? (#ok (r, t))) {
-        #schedule (func () { @refund := r; k(t) });
+      case (?#ok (r, t)) {
+        #schedule (func() { @refund := r; k(t) })
       };
-      case (? (#error e)) {
-        #schedule (func () { r(e) });
+      case (?#error e) {
+        #schedule (func _ = r(e))
       };
     };
   };
 
-  (enqueue, fulfill, fail, clean)
+  (enqueue, fulfill, fail, func() = cleanup())
 };
 
 // Subset of IC management canister interface required for our use

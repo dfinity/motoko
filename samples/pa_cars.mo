@@ -17,7 +17,7 @@ type CarInfo = {
   expires : Nat;
 };
 
-actor class PACars(dmv : DMV) {
+persistent actor class PACars(dmv : DMV) {
   public func verifyCarInformation(user : User, car : Car) : async ?(shared (Location, TimeSpan) -> async Result) {
     let carInfo = await dmv.check(car);
     if (carInfo.isValid and not carInfo.wasStolen) {

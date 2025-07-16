@@ -22,12 +22,12 @@ and
   Text
 at common supertype
   Any
-structural_equality.mo:13.37-13.43: warning [M0061], comparing abstract type
-  A__10
+structural_equality.mo:12.37-12.43: warning [M0061], comparing abstract type
+  A
 to itself at supertype
   Any
-structural_equality.mo:14.41-14.47: warning [M0062], comparing incompatible types
-  A__11
+structural_equality.mo:13.41-13.47: warning [M0062], comparing incompatible types
+  A
 and
   B
 at common supertype

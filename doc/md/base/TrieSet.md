@@ -1,12 +1,15 @@
-# TrieSet
-Functional set
+# base/TrieSet
 
 Sets are partial maps from element type to unit type,
 i.e., the partial map represents the set with its domain.
 
-LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
-attempts to insert more than MAX_LEAF_SIZE elements (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+:::warning Limitations
+
+This data structure allows at most `MAX_LEAF_SIZE = 8` hash collisions.
+Attempts to insert more than 8 elements with the same hash value—either directly via `put` or indirectly via other operations—will trap.
 This limitation is inherited from the underlying `Trie` data structure.
+:::
+
 
 ## Type `Hash`
 ``` motoko no-repl
@@ -74,7 +77,9 @@ Test if `s1` is a subset of `s2`.
 func mem<T>(s : Set<T>, x : T, xh : Hash, eq : (T, T) -> Bool) : Bool
 ```
 
-@deprecated: use `TrieSet.contains()`
+:::warning Deprecated function
+Use `TrieSet.contains()` instead.
+:::
 
 Test if a set contains a given element.
 
@@ -111,9 +116,11 @@ func intersect<T>(s1 : Set<T>, s2 : Set<T>, eq : (T, T) -> Bool) : Set<T>
 func fromArray<T>(arr : [T], elemHash : T -> Hash, eq : (T, T) -> Bool) : Set<T>
 ```
 
+Construct a set from an array.
 
 ## Function `toArray`
 ``` motoko no-repl
 func toArray<T>(s : Set<T>) : [T]
 ```
 
+Returns the set as an array.

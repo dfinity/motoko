@@ -2,11 +2,11 @@
 
 # Tests that `moc` can output Viper code
 (cat <<__END__
-actor {
+persistent actor {
 
-  var claimed = false;
+  transient var claimed = false;
 
-  var count = 0 : Int;
+  transient var count = 0 : Int;
 
   assert:invariant count == 0 or count == 1;
   assert:invariant not claimed implies count == 0;

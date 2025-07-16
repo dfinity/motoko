@@ -1,8 +1,8 @@
-# Principal
-Module for interacting with Principals (users and canisters).
+# base/Principal
+Module for interacting with Principals (users, canisters, or other entities).
 
 Principals are used to identify entities that can interact with the Internet
-Computer. These entities are either users or canisters.
+Computer including users or canisters.
 
 Example textual representation of Principals:
 
@@ -14,16 +14,23 @@ caller of your shared function.
 
 ```motoko no-repl
 shared(msg) func foo() {
-  let caller : Principal = msg.caller;
+ let caller : Principal = msg.caller;
 };
 ```
 
 Then, you can use this module to work with the `Principal`.
 
+:::note Comparison usage
+
+These functions are defined in this library in addition to the existing comparison operators so that they can be passed as function values to higher-order functions. It is currently not possible to use operators such as `==`, `!=`, `<`, `<=`, `>`, or `>=` as function values directly.
+:::
+
 Import from the base library to use this module.
+
 ```motoko name=import
 import Principal "mo:base/Principal";
 ```
+
 
 ## Type `Principal`
 ``` motoko no-repl
@@ -185,10 +192,6 @@ ignore Principal.equal(principal1, principal2);
 principal1 == principal2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `==` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `==`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -215,10 +218,6 @@ ignore Principal.notEqual(principal1, principal2);
 principal1 != principal2 // => false
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `!=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `!=`
-as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
@@ -236,10 +235,6 @@ ignore Principal.less(principal1, principal2);
 principal1 < principal2 // => false
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<`
-as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
@@ -257,10 +252,6 @@ ignore Principal.lessOrEqual(principal1, principal2);
 principal1 <= principal2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<=`
-as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
@@ -278,10 +269,6 @@ ignore Principal.greater(principal1, principal2);
 principal1 > principal2 // => false
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>`
-as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
@@ -299,7 +286,3 @@ ignore Principal.greaterOrEqual(principal1, principal2);
 principal1 >= principal2 // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>=`
-as a function value at the moment.

@@ -77,7 +77,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   in
 
   let update binop c t ce =
-    ConEnv.add c (binop t (ConEnv.find c ce)) ce
+    ConEnv.add c (binop ?src_fields:None t (ConEnv.find c ce)) ce
   in
 
   let rec bi_match_typ rel eq ((l, u) as inst) any t1 t2 =

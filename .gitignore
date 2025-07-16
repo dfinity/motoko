@@ -33,3 +33,5 @@ Session.vim
 
 # Mac OS
 *DS_STORE*
+
+.direnv

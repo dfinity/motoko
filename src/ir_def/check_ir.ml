@@ -14,6 +14,8 @@ module E = Ir_effect
 
 (* TODO: check escape of free mutables via actors *)
 
+
+
 (* Helpers *)
 
 let (==>) p q = not p || q
@@ -54,6 +56,9 @@ type con_env = T.ConSet.t
 
 type lvl = TopLvl | NotTopLvl
 
+module Set = Set.Make(T.Ord)
+module MapPair = Map.Make(T.OrdPair)
+
 type env =
   { flavor : Ir.flavor;
     lvl  : lvl;
@@ -64,6 +69,9 @@ type env =
     async : T.con option;
     seen : con_env ref;
     check_run : int;
+    check_typ_cache : Set.t ref;
+    sub_cache : bool MapPair.t ref;
+    lub_cache : T.typ MapPair.t ref;
   }
 
 let last_run : int ref = ref 0
@@ -82,8 +90,28 @@ let initial_env flavor : env =
                        | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SystemCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
+    check_typ_cache = ref Set.empty;
+    sub_cache = ref MapPair.empty;
+    lub_cache = ref MapPair.empty
   }
 
+let sub env t1 t2 =
+  if t1 == t2 then true else
+  match MapPair.find_opt (t1, t2) !(env.sub_cache) with
+  | Some b -> b
+  | None ->
+    let b = T.sub t1 t2 in
+    env.sub_cache := MapPair.add (t1, t2) b !(env.sub_cache);
+    b
+
+let lub env t1 t2 =
+  if t1 == t2 then t1 else
+  match MapPair.find_opt (t1, t2) !(env.lub_cache) with
+  | Some t -> t
+  | None ->
+    let t = T.lub t1 t2 in
+    env.lub_cache := MapPair.add (t1, t2) t !(env.lub_cache);
+    t
 
 (* More error bookkeeping *)
 
@@ -125,7 +153,7 @@ let disjoint_union env at fmt env1 env2 =
 
 (* FIX ME: these error reporting functions are eager and will construct unnecessary type strings !*)
 let check_sub env at t1 t2 =
-  if not (T.sub t1 t2) then
+  if not (sub env t1 t2) then
     error env at "subtype violation:\n  %s\n  %s\n"
       (T.string_of_typ_expand t1) (T.string_of_typ_expand t2)
 
@@ -329,6 +357,11 @@ and check_inst_bounds env tbs typs at =
   List.iter (check_typ env) typs;
   check_typ_bounds env tbs typs at
 
+let check_typ env typ =
+  if Set.mem typ !(env.check_typ_cache) then () else
+  check_typ env typ;
+  env.check_typ_cache := Set.add typ !(env.check_typ_cache);
+
 (* Literals *)
 
 open Ir
@@ -497,6 +530,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
+    | IdxBlobPrim, [exp1; exp2] ->
+      typ exp1 <: T.blob;
+      typ exp2 <: T.nat;
+      T.(Prim Nat8) <: t
     | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore
@@ -537,7 +574,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       | Some c -> T.Con(c, [])
       | None -> error env exp.at "misplaced await" in
       let t1 = T.promote (typ exp1) in
-      let (t2, t3) = try T.as_async_sub s t0 t1
+      let (t2, t3) = try T.as_async_sub (to_async_sort s) t0 t1
              with Invalid_argument _ ->
                error env exp1.at "expected async type, but expression has type\n  %s"
                  (T.string_of_typ_expand t1)
@@ -566,7 +603,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Opt (T.seq ots) <: t
     | CPSAwait (s, cont_typ), [a; krb] ->
       let (_, t1) =
-        try T.as_async_sub s T.Non (T.normalize (typ a))
+        try T.as_async_sub (to_async_sort s) T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
       (match cont_typ with
@@ -967,7 +1004,7 @@ and check_case env t_pat t {it = {pat; exp}; _} =
   let ve = check_pat env pat in
   check_sub env pat.at t_pat pat.note;
   check_exp (adjoin_vals env ve) exp;
-  check env pat.at (T.sub (typ exp) t) "bad case"
+  check env pat.at (sub env (typ exp) t) "bad case"
 
 (* Arguments *)
 
@@ -1002,7 +1039,7 @@ and gather_pat env const ve0 pat : val_env =
       List.fold_left go ve (pats_of_obj_pat pfs)
     | AltP (pat1, pat2) ->
       let ve1, ve2 = go ve pat1, go ve pat2 in
-      let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
+      let common i1 i2 = { typ = lub env i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
       T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
     | OptP pat1
     | TagP (_, pat1) ->
@@ -1052,7 +1089,7 @@ and check_pat env pat : val_env =
     t <: pat2.note;
     if T.Env.(keys ve1 <> keys ve2) then
         error env pat.at "set of bindings differ for alternative pattern";
-    let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
+    let common i1 i2 = { typ = lub env i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
     T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
 
 and check_pats at env pats ve : val_env =
@@ -1160,6 +1197,8 @@ and gather_dec env scope dec : scope =
       "duplicate variable definition in block";
     let val_info = {typ = t; const = false; loc_known = false} in
     { val_env = T.Env.add id val_info scope.val_env }
+
+and to_async_sort = Type.(function | AwaitCmp -> Cmp | AwaitFut _ -> Fut)
 
 (* Programs *)
 

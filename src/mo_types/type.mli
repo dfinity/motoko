@@ -8,6 +8,7 @@ type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
 type stable_sort = Flexible | Stable
+type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
 type 'a shared = Local of stable_sort | Shared of 'a
 type func_sort = shared_sort shared
@@ -59,7 +60,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and src = {depr : string option; region : Source.region}
+and src = {depr : string option; track_region : Source.region; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -140,6 +141,7 @@ val is_unit : typ -> bool
 val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
+val is_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
@@ -238,15 +240,15 @@ val cons_kind : kind -> ConSet.t
 
 exception Undecided (* raised if termination depth exceeded  *)
 
-val eq : typ -> typ -> bool
-val eq_kind : kind -> kind -> bool
+val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 
-val sub : typ -> typ -> bool
+val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val compatible : typ -> typ -> bool
 
 exception PreEncountered
-val lub : typ -> typ -> typ
-val glb : typ -> typ -> typ
+val lub : ?src_fields : Field_sources.t -> typ -> typ -> typ
+val glb : ?src_fields : Field_sources.t -> typ -> typ -> typ
 
 
 (* First-order substitution *)
@@ -287,7 +289,7 @@ val scope_bind : bind
 
 (* like sub, but disallows promotion to  Any or narrower object types
    that signal data loss *)
-val stable_sub : typ -> typ -> bool
+val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 
 type stab_sig =
   | Single of field list
@@ -348,6 +350,7 @@ end
 
 module type PrettyConfig = sig
   val show_stamps : bool
+  val show_scopes : bool
   val con_sep : string
   val par_sep : string
 end

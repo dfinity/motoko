@@ -1,7 +1,7 @@
-// Version: 2.0.0
+// Version: 3.0.0
 actor ({
   stable var lastModified : Int;
-  stable var state : Int
+  in var state : Int
 }, {
   stable var lastModified : Int;
   stable var state : Float
