@@ -308,11 +308,9 @@ and match_obj ctxt ldescs (pat_fields : pat_field list) tfs sets =
   | [] -> succeed ctxt (Obj ldescs) sets
   | {it = ValPF(id, p); _}::pat_fields' ->
     let l = id.it in
-    (* TODO: This seems wrong even before the addition of typed pattern fields? *)
-    let tf = List.find (fun tf -> tf.T.lab = l) tfs in
+    let typ = T.lookup_val_field l tfs in
     let desc = LabMap.find l ldescs in
-    match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs))
-      desc p tf.T.typ sets
+    match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs)) desc p typ sets
   | {it = TypPF(_); _}::pat_fields' ->
      match_obj ctxt ldescs pat_fields' tfs sets
 
