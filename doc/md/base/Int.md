@@ -1,13 +1,22 @@
-# Int
+# base/Int
 Signed integer numbers with infinite precision (also called big integers).
 
+:::note
 Most operations on integer numbers (e.g. addition) are available as built-in operators (e.g. `-1 + 1`).
 This module provides equivalent functions and `Text` conversion.
+:::
+
+:::info Function form for higher-order use
+
+Several arithmetic and comparison functions (e.g. `add`, `sub`, `equal`, `less`, `pow`) are defined in this module to enable their use as first-class function values, which is not possible with operators like `+`, `-`, `==`, etc., in Motoko. This allows you to pass these operations to higher-order functions such as `map`, `foldLeft`, or `sort`.
+:::
 
 Import from the base library to use this module.
+
 ```motoko name=import
 import Int "mo:base/Int";
 ```
+
 
 ## Type `Int`
 ``` motoko no-repl
@@ -79,6 +88,7 @@ func hashAcc(h1 : Hash.Hash, i : Int) : Hash.Hash
 ```
 
 Computes an accumulated hash from `h1` and the least significant 32-bits of `i`, ignoring other bits in `i`.
+
 @deprecated For large `Int` values consider using a bespoke hash function that considers all of the argument's bits.
 
 ## Function `equal`
@@ -94,10 +104,6 @@ Example:
 Int.equal(-1, -1); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `==` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `==`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -123,10 +129,6 @@ Example:
 Int.notEqual(-1, -2); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `!=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `!=`
-as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
@@ -141,10 +143,6 @@ Example:
 Int.less(-2, 1); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<`
-as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
@@ -159,10 +157,6 @@ Example:
 Int.lessOrEqual(-2, 1); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `<=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `<=`
-as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
@@ -177,10 +171,6 @@ Example:
 Int.greater(1, -2); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>`
-as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
@@ -195,10 +185,6 @@ Example:
 Int.greaterOrEqual(1, -2); // => true
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `>=` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `>=`
-as a function value at the moment.
 
 ## Function `compare`
 ``` motoko no-repl
@@ -233,10 +219,6 @@ Example:
 Int.neg(123) // => -123
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 ## Function `add`
 ``` motoko no-repl
@@ -252,10 +234,6 @@ Example:
 Int.add(1, -2); // => -1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `+` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `+`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -277,10 +255,6 @@ Example:
 Int.sub(1, 2); // => -1
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `-` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `-`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -302,10 +276,6 @@ Example:
 Int.mul(-2, 3); // => -6
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `*` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `*`
-as a function value at the moment.
 
 Example:
 ```motoko include=import
@@ -328,10 +298,6 @@ Example:
 Int.div(6, -2); // => -3
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `/` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `/`
-as a function value at the moment.
 
 ## Function `rem`
 ``` motoko no-repl
@@ -348,10 +314,6 @@ Example:
 Int.rem(6, -4); // => 2
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `%` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `%`
-as a function value at the moment.
 
 ## Function `pow`
 ``` motoko no-repl
@@ -368,7 +330,3 @@ Example:
 Int.pow(-2, 3); // => -8
 ```
 
-Note: The reason why this function is defined in this library (in addition
-to the existing `**` operator) is so that you can use it as a function
-value to pass to a higher order function. It is not possible to use `**`
-as a function value at the moment.

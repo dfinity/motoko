@@ -256,7 +256,7 @@ let transform prog =
     | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (AwaitFut short, cont_typ), [a; krb]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
@@ -265,19 +265,22 @@ let transform prog =
             switch_variantE (t_exp a -*- varE vkrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
-                ("schedule", varP schedule, (* resume later *)
-                  (* try await async (); schedule() catch e -> r(e) *)
-                 (let v = fresh_var "call" unit in
-                  letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
-                       ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
+                ("schedule", varP schedule,
+                  (if short then (* resume immediately *)
+                     varE schedule -*- unitE ()
+                   else (* resume later *)
+                     (* try await async (); schedule() catch e -> r(e) *)
+                     let v = fresh_var "call" unit in
+                     letE v
+                       (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                          ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
+                       (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
               ]
               unit
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; krb]) ->
+    | PrimE (CPSAwait (AwaitCmp, cont_typ), [a; krb]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
          (t_exp a -*- t_exp krb).it
@@ -296,7 +299,7 @@ let transform prog =
           letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def;
           let ic_reply = (* flatten v, here and below? *)
             let v = fresh_var "v" (T.seq ts1) in
-            v --> (ic_replyE ts1 (varE v)) in
+            v --> ic_replyE ts1 (varE v) in
           let ic_reject =
             let e = fresh_var "e" catch in
             e --> ic_rejectE (errorMessageE (varE e)) in
@@ -403,7 +406,7 @@ let transform prog =
                 | t -> assert false in
               let k =
                 let v = fresh_var "v" t1 in
-                v --> (ic_replyE ret_tys (varE v)) in
+                v --> ic_replyE ret_tys (varE v) in
               let r =
                 let e = fresh_var "e" catch in
                 e --> ic_rejectE (errorMessageE (varE e)) in

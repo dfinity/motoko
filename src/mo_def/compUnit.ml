@@ -9,14 +9,14 @@ let (@~) it at = Source.annotate Const it at
 let is_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE (_eo, {it = Type.Actor; _}, _t, _fields); _ }); _ }) -> true
+  | AwaitE (Type.AwaitFut false, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE (_eo, {it = Type.Actor; _}, _t, _fields); _ }); _ }) -> true
   | _ -> false
 
 let as_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE (eo, {it = Type.Actor; _},  _t, fields); note; at }); _ }) ->
-    eo, fields, note, at
+  | AwaitE (Type.AwaitFut false, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE (eo, {it = Type.Actor; note = persistence; _},  _t, fields); note; at }); _ }) ->
+    persistence, eo, fields, note, at
   | _ -> assert false
 
 let is_module_def e =
@@ -45,17 +45,17 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | [{it = ExpD ({it = ObjBlockE (_eo, {it = Type.Module; _}, _t, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
     | [{it = ExpD e; _} ] when is_actor_def e ->
-      let eo, fields, note, at = as_actor_def e in
-      finish imports { it = ActorU (eo, None, fields); note; at }
-    | [{it = ClassD (eo, sp, {it = Type.Actor;_}, tid, tbs, p, typ_ann, self_id, fields, _); _} as d] ->
+      let persistence, eo, fields, note, at = as_actor_def e in
+      finish imports { it = ActorU (persistence, eo, None, fields); note; at }
+    | [{it = ClassD (eo, sp, {it = Type.Actor; note = persistence; _}, tid, tbs, p, typ_ann, self_id, fields, _); _} as d] ->
       assert (List.length tbs > 0);
-      finish imports { it = ActorClassU (eo, sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
+      finish imports { it = ActorClassU (persistence, eo, sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
     | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE (_eo, {it = Type.Module; _}, _t, fields); _} as e), _); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
     | [{it = LetD ({it = VarP i1; _}, e, _); _}] when is_actor_def e ->
-      let eo, fields, note, at = as_actor_def e in
-      finish imports { it = ActorU (eo, Some i1, fields); note; at }
+      let persistence, eo, fields, note, at = as_actor_def e in
+      finish imports { it = ActorU (persistence, eo, Some i1, fields); note; at }
 
     (* Everything else is a program *)
     | ds' ->
@@ -80,14 +80,14 @@ let obj_decs obj_sort at note id_opt fields =
   match id_opt with
   | None -> [
     { it = ExpD {
-        it = ObjBlockE ( None, { it = obj_sort; at; note = () }, (None, None), fields);
+        it = ObjBlockE ( None, { it = obj_sort; at; note = false @@ no_region }, (None, None), fields);
         at;
         note };
       at; note }]
   | Some id -> [
     { it = LetD (
         { it = VarP id; at; note = note.note_typ },
-        { it = ObjBlockE ( None, { it = obj_sort; at; note = () }, (None, None), fields);
+        { it = ObjBlockE ( None, { it = obj_sort; at; note = false @@ no_region }, (None, None), fields);
           at; note; },
         None);
       at; note
@@ -116,8 +116,8 @@ let decs_of_lib (cu : comp_unit) =
   match cub.it with
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
-  | ActorClassU (eo, csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = ()}, i, tbs, p, t, i', efs, ref None);
+  | ActorClassU (persistence, eo, csp, i, tbs, p, t, i', efs) ->
+    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs, ref None);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

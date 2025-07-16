@@ -1,4 +1,4 @@
-# [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/.github/CONTRIBUTING.md)
+# [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![Release](https://img.shields.io/github/v/release/dfinity/motoko.svg)](https://github.com/dfinity/motoko/releases) [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/.github/CONTRIBUTING.md)
 
 
 A safe, simple, actor-based programming language for building [Internet Computer](https://internetcomputer.org/) (ICP) canister smart contracts.
@@ -13,7 +13,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Language manual](doc/md/reference/language-manual.md)
 * [Concrete syntax](doc/md/examples/grammar.txt)
 * [Documentation sources](doc/md/)
-* [Base library documentation](doc/md/base/index.md)
+* [Base package documentation](doc/md/base/index.md)
 * [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md)
 
 ## Introduction
@@ -46,7 +46,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## Related Repositories
 
-* [Base library](https://github.com/dfinity/motoko-base)
+* [Base package](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
 * [Example projects](https://github.com/dfinity/examples/tree/master/motoko)
 * [ICP Ninja, online authoring of canisters](https://icp.ninja)
@@ -60,7 +60,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Awesome Motoko](https://github.com/motoko-unofficial/awesome-motoko#readme)
 * [Blocks - an online low-code editor for Motoko](https://github.com/Blocks-Editor/blocks)
 * [MOPS - a Motoko package manager hosted on the IC](https://j4mwm-bqaaa-aaaam-qajbq-cai.ic0.app/)
-* [Motoko Bootcamp](https://github.com/motoko-bootcamp/bootcamp#readme) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
+* [Motoko Bootcamp](https://www.motokobootcamp.com) &middot; ([YouTube channel](https://www.youtube.com/channel/UCa7_xHjvOESf9v281VU4qVw))
 * [Motoko library starter template](https://github.com/ByronBecker/motoko-library-template)
 
 ## Contributing

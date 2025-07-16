@@ -210,6 +210,31 @@ let prim trap =
      | [x; shift] -> k (Int Numerics.Int.(div (as_int x) (pow (of_int 2) (of_big_int (Nat32.to_big_int (as_nat32 shift))))))
      | _ -> failwith "rsh_Nat")
 
+  | "explode_Nat16" -> fun _ v k ->
+    let n, ff = as_nat16 v, Nat16.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat16.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup [byte_at 8; byte_at 0])
+  | "explode_Int16" -> fun _ v k ->
+    let n, ff = as_int16 v, Int_16.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_16.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup [byte_at 8; byte_at 0])
+  | "explode_Nat32" -> fun _ v k ->
+    let n, ff = as_nat32 v, Nat32.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
+  | "explode_Int32" -> fun _ v k ->
+    let n, ff = as_int32 v, Int_32.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_32.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [24; 16; 8; 0]))
+  | "explode_Nat64" -> fun _ v k ->
+    let n, ff = as_nat64 v, Nat64.(of_int 0xFF) in
+    let byte_at p = Nat8 (Nat64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
+  | "explode_Int64" -> fun _ v k ->
+    let n, ff = as_int64 v, Int_64.(of_int 0xFF) in
+    let byte_at p = Nat8 (Int_64.(shr n (of_int p) |> and_ ff |> to_int) |> Nat8.of_int) in
+    k (Tup (List.map byte_at [56; 48; 40; 32; 24; 16; 8; 0]))
+
   | "conv_Char_Text" -> fun _ v k -> let str = match as_char v with
                                           | c when c <= 0o177 -> String.make 1 (Char.chr c)
                                           | code -> Lib.Utf8.encode [code]
@@ -285,6 +310,7 @@ let prim trap =
     | _ -> assert false
     )
   | "Array.tabulate" -> fun c v k ->
+    (* TODO: optimize these (https://github.com/dfinity/motoko/pull/5256#discussion_r2143573548) *)
     (match Value.as_tup v with
     | [len; g] ->
       let len_nat = Int.to_int (as_int len) in
@@ -293,6 +319,18 @@ let prim trap =
         if i == len_nat
         then k (Array (Array.of_list (prefix [])))
         else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (x::tl)) k (i + 1))
+      in go (fun xs -> xs) k 0
+    | _ -> assert false
+    )
+  | "Array.tabulateVar" -> fun c v k ->
+    (match Value.as_tup v with
+    | [len; g] ->
+      let len_nat = Int.to_int (as_int len) in
+      let (_, g') = Value.as_func g in
+      let rec go prefix k i =
+        if i == len_nat
+        then k (Array (Array.of_list (prefix [])))
+        else g' c (Int (Int.of_int i)) (fun x -> go (fun tl -> prefix (Mut (ref x)::tl)) k (i + 1))
       in go (fun xs -> xs) k 0
     | _ -> assert false
     )
@@ -392,6 +430,9 @@ let prim trap =
       fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
   | "canister_subnet" ->
+      fun _ v k -> as_unit v; k (Blob "")
+
+  | "root_key" ->
       fun _ v k -> as_unit v; k (Blob "")
 
   (* fake *)

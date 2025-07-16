@@ -136,7 +136,7 @@ print();
 
 ## Control flow
 
-The usual suspects…​
+The usual suspects…
 
 -   `do { … }`
 
@@ -178,7 +178,7 @@ Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 ## Unbounded naturals
 
-[`Nat`](../base/Nat.md)
+[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md)
 
 `{ 0, 1, 2, …​ }`
 
@@ -190,9 +190,9 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat <: Int`
 
-[`Nat`](../base/Nat.md) is a *subtype* of `Int`
+[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) is a *subtype* of `Int`
 
-(you can supply a [`Nat`](../base/Nat.md) wherever an `Int` is expected)
+(you can supply a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat.md) wherever an `Int` is expected)
 
 ## Bounded numbers (trapping)
 
@@ -343,7 +343,7 @@ func display(x : ?Text) : Text {
 
 ## Option blocks
 
-Switching on every option value can be inconvenient …​
+Switching on every option value can be inconvenient …
 
 The *option block*, `do ? { … }`, allow you to safely access option values with a postfix *null break* `!` expression.
 
@@ -890,8 +890,6 @@ let t = toText(employee); // also works, since Employee <: Person
     -   `mo_doc` (generates doc from doc comments),
 
     -   `vessel` (package manager)
-
-    -   `mo_ide` (LSP language server for VSCode, emacs etc)
 
 <!--
 == Old slides

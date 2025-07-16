@@ -187,39 +187,48 @@ let async_cap_of_prog prog =
 let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog ~viper_mode pkg_opt senv async_cap prog in
-  if !Flags.trace && !Flags.verbose then begin
-    match r with
-    | Ok ((_, scope), _) ->
-      print_ce scope.Scope.con_env;
-      print_stat_ve scope.Scope.val_env;
-      dump_prog Flags.dump_tc prog;
-    | Error _ -> ()
-  end;
-  phase "Definedness" filename;
-  let open Diag.Syntax in
-  let* t_sscope = r in
-  let* () = Definedness.check_prog prog in
-  Diag.return t_sscope
-
-let rec check_progs ?(viper_mode=false) senv progs : Scope.scope Diag.result =
-  match progs with
-  | [] -> Diag.return senv
-  | prog::progs' ->
+  Cons.session ~scope:filename (fun () ->
+    let r = Typing.infer_prog ~viper_mode pkg_opt senv async_cap prog in
+    if !Flags.trace && !Flags.verbose then begin
+      match r with
+      | Ok ((_, scope), _) ->
+        print_ce scope.Scope.con_env;
+        print_stat_ve scope.Scope.val_env;
+        dump_prog Flags.dump_tc prog;
+      | Error _ -> ()
+    end;
+    phase "Definedness" filename;
     let open Diag.Syntax in
-    let async_cap = async_cap_of_prog prog in
-    let* _t, sscope = infer_prog ~viper_mode senv None async_cap prog in
-    let senv' = Scope.adjoin senv sscope in
-    check_progs ~viper_mode senv' progs'
+    let* t_sscope = r in
+    let* () = Definedness.check_prog prog in
+    Diag.return t_sscope)
+
+let check_progs ?(viper_mode=false) senv progs : (Scope.t list * Scope.t) Diag.result =
+  let rec go senv sscopes = function
+    | [] -> Diag.return (List.rev sscopes, senv)
+    | prog::progs ->
+      let open Diag.Syntax in
+      let filename = prog.Source.note.Syntax.filename in
+      let async_cap = async_cap_of_prog prog in
+      let* _t, sscope =
+        Cons.session ~scope:filename (fun () ->
+          infer_prog ~viper_mode senv None async_cap prog)
+      in
+      let senv' = Scope.adjoin senv sscope in
+      let sscopes' = sscope :: sscopes in
+      go senv' sscopes' progs
+  in
+  go senv [] progs
 
 let check_lib qualified_name senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
-  phase "Checking" (Filename.basename filename);
-  let open Diag.Syntax in
-  let* sscope = Typing.check_lib qualified_name senv pkg_opt lib in
-  phase "Definedness" (Filename.basename filename);
-  let* () = Definedness.check_lib lib in
-  Diag.return sscope
+  Cons.session ~scope:filename (fun () ->
+    phase "Checking" (Filename.basename filename);
+    let open Diag.Syntax in
+    let* sscope = Typing.check_lib qualified_name senv pkg_opt lib in
+    phase "Definedness" (Filename.basename filename);
+    let* () = Definedness.check_lib lib in
+    Diag.return sscope)
 
 let lib_of_prog f prog : Syntax.lib  =
   let lib = CompUnit.comp_unit_of_prog true prog in
@@ -276,27 +285,34 @@ let stable_compatible pre post : unit Diag.result =
   let open Diag.Syntax in
   let* p1 = parse_stab_sig_from_file pre in
   let* p2 = parse_stab_sig_from_file post in
-  let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
-  let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
+  let* s1 =
+    Cons.session ~scope:p1.Source.note.Syntax.filename (fun () ->
+      Typing.check_stab_sig initial_stat_env0 p1)
+  in
+  let* s2 =
+    Cons.session ~scope:p2.Source.note.Syntax.filename (fun () ->
+      Typing.check_stab_sig initial_stat_env0 p2)
+  in
   Stability.match_stab_sig s1 s2
 
 (* basic sanity checking of emitted stable signatures *)
 let validate_stab_sig s : unit Diag.result =
   let open Diag.Syntax in
   let name = "stable-types" in
-  let* p1 = parse_stab_sig s name in
-  let* p2 = parse_stab_sig s name in
-  let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
-  let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
-  Type.(match s1, s2 with
-  | Single s1, Single s2 ->
-    (* check we can self-upgrade *)
-    Stability.match_stab_sig (Single s1) (Single s2)
-  | PrePost (pre1, post1), PrePost (pre2, post2) ->
-    (* check we can at least self-upgrade,
-       with a possibly different or no migration function *)
-    Stability.match_stab_sig (Single post1) (Single post2)
-  | _, _ -> assert false)
+  Cons.session ~scope:name (fun () ->
+    let* p1 = parse_stab_sig s name in
+    let* p2 = parse_stab_sig s name in
+    let* s1 = Typing.check_stab_sig initial_stat_env0 p1 in
+    let* s2 = Typing.check_stab_sig initial_stat_env0 p2 in
+    Type.(match s1, s2 with
+    | Single s1, Single s2 ->
+      (* check we can self-upgrade *)
+      Stability.match_stab_sig (Single s1) (Single s2)
+    | PrePost (pre1, post1), PrePost (pre2, post2) ->
+      (* check we can at least self-upgrade,
+         with a possibly different or no migration function *)
+      Stability.match_stab_sig (Single post1) (Single post2)
+    | _, _ -> assert false))
 
 (* The prim module *)
 
@@ -349,7 +365,7 @@ type scope_cache = Scope.t Type.Env.t
 
 type load_result_cached =
     ( Syntax.lib list
-    * (Syntax.prog * string list) list
+    * (Syntax.prog * string list * Scope.t) list
     * Scope.t
     * scope_cache ) Diag.result
 
@@ -412,8 +428,11 @@ let chase_imports_cached root_imports parsefn senv0 imports scopes_map
   let cache = ref scopes_map in
 
   let rec go_cached qualified_name pkg_opt ri =
-    match Type.Env.find_opt (resolved_import_name ri) !cache with
-    | None -> go qualified_name pkg_opt ri
+    let ri_name = resolved_import_name ri in
+    match Type.Env.find_opt ri_name !cache with
+    | None ->
+      Cons.session ~scope:ri_name
+        (fun () -> go qualified_name pkg_opt ri)
     | Some sscope ->
       senv := Scope.adjoin !senv sscope;
       Diag.return ()
@@ -510,12 +529,16 @@ let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache :
   let* () = Typing.check_actors ?viper_mode ?check_actors senv progs in
   (* [infer_prog] seems to annotate the AST with types by mutating some of its
      nodes, therefore, we always run the type checker for programs. *)
-  let* senv = check_progs ?viper_mode senv progs in
-  Diag.return
-    ( libs
-    , List.map (fun (prog, rims) -> prog, List.map resolved_import_name rims) rs
-    , senv
-    , scope_cache )
+  let* sscopes, senv = check_progs ?viper_mode senv progs in
+  let prog_result =
+    List.map2
+      (fun (prog, rims) sscope ->
+        let rims' = List.map resolved_import_name rims in
+        prog, rims', sscope)
+      rs
+      sscopes
+  in
+  Diag.return (libs, prog_result, senv, scope_cache)
 
 let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
   let open Diag.Syntax in
@@ -523,7 +546,7 @@ let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
   let* libs, rs, senv, _scope_cache =
     load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache
   in
-  let progs = List.map fst rs in
+  let progs = List.map (fun (prog, _immediate_imports, _sscope) -> prog) rs in
   Diag.return (libs, progs, senv)
 
 let load_decl parse_one senv : load_decl_result =
@@ -541,20 +564,25 @@ let load_decl parse_one senv : load_decl_result =
 
 let interpret_prog denv prog : (Value.value * Interpret.scope) option =
   let open Interpret in
-  phase "Interpreting" prog.Source.note.Syntax.filename;
-  let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-  let result = Interpret.interpret_prog flags denv prog in
-  Profiler.process_prog_result result ;
-  result
+  let filename = prog.Source.note.Syntax.filename in
+  phase "Interpreting" filename;
+  Cons.session ~scope:filename (fun () ->
+    let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
+    let result = Interpret.interpret_prog flags denv prog in
+    Profiler.process_prog_result result;
+    result)
 
 let rec interpret_libs denv libs : Interpret.scope =
   let open Interpret in
   match libs with
   | [] -> denv
   | lib::libs' ->
-     phase "Interpreting" (Filename.basename lib.Source.note.Syntax.filename);
+    let filename = lib.Source.note.Syntax.filename in
+    phase "Interpreting" (Filename.basename filename);
     let flags = { trace = !Flags.trace; print_depth = !Flags.print_depth } in
-    let dscope = interpret_lib flags denv lib in
+    let dscope =
+      Cons.session ~scope:filename (fun () -> interpret_lib flags denv lib)
+    in
     let denv' = adjoin_scope denv dscope in
     interpret_libs denv' libs'
 
@@ -806,7 +834,7 @@ let adjust_flags () =
       | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
       | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
       (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
-      Flags.rtti := true
+      Flags.rtti := true;
     end
   else
     begin
@@ -815,7 +843,7 @@ let adjust_flags () =
       (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
         invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence");
       (if !Flags.stable_memory_access_limit <> Flags.stable_memory_access_limit_default then
-        invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
+         invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
     end
 
 (* This transforms the flat list of libs (some of which are classes)
@@ -826,25 +854,31 @@ let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
     | [] -> imports
     | l :: libs ->
       let { Syntax.body = cub; _ } = l.it in
-      match cub.it with
-      | Syntax.ActorClassU _ ->
-        let wasm = compile_unit_to_wasm mode imports l in
-        go (imports @ Lowering.Desugar.import_compiled_class l wasm) libs
-      | _ ->
-        go (imports @ Lowering.Desugar.import_unit l) libs
+      let filename = l.Source.note.Syntax.filename in
+      let new_imports =
+        Cons.session ~scope:filename (fun () ->
+          match cub.it with
+          | Syntax.ActorClassU _ ->
+            let wasm = compile_unit_to_wasm mode imports l in
+            Lowering.Desugar.import_compiled_class l wasm
+          | _ ->
+            Lowering.Desugar.import_unit l)
+      in
+      go (imports @ new_imports) libs
   in go [] libs
 
 and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module =
   let name = u.Source.note.Syntax.filename in
-  let prog_ir = desugar_unit imports u name in
-  let prog_ir = ir_passes mode prog_ir name in
-  phase "Compiling" name;
-  adjust_flags ();
-  let rts = if do_link then Some (load_as_rts ()) else None in
-  if !Flags.enhanced_orthogonal_persistence then
-    Codegen.Compile_enhanced.compile mode rts prog_ir
-  else
-    Codegen.Compile_classical.compile mode rts prog_ir
+  Cons.session ~scope:name (fun () ->
+    let prog_ir = desugar_unit imports u name in
+    let prog_ir = ir_passes mode prog_ir name in
+    phase "Compiling" name;
+    adjust_flags ();
+    let rts = if do_link then Some (load_as_rts ()) else None in
+    if !Flags.enhanced_orthogonal_persistence then
+      Codegen.Compile_enhanced.compile mode rts prog_ir
+    else
+      Codegen.Compile_classical.compile mode rts prog_ir)
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in

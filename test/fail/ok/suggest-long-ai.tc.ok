@@ -13,6 +13,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
       };
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
+    Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
     Ret : <T>() -> T;
     Types :
       module {
@@ -78,6 +79,15 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     clzNat64 : (w : Nat64) -> Nat64;
     clzNat8 : (w : Nat8) -> Nat8;
     cos : (f : Float) -> Float;
+    costCall : (methodNameSize : Nat64, payloadSize : Nat64) -> Nat;
+    costCreateCanister : () -> Nat;
+    costHttpRequest : (requestSize : Nat64, maxResBytes : Nat64) -> Nat;
+    costSignWithEcdsa :
+      (keyName : Text, curveEncoding : Nat32) ->
+        (resultCode : Nat32, costOrUndefined : Nat);
+    costSignWithSchnorr :
+      (keyName : Text, algorithmEncoding : Nat32) ->
+        (resultCode : Nat32, costOrUndefined : Nat);
     createActor : (wasm : Blob, argument : Blob) -> async Principal;
     ctzInt16 : (w : Int16) -> Int16;
     ctzInt32 : (w : Int32) -> Int32;
@@ -104,6 +114,16 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     errorMessage : (e : Error) -> Text;
     exists : <T>(f : T -> Bool) -> Bool;
     exp : (f : Float) -> Float;
+    explodeInt16 : (n : Int16) -> (msb : Nat8, lsb : Nat8);
+    explodeInt32 : (n : Int32) -> (msb : Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeInt64 :
+      (n : Int64) ->
+        (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeNat16 : (n : Nat16) -> (msb : Nat8, lsb : Nat8);
+    explodeNat32 : (n : Nat32) -> (msb : Nat8, Nat8, Nat8, lsb : Nat8);
+    explodeNat64 :
+      (n : Nat64) ->
+        (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8);
     floatAbs : (f : Float) -> Float;
     floatCeil : (f : Float) -> Float;
     floatCopySign : (f : Float, g : Float) -> Float;
@@ -209,6 +229,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     regionStoreNat64 : (r : Region, offset : Nat64, val : Nat64) -> ();
     regionStoreNat8 : (r : Region, offset : Nat64, val : Nat8) -> ();
     replyDeadline : () -> Nat64;
+    rootKey : () -> Blob;
     rts_callback_table_count : () -> Nat;
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;

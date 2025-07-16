@@ -65,15 +65,15 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'writing-motoko/writing-intro',
-            position: 'left',
-            label: 'Doc',
-          },
-          {
-            type: 'doc',
             docId: 'base/index',
             position: 'left',
             label: 'Base',
+          },
+          {
+            type: 'doc',
+            docId: 'core/index',
+            position: 'left',
+            label: 'Core',
           },
           {
             href: 'https://github.com/dfinity/motoko',

@@ -17,7 +17,7 @@ Motoko.saveFile("ok.mo", "1");
 Motoko.saveFile("bad.mo", "1+");
 Motoko.saveFile(
   "actor.mo",
-  'actor { type A<B> = B; public query func main() : async A<Text> { "abc" } }'
+  'persistent actor { type A<B> = B; public query func main() : async A<Text> { "abc" } }'
 );
 Motoko.saveFile(
   "ast.mo",
@@ -26,11 +26,11 @@ Motoko.saveFile(
       multi-line */
   import Prim "mo:prim";
 
-  actor {
+  persistent actor {
     /// Type comment
     type T = Nat;
     /// Variable comment
-    stable var x : T = 0;
+    var x : T = 0;
     /** Function comment */
     public query func main() : async T { x };
     /// Sub-module comment
@@ -111,7 +111,7 @@ assert.deepStrictEqual(bad_result, {
       code: "M0001",
       category: "syntax",
       message:
-        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
+        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)> (e.g. '42')",
     },
   ],
   code: null,
@@ -141,7 +141,7 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
       category: "syntax",
       code: "M0001",
       message:
-        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
+        "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)> (e.g. '42')",
     },
   ],
   code: null,
@@ -149,8 +149,7 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
 
 // Run interpreter
 assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
-  stdout:
-    "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A__9<Text>}\n",
+  stdout: "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A<Text>}\n",
   stderr: "",
   result: { error: null },
 });

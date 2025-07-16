@@ -5,17 +5,23 @@ open Source
 open Syntax
 open Wasm.Sexpr
 
+type type_rep_config =
+  | Without_type_rep
+  | With_type_rep of Field_sources.srcs_map option
+
 module type Config = sig
   val include_sources : bool
   val include_types : bool
+  val include_type_rep : type_rep_config
   val include_docs : Trivia.trivia_info Trivia.PosHashtbl.t option
   val include_parenthetical : bool
   val main_file : string option
 end
 
-module Default = struct
+module Default : Config = struct
   let include_sources = false
   let include_types = false
+  let include_type_rep = Without_type_rep
   let include_parenthetical = true (* false for vscode *)
   let include_docs = None
   let main_file = None
@@ -23,9 +29,7 @@ end
 
 module Type_pretty = Mo_types.Type.MakePretty (Mo_types.Type.ElideStamps)
 
-
 module Make (Cfg : Config) = struct
-
   let ($$) head inner = Node (head, inner)
 
   let pos p =
@@ -54,13 +58,45 @@ module Make (Cfg : Config) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
-  let annot note = annot_typ note.note_typ
+  let annot_arrange_typ t it =
+    if Cfg.include_types
+    then
+      match Cfg.include_type_rep with
+      | Without_type_rep -> ":" $$ [it; typ t]
+      | With_type_rep srcs_tbl ->
+        let module Arrange_type = Arrange_type.Make (struct
+          let srcs_tbl = srcs_tbl
+        end) in
+        ":" $$ [it; typ t; Arrange_type.typ t]
+    else it
 
-  let id i = Atom i.it
+  let annot_typ t it =
+    if Cfg.include_types
+    then ":" $$ [it; typ t]
+    else it
+
+  let annot ?arrange_typ note =
+    if Option.value ~default:false arrange_typ
+    then annot_arrange_typ note.note_typ
+    else annot_typ note.note_typ
+
+  let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
-  let rec exp e = source e.at (annot e.note (match e.it with
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+
+  (* TODO: For the language server, we occasionally need not only the resulting
+     [typ] of a node but also its [Arrange_type.typ] (which motivated these
+     changes). Arranging the type for every node would be expensive; there
+     would be considerable duplication as there is no sharing mechanism
+     currently. As a compromise, we annotate only the nodes that currently
+     matter for the language server, i.e. the left expression of a [DotE] node. *)
+  let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -83,7 +119,7 @@ module Make (Cfg : Config) = struct
                                                 ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
+    | DotE (e, x)         -> "DotE"      $$ [exp ~arrange_typ:true e; id x]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -118,8 +154,9 @@ module Make (Cfg : Config) = struct
     | AsyncE (par_opt, Type.Fut, tb, e) -> "AsyncE" $$ parenthetical par_opt [typ_bind tb; exp e]
     | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AsyncE (Some _ , Type.Cmp, tb, e) -> assert false;
-    | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
-    | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
+    | AwaitE (Type.AwaitFut false, e)   -> "AwaitE" $$ [exp e]
+    | AwaitE (Type.AwaitFut true, e)    -> "AwaitE?" $$ [exp e]
+    | AwaitE (Type.AwaitCmp, e)  -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]
     | AssertE (Static, e)        -> "Static_AssertE" $$ [exp e]
     | AssertE (Invariant, e)     -> "Invariant" $$ [exp e]
@@ -142,7 +179,7 @@ module Make (Cfg : Config) = struct
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
-  and exps es = List.map exp es
+  and exps es = List.map (exp ?arrange_typ:None) es
 
   and inst inst = match inst.it with
     | None -> []
@@ -195,11 +232,6 @@ module Make (Cfg : Config) = struct
       sexps
     else sexps
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local Type.Flexible -> Atom "Local"
@@ -232,10 +264,10 @@ module Make (Cfg : Config) = struct
       | Flexible -> Atom "Flexible"
       | Stable -> Atom "Stable")
 
-  and typ_field (tf : typ_field) = match tf.it with
-    | ValF (id, t, m) -> id.it $$ [typ t; mut m]
-    | TypF (id', tbs, t) ->
-        "TypF" $$ [id id'] @ List.map typ_bind tbs @ [typ t]
+  and typ_field (tf : typ_field) = source tf.at (match tf.it with
+    | ValF (lab, t, m) -> "ValF" $$ [id lab; typ t; mut m]
+    | TypF (lab, tbs, t) -> "TypF" $$ id lab :: List.map typ_bind tbs @ [typ t])
+
   and typ_item ((id, ty) : typ_item) =
     match id with
     | None -> [typ ty]
@@ -294,6 +326,8 @@ module Make (Cfg : Config) = struct
 
   and prog p = "Prog" $$ List.map dec p.it
 end
+
+module type S = module type of Make (Default)
 
 (* Defaults *)
 include Make (Default)

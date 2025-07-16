@@ -462,12 +462,8 @@ and c_exp' context exp k =
     in
     k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
-    let r = match LabelEnv.find_opt Throw context with
-      | Some (Cont r) -> r
-      | _ -> assert false
-    in
-    let b = match LabelEnv.find_opt Cleanup context with
-      | Some (Cont r) -> r
+    let r, b = match LabelEnv.find_opt Throw context, LabelEnv.find_opt Cleanup context with
+      | Some (Cont r), Some (Cont b) -> r, b
       | _ -> assert false
     in
     letcont k (fun k ->
@@ -477,7 +473,7 @@ and c_exp' context exp k =
         cps_awaitE s (typ_of_var k) (t_exp context exp1) krb
       | T.Await ->
         c_exp context exp1
-          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krb)))
+          (meta (typ exp1) (fun v1 -> cps_awaitE s (typ_of_var k) (varE v1) krb))
     )
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
