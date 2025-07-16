@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 //MOC-NO-FORCE-GC
 //MOC-FLAG --stable-regions
 //MOC-FLAG --max-stable-pages=1000000

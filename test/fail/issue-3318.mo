@@ -1,4 +1,4 @@
-
+//CLASSICAL-PERSISTENCE-ONLY
 func h<A,B>(f: A -> B) { };
 type T = (Int, Int);
 func f(x: (Nat, Nat)) : (Int, Int) { x };

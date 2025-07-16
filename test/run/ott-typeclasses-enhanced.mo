@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 // test realistic f-bound polymorphism using a contrived implementation of type classes
 // NB: it's contrived, because we don't need the dictionary *type* parameters
 
@@ -10,8 +11,8 @@ func equal<W <: Eq<T>, T>(w:W, t1 : T, t2 : T) : Bool = w.eq(t1, t2);
 type Order = { #LT; #EQ; #GT; };
 
 type Ord<T> = {
-   eq : (T,T) -> Bool;
-   cmp: (T,T) -> Order;
+   eq : stable (T,T) -> Bool;
+   cmp: stable (T,T) -> Order;
 };
 
 func compare<W <: Ord<T>, T>(w : W, t1 : T, t2 : T) : Order = w.cmp(t1,t2);

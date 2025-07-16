@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 actor {
    flexible let o = object {
       flexible let x = 1 //reject
