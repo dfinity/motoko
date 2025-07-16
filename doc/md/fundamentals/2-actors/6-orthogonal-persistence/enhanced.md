@@ -10,29 +10,21 @@ Enhanced orthogonal persistence implements the vision of efficient and scalable 
 
 As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
-### Activation
-Enhanced orthogonal persistence is offered via the compiler flag `--enhanced-orthogonal-persistence`.
 
-To activate enhanced orthogonal persistence under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
-
-```
-...
-    "type" : "motoko"
-    ...
-    "args" : "--enhanced-orthogonal-persistence"
-...
-```
+Enhanced orthogonal persistence is enabled by default. (It was previously only offered via the compiler flag `--enhanced-orthogonal-persistence`, which is now redundant.)
 
 :::tip
 Despite the use of enhanced orthogonal persistence, it is strongly recommended to thoroughly test the upgrades of your application.
 Moreover, it is advised to have a backup possibility for rescuing data even when upgrades fail, e.g. by controller-privileged data query calls.
 :::
 
-[Classical orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/classical) with 32-bit main memory and Candid stabilization currently remains the default mode.
+:::info
+[Classical orthogonal persistence](https://internetcomputer.org/docs/motoko/orthogonal-persistence/classical) with 32-bit main memory and Candid stabilization was the previous default compilation mode for `moc`. If necessary, it can be re-enabled with compiler flag `--legacy-persistence`.
 See [orthogonal persistence modes](https://internetcomputer.org/docs/motoko/orthogonal-persistence/modes) for a comparison.
+:::
 
 ## Design
-Compared to the existing orthogonal persistence in Motoko, this design offers:
+Compared to the legacy orthogonal persistence in Motoko, this design offers:
 * **Performance**: New program versions directly resume from the existing main memory and have access to the memory-compatible data.
 * **Scalability**: The upgrade mechanism scales with larger heaps and in contrast to serialization, does not hit IC instruction limits.
 

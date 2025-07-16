@@ -1129,7 +1129,7 @@ let import_lib env lib =
   match cub.it with
   | Syntax.ModuleU _ ->
     Fun.id
-  | Syntax.ActorClassU (_sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
+  | Syntax.ActorClassU (_persistence, _sp, _eo, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);
