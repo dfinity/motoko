@@ -75,7 +75,7 @@ to produce result of type
   ()
 because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>T -> U)
-inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:119.1-119.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>U -> T) -> ()
 to argument of type
   <V>(x : V) -> V
@@ -83,7 +83,7 @@ to produce result of type
   ()
 because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>U -> T)
-inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:128.8-128.20: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [T]) -> T
 to argument of type
   [var Nat]
@@ -91,7 +91,7 @@ to produce result of type
   Any
 because no instantiation of T makes
   [var Nat]  <:  (x : [T])
-inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:131.1-131.13: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
   [Nat]
@@ -101,7 +101,7 @@ because no instantiation of T makes
   [Nat]  <:  (x : [var T])
 and
   T  <:  ()
-inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:133.1-133.17: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
   [var Nat]
@@ -123,7 +123,7 @@ because implicit instantiation of type parameter U is over-constrained with
 where
   T  </:  {}
 so that no valid instantiation exists
-inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:153.11-153.15: type error [M0098], cannot implicitly instantiate function of type
   <U <: T>(y : U) -> U
 to argument of type
   T
@@ -153,5 +153,5 @@ to produce result of type
   Any
 because no instantiation of T makes
   {type x = Nat}  <:  (o : {x : T})
-inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
-inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
+inference.mo:184.8-184.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
+inference.mo:187.8-187.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
