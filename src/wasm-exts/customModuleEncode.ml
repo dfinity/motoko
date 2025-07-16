@@ -790,7 +790,6 @@ let encode (em : extended_module) =
       | path ->
         let dir, basename = Filename.(dirname path, basename path) in
         let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
-        (* print_endline (Printf.sprintf "adding source name %s with dir_index %d" basename dir_index); *)
         let promise = add_string (source_adder dir_index) source_names (basename, dir_index) in
         add_source_path_index promise path
 
