@@ -41,13 +41,13 @@ func intToNat(i : Int) : Nat {
 let result3 = intToNat(10);   // 10
 let result4 = intToNat(-5);   // 5
 ```
-<!--
+
 :::info `Nat` to `Int` conversions functions
 
-`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the base package.
+`Int.toNat`, `Int.fromNat`, `Nat.toInt`, `Nat.fromInt` all exist in the core package.
 
 :::
------>
+
 ## Modifying types
 
 ### `Nat8` to `Char`
