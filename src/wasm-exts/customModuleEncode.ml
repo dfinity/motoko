@@ -762,6 +762,8 @@ let encode (em : extended_module) =
     let source_names =
       [ "prelude", (Promise.make (), asset_dir)
       ; "prim", (Promise.make (), asset_dir)
+      ; "internals", (Promise.make (), asset_dir)
+      ; "timers-api",  (Promise.make (), asset_dir)
       ; "rts.wasm", (Promise.make (), asset_dir) ] (* make these appear last in .debug_line file_name_entries *)
 
     (* Note: we use it like a key-value store and since file names are not unique, we need to add the directory index to the key *)
@@ -788,6 +790,7 @@ let encode (em : extended_module) =
       | path ->
         let dir, basename = Filename.(dirname path, basename path) in
         let _, dir_index = add_string (function [] -> assert false | (_, (_, i)) :: _ -> Promise.make (), i + 1) dir_names dir in
+        (* print_endline (Printf.sprintf "adding source name %s with dir_index %d" basename dir_index); *)
         let promise = add_string (source_adder dir_index) source_names (basename, dir_index) in
         add_source_path_index promise path
 
