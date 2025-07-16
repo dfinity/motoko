@@ -46,12 +46,23 @@ open Type
 
 exception Bimatch of string
 
+(* Solution to the bi_match problem as a substitution *)
 type result = {
+  (* Solution for all type parameters, including the unused ones which are usually solved to Non (depending on the variance) *)
   ts : typ list;
+  (* Same as `ts` but unused type parameters are left unsolved (need to be substituted/solved later) *)
   ts_partial : typ list;
 }
 
-(* General parameter inference for a conjunction of subtype problems *)
+(* General parameter inference for a conjunction of subtype problems.
+
+ Solving can be done in two rounds:
+ - Initialize the solver by providing all but the last argument (sub-type problems)
+ - Call the solver with the current set of sub-type problems to get the partial solution
+ - Use the `ts_partial` to substitute solved type parameters
+ - Call the solver again with the remaining sub-type problems (make sure the solved type parameters are substituted!)
+ - Use the `combine` function to get the final solution
+ *)
 val bi_match_subs :
   scope option ->
   bind list ->               (* type parameters to instantiate *)
@@ -61,4 +72,5 @@ val bi_match_subs :
                                 left or right, but never both sides *)
   result (* raises Bimatch *)
 
+(* Combines the 1st and the 2nd round of bi_match solution into the final solution *)
 val combine : result -> result -> typ list

@@ -294,7 +294,6 @@ let bi_match_subs scope_opt tbs typ_opt =
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
     (* Find unused type variables *)
-    (* TODO: add a context to the analysis, keep a ref and update it as we go *)
     let unused = 
       let cons1 = Type.cons_typs ts1 in
       let cons2 = Type.cons_typs ts2 in
@@ -302,7 +301,6 @@ let bi_match_subs scope_opt tbs typ_opt =
       let used = ConSet.union cons1 cons2 |> ConSet.union cons3 in
       ConSet.diff cons used
     in
-    (* print_endline ("unused: " ^ String.concat ", " (List.map Cons.name (ConSet.elements unused))); *)
 
     match
       bi_match_list bi_match_typ
@@ -322,7 +320,6 @@ let bi_match_subs scope_opt tbs typ_opt =
               fail_over_constrained lb c ub)
         cs
       in
-      (* List.iter2 (fun c u -> print_endline (Format.asprintf "%a := %a" pp_lab (Cons.name c) pp_typ u)) cs us; *)
       if verify_inst tbs subs us then
         let ts_partial = Lib.List.mapi2 (fun i c u ->
           if ConSet.mem c unused then Type.Var (Cons.name c, i) else u) cs us
