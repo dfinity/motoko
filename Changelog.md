@@ -1,9 +1,8 @@
 # Motoko compiler changelog
 
-* motoko (`moc`)
-
-
   * Support stable functions, stable objects, and stable classes with enhanced orthogonal persistence.
+
+* motoko (`moc`)
 
   * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
     This is a transitional restriction to force users to declare transient declarations as `transient` and actor/actor classes as `persistent`.

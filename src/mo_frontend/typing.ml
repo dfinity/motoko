@@ -1325,7 +1325,7 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
 and combine_id_srcs env t id : unit =
   match T.Env.find_opt id.it env.vals with
   | None -> ()
-  | Some (t', _, _, _) ->
+  | Some (t', _, _, _, _) ->
     (* Use [sub] to merge the fields of sources, if one type is indeed a subtype
        of the other. *)
     try ignore (T.sub ~src_fields:env.srcs t t') with
@@ -2733,7 +2733,7 @@ and vis_dec src dec xs : visibility_env =
   | ExpD _ -> xs
   | LetD (pat, _, _) -> vis_pat src pat xs
   | VarD (id, _) -> vis_val_id src id xs
-  | ClassD (_, _, _, id, _, _, _, _, _) ->
+  | ClassD (_, _, _, id, _, _, _, _, _, _) ->
     vis_val_id src {id with note = ()} (vis_typ_id src id xs)
   | TypD (id, _, _) -> vis_typ_id src id xs
 

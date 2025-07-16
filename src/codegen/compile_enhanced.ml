@@ -4067,7 +4067,7 @@ module Closure = struct
     | None -> ());
     (* no captured variables in constant functions *)
     let (_, empty_hash_blob) = FieldLookupTable.build_hash_blob env [] in
-    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
       (if env.E.is_canister then
         E.call_import env "rts" "resolve_function_literal"
@@ -4140,7 +4140,7 @@ module Object = struct
 
         (* Set hash_ptr *)
         get_ri ^^
-        hash_blob ^^
+        Tagged.materialize_shared_value env hash_blob ^^ (* TBR *)
         Tagged.store_field env hash_ptr_field ^^
 
         (* Write all the fields *)
