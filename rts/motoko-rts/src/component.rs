@@ -3,8 +3,8 @@
 use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
-    types::Value,
-    Bytes,
+    types::{Bytes, TAG_BLOB_B, Value}
+    ,
 };
 use alloc as alloc_crate;
 use core::convert::TryInto;
@@ -17,7 +17,7 @@ unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const usize) -> Value {
     let len = *ret.add(1);
 
     // TODO: reuse Blob from `cabi_realloc`?
-    let value = alloc_blob(mem, Bytes(len.try_into().unwrap())); // Checked conversion from `usize` to `u32`
+    let value = alloc_blob(mem, TAG_BLOB_B, Bytes(len.try_into().unwrap())); // Checked conversion from `usize` to `u32`
     let blob = value.as_blob_mut();
     let dest = blob.payload_addr();
     for i in 0..len as usize {

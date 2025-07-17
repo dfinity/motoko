@@ -11724,12 +11724,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* Read blob pointer and length *)
     let set_blob, get_blob = new_local env "blob" in
     let e = List.nth es 0 in
-
     compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
     (* Allocate return value *)
     let set_ret, get_ret = new_local env "ret" in
-    (* TODO: optimize? *)
-    (* Blob.lit env "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ *)(* pointer, length *)
+    Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
     (* Call component export *)
     get_blob ^^ Blob.payload_ptr_unskewed env ^^
     get_blob ^^ Blob.len env ^^
