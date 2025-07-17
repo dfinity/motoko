@@ -1,12 +1,12 @@
-inference.mo:61.14-61.45: type error [M0096], expression of type
+inference.mo:62.14-62.45: type error [M0096], expression of type
   (x : None) -> Any
 cannot produce expected type
   None -> None
-inference.mo:62.13-62.44: type error [M0096], expression of type
+inference.mo:63.13-63.44: type error [M0096], expression of type
   (x : None) -> Any
 cannot produce expected type
   Any -> Any
-inference.mo:67.1-67.40: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:68.1-68.40: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : T -> T) -> ()
 to argument of type
   (x : None) -> Any
@@ -17,8 +17,8 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Any  </:  None
 so that no valid instantiation exists
-inference.mo:87.20-87.27: warning [M0146], this pattern is never matched
-inference.mo:94.8-94.20: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:88.20-88.27: warning [M0146], this pattern is never matched
+inference.mo:95.8-95.20: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Nat)
@@ -27,7 +27,7 @@ to produce result of type
 because type parameter T has an open bound
   U
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:95.8-95.26: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:96.8-96.26: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Int)
@@ -36,7 +36,7 @@ to produce result of type
 because type parameter T has an open bound
   U
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:96.8-96.23: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:97.8-97.23: type error [M0098], cannot implicitly instantiate function of type
   <T <: U, U>(x : T, y : T) -> (U, U)
 to argument of type
   (Nat, Bool)
@@ -45,7 +45,7 @@ to produce result of type
 because type parameter T has an open bound
   U
 mentioning another type parameter, so that explicit type instantiation is required due to limitation of inference
-inference.mo:111.8-111.17: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:112.8-112.17: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(x : T) -> T
 to argument of type
   Bool
@@ -56,7 +56,7 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Bool  </:  Int
 so that no valid instantiation exists
-inference.mo:112.1-112.10: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:113.1-113.10: type error [M0098], cannot implicitly instantiate function of type
   <T <: Int>(x : T) -> T
 to argument of type
   Bool
@@ -67,7 +67,7 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Bool  </:  None
 so that no valid instantiation exists
-inference.mo:116.1-116.27: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:117.1-117.27: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>T -> U) -> ()
 to argument of type
   <V>(x : V) -> V
@@ -75,7 +75,7 @@ to produce result of type
   ()
 because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>T -> U)
-inference.mo:118.1-118.31: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:119.1-119.31: type error [M0098], cannot implicitly instantiate function of type
   <T>(f : <U>U -> T) -> ()
 to argument of type
   <V>(x : V) -> V
@@ -83,7 +83,7 @@ to produce result of type
   ()
 because no instantiation of T makes
   <V>(x : V) -> V  <:  (f : <U>U -> T)
-inference.mo:127.8-127.20: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:128.8-128.20: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [T]) -> T
 to argument of type
   [var Nat]
@@ -91,7 +91,7 @@ to produce result of type
   Any
 because no instantiation of T makes
   [var Nat]  <:  (x : [T])
-inference.mo:130.1-130.13: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:131.1-131.13: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
   [Nat]
@@ -101,7 +101,7 @@ because no instantiation of T makes
   [Nat]  <:  (x : [var T])
 and
   T  <:  ()
-inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:133.1-133.17: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
   [var Nat]
@@ -112,7 +112,7 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Nat  </:  None
 so that no valid instantiation exists
-inference.mo:137.4-137.8: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:138.4-138.8: type error [M0098], cannot implicitly instantiate function of type
   <U <: {}>(y : U) -> ()
 to argument of type
   T
@@ -123,7 +123,7 @@ because implicit instantiation of type parameter U is over-constrained with
 where
   T  </:  {}
 so that no valid instantiation exists
-inference.mo:152.11-152.15: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:153.11-153.15: type error [M0098], cannot implicitly instantiate function of type
   <U <: T>(y : U) -> U
 to argument of type
   T
@@ -134,7 +134,7 @@ because implicit instantiation of type parameter U is over-constrained with
 where
   T  </:  None
 so that no valid instantiation exists
-inference.mo:172.8-172.54: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:173.8-173.54: type error [M0098], cannot implicitly instantiate function of type
   <T>(b : Bool, x : [var T], y : [var T]) -> [var T]
 to argument of type
   (Bool, [var Nat], [var Int])
@@ -145,7 +145,7 @@ because implicit instantiation of type parameter T is over-constrained with
 where
   Int  </:  Nat
 so that no valid instantiation exists
-inference.mo:177.8-177.44: type error [M0098], cannot implicitly instantiate function of type
+inference.mo:178.8-178.44: type error [M0098], cannot implicitly instantiate function of type
   <T>(o : {x : T}) -> T
 to argument of type
   {type x = Nat}
@@ -153,5 +153,5 @@ to produce result of type
   Any
 because no instantiation of T makes
   {type x = Nat}  <:  (o : {x : T})
-inference.mo:183.8-183.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
-inference.mo:186.8-186.15: type error [M0045], wrong number of type arguments: expected 1 but got 0
+inference.mo:184.8-184.21: type error [M0045], wrong number of type arguments: expected 2 but got 0
+inference.mo:187.8-187.15: type error [M0045], wrong number of type arguments: expected 1 but got 0

@@ -6,7 +6,7 @@ The compiler needs to take special care to never change the representation of su
 To make this requirement feasible, certain type restrictions apply to stable state: essentially it can only contain data.
 
 Stable state is introduced in the form of _stable variable definitions_ that are only allowed (as well as required) in actors.
-
+`stable` is the default modifier with `persistent actor`.
 
 ## Language Extension
 
@@ -35,19 +35,10 @@ In other languages of orthogonal persistence, pointers are by default persistent
 ### Typing
 
 A stable declaration must have a _stable type_. Stable types are a superset of _shared_ types: specifically, they additionally allow objects or arrays with mutable components.
-
-Concretely, the `stable` predicate has the same definition as the `shared` predicate (cf. `type.ml`), except that the case for `Mut t` is
-```
-  | Mut t -> go t
-```
+Moreover, if enhanced orthogonal persistence is enabled, stable declarations also support [stable functions](StableFunctions.md) and thus stable objects and stable classes.
 
 That is, shared entails stable.
 Note that this implies that stable types may contain actors or shared functions, but mutability of course does not extend into those.
-
-Note: This implies that stable state can only contain records, not objects (which contain non-shared functions).
-This clearly is a severe restriction.
-But we leave the possibility of "stable classes" for later, since it is not at all obvious how to design or implement them.
-
 
 ### Semantics
 
@@ -78,8 +69,9 @@ This prevents breaking existing clients assuming the current or an earlier inter
 With stable state, a second dimension is added: the _stable signature_ of an actor lists its stable fields and their types.
 When upgrading an actor, this interface may also only be modified in backwards-compatible ways:
 * new variables may be added,
-* existing variables may be refined to a _supertype_.
-This ensures that existing persistent state is still readable with the new version of the program.
+
+Moreover, by specifying a migration function, arbitrary changes to stable type can be made, e.g. changing types of stable variables, dropping variables, merging etc.
+Therefore, the stable signature is two-fold, a stable type before the migration and one after migration.
 
 The stable signature is not public; its only relevance is to the owner of an actor, as an additional constraint imposed when upgrading the actor.
 
@@ -148,27 +140,32 @@ Motoko allows to define custom pre-/post upgrade hooks, see below.
 To this end, we further extend the syntax of `<dec-field>` with _system methods_ of the following form:
 ```
 <dec-field> ::= ...
-  (public|private|system)? (flexible|stable)? dec
+  (public|private|system)? (flexible|stable|transient)? dec
 ```
 Again, additional restrictions apply:
 * A `system` modifier _may only_ appear on `func` declarations that are actor fields.
 * A `system` modifier _must not_ appear anywhere else.
 
+
+(Not recommended to be used anymore:
 Two system methods are recognised by their name:
 * `preupgrade`
-* `postupgrade`
+* `postupgrade`)
 
 The set of system functions may be extended in the future.
 
 
 ### Typing
 
+(Not recommended to be used anymore:
 The required type of system methods depends on their name:
 * `preupgrade : () -> ()`
 * `postupgrade : () -> ()`
+)
 
+### Semantics (No longer recommended)
 
-### Semantics
+It is discouraged to use pre- and post-upgrade hooks. They are just mentioned here for historical reasons.
 
 Pre-upgrade and post-upgrade methods are executed before or after an upgrade, respectively. (In terms of the System API, they correspond to the respective hooks.)
 

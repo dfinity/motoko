@@ -1,0 +1,4 @@
+position: 1
+label: 'Enhanced orthogonal persistence'
+collapsible: true # make the category collapsible
+collapsed: true

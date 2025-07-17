@@ -50,7 +50,7 @@ let search_obj desc path ty ty1 ty2 =
         | Func _ when
           (String.starts_with ~prefix:"to" lab ||
            String.starts_with ~prefix:"from" lab) &&
-           sub typ (Func(Local, Returns,  [], [ty1], [ty2])) ->
+           sub typ (Func(Local Flexible, Returns,  [], [ty1], [ty2])) ->
           suggestions := Printf.sprintf "`%s.%s(_)`%s" path lab desc :: !suggestions
         | Obj(_, tfs) as ty1  ->
           go (path^"."^lab) ty1

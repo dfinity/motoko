@@ -1,0 +1,2 @@
+stable-captures-flexible.mo:10.36-12.10: type error [M0222], stable function stableMethod closes over non-stable variable flexibleMethod
+stable-captures-flexible.mo:28.22-30.10: type error [M0222], stable function inner closes over non-stable variable innerFlexible

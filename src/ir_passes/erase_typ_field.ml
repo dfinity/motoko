@@ -67,8 +67,8 @@ let transform prog =
 
   and t_kind k =
     match k with
-    | T.Abs (typ_binds,typ) ->
-      T.Abs (t_binds typ_binds, t_typ typ)
+    | T.Abs (typ_binds,typ,index) ->
+      T.Abs (t_binds typ_binds, t_typ typ, index)
     | T.Def (typ_binds,typ) ->
       T.Def (t_binds typ_binds, t_typ typ)
 
@@ -79,7 +79,7 @@ let transform prog =
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Cons.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre, None)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
         Type.set_kind clone (t_kind (Cons.kind c));
@@ -126,8 +126,8 @@ let transform prog =
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
-      FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+    | FuncE (x, s, c, typbinds, args, ret_tys, closure, exp) ->
+      FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, closure, t_exp exp)
     | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type}, typ) ->
       ActorE (t_decs ds, t_fields fs,
        {meta;

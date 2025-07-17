@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID reachable-stable-functions/version1.mo ""
+upgrade $ID reachable-stable-functions/version2.mo ""
+upgrade $ID reachable-stable-functions/version3.mo ""

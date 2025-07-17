@@ -201,7 +201,7 @@ let rec check_typ env typ : unit =
       | T.Def (tbs,_) ->
         check_con env c;
         check_typ_bounds env tbs typs no_region
-      | T.Abs (tbs, _) ->
+      | T.Abs (tbs, _, _) ->
         if not (T.ConSet.mem c env.cons) then
           error env no_region "free type constructor %s " (T.string_of_typ typ);
         check_typ_bounds env tbs typs no_region
@@ -235,14 +235,14 @@ let rec check_typ env typ : unit =
           "promising function has no scope type argument";
         check env no_region env.flavor.Ir.has_async_typ
           "promising function in post-async flavor";
-        if not (sort <> T.Local) then
+        if not (T.is_shared_sort sort) then
           error env no_region "promising function cannot be local:\n  %s" (T.string_of_typ typ);
         if not (List.for_all T.shared ts2) then
           error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
       | T.Replies ->
         check env no_region (not env.flavor.Ir.has_async_typ)
           "replying function in pre-async flavor";
-        if not (sort <> T.Local) then
+        if not (T.is_shared_sort sort) then
           error env no_region"replying function cannot be local:\n  %s" (T.string_of_typ typ);
         if not (List.for_all T.shared ts2) then
           error env no_region "message result is not sharable:\n  %s" (T.string_of_typ typ)
@@ -287,7 +287,7 @@ and check_con env c =
   else
   begin
     env.seen := T.ConSet.add c !(env.seen);
-    let T.Abs (binds,typ) | T.Def (binds, typ) = Cons.kind c in
+    let T.Abs (binds,typ,_) | T.Def (binds, typ) = Cons.kind c in
     check env no_region (not (T.is_mut typ)) "type constructor RHS is_mut";
     check env no_region (not (T.is_typ typ)) "type constructor RHS is_typ";
     let cs, ce = check_typ_binds env binds in
@@ -345,9 +345,12 @@ and check_typ_bounds env (tbs : T.bind list) typs at : unit =
     error env at "too few type arguments";
   List.iter2
     (fun tb typ ->
-      check env at (sub env typ (T.open_ typs tb.T.bound))
-        "type argument does not match parameter bound")
-    tbs typs
+      check env at (T.sub typ (T.open_ typs tb.T.bound))
+        "type argument does not match parameter bound";
+      (* TODO: Stable functions: Check this *)
+      (* check env at (is_stable && T.stable typ)
+        "type argument has to be of a stable type to match the type parameter " *)
+    ) tbs typs
 
 
 and check_inst_bounds env tbs typs at =
@@ -604,7 +607,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
       in
       (match cont_typ with
-       | T.Func(T.Local, T.Returns, [], ts1, ts2) ->
+       | T.Func(T.Local _, T.Returns, [], ts1, ts2) ->
          begin
            (match ts2 with
             | [] -> ()
@@ -618,10 +621,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
     | CPSAsync (s, t0), [exp] ->
       (match typ exp with
-       | T.Func (T.Local, T.Returns, [tb],
-                 T.[Func (Local, Returns, [], ts1, []);
-                    Func (Local, Returns, [], [t_error], []);
-                    Func (Local, Returns, [], [], [])],
+       | T.Func (T.Local _, T.Returns, [tb],
+                 T.[Func (Local _, Returns, [], ts1, []);
+                    Func (Local _, Returns, [], [t_error], []);
+                    Func (Local _, Returns, [], [], [])],
                  []) ->
           T.catch <: t_error;
           T.Async(s, t0, T.open_ [t0] (T.seq ts1)) <: t
@@ -828,7 +831,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
           typ exp1 <: t0
     end;
     T.unit <: t
-  | FuncE (x, sort, control, typ_binds, args, ret_tys, exp) ->
+  | FuncE (x, sort, control, typ_binds, args, ret_tys, _, exp) ->
     let cs, tbs, ce = check_open_typ_binds env typ_binds in
     let ts = List.map (fun c -> T.Con(c, [])) cs in
     let env' = adjoin_cons env ce in
@@ -910,8 +913,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
   then begin
     match exp.it with
     | VarE (Const, id) -> check_var "VarE" id
-    | FuncE (x, s, c, tp, as_ , ts, body) ->
-      check (s = T.Local) "constant FuncE cannot be of shared sort";
+    | FuncE (x, s, c, tp, as_ , ts, _, body) ->
+      check (not (T.is_shared_sort s)) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->
         if (T.Env.find v env.vals).loc_known then () else

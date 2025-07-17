@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 // test pretty printing of scoped functions (indirectly via error messages)
 (func f1<A>(g:A -> async ()):(){}) ();
 

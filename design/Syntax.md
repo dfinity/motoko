@@ -2,17 +2,18 @@
 
 Productions marked * probably deferred to later versions.
 
+TODO: Documet parenthentical syntax
 
 ## Types
 ```
 <typ> ::=                                     type expressions
   <id> <typ-args>?                              constructor
-  (actor|module|object)? { <typ-field>;* }                      actor / module / object (default)
+  (actor|module|object)? { <typ-field>;* }      actor / module / object (default)
   { <typ-tag>;* }                               variant
   { # }                                         empty variant
   [ var? <typ> ]                                array
   ? <typ>                                       option
-  shared? <typ-params>? <typ> -> <typ>          function
+  (shared|stable)? <typ-params>? <typ> -> <typ> function
   async <typ>                                   future
   ( ((<id> :)? <typ>),* )                       tuple
   Any                                           top
@@ -115,14 +116,14 @@ Productions marked * probably deferred to later versions.
   <exp>                                                       expression
   let <pat> = <exp>                                           immutable
   var <id> (: <typ>)? = <exp>                                 mutable
-  (actor|module|object) <id>? =? { <dec-field>;* }            object
+  ((persistent? actor)|module|object) <id>? =? { <dec-field>;* }            object
   shared? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>  function
-  actor? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
+  (persistent? actor)? class <id> <typ-params>? <pat> (: <typ>)? =? <exp>   class
   type <id> <typ-params>? = <typ>                             type
   import <id>? =? <text>                                      import
 
 <dec-field> ::=                                          object declaration fields
-  (public|private|system)? (flexible|stable)? dec             field
+  (public|private|system)? (flexible|stable|transient)? dec   field
 ```
 
 ## Programs

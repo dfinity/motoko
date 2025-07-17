@@ -450,6 +450,14 @@ impl Value {
         self.forward().get_ptr() as *mut BigInt
     }
 
+    /// Get the pointer as `Closure` using forwarding. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Closure`.
+    pub unsafe fn as_closure(self) -> *mut Closure {
+        debug_assert_eq!(self.tag(), TAG_CLOSURE);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Closure
+    }
+
     pub fn as_tiny(self) -> isize {
         debug_assert!(self.is_scalar());
         self.0 as isize >> 1
@@ -816,9 +824,7 @@ impl Object {
     /// Number of fields in the object.
     #[enhanced_orthogonal_persistence]
     pub(crate) unsafe fn size(self: *mut Self) -> usize {
-        let hash_blob_length = (*self).hash_blob.as_blob().len().as_usize();
-        debug_assert_eq!(hash_blob_length % WORD_SIZE, 0);
-        hash_blob_length / WORD_SIZE
+        count_fields_in_hash_blob((*self).hash_blob)
     }
 
     #[classical_persistence]
@@ -832,21 +838,50 @@ impl Object {
     }
 }
 
-#[repr(C)] // See the note at the beginning of this module
+#[classical_persistence]
+#[repr(C)]
 pub struct Closure {
     pub header: Obj,
-    pub funid: usize,
+    pub funid: isize,
     pub size: usize, // number of elements
                      // other stuff follows ...
 }
 
+#[enhanced_orthogonal_persistence]
+#[repr(C)] // See the note at the beginning of this module
+pub struct Closure {
+    pub header: Obj,
+    pub funid: isize,
+    // Pointer to a blob containing sorted hashes of the captured variables
+    // For parameters: positional matching
+    // For locals: name matching
+    pub hash_blob: Value,
+    // captured variables in order of occurrence based on their hashes
+}
+
 impl Closure {
+    #[enhanced_orthogonal_persistence]
+    pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
+        &mut (*self).hash_blob
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip closure header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> usize {
+    #[classical_persistence]
+    pub(crate) unsafe fn size(self: *const Self) -> usize {
         (*self).size
+    }
+
+    #[enhanced_orthogonal_persistence]
+    pub(crate) unsafe fn size(self: *const Self) -> usize {
+        count_fields_in_hash_blob((*self).hash_blob)
+    }
+
+    #[allow(unused)]
+    pub(crate) unsafe fn get(self: *mut Self, index: usize) -> Value {
+        *self.payload_addr().add(index)
     }
 }
 
@@ -1250,4 +1285,10 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
             rts_trap_with("object_size: invalid object tag");
         }
     }
+}
+
+pub unsafe fn count_fields_in_hash_blob(hash_blob: Value) -> usize {
+    let hash_blob_length = hash_blob.as_blob().len().as_usize();
+    debug_assert_eq!(hash_blob_length % WORD_SIZE, 0);
+    hash_blob_length / WORD_SIZE
 }

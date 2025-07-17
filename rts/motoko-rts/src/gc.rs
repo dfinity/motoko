@@ -1,5 +1,7 @@
 #[non_incremental_gc]
 pub mod copying;
+#[enhanced_orthogonal_persistence]
+pub mod functions;
 #[non_incremental_gc]
 pub mod generational;
 #[incremental_gc]

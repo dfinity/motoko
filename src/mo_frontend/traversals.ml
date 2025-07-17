@@ -64,8 +64,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = TryE (over_exp f exp1, List.map (over_case f) cases, Option.map (over_exp f) exp2_opt) }
   | SwitchE (exp1, cases) ->
      f { exp with it = SwitchE (over_exp f exp1, List.map (over_case f) cases) }
-  | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, exp1) ->
-     f { exp with it = FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, over_exp f exp1) }
+  | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, closure, exp1) ->
+     f { exp with it = FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, closure, over_exp f exp1) }
   | IgnoreE exp1 ->
      f { exp with it = IgnoreE (over_exp f exp1)}
 
@@ -76,8 +76,8 @@ and over_dec (f : exp -> exp) (d : dec) : dec = match d.it with
      { d with it = VarD (x, over_exp f e)}
   | LetD (x, e, fail) ->
      { d with it = LetD (x, over_exp f e, Option.map (over_exp f) fail)}
-  | ClassD (e_o, sp, s, cid, tbs, p, t_o, id, dfs) ->
-     { d with it = ClassD (Option.map (over_exp f) e_o, sp, s, cid, tbs, p, t_o, id, List.map (over_dec_field f) dfs)}
+  | ClassD (e_o, sp, s, cid, tbs, p, t_o, id, dfs, context) ->
+     { d with it = ClassD (Option.map (over_exp f) e_o, sp, s, cid, tbs, p, t_o, id, List.map (over_dec_field f) dfs, context)}
 
 and over_dec_field (f : exp -> exp) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec f df.it.dec } }

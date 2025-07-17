@@ -77,7 +77,7 @@ val boolE : bool -> exp
 val nullE : unit -> exp
 
 val funcE : string -> func_sort -> control ->
-  typ_bind list -> arg list -> typ list -> exp ->
+  typ_bind list -> arg list -> typ list -> Type.stable_closure option -> exp -> 
   exp
 val callE : exp -> typ list -> exp -> exp
 
@@ -120,8 +120,8 @@ val letD : var -> exp -> dec
 val varD : var -> exp -> dec
 val refD : var -> lexp -> dec
 val expD : exp -> dec
-val funcD : var -> var -> exp -> dec
-val nary_funcD : var -> var list -> exp -> dec
+val funcD : var -> var -> Type.stable_closure option -> exp -> dec
+val nary_funcD : var -> var list -> Type.stable_closure option -> exp -> dec
 
 val let_no_shadow : var -> exp -> dec list -> dec list
 

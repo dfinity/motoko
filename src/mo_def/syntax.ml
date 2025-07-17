@@ -176,7 +176,7 @@ and exp' =
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
-  | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
+  | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * function_context * exp  (* function *)
   | CallE of exp option * exp * inst * exp     (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
@@ -217,6 +217,8 @@ and exp_field' = {mut : mut; id : id; exp : exp}
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+(* Resolved during type checking, used for stable functions *)
+and function_context = Type.stable_closure option ref
 
 (* Declarations *)
 
@@ -227,7 +229,7 @@ and dec' =
   | VarD of id * exp                           (* mutable *)
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
-      exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
+      exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list * function_context (* constructor context *)
 
 
 (* Program (pre unit detection) *)

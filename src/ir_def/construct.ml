@@ -177,7 +177,7 @@ let cps_asyncE s typ1 typ2 e =
 
 let cps_awaitE s cont_typ e1 e2 =
   match cont_typ with
-  | T.Func(T.Local, T.Returns, [], _, ts2) ->
+  | T.Func(T.Local _, T.Returns, [], _, ts2) ->
     { it = PrimE (CPSAwait (s, cont_typ), [e1; e2]);
       at = no_region;
       note = Note.{ def with typ = T.seq ts2; eff = max_eff (eff e1) (eff e2) }
@@ -317,7 +317,7 @@ let nullE () =
 
 (* Functions *)
 
-let funcE name sort ctrl typ_binds args typs exp =
+let funcE name sort ctrl typ_binds args typs closure exp =
   let cs = List.map (function { it = {con;_ }; _ } -> con) typ_binds in
   let tbs = List.map (function { it = { sort; bound; con}; _ } ->
     {T.var = Cons.name con; T.sort; T.bound = T.close cs bound})
@@ -326,7 +326,7 @@ let funcE name sort ctrl typ_binds args typs exp =
   let ts1 = List.map (function arg -> T.close cs arg.note) args in
   let ts2 = List.map (T.close cs) typs in
   let typ = T.Func(sort, ctrl, tbs, ts1, ts2) in
-  { it = FuncE(name, sort, ctrl, typ_binds, args, typs, exp);
+  { it = FuncE(name, sort, ctrl, typ_binds, args, typs, closure, exp);
     at = no_region;
     note = Note.{ def with typ; eff = T.Triv };
   }
@@ -594,7 +594,7 @@ let arg_of_var (id, typ) =
 
 let var_of_arg { it = id; note = typ; _} = (id, typ)
 
-let unary_funcE name typ x exp =
+let unary_funcE name typ x closure exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
@@ -615,13 +615,14 @@ let unary_funcE name typ x exp =
        args,
        (* TODO: Assert invariant: retty has no free (unbound) DeBruijn indices -- Claudio *)
        ret_tys,
+       closure,
        exp'
      );
     at = no_region;
     note = Note.{ def with typ }
    })
 
-let nary_funcE name typ xs exp =
+let nary_funcE name typ xs closure exp =
   let sort, control, arg_tys, ret_tys = match typ with
     | T.Func(s, c, _, ts1, ts2) -> s, c, ts1, ts2
     | _ -> assert false in
@@ -633,6 +634,7 @@ let nary_funcE name typ xs exp =
         [],
         List.map arg_of_var xs,
         ret_tys,
+        closure,
         exp
       );
     at = no_region;
@@ -640,18 +642,18 @@ let nary_funcE name typ xs exp =
   })
 
 (* Mono-morphic function declaration, sharing inferred from f's type *)
-let funcD ((id, typ) as f) x exp =
-  letD f (unary_funcE id typ x exp)
+let funcD ((id, typ) as f) x closure exp =
+  letD f (unary_funcE id typ x closure exp)
 
 (* Mono-morphic, n-ary function declaration *)
-let nary_funcD ((id, typ) as f) xs exp =
-  letD f (nary_funcE id typ xs exp)
+let nary_funcD ((id, typ) as f) xs closure exp =
+  letD f (nary_funcE id typ xs closure exp)
 
 (* Continuation types with explicit answer typ *)
 
-let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ))
+let contT typ ans_typ = T.(Func (Local Flexible, Returns, [], as_seq typ, as_seq ans_typ))
 
-let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
+let err_contT ans_typ =  T.(Func (Local Flexible, Returns, [], [catch], as_seq ans_typ))
 
 let bail_contT = T.(contT unit unit) (* when `await`ing *)
 
@@ -659,7 +661,7 @@ let clean_contT = bail_contT (* last-resort replica callback *)
 
 let answerT typ : T.typ =
   match typ with
-  | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
+  | T.Func (T.Local T.Flexible, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
 (* Sequence expressions *)
@@ -674,13 +676,13 @@ let seqE = function
 
 (* local lambda *)
 let (-->) x exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
-  unary_funcE "$lambda" fun_ty x exp
+  let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], T.as_seq (typ_of_var x), T.as_seq (typ exp)) in
+  unary_funcE "$lambda" fun_ty x None exp
 
 (* n-ary local lambda *)
 let (-->*) xs exp =
-  let fun_ty = T.Func (T.Local, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
-  nary_funcE "$lambda" fun_ty xs exp
+  let fun_ty = T.Func (T.Local T.Flexible, T.Returns, [], List.map typ_of_var xs, T.as_seq (typ exp)) in
+  nary_funcE "$lambda" fun_ty xs None exp
 
 let close_typ_binds cs tbs =
   List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
@@ -689,10 +691,10 @@ let close_typ_binds cs tbs =
 let forall tbs e =
  let cs = List.map (fun tb -> tb.it.con) tbs in
  match e.it, e.note.Note.typ with
- | FuncE (n, s, c1, [], xs, ts, exp),
+ | FuncE (n, s, c1, [], xs, ts, closure, exp),
    T.Func (_, c2, [], ts1, ts2) ->
    { e with
-     it = FuncE(n, s, c1, tbs, xs, ts, exp);
+     it = FuncE(n, s, c1, tbs, xs, ts, closure, exp);
      note = Note.{ e.note with
        typ = T.Func(s, c2, close_typ_binds cs tbs,
          List.map (T.close cs) ts1,
@@ -704,8 +706,8 @@ let forall tbs e =
 (* changing display name of e.g. local lambda *)
 let named displ e =
   match e.it with
-  | FuncE (_, s, c1, [], xs, ts, exp)
-    -> { e with it = FuncE (displ, s, c1, [], xs, ts, exp) }
+  | FuncE (_, s, c1, [], xs, ts, closure, exp)
+    -> { e with it = FuncE (displ, s, c1, [], xs, ts, closure, exp) }
   | _ -> assert false
 
 
@@ -842,11 +844,11 @@ let check_call_perform_status success mk_failure =
   ifE
     (callE
       (varE (var "@call_succeeded"
-        T.(Func (Local, Returns, [], [], [bool]))))
+        T.(Func (Local Flexible, Returns, [], [], [bool]))))
       [] (unitE ()))
     success
     (mk_failure
       (callE
         (varE (var "@call_error"
-          T.(Func (Local, Returns, [], [], [error]))))
+          T.(Func (Local Flexible, Returns, [], [], [error]))))
         [] (unitE ())))

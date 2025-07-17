@@ -3,7 +3,7 @@ import Prim "mo:prim";
 actor {
   let temporary = 1;
 
-  func f() {
+  let f: () -> () = func () {
     Prim.debugPrint(debug_show (temporary));
   };
 

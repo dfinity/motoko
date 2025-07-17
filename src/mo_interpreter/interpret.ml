@@ -406,7 +406,7 @@ let text_len t at =
 let check_call_conv exp call_conv =
   let open CC in
   let exp_call_conv = call_conv_of_typ exp.note.note_typ in
-  if not (exp_call_conv = call_conv) then
+  if not (compatible_call call_conv exp_call_conv) then
     failwith (Printf.sprintf
       "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
@@ -593,13 +593,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
                with Invalid_argument s -> trap exp.at "%s" s)
       )
     )
-  | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, exp2) ->
+  | FuncE (name, shared_pat, _typbinds, pat, _typ, _sugar, _, exp2) ->
     let f = interpret_func env name shared_pat pat (fun env' -> interpret_exp env' exp2) in
     let v = V.Func (CC.call_conv_of_typ exp.note.note_typ, f) in
     let v' =
       match shared_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
-      | T.Local -> v
+      | T.Local _ -> v
     in k v'
   | CallE (par, exp1, typs, exp2) ->
     interpret_par env par
@@ -923,7 +923,7 @@ and match_pat_fields pfs vs ve : val_env option =
 
 and match_shared_pat env shared_pat c =
   match shared_pat.it, c with
-  | T.Local, _ -> V.Env.empty
+  | T.Local _, _ -> V.Env.empty
   | T.Shared (_, pat), v ->
     (match match_pat pat v with
      | None ->
@@ -986,7 +986,7 @@ and declare_dec dec : val_env =
   | TypD _ -> V.Env.empty
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
-  | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
+  | ClassD (_eo, _, _, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
 and declare_decs decs ve : val_env =
   match decs with
@@ -1016,7 +1016,7 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
+  | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields, _) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
       if obj_sort.it <> T.Actor then

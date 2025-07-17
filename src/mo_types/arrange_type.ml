@@ -12,6 +12,14 @@ end
 module Make (Cfg : Config) = struct
   let ($$) head inner = Node (head, inner)
 
+
+  let func_sort = function
+    | Local Flexible -> "Local"
+    | Local Stable -> "Local Stable"
+    | Shared Write -> "Shared"
+    | Shared Query -> "Shared Query"
+    | Shared Composite -> "Shared Composite"
+
   let control = function
     | Returns -> "Returns"
     | Promises -> "Promises"
@@ -22,12 +30,6 @@ module Make (Cfg : Config) = struct
     | Actor -> Atom "Actor"
     | Module -> Atom "Module"
     | Memory -> Atom "Memory"
-
-  let func_sort = function
-    | Local -> "Local"
-    | Shared Write -> "Shared"
-    | Shared Query -> "Shared Query"
-    | Shared Composite -> "Shared Composite"
 
   let prim = function
     | Null -> Atom "Null"

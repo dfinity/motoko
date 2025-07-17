@@ -123,7 +123,7 @@ module Make (Cfg : Config) = struct
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
-    | FuncE (x, sp, tp, p, t, sugar, e') ->
+    | FuncE (x, sp, tp, p, t, sugar, _, e') ->
       "FuncE" $$ [
         Atom (Type.string_of_typ e.note.note_typ);
         shared_pat sp;
@@ -234,13 +234,15 @@ module Make (Cfg : Config) = struct
 
 
   and shared_pat sp = match sp.it with
-    | Type.Local -> Atom "Local"
+    | Type.Local Type.Flexible -> Atom "Local"
+    | Type.Local Type.Stable -> Atom "Local Stable"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
     | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
-    | Type.Local -> Atom "Local"
+    | Type.Local Type.Flexible -> Atom "Local"
+    | Type.Local Type.Stable -> Atom "Local Stable"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
     | Type.Shared Type.Composite -> Atom "Composite"
@@ -312,7 +314,7 @@ module Make (Cfg : Config) = struct
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]
-    | ClassD (eo, sp, s, x, tp, p, rt, i, dfs) ->
+    | ClassD (eo, sp, s, x, tp, p, rt, i, dfs, _) ->
       "ClassD" $$
         parenthetical eo
         (shared_pat sp :: id x :: List.map typ_bind tp @ [

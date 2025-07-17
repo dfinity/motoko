@@ -1,0 +1,1 @@
+generic-stable-functions.mo:13.55-13.56: warning [M0194], unused identifier u (delete or rename to wildcard `_` or `_u`)

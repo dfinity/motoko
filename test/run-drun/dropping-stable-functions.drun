@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID dropping-stable-functions/version0.mo ""
+upgrade $ID dropping-stable-functions/version1.mo ""
+upgrade $ID dropping-stable-functions/version2.mo ""
