@@ -69,6 +69,9 @@ let bi_match_subs scope_opt tbs typ_opt =
 
   let cons = ConSet.of_list cs in
 
+  let fixed = ref ConSet.empty in
+  let can_skip_unused_under_constrained = ref true in
+
   (* Check that type parameters have closed bounds *)
   let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
   List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
@@ -277,12 +280,15 @@ let bi_match_subs scope_opt tbs typ_opt =
   and bi_match_bind ts rel eq inst any tb1 tb2 =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-  and choose_under_constrained lb c ub =
+  and choose_under_constrained unused lb c ub =
     match variance c with
     | Variance.Covariant -> lb
     | Variance.Contravariant -> ub
     | Variance.Bivariant -> lb
     | Variance.Invariant ->
+      if ConSet.mem c !fixed then lb else
+      if !can_skip_unused_under_constrained && ConSet.mem c unused then lb else
+      let () = can_skip_unused_under_constrained := false in
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
         (Cons.name c)
@@ -322,11 +328,12 @@ let bi_match_subs scope_opt tbs typ_opt =
             if eq lb ub then
               ub
             else if sub lb ub then
-              choose_under_constrained lb c ub
+              choose_under_constrained unused lb c ub
             else
               fail_over_constrained lb c ub)
         cs
       in
+      can_skip_unused_under_constrained := false; (* only in the first round *)
       if verify_inst tbs subs us then
         let ts_partial = Lib.List.mapi2 (fun i c u ->
           if ConSet.mem c unused then Type.Var (Cons.name c, i) else u) cs us
@@ -335,6 +342,10 @@ let bi_match_subs scope_opt tbs typ_opt =
           if ConSet.mem (as_con_var c) unused then c else u) ts us
         in
         let substitutionEnv = List.fold_left2 (fun env c u -> if ConSet.mem c unused then env else ConEnv.add c u env) ConEnv.empty cs us in
+
+        let fixedNow = ConEnv.keys substitutionEnv |> ConSet.of_list in
+        fixed := ConSet.union !fixed fixedNow;
+        
         { ts = us; ts_partial; ts_partial_con; substitutionEnv; unused }
       else
         raise (Bimatch
@@ -342,6 +353,7 @@ let bi_match_subs scope_opt tbs typ_opt =
              "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
             (String.concat ", " (List.map string_of_typ us))))
     | None ->
+      can_skip_unused_under_constrained := false; (* only in the first round *)
       let tts =
         List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
       in
