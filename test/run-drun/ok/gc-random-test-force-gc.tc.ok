@@ -1,2 +1,469 @@
+gc-random-test/types.mo:23.10-23.26: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (target : RandomValue, value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (random : Random, target : RandomValue, value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.28-23.43: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (target : RandomValue, value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (random : Random, target : RandomValue, value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.45-23.59: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.61-23.74: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.76-23.90: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.92-23.108: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:23.110-23.126: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:22.50-24.6: type error [M0222], stable function allocationTypes closes over non-stable variable RandomArrayType
+gc-random-test/types.mo:28.26-28.34: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (_value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (_random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (_value : RandomValue) -> Text;
+    text : (_value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:29.27-29.43: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (target : RandomValue, value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (random : Random, target : RandomValue, value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:30.27-30.42: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (target : RandomValue, value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (random : Random, target : RandomValue, value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:31.28-31.42: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:32.27-32.40: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:33.28-33.42: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:34.30-34.46: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:35.30-35.46: type error [M0096], expression of type
+  {
+    allocationLimit : ?Nat;
+    append : (_target : RandomValue, _value : RandomValue) -> Bool;
+    hash : (value : RandomValue) -> Nat;
+    identical : (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : (_random : Random, value : RandomValue) -> ();
+    randomWrite :
+      (_random : Random, _target : RandomValue, _value : RandomValue) -> ();
+    readReferences : (_source : RandomValue) -> [RandomValue];
+    shortText : (value : RandomValue) -> Text;
+    text : (value : RandomValue) -> Text
+  }
+cannot produce expected type
+  {
+    allocationLimit : ?Nat;
+    append : stable (target : RandomValue, value : RandomValue) -> Bool;
+    hash : stable (value : RandomValue) -> Nat;
+    identical : stable (left : RandomValue, right : RandomValue) -> Bool;
+    instantiate : stable (random : Random) -> RandomValue;
+    name : Text;
+    randomCheck : stable (random : Random, value : RandomValue) -> ();
+    randomWrite :
+      stable (random : Random, target : RandomValue, value : RandomValue) ->
+        ();
+    readReferences : stable (source : RandomValue) -> [RandomValue];
+    shortText : stable (value : RandomValue) -> Text;
+    text : stable (value : RandomValue) -> Text
+  }
+gc-random-test/types.mo:26.66-37.6: type error [M0222], stable function getType closes over non-stable variable NoneType
 gc-random-test/types.mo:301.20-301.41: warning [M0199], this code is (or uses) the deprecated library `ExperimentalStableMemory`.
 Please use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to suppress this message.

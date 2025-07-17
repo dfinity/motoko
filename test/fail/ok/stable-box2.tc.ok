@@ -1,0 +1,6 @@
+stable-box2.mo:11.15-11.39: type error [M0218], Type argument
+  () -> ()
+has to be of a stable type to match the type parameter 
+stable-box2.mo:11.15-11.39: type error [M0218], Type argument
+  () -> ()
+has to be of a stable type to match the type parameter 

@@ -1,0 +1,4 @@
+stable-box1.mo:20.30-20.33: type error [M0096], expression of type
+  stable <T>(v : T) -> Box<T>
+cannot produce expected type
+  <T>(v : T) -> {get : stable () -> T; put : stable T -> ()}

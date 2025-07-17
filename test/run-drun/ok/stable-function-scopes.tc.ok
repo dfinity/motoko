@@ -1,0 +1,6 @@
+stable-function-scopes.mo:44.16-44.18: type error [M0131], variable f2 is declared stable but has non-stable type
+  () -> ()
+stable-function-scopes.mo:53.16-53.18: type error [M0131], variable f5 is declared stable but has non-stable type
+  () -> ()
+stable-function-scopes.mo:62.16-62.18: type error [M0131], variable f8 is declared stable but has non-stable type
+  () -> ()

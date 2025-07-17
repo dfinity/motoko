@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stable-object-sharing/version0.mo ""
+upgrade $ID stable-object-sharing/version1.mo ""

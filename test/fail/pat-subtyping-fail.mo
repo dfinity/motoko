@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 func magic() : None = magic();
 
 switch (magic () : Nat) {
