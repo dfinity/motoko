@@ -112,7 +112,7 @@ and pat m p = match p.it with
   patterns here.
   *)
   | TupP ps -> List.iter (pat m) ps
-  | ObjP fs -> List.iter (fun (f : pat_field) -> pat m f.it.pat) fs
+  | ObjP fs -> List.iter (pat_field m) fs
 
   (* TODO:
     claudio: what about singleton variant patterns? These are irrefutable too.
@@ -122,6 +122,10 @@ and pat m p = match p.it with
 
   (* Everything else is forbidden *)
   | _ -> pat_err m p.at
+
+and pat_field m pf = match pf.it with
+  | ValPF(_, p) -> pat m p
+  | TypPF(_) -> ()
 
 let prog p =
   Diag.with_message_store (fun m -> List.iter (dec m) p.it; Some ())

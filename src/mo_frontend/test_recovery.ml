@@ -286,7 +286,7 @@ actor Main {
   Printf.printf "%s" @@ show (parse_from_string s);
   [%expect{|
     Ok: (Prog
-      (LetD (ObjP (print (VarP (ID print)))) (ImportE mo:base/Debug))
+      (LetD (ObjP (ValPF print (VarP (ID print)))) (ImportE mo:base/Debug))
       (LetD
         (VarP (ID Main))
         (AwaitE

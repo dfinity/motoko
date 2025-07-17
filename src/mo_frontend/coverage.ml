@@ -133,6 +133,8 @@ let rec string_of_desc t = function
     "(" ^ String.concat ", " (List.map2 string_of_desc ts descs) ^ ")"
   | Obj ldescs ->
     let fields = LabMap.bindings ldescs in
+    (* TODO: Printing explodes, because it can't look up the type field otherwise *)
+    let fields = List.filter (fun (_, desc) -> desc <> Any) fields in
     let _, tfs = T.as_obj_sub (List.map fst fields) t in
     "{" ^ String.concat "; " (List.map (string_of_ldesc tfs) fields) ^ "}"
   | Opt desc ->
@@ -300,16 +302,17 @@ and match_tup ctxt descs_r descs pats ts sets =
     match_pat (InTup (ctxt, descs_r, descs', pats', ts')) desc pat t sets
   | _ ->
     assert false
-    
+
 and match_obj ctxt ldescs (pat_fields : pat_field list) tfs sets =
   match pat_fields with
   | [] -> succeed ctxt (Obj ldescs) sets
-  | pat_field::pat_fields' ->
-    let l = pat_field.it.id.it in
-    let tf = List.find (fun tf -> tf.T.lab = l) tfs in
+  | {it = ValPF(id, p); _}::pat_fields' ->
+    let l = id.it in
+    let typ = T.lookup_val_field l tfs in
     let desc = LabMap.find l ldescs in
-    match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs))
-      desc pat_field.it.pat tf.T.typ sets
+    match_pat (InObj (ctxt, ldescs, l, pat_fields', tfs)) desc p typ sets
+  | {it = TypPF(_); _}::pat_fields' ->
+     match_obj ctxt ldescs pat_fields' tfs sets
 
 and succeed ctxt desc sets : bool =
   match ctxt with

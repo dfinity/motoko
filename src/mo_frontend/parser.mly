@@ -885,9 +885,11 @@ pat :
 
 pat_field :
   | x=id t=annot_opt
-    { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
+    { ValPF(x, annot_pat (VarP x @! x.at) t) @@ at $sloc }
   | x=id t=annot_opt EQ p=pat
-    { {id = x; pat = annot_pat p t} @@ at $sloc }
+    { ValPF(x, annot_pat p t) @@ at $sloc }
+  | TYPE x=typ_id
+    { TypPF(x) @@ at $sloc }
 
 pat_opt :
   | p=pat_plain
@@ -953,9 +955,9 @@ obj_or_class_dec :
        if s.it = Type.Actor then
           let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
           (List.map (share_dec_field default_stab) dfs,
-	   ensure_scope_bind "" tps,
+           ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
-	   ensure_async_typ t)
+           ensure_async_typ t)
         else (dfs, tps, t)
       in
       ClassD(eo, sp, {s with note = persistent}, cid, tps', p, t', x, dfs') @? at $sloc }
