@@ -1,5 +1,5 @@
 // moc lambdas.mo --package base $MOTOKO_BASE
-import Array "mo:base/Array";
+// import Array "mo:base/Array";
 
 func mapMono<T>(ar : [T], _f : T -> T) : [T] = ar;
 // func forEach<T>(_ar : [T], _f : T -> ()) {};
@@ -97,7 +97,7 @@ func _m3() {
 
 func _m3_2() {
   let array1 = [1, 2, 3];
-  let array2 = Array.map<Nat, Nat>(array1, func x = x * 2);
+  // let array2 = Array.map<Nat, Nat>(array1, func x = x * 2);
 };
 
 func _n1() {
