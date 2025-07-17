@@ -356,11 +356,14 @@ let bi_match_subs scope_opt tbs typ_opt =
 let combine r1 r2 =
   (* check that the partial solutions are disjoint *)
   assert (List.for_all2 (fun t t' -> Type.is_var t || Type.is_var t') r1.ts_partial r2.ts_partial);
+  (* assert (ConEnv.Dom.disjoint (ConEnv.dom r1.substitutionEnv) (ConEnv.dom r2.substitutionEnv)); *)
+  (* let env = ConEnv.disjoint_union r1.substitutionEnv r2.substitutionEnv in *)
 
   (* combine the solutions *)
   List.map2 (fun t1 t2 ->
     match t1 with
     | Type.Var _ ->
+    (* | Type.Con (c, []) when ConEnv.mem c r1.substitutionEnv-> *)
       (* non-partial has a solution for all type variables *)
       assert (not (Type.is_var t2));
       t2
