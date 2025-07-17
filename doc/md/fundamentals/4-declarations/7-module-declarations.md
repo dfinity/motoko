@@ -139,5 +139,26 @@ import {init; identity} "Matrix";
 let zero = init(3, 3, 0);
 let id4 = identity(4);
 ```
-<!-- TODO (future): short section on module classes, perhaps for square (n*n) matrices? -->
 
+### Module classes
+
+A module class can be used to produce multiple modules with different configurations.
+
+<!-- TODO: a better example would have type fields, e.g. a simple vector lib -->
+
+```motoko no-repl
+import Debug "mo:base/Debug";
+
+module class ExchangeRate(baseRate : Float) {
+    public func convert(amount : Nat) : Float {
+        return Float.fromInt(amount) * baseRate;
+    };
+};
+
+// Creating different currency converters
+let usdConverter = ExchangeRate(1.1);
+let eurConverter = ExchangeRate(0.9);
+
+Debug.print(debug_show(Float.toText(usdConverter.convert(100))));  // "110.0"
+Debug.print(debug_show(Float.toText(eurConverter.convert(100))));  // "90.0"
+```
