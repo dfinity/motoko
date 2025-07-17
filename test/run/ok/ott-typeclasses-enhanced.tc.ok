@@ -1,0 +1,12 @@
+ott-typeclasses-enhanced.mo:53.28-53.34: type error [M0096], expression of type
+  {cmp : (t1 : Int, t2 : Int) -> Order; eq : (t1 : Int, t2 : Int) -> Bool}
+cannot produce expected type
+  {cmp : stable (Int, Int) -> Order; eq : stable (Int, Int) -> Bool}
+ott-typeclasses-enhanced.mo:55.33-55.39: type error [M0096], expression of type
+  {cmp : (t1 : Int, t2 : Int) -> Order; eq : (t1 : Int, t2 : Int) -> Bool}
+cannot produce expected type
+  {cmp : stable (Int, Int) -> Order; eq : stable (Int, Int) -> Bool}
+ott-typeclasses-enhanced.mo:58.33-58.39: type error [M0096], expression of type
+  {cmp : (t1 : Int, t2 : Int) -> Order; eq : (t1 : Int, t2 : Int) -> Bool}
+cannot produce expected type
+  {cmp : stable (Int, Int) -> Order; eq : stable (Int, Int) -> Bool}
