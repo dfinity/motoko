@@ -324,7 +324,7 @@ module Make (Cfg : Config) = struct
 
   and prog p = "Prog" $$ List.map dec p.it
 
-  let print_exp ?(margin=80) exp = print_endline (Wasm.Sexpr.to_string margin (Arrange.exp exp))
+  let print_exp ?(margin=80) e = print_endline (Wasm.Sexpr.to_string margin (exp e))
 end
 
 module type S = module type of Make (Default)
