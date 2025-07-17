@@ -14,7 +14,7 @@ func _bounds() {
   type BWrong = Bounded<Result<Float, Text>>;
 };
 
-type L1 = module { type N = Nat };
+type L1 = module { type N = Nat; Z : Nat };
 type R1 = module { type N = Text };
 type V1 = { #left : L1; #right : R1 };
 
@@ -38,6 +38,11 @@ func _f1_1(x : V1) {
 func _f1_2(x : L1) {
   // Error with duplicate type field in pattern
   let { type N; type N } = x;
+};
+
+func _f1_3(x : L1) {
+  // Error with missing type field in pattern
+  let { type U } = x;
 };
 
 type L2 = module { type N = Nat };
