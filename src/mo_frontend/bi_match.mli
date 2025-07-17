@@ -52,6 +52,9 @@ type result = {
   ts : typ list;
   (* Same as `ts` but unused type parameters are left unsolved (need to be substituted/solved later) *)
   ts_partial : typ list;
+  ts_partial_con : typ list;
+  substitutionEnv : typ ConEnv.t;
+  unused : ConSet.t;
 }
 
 (* General parameter inference for a conjunction of subtype problems.

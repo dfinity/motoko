@@ -2246,6 +2246,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      let t2 = ref t2 in
 
       (* Incorporate the return type into the subtyping constraints *)
       let ret_typ_opt, subs = 
@@ -2264,6 +2265,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
         (* Solve the 1st round of sub-type problems *)
         let r1 = solve subs in
+
+        (* In case of an error, substitute the Var with Con for better error message *)
+        t2 := T.open_ r1.ts_partial_con !t2;
         
         (* When there are no deferred sub-expressions, we have the full solution *)
         let to_fix = ref to_fix in
@@ -2275,10 +2279,15 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             let typ' = T.open_ r1.ts_partial typ in
             match exp.it, typ' with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
-              (* Check the function input type and prepare for inferring the body
-                NB: This could fail when the input type is not closed (contains unused type variables)
-                TODO: write a test that fails here
-               *)
+              (* Check that all type variables in the function input type are fixed *)
+              let allCons = T.cons_typs ~on_typ:(T.open_ r1.ts_partial_con) ts1 in
+              let openConSet = T.ConSet.inter r1.unused allCons in
+              if not (T.ConSet.is_empty openConSet) then begin
+                let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (T.ConSet.elements openConSet))) in
+                raise (Bimatch message)
+              end;
+
+              (* Check the function input type and prepare for inferring the body *)
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
@@ -2313,7 +2322,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
-          display_typ t2
+          display_typ !t2
           (match t_expect_opt with
            | None -> ""
            | Some t ->

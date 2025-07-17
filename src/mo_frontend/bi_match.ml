@@ -27,6 +27,9 @@ exception Bimatch of string
 type result = {
   ts : typ list;
   ts_partial : typ list;
+  ts_partial_con : typ list;
+  substitutionEnv : typ ConEnv.t;
+  unused : ConSet.t;
 }
 
 module SS = Set.Make (OrdPair)
@@ -55,10 +58,14 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
+let as_con_var t = match as_con t with
+  | c, [] -> c
+  | _ -> assert false
+
 let bi_match_subs scope_opt tbs typ_opt =
   let ts = open_binds tbs in
 
-  let cs = List.map (fun t -> fst (as_con t)) ts in
+  let cs = List.map as_con_var ts in
 
   let cons = ConSet.of_list cs in
 
@@ -324,7 +331,11 @@ let bi_match_subs scope_opt tbs typ_opt =
         let ts_partial = Lib.List.mapi2 (fun i c u ->
           if ConSet.mem c unused then Type.Var (Cons.name c, i) else u) cs us
         in
-        { ts = us; ts_partial }
+        let ts_partial_con = Lib.List.mapi2 (fun i c u ->
+          if ConSet.mem (as_con_var c) unused then c else u) ts us
+        in
+        let substitutionEnv = List.fold_left2 (fun env c u -> if ConSet.mem c unused then env else ConEnv.add c u env) ConEnv.empty cs us in
+        { ts = us; ts_partial; ts_partial_con; substitutionEnv; unused }
       else
         raise (Bimatch
           (Printf.sprintf
