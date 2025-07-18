@@ -2269,9 +2269,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* In case of an error, substitute the Var with Con for better error message *)
         t2 := T.open_ r1.ts_partial_con !t2;
         
-        (* When there are no deferred sub-expressions, we have the full solution *)
+        (* When there are no deferred sub-expressions, we have the full solution
+          TODO: Not really, we would be done when every variable is fixed, now we skip the underconstrained variant ones in the 1st round.
+         *)
         let to_fix = ref to_fix in
-        let ts = if deferred = [] then r1.ts else
+        let ts =
 
           (* Prepare for the 2nd round: substitute and check the deferred sub-expressions *)
           let subs = deferred |> List.map (fun (exp, typ) ->
@@ -2287,6 +2289,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
                 raise (Bimatch message)
               end;
 
+              (* TODO: It would be nice to allow open types in parameters.
+                IDEA: do check_func_step later, after the 2nd round
+               *)
               (* Check the function input type and prepare for inferring the body *)
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
