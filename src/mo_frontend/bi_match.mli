@@ -46,21 +46,34 @@ open Type
 
 exception Bimatch of string
 
-(* General parameter inference for a conjunction of subtype problems *)
+(* Solution to the bi_match problem as a substitution *)
+type result = {
+  (* Solution for all type parameters, including the unused ones which are usually solved to Non (depending on the variance) *)
+  ts : typ list;
+  (* Same as `ts` but unused type parameters are left unsolved (need to be substituted/solved later) *)
+  ts_partial : typ list;
+  ts_partial_con : typ list;
+  substitutionEnv : typ ConEnv.t;
+  unused : ConSet.t;
+}
+
+(* General parameter inference for a conjunction of subtype problems.
+
+ Solving can be done in two rounds:
+ - Initialize the solver by providing all but the last argument (sub-type problems)
+ - Call the solver with the current set of sub-type problems to get the partial solution
+ - Use the `ts_partial` to substitute solved type parameters
+ - Call the solver again with the remaining sub-type problems (make sure the solved type parameters are substituted!)
+ - Use the `combine` function to get the final solution
+ *)
 val bi_match_subs :
   scope option ->
   bind list ->               (* type parameters to instantiate *)
-  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
-                                left or right, but never both sides *)
   typ option ->              (* optional return type mentioning tbs
                                 determining polarities *)
-  typ list (* raises Bimatch *)
+  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
+                                left or right, but never both sides *)
+  result (* raises Bimatch *)
 
-
-(* Parameter inference for function calls *)
-val bi_match_call :
-  scope option ->
-  (bind list * typ * typ) -> (* function type *)
-  typ ->                     (* argument type *)
-  typ option ->              (* optional expected result type *)
-  typ list (* raises Bimatch *)
+(* Combines the 1st and the 2nd round of bi_match solution into the final solution *)
+val combine : result -> result -> typ list

@@ -24,6 +24,14 @@ let display_rel = Lib.Format.display pp_rel
 
 exception Bimatch of string
 
+type result = {
+  ts : typ list;
+  ts_partial : typ list;
+  ts_partial_con : typ list;
+  substitutionEnv : typ ConEnv.t;
+  unused : ConSet.t;
+}
+
 module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
@@ -42,15 +50,50 @@ let verify_inst tbs subs ts =
   List.for_all2 (fun t tb -> sub t (open_ ts tb.bound)) ts tbs &&
   List.for_all (fun (t1, t2) -> sub (open_ ts t1) (open_ ts t2)) subs
 
-let bi_match_subs scope_opt tbs subs typ_opt =
+let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
+
+let fail_open_bound c bd =
+  let c = Cons.name c in
+  raise (Bimatch (Format.asprintf
+    "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+    c (Lib.Format.display pp_typ) bd))
+
+let as_con_var t = match as_con t with
+  | c, [] -> c
+  | _ -> assert false
+
+let bi_match_subs scope_opt tbs typ_opt =
   let ts = open_binds tbs in
+  (* print_endline "ts";
+  print_endline (String.concat ", " (List.map string_of_typ ts)); *)
 
-  let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
-  let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-
-  let cs = List.map (fun t -> fst (as_con t)) ts in
+  let cs = List.map as_con_var ts in
 
   let cons = ConSet.of_list cs in
+
+  let fixed = ref ConSet.empty in
+  let can_skip_unused_under_constrained = ref true in
+
+  (* Check that type parameters have closed bounds *)
+  let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
+  List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
+
+  (* Initialize lower and upper bounds for type parameters *)
+  let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
+  let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
+  let l, u = match scope_opt, tbs with
+    | Some c, {sort = Scope; _}::tbs ->
+      let c0 = List.hd cs in
+      (* let () = print_endline "scope instantiation" in
+      let () = print_endline (Printf.sprintf "c: %s, c0: %s" (string_of_typ c) (Cons.name c0)) in *)
+      ConEnv.add c0 c l,
+      ConEnv.add c0 c u
+    | None, {sort = Scope; _}::tbs ->
+      raise (Bimatch "scope instantiation required but no scope available")
+    | _, _ ->
+      l,
+      u
+  in
 
   let flexible c = ConSet.mem c cons in
 
@@ -61,10 +104,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | None ->
       ConSet.fold (fun c ce -> ConEnv.add c Variance.Bivariant ce) cons ConEnv.empty
   in
-
   let variance c = ConEnv.find c variances in
-
-  let mentions typ ce = not (ConSet.is_empty (ConSet.inter (Type.cons typ) ce)) in
 
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -244,12 +284,15 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   and bi_match_bind ts rel eq inst any tb1 tb2 =
     bi_match_typ rel eq inst any (open_ ts tb1.bound) (open_ ts tb2.bound)
 
-  and choose_under_constrained lb c ub =
+  and choose_under_constrained unused lb c ub =
     match variance c with
     | Variance.Covariant -> lb
     | Variance.Contravariant -> ub
     | Variance.Bivariant -> lb
     | Variance.Invariant ->
+      if ConSet.mem c !fixed then lb else
+      if !can_skip_unused_under_constrained && ConSet.mem c unused then lb else
+      let () = can_skip_unused_under_constrained := false in
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
         (Cons.name c)
@@ -263,55 +306,69 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       display_constraint (lb, c, ub)
       display_rel (lb, "</:", ub)))
 
-  and fail_open_bound c bd =
-    let c = Cons.name c in
-    raise (Bimatch (Format.asprintf
-      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
-      c (Lib.Format.display pp_typ) bd))
+  in fun subs ->
+    (* print_endline "subs"; *)
+    (* List.iter (fun (t1, t2) -> print_endline (Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))) subs; *)
 
-  in
-    let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
-    List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
+    let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
+    let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
-    let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
-    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
-
-    let l, u = match scope_opt, tbs with
-      | Some c, {sort = Scope; _}::tbs ->
-        let c0 = List.hd cs in
-        ConEnv.add c0 c l,
-        ConEnv.add c0 c u
-      | None, {sort = Scope; _}::tbs ->
-        raise (Bimatch "scope instantiation required but no scope available")
-      | _, _ ->
-        l,
-        u
+    (* Find unused type variables *)
+    let unused = 
+      let cons1 = Type.cons_typs ts1 in
+      let cons2 = Type.cons_typs ts2 in
+      let cons3 = Option.fold ~none:ConSet.empty ~some:Type.cons typ_opt in
+      let used = ConSet.union cons1 cons2 |> ConSet.union cons3 in
+      ConSet.diff cons used
     in
+
+    (* print_endline "unused";
+    print_endline (String.concat ", " (List.map Cons.name (ConSet.elements unused))); *)
+
     match
       bi_match_list bi_match_typ
         (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2
     with
     | Some (l, u) ->
+      (* print_endline "l";
+      print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings l)));
+      print_endline "u";
+      print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings u))); *)
+
       let us = List.map
         (fun c ->
           match ConEnv.find c l, ConEnv.find c u with
           | lb, ub ->
+            (* print_endline (Printf.sprintf "c: %s, c bound: %s, lb: %s, ub: %s" (Cons.name c) (string_of_typ (bound c)) (string_of_typ lb) (string_of_typ ub)); *)
             if eq lb ub then
               ub
             else if sub lb ub then
-              choose_under_constrained lb c ub
+              choose_under_constrained unused lb c ub
             else
               fail_over_constrained lb c ub)
         cs
       in
+      can_skip_unused_under_constrained := false; (* only in the first round *)
       if verify_inst tbs subs us then
-        us
+        let ts_partial = Lib.List.mapi2 (fun i c u ->
+          if ConSet.mem c unused then Type.Var (Cons.name c, i) else u) cs us
+        in
+        let ts_partial_con = Lib.List.mapi2 (fun i c u ->
+          if ConSet.mem (as_con_var c) unused then c else u) ts us
+        in
+        let substitutionEnv = List.fold_left2 (fun env c u -> if ConSet.mem c unused then env else ConEnv.add c u env) ConEnv.empty cs us in
+
+        let fixedNow = ConEnv.keys substitutionEnv |> ConSet.of_list in
+        fixed := ConSet.union !fixed fixedNow;
+        
+        { ts = us; ts_partial; ts_partial_con; substitutionEnv; unused }
       else
         raise (Bimatch
           (Printf.sprintf
              "bug: inferred bad instantiation\n  <%s>\nplease report this error message and, for now, supply an explicit instantiation instead"
             (String.concat ", " (List.map string_of_typ us))))
     | None ->
+      can_skip_unused_under_constrained := false; (* only in the first round *)
       let tts =
         List.filter (fun (t1, t2) -> not (sub t1 t2)) (List.combine ts1 ts2)
       in
@@ -323,15 +380,21 @@ let bi_match_subs scope_opt tbs subs typ_opt =
             Format.asprintf "%a" display_rel (t1, "<:", t2))
             tts))))
 
-let bi_match_call scope_opt (tbs, dom_typ, rng_typ) arg_typ ret_typ_opt =
-  match ret_typ_opt with
-  | None ->
-    (* no ret_typ: use polarities of tbs in rng_typ to
-       choose principal instantiation, if any *)
-    bi_match_subs scope_opt tbs
-      [(arg_typ, dom_typ) (*; (rng_typ, Any) *)]
-      (Some rng_typ)
-  | Some ret_typ ->
-    bi_match_subs scope_opt tbs
-      [(arg_typ, dom_typ); (rng_typ, ret_typ)]
-      None
+let combine r1 r2 =
+  (* check that the partial solutions are disjoint *)
+  assert (List.for_all2 (fun t t' -> Type.is_var t || Type.is_var t') r1.ts_partial r2.ts_partial);
+  (* assert (ConEnv.Dom.disjoint (ConEnv.dom r1.substitutionEnv) (ConEnv.dom r2.substitutionEnv)); *)
+  (* let env = ConEnv.disjoint_union r1.substitutionEnv r2.substitutionEnv in *)
+
+  (* combine the solutions *)
+  List.map2 (fun t1 t2 ->
+    match t1 with
+    | Type.Var _ ->
+    (* | Type.Con (c, []) when ConEnv.mem c r1.substitutionEnv-> *)
+      (* non-partial has a solution for all type variables *)
+      assert (not (Type.is_var t2));
+      t2
+    | _ ->
+      (* variable fixed by the first solution *)
+      t1
+    ) r1.ts_partial r2.ts
