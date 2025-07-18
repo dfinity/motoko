@@ -2246,7 +2246,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      let t2 = ref t2 in
+      let err_subst = ref Fun.id in
 
       (* Incorporate the return type into the subtyping constraints *)
       let ret_typ_opt, subs = 
@@ -2267,7 +2267,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let r1 = solve subs in
 
         (* In case of an error, substitute the Var with Con for better error message *)
-        t2 := T.open_ r1.ts_partial_con !t2;
+        err_subst := T.open_ r1.ts_partial_con;
         
         (* When there are no deferred sub-expressions, we have the full solution
           TODO: Not really, we would be done when every variable is fixed, now we skip the underconstrained variant ones in the 1st round.
@@ -2321,13 +2321,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           info env at "inferred instantiation <%s>"
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
-        (* TODO: t2 vs t_arg check which one to use *)
         ts, T.open_ ts t_arg, T.open_ ts t_ret
       with Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
-          display_typ !t2
+          display_typ (!err_subst t2)
           (match t_expect_opt with
            | None -> ""
            | Some t ->
