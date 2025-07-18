@@ -1,4 +1,4 @@
-(* Parsing known URLs from mo:, ic: and file: URLs *)
+(* Parsing known URLs from mo:, ic:, canister: and file: URLs *)
 
 (*
    For usage examples take a look at url_test.ml

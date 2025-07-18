@@ -105,5 +105,3 @@ let flush_messages : 'a result -> 'a option = function
 let run r = match flush_messages r with
   | None -> exit 1
   | Some x -> x
-
-let silenced : msg_store = ref []

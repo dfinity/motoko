@@ -1084,10 +1084,6 @@ let check_text env at s =
     local_error env at "M0049" "string literal \"%s\": is not valid utf8" (String.escaped s);
   s
 
-let check_text_import env at path s =
-  if not (Lib.Utf8.is_valid s) then
-    local_error env at "M0222" "imported string literal from file \"%s\" is not valid utf8" (String.escaped path)
-
 let infer_lit env lit at : T.prim =
   match !lit with
   | NullLit -> T.Null
@@ -2084,9 +2080,6 @@ and check_exp' env0 t exp : T.typ =
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
     check_exp env typ exp1;
-    t
-  | ImportE (_, {contents = ImportedValuePath path}), (T.(Prim Text) as t) ->
-    Lib.FilePath.contents path |> check_text_import env exp.at path;
     t
   | ImportE _, t ->
     t
@@ -3411,14 +3404,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, None) when is_value_import dec ->
-    let typ, val_env = match recover_opt (infer_pat false {env with msgs = Diag.silenced}) pat with
-      | None -> T.blob, check_pat env T.blob pat
-      | Some tv -> tv in
-    (match T.normalize typ with
-     | T.(Prim (Text | Blob)) -> ()
-     | _ ->
-       error env pat.at "M0221" "value import pattern can only bind `Blob` or `Text`, but asks for type%a"
-         display_typ typ);
+    let val_env = check_pat_exhaustive local_error env T.blob pat in
     Scope.{empty with val_env}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
