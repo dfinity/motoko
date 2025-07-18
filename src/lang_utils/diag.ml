@@ -89,7 +89,7 @@ let with_message_store ?(allow_errors = false) f =
   let r = f s in
   let msgs = get_msgs s in
   match r with
-  | Some x when not (has_errors msgs) || allow_errors -> Ok (x, msgs)
+  | Some x when allow_errors || not (has_errors msgs) -> Ok (x, msgs)
   | _ -> Error msgs
 
 let flush_messages : 'a result -> 'a option = function

@@ -1,0 +1,4 @@
+file-import.mo:1.9-1.16: type error [M0117], pattern of type
+  Nat
+cannot consume expected type
+  Blob
