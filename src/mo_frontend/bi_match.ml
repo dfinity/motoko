@@ -64,6 +64,8 @@ let as_con_var t = match as_con t with
 
 let bi_match_subs scope_opt tbs typ_opt =
   let ts = open_binds tbs in
+  (* print_endline "ts";
+  print_endline (String.concat ", " (List.map string_of_typ ts)); *)
 
   let cs = List.map as_con_var ts in
 
@@ -82,6 +84,8 @@ let bi_match_subs scope_opt tbs typ_opt =
   let l, u = match scope_opt, tbs with
     | Some c, {sort = Scope; _}::tbs ->
       let c0 = List.hd cs in
+      (* let () = print_endline "scope instantiation" in
+      let () = print_endline (Printf.sprintf "c: %s, c0: %s" (string_of_typ c) (Cons.name c0)) in *)
       ConEnv.add c0 c l,
       ConEnv.add c0 c u
     | None, {sort = Scope; _}::tbs ->
@@ -303,6 +307,9 @@ let bi_match_subs scope_opt tbs typ_opt =
       display_rel (lb, "</:", ub)))
 
   in fun subs ->
+    (* print_endline "subs"; *)
+    (* List.iter (fun (t1, t2) -> print_endline (Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))) subs; *)
+
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
 
@@ -315,16 +322,24 @@ let bi_match_subs scope_opt tbs typ_opt =
       ConSet.diff cons used
     in
 
+    (* print_endline "unused";
+    print_endline (String.concat ", " (List.map Cons.name (ConSet.elements unused))); *)
+
     match
       bi_match_list bi_match_typ
         (ref SS.empty) (ref SS.empty) (l, u) ConSet.empty ts1 ts2
     with
     | Some (l, u) ->
+      (* print_endline "l";
+      print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings l)));
+      print_endline "u";
+      print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings u))); *)
+
       let us = List.map
         (fun c ->
           match ConEnv.find c l, ConEnv.find c u with
           | lb, ub ->
-            assert (not (ConSet.mem c unused) || (eq lb Type.Non && eq ub (bound c))); (* unused implies default constraint *)
+            (* print_endline (Printf.sprintf "c: %s, c bound: %s, lb: %s, ub: %s" (Cons.name c) (string_of_typ (bound c)) (string_of_typ lb) (string_of_typ ub)); *)
             if eq lb ub then
               ub
             else if sub lb ub then
