@@ -114,7 +114,7 @@ The core package introduces a fundamental reorganization of data structures with
 | **Queue** | `pure/Queue` | Immutable queue |
 | **RealTimeQueue** | `pure/RealTimeQueue` | Real-time queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
 
-## Function changes by module
+## Interface changes by module
 
 ### Array
 
@@ -122,7 +122,7 @@ The core package introduces a fundamental reorganization of data structures with
 - `append()` → `concat()`
 - `chain()` → `flatMap()`
 - `freeze()` → `fromVarArray()`
-- `init()` → `repeat()` (combines with `tabulate()` for different use cases)
+- `init()` → `repeat()` with reversed argument order
 - `make()` → `singleton()`
 - `mapFilter()` → `filterMap()`
 - `slice()` → `range()`
@@ -338,3 +338,554 @@ persistent actor {
 - `hash()`
 - `fromList()` - Use `fromIter()` with list iterator instead
 - `toList()` - Use `toIter()` and convert to list if needed
+
+## Data structure migration
+
+### `Buffer`
+
+#### Original (`base`)
+
+```motoko
+import Buffer "mo:base/Buffer";
+
+actor {
+  type Item = Text;
+
+  stable var items : [Item] = [];
+  let buffer = Buffer.fromArray<Item>(items);
+
+  system func preupgrade() {
+    items := Buffer.toArray(buffer);
+  };
+
+  system func postupgrade() {
+    items := [];
+  };
+
+  public func add(item : Item) : async () {
+    buffer.add(item);
+  };
+
+  public query func getItems() : async [Item] {
+    Buffer.toArray(buffer);
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import List "mo:core/List";
+
+(
+  with migration = func(
+    state : {
+      var items : [App.Item];
+    }
+  ) : {
+    list : List.List<App.Item>;
+  } = {
+    list = List.fromArray(state.items);
+  }
+)
+actor App {
+  public type Item = Text; // `public` for migration
+
+  stable let list = List.empty<Item>();
+
+  public func add(item : Item) : async () {
+    List.add(list, item);
+  };
+
+  public query func getItems() : async [Item] {
+    List.toArray(list);
+  };
+};
+```
+
+### `Deque`
+
+#### Original (`base`)
+
+```motoko
+import Deque "mo:base/Deque";
+
+actor {
+  type Item = Text;
+
+  stable var deque = Deque.empty<Item>();
+
+  public func put(item : Item) : async () {
+    deque := Deque.pushBack(deque, item);
+  };
+
+  public func take() : async ?Item {
+    switch (Deque.popFront(deque)) {
+      case (?(item, newDeque)) {
+        deque := newDeque;
+        ?item;
+      };
+      case null { null };
+    };
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import Deque "mo:base/Deque"; // For migration
+import Queue "mo:core/Queue";
+
+(
+  with migration = func(
+    state : {
+      var deque : Deque.Deque<App.Item>;
+    }
+  ) : {
+    queue : Queue.Queue<App.Item>;
+  } {
+    let queue = Queue.empty<App.Item>();
+    label l loop {
+      switch (Deque.popFront(state.deque)) {
+        case (?(item, deque)) {
+          Queue.pushBack(queue, item);
+          state.deque := deque;
+        };
+        case null {
+          break l;
+        };
+      };
+    };
+    { queue };
+  }
+) actor App {
+  public type Item = Text; // `public` for migration
+
+  stable let queue = Queue.empty<Item>();
+
+  public func put(item : Item) : async () {
+    Queue.pushBack(queue, item);
+  };
+
+  public func take() : async ?Item {
+    Queue.popFront(queue);
+  };
+};
+```
+
+### `HashMap`
+
+#### Original (`base`)
+
+```motoko
+import HashMap "mo:base/HashMap";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  stable var mapEntries : [(Text, Nat)] = [];
+  let map = HashMap.fromIter<Text, Nat>(mapEntries.vals(), 10, Text.equal, Text.hash);
+
+  system func preupgrade() {
+    mapEntries := Iter.toArray(map.entries());
+  };
+
+  system func postupgrade() {
+    mapEntries := [];
+  };
+
+  public func update(key : Text, value : Nat) : async () {
+    map.put(key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    map.remove(key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(map.entries());
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(
+  with migration = func(
+    state : {
+      var mapEntries : [(Text, Nat)];
+    }
+  ) : {
+    map : Map.Map<Text, Nat>;
+  } = {
+    map = Map.fromIter(state.mapEntries.vals(), Text.compare);
+  }
+)
+actor {
+  stable let map = Map.empty<Text, Nat>();
+
+  public func update(key : Text, value : Nat) : async () {
+    Map.add(map, Text.compare, key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    Map.take(map, Text.compare, key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(Map.entries(map));
+  };
+};
+```
+
+### `OrderedMap`
+
+#### Original (`base`)
+
+```motoko
+import OrderedMap "mo:base/OrderedMap";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  let textMap = OrderedMap.Make<Text>(Text.compare);
+  stable var map = textMap.empty<Nat>();
+
+  public func update(key : Text, value : Nat) : async () {
+    map := textMap.put(map, key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    let (newMap, removedValue) = textMap.remove(map, key);
+    map := newMap;
+    removedValue;
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(textMap.entries(map));
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import OrderedMap "mo:base/OrderedMap"; // For migration
+import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(
+  with migration = func(
+    state : {
+      var map : OrderedMap.Map<Text, Nat>;
+    }
+  ) : {
+    map : Map.Map<Text, Nat>;
+  } {
+    let compare = Text.compare;
+    let textMap = OrderedMap.Make<Text>(compare);
+    let map = Map.fromIter<Text, Nat>(textMap.entries(state.map), compare);
+    { map };
+  }
+)
+actor {
+  stable let map = Map.empty<Text, Nat>();
+
+  public func update(key : Text, value : Nat) : async () {
+    Map.add(map, Text.compare, key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    Map.take(map, Text.compare, key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(Map.entries(map));
+  };
+};
+```
+
+### `OrderedSet`
+
+#### Original (`base`)
+
+```motoko
+import OrderedSet "mo:base/OrderedSet";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  type Item = Text;
+
+  let textSet = OrderedSet.Make<Item>(Text.compare);
+  stable var set = textSet.empty();
+
+  public func add(item : Item) : async () {
+    set := textSet.put(set, item);
+  };
+
+  public func remove(item : Item) : async Bool {
+    let oldSize = textSet.size(set);
+    set := textSet.delete(set, item);
+    oldSize > textSet.size(set);
+  };
+
+  public query func getItems() : async [Item] {
+    Iter.toArray(textSet.vals(set));
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import OrderedSet "mo:base/OrderedSet"; // For migration
+import Set "mo:core/Set";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(
+  with migration = func(
+    state : {
+      var set : OrderedSet.Set<App.Item>;
+    }
+  ) : {
+    set : Set.Set<App.Item>;
+  } {
+    let compare = Text.compare;
+    let textSet = OrderedSet.Make<App.Item>(compare);
+    let set = Set.fromIter(textSet.vals(state.set), compare);
+    { set };
+  }
+)
+actor App {
+  public type Item = Text; // `public` for migration
+
+  stable let set = Set.empty<Item>();
+
+  public func add(item : Item) : async () {
+    Set.add(set, Text.compare, item);
+  };
+
+  public func remove(item : Item) : async Bool {
+    Set.delete(set, Text.compare, item);
+  };
+
+  public query func getItems() : async [Item] {
+    Iter.toArray(Set.values(set));
+  };
+};
+```
+
+### `Trie`
+
+#### Original (`base`)
+
+```motoko
+import Trie "mo:base/Trie";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  type Key = Text;
+  type Value = Nat;
+
+  stable var trie : Trie.Trie<Key, Value> = Trie.empty();
+
+  public func update(key : Key, value : Value) : async () {
+    let keyHash = Text.hash(key);
+    trie := Trie.put(trie, { key = key; hash = keyHash }, Text.equal, value).0;
+  };
+
+  public func remove(key : Key) : async ?Value {
+    let keyHash = Text.hash(key);
+    let (newTrie, value) = Trie.remove(trie, { key = key; hash = keyHash }, Text.equal);
+    trie := newTrie;
+    value;
+  };
+
+  public query func getItems() : async [(Key, Value)] {
+    Iter.toArray(Trie.iter(trie));
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import Trie "mo:base/Trie"; // For migration
+import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(
+  with migration = func(
+    state : {
+      var trie : Trie.Trie<Text, Nat>;
+    }
+  ) : {
+    map : Map.Map<Text, Nat>;
+  } = {
+    map = Map.fromIter(Trie.iter(state.trie), Text.compare);
+  }
+)
+actor {
+  stable let map = Map.empty<Text, Nat>();
+
+  public func update(key : Text, value : Nat) : async () {
+    Map.add(map, Text.compare, key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    Map.take(map, Text.compare, key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(Map.entries(map));
+  };
+};
+```
+
+### `TrieMap`
+
+#### Original (`base`)
+
+```motoko
+import TrieMap "mo:base/TrieMap";
+import Text "mo:base/Text";
+import Iter "mo:base/Iter";
+
+actor {
+  stable var mapEntries : [(Text, Nat)] = [];
+  let map = TrieMap.fromEntries<Text, Nat>(mapEntries.vals(), Text.equal, Text.hash);
+
+  system func preupgrade() {
+    mapEntries := Iter.toArray(map.entries());
+  };
+
+  system func postupgrade() {
+    mapEntries := [];
+  };
+
+  public func update(key : Text, value : Nat) : async () {
+    map.put(key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    map.remove(key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(map.entries());
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(
+  with migration = func(
+    state : {
+      var mapEntries : [(Text, Nat)];
+    }
+  ) : {
+    map : Map.Map<Text, Nat>;
+  } = {
+    map = Map.fromIter(state.mapEntries.values(), Text.compare);
+  }
+)
+actor {
+  stable let map = Map.empty<Text, Nat>();
+
+  public func update(key : Text, value : Nat) : async () {
+    Map.add(map, Text.compare, key, value);
+  };
+
+  public func remove(key : Text) : async ?Nat {
+    Map.take(map, Text.compare, key);
+  };
+
+  public query func getItems() : async [(Text, Nat)] {
+    Iter.toArray(Map.entries(map));
+  };
+};
+```
+
+### `TrieSet`
+
+#### Original (`base`)
+
+```motoko
+import TrieSet "mo:base/TrieSet";
+import Text "mo:base/Text";
+
+actor {
+  type Item = Text;
+
+  stable var set : TrieSet.Set<Item> = TrieSet.empty<Item>();
+
+  public func add(item : Item) : async () {
+    set := TrieSet.put<Item>(set, item, Text.hash(item), Text.equal);
+  };
+
+  public func remove(item : Item) : async Bool {
+    let contained = TrieSet.mem<Item>(set, item, Text.hash(item), Text.equal);
+    set := TrieSet.delete<Item>(set, item, Text.hash(item), Text.equal);
+    contained;
+  };
+
+  public query func getItems() : async [Item] {
+    TrieSet.toArray(set);
+  };
+};
+```
+
+#### Updated (`core`)
+
+```motoko
+import Set "mo:core/Set";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+import TrieSet "mo:base/TrieSet";
+
+(
+  with migration = func(
+    state : {
+      var set : TrieSet.Set<Text>;
+    }
+  ) : {
+    set : Set.Set<Text>;
+  } = {
+    set = Set.fromIter(TrieSet.toArray(state.set).vals(), Text.compare);
+  }
+)
+actor App {
+  public type Item = Text; // `public` for migration
+
+  stable let set = Set.empty<Item>();
+
+  public func add(item : Item) : async () {
+    Set.add(set, Text.compare, item);
+  };
+
+  public func remove(item : Item) : async Bool {
+    Set.delete(set, Text.compare, item);
+  };
+
+  public query func getItems() : async [Item] {
+    Iter.toArray(Set.values(set));
+  };
+};
+```
