@@ -115,7 +115,7 @@ actor Life {
     };
   };
 
-  func newState(size : Nat) : State {
+  let newState = func (size : Nat) : State {
     let len = (size * size) / 64 + 1;
     let words = P.Array_init<Nat64>(len, 0);
     for (i in words.keys()) {

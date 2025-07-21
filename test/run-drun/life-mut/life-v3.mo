@@ -155,7 +155,7 @@ actor Life {
     };
   };
 
-  func newState(index : Nat, size : Nat) : State {
+  let newState = func (index : Nat, size : Nat) : State {
     let len = (size * size) / 64 + 1;
     let offset : Nat64 = P.natToNat64(index * len * 8);
     ensureMemory(offset + P.natToNat64(len) * 8);

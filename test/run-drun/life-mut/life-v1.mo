@@ -69,10 +69,10 @@ actor Life {
     };
   };
 
-  func newState(size : Nat) : State {
+  let newState = func (size : Nat) : State {
     let size = 32;
       #v1 (
-      	 P.Array_tabulate<[var Cell]>(size,
+        P.Array_tabulate<[var Cell]>(size,
            func i {
              let ai = P.Array_init<Bool>(size, false);
              for (j in ai.keys()) { ai[j] := Random.next() };
