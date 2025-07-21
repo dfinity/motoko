@@ -332,6 +332,7 @@ persistent actor {
 
 #### New functions
 - `isEmpty()` - Check if text is empty
+- `reverse()` - Swap the order of characters
 - `toText()` - Identity function
 
 #### Removed functions
