@@ -116,7 +116,7 @@ The core package introduces a fundamental reorganization of data structures with
 
 ## Interface changes by module
 
-### Array
+### [`Array`](https://internetcomputer.org/docs/motoko/core/Array)
 
 #### Renamed functions
 - `append()` → `concat()`
@@ -160,7 +160,7 @@ The core package introduces a fundamental reorganization of data structures with
 - `isEmpty()` - Check if blob is empty
 - `size()` - Get number of bytes in a blob (equivalent to `blob.size()`)
 
-### Bool
+### [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool)
 
 #### Renamed functions
 - `logand()` → `logicalAnd()`
@@ -171,13 +171,13 @@ The core package introduces a fundamental reorganization of data structures with
 #### New functions
 - `allValues()` - Iterator over all boolean values
 
-### Char
+### [`Char`](https://internetcomputer.org/docs/motoko/core/Char)
 
 #### Renamed functions
 - `isLowercase()` → `isLower()`
 - `isUppercase()` → `isUpper()`
 
-### Debug
+### [`Debug`](https://internetcomputer.org/docs/motoko/core/Debug)
 
 #### Added functions
 - `todo()` - Replaces `Prelude.nyi()`
@@ -185,7 +185,7 @@ The core package introduces a fundamental reorganization of data structures with
 #### Removed functions
 - `trap()` - Moved to `Runtime.trap()`
 
-### Float
+### [`Float`](https://internetcomputer.org/docs/motoko/core/Float)
 
 #### Modified functions
 - `equal()` - Now requires epsilon parameter
@@ -194,7 +194,7 @@ The core package introduces a fundamental reorganization of data structures with
 #### Removed functions
 - `equalWithin()`, `notEqualWithin()` - Use `equal()` and `notEqual()` with epsilon
 
-### Iter
+### [`Iter`](https://internetcomputer.org/docs/motoko/core/Iter)
 
 `Iter.range()` has been removed in favor of type-specific range functions such as `Nat.range()`, `Int.range()`, `Nat32.range()`, etc. These functions have an **exclusive upper bound**, in contrast to the original inclusive upper bound of `Iter.range()`. 
 
@@ -219,7 +219,7 @@ persistent actor {
 
 Helper functions have been added, such as `allValues()`, for each finite type in the `base` package.
 
-### Int
+### [`Int`](https://internetcomputer.org/docs/motoko/core/Int)
 
 #### New functions
 - `fromNat()` - Convert Nat to Int
@@ -234,7 +234,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `hash()`
 - `hashAcc()` 
 
-### Nat
+### [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat)
 
 #### New functions
 - `allValues()` - Iterator over all natural numbers
@@ -245,7 +245,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `rangeBy()`, `rangeByInclusive()` - Range with step
 - `toInt()` - Convert to Int
 
-### Int8, Int16, Int32, Int64, Nat8, Nat16, Nat32, Nat64
+### [`Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64`](https://internetcomputer.org/docs/motoko/core/)
 
 ### Renamed fields
 
@@ -256,7 +256,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `allValues()` - Iterator over all values in range
 - `range()`, `rangeInclusive()` - Range iterators (replaces `Iter.range()`)
 
-### Option
+### [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
 
 #### Renamed functions
 - `make()` → `some()` - Create option from value
@@ -270,12 +270,12 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `assertNull()` - Removed in favor of pattern matching
 - `assertSome()` - Removed in favor of pattern matching
 
-### Order
+### [`Order`](https://internetcomputer.org/docs/motoko/core/Order)
 
 #### New functions
 - `allValues()` - Iterator over all order values (`#less`, `#equal`, `#greater`)
 
-### Random
+### [`Random`](https://internetcomputer.org/docs/motoko/core/Random)
 
 The `Random` module has been completely redesigned in the core package with a new API that provides better control over random number generation and supports both pseudo-random and cryptographic random number generation.
 
@@ -314,7 +314,7 @@ persistent actor {
 - `crypto()` - Create cryptographic random generator using ICP entropy
 - `cryptoFromState()` - Create cryptographic generator from state
 
-### Result
+### [`Result`](https://internetcomputer.org/docs/motoko/core/Result)
 
 #### New functions
 - `all()` - Check all results in iterator
@@ -323,7 +323,7 @@ persistent actor {
 - `forErr()` - Apply function to `#err` value
 - `fromBool()` - Create Result from boolean
 
-### Text
+### [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
 
 #### Renamed functions
 - `toLowercase()` → `toLower()`
