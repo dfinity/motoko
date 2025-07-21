@@ -255,7 +255,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 #### New functions
 - `allValues()` - Iterator over all values in range
 - `range()`, `rangeInclusive()` - Range iterators (replaces `Iter.range()`)
-- `explode()` - Slice into constituent bytes (only for sizes 16, 32, 64)
+- `explode()` - Slice into constituent bytes (only for sizes `16`, `32`, `64`)
 
 ### [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
 
