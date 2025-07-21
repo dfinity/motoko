@@ -148,7 +148,7 @@ The core package introduces a fundamental reorganization of data structures with
 - `sortInPlace()` - Use `VarArray.sortInPlace()` instead
 - `tabulateVar()` - Use `VarArray.tabulate()` instead
 
-### Blob
+### [`Blob`](https://internetcomputer.org/docs/motoko/core/Blob)
 
 #### Modified functions
 - `fromArrayMut()` → `fromVarArray()`
