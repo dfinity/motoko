@@ -339,7 +339,7 @@ persistent actor {
 - `fromList()` - Use `fromIter()` with list iterator instead
 - `toList()` - Use `toIter()` and convert to list if needed
 
-## Data structure migration
+## Data structure migration examples
 
 ### `Buffer`
 
