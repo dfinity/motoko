@@ -2260,34 +2260,26 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        (* Initialize the bi_match solver *)
-        let solve = bi_match_subs (scope_of_env env) tbs ret_typ_opt in
+        let needs_2nd_round = deferred <> [] in
+        let r1 = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs needs_2nd_round in
 
-        (* Solve the 1st round of sub-type problems *)
-        let r1 = solve subs in
-
-        (* In case of an error, substitute the Var with Con for better error message *)
-        err_subst := T.open_ r1.ts_partial_con;
+        (* In case of an error, substitute for better error message *)
+        err_subst := T.open_ r1.ts;
         
         (* When there are no deferred sub-expressions, we have the full solution
           TODO: Not really, we would be done when every variable is fixed, now we skip the underconstrained variant ones in the 1st round.
          *)
-        let to_fix = ref to_fix in
-        let ts =
+        let to_fix2 = ref [] in
+        let ts, subst_env =
 
           (* Prepare for the 2nd round: substitute and check the deferred sub-expressions *)
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
-            let typ' = T.open_ r1.ts_partial typ in
+            let typ' = T.open_ r1.ts typ in
             match exp.it, typ' with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
-              (* Check that all type variables in the function input type are fixed *)
-              let allCons = T.cons_typs ~on_typ:(T.open_ r1.ts_partial_con) ts1 in
-              let openConSet = T.ConSet.inter r1.unused allCons in
-              if not (T.ConSet.is_empty openConSet) then begin
-                let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (T.ConSet.elements openConSet))) in
-                raise (Bimatch message)
-              end;
+              (* Check that all type variables in the function input type are fixed, fail otherwise *)
+              fail_when_types_are_not_closed r1.remaining ts1;
 
               (* TODO: It would be nice to allow open types in parameters.
                 IDEA: do check_func_step later, after the 2nd round
@@ -2296,7 +2288,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
-              to_fix := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix;
+              to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
               (actual_t, expected_t)
             | _ ->
               (* We can try to infer the subexpression, but it will most likely fail *)
@@ -2306,15 +2298,14 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           (* TODO: what happens when every variable is fixed already
              OR when subs contain only fixed type variables? *)
           (* Include the deferred terms in the instantiation *)
-          let r2 = solve subs in
-
-          (* Combine the instantiations *)
-          combine r1 r2
+          finalize r1 subs
         in
 
         if not env.pre then begin
           (* Fix the manually decomposed terms as if they were inferred *)
-          List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> T.open_ ts t) T.as_immut env e)) !to_fix;
+          let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
+          fix (T.open_ ts) to_fix;
+          fix (T.subst subst_env) !to_fix2;
         end;
 (*
         if not env.pre then

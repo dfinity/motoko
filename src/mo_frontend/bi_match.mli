@@ -46,25 +46,24 @@ open Type
 
 exception Bimatch of string
 
+(* Opaque context type for bi-matching *)
+type ctx
+
 (* Solution to the bi_match problem as a substitution *)
 type result = {
-  (* Solution for all type parameters, including the unused ones which are usually solved to Non (depending on the variance) *)
+  (* Solution for all type parameters, remaining type variables are solved to Type.Con and must be solved in the 2nd round *)
   ts : typ list;
-  (* Same as `ts` but unused type parameters are left unsolved (need to be substituted/solved later) *)
-  ts_partial : typ list;
-  ts_partial_con : typ list;
-  substitutionEnv : typ ConEnv.t;
-  unused : ConSet.t;
+  (* Remaining context for variables that need to be solved in a second round. When None, all type variables are solved. *)
+  remaining : ctx option;
 }
 
 (* General parameter inference for a conjunction of subtype problems.
 
  Solving can be done in two rounds:
- - Initialize the solver by providing all but the last argument (sub-type problems)
  - Call the solver with the current set of sub-type problems to get the partial solution
- - Use the `ts_partial` to substitute solved type parameters
+ - Use the result to substitute solved type parameters (might contain remaining type variables)
  - Call the solver again with the remaining sub-type problems (make sure the solved type parameters are substituted!)
- - Use the `combine` function to get the final solution
+ - Use the `finalize` function to get the final solution and the substitution of the remaining type variables from the 1st round
  *)
 val bi_match_subs :
   scope option ->
@@ -73,7 +72,12 @@ val bi_match_subs :
                                 determining polarities *)
   (typ * typ) list ->        (* sub-type problems mentioning tbs either on
                                 left or right, but never both sides *)
+  (* whether the 2nd round of solving is needed *)
+  bool ->
   result (* raises Bimatch *)
 
-(* Combines the 1st and the 2nd round of bi_match solution into the final solution *)
-val combine : result -> result -> typ list
+(* Finalizes the bi-match solution by solving remaining type variables and combining results *)
+val finalize : result -> (typ * typ) list -> typ list * typ ConEnv.t
+
+(* Checks that all types are closed (no unresolved type variables) *)
+val fail_when_types_are_not_closed : ctx option -> typ list -> unit
