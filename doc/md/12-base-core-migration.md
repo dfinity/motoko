@@ -247,7 +247,7 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 
 ### [`Int8`, `Int16`, `Int32`, `Int64`, `Nat8`, `Nat16`, `Nat32`, `Nat64`](https://internetcomputer.org/docs/motoko/core/)
 
-### Renamed fields
+#### Renamed fields
 
 - `maximumValue` → `maxValue`
 - `minimumValue` → `minValue`
