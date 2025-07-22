@@ -1158,7 +1158,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let f = lib.note.filename in
   let { body; _ } = lib.it in
   let id = match body.it with
-    | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
+    | S.ActorClassU (_, _, _, id, _, _, _, _, _) -> id.it
     | _ -> assert false
   in
   let fun_typ = T.normalize body.note.S.note_typ in
@@ -1253,7 +1253,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     I.LibU ([], {
       it = build_obj u.at T.Module self_id fields u.note.S.note_typ;
       at = u.at; note = typ_note u.note})
-  | S.ActorClassU (exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
+  | S.ActorClassU (_persistence, exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
@@ -1280,7 +1280,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
-  | S.ActorU (exp_opt, self_id, fields) ->
+  | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
     let actor_expression = build_actor u.at [] eo self_id fields u.note.S.note_typ in
     begin match actor_expression with
@@ -1318,7 +1318,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
     raise (Invalid_argument "Desugar: Cannot import actor")
   | I.ActorU (Some as_, ds, fs, up, actor_t) ->
     let id = match body.it with
-      | S.ActorClassU (_, _, id, _, _, _, _, _) -> id.it
+      | S.ActorClassU (persistence, _, _, id, _, _, _, _, _) -> id.it
       | _ -> assert false
     in
     let s, cntrl, tbs, ts1, ts2 = T.as_func t in

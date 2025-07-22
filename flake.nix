@@ -168,10 +168,10 @@
                 matchRelease == null &&
                 matchGC == null;
             in {
-              "debug" = matchDebug != null;
-              "release" = matchRelease != null;
-              "gc" = matchGC != null;
-              "common" = matchCommon;
+              debug = matchDebug != null;
+              release = matchRelease != null;
+              gc = matchGC != null;
+              common = matchCommon;
             }.${type})
           tests);
 
@@ -215,8 +215,8 @@
     in
     {
       packages = checks // common-constituents // rec {
-        "release" = buildableReleaseMoPackages;
-        "debug" = buildableDebugMoPackages;
+        release = buildableReleaseMoPackages;
+        debug = buildableDebugMoPackages;
 
         inherit nix-update tests js;
 
@@ -286,6 +286,8 @@
               filterTests "debug"  # Only include debug tests
               ++ builtins.attrValues js;
         };
+
+        inherit (debug) moc;
 
         default = release-systems-go;
       };
