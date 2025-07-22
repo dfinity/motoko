@@ -36,6 +36,8 @@ type ctx = {
   varSet : ConSet.t;
   (* Type variables info *)
   varEnv : var_info ConEnv.t;
+  (* List that preserve the order from the input *)
+  varList : con list;
   (* Lower and upper bounds for type variables *)
   bounds : typ ConEnv.t * typ ConEnv.t;
   (* Variances for type variables *)
@@ -45,6 +47,7 @@ type ctx = {
 let empty_ctx = {
   varSet = ConSet.empty;
   varEnv = ConEnv.empty;
+  varList = [];
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
 }
@@ -323,7 +326,7 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
     print_endline "u";
     print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings u))); *)
 
-    let remaining_ctx = ref empty_ctx in
+    let unsolved = ref ConSet.empty in
     let env = l |> ConEnv.mapi (fun c lb ->
       let ub = ConEnv.find c u in
       (* TODO: create a test that fixes an invariant variable in the 1st round and then throws on this unused variable in the 2nd round
@@ -334,27 +337,25 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
       else if sub lb ub then
         if needs_another_round && ConSet.mem c unused then begin
           (* Defer solving the type parameter to the next round *)
-          let info = ConEnv.find c ctx.varEnv in
-          let (l, u) = !remaining_ctx.bounds in
-          remaining_ctx := { 
-            varSet = ConSet.add c !remaining_ctx.varSet;
-            varEnv = ConEnv.add c info !remaining_ctx.varEnv;
-            bounds = (
-              ConEnv.add c lb l,
-              ConEnv.add c ub u
-            );
-            variances = ConEnv.add c (ConEnv.find c ctx.variances) !remaining_ctx.variances
-          };
-          info.t
+          unsolved := ConSet.add c !unsolved;
+          (ConEnv.find c ctx.varEnv).t
         end else
           choose_under_constrained ctx lb c ub
       else
         fail_over_constrained lb c ub)
     in
-    let remaining = !remaining_ctx in
-    (* TODO: verify_inst does not work with split ctx *)
-    (* TODO: in 2nd round: dont return ts : typ list, env *)
-    if verify_inst ~ctx env ~remaining ts1 ts2 then
+    let varSet = !unsolved in
+    let (l, u) = ctx.bounds in
+    let remaining = {
+      varSet;
+      varEnv = ConEnv.filterDom varSet ctx.varEnv;
+      varList = List.filter (fun c -> ConSet.mem c varSet) ctx.varList;
+      bounds = (
+        ConEnv.filterDom varSet l,
+        ConEnv.filterDom varSet u);
+      variances = ConEnv.filterDom varSet ctx.variances
+    } in
+    if verify_inst ~ctx ~remaining env ts1 ts2 then
       env, if is_ctx_empty remaining then None else Some remaining
     else begin
       let instantiation = ConEnv.bindings env
@@ -371,7 +372,7 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
     in
     raise (Bimatch (Format.asprintf
       "no instantiation of %s makes%s"
-      (String.concat ", " (List.map string_of_con (ConSet.elements ctx.varSet)))
+      (String.concat ", " (List.map string_of_con ctx.varList))
       (String.concat "\nand"
         (List.map (fun (t1, t2) ->
           Format.asprintf "%a" display_rel (t1, "<:", t2))
@@ -382,9 +383,10 @@ let bi_match_subs scope_opt tbs typ_opt =
    * These constructors are used as type variables.
    *)
   let ts = open_binds tbs in
+  let cs = List.map as_con_var ts in
 
   (* Extract the constructor for each type variable and create a type variable environment *)
-  let varSet = List.map as_con_var ts |> ConSet.of_list in
+  let varSet = ConSet.of_list cs in
   let varEnv = List.fold_left2 (fun acc t tb ->
     let c = as_con_var t in
 
@@ -417,7 +419,7 @@ let bi_match_subs scope_opt tbs typ_opt =
 
   let variances = Variance.variances varSet (Option.fold ~none:Any ~some:(open_ ts) typ_opt) in
   
-  let ctx = { varSet; varEnv; bounds = (l, u); variances } in
+  let ctx = { varSet; varEnv; varList = cs; bounds = (l, u); variances } in
 
   fun subs needs_another_round ->
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
