@@ -378,30 +378,34 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
           tts))))
 
 let bi_match_subs scope_opt tbs typ_opt =
+  (* Create a fresh constructor for each type parameter.
+   * These constructors are used as type variables.
+   *)
   let ts = open_binds tbs in
-  (* print_endline "ts";
-  print_endline (String.concat ", " (List.map string_of_typ ts)); *)
+
+  (* Extract the constructor for each type variable and create a type variable environment *)
   let varSet = List.map as_con_var ts |> ConSet.of_list in
   let varEnv = List.fold_left2 (fun acc t tb ->
     let c = as_con_var t in
+
+    (* Substitute type variables with these constructors *)
     let t_bound = open_ ts tb.bound in
 
     (* Check that type parameters have closed bounds *)
     if mentions t_bound varSet then
       fail_open_bound c t_bound;
 
-    let info = { t; t_bound } in
-    ConEnv.add c info acc
+    ConEnv.add c { t; t_bound } acc
   ) ConEnv.empty ts tbs in
 
-  (* Initialize lower and upper bounds for type parameters *)
+  (* Initialize lower and upper bounds for type variables *)
   let l = ConSet.fold (fun c l -> ConEnv.add c Non l) varSet ConEnv.empty in
   let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) varSet ConEnv.empty in
+
+  (* Fix the bound of the scope type parameter, if it is there *)
   let l, u = match scope_opt, tbs with
     | Some c, {sort = Scope; _}::tbs ->
       let c0 = as_con_var (List.hd ts) in
-      (* let () = print_endline "scope instantiation" in
-      let () = print_endline (Printf.sprintf "c: %s, c0: %s" (string_of_typ c) (Cons.name c0)) in *)
       ConEnv.add c0 c l,
       ConEnv.add c0 c u
     | None, {sort = Scope; _}::tbs ->
@@ -411,13 +415,7 @@ let bi_match_subs scope_opt tbs typ_opt =
       u
   in
 
-  let variances =
-    match typ_opt with
-    | Some t ->
-      Variance.variances varSet (open_ ts t)
-    | None ->
-      ConSet.fold (fun c ce -> ConEnv.add c Variance.Bivariant ce) varSet ConEnv.empty
-  in
+  let variances = Variance.variances varSet (Option.fold ~none:Any ~some:(open_ ts) typ_opt) in
   
   let ctx = { varSet; varEnv; bounds = (l, u); variances } in
 
