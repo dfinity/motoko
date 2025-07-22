@@ -281,6 +281,14 @@ let process_files files : unit =
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
+    (match module_.CustomModule.wit_file_content with
+    | Some wit_content ->
+      let wit_file = Filename.remove_extension !out_file ^ ".wit" in
+      let oc_wit = open_out wit_file in
+      output_string oc_wit wit_content; close_out oc_wit
+    | None -> ()
+    );
+
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_

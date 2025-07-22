@@ -4,6 +4,11 @@ open Source
 open Ir
 open Wasm.Sexpr
 
+type arg_data = {
+  arg_name : string;
+  arg_type : Type.typ;
+}
+
 let ($$) head inner = Node (head, inner)
 
 let id i = Atom i
@@ -17,6 +22,7 @@ let the_env : int ref  = ref 0
 let sent_env new_env =
   the_env := new_env
 
+
 let starts_with ~prefix s =
   let prefix_len = String.length prefix in
   String.length s >= prefix_len &&
@@ -26,7 +32,7 @@ let prog_fun add_import p =
 let rec exp e = match e.it with
   | VarE (m, i)         -> (if m = Var then "VarE!" else "VarE") $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
-  | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
+  | PrimE (p, es)       -> "PrimE"   $$ [prim e es p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
@@ -71,7 +77,7 @@ and args = function
 
 and arg a = Atom a.it
 
-and prim = function
+and prim e es = function
   | CallPrim ts       -> "CallPrim" $$ List.map typ ts
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
@@ -122,10 +128,20 @@ and prim = function
   | OtherPrim maybe_component when starts_with ~prefix:"component:" maybe_component -> 
       (* Parse the component name and function name *)
       let parts = String.split_on_char ':' maybe_component in
-      (* parts[0] == "wit", parts[1] == <component-name>, parts[2] = <function-name> *)
+      (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
       let component_name = List.nth parts 1 in
-      let function_name = List.nth parts 2 in 
-      add_import component_name function_name;
+      let function_name = List.nth parts 2 in
+      let string_of_arg arg =
+        match arg.it with
+        | VarE (_, i) -> i
+        | _ -> failwith "Expected VarE for argument name" in
+
+      let function_args = List.map (fun arg -> {arg_name=(string_of_arg arg); arg_type=arg.note.Note.typ}) es in
+      (*let function_types = List.map (fun arg -> arg.note.Note.typ) es in  *)
+
+      let return_type = e.note.Note.typ in
+      (* Add the import to the component *)
+      add_import component_name function_name function_args return_type;
       "imported component: " $$ [Atom maybe_component]
   | OtherPrim s       -> "OtherPrim non-component" $$ [Atom s]
   (* CPS primitives *)

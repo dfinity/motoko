@@ -1010,6 +1010,7 @@ let module_ s =
     candid;
     source_mapping_url = None;
     wasm_features = wasm_features;
+    wit_file_content = None;
   }
 
 
