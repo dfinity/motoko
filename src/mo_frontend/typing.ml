@@ -3397,7 +3397,7 @@ and gather_typ_id env scope id : Scope.t =
     error_duplicate env "type " id;
   (* NOTE: If we decide to require specifying the arity and bounds of
   type constructors on type pattern fields we need to record them here *)
-  let pre_k = T.Abs ([], T.Pre) in
+  let pre_k = T.Def ([], T.Pre) in
   let c = Cons.fresh id.it pre_k in
   { scope with
     typ_env = T.Env.add id.it c scope.typ_env;
