@@ -5,7 +5,7 @@ to argument of type
 to produce result of type
   ()
 because no instantiation of A makes
-  ()  <:  A -> async ()
+  ()  <:  (g : A -> async ())
 pretty_scoped.mo:4.1-4.45: type error [M0098], cannot implicitly instantiate function of type
   <A, B>(g : (A, B) -> async ()) -> ()
 to argument of type
@@ -13,7 +13,7 @@ to argument of type
 to produce result of type
   ()
 because no instantiation of A, B makes
-  ()  <:  (A, B) -> async ()
+  ()  <:  (g : (A, B) -> async ())
 pretty_scoped.mo:6.1-6.50: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : (A, B, C) -> async ()) -> ()
 to argument of type
@@ -21,7 +21,7 @@ to argument of type
 to produce result of type
   ()
 because no instantiation of A, B, C makes
-  ()  <:  (A, B, C) -> async ()
+  ()  <:  (g : (A, B, C) -> async ())
 pretty_scoped.mo:8.1-8.55: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : <D>(A, B, C, D) -> async ()) -> ()
 to argument of type
@@ -29,10 +29,10 @@ to argument of type
 to produce result of type
   ()
 because no instantiation of A, B, C makes
-  ()  <:  <D>(A, B, C, D) -> async ()
+  ()  <:  (g : <D>(A, B, C, D) -> async ())
 pretty_scoped.mo:10.1-10.69: type error [M0098], cannot implicitly instantiate function of type
   <A, B, C>(g : <D <: C, E <: D>(A, B, C, D, E) -> async ()) -> ()
 to argument of type
   ()
 because no instantiation of A, B, C makes
-  ()  <:  <D <: C, E <: D>(A, B, C, D, E) -> async ()
+  ()  <:  (g : <D <: C, E <: D>(A, B, C, D, E) -> async ())

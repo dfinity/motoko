@@ -27,8 +27,8 @@ exception Bimatch of string
 type var_info = {
   (* Type.Con for this type variable *)
   t : typ;
-  (* Bound of this type variable; used just for validation *)
-  t_bound : typ;
+  (* Input type parameter; used for validation *)
+  bind : bind;
 }
 
 type ctx = {
@@ -36,7 +36,7 @@ type ctx = {
   varSet : ConSet.t;
   (* Type variables info *)
   varEnv : var_info ConEnv.t;
-  (* List that preserve the order from the input *)
+  (* List that preserves the order of input type parameters *)
   varList : con list;
   (* Lower and upper bounds for type variables *)
   bounds : typ ConEnv.t * typ ConEnv.t;
@@ -79,12 +79,16 @@ let is_unsolved_var ctx t =
   | Con (c, []) -> ConSet.mem c ctx.varSet
   | _ -> false
 
-(* Check instantiation `ts` satisfies bounds `tbs` and all the pairwise sub-typing relations in `subs`;
+(* Check partial instantiation `env` satisfies bounds and all the pairwise sub-typing relations in `(ts1, ts2)`;
    used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env ts1 ts2 =
   List.length (ConEnv.keys ctx.varEnv) = List.length (ConEnv.keys env) &&
-  (* TODO: we cannot open_ as we might not have all tvars... *)
-  ConEnv.for_all (fun c { t; t_bound } -> is_unsolved_var remaining t || sub t t_bound) ctx.varEnv &&
+  ConEnv.for_all (fun c { t; bind } ->
+    (* NB: bounds are closed, no need to substitute *)
+    (* if not (is_unsolved_var remaining t ) && bind.bound <> Any then
+      print_endline (Printf.sprintf "c: %s, t: %s, bound: %s" (Cons.name c) (string_of_typ t) (string_of_typ bind.bound)); *)
+      (* print_endline (Printf.sprintf "c: %s, t: %s, bound: %s" (Cons.name c) (ConEnv.find_opt c env |> Option.fold ~none:"" ~some:string_of_typ) (string_of_typ bind.bound)); *)
+    is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.varEnv &&
   List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2
 
 let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
@@ -390,14 +394,12 @@ let bi_match_subs scope_opt tbs typ_opt =
   let varEnv = List.fold_left2 (fun acc t tb ->
     let c = as_con_var t in
 
-    (* Substitute type variables with these constructors *)
-    let t_bound = open_ ts tb.bound in
-
     (* Check that type parameters have closed bounds *)
-    if mentions t_bound varSet then
-      fail_open_bound c t_bound;
+    let bound = open_ ts tb.bound in
+    if mentions bound varSet then
+      fail_open_bound c bound;
 
-    ConEnv.add c { t; t_bound } acc
+    ConEnv.add c { t; bind = tb } acc
   ) ConEnv.empty ts tbs in
 
   (* Initialize lower and upper bounds for type variables *)
@@ -450,7 +452,7 @@ let fail_when_types_are_not_closed remaining typs = match remaining with
   | None -> ()
   | Some remaining ->
     let allCons = Type.cons_typs typs in
-    let openConSet = ConSet.inter (remaining.varSet) allCons in
+    let openConSet = ConSet.inter remaining.varSet allCons in
     if not (ConSet.is_empty openConSet) then begin
       let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements openConSet))) in
       raise (Bimatch message)

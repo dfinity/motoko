@@ -2224,8 +2224,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           | None -> target_type, (subs, (exp, target_type) :: deferred, to_fix) (* deferred *)
         in
         let rec decompose env exp target_type acc =
-          match exp.it, target_type with
-          | _, T.Named (_, t) -> decompose env exp t acc (* unwrap named type *)
+          match exp.it, T.promote target_type with
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
             let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
             let target_type' = T.Tup ts' in
@@ -2276,7 +2275,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
             let typ' = T.open_ r1.ts typ in
-            match exp.it, typ' with
+            match exp.it, T.promote typ' with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
               (* Check that all type variables in the function input type are fixed, fail otherwise *)
               fail_when_types_are_not_closed r1.remaining ts1;
