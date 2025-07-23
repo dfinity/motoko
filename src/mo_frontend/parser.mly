@@ -946,7 +946,7 @@ obj_or_class_dec :
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock eo { s with note = persistent } id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock eo { s with note = persistent } None t efs @? at $sloc
+        else objblock eo { s with note = persistent } id t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt ds=obj_sort_opt CLASS
