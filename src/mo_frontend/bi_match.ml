@@ -85,9 +85,6 @@ let verify_inst ~ctx ~remaining env ts1 ts2 =
   List.length (ConEnv.keys ctx.varEnv) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
-    (* if not (is_unsolved_var remaining t ) && bind.bound <> Any then
-      print_endline (Printf.sprintf "c: %s, t: %s, bound: %s" (Cons.name c) (string_of_typ t) (string_of_typ bind.bound)); *)
-      (* print_endline (Printf.sprintf "c: %s, t: %s, bound: %s" (Cons.name c) (ConEnv.find_opt c env |> Option.fold ~none:"" ~some:string_of_typ) (string_of_typ bind.bound)); *)
     is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.varEnv &&
   List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2
 
@@ -303,12 +300,10 @@ let make_bi_match_list ctx =
   bi_match_list bi_match_typ
 
 let solve (ctx : ctx) (ts1, ts2) needs_another_round =
-  (* print_endline "subs"; *)
-  (* List.iter (fun (t1, t2) -> print_endline (Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2))) subs; *)
-
-  (* Find unused type variables *)
-  (* TODO: dont calculate when not needs_another_round *)
-  let unused =
+  (* Find unused type variables to defer solving to the next round.
+   * This is only needed if there is a 2nd round.
+   *)
+  let unused = if not needs_another_round then ConSet.empty else
     let cons1 = Type.cons_typs ts1 in
     let cons2 = Type.cons_typs ts2 in
     let used = ConSet.union cons1 cons2
@@ -316,30 +311,18 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
     ConSet.diff ctx.varSet used
   in
 
-  (* print_endline "unused";
-  print_endline (String.concat ", " (List.map Cons.name (ConSet.elements unused))); *)
-
   let bi_match_list = make_bi_match_list ctx in
   match
-    (* TODO: bounds can be empty, problem? *)
     bi_match_list (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
   | Some (l, u) ->
-    (* print_endline "l";
-    print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings l)));
-    print_endline "u";
-    print_endline (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings u))); *)
-
     let unsolved = ref ConSet.empty in
     let env = l |> ConEnv.mapi (fun c lb ->
       let ub = ConEnv.find c u in
-      (* TODO: create a test that fixes an invariant variable in the 1st round and then throws on this unused variable in the 2nd round
-      We need to exclude unused in the 1st round (only if there is a 2nd round!) and exclude fixed in the 2nd round *)
-      (* print_endline (Printf.sprintf "c: %s, c bound: %s, lb: %s, ub: %s" (Cons.name c) (string_of_typ (bound c)) (string_of_typ lb) (string_of_typ ub)); *)
       if eq lb ub then
         ub
       else if sub lb ub then
-        if needs_another_round && ConSet.mem c unused then begin
+        if ConSet.mem c unused then begin
           (* Defer solving the type parameter to the next round *)
           unsolved := ConSet.add c !unsolved;
           (ConEnv.find c ctx.varEnv).t
