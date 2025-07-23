@@ -115,7 +115,7 @@ let fail_over_constrained lb c ub =
     display_constraint (lb, c, ub)
     display_rel (lb, "</:", ub)))
 
-let make_bi_match_list ctx =
+let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.varSet in
   
   let rec bi_match_list p rel eq inst any xs1 xs2 =
@@ -299,9 +299,12 @@ let make_bi_match_list ctx =
   in
   bi_match_list bi_match_typ
 
-let solve (ctx : ctx) (ts1, ts2) needs_another_round =
+(* Solves the given constraints in the given context.
+ * Unused type variables can be deferred to the next round.
+ *)
+let solve ctx (ts1, ts2) needs_another_round =
   (* Find unused type variables to defer solving to the next round.
-   * This is only needed if there is a 2nd round.
+   * Only needed if there is another round.
    *)
   let unused = if not needs_another_round then ConSet.empty else
     let cons1 = Type.cons_typs ts1 in
@@ -311,9 +314,8 @@ let solve (ctx : ctx) (ts1, ts2) needs_another_round =
     ConSet.diff ctx.varSet used
   in
 
-  let bi_match_list = make_bi_match_list ctx in
   match
-    bi_match_list (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
+    bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
   | Some (l, u) ->
     let unsolved = ref ConSet.empty in
@@ -402,8 +404,12 @@ let bi_match_subs scope_opt tbs typ_opt =
       u
   in
 
-  let variances = Variance.variances varSet (Option.fold ~none:Any ~some:(open_ ts) typ_opt) in
-  
+  (* Compute the variances using the optional return type.
+   * Only necessary when the return type is not part of the sub-typing constraints.
+   *)
+  let variances = Variance.variances varSet
+    (Option.fold ~none:Any ~some:(open_ ts) typ_opt)
+  in
   let ctx = { varSet; varEnv; varList = cs; bounds = (l, u); variances } in
 
   fun subs needs_another_round ->
