@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str::Chars;
+use std::time::Duration;
 
 // Canister Management Commands:
 // 1. install <canister_id> <wasm_path> <init_args>
@@ -296,8 +297,24 @@ impl TestCommand {
         let wasm_bytes = Self::read_wasm_file(wasm_path)?;
         let args = Self::parse_args(init_args)?;
         let canister_principal = Self::principal_from_text(canister_id)?;
-        server.install_canister(canister_principal, wasm_bytes, args, None);
-        println!("ingress Completed: Reply: 0x4449444c0000");
+        // server.install_canister(canister_principal, wasm_bytes, args, None);
+        // Use the call_candid_as method instead of install_canister because install_canister unwraps() and
+        // for some of our tests this leads to a panic.
+        // Therefore we need to catch the error and print it.
+        let res: Result<(), _> = call_candid_as(
+            server,
+            Principal::management_canister(),
+            RawEffectivePrincipal::CanisterId(canister_principal.as_slice().to_vec()),
+            Principal::anonymous(),
+            "install_code",
+            (InstallCodeArgument {
+                mode: CanisterInstallModeV2::Install,
+                canister_id: canister_principal,
+                wasm_module: wasm_bytes,
+                arg: args,
+            },),
+        );
+        println!("{}", self.handle_result_and_get_response(res));
         Ok(())
     }
 
@@ -420,12 +437,30 @@ impl TestCommand {
                 let _ = server.start_canister(principal, None);
                 Ok(vec![0x44, 0x49, 0x44, 0x4c, 0x00, 0x00])
             }
-            _ => server.update_call(
-                canister_principal,
-                Principal::anonymous(),
-                method_name,
-                payload,
-            ),
+            _ => {
+                // Certain tests are of form await (with_timeout = X) and we need to wait
+                // for the call either to be completed or to timeout.
+                // We do this by submitting the call and then polling its status.
+                let res = server
+                    .submit_call(
+                        canister_principal,
+                        Principal::anonymous(),
+                        method_name,
+                        payload,
+                    )
+                    .map_err(|e| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Failed to submit call: {:?}", e),
+                        )
+                    })?;
+                while server.ingress_status(res.clone()).is_none() {
+                    server.tick();
+                    server.advance_time(Duration::from_secs(1));
+                }
+                // Safe to unwrap because we know that the status is not none.
+                server.ingress_status(res.clone()).unwrap()
+            }
         };
 
         println!("{}", self.handle_result_and_get_response(res));
