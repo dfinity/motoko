@@ -63,6 +63,7 @@ type List<T> = {
 };
 module List {
   public func filter<T>(_list : List<T>, _predicate : T -> Bool) : List<T> = _list;
+  public func map<T, R>(_list : List<T>, _f : T -> R) : List<R> = fail();
   public func filterMap<T, R>(_list : List<T>, _f : T -> ?R) : List<R> = fail();
   public func find<T>(_list : List<T>, _predicate : T -> Bool) : ?T = null;
   public func findIndex<T>(_list : List<T>, _predicate : T -> Bool) : ?Nat = null;
@@ -74,6 +75,7 @@ module List {
 // Mock functions for pure List module
 module PureList {
   public func forEach<T>(_list : PureList<T>, _f : T -> ()) {};
+  public func map<T, R>(_list : PureList<T>, _f : T -> R) : PureList<R> = fail();
   public func filter<T>(_list : PureList<T>, _predicate : T -> Bool) : PureList<T> = fail();
   public func partition<T>(_list : PureList<T>, _predicate : T -> Bool) : (PureList<T>, PureList<T>) = (fail(), fail());
   public func find<T>(_list : PureList<T>, _predicate : T -> Bool) : ?T = null;
@@ -160,6 +162,7 @@ module Set {
   public func retainAll<T>(_set : Set<T>, _compare : Compare<T>, _predicate : T -> Bool) : Bool = true;
   public func forEach<T>(_set : Set<T>, _f : T -> ()) {};
   public func filter<T>(_set : Set<T>, _compare : Compare<T>, _predicate : T -> Bool) : Set<T> = _set;
+  public func map<T, R>(_set : Set<T>, _f : T -> R) : Set<R> = fail();
   public func filterMap<T, R>(_set : Set<T>, _compare : Compare<R>, _f : T -> ?R) : Set<R> = fail();
   public func all<T>(_set : Set<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_set : Set<T>, _predicate : T -> Bool) : Bool = false;
@@ -178,6 +181,7 @@ module PureSet {
 
   public func forEach<T>(_set : PureSet<T>, _f : T -> ()) {};
   public func filter<T>(_set : PureSet<T>, _compare : Compare<T>, _predicate : T -> Bool) : PureSet<T> = _set;
+  public func map<T, R>(_set : PureSet<T>, _f : T -> R) : PureSet<R> = fail();
   public func filterMap<T, R>(_set : PureSet<T>, _compare : Compare<R>, _f : T -> ?R) : PureSet<R> = fail();
   public func all<T>(_set : PureSet<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_set : PureSet<T>, _predicate : T -> Bool) : Bool = false;
@@ -210,6 +214,7 @@ module Map {
     var root : Node<K, V>;
     var size : Nat;
   };
+  public func map<K, V, R>(_map : Map<K, V>, _f : (K, V) -> R) : Map<K, R> = fail();
   public func forEach<K, V>(_map : Map<K, V>, _f : (K, V) -> ()) {};
   public func filter<K, V>(_map : Map<K, V>, _compare : Compare<K>, _predicate : (K, V) -> Bool) : Map<K, V> = _map;
   public func all<K, V>(_map : Map<K, V>, _predicate : (K, V) -> Bool) : Bool = true;
@@ -233,6 +238,7 @@ module PureMap {
   public func any<K, V>(_map : PureMap<K, V>, _predicate : (K, V) -> Bool) : Bool = false;
   public func forEach<K, V>(_map : PureMap<K, V>, _f : (K, V) -> ()) {};
   public func filter<K, V>(_map : PureMap<K, V>, _compare : Compare<K>, _predicate : (K, V) -> Bool) : PureMap<K, V> = _map;
+  public func map<K, V, R>(_map : PureMap<K, V>, _f : (K, V) -> R) : PureMap<K, R> = fail();
   public func toText<K, V>(_map : PureMap<K, V>, _keyToText : K -> Text, _valueToText : V -> Text) : Text = "";
 };
 
@@ -297,16 +303,20 @@ let _ = Array.all(ar, func x = x > 0);
 let _ = Array.any(ar, func x = x > 3);
 
 // VarArray module explicit type instantiation tests
-let _ = VarArray.tabulate<Nat>(4, func i = i * 2);
+let _ = VarArray.tabulate<Int>(4, func i = i * 2);
+let _ : [var Int] = VarArray.tabulate(4, func i = i * 2);
 let _ = VarArray.find(varAr, func x = x > 8);
 let _ = VarArray.findIndex([var 'A', 'B', 'C'], func x = x == 'C');
 let _ = VarArray.forEach(varAr, func(x) {});
 let _ = VarArray.map<Nat, Int>(varAr, func x = x * 2);
+let _ : [var Int] = VarArray.map(varAr, func x = x * 2);
 let _ = VarArray.mapToImmutable(varAr, func x = x * 2);
 let _ = VarArray.mapInPlace(varAr, func x = x * 3);
 let _ = VarArray.filter(varAr, func x = x % 2 == 0);
-let _ = VarArray.mapEntries<Nat, Nat>(varAr, func(x, i) = i * x);
+let _ = VarArray.mapEntries<Nat, Int>(varAr, func(x, i) = i * x);
+let _ : [var Int] = VarArray.mapEntries(varAr, func(x, i) = i * x);
 let _ = VarArray.flatMap<Nat, Int>(varAr, func x = [x, -x]);
+let _ : [var Int] = VarArray.flatMap(varAr, func x = [x, -x]);
 let _ = VarArray.foldRight(varAr, "", func(x, acc) = natToText(x) # acc);
 let _ = VarArray.all(varAr, func x = x > 0);
 let _ = VarArray.any(varAr, func x = x > 3);
@@ -331,7 +341,10 @@ let _ = Iter.unfold(1, func x = if (x <= 3) ?(x, x + 1) else null);
 
 // List module explicit type instantiation tests
 let _ = List.filter(list, func x = x % 2 == 0);
-let _ = List.filterMap<Nat, Nat>(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let _ = List.map<Nat, Int>(list, func x = x * 2);
+let _ : List<Int> = List.map(list, func x = x * 2);
+let _ = List.filterMap<Nat, Int>(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let _ : List<Int> = List.filterMap(list, func x = if (x % 2 == 0) ?(x * 2) else null);
 let _ = List.find(list, func x = x > 8);
 let _ = List.findIndex(list, func i = i % 2 == 0);
 let _ = List.findLastIndex(list, func i = i % 2 == 0);
@@ -340,6 +353,7 @@ let _ = List.all(list, func x = x > 1);
 // pure List module explicit type instantiation tests
 let _ = PureList.forEach(pureList, func n = ());
 let _ = PureList.filter(pureList, func n = n != 1);
+let _ = PureList.map(pureList, func n = n * 2);
 let _ = PureList.partition(pureList, func n = n != 1);
 let _ = PureList.find(pureList, func n = n > 1);
 let _ = PureList.findIndex(pureList, func n = n > 1);
@@ -351,7 +365,8 @@ let _ = PureList.tabulate(3, func n = n * 2);
 let _ = Queue.all(queue, func x = x % 2 == 0);
 let _ = Queue.any(queue, func x = x > 2);
 let _ = Queue.forEach(queue, func _ {});
-let _ = Queue.map<Nat, Nat>(queue, func x = x * 2);
+let _ = Queue.map<Nat, Int>(queue, func x = x * 2);
+let _ : Queue<Int> = Queue.map(queue, func x = x * 2);
 let _ = Queue.filter(queue, func x = x % 2 == 0);
 
 // pure Queue module explicit type instantiation tests
@@ -363,19 +378,29 @@ let _ = PureQueue.map(pureQueue, func n = n * 2);
 let _ = PureQueue.filterMap(pureQueue, func n = if (n % 2 == 0) ?n else null);
 
 // Stack module explicit type instantiation tests
-let _ = Stack.tabulate<Nat>(3, func i = 2 * i);
+let _ = Stack.tabulate<Int>(3, func i = 2 * i);
+let _ : Stack<Int> = Stack.tabulate(3, func i = 2 * i);
 let _ = Stack.all(stack, func n = n % 2 == 0);
 let _ = Stack.any(stack, func n = n == 2);
 let _ = Stack.forEach(stack, func _ {});
-let _ = Stack.map<Nat, Nat>(stack, func n = 2 * n);
+let _ = Stack.map<Nat, Int>(stack, func n = 2 * n);
+let _ : Stack<Int> = Stack.map(stack, func n = 2 * n);
 let _ = Stack.filter(stack, func n = n % 2 == 0);
-let _ = Stack.filterMap<Nat, Nat>(stack, func n = if (n % 2 == 0) ?n else null);
+let _ = Stack.filterMap<Nat, Int>(stack, func n = if (n % 2 == 0) ?n else null);
+let _ : Stack<Int> = Stack.filterMap(stack, func n = if (n % 2 == 0) ?n else null);
 
 // Set module explicit type instantiation tests
 let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
 let _ = Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
+let _ = Set.map<Nat, Text>(set, func n = natToText(n));
+let _ : Set<Text> = Set.map(set, func n = natToText(n));
 let _ = Set.filterMap<Nat, Text>(
+  set,
+  textCompare,
+  func n = if (n % 2 == 0) ?natToText(n) else null,
+);
+let _ : Set<Text> = Set.filterMap(
   set,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
@@ -386,17 +411,27 @@ let _ = Set.any(set, func n = n > 5);
 // pure Set module explicit type instantiation tests
 let _ = PureSet.forEach(pureSet, func _ {});
 let _ = PureSet.filter(pureSet, natCompare, func n = n % 2 == 0);
+let _ = PureSet.map<Nat, Text>(pureSet, func n = natToText(n));
+// let _ : PureSet<Text> = PureSet.map(pureSet, func n = natToText(n));
 let _ = PureSet.filterMap<Nat, Text>(
   pureSet,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
+// TODO: BUG
+// let _ : PureSet<Text> = PureSet.filterMap(
+//   pureSet,
+//   textCompare,
+//   func n = if (n % 2 == 0) ?natToText(n) else null,
+// );
 let _ = PureSet.all(pureSet, func n = n < 10);
 let _ = PureSet.any(pureSet, func n = n > 5);
 
 // Map module explicit type instantiation tests
 let _ = Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
+let _ = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
+let _ : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
@@ -405,6 +440,8 @@ let _ = Map.toText(mapInstance, natToText, func t = t);
 let _ = PureMap.all(pureMap, func(k, v) = v == natToText(k));
 let _ = PureMap.any(pureMap, func(k, v) = k >= 0);
 let _ = PureMap.forEach(pureMap, func(key, value) {});
+let _ = PureMap.map<Nat, Text, Text>(pureMap, func(key, value) = natToText(key));
+// let _ : PureMap<Nat, Text> = PureMap.map(pureMap, func(key, value) = natToText(key));
 let _ = PureMap.filter(
   pureMap,
   natCompare,

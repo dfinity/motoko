@@ -1,3 +1,5 @@
+import Prim "mo:prim";
+
 func mapMono<T>(ar : [T], _f : T -> T) : [T] = ar;
 func mapMonoTuple<T>(ar : [T], _t : (T -> T, T -> T)) : [T] = ar;
 func filter<T>(array : [T], _f : T -> Bool) : [T] = array;
@@ -26,7 +28,25 @@ let _ = map(ar, func x = debug_show x # "!"); // O=Text
 let _ = mapAlt(ar, func x = #inj1 x); // O=Alt<Nat, None>
 let _ = mapAlt(ar, func x = #inj2 x); // O=Alt<None, Nat>
 
-let _ = mapAlt(ar, func x = if (x > 1) { #inj1 x } else { #inj2() }); // O=Alt<Nat, ()>
+
+func fail<T>() : T = Prim.trap("fail");
+
+type Compare<T> = (T, T) -> { #less; #equal; #greater };
+
+type Foo1<T> = { var x : T };
+type Foo2<T> = { x : T };
+
+func foo1<T, R>(_ : Foo1<T>, _ : Compare<R>, _ : T -> R) : Foo1<R> = fail();
+func foo2<T, R>(_ : Foo2<T>, _ : Compare<R>, _ : T -> R) : Foo2<R> = fail();
+
+let f1 : Foo1<Nat> = { var x = 1 };
+let f2 : Foo2<Nat> = { x = 1 };
+
+func textCompare(_a : Text, _b : Text) : { #less; #equal; #greater } = #equal;
+func natToText(_n : Nat) : Text = "";
+
+let _ : Foo1<Text> = foo1(f1, textCompare, func x = natToText(x) # "!");
+let _ = foo2(f2, textCompare, func x = natToText(x) # "!");
 
 //SKIP comp
 //SKIP run
