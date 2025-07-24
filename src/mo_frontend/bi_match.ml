@@ -45,6 +45,8 @@ type ctx = {
   bounds : typ ConEnv.t * typ ConEnv.t;
   (* Variances for type variables *)
   variances : Variance.t ConEnv.t;
+  (* Optional subtyping constraints to verify the solution in the last round *)
+  to_verify : typ list * typ list;
 }
 
 let empty_ctx = {
@@ -53,6 +55,7 @@ let empty_ctx = {
   varList = [];
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
+  to_verify = ([], []);
 }
 
 let is_ctx_empty ctx = ConSet.is_empty ctx.varSet
@@ -87,13 +90,12 @@ let is_unsolved_var ctx t =
 
 (* Check partial instantiation `env` satisfies bounds and all the pairwise sub-typing relations in `(ts1, ts2)`;
    used to sanity check inferred instantiations *)
-let verify_inst ~ctx ~remaining env ts1 ts2 =
+let verify_inst ~ctx ~remaining env (ts1, ts2) =
   List.length (ConEnv.keys ctx.varEnv) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
-    is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.varEnv
-  (* TODO: check it after all rounds *)
-  (* && List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2 *)
+    is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.varEnv &&
+  List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2
 
 let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 
@@ -318,7 +320,7 @@ let solve ctx (ts1, ts2) deferred_typs =
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
   end;
   let no_another_round = deferred_typs = [] in
-  let to_defer = if no_another_round then ConSet.empty else
+  let to_defer, defer_verify = if no_another_round then (ConSet.empty, false) else
     (* Find unused type variables to defer solving to the next round.
      * Only needed if there is another round.
      * Unused type variables are always deferred to the next round since there are no constraints that would help us solve them now.
@@ -344,14 +346,15 @@ let solve ctx (ts1, ts2) deferred_typs =
       ) (ConSet.empty, ConSet.empty) deferred_typs
     in
     let must_fix, can_defer = ConSet.inter must_fix ctx.varSet, ConSet.inter can_defer ctx.varSet in
-    let to_defer = ConSet.union unused (ConSet.diff can_defer must_fix) in
+    let can_defer = ConSet.diff can_defer must_fix in
+    let to_defer = ConSet.union unused can_defer in
     if debug then begin
       print_endline (Printf.sprintf "unused : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unused))));
       print_endline (Printf.sprintf "can_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements can_defer))));
       print_endline (Printf.sprintf "must_fix : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_fix))));
       print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))));
     end;
-    to_defer
+    to_defer, not (ConSet.is_empty can_defer)
   in
   match
     bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
@@ -389,9 +392,14 @@ let solve ctx (ts1, ts2) deferred_typs =
       bounds = (
         ConEnv.filterDom varSet l,
         ConEnv.filterDom varSet u);
-      variances = ConEnv.filterDom varSet ctx.variances
+      variances = ConEnv.filterDom varSet ctx.variances;
+      to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
-    if verify_inst ~ctx ~remaining env ts1 ts2 then
+    let verify_now = if defer_verify then ctx.to_verify else
+      let dts1, dts2 = ctx.to_verify in
+      (dts1 @ ts1, dts2 @ ts2)
+    in
+    if verify_inst ~ctx ~remaining env verify_now then
       env, if is_ctx_empty remaining then None else Some remaining
     else begin
       let instantiation = ConEnv.bindings env
@@ -457,7 +465,7 @@ let bi_match_subs scope_opt tbs typ_opt =
   let variances = Variance.variances varSet
     (Option.fold ~none:Any ~some:(open_ ts) typ_opt)
   in
-  let ctx = { varSet; varEnv; varList = cs; bounds = (l, u); variances } in
+  let ctx = { varSet; varEnv; varList = cs; bounds = (l, u); variances; to_verify = ([], [])} in
 
   fun subs deferred_typs ->
     let deferred_typs = List.map (open_ ts) deferred_typs in
