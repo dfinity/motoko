@@ -62,8 +62,8 @@ type result = {
  Solving can be done in two rounds:
  - Call the solver with the current set of sub-type problems to get the partial solution
  - Use the result to substitute solved type parameters (might contain remaining type variables)
- - Call the solver again with the remaining sub-type problems (make sure the solved type parameters are substituted!)
- - Use the `finalize` function to get the final solution and the substitution of the remaining type variables from the 1st round
+ - Call the `finalize` function with the remaining sub-type problems (make sure the solved type parameters are substituted!)
+   to get the final solution and the substitution of the remaining type variables from the 1st round
  *)
 val bi_match_subs :
   scope option ->
@@ -73,7 +73,9 @@ val bi_match_subs :
   typ option ->
   (* sub-type problems mentioning tbs either on left or right, but never both sides *)
   (typ * typ) list ->
-  (* types of deferred sub-expressions determining polarities *)
+  (* types deferred until the next round;
+   * types containing tbs that are part of the subtype problems in the 2nd round
+   *)
   typ list ->
   result (* raises Bimatch *)
 

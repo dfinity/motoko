@@ -2194,8 +2194,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         However, some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
         Idea:
         - Decompose the argument into sub-expressions and defer inference for those that would fail.
-        - Find the instantiation using the inferred sub-expressions.
-        - Substitute and `check_exp` the remaining sub-expressions.
+        - Find a partial instantiation first using the inferred sub-expressions.
+        - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
         let rec cannot_infer_pat pat =
@@ -2272,37 +2272,26 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* In case of an error, substitute for better error message *)
         err_subst := T.open_ r1.ts;
         
-        (* When there are no deferred sub-expressions, we have the full solution
-          TODO: Not really, we would be done when every variable is fixed, now we skip the underconstrained variant ones in the 1st round.
-         *)
         let to_fix2 = ref [] in
         let ts, subst_env =
-
-          (* Prepare for the 2nd round: substitute and check the deferred sub-expressions *)
+          (* Prepare subtyping constraints for the 2nd round *)
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
-            let typ' = T.open_ r1.ts typ in
-            match exp.it, T.promote typ' with
+            let typ = T.open_ r1.ts typ in
+            match exp.it, T.promote typ with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
               (* Check that all type variables in the function input type are fixed, fail otherwise *)
               fail_when_types_are_not_closed r1.remaining ts1;
-
-              (* TODO: It would be nice to allow open types in parameters.
-                IDEA: do check_func_step later, after the 2nd round
-               *)
               (* Check the function input type and prepare for inferring the body *)
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
               to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
-              (actual_t, expected_t)
+              actual_t, expected_t
             | _ ->
-              (* We can try to infer the subexpression, but it will most likely fail *)
-              (infer_exp env exp, typ)
+              (* Future work: Inferring will fail, we could report an explicit error instead *)
+              infer_exp env exp, typ
           ) in
-
-          (* TODO: what happens when every variable is fixed already
-             OR when subs contain only fixed type variables? *)
           (* Include the deferred terms in the instantiation *)
           finalize r1 subs
         in

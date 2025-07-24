@@ -802,7 +802,7 @@ and cons_kind' inTyp k cs =
 
 let cons t = cons' true t ConSet.empty
 let cons_kind k = cons_kind' true k ConSet.empty
-let cons_typs ?(on_typ= Fun.id) ts = List.fold_left (fun acc t -> cons (on_typ t) |> ConSet.union acc) ConSet.empty ts
+let cons_typs ts = List.fold_left (fun acc t -> cons t |> ConSet.union acc) ConSet.empty ts
 
 (* Checking for concrete types *)
 

@@ -36,11 +36,11 @@ type var_info = {
 
 type ctx = {
   (* Set of type variables being solved *)
-  varSet : ConSet.t;
+  var_set : ConSet.t;
   (* Type variables info *)
-  varEnv : var_info ConEnv.t;
+  var_env : var_info ConEnv.t;
   (* List that preserves the order of input type parameters *)
-  varList : con list;
+  var_list : con list;
   (* Lower and upper bounds for type variables *)
   bounds : typ ConEnv.t * typ ConEnv.t;
   (* Variances for type variables *)
@@ -50,15 +50,15 @@ type ctx = {
 }
 
 let empty_ctx = {
-  varSet = ConSet.empty;
-  varEnv = ConEnv.empty;
-  varList = [];
+  var_set = ConSet.empty;
+  var_env = ConEnv.empty;
+  var_list = [];
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
   to_verify = ([], []);
 }
 
-let is_ctx_empty ctx = ConSet.is_empty ctx.varSet
+let is_ctx_empty ctx = ConSet.is_empty ctx.var_set
 
 let string_of_bounds (l, u) =
   String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s <: %s <: %s" (string_of_typ t) (Cons.name c) (string_of_typ (ConEnv.find c u))) (ConEnv.bindings l))
@@ -85,16 +85,16 @@ let as_con_var t = match as_con t with
 
 let is_unsolved_var ctx t =
   match t with
-  | Con (c, []) -> ConSet.mem c ctx.varSet
+  | Con (c, []) -> ConSet.mem c ctx.var_set
   | _ -> false
 
 (* Check partial instantiation `env` satisfies bounds and all the pairwise sub-typing relations in `(ts1, ts2)`;
    used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env (ts1, ts2) =
-  List.length (ConEnv.keys ctx.varEnv) = List.length (ConEnv.keys env) &&
+  List.length (ConEnv.keys ctx.var_env) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
     (* NB: bounds are closed, no need to substitute *)
-    is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.varEnv &&
+    is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.var_env &&
   List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2
 
 let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
@@ -125,7 +125,7 @@ let fail_over_constrained lb c ub =
     display_rel (lb, "</:", ub)))
 
 let bi_match_typs ctx =
-  let flexible c = ConSet.mem c ctx.varSet in
+  let flexible c = ConSet.mem c ctx.var_set in
   
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
@@ -314,7 +314,7 @@ let bi_match_typs ctx =
 let solve ctx (ts1, ts2) deferred_typs =
   if debug then begin
     print_endline "solve ctx";
-    print_endline (Printf.sprintf "varList: %s" (String.concat ", " (List.map Cons.name ctx.varList)));
+    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
     print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
     print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
@@ -330,7 +330,7 @@ let solve ctx (ts1, ts2) deferred_typs =
       let cons2 = cons_typs ts2 in
       let used = ConSet.union cons1 cons2
       in
-      ConSet.diff ctx.varSet used
+      ConSet.diff ctx.var_set used
     in
     (* Defer variables that appear in the bodies of deferred funcs, we don't need to pick a bound for them now, it might restrict the solution.
     * But we must fix variables that appear in the arguments of deferred funcs, because they are needed to infer the bodies.
@@ -345,7 +345,7 @@ let solve ctx (ts1, ts2) deferred_typs =
         (ConSet.union must_fix (cons t), can_defer)
       ) (ConSet.empty, ConSet.empty) deferred_typs
     in
-    let must_fix, can_defer = ConSet.inter must_fix ctx.varSet, ConSet.inter can_defer ctx.varSet in
+    let must_fix, can_defer = ConSet.inter must_fix ctx.var_set, ConSet.inter can_defer ctx.var_set in
     let can_defer = ConSet.diff can_defer must_fix in
     let to_defer = ConSet.union unused can_defer in
     if debug then begin
@@ -372,7 +372,7 @@ let solve ctx (ts1, ts2) deferred_typs =
         if ConSet.mem c to_defer then begin
           (* Defer solving the type parameter to the next round *)
           unsolved := ConSet.add c !unsolved;
-          (ConEnv.find c ctx.varEnv).t
+          (ConEnv.find c ctx.var_env).t
         end else
           choose_under_constrained ctx lb c ub
       else
@@ -383,16 +383,16 @@ let solve ctx (ts1, ts2) deferred_typs =
       print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
       print_endline "";
     end;
-    let varSet = !unsolved in
+    let var_set = !unsolved in
     let (l, u) = ctx.bounds in
     let remaining = {
-      varSet;
-      varEnv = ConEnv.filterDom varSet ctx.varEnv;
-      varList = List.filter (fun c -> ConSet.mem c varSet) ctx.varList;
+      var_set;
+      var_env = ConEnv.filterDom var_set ctx.var_env;
+      var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
       bounds = (
-        ConEnv.filterDom varSet l,
-        ConEnv.filterDom varSet u);
-      variances = ConEnv.filterDom varSet ctx.variances;
+        ConEnv.filterDom var_set l,
+        ConEnv.filterDom var_set u);
+      variances = ConEnv.filterDom var_set ctx.variances;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -416,7 +416,7 @@ let solve ctx (ts1, ts2) deferred_typs =
     in
     raise (Bimatch (Format.asprintf
       "no instantiation of %s makes%s"
-      (String.concat ", " (List.map string_of_con ctx.varList))
+      (String.concat ", " (List.map string_of_con ctx.var_list))
       (String.concat "\nand"
         (List.map (fun (t1, t2) ->
           Format.asprintf "%a" display_rel (t1, "<:", t2))
@@ -430,21 +430,21 @@ let bi_match_subs scope_opt tbs typ_opt =
   let cs = List.map as_con_var ts in
 
   (* Extract the constructor for each type variable and create a type variable environment *)
-  let varSet = ConSet.of_list cs in
-  let varEnv = List.fold_left2 (fun acc t tb ->
+  let var_set = ConSet.of_list cs in
+  let var_env = List.fold_left2 (fun acc t tb ->
     let c = as_con_var t in
 
     (* Check that type parameters have closed bounds *)
     let bound = open_ ts tb.bound in
-    if mentions bound varSet then
+    if mentions bound var_set then
       fail_open_bound c bound;
 
     ConEnv.add c { t; bind = tb } acc
   ) ConEnv.empty ts tbs in
 
   (* Initialize lower and upper bounds for type variables *)
-  let l = ConSet.fold (fun c l -> ConEnv.add c Non l) varSet ConEnv.empty in
-  let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) varSet ConEnv.empty in
+  let l = ConSet.fold (fun c l -> ConEnv.add c Non l) var_set ConEnv.empty in
+  let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) var_set ConEnv.empty in
 
   (* Fix the bound of the scope type parameter, if it is there *)
   let l, u = match scope_opt, tbs with
@@ -462,10 +462,10 @@ let bi_match_subs scope_opt tbs typ_opt =
   (* Compute the variances using the optional return type.
    * Only necessary when the return type is not part of the sub-typing constraints.
    *)
-  let variances = Variance.variances varSet
+  let variances = Variance.variances var_set
     (Option.fold ~none:Any ~some:(open_ ts) typ_opt)
   in
-  let ctx = { varSet; varEnv; varList = cs; bounds = (l, u); variances; to_verify = ([], [])} in
+  let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; to_verify = ([], [])} in
 
   fun subs deferred_typs ->
     let deferred_typs = List.map (open_ ts) deferred_typs in
@@ -497,7 +497,7 @@ let fail_when_types_are_not_closed remaining typs = match remaining with
   | None -> ()
   | Some remaining ->
     let allCons = cons_typs typs in
-    let openConSet = ConSet.inter remaining.varSet allCons in
+    let openConSet = ConSet.inter remaining.var_set allCons in
     if not (ConSet.is_empty openConSet) then begin
       let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements openConSet))) in
       raise (Bimatch message)

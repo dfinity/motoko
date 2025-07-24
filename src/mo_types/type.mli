@@ -230,7 +230,7 @@ val span : typ -> int option
 
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
-val cons_typs : ?on_typ:(typ -> typ) -> typ list -> ConSet.t
+val cons_typs : typ list -> ConSet.t
 
 
 (* Equivalence and Subtyping *)
