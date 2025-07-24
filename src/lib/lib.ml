@@ -361,12 +361,8 @@ struct
     else (xs, [])
 
   let mapi2 f xs ys =
-    let rec loop i l1 l2 =
-      match l1, l2 with
-      | [], [] -> []
-      | x::xs, y::ys -> f i x y :: loop (i+1) xs ys
-      | _ -> failwith "mapi2"
-    in loop 0 xs ys
+    let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
+    List.rev acc
 
   let hd_opt = function
     | x :: _ -> Some x

@@ -49,14 +49,6 @@ exception Bimatch of string
 (* Opaque context type for bi-matching *)
 type ctx
 
-(* Solution to the bi_match problem as a substitution *)
-type result = {
-  (* Solution for all type parameters, remaining type variables are solved to Type.Con and must be solved in the 2nd round *)
-  ts : typ list;
-  (* Remaining context for variables that need to be solved in a second round. When None, all type variables are solved. *)
-  remaining : ctx option;
-}
-
 (* General parameter inference for a conjunction of subtype problems.
 
  Solving can be done in two rounds:
@@ -77,13 +69,25 @@ val bi_match_subs :
    * types containing tbs that are part of the subtype problems in the 2nd round
    *)
   typ list ->
-  result (* raises Bimatch *)
+  (* solution and remaining context:
+   * - Solution for all type parameters, remaining type variables are solved to Type.Con and must be solved in the 2nd round
+   * - Remaining context for variables that need to be solved in the 2nd round. When None, all type variables are solved
+   *)
+  typ list * ctx option (* raises Bimatch *)
 
 (* Finalizes the bi-match solution by solving remaining type variables and combining results *)
-val finalize : result -> (typ * typ) list -> typ list * typ ConEnv.t
+val finalize :
+  (* Solution from the 1st round, used to produce the final combined solution *)
+  typ list ->
+  (* Remaining context for variables to be solved in this 2nd round *)
+  ctx ->
+  (* 2nd round sub-type problems *)
+  (typ * typ) list ->
+  (* Final solution and substitution of the remaining type variables from the 1st round *)
+  typ list * typ ConEnv.t
 
 (* Checks that all types are closed (no unresolved type variables) *)
-val fail_when_types_are_not_closed : ctx option -> typ list -> unit
+val fail_when_types_are_not_closed : ctx -> typ list -> unit
 
 (* Indicates whether debug prints are enabled *)
 val debug : bool

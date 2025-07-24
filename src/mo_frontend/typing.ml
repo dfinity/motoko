@@ -2267,21 +2267,23 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let r1 = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
+        let (ts, remaining) = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
 
         (* In case of an error, substitute for better error message *)
-        err_subst := T.open_ r1.ts;
-        
+        err_subst := T.open_ ts;
+
         let to_fix2 = ref [] in
-        let ts, subst_env =
+        let ts, subst_env = match remaining with
+        | None -> ts, Type.ConEnv.empty
+        | Some remaining ->
           (* Prepare subtyping constraints for the 2nd round *)
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
-            let typ = T.open_ r1.ts typ in
+            let typ = T.open_ ts typ in
             match exp.it, T.promote typ with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
               (* Check that all type variables in the function input type are fixed, fail otherwise *)
-              fail_when_types_are_not_closed r1.remaining ts1;
+              fail_when_types_are_not_closed remaining ts1;
               (* Check the function input type and prepare for inferring the body *)
               let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
@@ -2293,7 +2295,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               infer_exp env exp, typ
           ) in
           (* Include the deferred terms in the instantiation *)
-          finalize r1 subs
+          finalize ts remaining subs
         in
 
         if not env.pre then begin
