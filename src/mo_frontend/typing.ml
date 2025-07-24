@@ -2369,6 +2369,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   match pfs with
   | [] -> (T.Object, List.sort T.compare_field ts), ve
   | { it = TypPF(id); _}::pfs' ->
+    (* NOTE(Christoph): see check_pat_fields *)
     if Option.is_none id.note then
       error env at "M0221" "failed to determine type for type pattern field";
     infer_pat_fields at env pfs' ts ve
@@ -2554,6 +2555,8 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
   | _, {it = TypPF(id); at; _}::pfs' ->
+    (* NOTE(Christoph): We check the note to see if we were able to
+       resolve this type field in the "types-only" pass. *)
     if Option.is_none id.note then
       error env at "M0221" "failed to determine type for type pattern field";
     check_pat_fields env t tfs pfs' ve at
