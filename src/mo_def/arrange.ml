@@ -323,8 +323,6 @@ module Make (Cfg : Config) = struct
       ] @ List.map dec_field dfs)))
 
   and prog p = "Prog" $$ List.map dec p.it
-
-  let print_exp ?(margin=80) e = print_endline (Wasm.Sexpr.to_string margin (exp e))
 end
 
 module type S = module type of Make (Default)

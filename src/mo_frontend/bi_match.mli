@@ -82,3 +82,6 @@ val finalize : result -> (typ * typ) list -> typ list * typ ConEnv.t
 
 (* Checks that all types are closed (no unresolved type variables) *)
 val fail_when_types_are_not_closed : ctx option -> typ list -> unit
+
+(* Indicates whether debug prints are enabled *)
+val debug : bool

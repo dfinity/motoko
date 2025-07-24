@@ -28,7 +28,6 @@ let _ = map(ar, func x = debug_show x # "!"); // O=Text
 let _ = mapAlt(ar, func x = #inj1 x); // O=Alt<Nat, None>
 let _ = mapAlt(ar, func x = #inj2 x); // O=Alt<None, Nat>
 
-
 func fail<T>() : T = Prim.trap("fail");
 
 type Compare<T> = (T, T) -> { #less; #equal; #greater };
@@ -47,6 +46,12 @@ func natToText(_n : Nat) : Text = "";
 
 let _ : Foo1<Text> = foo1(f1, textCompare, func x = natToText(x) # "!");
 let _ = foo2(f2, textCompare, func x = natToText(x) # "!");
+
+// Only fix A in the 1st round
+func foo<T, A>(t : T, _ : A, _ : A -> T) : T = t;
+// In the 1st round: Nat <: T  (don't fix T yet!)
+// In the 2nd round: Int <: T  (solve T := Int)
+let _ = foo(1, "abc", func _ = -1);
 
 //SKIP comp
 //SKIP run
