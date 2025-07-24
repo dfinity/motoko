@@ -80,7 +80,8 @@ let html_of_func_sort : Syntax.func_sort -> t =
     | Local -> empty
     | Shared Composite -> keyword "shared composite query "
     | Shared Query -> keyword "shared query "
-    | Shared Write -> keyword "shared ")
+    | Shared Write -> keyword "shared "
+    | Stable id -> keyword "stable " ++ string id)
 
 let html_of_obj_sort : 'note Syntax.sort -> t =
  fun sort ->

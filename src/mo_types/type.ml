@@ -19,7 +19,7 @@ type obj_sort =
 type async_sort = Fut | Cmp
 type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local |  Shared of 'a | Stable of var
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -109,6 +109,7 @@ let tag_func_sort = function
   | Shared Write -> 1
   | Shared Query -> 2
   | Shared Composite -> 3
+  | Stable id -> 4
 
 let tag_obj_sort = function
   | Object -> 0
@@ -298,7 +299,10 @@ end
 
 (* Function sorts *)
 
-let is_shared_sort sort = sort <> Local
+let is_shared_sort sort =
+  match sort with
+  | Shared _ -> true
+  | Local | Stable _ -> false
 
 (* Constructors *)
 
@@ -866,6 +870,7 @@ let serializable allow_mut t =
          | Module -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
+      | Func (Stable m, c, tbs, ts1, ts2) -> allow_mut
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
       | Named (n, t) -> go t
     end
@@ -1102,7 +1107,10 @@ let rec rel_typ d rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    s1 = s2 && c1 = c2 &&
+     (match s1 , s2 with
+      | Stable _, Local -> true
+      | _ -> s1 = s2) &&
+      c1 = c2 &&
     (match rel_binds d eq eq tbs1 tbs2 with
     | Some ts ->
       rel_list d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
@@ -1660,7 +1668,7 @@ let string_of_func_sort = function
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
-
+  | Stable id -> "stable " ^ id
 (* PrettyPrinter configurations *)
 
 module type PrettyConfig = sig
