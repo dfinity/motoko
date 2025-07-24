@@ -2245,6 +2245,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      (* print_endline "deferred types";
+      print_endline (String.concat ", " (List.map (fun (_, t) -> Type.string_of_typ t) deferred)); *)
       let err_subst = ref Fun.id in
 
       (* Incorporate the return type into the subtyping constraints *)
@@ -2259,8 +2261,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let needs_2nd_round = deferred <> [] in
-        let r1 = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs needs_2nd_round in
+        let r1 = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
 
         (* In case of an error, substitute for better error message *)
         err_subst := T.open_ r1.ts;

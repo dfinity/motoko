@@ -1,5 +1,6 @@
 import Prim "mo:prim";
 func fail<T>() : T = Prim.trap("fail");
+func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
 
 // Mock functions for Array module
 module Array {
@@ -303,20 +304,24 @@ let _ = Array.all(ar, func x = x > 0);
 let _ = Array.any(ar, func x = x > 3);
 
 // VarArray module explicit type instantiation tests
-let _ = VarArray.tabulate<Int>(4, func i = i * 2);
-let _ : [var Int] = VarArray.tabulate(4, func i = i * 2);
+let va1 = VarArray.tabulate<Int>(4, func i = i * 2);
+let va2 : [var Int] = VarArray.tabulate(4, func i = i * 2);
+let _ = check(va1, va2);
 let _ = VarArray.find(varAr, func x = x > 8);
 let _ = VarArray.findIndex([var 'A', 'B', 'C'], func x = x == 'C');
 let _ = VarArray.forEach(varAr, func(x) {});
-let _ = VarArray.map<Nat, Int>(varAr, func x = x * 2);
-let _ : [var Int] = VarArray.map(varAr, func x = x * 2);
+let va3 = VarArray.map<Nat, Int>(varAr, func x = x * 2);
+let va4 : [var Int] = VarArray.map(varAr, func x = x * 2);
+let _ = check(va3, va4);
 let _ = VarArray.mapToImmutable(varAr, func x = x * 2);
 let _ = VarArray.mapInPlace(varAr, func x = x * 3);
 let _ = VarArray.filter(varAr, func x = x % 2 == 0);
-let _ = VarArray.mapEntries<Nat, Int>(varAr, func(x, i) = i * x);
-let _ : [var Int] = VarArray.mapEntries(varAr, func(x, i) = i * x);
-let _ = VarArray.flatMap<Nat, Int>(varAr, func x = [x, -x]);
-let _ : [var Int] = VarArray.flatMap(varAr, func x = [x, -x]);
+let va5 = VarArray.mapEntries<Nat, Int>(varAr, func(x, i) = i * x);
+let va6 : [var Int] = VarArray.mapEntries(varAr, func(x, i) = i * x);
+let _ = check(va5, va6);
+let va7 = VarArray.flatMap<Nat, Int>(varAr, func x = [x, -x]);
+let va8 : [var Int] = VarArray.flatMap(varAr, func x = [x, -x]);
+let _ = check(va7, va8);
 let _ = VarArray.foldRight(varAr, "", func(x, acc) = natToText(x) # acc);
 let _ = VarArray.all(varAr, func x = x > 0);
 let _ = VarArray.any(varAr, func x = x > 3);
@@ -341,10 +346,12 @@ let _ = Iter.unfold(1, func x = if (x <= 3) ?(x, x + 1) else null);
 
 // List module explicit type instantiation tests
 let _ = List.filter(list, func x = x % 2 == 0);
-let _ = List.map<Nat, Int>(list, func x = x * 2);
-let _ : List<Int> = List.map(list, func x = x * 2);
-let _ = List.filterMap<Nat, Int>(list, func x = if (x % 2 == 0) ?(x * 2) else null);
-let _ : List<Int> = List.filterMap(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let l1 = List.map<Nat, Int>(list, func x = x * 2);
+let l2 : List<Int> = List.map(list, func x = x * 2);
+let _ = check(l1, l2);
+let l3 = List.filterMap<Nat, Int>(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let l4 : List<Int> = List.filterMap(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let _ = check(l3, l4);
 let _ = List.find(list, func x = x > 8);
 let _ = List.findIndex(list, func i = i % 2 == 0);
 let _ = List.findLastIndex(list, func i = i % 2 == 0);
@@ -365,8 +372,9 @@ let _ = PureList.tabulate(3, func n = n * 2);
 let _ = Queue.all(queue, func x = x % 2 == 0);
 let _ = Queue.any(queue, func x = x > 2);
 let _ = Queue.forEach(queue, func _ {});
-let _ = Queue.map<Nat, Int>(queue, func x = x * 2);
-let _ : Queue<Int> = Queue.map(queue, func x = x * 2);
+let q1 = Queue.map<Nat, Int>(queue, func x = x * 2);
+let q2 : Queue<Int> = Queue.map(queue, func x = x * 2);
+let _ = check(q1, q2);
 let _ = Queue.filter(queue, func x = x % 2 == 0);
 
 // pure Queue module explicit type instantiation tests
@@ -378,60 +386,67 @@ let _ = PureQueue.map(pureQueue, func n = n * 2);
 let _ = PureQueue.filterMap(pureQueue, func n = if (n % 2 == 0) ?n else null);
 
 // Stack module explicit type instantiation tests
-let _ = Stack.tabulate<Int>(3, func i = 2 * i);
-let _ : Stack<Int> = Stack.tabulate(3, func i = 2 * i);
+let st1 = Stack.tabulate<Int>(3, func i = 2 * i);
+let st2 : Stack<Int> = Stack.tabulate(3, func i = 2 * i);
+let _ = check(st1, st2);
 let _ = Stack.all(stack, func n = n % 2 == 0);
 let _ = Stack.any(stack, func n = n == 2);
 let _ = Stack.forEach(stack, func _ {});
-let _ = Stack.map<Nat, Int>(stack, func n = 2 * n);
-let _ : Stack<Int> = Stack.map(stack, func n = 2 * n);
+let st3 = Stack.map<Nat, Int>(stack, func n = 2 * n);
+let st4 : Stack<Int> = Stack.map(stack, func n = 2 * n);
+let _ = check(st3, st4);
 let _ = Stack.filter(stack, func n = n % 2 == 0);
-let _ = Stack.filterMap<Nat, Int>(stack, func n = if (n % 2 == 0) ?n else null);
-let _ : Stack<Int> = Stack.filterMap(stack, func n = if (n % 2 == 0) ?n else null);
+let st5 = Stack.filterMap<Nat, Int>(stack, func n = if (n % 2 == 0) ?n else null);
+let st6 : Stack<Int> = Stack.filterMap(stack, func n = if (n % 2 == 0) ?n else null);
+let _ = check(st5, st6);
 
 // Set module explicit type instantiation tests
 let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
 let _ = Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
-let _ = Set.map<Nat, Text>(set, func n = natToText(n));
-let _ : Set<Text> = Set.map(set, func n = natToText(n));
-let _ = Set.filterMap<Nat, Text>(
+let s1 = Set.map<Nat, Text>(set, func n = natToText(n));
+let s2 : Set<Text> = Set.map(set, func n = natToText(n));
+let _ = check(s1, s2);
+let s3 = Set.filterMap<Nat, Text>(
   set,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
-let _ : Set<Text> = Set.filterMap(
+let s4 : Set<Text> = Set.filterMap(
   set,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
+let _ = check(s3, s4);
 let _ = Set.all(set, func n = n < 10);
 let _ = Set.any(set, func n = n > 5);
 
 // pure Set module explicit type instantiation tests
 let _ = PureSet.forEach(pureSet, func _ {});
 let _ = PureSet.filter(pureSet, natCompare, func n = n % 2 == 0);
-let _ = PureSet.map<Nat, Text>(pureSet, func n = natToText(n));
-// let _ : PureSet<Text> = PureSet.map(pureSet, func n = natToText(n));
-let _ = PureSet.filterMap<Nat, Text>(
+let ps1 = PureSet.map<Nat, Text>(pureSet, func n = natToText(n));
+let ps2 = PureSet.map(pureSet, func n = natToText(n));
+let _ = check(ps1, ps2);
+let ps3 = PureSet.filterMap<Nat, Text>(
   pureSet,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
-// TODO: BUG
-// let _ : PureSet<Text> = PureSet.filterMap(
-//   pureSet,
-//   textCompare,
-//   func n = if (n % 2 == 0) ?natToText(n) else null,
-// );
+let ps4 = PureSet.filterMap(
+  pureSet,
+  textCompare,
+  func n = if (n % 2 == 0) ?natToText(n) else null,
+);
+let _ = check(ps3, ps4);
 let _ = PureSet.all(pureSet, func n = n < 10);
 let _ = PureSet.any(pureSet, func n = n > 5);
 
 // Map module explicit type instantiation tests
 let _ = Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
-let _ = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
-let _ : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
+let m1 = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
+let m2 : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
+let _ = check(m1, m2);
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
@@ -440,8 +455,9 @@ let _ = Map.toText(mapInstance, natToText, func t = t);
 let _ = PureMap.all(pureMap, func(k, v) = v == natToText(k));
 let _ = PureMap.any(pureMap, func(k, v) = k >= 0);
 let _ = PureMap.forEach(pureMap, func(key, value) {});
-let _ = PureMap.map<Nat, Text, Text>(pureMap, func(key, value) = natToText(key));
-// let _ : PureMap<Nat, Text> = PureMap.map(pureMap, func(key, value) = natToText(key));
+let pm1 = PureMap.map<Nat, Text, Text>(pureMap, func(key, value) = natToText(key));
+let pm2 = PureMap.map(pureMap, func(key, value) = natToText(key));
+let _ = check(pm1, pm2);
 let _ = PureMap.filter(
   pureMap,
   natCompare,
@@ -461,7 +477,7 @@ let _ = Result.forErr(resultErr, func x {});
 let _ = Option.map(optionSome, func x = x + 1);
 
 // Tuple module explicit type instantiation tests
-// TODO: Can we make functions like func x = x work?
+// Future work: support these. It needs special case for simple func bodies to create constraints without calling infer
 // let _ = Tuple2.makeToText(natToText, func x = x);
 // let _ = Tuple3.makeToText(natToText, func x = x, natToText);
 

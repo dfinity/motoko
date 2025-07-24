@@ -67,13 +67,14 @@ type result = {
  *)
 val bi_match_subs :
   scope option ->
-  bind list ->               (* type parameters to instantiate *)
-  typ option ->              (* optional return type mentioning tbs
-                                determining polarities *)
-  (typ * typ) list ->        (* sub-type problems mentioning tbs either on
-                                left or right, but never both sides *)
-  (* whether the 2nd round of solving is needed *)
-  bool ->
+  (* tbs: type parameters to instantiate *)
+  bind list ->
+  (* optional return type mentioning tbs determining polarities *)
+  typ option ->
+  (* sub-type problems mentioning tbs either on left or right, but never both sides *)
+  (typ * typ) list ->
+  (* types of deferred sub-expressions determining polarities *)
+  typ list ->
   result (* raises Bimatch *)
 
 (* Finalizes the bi-match solution by solving remaining type variables and combining results *)
