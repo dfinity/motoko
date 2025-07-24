@@ -83,6 +83,7 @@ type extended_module = {
   (* source map section *)
   source_mapping_url : string option;
   wasm_features : string list;
+  (* data related to imported WASM components *)
   wit_file_content : string option;
-  (* The custom sections that we are interested in *)
+  wac_file_content : string option;
 }

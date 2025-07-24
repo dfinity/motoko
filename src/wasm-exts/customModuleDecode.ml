@@ -1011,6 +1011,7 @@ let module_ s =
     source_mapping_url = None;
     wasm_features = wasm_features;
     wit_file_content = None;
+    wac_file_content = None;
   }
 
 

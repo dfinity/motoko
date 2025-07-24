@@ -70,4 +70,18 @@ let imported_components_to_wit (map : t) : string =
   |> String.concat "\n" in
   Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" imports
 
+let imported_components_to_wac (map : t) : string =
+  let imported_components = StringMap.bindings map
+  |> List.map (fun (component_name, _functions) ->
+              "let " ^ component_name ^ " = new component:" ^component_name ^ " {};"
+     )
+  |> String.concat "\n" in
+    let components_in_motoko = StringMap.bindings map
+  |> List.map (fun (component_name, _functions) ->
+              "    " ^ component_name ^ " : " ^component_name ^ ","
+     )
+  |> String.concat "\n" in
+  let motoko_component = Printf.sprintf "let motoko = new motoko:component {\n%s\n    ...\n};" components_in_motoko in
+  Printf.sprintf "package motoko:composition;\n\n%s\n\n%s\n\nexport motoko.run;\n" imported_components motoko_component
+
 (* Example usage *)

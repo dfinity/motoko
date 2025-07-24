@@ -13304,7 +13304,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content =
+and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content =
 
   RTS_Exports.system_exports env;
 
@@ -13397,6 +13397,7 @@ and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_cont
       source_mapping_url = None;
       wasm_features = E.get_features env;
       wit_file_content = maybe_wit_file_content;
+      wac_file_content = maybe_wac_file_content;
     } in
 
   match E.get_rts env with
@@ -13416,12 +13417,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
-  let components_list = ref [] in
   let imported_components = ref Imported_components.empty in
 
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
-    components_list := [component_name; function_name; ] :: !components_list;  (* Prepend for efficiency *)
     imported_components := add_imported_component 
         ~component_name:component_name 
         ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
@@ -13432,17 +13431,15 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)
 
-  let join_nested_list (input : string list list) : Wasm.Sexpr.sexpr =
-    let join_with_colon inner = String.concat ":" inner in
-    (* Join each inner list with a colon, then join the results with a comma *)
-    let joined_inner_lists = List.map join_with_colon input in
-    Wasm.Sexpr.Atom (String.concat "\n" joined_inner_lists) in
+  (* Print the imported components as WIT *)
 
-  (* Print the imported components *)
-
-  Wasm.Sexpr.print 80 (join_nested_list !components_list);
   let wit_file_content = (imported_components_to_wit !imported_components) in
   Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wit_file_content));
+
+  (* Print the imported components as WAC *)
+
+  let wac_file_content = (imported_components_to_wac !imported_components) in
+  Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wac_file_content));
 
 
   (* Register the imports *)
@@ -13462,4 +13459,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o (Some wit_file_content)
+  conclude_module env set_serialization_globals start_fi_o (Some wit_file_content)  (Some wac_file_content)

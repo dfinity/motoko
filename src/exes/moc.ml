@@ -289,6 +289,13 @@ let process_files files : unit =
     | None -> ()
     );
 
+    (match module_.CustomModule.wac_file_content with
+    | Some wac_content ->
+      let wac_file = Filename.remove_extension !out_file ^ ".wac" in
+      let oc_wac = open_out wac_file in
+      output_string oc_wac wac_content; close_out oc_wac
+    | None -> ()
+    );
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
