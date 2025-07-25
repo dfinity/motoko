@@ -1,0 +1,14 @@
+simple_stable_funcs.mo:79.14-79.16: type error [M0131], variable s1 is declared stable but has non-stable type
+  (Cmp, ?(Int, List<Int>))
+simple_stable_funcs.mo:91.39-91.42: type error [M0096], expression of type
+  (i : Int, j : Int) -> Order
+cannot produce expected type
+  stable cmp(Int, Int) -> Order
+simple_stable_funcs.mo:108.38-108.40: type error [M0096], expression of type
+  ()
+cannot produce expected type
+  stable cmp(Int, Int) -> Order
+simple_stable_funcs.mo:112.41-112.43: type error [M0096], expression of type
+  (Inc, ?(Int, List<Int>))
+cannot produce expected type
+  (Dec, ?(Int, List<Int>))
