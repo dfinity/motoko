@@ -1224,9 +1224,9 @@ let rec combine_pat_fields_srcs env t tfs (pfs : pat_field list) : unit =
   match tfs, pfs with
   | _, [] | [], _ -> ()
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
-    combine_pat_fields_srcs env t tfs' pfs
-  | T.{lab; typ; src}::tfs', {it = TypPF(_); _}::pfs' ->
-    combine_pat_fields_srcs env t tfs' pfs'
+     combine_pat_fields_srcs env t tfs' pfs
+  | _, {it = TypPF(_); _}::pfs' ->
+     combine_pat_fields_srcs env t tfs pfs'
   | T.{lab; typ; src}::tfs', {it = ValPF(id, pat); _}::pfs' ->
     match compare id.it lab with
     | -1 -> combine_pat_fields_srcs env t [] pfs
