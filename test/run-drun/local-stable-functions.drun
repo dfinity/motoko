@@ -1,0 +1,6 @@
+#ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+#SKIP ic-ref-run
+install $ID local-stable-functions/A.mo "DIDL\x00\x00"
+reinstall $ID local-stable-functions/B.mo "DIDL\x00\x00"
+upgrade $ID local-stable-functions/B1.mo "DIDL\x00\x00"
+reinstall $ID local-stable-functions/C.mo "DIDL\x00\x00"
