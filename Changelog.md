@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.15.0 (2025-07-25)
+
 * motoko (`moc`)
 
   * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
@@ -31,6 +33,10 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
+
+  * Fixed file indices in the DWARF encoding of the `debug_line` section. This change is only relevant when using the `-g` flag (#5281).
+
+  * Improved large array behavior under the incremental GC (#5314)
 
 ## 0.14.14 (2025-06-30)
 
