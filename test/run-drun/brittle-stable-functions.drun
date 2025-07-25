@@ -1,0 +1,6 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID brittle-stable-functions/Initial.mo "DIDL\x00\x00"
+query $ID clamp10 "DIDL\x00\x00"
+upgrade $ID brittle-stable-functions/Renamed.mo "DIDL\x00\x00"
+upgrade $ID brittle-stable-functions/RenamedHack.mo "DIDL\x00\x00"
+query $ID clamp10 "DIDL\x00\x00"
