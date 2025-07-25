@@ -1256,7 +1256,10 @@ and combine_pat_srcs env t pat : unit =
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let _s, tfs =
-      T.as_obj_sub (List.map (fun pf -> (Syntax.pf_id pf).it) pfs') t
+      T.as_obj_sub (List.filter_map (fun pf ->
+        match pf.it with
+        | TypPF(_) -> None
+        | ValPF(id, _) -> Some(id.it)) pfs') t
     in
     combine_pat_fields_srcs env t tfs pfs'
   | OptP pat1 ->
@@ -2457,7 +2460,10 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
   | ObjP pfs ->
     let pfs' = List.stable_sort compare_pat_field pfs in
     let s, tfs =
-      try T.as_obj_sub (List.map (fun pf -> (pf_id pf).it) pfs') t
+      try T.as_obj_sub (List.filter_map (fun pf ->
+        match pf.it with
+        | TypPF(_) -> None
+        | ValPF(id, _) -> Some(id.it)) pfs') t
       with Invalid_argument _ ->
         error env pat.at "M0113" "object pattern cannot consume expected type%a"
           display_typ_expand t
