@@ -38,7 +38,7 @@ let unary typ = [typ]
 
 let nary typ = as_seq typ
 
-let fulfillT as_seq typ = Func(Local, Returns, [], as_seq typ, [])
+let fulfillT as_seq typ = Func(Local Flexible, Returns, [], as_seq typ, [])
 
 let failT = err_contT unit
 let bailT = bail_contT
@@ -46,19 +46,19 @@ let bailT = bail_contT
 let cleanT = clean_contT
 
 let t_async_fut as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
+  Func (Local Flexible, Returns, [], [fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
-             ("schedule", Func(Local, Returns, [], [], []))]])
+             ("schedule", Func(Local Flexible, Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT], [])
+  Func (Local Flexible, Returns, [], [fulfillT as_seq t; failT; bailT], [])
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
 let new_asyncT =
   (Func (
-       Local,
+       Local Flexible,
        Returns,
        [ { var = "T"; sort = Type; bound = Any } ],
        [],
@@ -217,8 +217,8 @@ let transform prog =
 
   and t_kind k =
     match k with
-    | Abs (typ_binds,typ) ->
-      Abs (t_binds typ_binds, t_typ typ)
+    | Abs (typ_binds,typ,index) ->
+      Abs (t_binds typ_binds, t_typ typ, index)
     | Def (typ_binds,typ) ->
       Def (t_binds typ_binds, t_typ typ)
 
@@ -229,7 +229,7 @@ let transform prog =
       match  ConRenaming.find_opt c (!con_renaming) with
       | Some c' -> c'
       | None ->
-        let clone = Cons.clone c (Abs ([], Pre)) in
+        let clone = Cons.clone c (Abs ([], Pre, None)) in
         con_renaming := ConRenaming.add c clone (!con_renaming);
         (* Need to extend con_renaming before traversing the kind *)
         Type.set_kind clone (t_kind (Cons.kind c));
@@ -261,7 +261,7 @@ let transform prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp krb) (fun vkrb ->
-            let schedule = fresh_var "schedule" (Func(Local, Returns, [], [], [])) in
+            let schedule = fresh_var "schedule" (Func(Local Flexible, Returns, [], [], [])) in
             switch_variantE (t_exp a -*- varE vkrb)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
@@ -382,11 +382,11 @@ let transform prog =
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->
       DefineE (id, mut, t_exp exp1)
-    | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
+    | FuncE (x, s, c, typbinds, args, ret_tys, closure, exp) ->
       begin
         match s with
-        | Local ->
-          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
+        | Local _  ->
+          FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, closure, t_exp exp)
         | Shared s' ->
           begin
             match c, exp with
@@ -412,7 +412,7 @@ let transform prog =
                 e --> ic_rejectE (errorMessageE (varE e)) in
               let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
-              FuncE (x, Shared s', Replies, typbinds', args', ret_tys, exp')
+              FuncE (x, Shared s', Replies, typbinds', args', ret_tys, closure, exp')
             (* oneway, always with `ignore(async _)` body *)
             | Returns,
               { it = BlockE (
@@ -442,7 +442,7 @@ let transform prog =
                 e --> tupE [] in
               let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
-              FuncE (x, Shared s', Returns, typbinds', args', ret_tys, exp')
+              FuncE (x, Shared s', Returns, typbinds', args', ret_tys, closure, exp')
             | (Returns | Replies), _ -> assert false
           end
       end

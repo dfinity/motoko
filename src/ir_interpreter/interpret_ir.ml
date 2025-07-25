@@ -285,7 +285,7 @@ let interpret_lit env lit : V.value =
 let check_call_conv exp call_conv =
   let open Call_conv in
   let exp_call_conv = call_conv_of_typ exp.note.Note.typ in
-  if not (exp_call_conv = call_conv) then
+  if not (compatible_call call_conv exp_call_conv) then
     failwith (Printf.sprintf "call_conv mismatch: function %s of type %s expecting %s, found %s"
       (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))
       (T.string_of_typ exp.note.Note.typ)
@@ -568,14 +568,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k)))
-  | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
+  | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, _, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_message env exp.at x args
       (fun env' -> interpret_exp env' e) in
     let v = make_message env x cc f in
     k v
-  | FuncE (x, sort, control, _typbinds, args, ret_typs, e) ->
+  | FuncE (x, sort, control, _typbinds, args, ret_typs, _, e) ->
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
     let f = interpret_func env exp.at sort x args
       (fun env' -> interpret_exp env' e) in
@@ -886,7 +886,7 @@ and interpret_comp_unit env cu k = match cu with
     interpret_actor env ds fs (fun _ -> k ())
   | ActorU (Some as_, ds, fs, up, t) ->
     (* create the closure *)
-    let sort = T.Local in
+    let sort = T.Local T.Flexible in
     let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in
     let f = interpret_func env no_region sort "" as_
       (fun env' -> interpret_actor env ds fs) in

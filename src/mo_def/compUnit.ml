@@ -47,7 +47,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     | [{it = ExpD e; _} ] when is_actor_def e ->
       let persistence, eo, fields, note, at = as_actor_def e in
       finish imports { it = ActorU (persistence, eo, None, fields); note; at }
-    | [{it = ClassD (eo, sp, {it = Type.Actor; note = persistence; _}, tid, tbs, p, typ_ann, self_id, fields); _} as d] ->
+    | [{it = ClassD (eo, sp, {it = Type.Actor; note = persistence; _}, tid, tbs, p, typ_ann, self_id, fields, _); _} as d] ->
       assert (List.length tbs > 0);
       finish imports { it = ActorClassU (persistence, eo, sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
@@ -117,7 +117,7 @@ let decs_of_lib (cu : comp_unit) =
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (persistence, eo, csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs);
+    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs, ref None);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

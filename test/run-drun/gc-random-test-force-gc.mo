@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 //MOC-FLAG --stable-regions
 
 import GCRandomTest "gc-random-test/gc-random-test";

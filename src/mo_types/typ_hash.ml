@@ -121,10 +121,9 @@ let rec go = function
     )
 
   | Func (s, c, tbs, ts1, ts2) ->
-    List.iter (fun bind -> assert (bind.sort = Scope)) tbs;
     ( ( TwoSeq (List.length ts1),
         "F" ^
-        (match s with Local -> "" | Shared Query -> "q" | Shared Write -> "s" | Shared Composite -> "C") ^
+        (match s with Local Flexible -> "" | Local Stable -> "S" | Shared Query -> "q" | Shared Write -> "s" | Shared Composite -> "C") ^
         (match c with Returns -> "" | Promises -> "p" | Replies -> "r")
       )
     , ts1 @ ts2
@@ -133,7 +132,7 @@ let rec go = function
   | Con _ as t -> go (normalize t)
   | Named _ as t -> go (normalize t)
   | Pre -> assert false
-  | Var _ -> assert false
+  | Var _ -> ((Nullary, "t"), []) (* t for type variable *)
   | Typ _ -> assert false
 
 let paren xs = "(" ^ String.concat "" xs ^ ")"
@@ -179,13 +178,13 @@ let test t expected =
     (Printf.printf "\nExpected:\n  %s\nbut got:\n  %s\n" expected actual; false)
 
 let%test "monolist" =
-  let con = Cons.fresh "List" (Abs ([], Pre))  in
+  let con = Cons.fresh "List" (Abs ([], Pre, None))  in
   let t = Con (con, []) in
   Cons.unsafe_set_kind con (Def ([], Opt (Tup [nat; t])));
   test t "0=?(N!0)"
 
 let%test "polylist" =
-  let con = Cons.fresh "List" (Abs ([], Pre))  in
+  let con = Cons.fresh "List" (Abs ([], Pre, None))  in
   let bind = { var = "T"; sort = Type; bound = Any } in
   let v = Var ("T", 0) in
   Cons.unsafe_set_kind con (Def ([bind], Opt (Tup [v; Con (con, [v])])));

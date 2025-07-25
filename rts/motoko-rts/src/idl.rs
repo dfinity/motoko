@@ -61,11 +61,19 @@ const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
 
+// Extended Candid for enhanced orthogonal persistence
+#[enhanced_orthogonal_persistence]
+const IDL_STABLE_LOCAL_FUNC_ANNOTATION: u8 = u8::MAX;
+
 // Only used for memory compatiblity checks for orthogonal persistence.
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_blob: i32 = -129;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_type_variable: i32 = -131;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_type_parameter: i32 = -132;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -249,8 +257,9 @@ unsafe fn parse_idl_header<M: Memory>(
             // Annotations
             for _ in 0..leb128_decode(buf) {
                 let a = read_byte(buf);
+                // Note: `IDL_STABLE_LOCAL_FUNC_ANNOTATION` is not supported during Candid stabilization.
                 if !(1 <= a && a <= 3) {
-                    idl_trap_with("func annotation not within 1..3");
+                    idl_trap_with("invalid func annotation");
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -791,33 +800,64 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            // check annotations (that we care about)
-            // TODO: more generally, we would check equality of 256-bit bit-vectors,
-            // but validity ensures each entry is 1, 2 or 3 (for now)
-            // c.f. https://github.com/dfinity/candid/issues/318
-            let mut a11 = false;
-            let mut a12 = false;
-            let mut a13 = false;
-            for _ in 0..leb128_decode(&mut tb1) {
-                match read_byte(&mut tb1) {
-                    1 => a11 = true,
-                    2 => a12 = true,
-                    3 => a13 = true,
-                    _ => {}
+            let annotation_count1 = leb128_decode(&mut tb1);
+            let annotation_count2 = leb128_decode(&mut tb2);
+            if annotation_count1 != annotation_count2 {
+                return false;
+            }
+            if annotation_count1 == 0 && annotation_count1 == 0 {
+                return true;
+            }
+            // There is at most one annotation per function in our persistent type table.
+            assert_eq!(annotation_count1, 1);
+            assert_eq!(annotation_count2, 1);
+
+            let annotation1 = read_byte(&mut tb1);
+
+            let annotation2 = read_byte(&mut tb2);
+
+            if annotation1 != annotation2 {
+                return false;
+            }
+            if annotation1 == IDL_STABLE_LOCAL_FUNC_ANNOTATION {
+                let type_bounds_length1 = leb128_decode(&mut tb1);
+                let type_bounds_length2 = leb128_decode(&mut tb2);
+                if type_bounds_length1 != type_bounds_length2 {
+                    return false;
+                }
+                for _ in 0..type_bounds_length1 {
+                    let bind_sort1 = read_byte(&mut tb1);
+                    let bind_sort2 = read_byte(&mut tb2);
+                    assert_eq!(bind_sort1, 0); // TODO: Support scope bind
+                    assert_eq!(bind_sort2, 0); // TODO: Support scope bind
+                    let bound1 = sleb128_decode(&mut tb1);
+                    let bound2 = sleb128_decode(&mut tb2);
+                    if !memory_compatible(
+                        rel,
+                        TypeVariance::Invariance,
+                        typtbl1,
+                        typtbl2,
+                        end1,
+                        end2,
+                        bound1,
+                        bound2,
+                        false,
+                    ) {
+                        return false;
+                    }
                 }
             }
-            let mut a21 = false;
-            let mut a22 = false;
-            let mut a23 = false;
-            for _ in 0..leb128_decode(&mut tb2) {
-                match read_byte(&mut tb2) {
-                    1 => a21 = true,
-                    2 => a22 = true,
-                    3 => a23 = true,
-                    _ => {}
-                }
-            }
-            a11 == a21 && a12 == a22 && a13 == a23
+            true
+        }
+        (IDL_EXT_type_variable, IDL_EXT_type_variable) => {
+            let index1 = leb128_decode(&mut tb1);
+            let index2 = leb128_decode(&mut tb2);
+            index1 == index2
+        }
+        (IDL_EXT_type_parameter, IDL_EXT_type_parameter) => {
+            let index1 = leb128_decode(&mut tb1);
+            let index2 = leb128_decode(&mut tb2);
+            index1 == index2
         }
         (IDL_EXT_tuple, IDL_EXT_tuple) => {
             let n1 = leb128_decode(&mut tb1);
@@ -1103,6 +1143,7 @@ pub(crate) unsafe fn sub(
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
                 // but validity ensures each entry is 1, 2 or 3 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
+                // Note: `IDL_STABLE_LOCAL_FUNC_ANNOTATION` is not supported during proper Candid sub-typining.
                 let mut a11 = false;
                 let mut a12 = false;
                 let mut a13 = false;

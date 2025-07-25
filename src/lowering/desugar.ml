@@ -113,9 +113,9 @@ and exp' at note = function
     I.PrimE (I.ArrayPrim (mut m, T.as_immut t), exps es)
   | S.IdxE (e1, e2) when e1.note.S.note_typ = T.blob -> I.PrimE (I.IdxBlobPrim, [exp e1; exp e2])
   | S.IdxE (e1, e2) -> I.PrimE (I.IdxPrim, [exp e1; exp e2])
-  | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
+  | S.FuncE (name, sp, tbs, p, typ_opt, _, closure, e) ->
     let s, po = match sp.it with
-      | T.Local -> (T.Local, None)
+      | T.Local ls -> (T.Local ls, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
@@ -123,7 +123,8 @@ and exp' at note = function
     let tbs' = typ_binds tbs in
     let vars = List.map (fun (tb : I.typ_bind) -> T.Con (tb.it.I.con, [])) tbs' in
     let tys = List.map (T.open_ vars) res_tys in
-    I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
+    let (s, _, _, _, _) = T.as_func note.Note.typ in
+    I.FuncE (name, s, control, tbs', args, tys, !closure, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
@@ -149,19 +150,19 @@ and exp' at note = function
     I.PrimE (I.EncodeUtf8, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.SerializePrim ts1, [exp e])
     | _ -> assert false
     end
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
-    | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
+    | T.Func (T.Local _, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.DeserializePrim ts2, [exp e])
     | _ -> assert false
     end
@@ -421,9 +422,9 @@ and call_system_func_opt name es obj_typ =
               (List.map (fun tf ->
                 (tf.T.lab,
                   match tf.T.typ with
-                  | T.Func(T.Local, _, [], [], ts) ->
+                  | T.Func(T.Local T.Flexible, _, [], [], ts) ->
                     tagE tf.T.lab
-                      T.(funcE ("$"^tf.lab) Local Returns [] [] ts
+                      T.(funcE ("$"^tf.lab) (Local Flexible) Returns [] [] ts None
                         (primE (Ir.DeserializePrim ts) [varE arg]))
                   | _ -> assert false))
                 (T.as_variant msg_typ))
@@ -476,14 +477,14 @@ and export_footprint self_id expr =
   let {lab;typ;_} = motoko_stable_var_info_fld in
   let v = "$"^lab in
   let size = fresh_var "size" T.nat64 in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound, None)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any, None)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE [
                    letD caller (primE I.ICCallerPrim []);
@@ -505,8 +506,8 @@ and export_runtime_information self_id =
   let open T in
   let {lab;typ;_} = motoko_runtime_information_fld in
   let v = "$"^lab in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound, None)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any, None)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let gc_strategy =
@@ -541,7 +542,7 @@ and export_runtime_information self_id =
   let ret_typ = motoko_runtime_information_type in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
-       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] None (
            (asyncE T.Fut bind2
               (blockE ([
                   letD caller (primE I.ICCallerPrim []);
@@ -583,7 +584,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let mk_ds = List.map snd pairs in
   let mem_ty = T.Obj (T.Memory, mem_fields) in
   let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
-  let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
+  let get_state = fresh_var "getState" (T.Func(T.Local T.Flexible, T.Returns, [], [], [mem_ty])) in
   let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
   let sig_, stable_type, migration = match exp_opt with
     | None ->
@@ -666,7 +667,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let ds =
     varD state (optE migration)
     ::
-    nary_funcD get_state []
+    nary_funcD get_state [] None
       (let v = fresh_var "v" mem_ty in
        switch_optE (immuteE (varE state))
          (unreachableE ())
@@ -846,7 +847,7 @@ and typ_bind tb =
   }
 
 and array_dotE array_ty proj e =
-  let fun_ty bs t1 t2 = T.Func (T.Local, T.Returns, bs, t1, t2) in
+  let fun_ty bs t1 t2 = T.Func (T.Local T.Flexible, T.Returns, bs, t1, t2) in
   let varA = T.Var ("A", 0) in
   let element_ty = T.as_immut (T.as_array array_ty) in
   let call name t1 t2 =
@@ -870,7 +871,7 @@ and array_dotE array_ty proj e =
     | _, _ -> assert false
 
 and blob_dotE proj e =
-  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let fun_ty t1 t2 = T.Func (T.Local T.Flexible, T.Returns, [], t1, t2) in
   let call name t1 t2 =
     let f = var name (fun_ty [T.blob] [fun_ty t1 t2]) in
     callE (varE f) [] e in
@@ -882,7 +883,7 @@ and blob_dotE proj e =
     |  _ -> assert false
 
 and text_dotE proj e =
-  let fun_ty t1 t2 = T.Func (T.Local, T.Returns, [], t1, t2) in
+  let fun_ty t1 t2 = T.Func (T.Local T.Flexible, T.Returns, [], t1, t2) in
   let call name t1 t2 =
     let f = var name (fun_ty [T.text] [fun_ty t1 t2]) in
     callE (varE f) [] e in
@@ -931,11 +932,11 @@ and dec' at n = function
     end
   | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
   | S.TypD _ -> assert false
-  | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
+  | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs, closure) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local _ -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -956,7 +957,7 @@ and dec' at n = function
     let body = if s.it = T.Actor
       then
         let (_, _, obj_typ) = T.as_async rng_typ in
-        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound)) in
+        let c = Cons.fresh T.default_scope_var (T.Abs ([], T.scope_bound, None)) in
         asyncE T.Fut (typ_arg c T.Scope T.scope_bound) (* TBR *)
           (wrap { it = obj_block at s eo (Some self_id) dfs (T.promote obj_typ);
             at = at;
@@ -969,7 +970,7 @@ and dec' at n = function
           note = Note.{ def with typ = rng_typ } }
     in
     let fn = {
-      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], body);
+      it = I.FuncE (id.it, sort, control, typ_binds tbs, args, [rng_typ], !closure, body);
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in
@@ -1039,7 +1040,7 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
     | Type.Func (sort, control, tbds, dom, res) ->
       sort, control, List.length dom, res
     | Type.Non ->
-      Type.Local, Type.Returns, 1, []
+      Type.Local Type.Flexible, Type.Returns, 1, []
     | _ -> raise (Invalid_argument ("to_args " ^ Type.string_of_typ typ))
   in
 
@@ -1176,7 +1177,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let cs' = T.open_binds tbs in
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
-    T.(Func (Local, Returns, [scope_bind],
+    T.(Func (Local Flexible, Returns, [scope_bind],
       [install_arg_typ; bool; blob; blob],
       [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
@@ -1186,10 +1187,11 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let system_body install_arg =
     let vs = fresh_vars "param" ts1' in
     let principal = fresh_var "principal" T.principal in
-    funcE id T.Local T.Returns
+    funcE id (T.Local T.Flexible) T.Returns
     [typ_arg c T.Scope T.scope_bound]
     (List.map arg_of_var vs)
     ts2'
+    None
     (asyncE T.Fut
       (typ_arg c' T.Scope T.scope_bound)
       (letE principal
@@ -1256,7 +1258,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorClassU (_persistence, exp_opt, sp, typ_id, _tbs, p, _, self_id, fields) ->
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
-      | T.Local -> None
+      | T.Local _ -> None
       | T.Shared (_, p) -> Some p in
     let args, eo, wrap, control, _n_res = to_args fun_typ op exp_opt p in
     let (ts, obj_typ) =
@@ -1333,10 +1335,11 @@ let import_unit (u : S.comp_unit) : import_declaration =
       fresh_var "install_arg" T.install_arg_typ
     in
     let system_body install_arg =
-      funcE id T.Local T.Returns
+      funcE id (T.Local T.Flexible) T.Returns
         [typ_arg c T.Scope T.scope_bound]
         as_
         [T.Async (T.Fut, List.hd cs, actor_t)]
+        None
         (asyncE
           T.Fut
           (typ_arg c' T.Scope T.scope_bound)

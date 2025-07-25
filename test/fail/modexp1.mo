@@ -1,4 +1,4 @@
-
+//CLASSICAL-PERSISTENCE-ONLY
 module X = {
   public func f() { g();};
   func g() { f();};

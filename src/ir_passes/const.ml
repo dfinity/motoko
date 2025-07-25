@@ -101,13 +101,14 @@ let rec exp lvl (env : env) e : Lbool.t =
   let lb =
     match e.it with
     | VarE (_, v) -> (find v env).const (*FIXME: use the mutability marker?*)
-    | FuncE (x, s, c, tp, as_ , ts, body) ->
+    | FuncE (x, s, c, tp, as_ , ts, _, body) ->
       exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
       (* shared functions are not const for now *)
       | Type.Shared _, _ -> surely_false
       (* top-level functions can always be const (all free variables are top-level) *)
-      | _, TopLvl -> surely_true
+      | _, TopLvl -> 
+        surely_true
       | _, NotTopLvl ->
         let lb = maybe_false () in
         Freevars.M.iter (fun v _ ->
