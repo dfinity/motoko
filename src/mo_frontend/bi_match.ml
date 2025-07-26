@@ -107,12 +107,33 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
+let try_choose_invariant lb ub =
+  (* When there is exactly one non-trivial bound, choose it as the solution.
+   * Note that this is not a principal solution! A user might need to fix it by type annotation or explicit instantiation.
+   * However, without this strategy the user ALWAYS needs to supply a type annotation or explicit instantiation.
+   *)
+  (* TODO: more tests: try to push it to create test cases that create confusing errors when this strategy is used,
+   e.g. it causes errors later when coding a function, when the user forgot that the compiler made some not optimal choices
+  in these cases in might be better without this strategy, ask about type annotation early to avoid confusion later. *)
+  (* TODO: Can we restrict the types when this strategy can be applied?
+    Is it reasonable to pick a solution for some types and not for others?
+    Do we want to restrict the type of the chosen bound? e.g. exclude unannotated variants or sth like this? *)
+  match promote lb, promote ub with
+  | Non, _ when ub <> Any -> Some ub
+  | lb, Any -> Some lb
+  | _ -> None
+
 let choose_under_constrained ctx lb c ub =
   match ConEnv.find c ctx.variances with
   | Variance.Covariant -> lb
   | Variance.Contravariant -> ub
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
+    match try_choose_invariant lb ub with
+    | Some b ->
+      if debug then print_endline (Printf.sprintf "choose_invariant: %s <: %s <: %s, choosing %s" (string_of_typ lb) (Cons.name c) (string_of_typ ub) (string_of_typ b));
+      b
+    | None ->
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
       (Cons.name c)
