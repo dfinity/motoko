@@ -24,6 +24,11 @@ let _ = forEach(ar, func x = ());
 let _ = map(ar, func x = x + 1); // O=Nat
 let _ = map(ar, func x = debug_show x # "!"); // O=Text
 
+// Check that optional return type can be provided
+let _ = map(ar, func x : Int = x + 1); // func return type annotation
+let _ = map(ar, func x = x + 1 : Int); // body type annotation
+let _ : [Int] = map(ar, func x = x + 1); // result type annotation
+
 // Unmentioned type variables are inferred too
 let _ = mapAlt(ar, func x = #inj1 x); // O=Alt<Nat, None>
 let _ = mapAlt(ar, func x = #inj2 x); // O=Alt<None, Nat>

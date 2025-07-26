@@ -2091,7 +2091,7 @@ and check_exp_field env (ef : exp_field) fts =
   | None ->
     ignore (infer_exp env exp)
 
-and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : (env * T.typ) =
+and check_func_step ?(sub=sub) in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : (env * T.typ) =
   let sort, ve = check_shared_pat env shared_pat in
   if not env.pre && not in_actor && T.is_shared_sort sort then
     error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
@@ -2253,7 +2253,16 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         print_endline (Printf.sprintf "deferred : %s" (String.concat ", " (List.map (fun (exp, t) -> Printf.sprintf "%s : %s" (Source.read_region exp.at |> Option.value ~default:"") (T.string_of_typ t)) deferred)));
         print_endline "";
       end;
-      let err_subst = ref Fun.id in
+
+      (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
+      let err_ts = ref None in
+      let err_subst t =
+        let ts = match !err_ts with
+          | None -> T.open_binds tbs
+          | Some ts -> ts
+        in
+        T.open_ ts t
+      in
 
       (* Incorporate the return type into the subtyping constraints *)
       let ret_typ_opt, subs = 
@@ -2262,30 +2271,37 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         | Some expected_ret -> None, (t_ret, expected_ret) :: subs
       in
 
-      let open Bi_match in
       try
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let (ts, remaining) = bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
+        let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
 
-        (* In case of an error, substitute for better error message *)
-        err_subst := T.open_ ts;
+        (* A partial solution for a better error message in case of an error *)
+        err_ts := Some ts;
 
         let to_fix2 = ref [] in
         let ts, subst_env = match remaining with
         | None -> ts, Type.ConEnv.empty
         | Some remaining ->
           (* Prepare subtyping constraints for the 2nd round *)
+          let extra_subs = ref [] in
           let subs = deferred |> List.map (fun (exp, typ) ->
             (* Substitute fixed type variables *)
             let typ = T.open_ ts typ in
             match exp.it, T.promote typ with
             | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
               (* Check that all type variables in the function input type are fixed, fail otherwise *)
-              fail_when_types_are_not_closed remaining ts1;
+              Bi_match.fail_when_types_are_not_closed remaining ts1;
               (* Check the function input type and prepare for inferring the body *)
-              let env', expected_t = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+              let sub _ _ t t' =
+                (* Checking `typ_opt <: ts2` will fail when ts2 is not closed.
+                 * Add it to the subtype problems instead.
+                 *)
+                extra_subs := (t, t') :: !extra_subs;
+                true
+              in
+              let env', expected_t = check_func_step ~sub false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
               to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
@@ -2295,7 +2311,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               infer_exp env exp, typ
           ) in
           (* Include the deferred terms in the instantiation *)
-          finalize ts remaining subs
+          Bi_match.finalize ts remaining (!extra_subs @ subs)
         in
 
         if not env.pre then begin
@@ -2310,11 +2326,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             (String.concat ", " (List.map T.string_of_typ ts));
 *)
         ts, T.open_ ts t_arg, T.open_ ts t_ret
-      with Bimatch msg ->
+      with Bi_match.Bimatch msg ->
         error env at "M0098"
           "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
           display_typ t1
-          display_typ (!err_subst t2)
+          display_typ (err_subst t2)
           (match t_expect_opt with
            | None -> ""
            | Some t ->
