@@ -120,7 +120,7 @@ let try_choose_invariant lb ub =
     Do we want to restrict the type of the chosen bound? e.g. exclude unannotated variants or sth like this? *)
   match promote lb, promote ub with
   | Non, _ when ub <> Any -> Some ub
-  | lb, Any -> Some lb
+  | _, Any -> Some lb
   | _ -> None
 
 let choose_under_constrained ctx lb c ub =
