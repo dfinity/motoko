@@ -2,7 +2,7 @@
    tests what a given import path resolves to *)
 let import_relative_test_case files import expected =
   let actual =
-    Resolve_import.append_extension (fun x -> List.mem x files) import in
+    Resolve_import.append_mo_extension (fun x -> List.mem x files) import in
   String.equal actual expected ||
     (Printf.printf "\nExpected: %s\nActual:   %s\n" expected actual;
      false)
