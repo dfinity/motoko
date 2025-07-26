@@ -13,9 +13,7 @@ let rec idents_in_pattern : Syntax.pat -> string list =
   | Syntax.VarP id -> [ id.it ]
   | Syntax.TupP ps -> List.concat_map idents_in_pattern ps
   | Syntax.ObjP pfs ->
-      List.concat_map
-        (fun (pf : Syntax.pat_field) -> idents_in_pattern pf.it.Syntax.pat)
-        pfs
+      List.concat_map idents_in_pattern (List.filter_map Syntax.pf_pattern pfs)
   | Syntax.AltP (p, _)
   | Syntax.OptP p
   | Syntax.TagP (_, p)

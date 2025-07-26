@@ -307,6 +307,7 @@
 <pat_field> ::= 
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
+    'type' <id>
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>

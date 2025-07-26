@@ -85,7 +85,9 @@ and over_exp_field (v : visitor) (ef : exp_field) : exp_field =
   { ef with it = { ef.it with exp = over_exp v ef.it.exp } }
 
 and over_pat_field (v : visitor) (pf : pat_field) : pat_field =
-  { pf with it = { pf.it with pat = over_pat v pf.it.pat } }
+  match pf.it with
+  | ValPF (id, p) -> { pf with it = ValPF(id, over_pat v p) }
+  | TypPF (_) -> pf
 
 and over_case (v : visitor) (case : case) : case =
   { case with it = { pat = over_pat v case.it.pat;
