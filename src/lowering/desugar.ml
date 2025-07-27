@@ -116,6 +116,7 @@ and exp' at note = function
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
+      | T.Stable id -> (T.Stable id, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
@@ -936,6 +937,7 @@ and dec' at n = function
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
+      | T.Stable id -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -1257,6 +1259,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
+      | T.Stable id -> None
       | T.Shared (_, p) -> Some p in
     let args, eo, wrap, control, _n_res = to_args fun_typ op exp_opt p in
     let (ts, obj_typ) =

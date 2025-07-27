@@ -959,7 +959,7 @@ and infer_inst env sort tbs typs t_ret at =
          match sort with
          | T.(Shared (Composite | Query)) ->
            (T.Con(c, [])::ts, at::ats)
-         | T.(Shared Write | Local) ->
+         | T.(Shared Write | Local | Stable _) ->
            error env at "M0187"
              "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
        end
@@ -2363,11 +2363,12 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
     if pat.it <> WildP then
       error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
+  | T.Stable m -> T.Stable m, T.Env.empty
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
-  | T.Local, (T.Module | T.Object) -> T.Env.empty
-  | T.Local, T.Actor ->
+  | (T.Local | T.Stable _), (T.Module | T.Object) -> T.Env.empty
+  | (T.Local | T.Stable _), T.Actor ->
     T.Env.empty (* error instead? That's a breaking change *)
   | T.Shared (mode, pat), sort ->
     if sort <> T.Actor then
