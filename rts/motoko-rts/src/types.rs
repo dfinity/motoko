@@ -529,6 +529,9 @@ pub const TAG_ONE_WORD_FILLER: Tag = 41;
 #[enhanced_orthogonal_persistence]
 pub const TAG_FREE_SPACE: Tag = 43;
 
+#[enhanced_orthogonal_persistence]
+pub const TAG_WEAK_REF: Tag = 45;
+
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
 // a slice of an array object (i.e. compressed array tag + start index) for
@@ -561,12 +564,17 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 52;
 
 #[enhanced_orthogonal_persistence]
 pub fn is_object_tag(tag: Tag) -> bool {
-    tag >= TAG_OBJECT && tag <= TAG_REGION
+    tag >= TAG_OBJECT && tag <= TAG_REGION || tag == TAG_WEAK_REF
 }
 
 #[classical_persistence]
 pub fn is_object_tag(tag: Tag) -> bool {
     tag >= TAG_OBJECT && tag <= TAG_NULL
+}
+
+#[enhanced_orthogonal_persistence]
+pub fn is_weak_ref_tag(tag: Tag) -> bool {
+    tag == TAG_WEAK_REF
 }
 
 pub fn is_blob_tag(tag: Tag) -> bool {
@@ -1180,6 +1188,14 @@ impl FreeSpace {
     }
 }
 
+/// Marks a weak reference to an object.
+#[repr(C)] // See the note at the beginning of this module
+pub struct WeakRef {
+    pub header: Obj,
+    pub field: Value,
+}
+
+
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
@@ -1192,6 +1208,9 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        TAG_WEAK_REF => size_of::<WeakRef>(),
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.

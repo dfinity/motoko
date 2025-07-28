@@ -278,9 +278,26 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         }
     }
 
+    #[enhanced_orthogonal_persistence]
+    unsafe fn process_weak_references_in_roots(&mut self, roots: Roots) {
+        self::roots::visit_roots(roots, self.state.partitioned_heap.base_address(), self, |gc, field_ptr| {
+           // TODO: Implement this.
+           // Idea: we can rely of the fact that the weak references can only be
+           // accessible from the roots. This is because the weak references are not
+           // for now used to dereference any objects, but rather as a token to 
+           // keep track of the liveness of their target objects.
+           // We can therefore just check the weak references pointed to via the roots
+           // and their underlying target objects exactly at the end of the mark phase.
+        });
+    }
+
     unsafe fn start_evacuating(&mut self, roots: Roots) {
         self.check_mark_completion(roots);
         debug_assert!(self.mark_completed());
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        self.process_weak_references_in_roots(roots);
+
         MarkIncrement::<M>::complete_phase(self.state);
         self.state.phase = Phase::Evacuate;
         EvacuationIncrement::<M>::start_phase(self.mem, self.state);

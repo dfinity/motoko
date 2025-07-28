@@ -42,6 +42,12 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
+        TAG_WEAK_REF => {
+            // WeakRef objects themselves are visited (so they don't get collected)
+            // but we deliberately do NOT visit the 'field' to avoid marking 
+            // the weakly referenced object as live
+        }
+
         TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
             let (_, slice_start) = slice_start(tag);
             let array = obj as *mut Array;
