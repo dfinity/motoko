@@ -1,0 +1,1 @@
+import-bug.mo:2.21-2.29: warning [M0198], unused field foldLeft in object pattern (delete or rewrite as `foldLeft = _`)
