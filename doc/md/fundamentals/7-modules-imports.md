@@ -26,10 +26,10 @@ Debug.print("Hello, world!");
 
 The `mo:` prefix identifies a Motoko module. The declaration does not include the `.mo` file extension.
 
-You can also selectively import and rename a subset of named values from a module by using the object pattern syntax:
+You can also selectively import and rename a subset of named values and types from a module by using the object pattern syntax:
 
 ``` motoko
-import { map; find; foldLeft = fold } = "mo:base/Array";
+import { type Map; get; contains; foldLeft = fold } = "mo:base/OrderedMap";
 ```
 
 ## Importing from another file
