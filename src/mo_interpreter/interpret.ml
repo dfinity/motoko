@@ -829,8 +829,12 @@ and declare_pat_fields pfs ve : val_env =
   match pfs with
   | [] -> ve
   | pf::pfs' ->
-    let ve' = declare_pat pf.it.pat in
-    declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     match pf_pattern pf with
+     | Some pat ->
+        let ve' = declare_pat pat in
+        declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     | None ->
+        declare_pat_fields pfs' ve
 
 and declare_defined_id id v =
   V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
@@ -919,9 +923,11 @@ and match_pats pats vs ve : val_env option =
 and match_pat_fields pfs vs ve : val_env option =
   match pfs with
   | [] -> Some ve
-  | pf::pfs' ->
-    let v = V.Env.find pf.it.id.it vs in
-    begin match match_pat pf.it.pat v with
+  | { it = TypPF(_); _ }::pfs' ->
+     match_pat_fields pfs' vs ve
+  | { it = ValPF(id, p); _ }::pfs' ->
+    let v = V.Env.find id.it vs in
+    begin match match_pat p v with
     | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
     | None -> None
     end
