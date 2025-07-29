@@ -1,10 +1,10 @@
-weak.mo:8.14-8.18: type error [M0131], variable bad1 is declared stable but has non-stable type
+weak.mo:10.14-10.18: type error [M0131], variable bad1 is declared stable but has non-stable type
   Weak (() -> ())
-weak.mo:2.1-10.2: type error [M0096], expression of type
+weak.mo:3.1-14.2: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   ()
-weak.mo:15.27-15.41: type error [M0031], shared function has non-shared parameter type
+weak.mo:19.27-19.41: type error [M0031], shared function has non-shared parameter type
   (x : Weak Blob)
 type
   (x : Weak Blob)
