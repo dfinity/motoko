@@ -52,6 +52,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ
+  | Weak of typ                               (* weak references *)
   | Pre                                       (* pre-type *)
 
 and scope = typ

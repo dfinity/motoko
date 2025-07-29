@@ -61,6 +61,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ                       (* named type *)
+  | Weak of typ                               (* weak reference *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -138,6 +139,7 @@ let tag = function
   | Pre -> 13
   | Typ _ -> 14
   | Named _ -> 15
+  | Weak _ -> 16
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -431,6 +433,7 @@ let rec shift i n t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, shift i n t)
+  | Weak t -> Weak (shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -483,6 +486,7 @@ let rec subst sigma t =
                       (but can mention other (closed) type constructors).
                     *)
   | Named (name, t) -> Named (name, subst sigma t)
+  | Weak t -> Weak (subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -534,6 +538,7 @@ let rec open' i ts t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, open' i ts t)
+  | Weak t -> Weak (open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -747,6 +752,7 @@ let rec span = function
   | Non -> Some 0
   | Typ _ -> Some 1
   | Named (_, t) -> span t
+  | Weak t -> span t (* TBR *)
 
 
 (* Collecting type constructors *)
@@ -761,7 +767,7 @@ let rec cons' inTyp t cs =
   | Var _ | Prim _ | Any | Non | Pre -> cs
   | Con (c, ts) ->
     List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
-  | Opt t | Mut t | Array t ->
+  | Opt t | Mut t | Array t | Weak t ->
     cons' inTyp t cs
   | Async (_, t1, t2) ->
     cons' inTyp t2 (cons' inTyp t1 cs)
@@ -780,7 +786,6 @@ let rec cons' inTyp t cs =
       cons_kind' inTyp (Cons.kind c) cs
   | Named (_ , t) ->
     cons' inTyp t cs
-
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -836,6 +841,7 @@ let concrete t =
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
       | Named (_, t) -> go t
+      | Weak t -> go t
     end
   in go t
 
@@ -852,6 +858,11 @@ let serializable allow_mut t =
       | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
+      | Weak t ->
+         !Mo_config.Flags.enhanced_orthogonal_persistence &&
+         (* NB: Candid serialization doesn't preserve graph structure *)
+         (* weak references are stable if content is stable *)
+         allow_mut && go t
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
@@ -882,7 +893,7 @@ let find_unshared t =
       | Var _ | Pre -> assert false
       | Prim Error -> Some t
       | Any | Non | Prim _ | Typ _ -> None
-      | Async _ | Mut _ -> Some t
+      | Async _ | Mut _ | Weak _ -> Some t
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs _ -> None
@@ -1300,6 +1311,7 @@ let rec inhabited_typ co t =
   | Pre -> assert false
   | Non -> false
   | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Weak t' (* TBR *)
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
   | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
@@ -1330,7 +1342,8 @@ let rec singleton_typ co t =
 
   | Non -> false
   | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
-  | Mut t' -> false
+  | Weak _
+  | Mut _ -> false
   | Obj (_, _) -> false
   | Variant _ -> false
   | Var _ -> false
@@ -1727,7 +1740,7 @@ and can_omit n t =
     | Pre -> assert false
     | Prim _ | Any | Non -> true
     | Con (c, ts) -> List.for_all (go i ) ts
-    | Array t | Opt t | Mut t -> go i t
+    | Array t | Opt t | Mut t | Weak t -> go i t
     | Async (s, Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
     | Async (s, t1, t2) -> go i t1 && go i t2
     | Tup ts -> List.for_all (go i ) ts
