@@ -3060,7 +3060,7 @@ and check_stable_defaults env sort dec_fields =
             warn env at "M0218" "redundant `stable` keyword, this declaration is implicitly stable"
         | _ -> ())
       dec_fields
-      end
+    end
   else
     (* non-`persistent` *)
     if !Flags.actors = Flags.RequirePersistentActors then
