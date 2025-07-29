@@ -1,2 +1,1 @@
-//MOC-FLAG --package base $MOTOKO_BASE
-import { type List; foldLeft } = "mo:base/List";
+import { type List; cons } = "lib/ListM";
