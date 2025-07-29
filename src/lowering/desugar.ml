@@ -1224,7 +1224,7 @@ let inject_decs extra_ds u =
   | ActorU (None, ds, fs, up, t) ->
     Ir.ActorU (None, extra_ds @ ds, fs, up, t)
   | ActorU (Some _, _, _, _, _) ->
-    let u'= Rename.comp_unit Rename.Renaming.empty u in
+    let u' = Rename.comp_unit Rename.Renaming.empty u in
     match u' with
     | ActorU (as_opt, ds, fs, up, t) ->
       Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
