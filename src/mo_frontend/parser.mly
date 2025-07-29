@@ -255,6 +255,7 @@ and objblock eo s id ty dec_fields =
 %token PRIM
 %token UNDERSCORE
 %token COMPOSITE
+%token WEAK
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
@@ -445,6 +446,9 @@ typ_un :
     { t }
   | QUEST t=typ_un
     { OptT(t) @! at $sloc }
+  | WEAK t=typ_un
+    { WeakT(t) @! at $sloc }
+
 
 typ_pre :
   | t=typ_un

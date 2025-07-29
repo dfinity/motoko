@@ -797,6 +797,8 @@ and check_typ' env typ : T.typ =
     check_typ env typ
   | NamedT (name, typ) ->
     T.Named (name.it, check_typ env typ)
+  | WeakT typ ->
+    T.Weak (check_typ env typ)
 
 and check_typ_def env at (id, typ_binds, typ) : T.kind =
   let cs, tbs, te, ce = check_typ_binds {env with pre = true} typ_binds in

@@ -1106,6 +1106,8 @@ let rec rel_typ d rel eq t1 t2 =
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
+  | Weak t1', Weak t2' ->
+    rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
@@ -1260,6 +1262,8 @@ let rec compatible_typ co t1 t2 =
     compatible_fields co tfs1 tfs2
   | Opt t1', Opt t2' ->
     compatible_typ co t1' t2'
+  | Weak t1', Weak t2' ->
+    compatible_typ co t1' t2' (* TBR *)
   | Prim Null, Opt _ | Opt _, Prim Null  ->
     true
   | Variant tfs1, Variant tfs2 ->
@@ -1384,7 +1388,9 @@ let rec combine rel lubs glbs t1 t2 =
       if rel == lubs then t else Non
     | Prim Nat, Prim Int
     | Prim Int, Prim Nat ->
-      Prim (if rel == lubs then Int else Nat)
+       Prim (if rel == lubs then Int else Nat)
+    | Weak t1', Weak t2' ->
+      Weak (combine rel lubs glbs t1' t2')
     | Opt t1', Opt t2' ->
       Opt (combine rel lubs glbs t1' t2')
     | (Opt _ as t), (Prim Null as t')
@@ -1811,6 +1817,8 @@ and pp_typ_un vs ppf t =
   match t with
   | Opt t ->
     fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
+  | Weak t ->
+    fprintf ppf "@[<1>Weak %a@]"  (pp_typ_un vs) t
   | t ->
     pp_typ_nullary vs ppf t
 
