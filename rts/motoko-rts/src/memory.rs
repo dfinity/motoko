@@ -126,7 +126,9 @@ pub unsafe fn weak_ref_is_live<M: Memory>(mem: &mut M, weak_ref: Value) -> bool 
 
     match field_tag {
         TAG_WEAK_REF => {
-            return true; // For now, always return true.
+            // Get the target object and check if it is null.
+            let target = (*weak_ref_obj).field;
+            return target.is_non_null_ptr();
         }
         _ => {
             return false;

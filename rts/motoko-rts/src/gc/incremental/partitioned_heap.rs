@@ -690,7 +690,7 @@ impl PartitionedHeap {
         true
     }
 
-    #[cfg(debug_assertions)]
+    //#[cfg(debug_assertions)]
     pub unsafe fn is_object_marked(&self, object: *mut Obj) -> bool {
         let address = object as usize;
         let partition_index = address / PARTITION_SIZE;
