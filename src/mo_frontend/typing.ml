@@ -3169,10 +3169,6 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) when is_value_import dec ->
-    let typ = pat.note in
-    check_exp env typ exp;
-    typ
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
     (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
@@ -3517,11 +3513,6 @@ and is_import d =
   | LetD (_, {it = ImportE _; _}, None) -> true
   | _ -> false
 
-and is_value_import d =
-  match d.it with
-  | LetD (_, {it = ImportE (_, {contents = ImportedValuePath _}); _}, None) -> true
-  | _ -> false
-
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | ExpD _ ->
@@ -3543,9 +3534,6 @@ and infer_dec_valdecs env dec : Scope.t =
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
-  | LetD (pat, exp, None) when is_value_import dec ->
-    let val_env = check_pat_exhaustive local_error env T.blob pat in
-    Scope.{empty with val_env}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
