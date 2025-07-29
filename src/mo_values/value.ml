@@ -278,7 +278,8 @@ and pp_val d ppf (t, v) =
       pp_val d ppf (t', !r)
     | Weak w ->
       let t' = match t with T.Weak t' -> t' | _ -> T.Non in
-      fprintf ppf "@[<1>weak %a@]" (pp_val_nullary d) (T.Opt t', Opt v)
+      let v'' = match Weak.get w 0 with None -> Null | Some v' -> Opt v' in
+      fprintf ppf "@[<1>weak %a@]" (pp_val_nullary d) (T.Opt t', v'')
     | v -> pp_val_nullary d ppf (t, v)
 
 and pp_res d ppf (t, result) =
