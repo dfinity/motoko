@@ -825,11 +825,11 @@ and declare_pat_fields pfs ve : val_env =
   | [] -> ve
   | pf::pfs' ->
      match pf_pattern pf with
-     | Some p ->
-        let ve' = declare_pat p in
+     | Some pat ->
+        let ve' = declare_pat pat in
         declare_pat_fields pfs' (V.Env.adjoin ve ve')
      | None ->
-        ve
+        declare_pat_fields pfs' ve
 
 and declare_defined_id id v =
   V.Env.singleton id.it (Lib.Promise.make_fulfilled v)

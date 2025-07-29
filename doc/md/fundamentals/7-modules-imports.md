@@ -29,7 +29,7 @@ The `mo:` prefix identifies a Motoko module. The declaration does not include th
 You can also selectively import and rename a subset of named values and types from a module by using the object pattern syntax:
 
 ``` motoko
-import { type Map; get; contains; foldLeft = fold } = "mo:base/OrderedMap";
+import { type List; get; foldLeft = fold } "mo:base/List";
 ```
 
 ## Importing from another file
