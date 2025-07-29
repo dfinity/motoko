@@ -282,12 +282,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     unsafe fn process_weak_references_in_roots(&mut self, roots: Roots) {
         self::roots::visit_roots(roots, self.state.partitioned_heap.base_address(), self, |gc, field_ptr| {
            // TODO: Implement this.
-           // Idea: we can rely of the fact that the weak references can only be
-           // accessible from the roots. This is because the weak references are not
-           // for now used to dereference any objects, but rather as a token to 
-           // keep track of the liveness of their target objects.
-           // We can therefore just check the weak references pointed to via the roots
-           // and their underlying target objects exactly at the end of the mark phase.
+           // This would be a 2nd traversal of the object graph where only the weak references
+           // will be treated.
         });
     }
 
