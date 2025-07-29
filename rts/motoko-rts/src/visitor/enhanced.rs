@@ -44,7 +44,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
 
         TAG_WEAK_REF => {
             // WeakRef objects themselves are visited (so they don't get collected)
-            // but we deliberately do NOT visit the 'field' to avoid marking 
+            // but we deliberately do NOT visit the 'field' to avoid marking
             // the weakly referenced object as live
         }
 

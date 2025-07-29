@@ -1195,7 +1195,6 @@ pub struct WeakRef {
     pub field: Value,
 }
 
-
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`

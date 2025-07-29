@@ -280,11 +280,16 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     #[enhanced_orthogonal_persistence]
     unsafe fn process_weak_references_in_roots(&mut self, roots: Roots) {
-        self::roots::visit_roots(roots, self.state.partitioned_heap.base_address(), self, |gc, field_ptr| {
-           // TODO: Implement this.
-           // This would be a 2nd traversal of the object graph where only the weak references
-           // will be treated.
-        });
+        self::roots::visit_roots(
+            roots,
+            self.state.partitioned_heap.base_address(),
+            self,
+            |gc, field_ptr| {
+                // TODO: Implement this.
+                // This would be a 2nd traversal of the object graph where only the weak references
+                // will be treated.
+            },
+        );
     }
 
     unsafe fn start_evacuating(&mut self, roots: Roots) {

@@ -167,6 +167,7 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_ACTOR) -> simple_token "actor"
   | X (T T_INVARIANT) -> simple_token "invariant"
   | X (T T_PIPE) -> simple_token "|>"
+  | X (T T_WEAK) -> simple_token "Weak"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>", "<bl>"
   | X (N N_case) -> "<case>", eg_case

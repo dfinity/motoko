@@ -303,7 +303,8 @@ module Make (Cfg : Config) = struct
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
-  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
+  | WeakT t -> "WeakT" $$ [typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e]

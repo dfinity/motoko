@@ -2162,6 +2162,35 @@ module MutBox = struct
     E.object_pool_add env __LINE__ alloc
 end
 
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ payload │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
+end
+
 
 module Opt = struct
   (* The Option type. Optional values are represented as
@@ -11963,6 +11992,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae target ^^
     E.call_import env "rts" "alloc_weak_ref"
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    WeakRef.load_field env
 
   | OtherPrim "weak_ref_is_live", [weak_ref] ->
     SR.Vanilla,
