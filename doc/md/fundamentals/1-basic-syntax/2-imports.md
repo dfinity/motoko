@@ -42,5 +42,10 @@ import Utils "Utils";
 import { compare } "mo:base/Nat";
 ```
 
-Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/imports).
+**You can also import specific types from a module:**
 
+```motoko no-repl
+import { type Result; mapOk } "mo:base/Result";
+```
+
+Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/imports).
