@@ -455,7 +455,7 @@ let prim trap =
        | Some v -> k (Opt v)
        | None -> k (Null))
 
-  | "isLive" ->
+  | "weak_ref_is_live" ->
      fun _ v k ->
        let w = as_weak v in
        k (Bool (Weak.check w 0))

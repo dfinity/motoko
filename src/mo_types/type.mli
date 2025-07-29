@@ -169,7 +169,7 @@ val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : async_sort -> typ -> typ -> typ * typ
-
+val as_weak_sub : typ -> typ
 
 (* Argument/result sequences *)
 

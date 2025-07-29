@@ -692,6 +692,11 @@ let as_async_sub s default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let as_weak_sub t = match promote t with
+  | Weak t -> t
+  | Non -> Non
+  | _ -> invalid "as_weak_sub"
+
 let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
