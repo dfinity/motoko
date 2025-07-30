@@ -339,7 +339,7 @@ let solve ctx (ts1, ts2) deferred_typs =
     * But we must fix variables that appear in the arguments of deferred funcs, because they are needed to infer the bodies.
     *)
     let must_fix, can_defer = List.fold_left (fun (must_fix, can_defer) t ->
-      match promote t with
+      match unwrap_named t with
       | Func (_, _, _, t1, t2) ->
         let must_fix = ConSet.union must_fix (cons_typs t1) in
         let can_defer = ConSet.union can_defer (cons_typs t2) in
