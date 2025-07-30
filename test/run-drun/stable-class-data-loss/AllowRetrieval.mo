@@ -6,7 +6,7 @@ persistent actor {
   type Map<K, V> = {};
   func empty<K, V>() : Map<K, V> { {} };
   func add<K, V>(map : Map<K, V>, k : K, v : V) {};
-  func remove<K, V>(map : Map<K, V>, k : K) {};
+  func get<K, V>(map : Map<K, V>, k : K) : V { loop {} };
 
   type UserId = Nat;
   class UserRegistry() {
@@ -19,8 +19,8 @@ persistent actor {
       return lastId
     };
 
-    public func deleteUser(id : UserId) {
-      remove(users, id)
+    public func getUser(id : UserId) : Text {
+      get(users, id)
     };
   };
 
@@ -30,7 +30,7 @@ persistent actor {
     registry.addUser(name)
   };
 
-  public func deleteUser(id : UserId) {
-    registry.deleteUser(id)
+  public func getUser(id : UserId) : async Text {
+    registry.getUser(id)
   };
 }
