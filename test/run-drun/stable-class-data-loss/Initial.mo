@@ -3,7 +3,7 @@ persistent actor {
   type Map<K, V> = {};
   func empty<K, V>() : Map<K, V> { {} };
   func add<K, V>(map : Map<K, V>, k : K, v : V) {};
-  func remove<K, V>(map : Map<K, V>, k : K) {};
+  func get<K, V>(map : Map<K, V>, k : K) : V { loop {} };
 
   type UserId = Nat;
   class UserRegistry() {
