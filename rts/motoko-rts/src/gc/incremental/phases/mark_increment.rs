@@ -123,6 +123,17 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
+
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        {
+            use crate::types::is_weak_ref_tag;
+            let tag = value.as_obj().tag();
+            if is_weak_ref_tag(tag) {
+                self.weak_ref_registry.push(self.mem, value);
+                //crate::rts_trap_with("that is very great!");
+            }
+        }
+
         let object = value.as_obj();
         if self.heap.mark_object(object) {
             // A write barrier after a completed mark phase must see the object as already marked.
@@ -133,14 +144,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
-        #[cfg(feature = "enhanced_orthogonal_persistence")]
-        {
-            use crate::types::is_weak_ref_tag;
-            let tag = object.tag();
-            if is_weak_ref_tag(tag) {
-                self.weak_ref_registry.push(self.mem, Value::from_ptr(object as usize));
-            }
-        }
         visit_pointer_fields(
             self,
             object,

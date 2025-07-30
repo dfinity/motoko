@@ -1,6 +1,7 @@
 import Prim "mo:prim";
 
 persistent actor {
+
   var arr = Prim.Array_init<Nat>(13, 0);
   let arr2 = [1, 2, 3];
   let aText = "Hello, world!";
@@ -30,10 +31,62 @@ persistent actor {
     };
 
   };
+
+  public func test2() : async () {
+    var blob1 = Prim.Array_init<Nat64>(1, 1);
+    var blob2 = Prim.Array_init<Nat64>(1, 2);
+    var blob3 = Prim.Array_init<Nat64>(1, 3);
+
+    var wrs = [Prim.allocWeakRef(blob1), Prim.allocWeakRef(blob2), Prim.allocWeakRef(blob3)];
+
+    var idx = 0;
+    while (idx < 5) {
+
+      Prim.debugPrint(debug_show ("================"));
+      for (wr in wrs.vals()) {
+        Prim.debugPrint(debug_show (Prim.isLive(wr)));
+      };
+
+      blob3 := Prim.Array_init<Nat64>(1, 10);
+      blob2 := Prim.Array_init<Nat64>(10, 13);
+      blob1 := blob1;
+
+      idx += 1;
+      Prim.debugPrint(debug_show ("================"));
+
+      await async {};
+    };
+
+  };
+
+  public func test3() : async () {
+    var blobs = [var Prim.Array_init<Nat64>(3, 1), Prim.Array_init<Nat64>(10, 2), Prim.Array_init<Nat64>(1, 3)];
+    var wrs = [Prim.allocWeakRef(blobs[0]), Prim.allocWeakRef(blobs[1]), Prim.allocWeakRef(blobs[2])];
+
+    var idx = 0;
+    while (idx < 5) {
+
+      Prim.debugPrint(debug_show ("================"));
+      for (wr in wrs.vals()) {
+        let val = Prim.weakGet(wr);
+        Prim.debugPrint(debug_show (val));
+        Prim.debugPrint(debug_show (Prim.isLive(wr)));
+      };
+
+      blobs[0] := Prim.Array_init<Nat64>(1, 13);
+
+      idx += 1;
+      Prim.debugPrint(debug_show ("================"));
+
+      await async {};
+    };
+
+  };
+
 };
 
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
 
-//CALL ingress test "DIDL\x00\x00"
+//CALL ingress test3 "DIDL\x00\x00"
