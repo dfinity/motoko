@@ -3,8 +3,6 @@ import Prim "mo:prim";
 persistent actor {
 
   var arr = Prim.Array_init<Nat>(13, 0);
-  let arr2 = [1, 2, 3];
-  let aText = "Hello, world!";
 
   public func test() : async () {
 
@@ -89,5 +87,6 @@ persistent actor {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 
 //CALL ingress test3 "DIDL\x00\x00"
