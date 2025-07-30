@@ -97,12 +97,6 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
     (*weak_ref_obj).header.init_forward(weak_ref);
     (*weak_ref_obj).field = target;
 
-    // // DEBUG CODE!!!
-    // let mut buffer = [0u8; 32];
-    // let hex_str = format_dec(weak_ref.get_raw(), "alloc_weak_ref: ", &mut buffer);
-    // use crate::rts_trap_with;
-    // rts_trap_with(hex_str);
-
     // TODO: double check this!!!
     allocation_barrier(weak_ref)
 }
@@ -111,13 +105,6 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 pub unsafe fn weak_ref_is_live<M: Memory>(mem: &mut M, weak_ref: Value) -> bool {
-    // DEBUG CODE!!!
-    // use crate::rts_trap_with;
-    // let raw_value = weak_ref.get_raw();
-    // let mut buffer = [0u8; 32];
-    // let hex_str = format_dec(raw_value, "is_live: ", &mut buffer);
-    // rts_trap_with(hex_str);
-
     if !weak_ref.is_non_null_ptr() {
         return false; // Invalid WeakRef pointer.
     }
@@ -134,45 +121,4 @@ pub unsafe fn weak_ref_is_live<M: Memory>(mem: &mut M, weak_ref: Value) -> bool 
             return false;
         }
     }
-}
-
-// Helper function to format decimal with custom prefix
-fn format_dec<'a>(num: usize, prefix: &str, buffer: &'a mut [u8]) -> &'a str {
-    let prefix_bytes = prefix.as_bytes();
-    let prefix_len = prefix_bytes.len();
-
-    // Copy prefix to buffer
-    for (i, &byte) in prefix_bytes.iter().enumerate() {
-        if i < buffer.len() {
-            buffer[i] = byte;
-        }
-    }
-
-    // Handle zero case
-    if num == 0 {
-        if prefix_len < buffer.len() {
-            buffer[prefix_len] = b'0';
-        }
-        return core::str::from_utf8(&buffer[0..prefix_len + 1]).unwrap();
-    }
-
-    // Count digits needed
-    let mut temp = num;
-    let mut digits = 0;
-    while temp > 0 {
-        digits += 1;
-        temp /= 10;
-    }
-
-    // Convert to string (right to left) after the prefix
-    temp = num;
-    let mut pos = prefix_len + digits;
-
-    while temp > 0 && pos > prefix_len {
-        pos -= 1;
-        buffer[pos] = b'0' + (temp % 10) as u8;
-        temp /= 10;
-    }
-
-    core::str::from_utf8(&buffer[0..prefix_len + digits]).unwrap()
 }

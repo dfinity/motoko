@@ -1,0 +1,2 @@
+weak-ref-test.mo:6.7-6.11: warning [M0194], unused identifier arr2 (delete or rename to wildcard `_` or `_arr2`)
+weak-ref-test.mo:7.7-7.12: warning [M0194], unused identifier aText (delete or rename to wildcard `_` or `_aText`)

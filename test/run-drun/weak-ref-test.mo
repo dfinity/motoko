@@ -67,6 +67,7 @@ persistent actor {
     while (idx < 5) {
 
       Prim.debugPrint(debug_show ("================"));
+
       for (wr in wrs.vals()) {
         let val = Prim.weakGet(wr);
         Prim.debugPrint(debug_show (val));
@@ -78,7 +79,7 @@ persistent actor {
       idx += 1;
       Prim.debugPrint(debug_show ("================"));
 
-      await async {};
+      await async {}; // trigger GC.
     };
 
   };

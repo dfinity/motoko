@@ -187,7 +187,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                     }
                 }
             }
-        }   
+        }
 
         #[cfg(debug_assertions)]
         self.mark_stack.assert_unmarked(self.heap);
