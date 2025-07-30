@@ -1,0 +1,3 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID stable-class-data-loss/Initial.mo "DIDL\x00\x00"
+upgrade $ID stable-class-data-loss/AllowDeletion.mo "DIDL\x00\x00"
