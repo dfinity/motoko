@@ -312,7 +312,9 @@ module ConEnv = Env.Make(struct type t = con let compare = Cons.compare end)
 module ConSet = ConEnv.Dom
 
 
-(* Field ordering *)
+(* Field ordering
+
+   NOTE: Keep in sync with mo_frontend/typing.ml:compare_pat_field *)
 
 let compare_field f1 f2 =
   match f1,f2 with

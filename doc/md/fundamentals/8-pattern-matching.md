@@ -124,7 +124,7 @@ type Person = { name : Text; age : Nat };
 
 func describePerson(person : Person) : Text {
     switch (person) {
-        case ({ name; age }) { name # " is " # Nat.toText(age) # " years old." };
+        case ({ name = fullName; age }) { fullName # " is " # Nat.toText(age) # " years old." };
     };
 };
 ```
