@@ -590,6 +590,9 @@ let rec promote = function
   | Named (_, t) -> promote t
   | t -> t
 
+let rec unwrap_named = function
+  | Named (_, t) -> unwrap_named t
+  | t -> t
 
 (* Projections *)
 

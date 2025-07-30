@@ -210,6 +210,7 @@ module S : Set.S with type elt = typ
 
 val normalize : typ -> typ
 val promote : typ -> typ
+val unwrap_named : typ -> typ
 
 val opaque : typ -> bool
 val concrete : typ -> bool
