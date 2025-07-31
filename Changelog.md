@@ -1,8 +1,10 @@
 # Motoko compiler changelog
 
-## Unreleased
+## 0.15.1 (2025-07-30)
 
 * motoko (`moc`)
+
+  * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
 
   * Allow matching type fields of modules and objects in patterns (#5056)
     This allows importing a type from a module without requiring an indirection or extra binding.
