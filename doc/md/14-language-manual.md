@@ -634,6 +634,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Nat64`](https://internetcomputer.org/docs/motoko/core/Nat64.md)        | A, O     | Non-negative 64-bit integer values with checked arithmetic             |
 | [`Blob`](https://internetcomputer.org/docs/motoko/core/Blob.md)          | O        | Binary blobs with iterators                                            |
 | [`Principal`](https://internetcomputer.org/docs/motoko/core/Principal.md) | O        | Principals                                                             |
+| [`Error`](https://internetcomputer.org/docs/motoko/core/Error.md)         |          | (Opaque) error values                                                  |
 | [`Region`](https://internetcomputer.org/docs/motoko/core/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
 Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous library in the core package providing related [functions and values](https://internetcomputer.org/docs/motoko/core). For example, the [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md) module provides common functions on `Text` values.
