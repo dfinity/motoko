@@ -28,7 +28,7 @@ The declaration list above declares four variables. The first two variables (`te
 
 Mutable variables permit assignment and immutable variables do not.
 
-If you try to assign new values to either [`Text`](../base/Text.md) or `num` above, you will get static type errors because these variables are immutable.
+If you try to assign new values to either [`Text`](../core/Text.md) or `num` above, you will get static type errors because these variables are immutable.
 
 You may freely update the value of mutable variables `pair` and `text2` using the syntax for assignment, written as `:=`, as follows:
 
@@ -187,17 +187,19 @@ As above, the array `a` above holds three natural numbers, but has type `[var Na
 
 ### Allocate a mutable array with dynamic size
 
-To allocate mutable arrays of non-constant size, use the `Array.init` base library function and supply an initial value:
+To allocate mutable arrays of non-constant size, use the `Array.repeat` function in the core package with an initial value:
 
 ``` motoko no-repl
-func init<T>(size : Nat,  x : T) : [var T]
+func repeat<T>(initValue : T, size : Nat) : [var T]
 ```
 
 For example:
 
 ``` motoko no-repl
-var size : Nat = 42 ;
-let x : [var Nat] = Array.init<Nat>(size, 3);
+import Array "mo:core/Array";
+
+let size = 10;
+let array : [Nat] = Array.init<?Nat>(null, size);
 ```
 
 The variable `size` does not need to be constant here. The array will have `size` number of entries, each holding the initial value `3`.

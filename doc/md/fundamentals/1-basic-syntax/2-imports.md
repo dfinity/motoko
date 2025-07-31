@@ -9,7 +9,7 @@ In Motoko, related code modules are organized into packages. Modules can be impo
 
 Imports should be placed at the top of the source file. They enable code reuse from external libraries or modules, helping to improve maintainability and organization. You can import from:
 
-**1. Standard modules provided by the base package.**
+**1. Standard modules provided by the core package.**
 
 ```motoko no-repl
 import Text "mo:core/Text";

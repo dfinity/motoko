@@ -147,7 +147,7 @@ Unlike object classes, actor class constructors are asynchronous. The constructo
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](/https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add<system>(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [Cycles](/https://internetcomputer.org/docs/motoko/core/Cycles.md) for instructions on how to add cycles to a call using the imperative `Cycles.add<system>(cycles)` function.
 
 :::
 

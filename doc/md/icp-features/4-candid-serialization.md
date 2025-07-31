@@ -95,7 +95,7 @@ actor {
 
 Although most canisters on ICP support Candid, this is not a requirement enforced by the network. At the protocol level, canisters communicate in raw binary data. Candid is just a common interpretation of that data that allows canisters written in different languages to interoperate.
 
-Most users should never need to use `to_candid` and `from_candid`, however one scenario in which these operations are useful is when canister methods are called **dynamically** using the `call` function from the `ExperimentalInternetComputer` base library. The `call` function takes a canister `Principal`, the name of a method as `Text`, and a raw binary `Blob`, then returns a future containing the result of the call, also as a raw binary `Blob`. Typically, you might use `to_candid` to prepare the argument of a call and `from_candid` to process its result.
+Most users should never need to use `to_candid` and `from_candid`, however one scenario in which these operations are useful is when canister methods are called **dynamically** using the `call` function from the `InternetComputer` core module. The `call` function takes a canister `Principal`, the name of a method as `Text`, and a raw binary `Blob`, then returns a future containing the result of the call, also as a raw binary `Blob`. Typically, you might use `to_candid` to prepare the argument of a call and `from_candid` to process its result.
 
 Dynamic calls are particularly useful when working with canisters or services that have complex or non-standard interfaces, or when you need fine-grained control over the calling process. However, they require manual handling of binary encoding and decoding, which is more error-prone than using the high-level abstractions provided by Motoko.
 

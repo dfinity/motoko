@@ -69,7 +69,7 @@ See the language manual for more details on [`Candid serialization`](../referenc
 ## Dynamic calls
 
 Most users should never need to use `to_candid` and `from_candid`.
-One scenario in which the operations are useful is when calling canister methods dynamically using the `call` function from the `ExperimentalInternetComputer` module in the base package.
+One scenario in which the operations are useful is when calling canister methods dynamically using the `call` function from the `InternetComputer` module in the core package.
 
 Although most canisters on ICP speak Candid, this isn't mandated by ICP. At the protocol level, canisters communicate in raw binary data. Candid is just a common interpretation of that data that allows canisters written in different languages to interoperate.
 

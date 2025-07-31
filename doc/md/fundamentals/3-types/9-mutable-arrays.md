@@ -88,8 +88,8 @@ Mutable arrays are beneficial when:
 
 :::warning
 
-Unlike some other programming languages that support resizable arrays, Motoko's arrays (both mutable and immutable) are fixed-size. Motoko arrays cannot shrink or grow in length, and operations like `Array.append` always construct new arrays.
-For dynamically-sized,  array-like data structures, consult the libraries in `base` (e.g. `Buffer`) or other `mops` packages (e.g. `Vector`).
+Unlike some other programming languages that support resizable arrays, Motoko's arrays (both mutable and immutable) are fixed-size. Motoko arrays cannot shrink or grow in length, and operations like `Array.concat` always construct new arrays.
+For dynamically-sized, array-like data structures, consider using modules in `core` (e.g. `List`) or other `mops` packages (e.g. [`vector`](https://mops.one/vector)).
 
 :::
 

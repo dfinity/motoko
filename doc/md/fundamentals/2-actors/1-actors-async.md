@@ -103,7 +103,7 @@ The only thing the caller can do with this future is wait for it to be completed
 
 To access the result of an `async` value, the receiver of the future uses an `await` expression.
 
-For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), `n`:
+For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), `n`:
 
 ``` motoko no-repl
 let a : async Nat = Counter.read();

@@ -4,13 +4,13 @@ sidebar_position: 7
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base package of modules to provide essential functionality. This modular approach keeps the language simple.
+Motoko minimizes built-in types and operations, relying on a core package of modules to provide essential functionality. This modular approach keeps the language simple.
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
 :::caution
 
-The base package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+The core package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
 
 :::
 

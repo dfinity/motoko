@@ -132,7 +132,7 @@ Unlike some languages, Motoko does not compare arrays by reference; instead, it 
 
 ## Transforming arrays
 
-The [`Array`](https://internetcomputer.org/docs/motoko/base/Array) module in Motoko's base package contains built-in functions for mapping over elements, filtering values, and summing numerical arrays.
+The [`Array`](https://internetcomputer.org/docs/motoko/core/Array) module in Motoko's core package contains built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
 ```motoko
 import Array "mo:core/Array";
@@ -216,6 +216,6 @@ For safety reasons, mutable arrays do not support subtyping. This is because the
 
 ## Resources
 
-- [`Array`](https://internetcomputer.org/docs/motoko/base/Array)
-- [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter)
+- [`Array`](https://internetcomputer.org/docs/motoko/core/Array)
+- [`Iter`](https://internetcomputer.org/docs/motoko/core/Iter)
 

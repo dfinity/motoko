@@ -87,7 +87,7 @@ This object has the same type as the previous one, and thus from the standpoint 
 }
 ```
 
-This version does not use the same implementation of the counter field. Rather than use an ordinary natural [`Nat`](../base/Nat.md), this version uses a byte-sized natural number, type [`Nat8`](../base/Nat8.md), whose size is always eight bits.
+This version does not use the same implementation of the counter field. Rather than use an ordinary natural [`Nat`](../core/Nat.md), this version uses a byte-sized natural number, type [`Nat8`](../core/Nat8.md), whose size is always eight bits.
 
 As such, the `inc` operation may fail with an overflow for this object but never the prior one, which may instead fill the program’s memory.
 
@@ -279,7 +279,7 @@ Classes are defined by the keyword `class`, followed by:
 
 The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the optional annotation, if given.
 
-Consider the task of walking the bits of a natural [`Nat`](../base/Nat.md) number. For this example, you could define the following:
+Consider the task of walking the bits of a natural [`Nat`](../core/Nat.md) number. For this example, you could define the following:
 
 ``` motoko
 class Bits(n : Nat) {

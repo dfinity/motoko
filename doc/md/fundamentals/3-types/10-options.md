@@ -17,7 +17,7 @@ var username : ?Text = null;
 username;
 ```
 
-`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
+`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/core/Text) value that starts as `null` (no username set).
 
 :::info Null semantics
 
@@ -213,6 +213,6 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 
 ## Resources
 
-- [`Option`](https://internetcomputer.org/docs/motoko/base/Option)
+- [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
 
 

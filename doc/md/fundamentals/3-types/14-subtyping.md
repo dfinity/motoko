@@ -70,7 +70,7 @@ In this table:
 
 ## Numbers `Nat` and `Int`
 
-[`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int) (`Nat <: Int`), meaning a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) is an `Int`, but not every `Int` is a [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) (as negative numbers exist in `Int`).
+[`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) is a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int) (`Nat <: Int`), meaning a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) value can be used where an `Int` is expected. This works because every [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) is an `Int`, but not every `Int` is a [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) (as negative numbers exist in `Int`).
 
 
 ```motoko

@@ -58,7 +58,7 @@ intBox.open();
 
 ## Recursive types
 
-Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base package utilizes recursive types to define linked lists.
+Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The core package utilizes recursive types to define linked lists.
 
 ```motoko no-repl
 type List = ?(Nat, List);
@@ -180,7 +180,7 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text). Extra fields are permitted, but the `name` field is mandatory.
 
 Type bounds are not limited to records.
 In general, the notation `T <: A` in a parameter declaration mandates that any type provided for type parameter `T` must be a subtype of the specified type `A`.
@@ -193,7 +193,7 @@ func max<T <: Int>(x : T, y : T) : T {
 max<Int>(-5, -10);  // returns -5  : Int
 ```
 
-Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int), ensuring that arithmetic operations are valid.
+Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int), ensuring that arithmetic operations are valid.
 
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 
