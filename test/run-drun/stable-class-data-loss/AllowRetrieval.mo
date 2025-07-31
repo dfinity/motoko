@@ -1,6 +1,6 @@
 /// I cannot write a migration function that migrates UserRegistry, because I don't have access to its value fields,
-/// and I can't add a method that gives me that access.
-/// This means I needed to plan ahead and make the constructor of UserRegistry accept all its internal fields (even the `lastId` counter), and also add a function that extracts all state from the class.
+/// and I can't add a method that gives me that access, nor can I make an upgrade that makes them public.
+/// This means I needed to plan ahead and make the constructor of UserRegistry accept all its internal fields, and also add a function that extracts all state from the class or make all fields public (breaking encapsulation).
 persistent actor {
   // (Imagine this is core/Map)
   type Map<K, V> = {};
