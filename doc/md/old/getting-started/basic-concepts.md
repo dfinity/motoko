@@ -189,12 +189,12 @@ Traps that occur within actor messages are more subtle: they don’t abort the e
 
 Occasionally it can be useful to force an unconditional trap, with a user-defined message.
 
-The [`Debug`](../base/Debug.md) library provides the function `trap(t)` for this purpose, which can be used in any context:
+The [`Runtime`](../base/Runtime.md) library provides the function `trap(t)` for this purpose, which can be used in any context:
 
 ``` motoko
-import Debug "mo:base/Debug";
+import Runtime "mo:core/Runtime";
 
-Debug.trap("oops!");
+Runtime.trap("oops!");
 ```
 
 **Assertions** allow you to conditionally trap when some Boolean test fails to hold, but continue execution otherwise:

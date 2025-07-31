@@ -68,21 +68,18 @@ Below is an example of how you can record principals in a set.
 
 
 ```motoko
-import Principal "mo:base/Principal";
-import OrderedSet "mo:base/OrderedSet";
-import Error "mo:base/Error";
+import Principal "mo:core/Principal";
+import Set "mo:core/Set";
+import Error "mo:core/Error";
 
 persistent actor {
 
     // Create set to store principals
-    transient var principalSet = Set.Make(Principal.compare);
-
-    var principals : OrderedSet.Set<Principal> = principalSet.empty();
+    var principals = Set.empty<Principal>();
 
     // Check if principal is recorded
     public shared query(msg) func isRecorded() : async Bool {
-        let caller = msg.caller;
-        principleSet.contains(principals, caller);
+        Set.contains(principals, msg.caller)
     };
 
     // Record a new principal
@@ -91,10 +88,10 @@ persistent actor {
         if (Principal.isAnonymous(caller)) {
             throw Error.reject("Anonymous principal not allowed");
         };
-
-        principals := principalSet.put(principals, caller)
+        Set.add(principals, caller)
     };
-};
+
+}
 ```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

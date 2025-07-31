@@ -25,7 +25,7 @@ An unconditional loop runs indefinitely until it is explicitly stopped. Unlike `
 Motoko uses the `loop` keyword to define an infinite loop. To exit such a loop, you must use a `break` statement with a label, indicating exactly which loop to terminate.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 var count : Nat = 0;
 label countLoop loop {
@@ -40,7 +40,7 @@ label countLoop loop {
 A `loop-while` executes the loop body at least once, then repeats as long as the condition remains true.
 
 ``` motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 var count = 0;
 loop {
@@ -80,7 +80,7 @@ The `for` loop's iterator is evaluated once at the start. Each time through the 
 If evaluating the iterator causes a trap (error), the loop stops immediately.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let numbers = [0, 1, 2, 3, 4];
 
@@ -92,7 +92,7 @@ for (num in numbers.vals()) {
 The pattern can also match on values, for example:
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let pairs = [(1, 2), (3, 4)];
 
@@ -126,7 +126,7 @@ The `while` loop first evaluates the condition:
 Once the condition becomes false, the loop stops, and the final result is `()`.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 var count = 3;
 while (count > 0) {
@@ -140,7 +140,7 @@ while (count > 0) {
 If a loop is labeled with a label `l` then you continue to the next iteration of the loop using the expression `continue l`.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 var count = 8;
 label l while (count > 0) {

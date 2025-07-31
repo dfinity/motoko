@@ -130,15 +130,15 @@ let x : Nat = a[2] + a[0] ;
 
 Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap as with an [assertion](../getting-started/basic-concepts#traps) failure.
 
-## The [`Array`](../base/Array.md) module
+## The [`Array`](../core/Array.md) module
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows:
 
 ``` motoko no-repl
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 ```
 
-For more information about using arrays, see the [array](../base/Array.md) library descriptions.
+For more information about using arrays, see the [array](../core/Array.md) library descriptions.
 
 ### Allocate an immutable array with varying content
 

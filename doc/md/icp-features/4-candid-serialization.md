@@ -43,7 +43,7 @@ let encoding =  to_candid(true, "hello", 68, -90) // (Bool, Text, Nat, Int)
 Each argument must be composed of sharable types. The resulting `Blob` precisely represents the original Motoko values according to Candid specifications.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor {
   public type User = {
@@ -66,7 +66,7 @@ The `from_candid` function deserializes a Candid-encoded binary `Blob` back into
 To decode a `Blob` correctly, `from_candid` requires an explicit type annotation or a clear type context. The result is returned as an optional (`?`) value, allowing you to safely handle potential failures caused by type mismatches or malformed data.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor {
   public type User = {
@@ -102,10 +102,10 @@ Dynamic calls are particularly useful when working with canisters or services th
 In this example, use the imported `call` function to make a dynamic call on the actor:
 
 ``` motoko no-repl
-import Principal "mo:base/Principal";
-import {call} "mo:base/ExperimentalInternetComputer";
+import Principal "mo:core/Principal";
+import { call } "mo:core/InternetComputer";
 
-persistent actor This {
+persistent actor MyActor {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";
@@ -115,7 +115,7 @@ persistent actor This {
 
    public func test() : async Text {
        let arguments = to_candid (["a", "b", "c"]);
-       let results = await call(Principal.fromActor(This), "concat", arguments);
+       let results = await call(Principal.fromActor(MyActor), "concat", arguments);
        let ?t = from_candid(results) : ?Text;
        t
    }

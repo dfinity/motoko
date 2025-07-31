@@ -37,8 +37,8 @@ The function `Array.tabulateVar(size, f)` creates a mutable array of `size` elem
 Example:
 
 ```motoko
-import Nat "mo:base/Nat";
-import Array "mo:base/Array";
+import Nat "mo:core/Nat";
+import Array "mo:core/Array";
 
 let digits = Array.tabulateVar<Text>(10, Nat.toText);
 ```
@@ -54,9 +54,9 @@ Each element is mutable and can be updated later.
 To initialize a large array where every element starts with the same value, use `Array.init(size, value)`:
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
-let optArr = Array.init<?Int>(10, null);
+let optArr = Array.repeat<?Int>(null, 10);
 ```
 
 This produces the array:
@@ -160,11 +160,11 @@ for (i in arr.keys()) {
 You can convert a mutable array into an immutable array using `Array.freeze`, ensuring that the contents cannot be modified after conversion. Since mutable arrays are not [sharable](https://internetcomputer.org/docs/motoko/fundamentals/types/shared-types), freezing them is useful when passing data across [functions](https://internetcomputer.org/docs/motoko/fundamentals/types/functions) or [actors](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) to ensure immutability.
 
 ```motoko no-repl
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
-let mutableArray : [var Nat] = [var 1, 2, 3];
+let varArray : [var Nat] = [var 1, 2, 3];
 
-let immutableArray : [Nat] = Array.freeze<Nat>(mutableArray);
+let array : [Nat] = Array.fromVarArray(varArray);
 ```
 
 ## Nested mutable arrays example: Tic-tac-toe
@@ -173,21 +173,21 @@ To demonstrate nested mutable arrays, consider the following.
 
 A Tic-tac-toe board is a `3x3` grid that requires updates as players take turns. Since elements must be modified, a nested mutable array is the ideal structure.
 
-`Array.tabulateVar` is used to create a mutable board initialized with `"_"` (empty space).
+`VarArray.tabulate` is used to create a mutable board initialized with `"_"` (empty space).
 
 ```motoko
-import Array "mo:base/Array";
-import Debug "mo:base/Debug";
+import VarArray "mo:core/VarArray";
+import Debug "mo:core/Debug";
 
 persistent actor TicTacToe {
 func createTicTacToeBoard() : [var [var Text]] {
     let size : Nat = 3;
 
     // Initialize a 3x3 board with empty spaces
-    Array.tabulateVar<[var Text]>(
+    VarArray.tabulate<[var Text]>(
       size,
       func(_ : Nat) : [var Text] {
-        Array.tabulateVar<Text>(size, func(_ : Nat) : Text {"_"}) // Fill with "_"
+        VarArray.tabulate<Text>(size, func(_ : Nat) : Text {"_"}) // Fill with "_"
       }
     )
   };

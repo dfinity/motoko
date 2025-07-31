@@ -84,10 +84,10 @@ Typically, you might use `to_candid` to prepare the argument of a call and `from
 In this example, we use the imported `call` function to make a dynamic call on the actor:
 
 ``` motoko no-repl
-import Principal "mo:base/Principal";
-import {call} "mo:base/ExperimentalInternetComputer";
+import Principal "mo:core/Principal";
+import { call } "mo:core/InternetComputer";
 
-persistent actor This {
+persistent actor MyActor {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";
@@ -97,7 +97,7 @@ persistent actor This {
 
    public func test() : async Text {
        let arguments = to_candid (["a", "b", "c"]);
-       let results = await call(Principal.fromActor(This), "concat", arguments);
+       let results = await call(Principal.fromActor(MyActor), "concat", arguments);
        let ?t = from_candid(results) : ?Text;
        t
    }

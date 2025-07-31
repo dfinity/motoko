@@ -21,7 +21,7 @@ There are instructions in the repository for generating a local copy of the curr
 To import from the base package, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
 
 ``` motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 Debug.print("hello world");
 ```
 
@@ -30,7 +30,7 @@ This example illustrates how to import Motoko code—indicated by using the `mo:
 You can also selectively import a subset of named values from a module by using the object pattern syntax:
 
 ``` motoko
-import { map; find; foldLeft = fold } = "mo:base/Array";
+import { map; find; foldLeft = fold } = "mo:core/Array";
 ```
 
 In this example, the functions `map` and `find` are imported unaltered, while the `foldLeft` function is renamed to `fold`.
@@ -174,9 +174,9 @@ Although the most common convention is to identify imported modules by the modul
 The following example illustrates different names you might use when importing the `List` module in the base package, avoiding a clash with another `List` library from a fictional `collections` package:
 
 ``` motoko no-repl
-import List "mo:base/List:";
+import List "mo:core/List";
 import Sequence "mo:collections/List";
-import L "mo:base/List";
+import L "mo:core/List";
 ```
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

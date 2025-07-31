@@ -9,7 +9,7 @@ It takes a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value an
 `()` is the empty tuple and represents a token or trivial return value.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print("Hello, world!");
 ```
@@ -17,7 +17,7 @@ Debug.print("Hello, world!");
 For debugging purposes, `debug_show` converts most Motoko types into [`Text`](https://internetcomputer.org/docs/motoko/base/Text). The operator handles most types well, but may not work with cyclic data structures or types containing functions or type parameters.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print(debug_show {life = 42} ); // "{life = 42}"
 ```

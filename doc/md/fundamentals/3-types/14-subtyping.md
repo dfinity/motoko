@@ -267,7 +267,7 @@ This ensures safety because the function will never be passed arguments it canâ€
 As a simple example, consider the `magnitude` function that returns the absolute value, or magnitude, of an integer.
 
 ```motoko no-repl name=magnitude
-import Int "mo:base/Int"
+import Int "mo:core/Int"
 func magnitude(i : Int) : Nat { Int.abs(i) };
 ```
 

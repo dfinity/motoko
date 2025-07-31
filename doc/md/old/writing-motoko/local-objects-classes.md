@@ -68,7 +68,7 @@ By not exposing this implementation detail, the object has a more general type w
 To illustrate the point just above, consider this variation of the `counter` declaration above, of `byteCounter`:
 
 ``` motoko
-import Nat8 "mo:base/Nat8";
+import Nat8 "mo:core/Nat8";
 object byteCounter {
   var count : Nat8 = 0;
   public func inc() { count += 1 };
@@ -173,7 +173,7 @@ class MyClass(arg1: Type1, arg2: Type2) {
 For example, you can write a `Counter` class that takes an argument of type `Nat` and an argument of type `Bool`:
 
 ``` motoko no-repl
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 persistent actor {
 
@@ -225,17 +225,17 @@ When classes use or contain data of arbitrary type, they carry a type argument. 
 The scope of this type parameter covers the entire `class` with data parameters. As such, the methods of the class can use these type parameters without reintroducing them.
 
 ``` motoko
-import Buffer "mo:base/Buffer";
+import List "mo:core/List";
 
-class Counter<X>(init : Buffer.Buffer<X>) {
-  var buffer = init.clone();
-  public func add(x : X) : Nat {
-    buffer.add(x);
-    buffer.size()
+class Counter<X>(init : [X]) {
+  var list = List.fromArray(init);
+  public func add(element : X) : Nat {
+    List.add(list, element);
+    List.size(list)
   };
 
   public func reset() {
-    buffer := init.clone()
+    List.clear(list)
   };
 };
 ```
@@ -247,14 +247,19 @@ The class constructor may also carry a type annotation for its return type. When
 For example, repeat the `Counter` as a buffer and annotate it with a more general type `Accum<X>` that permits adding, but not resetting, the counter. This annotation ensures that the objects are compatible with the type `Accum<X>`.
 
 ``` motoko
-import Buffer "mo:base/Buffer";
+import List "mo:core/List";
 
-type Accum<X> = { add : X -> Nat };
+type Accumulator<X> = { add : X -> Nat };
 
-class Counter<X>(init : Buffer.Buffer<X>) : Accum<X> {
-  var buffer = init.clone();
-  public func add(x : X) : Nat { buffer.add(x); buffer.size() };
-  public func reset() { buffer := init.clone() };
+class Counter<X>(init : [X]) : Accumulator<X> {
+  var buffer = List.fromArray(init);
+  public func add(element : X) : Nat {
+    List.add(list, element);
+    list.size()
+  };
+  public func reset() {
+    List.clear(list)
+  };
 };
 ```
 

@@ -32,7 +32,7 @@ let bannedUser = #Banned("Violation of rules");
 To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let activeUser : Status = #Active;
 let bannedUser : Status = #Banned("Violation of rules");
@@ -89,8 +89,8 @@ nextState(#red);
 ### Simulating traffic light changes
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Iter "mo:base/Iter";
+import Debug "mo:core/Debug";
+import Iter "mo:core/Iter";
 
 func nextState(light : TrafficLight) : TrafficLight {
   switch (light) {
@@ -160,7 +160,7 @@ A tree can be traversed in multiple ways. One common approach is in-order traver
 The following example recursively traverses the tree in order and prints each value as it is visited.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let tree : Tree = #node {
   value = 10;

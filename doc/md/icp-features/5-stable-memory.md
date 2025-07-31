@@ -144,8 +144,8 @@ let retrievedData = Region.loadBlob(myRegion, 300, 5);  // Returns the same blob
 This example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable, `state`, to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
 
 ```motoko no-repl
-import Nat64 "mo:base/Nat64";
-import Region "mo:base/Region";
+import Nat64 "mo:core/Nat64";
+import Region "mo:core/Region";
 
 persistent actor StableLog {
 

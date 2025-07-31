@@ -221,7 +221,7 @@ persistent actor Coin {
 A variation computes the textual canister identifier from a given principal. A call to `flipWith(p)` will succeed is called with `Principal.fromBlob("aaaaa-aa")`, but may fail with another argument, if the canister does not exist or does not have a `raw_rand` function:
 
 ```motoko
-import Principal "mo:base/Principal";
+import Principal "mo:core/Principal";
 
 persistent actor Coin {
   public func flipWith(principal : Principal) : async Bool {
@@ -258,8 +258,8 @@ As another example of using actor reference expressions, we present a simple `Pu
 <!-- TODO: improve or remove sample (e.g. use a set of subscribers and oneway notify that returns `()` not `async ()` -->
 
 ```motoko no-repl
-import Array "mo:base/Array";
-import Principal "mo:base/Principal";
+import Array "mo:core/Array";
+import Principal "mo:core/Principal";
 
 actor Publisher {
     stable var subscribers : [Principal] = [];

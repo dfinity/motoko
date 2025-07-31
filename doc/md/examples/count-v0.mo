@@ -1,4 +1,4 @@
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor Counter_v0 {
   var state : Nat = 0; // implicitly `transient`

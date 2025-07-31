@@ -1,4 +1,4 @@
-import Cycles = "mo:base/ExperimentalCycles";
+import Cycles = "mo:core/Cycles";
 import Lib = "PiggyBank";
 
 actor Alice {

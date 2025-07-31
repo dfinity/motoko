@@ -219,8 +219,8 @@ To demonstrate how asynchronous actors work, consider the following example.
 Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 <!-- TODO(FUTURE): It would be cleaner to use a Deque or Queue pushing new order to the end and popping the next order to make from the front. -->
 ```motoko no-repl
-import Array "mo:base/Array";
-import Text "mo:base/Text";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
 
 persistent actor PizzaParlor {
     var orders : [Text] = [];

@@ -33,7 +33,7 @@ Array elements are zero-indexed, allowing indices `0` up to `a.size() - 1`.
 Attempting to access an array's index that does not exist will cause a [trap](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/traps). Attempting to modify an immutable array will result in an error `expected mutable assignment target(M0073)`.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let numbers : [Nat] = [10, 20, 30];
 
@@ -65,7 +65,7 @@ The `array.keys()` function returns an iterator that is used to iterate over the
 A `for` loop can also be used to iterate over an array by accessing elements via their index.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let arr : [Nat] = [1, 2, 3, 4, 5];
 
@@ -90,7 +90,7 @@ mutableCopy[0] := 10;
 Motoko supports passing collections to a function, ensuring that all arguments are handled as a collection rather than individual parameters.
 
 ```motoko
-import Debug "mo:base/Debug"
+import Debug "mo:core/Debug"
 
 func printAllStrings(strings : [Text]) {
   for (s in strings.values()) {
@@ -117,8 +117,8 @@ assert (not (arr1 == arr3));
 More generally, including for arrays of non-shared types, the `Array.equal<T>(a1, a2, eq)` function can be used to check whether two arrays are equal. It takes an additional function `eq` for comparing the elements.
 
 ```motoko no-repl
-import Array "mo:base/Array";
-import Nat "mo:base/Nat";
+import Array "mo:core/Array";
+import Nat "mo:core/Nat";
 
 let arr1 : [Nat] = [1, 2, 3];
 let arr2 : [Nat] = [1, 2, 3];
@@ -135,7 +135,7 @@ Unlike some languages, Motoko does not compare arrays by reference; instead, it 
 The [`Array`](https://internetcomputer.org/docs/motoko/base/Array) module in Motoko's base package contains built-in functions for mapping over elements, filtering values, and summing numerical arrays.
 
 ```motoko
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 func transformArray() : [Nat] {
   let numbers : [Nat] = [1, 2, 3];
@@ -151,8 +151,8 @@ To demonstrate nested immutable arrays, consider the following:
 A chessboard is a fixed `8×8` grid. Using immutable arrays to represent the initial [state](https://internetcomputer.org/docs/motoko/fundamentals/state) of the board ensures that the setup remains unchanged, preventing accidental modifications. This is useful because the starting position of pieces in chess is fixed, and any changes should be intentional, such as when making a move. Immutable arrays provide stability and help maintain the integrity of the initial board [state](https://internetcomputer.org/docs/motoko/fundamentals/state).
 
 ```motoko no-repl
-import Array "mo:base/Array";
-import Debug "mo:base/Debug";
+import Array "mo:core/Array";
+import Debug "mo:core/Debug";
 
 persistent actor Chess{
 

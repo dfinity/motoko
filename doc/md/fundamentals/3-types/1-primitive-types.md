@@ -13,7 +13,7 @@ More esoteric functions, not supported by dedicated operators, can be found in t
 For example, the library function `Int.toText: Int -> Text`, declared in base package `Int`, returns the textual representation of its argument.
 
 ```motoko name=int
-import Int "mo:base/Int";
+import Int "mo:core/Int";
 Int.toText(0); // returns "0"
 ```
 
@@ -56,16 +56,15 @@ let y = x << 2; // 0x28 (40 in decimal)
 `Char` represents a single Unicode scalar value, while [`Text`](https://internetcomputer.org/docs/motoko/base/Text) represents a sequence of characters.
 
 ```motoko
-import Char "mo:base/Char";
-import Text  "mo:base/Text";
-import Text "mo:base/Text";
-import Char "mo:base/Char";
+import Char "mo:core/Char";
+import Text  "mo:core/Text";
+
 let letter : Char = 'A';
 
 let codePoint = Char.toNat32(letter); // 65
 
 let word : Text = "Motoko";
-let uppercase = Text.toUppercase(word); // "MOTOKO"
+let uppercase = Text.toUpper(word); // "MOTOKO"
 
 let modified = Text.replace("hello world", #text "world", "Motoko"); // "hello Motoko"
 let words = Text.split("apple,banana,cherry", #char ','); // apple -> banana -> cherry
@@ -89,7 +88,7 @@ let isEqual =  true == false ; // false
 [`Float`](https://internetcomputer.org/docs/motoko/base/Float) is a 64-bit floating-point type that provides mathematical operations.
 
 ```motoko
-import Float "mo:base/Float";
+import Float "mo:core/Float";
 let pi = Float.pi;
 let radius : Float = 2.5;
 let area = Float.pow(radius, 2) * pi; // Area of a circle

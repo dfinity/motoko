@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 14
 ---
 
 # Language reference
@@ -571,7 +571,6 @@ The syntax of a pattern is as follows:
 <pat-field> ::=                                Object pattern fields
   <id> (: <typ>) = <pat>                         Field
   <id> (: <typ>)                                 Punned field
-  type <id>                                      Type field
 ```
 
 ## Type syntax
@@ -1556,9 +1555,7 @@ Pattern matching fails if one of the patterns fails to match the corresponding i
 
 ### Object pattern
 
-The object pattern `{ <pat-field>;* }` matches an object value, a collection of named field values and named type fields, against a sequence of named pattern fields. The set of identifiers bound by each field of the object pattern must be distinct. The names of the pattern fields in the object pattern must be distinct.
-
-A type `<pat-field>` binds a type component from the matched object for the containing block.
+The object pattern `{ <pat-field>;* }` matches an object value, a collection of named field values, against a sequence of named pattern fields. The set of identifiers bound by each field of the object pattern must be distinct. The names of the pattern fields in the object pattern must be distinct.
 
 Object patterns support punning for concision. A punned field `<id>` is shorthand for `<id> = <id>`. Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both bind the matched value of the field named `<id>` to the identifier `<id>`.
 

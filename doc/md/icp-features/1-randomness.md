@@ -50,15 +50,17 @@ The [`Random` module](https://internetcomputer.org/docs/motoko/base/Random) prov
 Below is an example demonstrating how to generate a random boolean using `Random.Finite`.
 
 ```motoko no-repl
-import Random "mo:base/Random";
+import Random "mo:core/Random";
 
 persistent actor {
-  public func randomBoolean() : async ?Bool {
-    let entropy = await Random.blob();
-    let finite = Random.Finite(entropy);
-    // Consumes 1 byte of entropy
-    finite.coin();
-  };
+  transient let random = Random.crypto();
+
+  public func main() : async () {
+    let coin = await* random.bool(); // true or false
+    let byte = await* random.nat8(); // 0 to 255
+    let number = await* random.nat64(); // 0 to 2^64
+    let numberInRange = await* random.natRange(0, 10); // 0 to 9
+  }
 }
 ```
 
@@ -90,7 +92,7 @@ The following example demonstrates generating a UUID v4 using `idempotency-keys`
 
 ```motoko no-repl
 import UUID "mo:idempotency-keys/UUID";
-import Random "mo:base/Random";
+import Random "mo:core/Random";
 
 persistent actor {
   public func generateUUID() : async Text {

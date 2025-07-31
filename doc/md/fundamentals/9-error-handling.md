@@ -97,11 +97,11 @@ Function callsite:
 Traps immediately stop execution and roll back [state](https://internetcomputer.org/docs/motoko/fundamentals/state). They are used for fatal errors that cannot be recovered.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Runtime "mo:core/Runtime";
 
 func divide(a : Nat, b : Nat) : Nat {
     if (b == 0) {
-        Debug.trap("Cannot divide by zero");
+        Runtime.trap("Cannot divide by zero");
     };
     return a / b;
 };
