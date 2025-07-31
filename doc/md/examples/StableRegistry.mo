@@ -1,25 +1,27 @@
-import Text "mo:base/Text";
-import Map "mo:base/HashMap";
-import Iter "mo:base/Iter";
+import Text "mo:core/Text";
+import Map "mo:core/Map";
+import Iter "mo:core/Iter";
 
 persistent actor Registry {
 
   var entries : [(Text, Nat)] = []; // implicitly `stable`
 
-  transient let map = Map.fromIter<Text,Nat>(
-    entries.values(), 10, Text.equal, Text.hash);
+  let map = Map.fromIter<Text,Nat>(
+    entries.values(),
+    Text.compare
+  );
 
   public func register(name : Text) : async () {
-    switch (map.get(name)) {
+    switch (Map.get(map, Text.compare, name)) {
       case null  {
-        map.put(name, map.size());
+        Map.put(map, Text.compare, name, map.size());
       };
       case (?_) { };
     }
   };
 
   public func lookup(name : Text) : async ?Nat {
-    map.get(name);
+    Map.get(map, Text.compare, name);
   };
 
 // Using preupgrade is discouraged and should be avoided if possible.

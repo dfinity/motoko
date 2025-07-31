@@ -1,9 +1,9 @@
-import Text "mo:base/Text";
-import Map "mo:base/HashMap";
+import Text "mo:core/Text";
+import Map "mo:core/Map";
 
 actor Registry {
 
-  let map = Map.HashMap<Text, Nat>(10, Text.equal, Text.hash);
+  let map = Map.empty<Text, Nat>();
 
   public func register(name : Text) : async () {
     switch (map.get(name)) {

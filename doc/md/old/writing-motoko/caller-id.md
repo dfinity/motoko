@@ -88,7 +88,7 @@ persistent actor {
         if (Principal.isAnonymous(caller)) {
             throw Error.reject("Anonymous principal not allowed");
         };
-        Set.add(principals, caller)
+        Set.add(principals, Principal.compare, caller)
     };
 
 }

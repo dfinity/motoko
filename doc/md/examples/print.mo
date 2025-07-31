@@ -1,2 +1,2 @@
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 Debug.print("Hello world");
