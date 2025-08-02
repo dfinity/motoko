@@ -1270,6 +1270,8 @@ module RTS = struct
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
+    E.add_func_import env "rts" "alloc_weak_ref" [I64Type] [I64Type];
+    E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1916,6 +1918,7 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | Region
+    | WeakRef
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
@@ -1949,6 +1952,7 @@ module Tagged = struct
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
     | ArraySliceMinimum -> 44L
+    | WeakRef -> 45L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -2156,6 +2160,35 @@ module MutBox = struct
 
   let add_global_mutbox env =
     E.object_pool_add env __LINE__ alloc
+end
+
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ payload │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
 end
 
 
@@ -11955,6 +11988,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
     Persistence.in_upgrade env
+
+  | OtherPrim "alloc_weak_ref", [target] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae target ^^
+    E.call_import env "rts" "alloc_weak_ref"
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    WeakRef.load_field env
+
+  | OtherPrim "weak_ref_is_live", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    E.call_import env "rts" "weak_ref_is_live" ^^
+    Bool.from_rts_int32
 
   (* Regions *)
 

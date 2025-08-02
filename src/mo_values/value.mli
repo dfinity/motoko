@@ -24,6 +24,9 @@ and func =
 and comp =
   value cont -> value cont -> unit
 
+and weak =
+  value Weak.t
+
 and value =
   | Null
   | Bool of bool
@@ -50,6 +53,7 @@ and value =
   | Comp of comp
   | Mut of value ref
   | Iter of value Seq.t ref (* internal to {b.values(), t.chars()} iterator *)
+  | Weak of weak
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -103,6 +107,7 @@ val as_func : value -> Call_conv.t * func
 val as_async : value -> async
 val as_comp : value -> comp
 val as_mut : value -> value ref
+val as_weak : value -> weak
 
 
 (* Ordering *)

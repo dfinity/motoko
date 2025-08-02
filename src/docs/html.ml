@@ -108,6 +108,7 @@ let rec html_of_type : env -> Syntax.typ -> t =
   | Syntax.NamedT (id, t) ->
       string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
   | Syntax.OptT typ -> string "?" ++ html_of_type env typ
+  | Syntax.WeakT typ -> string "Weak" ++ html_of_type env typ
   | Syntax.TupT typ_list ->
       string "("
       ++ join_with (string ", ") (List.map (html_of_typ_item env) typ_list)

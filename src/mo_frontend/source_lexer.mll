@@ -251,6 +251,7 @@ rule token mode = parse
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
+  | "Weak" { WEAK }
   | "while" { WHILE }
   | "with" { WITH }
 

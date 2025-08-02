@@ -83,3 +83,42 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, tag: Tag, len: usize) -> Value
 
     skewed_ptr
 }
+
+/// Allocate a new weak reference.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
+    use crate::barriers::allocation_barrier;
+
+    let weak_ref = mem.alloc_words(size_of::<WeakRef>() + Words(16));
+
+    let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
+    (*weak_ref_obj).header.tag = TAG_WEAK_REF;
+    (*weak_ref_obj).header.init_forward(weak_ref);
+    (*weak_ref_obj).field = target;
+
+    // TODO: double check this!!!
+    allocation_barrier(weak_ref)
+}
+
+/// Check if a weak reference is still live.
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+pub unsafe fn weak_ref_is_live<M: Memory>(mem: &mut M, weak_ref: Value) -> bool {
+    if !weak_ref.is_non_null_ptr() {
+        return false; // Invalid WeakRef pointer.
+    }
+    let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
+    let field_tag = (*weak_ref_obj).header.tag;
+
+    match field_tag {
+        TAG_WEAK_REF => {
+            // Get the target object and check if it is null.
+            let target = (*weak_ref_obj).field;
+            return target.is_non_null_ptr();
+        }
+        _ => {
+            return false;
+        }
+    }
+}

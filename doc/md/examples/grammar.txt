@@ -48,6 +48,7 @@
 <typ_un> ::= 
     <typ_nullary>
     '?' <typ_un>
+    WEAK <typ_un>
 
 <typ_pre> ::= 
     <typ_un>
