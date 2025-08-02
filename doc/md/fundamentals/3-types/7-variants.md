@@ -16,7 +16,7 @@ type Status = {
 };
 ```
 
-`#Active` and `#Inactive` are constant tags, with an implicit `()` argument, meaning they only store trivial data. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value, such as the reason for the ban.
+`#Active` and `#Inactive` are constant tags, with an implicit `()` argument, meaning they only store trivial data. `#Banned` carries a [`Text`](https://internetcomputer.org/docs/motoko/core/Text) value, such as the reason for the ban.
 
 ## Assigning variants
 
@@ -32,7 +32,7 @@ let bannedUser = #Banned("Violation of rules");
 To work with a variant, use a [`switch`](https://internetcomputer.org/docs/motoko/fundamentals/control-flow/switch) expression to match each possible case.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let activeUser : Status = #Active;
 let bannedUser : Status = #Banned("Violation of rules");
@@ -89,8 +89,8 @@ nextState(#red);
 ### Simulating traffic light changes
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Iter "mo:base/Iter";
+import Debug "mo:core/Debug";
+import Iter "mo:core/Iter";
 
 func nextState(light : TrafficLight) : TrafficLight {
   switch (light) {
@@ -126,7 +126,7 @@ type Tree = {
 
 This example contains two variants:
 
-1. `#node` contains a value of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) and two child trees (`left` and `right`).
+1. `#node` contains a value of type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) and two child trees (`left` and `right`).
 2. `#leaf` represents an empty node.
 
 ### Building the tree
@@ -160,7 +160,7 @@ A tree can be traversed in multiple ways. One common approach is in-order traver
 The following example recursively traverses the tree in order and prints each value as it is visited.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 let tree : Tree = #node {
   value = 10;
@@ -183,7 +183,7 @@ traverseInOrder(tree);
 
 ### Using generic types
 
-Currently, the example tree only supports [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) values. To allow it to store any type of data, a [generic type](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
+Currently, the example tree only supports [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) values. To allow it to store any type of data, a [generic type](https://internetcomputer.org/docs/motoko/fundamentals/types/advanced-types) can be used. A generic type allows a data structure to work with multiple types by using a placeholder type `T`, which is replaced with a specific type when used.
 
 ```motoko no-repl
 type Tree<T> = {
@@ -196,7 +196,7 @@ type Tree<T> = {
 };
 ```
 
-With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), or custom types, making it more flexible and reusable.
+With this change, the tree can store any type, such as [`Text`](https://internetcomputer.org/docs/motoko/core/Text), [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), or custom types, making it more flexible and reusable.
 
 ## Subtyping
 

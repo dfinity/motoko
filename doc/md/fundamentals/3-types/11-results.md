@@ -19,10 +19,10 @@ Because of the second type parameter `Err`, the `Result` type lets you select th
 Here’s a simple function that validates a username. If it's non-empty, it will return a greeting of type `Text`. If not, it will return an error of type `Text`.
 
 ```motoko
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
-  if (name.size() == 0) #err "Name is empty" else #ok ("Hello" # name);
+  if (name.size() == 0) #err "Name is empty" else #ok ("Hello " # name);
 };
 ```
 
@@ -33,7 +33,7 @@ When a Motoko value has type `Result<T, E>`, it is either a success, written `#o
 ### `switch`
 
 ```motoko
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
   if (name.size() == 0) #err "Name is empty" else #ok ("Hello " # name);
@@ -57,7 +57,7 @@ The verbosity of `switch` expressions can make code harder to read, so Motoko al
 Values can be extracted from `Result` using the `let ... else` pattern. This can be preferable to a `switch` expression when only the success `case` is needed, and the else branch can cleanly handle or exit on failure. It allows concise early returns or alternative flows when the result is `#err`.
 
 ```motoko
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 func greet(name : Text) : Result.Result<Text, Text> {
   if (name.size() == 0) #err "Name is empty" else #ok ("Hello " # name);
@@ -77,4 +77,4 @@ If you need to handle or inspect the error, it's better to use a `switch` statem
 
 ## Resources
 
-- [`Result`](https://internetcomputer.org/docs/motoko/base/Result)
+- [`Result`](https://internetcomputer.org/docs/motoko/core/Result)

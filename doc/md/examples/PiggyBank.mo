@@ -1,4 +1,4 @@
-import Cycles "mo:base/ExperimentalCycles";
+import Cycles "mo:core/Cycles";
 
 shared(msg) persistent actor class PiggyBank(
   benefit : shared () -> async (),

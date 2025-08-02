@@ -1,5 +1,5 @@
-import Debug "mo:base/Debug";
-import Float "mo:base/Float";
+import Debug "mo:core/Debug";
+import Float "mo:core/Float";
 
 (with migration =
   func (_ : {var state : Int}) : {} { // discard old state

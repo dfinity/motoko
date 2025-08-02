@@ -104,7 +104,7 @@ The last case uses the wildcard pattern `_`, which matches anything but doesn’
 Option patterns allow destructuring of `?T` values, matching either `null` or `?someValue`.
 
 ```motoko no-repl
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 func getValue(opt : ?Nat) : Text {
     switch opt {

@@ -50,7 +50,7 @@ In this example, a publisher canister maintains a list of subscribers and sends 
 
 ```motoko no-repl
 import Subscriber "canister:subscriber";
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 actor Publisher {
     stable var subscribers : [Subscriber.Subscriber] = [];
@@ -77,7 +77,7 @@ actor Publisher {
 #### Subscriber
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor Subscriber {
     public shared func notify(message : Text) : async () {

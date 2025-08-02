@@ -1,5 +1,5 @@
-import Debug "mo:base/Debug";
-import Float "mo:base/Float";
+import Runtime "mo:core/Runtime";
+import Float "mo:core/Float";
 import {migration} "Migration";
 
 (with migration) // declare the migration function (using field punning)
@@ -16,7 +16,7 @@ persistent actor Counter_v8 {
   };
 
   public query func read() : async Int {
-    Debug.trap("No longer supported: Use `readFloat`");
+    Runtime.trap("No longer supported: Use `readFloat`");
   };
 
   public query func readFloat() : async Float {

@@ -1,5 +1,5 @@
-import Nat64 "mo:base/Nat64";
-import Region "mo:base/Region";
+import Nat64 "mo:core/Nat64";
+import Region "mo:core/Region";
 
 persistent actor StableLog {
 

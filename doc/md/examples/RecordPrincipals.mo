@@ -1,6 +1,6 @@
-import Principal "mo:base/Principal";
-import OrderedSet "mo:base/OrderedSet";
-import Error "mo:base/Error";
+import Principal "mo:core/Principal";
+import OrderedSet "mo:core/OrderedSet";
+import Error "mo:core/Error";
 
 persistent actor {
 

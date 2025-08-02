@@ -103,7 +103,7 @@ The only thing the caller can do with this future is wait for it to be completed
 
 To access the result of an `async` value, the receiver of the future uses an `await` expression.
 
-For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), `n`:
+For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), `n`:
 
 ``` motoko no-repl
 let a : async Nat = Counter.read();
@@ -219,8 +219,8 @@ To demonstrate how asynchronous actors work, consider the following example.
 Customers place orders at a pizza restaurant, but the chef can only make one pizza at a time. Orders are taken **[asynchronously](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await)**, meaning customers do not have to wait for previous orders to be completed before placing their own. However, each pizza is prepared sequentially. This is representative of an asynchronous actor.
 <!-- TODO(FUTURE): It would be cleaner to use a Deque or Queue pushing new order to the end and popping the next order to make from the front. -->
 ```motoko no-repl
-import Array "mo:base/Array";
-import Text "mo:base/Text";
+import Array "mo:core/Array";
+import Text "mo:core/Text";
 
 persistent actor PizzaParlor {
     var orders : [Text] = [];
