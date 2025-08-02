@@ -28,6 +28,7 @@ module Make (Cfg : Config) = struct
     | Shared Write -> "Shared"
     | Shared Query -> "Shared Query"
     | Shared Composite -> "Shared Composite"
+    | Stable id -> "Stable("^id^")"
 
   let prim = function
     | Null -> Atom "Null"

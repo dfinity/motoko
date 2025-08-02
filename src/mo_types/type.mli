@@ -9,7 +9,7 @@ type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
 type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local | Shared of 'a | Stable of var
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
