@@ -2270,14 +2270,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
       let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-      if Bi_match.debug then begin
-        print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
-        print_endline (Printf.sprintf "t_arg : %s" (T.string_of_typ t_arg));
-        print_endline (Printf.sprintf "t2 : %s" (T.string_of_typ t2));
-        print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t') -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
-        print_endline (Printf.sprintf "deferred : %s" (String.concat ", " (List.map (fun (exp, t) -> Printf.sprintf "%s : %s" (Source.read_region exp.at |> Option.value ~default:"") (T.string_of_typ t)) deferred)));
-        print_endline "";
-      end;
+
+      if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
       (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
       let err_ts = ref None in
@@ -2384,6 +2378,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
+and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
+  print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
+  print_endline (Printf.sprintf "t_arg : %s" (T.string_of_typ t_arg));
+  print_endline (Printf.sprintf "t2 : %s" (T.string_of_typ t2));
+  print_endline (Printf.sprintf "subs : %s" (String.concat ", " (List.map (fun (t, t') -> Printf.sprintf "%s <: %s" (T.string_of_typ t) (T.string_of_typ t')) subs)));
+  print_endline (Printf.sprintf "deferred : %s" (String.concat ", " (List.map (fun (exp, t) -> Printf.sprintf "%s : %s" (Source.read_region exp.at |> Option.value ~default:"") (T.string_of_typ t)) deferred)));
+  print_endline ""
 
 (* Cases *)
 

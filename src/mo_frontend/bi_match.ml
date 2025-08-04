@@ -70,6 +70,31 @@ let verify_ctx ctx =
 let string_of_bounds (l, u) =
   String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s <: %s <: %s" (string_of_typ t) (Cons.name c) (string_of_typ (ConEnv.find c u))) (ConEnv.bindings l))
 
+(* Functions used only for debugging *)
+module Debug = struct
+  let print_solve ctx (ts1, ts2) =
+    print_endline "solve ctx";
+    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
+    print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
+    print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
+    print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
+    verify_ctx ctx
+
+  let print_variables_to_defer unused can_defer must_fix to_defer =
+    print_endline (Printf.sprintf "unused : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unused))));
+    print_endline (Printf.sprintf "can_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements can_defer))));
+    print_endline (Printf.sprintf "must_fix : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_fix))));
+    print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))))
+
+  let print_solved_bounds l u =
+    print_endline (Printf.sprintf "bi_match_typs : %s" (string_of_bounds (l, u)))
+
+  let print_partial_solution env unsolved =
+    print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
+    print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
+    print_endline ""
+end
+
 module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
@@ -314,14 +339,7 @@ let bi_match_typs ctx =
  * Unused type variables can be deferred to the next round.
  *)
 let solve ctx (ts1, ts2) deferred_typs =
-  if debug then begin
-    print_endline "solve ctx";
-    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
-    print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
-    print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
-    print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
-    verify_ctx ctx;
-  end;
+  if debug then Debug.print_solve ctx (ts1, ts2);
   let no_another_round = deferred_typs = [] in
   let to_defer, defer_verify = if no_another_round then (ConSet.empty, false) else
     (* Find unused type variables to defer solving to the next round.
@@ -351,21 +369,14 @@ let solve ctx (ts1, ts2) deferred_typs =
     let must_fix, can_defer = ConSet.inter must_fix ctx.var_set, ConSet.inter can_defer ctx.var_set in
     let can_defer = ConSet.diff can_defer must_fix in
     let to_defer = ConSet.union unused can_defer in
-    if debug then begin
-      print_endline (Printf.sprintf "unused : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unused))));
-      print_endline (Printf.sprintf "can_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements can_defer))));
-      print_endline (Printf.sprintf "must_fix : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_fix))));
-      print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))));
-    end;
+    if debug then Debug.print_variables_to_defer unused can_defer must_fix to_defer;
     to_defer, not (ConSet.is_empty can_defer)
   in
   match
     bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
   | Some (l, u) ->
-    if debug then begin
-      print_endline (Printf.sprintf "bi_match_typs : %s" (string_of_bounds (l, u)));
-    end;
+    if debug then Debug.print_solved_bounds l u;
     let unsolved = ref ConSet.empty in
     let env = l |> ConEnv.mapi (fun c lb ->
       let ub = ConEnv.find c u in
@@ -381,11 +392,7 @@ let solve ctx (ts1, ts2) deferred_typs =
       else
         fail_over_constrained lb c ub)
     in
-    if debug then begin
-      print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
-      print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
-      print_endline "";
-    end;
+    if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
     let (l, u) = ctx.bounds in
     let remaining = {
