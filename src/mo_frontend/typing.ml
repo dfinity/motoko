@@ -2064,7 +2064,12 @@ and check_exp' env0 t exp : T.typ =
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
-    let env', t2 = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
+    let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
+    if not (sub env Source.no_region t2 codom) then
+      error env exp.at "M0095"
+        "function return type%a\ndoes not match expected return type%a"
+        display_typ_expand t2
+        display_typ_expand codom;
     check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
@@ -2112,7 +2117,14 @@ and check_exp_field env (ef : exp_field) fts =
   | None ->
     ignore (infer_exp env exp)
 
-and check_func_step ?(sub=sub) in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : (env * T.typ) =
+(** Performs the first step of checking that the given [FuncE (_, shared_pat, [], pat, typ_opt, _, exp)] expression has type [T.Func (s, c, [], ts1, ts2)].
+  Used to prepare the new env for checking the [exp] (body of the function).
+  Returns:
+  - the env for the body of the function ([exp]),
+  - [t2], the expected type of the body,
+  - [codom], the codomain of the function. The caller must check that [sub t2 codom].
+ *)
+and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : env * T.typ * T.typ =
   let sort, ve = check_shared_pat env shared_pat in
   if not env.pre && not in_actor && T.is_shared_sort sort then
     error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
@@ -2129,18 +2141,13 @@ and check_func_step ?(sub=sub) in_actor env (shared_pat, pat, typ_opt, exp) (s, 
       "%sshared function does not match expected %sshared function type"
       (if sort = T.Local then "non-" else "")
       (if s = T.Local then "non-" else "");
-  if not (sub env Source.no_region t2 codom) then
-    error env exp.at "M0095"
-      "function return type%a\ndoes not match expected return type%a"
-      display_typ_expand t2
-      display_typ_expand codom;
   let env' =
     { env with
       labs = T.Env.empty;
       rets = Some t2;
       async = C.NullCap; }
   in
-  (adjoin_vals env' ve2), t2
+  (adjoin_vals env' ve2), t2, codom
 
 and detect_lost_fields env t = function
   | _ when env.pre || not (T.is_obj t) -> ()
@@ -2313,14 +2320,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               (* Check that all type variables in the function input type are fixed, fail otherwise *)
               Bi_match.fail_when_types_are_not_closed remaining ts1;
               (* Check the function input type and prepare for inferring the body *)
-              let sub _ _ t t' =
-                (* Checking `typ_opt <: ts2` will fail when ts2 is not closed.
-                 * Add it to the subtype problems instead.
-                 *)
-                extra_subs := (t, t') :: !extra_subs;
-                true
-              in
-              let env', expected_t = check_func_step ~sub false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+              let env', expected_t, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+              (* Checking `expected_t <: codom` would fail when `codom` is not closed.
+               * Add it to the subtype problems instead.
+               *)
+              extra_subs := (expected_t, codom) :: !extra_subs;
               (* Future work: we could decompose instead of infer if we want to iterate the process *)
               let actual_t = infer_exp env' body in
               to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
