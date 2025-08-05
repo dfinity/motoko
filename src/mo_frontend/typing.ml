@@ -2326,17 +2326,18 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
                * Since [body_typ] is closed, no need to infer.
                *)
               check_exp env' body_typ body;
-            
-            if not closed && body_typ <> codom then
-              (* When [codom] is open, we add it to the problems to solve. *)
-              subs := (body_typ, codom) :: !subs;
 
-            if not closed && body_typ = codom then begin
-              (* When we just have [codom] and it is open : we need to infer the body *)
-              let actual_t = infer_exp env' body in
-              to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
-              subs := (actual_t, body_typ) :: !subs;
-            end
+            (* When [codom] is open, we need to solve it *)
+            if not closed then
+              if body_typ <> codom then
+                (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
+                subs := (body_typ, codom) :: !subs
+              else begin
+                (* We just have open [codom], we need to infer the body *)
+                let actual_t = infer_exp env' body in
+                to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
+                subs := (actual_t, body_typ) :: !subs;
+              end
           | _ ->
             (* Future work: Inferring will fail, we could report an explicit error instead *)
             subs := (infer_exp env exp, typ) :: !subs
