@@ -394,15 +394,15 @@ let solve ctx (ts1, ts2) deferred_typs =
     in
     if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
-    let (l, u) = ctx.bounds in
     let remaining = if ConSet.is_empty var_set then empty_ctx else {
       var_set;
-      var_env = ConEnv.filter_dom var_set ctx.var_env;
+      var_env = ConEnv.intersect_dom var_set ctx.var_env;
       var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
       bounds = (
-        ConEnv.filter_dom var_set l,
-        ConEnv.filter_dom var_set u);
-      variances = ConEnv.filter_dom var_set ctx.variances;
+        (* Note that these bounds are not the same as [ctx.bounds], deferred variables might have tigher bounds after solving *)
+        ConEnv.intersect_dom var_set l,
+        ConEnv.intersect_dom var_set u);
+      variances = ConEnv.intersect_dom var_set ctx.variances;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
