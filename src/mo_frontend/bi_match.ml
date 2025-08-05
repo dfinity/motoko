@@ -5,7 +5,7 @@ open Type
 open MakePretty(struct let show_stamps = false end)
 *)
 
-(* Turn on/off debug prints *)
+(** Turn on/off debug prints *)
 let debug = false
 
 let pp_rel ppf (t1, rel, t2) =
@@ -70,7 +70,7 @@ let verify_ctx ctx =
 let string_of_bounds (l, u) =
   String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s <: %s <: %s" (string_of_typ t) (Cons.name c) (string_of_typ (ConEnv.find c u))) (ConEnv.bindings l))
 
-(* Functions used only for debugging *)
+(** Functions used only for debugging *)
 module Debug = struct
   let print_solve ctx (ts1, ts2) =
     print_endline "solve ctx";
@@ -80,11 +80,10 @@ module Debug = struct
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
     verify_ctx ctx
 
-  let print_variables_to_defer unused can_defer must_fix to_defer =
-    print_endline (Printf.sprintf "unused : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unused))));
-    print_endline (Printf.sprintf "can_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements can_defer))));
-    print_endline (Printf.sprintf "must_fix : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_fix))));
-    print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))))
+  let print_variables_to_defer used cannot_infer outputs_to_defer =
+    print_endline (Printf.sprintf "used : %s" (String.concat ", " (List.map Cons.name (ConSet.elements used))));
+    print_endline (Printf.sprintf "cannot_infer (to_defer 1/2) : %s" (String.concat ", " (List.map Cons.name (ConSet.elements cannot_infer))));
+    print_endline (Printf.sprintf "outputs_to_defer (to_defer 2/2) : %s" (String.concat ", " (List.map Cons.name (ConSet.elements outputs_to_defer))))
 
   let print_solved_bounds l u =
     print_endline (Printf.sprintf "bi_match_typs : %s" (string_of_bounds (l, u)))
@@ -115,8 +114,8 @@ let is_unsolved_var ctx t =
   | Con (c, []) -> ConSet.mem c ctx.var_set
   | _ -> false
 
-(* Check partial instantiation `env` satisfies bounds and all the pairwise sub-typing relations in `(ts1, ts2)`;
-   used to sanity check inferred instantiations *)
+(** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
+    used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env (ts1, ts2) =
   List.length (ConEnv.keys ctx.var_env) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
@@ -335,42 +334,45 @@ let bi_match_typs ctx =
   in
   bi_match_list bi_match_typ
 
-(* Solves the given constraints in the given context.
- * Unused type variables can be deferred to the next round.
+(** Solves the given constraints [ts1, ts2] in the given context [ctx].
+    Unused type variables can be deferred to the next round.
+    [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
 let solve ctx (ts1, ts2) deferred_typs =
   if debug then Debug.print_solve ctx (ts1, ts2);
-  let no_another_round = deferred_typs = [] in
-  let to_defer, defer_verify = if no_another_round then (ConSet.empty, false) else
-    (* Find unused type variables to defer solving to the next round.
-     * Only needed if there is another round.
-     * Unused type variables are always deferred to the next round since there are no constraints that would help us solve them now.
-     *)
-    let unused =
-      let cons1 = cons_typs ts1 in
-      let cons2 = cons_typs ts2 in
-      let used = ConSet.union cons1 cons2
-      in
-      ConSet.diff ctx.var_set used
-    in
-    (* Defer variables that appear in the bodies of deferred funcs, we don't need to pick a bound for them now, it might restrict the solution.
-    * But we must fix variables that appear in the arguments of deferred funcs, because they are needed to infer the bodies.
-    *)
-    let must_fix, can_defer = List.fold_left (fun (must_fix, can_defer) t ->
+
+  (* Defer solving type variables that:
+    - appear ONLY in deferred func inputs. There is no info to help us infer them, it's better to raise an error than infer a default bound that could lead to confusing errors.
+    - appear in deferred func outputs (unless they appear in inputs). Solving them now could restrict the solution.
+   *)
+  let to_defer, defer_verify = if deferred_typs = [] then (ConSet.empty, false) else
+    (* Type variables mentioned/used in subtyping constraints *)
+    let cons1 = cons_typs ts1 in
+    let cons2 = cons_typs ts2 in
+    let used = ConSet.inter ctx.var_set (ConSet.union cons1 cons2) in
+
+    let inputs, outputs = List.fold_left (fun (inputs, outputs) t ->
       match normalize t with
       | Func (_, _, _, t1, t2) ->
-        let must_fix = ConSet.union must_fix (cons_typs t1) in
-        let can_defer = ConSet.union can_defer (cons_typs t2) in
-        (must_fix, can_defer)
+        let inputs = ConSet.union inputs (cons_typs t1) in
+        let outputs = ConSet.union outputs (cons_typs t2) in
+        (inputs, outputs)
       | _ ->
-        (ConSet.union must_fix (cons t), can_defer)
+        (ConSet.union inputs (cons t), outputs)
       ) (ConSet.empty, ConSet.empty) deferred_typs
     in
-    let must_fix, can_defer = ConSet.inter must_fix ctx.var_set, ConSet.inter can_defer ctx.var_set in
-    let can_defer = ConSet.diff can_defer must_fix in
-    let to_defer = ConSet.union unused can_defer in
-    if debug then Debug.print_variables_to_defer unused can_defer must_fix to_defer;
-    to_defer, not (ConSet.is_empty can_defer)
+    (* Type variables that appear ONLY in inputs of deferred funcs. There is no info to help us infer them. *)
+    let cannot_infer = ConSet.diff inputs used in
+
+    (* Type variables from the outputs of deferred funcs that CAN be deferred to the next round.
+     * We defer them expecting more constraints in the next round.
+     * Inputs are excluded as they must be solved now.
+     *)
+    let outputs_to_defer = ConSet.diff outputs inputs in
+
+    if debug then Debug.print_variables_to_defer used cannot_infer outputs_to_defer;
+    let to_defer = ConSet.union cannot_infer outputs_to_defer in
+    to_defer, not (ConSet.is_empty outputs_to_defer)
   in
   match
     bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
@@ -489,9 +491,6 @@ let finalize ts1 ctx subs =
     assert (subs = []);
     ts1, ConEnv.empty
   end else begin
-    (* Finalize should only be called when there are subtyping constraints to solve *)
-    assert (subs <> []);
-    
     (* Solve the 2nd round of sub-type problems *)
     let env, remaining = solve ctx (List.split subs) [] in
 
