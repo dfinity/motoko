@@ -2226,27 +2226,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
-        let rec cannot_infer_pat pat =
-          match pat.it with
-          | WildP
-          | VarP _
-          | AltP _ -> true (* cases that cannot be inferred, would report errors *)
-          | LitP _
-          | AnnotP _ (* annotated patterns can be inferred *)
-          | SignP _ -> false
-          | TupP pats -> List.exists cannot_infer_pat pats
-          | ParP p
-          | OptP p
-          | TagP (_, p) -> cannot_infer_pat p
-          | ObjP pfs -> List.exists cannot_infer_pat_field pfs
-        and cannot_infer_pat_field pf =
-          match pf.it with
-          | ValPF (_, pat) -> cannot_infer_pat pat
-          | TypPF _ -> false
-        in
         let try_infer_exp env exp =
           match exp.it with
-          | FuncE (_, _, _, pat, _, _, _) when cannot_infer_pat pat -> None
+          | FuncE (_, _, _, pat, _, _, _) when not (is_explicit_pat pat) -> None
           (* Future work: more cases *)
           | _ -> Some (infer_exp env exp)
         in
