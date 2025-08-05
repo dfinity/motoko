@@ -2,10 +2,10 @@
 import Prim = "mo:prim";
 
 persistent actor {
-  let w : Weak [var Nat64] = Prim.allocWeakRef(Prim.Array_init<Nat64>(1, 0));
+  let w : Weak[var Nat64] = Prim.allocWeakRef(Prim.Array_init<Nat64>(1, 0));
 };
 
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
