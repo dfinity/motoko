@@ -2226,37 +2226,37 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
-        let try_infer_exp env exp =
+        let subs, deferred, to_fix = ref [], ref [], ref [] in
+        let infer_or_defer exp target_type =
           match exp.it with
-          | FuncE (_, _, _, pat, _, _, _) when not (is_explicit_pat pat) -> None
-          (* Future work: more cases *)
-          | _ -> Some (infer_exp env exp)
+          | FuncE (_, _, _, pat, _, _, _) when not (is_explicit_pat pat) ->
+            (* Cannot infer unannotated func, defer it *)
+            deferred := (exp, target_type) :: !deferred;
+            target_type
+          (* Future work: more cases to defer? *)
+          | _ ->
+            (* Infer and add a subtype problem for bi_match *)
+            let t = infer_exp env exp in
+            subs := (t, target_type) :: !subs;
+            t 
         in
-        let infer_or_defer env (subs, deferred, to_fix) exp target_type =
-          match try_infer_exp env exp with
-          | Some t -> t, ((t, target_type) :: subs, deferred, to_fix) (* subtype problem for bi_match *)
-          | None -> target_type, (subs, (exp, target_type) :: deferred, to_fix) (* deferred *)
-        in
-        let rec decompose env exp target_type acc =
+        let rec decompose exp target_type =
           match exp.it, T.normalize target_type with
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            let ts', (subs, deferred, to_fix) = decompose_list env exps ts acc in
+            let ts' = List.map2 decompose exps ts in
             let target_type' = T.Tup ts' in
             (* exp.note would need to be fixed later after the substitution *)
-            target_type', (subs, deferred, (exp, target_type') :: to_fix)
-          (* Future work: more cases *)
-          | _ -> infer_or_defer env acc exp target_type
-        and decompose_list env exps ts acc = 
-          let ts, acc = List.fold_left2 (fun (acc_ts, acc) exp t ->
-            let t', acc' = decompose env exp t acc in
-            t' :: acc_ts, acc') ([], acc) exps ts in
-          List.rev ts, acc
+            to_fix := (exp, target_type') :: !to_fix;
+            target_type'
+          (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
+          | _ -> infer_or_defer exp target_type
         in
-        decompose env exp target_type ([], [], [])
+        let t2 = decompose exp target_type in
+        t2, !subs, !deferred, !to_fix
       in
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
-      let (t2, (subs, deferred, to_fix)) = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      let t2, subs, deferred, to_fix = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
 
       if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
