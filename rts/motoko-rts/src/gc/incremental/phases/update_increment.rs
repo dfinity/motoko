@@ -129,8 +129,20 @@ impl<'a> UpdateIncrement<'a> {
                     length
                 },
             );
-            if object.tag() < TAG_ARRAY_SLICE_MIN || self.time.is_over() {
-                return;
+            #[cfg(feature = "classical_persistence")]
+            {
+                if object.tag() < TAG_ARRAY_SLICE_MIN || self.time.is_over() {
+                    return;
+                }
+            }
+            #[cfg(feature = "enhanced_orthogonal_persistence")]
+            {
+                if object.tag() < TAG_ARRAY_SLICE_MIN
+                    || object.tag() == TAG_WEAK_REF
+                    || self.time.is_over()
+                {
+                    return;
+                }
             }
         }
     }
