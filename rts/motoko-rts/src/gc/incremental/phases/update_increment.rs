@@ -1,4 +1,4 @@
-use motoko_rts_macros::enhanced_orthogonal_persistence;
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 use crate::{
     gc::incremental::{
@@ -102,7 +102,12 @@ impl<'a> UpdateIncrement<'a> {
             // Keep mark bit and later resume updating more slices of this array.
             return;
         }
+        #[enhanced_orthogonal_persistence]
+        debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN || object.tag() == TAG_WEAK_REF);
+
+        #[classical_persistence]
         debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+
         self.time.tick();
     }
 

@@ -104,7 +104,7 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
 /// Check if a weak reference is still live.
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
-pub unsafe fn weak_ref_is_live<M: Memory>(mem: &mut M, weak_ref: Value) -> bool {
+pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool {
     if !weak_ref.is_non_null_ptr() {
         return false; // Invalid WeakRef pointer.
     }
