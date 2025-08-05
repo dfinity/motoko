@@ -2258,19 +2258,17 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         let rec decompose env exp target_type acc =
           match exp.it, T.normalize target_type with
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            let ts', (subs, deferred, to_fix) = decompose_list env exps ts [] acc in
+            let ts', (subs, deferred, to_fix) = decompose_list env exps ts acc in
             let target_type' = T.Tup ts' in
             (* exp.note would need to be fixed later after the substitution *)
             target_type', (subs, deferred, (exp, target_type') :: to_fix)
           (* Future work: more cases *)
           | _ -> infer_or_defer env acc exp target_type
-        and decompose_list env exps ts acc_ts acc =
-          match exps, ts with
-          | exp::exps, t::ts ->
+        and decompose_list env exps ts acc = 
+          let ts, acc = List.fold_left2 (fun (acc_ts, acc) exp t ->
             let t', acc' = decompose env exp t acc in
-            decompose_list env exps ts (t' :: acc_ts) acc'
-          | [], [] -> List.rev acc_ts, acc
-          | _ -> assert false
+            t' :: acc_ts, acc') ([], acc) exps ts in
+          List.rev ts, acc
         in
         decompose env exp target_type ([], [], [])
       in
