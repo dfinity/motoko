@@ -8063,7 +8063,8 @@ module MakeSerialization (Strm : Stream) = struct
             ( sort_by_hash vs )
             ( skip get_arg_typ ^^
               coercion_failed "IDL error: unexpected variant tag" )
-        )
+          )
+      (* STABLE TODO *)
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
@@ -11014,9 +11015,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
            raise (Invalid_argument "call_as_prim was true?")
          end
       | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
-         assert (sort = Type.Local);
+         assert (sort = Type.Local); (* TBR - allow Type.stable _?*)
          StackRep.of_arity return_arity,
-
          code1 ^^
          compile_unboxed_zero ^^ (* A dummy closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
