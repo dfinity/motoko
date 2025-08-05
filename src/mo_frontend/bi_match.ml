@@ -483,7 +483,7 @@ let bi_match_subs scope_opt tbs typ_opt =
     let deferred_typs = List.map (open_ ts) deferred_typs in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) (List.map (open_ ts) deferred_typs) in
+    let env, remaining = solve ctx (ts1, ts2) deferred_typs in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =
