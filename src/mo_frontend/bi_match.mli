@@ -46,48 +46,56 @@ open Type
 
 exception Bimatch of string
 
-(* Opaque context type for bi-matching *)
+(** Opaque context type for bi-matching *)
 type ctx
 
-(* General parameter inference for a conjunction of subtype problems.
+(** General parameter inference for a conjunction of subtype problems.
 
- Solving can be done in two rounds:
- - Call the solver with the current set of sub-type problems to get the partial solution
- - Use the result to substitute solved type parameters (might contain remaining type variables)
- - Call the `finalize` function with the remaining sub-type problems (make sure the solved type parameters are substituted!)
-   to get the final solution and the substitution of the remaining type variables from the 1st round
+  Solving can be done in two rounds:
+  - Call the solver with the current set of sub-type problems to get the partial solution
+  - Use the result to substitute solved type parameters (might contain remaining type variables)
+  - Call the [finalize] function with the remaining sub-type problems (make sure the solved type parameters are substituted!)
+    to get the final solution and the substitution of the remaining type variables from the 1st round
+
+  [bi_match_subs scope_opt tbs ret_opt subs deferred]:
+  - [scope_opt] is the optional async scope
+  - [tbs] is the list of type parameters to instantiate
+  - [ret_opt] is the optional return type mentioning tbs determining polarities
+  - [subs] is the list of sub-type problems mentioning tbs either on left or right, but never both sides
+  - [deferred] is the list of types deferred until the next round; types containing tbs that are part of the subtype problems in the 2nd round
+
+  Returns: the solution and the remaining context for variables to be solved in the 2nd round.
+
+  Raises: [Bimatch] when the problems are not solvable.
  *)
 val bi_match_subs :
   scope option ->
-  (* tbs: type parameters to instantiate *)
   bind list ->
-  (* optional return type mentioning tbs determining polarities *)
   typ option ->
-  (* sub-type problems mentioning tbs either on left or right, but never both sides *)
   (typ * typ) list ->
-  (* types deferred until the next round;
-   * types containing tbs that are part of the subtype problems in the 2nd round
-   *)
   typ list ->
-  (* solution and remaining context:
-   * - Solution for all type parameters, remaining type variables are solved to Type.Con and must be solved in the 2nd round
-   * - Remaining context for variables that need to be solved in the 2nd round. When None, all type variables are solved
-   *)
-  typ list * ctx option (* raises Bimatch *)
+  typ list * ctx
 
-(* Finalizes the bi-match solution by solving remaining type variables and combining results *)
+(** [finalize ts ctx subs] returns the final solution and the substitution of the remaining type variables from the 1st round.
+  - [ts] is the solution from the 1st round
+  - [ctx] is the remaining context for variables to be solved in this 2nd round
+  - [subs] is the 2nd round sub-type problems
+
+  Returns: the final solution and the substitution of the remaining type variables from the 1st round.
+
+  Raises: [Bimatch] when the problems are not solvable.
+ *)
 val finalize :
-  (* Solution from the 1st round, used to produce the final combined solution *)
   typ list ->
-  (* Remaining context for variables to be solved in this 2nd round *)
   ctx ->
-  (* 2nd round sub-type problems *)
   (typ * typ) list ->
-  (* Final solution and substitution of the remaining type variables from the 1st round *)
   typ list * typ ConEnv.t
 
-(* Checks that all types are closed (no unresolved type variables) *)
+(** Checks that all types are closed (no unresolved type variables) *)
 val fail_when_types_are_not_closed : ctx -> typ list -> unit
 
-(* Indicates whether debug prints are enabled *)
+(** Checks that the given type is closed (no unresolved type variables) *)
+val is_closed : ctx -> typ -> bool
+
+(** Indicates whether debug prints are enabled *)
 val debug : bool

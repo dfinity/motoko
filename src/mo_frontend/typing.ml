@@ -2121,8 +2121,8 @@ and check_exp_field env (ef : exp_field) fts =
   Used to prepare the new env for checking the [exp] (body of the function).
   Returns:
   - the env for the body of the function ([exp]),
-  - [t2], the expected type of the body,
-  - [codom], the codomain of the function. The caller must check that [sub t2 codom].
+  - [exp_typ], the expected type of the body,
+  - [codom], the codomain of the function (built from [ts2]). The caller must check that [sub exp_typ codom].
  *)
 and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) : env * T.typ * T.typ =
   let sort, ve = check_shared_pat env shared_pat in
@@ -2132,7 +2132,7 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
   let ve2 = T.Env.adjoin ve ve1 in
   let codom = T.codom c (fun () -> assert false) ts2 in
-  let t2 = match typ_opt with
+  let exp_typ = match typ_opt with
     | None -> codom
     | Some typ -> check_typ env typ
   in
@@ -2144,10 +2144,10 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   let env' =
     { env with
       labs = T.Env.empty;
-      rets = Some t2;
+      rets = Some exp_typ;
       async = C.NullCap; }
   in
-  (adjoin_vals env' ve2), t2, codom
+  (adjoin_vals env' ve2), exp_typ, codom
 
 and detect_lost_fields env t = function
   | _ when env.pre || not (T.is_obj t) -> ()
@@ -2306,36 +2306,42 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* A partial solution for a better error message in case of an error *)
         err_ts := Some ts;
 
+        (* Prepare subtyping constraints for the 2nd round *)
+        let subs = ref [] in
         let to_fix2 = ref [] in
-        let ts, subst_env = match remaining with
-        | None -> ts, Type.ConEnv.empty
-        | Some remaining ->
-          (* Prepare subtyping constraints for the 2nd round *)
-          let extra_subs = ref [] in
-          let subs = deferred |> List.map (fun (exp, typ) ->
-            (* Substitute fixed type variables *)
-            let typ = T.open_ ts typ in
-            match exp.it, T.normalize typ with
-            | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
-              (* Check that all type variables in the function input type are fixed, fail otherwise *)
-              Bi_match.fail_when_types_are_not_closed remaining ts1;
-              (* Check the function input type and prepare for inferring the body *)
-              let env', expected_t, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
-              (* Checking `expected_t <: codom` would fail when `codom` is not closed.
-               * Add it to the subtype problems instead.
+        deferred |> List.iter (fun (exp, typ) ->
+          (* Substitute fixed type variables *)
+          let typ = T.open_ ts typ in
+          match exp.it, T.normalize typ with
+          | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+            (* Check that all type variables in the function input type are fixed, fail otherwise *)
+            Bi_match.fail_when_types_are_not_closed remaining ts1;
+            (* Check the function input type and prepare for inferring the body *)
+            let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+            (* [codom] comes from [ts2] which might contain unsolved type variables. *)
+            let closed = Bi_match.is_closed remaining codom in
+            if not env.pre && (closed || body_typ <> codom) then
+              (* Closed [codom] implies closed [body_typ].
+               * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
+               * Since [body_typ] is closed, no need to infer.
                *)
-              extra_subs := (expected_t, codom) :: !extra_subs;
-              (* Future work: we could decompose instead of infer if we want to iterate the process *)
+              check_exp env' body_typ body;
+            
+            if not closed && body_typ <> codom then
+              (* When [codom] is open, we add it to the problems to solve. *)
+              subs := (body_typ, codom) :: !subs;
+
+            if not closed && body_typ = codom then begin
+              (* When we just have [codom] and it is open : we need to infer the body *)
               let actual_t = infer_exp env' body in
               to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
-              actual_t, expected_t
-            | _ ->
-              (* Future work: Inferring will fail, we could report an explicit error instead *)
-              infer_exp env exp, typ
-          ) in
-          (* Include the deferred terms in the instantiation *)
-          Bi_match.finalize ts remaining (!extra_subs @ subs)
-        in
+              subs := (actual_t, body_typ) :: !subs;
+            end
+          | _ ->
+            (* Future work: Inferring will fail, we could report an explicit error instead *)
+            subs := (infer_exp env exp, typ) :: !subs
+        );
+        let ts, subst_env = Bi_match.finalize ts remaining !subs in
 
         if not env.pre then begin
           (* Fix the manually decomposed terms as if they were inferred *)

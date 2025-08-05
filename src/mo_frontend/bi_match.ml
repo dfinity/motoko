@@ -395,7 +395,7 @@ let solve ctx (ts1, ts2) deferred_typs =
     if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
     let (l, u) = ctx.bounds in
-    let remaining = {
+    let remaining = if ConSet.is_empty var_set then empty_ctx else {
       var_set;
       var_env = ConEnv.filter_dom var_set ctx.var_env;
       var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
@@ -482,37 +482,40 @@ let bi_match_subs scope_opt tbs typ_opt =
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
     let env, remaining = solve ctx (ts1, ts2) (List.map (open_ ts) deferred_typs) in
-
-    let remaining = if deferred_typs <> [] then Some remaining else begin
-      (* No deferred types means no another round, which implies every type variable is solved *)
-      assert (is_ctx_empty remaining);
-      None
-    end in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =
-  (* Finalize should only be called when there are subtyping constraints to solve *)
-  assert (subs <> []);
-  
-  (* Solve the 2nd round of sub-type problems *)
-  let env, remaining = solve ctx (List.split subs) [] in
+  if is_ctx_empty ctx then begin
+    assert (subs = []);
+    ts1, ConEnv.empty
+  end else begin
+    (* Finalize should only be called when there are subtyping constraints to solve *)
+    assert (subs <> []);
+    
+    (* Solve the 2nd round of sub-type problems *)
+    let env, remaining = solve ctx (List.split subs) [] in
 
-  (* The 2nd round should not leave any remaining type variables *)
-  assert (is_ctx_empty remaining);
+    (* The 2nd round should not leave any remaining type variables *)
+    assert (is_ctx_empty remaining);
 
-  (* create a final combined `ts` solution *)
-  let ts = List.map (fun t ->
-    match t with
-    | Con (c, []) -> ConEnv.find_opt c env |> Option.value ~default:t
-    | _ -> t
-  ) ts1 in
+    (* create a final combined `ts` solution *)
+    let ts = List.map (fun t ->
+      match t with
+      | Con (c, []) -> ConEnv.find_opt c env |> Option.value ~default:t
+      | _ -> t
+    ) ts1 in
 
-  (* Return the final solution together with the substitution of open type variables *)
-  ts, env
+    (* Return the final solution together with the substitution of open type variables *)
+    ts, env
+  end
 
 let fail_when_types_are_not_closed remaining typs = if is_ctx_empty remaining then () else
-  let allCons = cons_typs typs in
-  let openConSet = ConSet.inter remaining.var_set allCons in
-  if not (ConSet.is_empty openConSet) then
-    let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements openConSet))) in
+  let all_cons = cons_typs typs in
+  let open_con_set = ConSet.inter remaining.var_set all_cons in
+  if not (ConSet.is_empty open_con_set) then
+    let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements open_con_set))) in
     raise (Bimatch message)
+
+let is_closed ctx t = if is_ctx_empty ctx then true else
+  let all_cons = cons_typs [t] in
+  ConSet.disjoint ctx.var_set all_cons
