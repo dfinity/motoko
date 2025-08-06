@@ -304,6 +304,11 @@ let is_shared_sort sort =
   | Shared _ -> true
   | Local | Stable _ -> false
 
+let is_stable_sort sort =
+  match sort with
+  | Stable _ -> true
+  | _ -> false
+
 (* Constructors *)
 
 let set_kind c k =

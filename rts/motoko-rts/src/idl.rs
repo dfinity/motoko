@@ -249,8 +249,14 @@ unsafe fn parse_idl_header<M: Memory>(
             // Annotations
             for _ in 0..leb128_decode(buf) {
                 let a = read_byte(buf);
-                if !(1 <= a && a <= 3) {
-                    idl_trap_with("func annotation not within 1..3");
+                if extended {
+                    if !(1 <= a && a <= 4) {
+                        idl_trap_with("func annotation not within 1..4");
+                    }
+                } else {
+                    if !(1 <= a && a <= 3) {
+                        idl_trap_with("func annotation not within 1..3");
+                    }
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
