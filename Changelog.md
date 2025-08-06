@@ -1,5 +1,31 @@
 # Motoko compiler changelog
 
+## 0.15.1 (2025-07-30)
+
+* motoko (`moc`)
+
+  * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
+
+  * Allow matching type fields of modules and objects in patterns (#5056)
+    This allows importing a type from a module without requiring an indirection or extra binding.
+
+    ```
+    // What previously required indirection, ...
+    import Result "mo:core/Result";
+    type MyResult<Ok> = Result.Result<Ok, Text>;
+
+    // or rebinding, ...
+    import Result "mo:core/Result";
+    type Result<Ok, Err> = Result.Result<Ok, Err>;
+    type MyResult<Ok> = Result<Ok, Text>;
+
+    // can now be written more concisely as:
+    import { type Result } "mo:core/Result";
+    type MyResult<Ok> = Result<Ok, Text>;
+    ```
+
+## 0.15.0 (2025-07-25)
+
 * motoko (`moc`)
 
   * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
@@ -31,6 +57,10 @@
     * The garbage collector is fixed to incremental GC and cannot be chosen.
     * `Float.format(#hex prec, x)` is no longer supported (expected to be very rarely used in practice).
     * The debug print format of `NaN` changes (originally `nan`).
+
+  * Fixed file indices in the DWARF encoding of the `debug_line` section. This change is only relevant when using the `-g` flag (#5281).
+
+  * Improved large array behavior under the incremental GC (#5314)
 
 ## 0.14.14 (2025-06-30)
 

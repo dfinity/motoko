@@ -135,9 +135,9 @@ struct
         None
 
   and extract_pat_field pf =
-    match pf.it.Syntax.pat with
-    | { it = Syntax.AnnotP (_, typ); _ } ->
-        Some { name = pf.it.Syntax.id.it; typ = Some typ; doc = None }
+    match pf.it with
+    | Syntax.ValPF (id, { it = Syntax.AnnotP (_, typ); _ }) ->
+        Some { name = id.it; typ = Some typ; doc = None }
     | _ -> None
 
   let extract_func_args = function
