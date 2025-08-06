@@ -69,5 +69,5 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | test-runner -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
 fi
