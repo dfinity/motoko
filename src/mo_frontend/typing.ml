@@ -2227,9 +2227,16 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
         let subs, deferred, to_fix = ref [], ref [], ref [] in
-        let infer_or_defer exp target_type =
-          match exp.it with
-          | FuncE (_, _, _, pat, _, _, _) when not (is_explicit_pat pat) ->
+        let rec decompose exp target_type =
+          match exp.it, T.normalize target_type with
+          | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+            let ts' = List.map2 decompose exps ts in
+            let target_type' = T.Tup ts' in
+            (* exp.note needs to be fixed later after the substitution *)
+            to_fix := (exp, target_type') :: !to_fix;
+            target_type'
+          (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
+          | FuncE (_, _, _, pat, _, _, _), _ when not (is_explicit_pat pat) ->
             (* Cannot infer unannotated func, defer it *)
             deferred := (exp, target_type) :: !deferred;
             target_type
@@ -2238,18 +2245,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             (* Infer and add a subtype problem for bi_match *)
             let t = infer_exp env exp in
             subs := (t, target_type) :: !subs;
-            t 
-        in
-        let rec decompose exp target_type =
-          match exp.it, T.normalize target_type with
-          | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            let ts' = List.map2 decompose exps ts in
-            let target_type' = T.Tup ts' in
-            (* exp.note would need to be fixed later after the substitution *)
-            to_fix := (exp, target_type') :: !to_fix;
-            target_type'
-          (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
-          | _ -> infer_or_defer exp target_type
+            t
         in
         let t2 = decompose exp target_type in
         t2, !subs, !deferred, !to_fix
