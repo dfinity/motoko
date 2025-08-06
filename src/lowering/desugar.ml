@@ -678,6 +678,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
          (List.map (fun (id, _) -> (id, nullE())) fids)
          stable_func_fields)
     ::
+    expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
+    ::
     nary_funcD get_stable_funcs [] (varE stable_funcs) (* inline? *)
     ::
     varD state (optE migration)
