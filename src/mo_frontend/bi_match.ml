@@ -72,12 +72,13 @@ let string_of_bounds (l, u) =
 
 (** Functions used only for debugging *)
 module Debug = struct
-  let print_solve ctx (ts1, ts2) =
+  let print_solve ctx (ts1, ts2) must_solve =
     print_endline "solve ctx";
     print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
     print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
     print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
     print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
+    print_endline (Printf.sprintf "must_solve : %s" (String.concat ", " (List.map string_of_typ must_solve)));
     verify_ctx ctx
 
   let print_variables_to_defer used to_defer to_solve =
@@ -338,25 +339,20 @@ let bi_match_typs ctx =
     Unused type variables can be deferred to the next round.
     [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
-let solve ctx (ts1, ts2) deferred_typs =
-  if debug then Debug.print_solve ctx (ts1, ts2);
+let solve ctx (ts1, ts2) must_solve =
+  if debug then Debug.print_solve ctx (ts1, ts2) must_solve;
 
   (* Defer solving type variables that can be solved later. More constraints appear in the next round, let them influence as many variables as possible *)
-  let to_defer, defer_verify = if deferred_typs = [] then (ConSet.empty, false) else
+  let to_defer, defer_verify = if must_solve = [] then (ConSet.empty, false) else
     (* Type variables mentioned/used in subtyping constraints *)
     let cons1 = cons_typs ts1 in
     let cons2 = cons_typs ts2 in
     let used = ConSet.inter ctx.var_set (ConSet.union cons1 cons2) in
     let unused = ConSet.diff ctx.var_set used in
 
-    (* Solve only variables that need to be solved now (inputs of deferred functions must be solved before the next round) *)
-    let to_solve = List.fold_left (fun acc t ->
-      match normalize t with
-      | Func (_, _, _, t1, _) -> ConSet.union acc (cons_typs t1)
-      | t -> ConSet.union acc (cons t)
-      ) ConSet.empty deferred_typs
-    in
-    (* Exclude variables that are not used in the constraints, it is better to raise an error than infer a default bound that could lead to confusing errors. *)
+    (* Solve only variables that need to be solved now *)
+    let to_solve = cons_typs must_solve in
+    (* Exclude variables that are not used in the constraints, it is better to raise an error than infer a default bound that could lead to confusing errors *)
     let to_solve = ConSet.diff to_solve unused in
     let to_defer = ConSet.diff ctx.var_set to_solve in
     if debug then Debug.print_variables_to_defer used to_defer (ConSet.inter to_solve ctx.var_set);
@@ -467,11 +463,11 @@ let bi_match_subs scope_opt tbs typ_opt =
   in
   let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; to_verify = ([], [])} in
 
-  fun subs deferred_typs ->
-    let deferred_typs = List.map (open_ ts) deferred_typs in
+  fun subs must_solve ->
+    let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) deferred_typs in
+    let env, remaining = solve ctx (ts1, ts2) must_solve in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =

@@ -2226,7 +2226,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
        *)
       let infer_subargs_for_bimatch_or_defer env exp target_type =
-        let subs, deferred, to_fix = ref [], ref [], ref [] in
+        let subs, deferred, to_fix, must_solve = ref [], ref [], ref [], ref [] in
         let rec decompose exp target_type =
           match exp.it, T.normalize target_type with
           | TupE exps, T.Tup ts when List.length exps = List.length ts ->
@@ -2236,9 +2236,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             to_fix := (exp, target_type') :: !to_fix;
             target_type'
           (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
-          | FuncE (_, _, _, pat, _, _, _), _ when not (is_explicit_pat pat) ->
+          | FuncE (_, _, _, pat, _, _, _), normalized_target when not (is_explicit_pat pat) ->
             (* Cannot infer unannotated func, defer it *)
             deferred := (exp, target_type) :: !deferred;
+            must_solve := (* Inputs of deferred functions must be solved first *)
+              (match normalized_target with
+              | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
+              | _ -> normalized_target :: !must_solve);
             target_type
           (* Future work: more cases to defer? *)
           | _ ->
@@ -2248,11 +2252,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             t
         in
         let t2 = decompose exp target_type in
-        t2, !subs, !deferred, !to_fix
+        t2, !subs, !deferred, !to_fix, !must_solve
       in
 
       (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
-      let t2, subs, deferred, to_fix = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+      let t2, subs, deferred, to_fix, must_solve = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
 
       if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
 
@@ -2277,7 +2281,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* i.e. exists minimal ts .
                 t2 <: open_ ts t_arg /\
                 t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs (List.map (fun (_, t) -> t) deferred) in
+        let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
 
         (* A partial solution for a better error message in case of an error *)
         err_ts := Some ts;
