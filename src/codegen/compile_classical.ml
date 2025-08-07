@@ -11723,16 +11723,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* parts[0] == "wit", parts[1] == <component-name>, parts[2] = <function-name> *)
     let component_name = List.nth parts 1 in
     let function_name = List.nth parts 2 in 
-    (* Read blob pointer and length *)
-    let set_blob, get_blob = new_local env "blob" in
-    let e = List.nth es 0 in
-    compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
+    (* Compile all blob arguments and prepare their pointers and lengths *)
+    let blob_locals = List.mapi (fun i _ -> new_local env ("blob" ^ string_of_int i)) es in
+    let compile_blobs = List.fold_left2 (fun acc e (set_blob, get_blob) ->
+      acc ^^ compile_exp_as env ae SR.Vanilla e ^^ set_blob
+    ) G.nop es blob_locals in
     (* Allocate return value *)
     let set_ret, get_ret = new_local env "ret" in
+    compile_blobs ^^
     Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
-    (* Call component export *)
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env ^^
+    (* Call component export with all blob arguments *)
+    List.fold_left (fun acc (set_blob, get_blob) ->
+      acc ^^ get_blob ^^ Blob.payload_ptr_unskewed env ^^
+      get_blob ^^ Blob.len env
+    ) G.nop blob_locals ^^
     get_ret ^^ Blob.payload_ptr_unskewed env ^^
     E.call_import env component_name function_name ^^
     get_ret ^^ Blob.payload_ptr_unskewed env ^^
@@ -13426,7 +13430,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
         ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
         !imported_components;
     (* TODO: use proper arguments in add_func_import, dependent on the function's arguments *)
-    E.add_func_import env component_name function_name [I32Type; I32Type; I32Type] [] in
+    (* For now: every argument is a Blob, each needs pointer + length *)
+    let args = List.fold_left (fun acc _ -> I32Type :: I32Type :: acc) [I32Type] arg_types in
+    E.add_func_import env component_name function_name args [] in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)
