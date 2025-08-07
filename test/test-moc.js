@@ -262,7 +262,7 @@ assert(
 // TODO: This requires avoid dropping 'code' field in all checks though all pipeline e.g. infer_prog
 // assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["bad.mo"], new Map()).code != null);
 
-const baseDir = process.env.MOTOKO_BASE || path.join(__dirname, "base");
+const baseDir = process.env.MOTOKO_BASE;
 console.log("Base library path:", baseDir);
 
 if (!fs.existsSync(baseDir)) {
@@ -310,14 +310,16 @@ assert.equal(typeof wasmResult, "object");
 assert.deepEqual(wasmResult.diagnostics, []);
 assert.notEqual(wasmResult.code, null);
 
-const wasmPath = path.join(__dirname, "temp.wasm");
+const tempDir = __dirname; // TODO
+
+const wasmPath = path.join(tempDir, "temp.wasm");
 fs.writeFileSync(wasmPath, wasmResult.code.wasm);
 
-const drunPath = path.join(__dirname, "drun-wrapper.sh");
+const drunPath = path.join(tempDir /* TODO */, "drun-wrapper.sh");
 let scriptPath;
 
 try {
-  scriptPath = path.join(__dirname, "temp-test-script.txt");
+  scriptPath = path.join(tempDir, "test-script.txt");
   fs.writeFileSync(
     scriptPath,
     `
@@ -329,7 +331,7 @@ try {
 
   const result = execSync(`${drunPath} < ${scriptPath}`, {
     encoding: "utf8",
-    cwd: __dirname,
+    cwd: tempDir,
   });
 
   assert.match(result, /vec \{ 1; 2; 3 \}/);
