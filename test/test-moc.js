@@ -317,24 +317,22 @@ const drunPath = path.join(__dirname, "drun-wrapper.sh");
 let scriptPath;
 
 try {
-  // Only run drun test if drun-wrapper.sh is available
-  if (fs.existsSync(drunPath)) {
-    const testScript = `
-      install ${wasmPath}
-      call 0x42 sortAndRemoveDuplicates (vec { 3; 2; 1; 2 })
-      call 0x42 run ()
-    `;
+  scriptPath = path.join(__dirname, "temp-test-script.txt");
+  fs.writeFileSync(
+    scriptPath,
+    `
+    install ${wasmPath}
+    call 0x42 sortAndRemoveDuplicates (vec { 3; 2; 1; 2 })
+    call 0x42 run ()
+    `
+  );
 
-    scriptPath = path.join(__dirname, "temp-test-script.txt");
-    fs.writeFileSync(scriptPath, testScript);
+  const result = execSync(`${drunPath} < ${scriptPath}`, {
+    encoding: "utf8",
+    cwd: __dirname,
+  });
 
-    const result = execSync(`${drunPath} < ${scriptPath}`, {
-      encoding: "utf8",
-      cwd: __dirname,
-    });
-
-    assert.match(result, /vec \{ 1; 2; 3 \}/);
-  }
+  assert.match(result, /vec \{ 1; 2; 3 \}/);
 } finally {
   if (fs.existsSync(wasmPath)) fs.unlinkSync(wasmPath);
   if (scriptPath && fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath);
