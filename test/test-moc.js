@@ -269,7 +269,12 @@ if (!fs.existsSync(baseDir)) {
   throw new Error(`Base library not found: ${baseDir}`);
 }
 
-fs.readdirSync(baseDir).forEach((file) => {
+const baseFiles = fs
+  .readdirSync(baseDir)
+  .filter((file) => file.endsWith(".mo"));
+assert.notEqual(baseFiles, []);
+baseFiles.forEach((file) => {
+  assert.match(file, /\.mo$/);
   Motoko.saveFile(
     path.join("base-path", file),
     fs.readFileSync(path.join(baseDir, file), "utf8")
