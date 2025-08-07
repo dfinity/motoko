@@ -1,4 +1,4 @@
-{ pkgs, commonBuildInputs, rts }:
+{ pkgs, commonBuildInputs, rts, base-src }:
 let
   mk = n:
     pkgs.stdenv.mkDerivation {
@@ -27,7 +27,7 @@ let
       doInstallCheck = true;
       test = ../test + "/test-${n}.js";
       installCheckPhase = ''
-        NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
+        MOTOKO_BASE=${base-src} NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
       '';
     };
 in

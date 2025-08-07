@@ -179,7 +179,7 @@
         paths = [ "${pkgs.sources.motoko-core-src}/src" ];
       };
 
-      js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
+      js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts base-src; };
 
       docs = import ./nix/docs.nix { inherit pkgs js base-src core-src; };
 

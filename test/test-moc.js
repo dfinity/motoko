@@ -1,12 +1,15 @@
 process.on("unhandledRejection", (error) => {
-  console.log(`Unhandled promise rejection:\n${error}`)
+  console.log(`Unhandled promise rejection:\n${error}`);
 });
 
 process.on("uncaughtException", (error) => {
   console.log(`Uncaught exception:\n${error}`);
-})
+});
 
 const assert = require("assert").strict;
+const fs = require("fs");
+const path = require("path");
+const { execSync } = require("child_process");
 
 // Load moc.js
 const { Motoko } = require("moc.js");
@@ -149,7 +152,8 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
 
 // Run interpreter
 assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
-  stdout: "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A<Text>}\n",
+  stdout:
+    "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A<Text>}\n",
   stderr: "",
   result: { error: null },
 });
@@ -157,11 +161,19 @@ assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
 // Check AST format
 const astFile = Motoko.readFile("ast.mo");
 for (const ast of [
-  Motoko.parseMotoko(/*enable_recovery=*/false, astFile),
+  Motoko.parseMotoko(/*enable_recovery=*/ false, astFile),
   Motoko.parseMotokoTyped(["ast.mo"]).code[0].ast,
-  Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/false, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
-  Motoko.parseMotoko(/*enable_recovery=*/true, astFile),
-  Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["ast.mo"], new Map()).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotokoTypedWithScopeCache(
+    /*enable_recovery=*/ false,
+    ["ast.mo"],
+    new Map()
+  ).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
+  Motoko.parseMotoko(/*enable_recovery=*/ true, astFile),
+  Motoko.parseMotokoTypedWithScopeCache(
+    /*enable_recovery=*/ true,
+    ["ast.mo"],
+    new Map()
+  ).code[0][0].ast, // { diagnostics; code: [[{ ast; immediateImports }], cache] }
 ]) {
   const astString = JSON.stringify(ast);
 
@@ -238,10 +250,94 @@ assert.deepStrictEqual(Motoko.candid("ast.mo"), {
 // Check error recovery
 const badAstFile = Motoko.readFile("bad.mo");
 
-assert(Motoko.parseMotoko(/*enable_recovery=*/false, badAstFile).code == null);
-assert(Motoko.parseMotoko(/*enable_recovery=*/true, badAstFile).code != null);
-assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/false, ["bad.mo"], new Map()).code == null);
-
+assert(Motoko.parseMotoko(/*enable_recovery=*/ false, badAstFile).code == null);
+assert(Motoko.parseMotoko(/*enable_recovery=*/ true, badAstFile).code != null);
+assert(
+  Motoko.parseMotokoTypedWithScopeCache(
+    /*enable_recovery=*/ false,
+    ["bad.mo"],
+    new Map()
+  ).code == null
+);
 // TODO: This requires avoid dropping 'code' field in all checks though all pipeline e.g. infer_prog
 // assert(Motoko.parseMotokoTypedWithScopeCache(/*enable_recovery=*/true, ["bad.mo"], new Map()).code != null);
 
+const baseDir = process.env.MOTOKO_BASE || path.join(__dirname, "base");
+console.log("Base library path:", baseDir);
+
+if (!fs.existsSync(baseDir)) {
+  throw new Error(`Base library not found: ${baseDir}`);
+}
+
+fs.readdirSync(baseDir).forEach((file) => {
+  Motoko.saveFile(
+    path.join("base-path", file),
+    fs.readFileSync(path.join(baseDir, file), "utf8")
+  );
+});
+Motoko.addPackage("base", "base-path");
+
+Motoko.saveFile(
+  "Wasm.mo",
+  `
+  import Int "mo:base/Int";
+  import OrderedSet "mo:base/OrderedSet";
+  import Iter "mo:base/Iter";
+
+  persistent actor {
+      public func sortAndRemoveDuplicates(array : [Int]) : async [Int] {
+          let Set = OrderedSet.Make<Int>(Int.compare);
+          let set = Set.fromIter(Iter.fromArray(array));
+          Iter.toArray(Set.vals(set));
+      };
+
+      public func run() : async () {
+          assert ((await sortAndRemoveDuplicates([])) == []);
+          assert ((await sortAndRemoveDuplicates([1])) == [1]);
+          assert ((await sortAndRemoveDuplicates([1, 2, 3])) == [1, 2, 3]);
+          assert ((await sortAndRemoveDuplicates([3, 2, 1])) == [1, 2, 3]);
+          assert ((await sortAndRemoveDuplicates([2, 2, 1, 3, 3])) == [1, 2, 3]);
+          assert ((await sortAndRemoveDuplicates([1, 1, 1, 1, 1])) == [1]);
+          assert ((await sortAndRemoveDuplicates([1, -1, 1, -1, 1])) == [-1, 1]);
+          assert ((await sortAndRemoveDuplicates([-2, -3, -2, -4, -1, -3, -3])) == [-4, -3, -2, -1]);
+      };
+  };
+  `
+);
+
+const wasmResult = Motoko.compileWasm("ic", "Wasm.mo");
+assert.equal(typeof wasmResult, "object");
+assert.deepEqual(wasmResult.diagnostics, []);
+assert.notEqual(wasmResult.code, null);
+
+const wasmPath = path.join(__dirname, "temp.wasm");
+fs.writeFileSync(wasmPath, wasmResult.code.wasm);
+
+const drunPath = path.join(__dirname, "drun-wrapper.sh");
+let scriptPath;
+
+try {
+  // Only run drun test if drun-wrapper.sh is available
+  if (fs.existsSync(drunPath)) {
+    const testScript = `
+      install ${wasmPath}
+      call 0x42 sortAndRemoveDuplicates (vec { 3; 2; 1; 2 })
+      call 0x42 run ()
+    `;
+
+    scriptPath = path.join(__dirname, "temp-test-script.txt");
+    fs.writeFileSync(scriptPath, testScript);
+
+    const result = execSync(`${drunPath} < ${scriptPath}`, {
+      encoding: "utf8",
+      cwd: __dirname,
+    });
+
+    assert.match(result, /vec \{ 1; 2; 3 \}/);
+  }
+} finally {
+  if (fs.existsSync(wasmPath)) fs.unlinkSync(wasmPath);
+  if (scriptPath && fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath);
+}
+
+Motoko.removeFile("Wasm.mo");
