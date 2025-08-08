@@ -282,6 +282,17 @@ module Const = struct
 
   let t_of_v v = (Lib.Promise.make (), v)
 
+  let string_of_lit = function
+    | Vanilla i -> Printf.sprintf "Vanilla %d" (Int32.to_int i)
+    | BigInt i -> Printf.sprintf "BigInt %s" (Big_int.string_of_big_int i)
+    | Bool b -> Printf.sprintf "Bool %b" b
+    | Word32 (ty, i) -> Printf.sprintf "Word32 (%s, %d)" (Type.string_of_prim ty) (Int32.to_int i)
+    | Word64 (ty, i) -> Printf.sprintf "Word64 (%s, %Ld)" (Type.string_of_prim ty) i
+    | Float64 f -> Printf.sprintf "Float64 %f" (Numerics.Float.to_float f)
+    | Text s -> Printf.sprintf "Text %s" s
+    | Blob s -> Printf.sprintf "Blob %s" s
+    | Null -> "Null"
+
 end (* Const *)
 
 module SR = struct
@@ -329,6 +340,18 @@ module SR = struct
     | UnboxedTuple n -> fatal "to_var_type: UnboxedTuple"
     | Const _ -> fatal "to_var_type: Const"
     | Unreachable -> fatal "to_var_type: Unreachable"
+
+  let string_of = function
+    | Vanilla -> "Vanilla"
+    | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
+    | UnboxedWord64 _ -> "UnboxedWord64"
+    | UnboxedWord32 _ -> "UnboxedWord32"
+    | UnboxedFloat64 -> "UnboxedFloat64"
+    | Unreachable -> "Unreachable"
+    | Const c -> 
+      match snd c with
+      | Const.Lit l -> Printf.sprintf "Const.Lit %s" (Const.string_of_lit l)
+      | _ -> "Const"
 
 end (* SR *)
 
@@ -2764,6 +2787,12 @@ module TaggedSmallWord = struct
     | Type.(Int8|Int16) as ty -> compile_shrS_const (shift_of_type ty)
     | Type.Char as ty -> compile_shrU_const (shift_of_type ty)
     | _ -> assert false
+
+  let need_lsb_adjust = function
+    | Type.(Nat8|Nat16) -> true
+    | Type.(Int8|Int16) -> true
+    | Type.Char -> true
+    | _ -> false
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
@@ -11720,27 +11749,53 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     (* Parse the component name and function name *)
     let parts = String.split_on_char ':' maybe_component in
-    (* parts[0] == "wit", parts[1] == <component-name>, parts[2] = <function-name> *)
+    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
     let component_name = List.nth parts 1 in
     let function_name = List.nth parts 2 in 
-    (* Compile all blob arguments and prepare their pointers and lengths *)
-    let blob_locals = List.mapi (fun i _ -> new_local env ("blob" ^ string_of_int i)) es in
-    let compile_blobs = List.fold_left2 (fun acc e (set_blob, get_blob) ->
-      acc ^^ compile_exp_as env ae SR.Vanilla e ^^ set_blob
-    ) G.nop es blob_locals in
-    (* Allocate return value *)
-    let set_ret, get_ret = new_local env "ret" in
-    compile_blobs ^^
-    Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
-    (* Call component export with all blob arguments *)
-    List.fold_left (fun acc (set_blob, get_blob) ->
-      acc ^^ get_blob ^^ Blob.payload_ptr_unskewed env ^^
-      get_blob ^^ Blob.len env
-    ) G.nop blob_locals ^^
-    get_ret ^^ Blob.payload_ptr_unskewed env ^^
-    E.call_import env component_name function_name ^^
-    get_ret ^^ Blob.payload_ptr_unskewed env ^^
-    E.call_import env "rts" "blob_of_cabi"
+    
+    (* Helper function to compile arguments for component calls *)
+    let compile_arg_for_component e arg_type =
+      let open Mo_types.Type in
+      match normalize arg_type with
+      | Prim Blob -> 
+        (* Blob: compile as vanilla, extract pointer and length *)
+        let set_blob, get_blob = new_local env "blob_arg" in
+        compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
+        get_blob ^^ Blob.payload_ptr_unskewed env ^^
+        get_blob ^^ Blob.len env
+      | Prim (Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+        (* For primitive types, use StackRep.of_type, then ensure small words are LSB-adjusted *)
+        let sr = StackRep.of_type arg_type in
+        (* print_endline (Printf.sprintf "arg_type: %s ; sr: %s" (Mo_types.Type.string_of_typ arg_type) (SR.string_of sr)); *)
+        compile_exp_as env ae sr e ^^
+        TaggedSmallWord.(if need_lsb_adjust prim then lsb_adjust prim else G.nop)
+      | typ ->
+        print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
+        assert false
+    in
+    
+    (* Extract actual argument types from the expressions *)
+    let arg_types = List.map (fun e -> e.note.Note.typ) es in
+
+    (* Compile all arguments *)
+    let compile_args = List.fold_left2 (fun acc e arg_type ->
+      acc ^^ compile_arg_for_component e arg_type
+    ) G.nop es arg_types in
+    
+    (* For return type, we need to assume Blob for now since we don't have access to 
+       the full expression context here. The return type should be determined from
+       the type annotation in the Motoko source, but that information is not 
+       available in compile_prim_invocation. *)
+    let compile_return_handling = 
+      (* For now, assume Blob return type *)
+      let set_ret, get_ret = new_local env "ret" in
+      Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
+      get_ret ^^ Blob.payload_ptr_unskewed env ^^
+      E.call_import env component_name function_name ^^
+      get_ret ^^ Blob.payload_ptr_unskewed env ^^
+      E.call_import env "rts" "blob_of_cabi"
+    in
+    compile_args ^^ compile_return_handling
 
   (* Other prims, nullary *)
 
@@ -13423,16 +13478,42 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_serialization_globals = Serialization.register_delayed_globals env in
   let imported_components = ref Imported_components.empty in
 
+  let open Mo_types.Type in
+
+  let map_motoko_type_to_wasm_args motoko_type = 
+    match normalize motoko_type with
+    | Prim Blob -> [I32Type; I32Type] (* pointer + length *)
+    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+    | Prim (Nat64 | Int64) -> [I64Type]
+    | Prim Float -> [F64Type]
+    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_args: unsupported type %s" (string_of_typ motoko_type)) in
+
+  let map_motoko_type_to_wasm_result motoko_type = 
+    match normalize motoko_type with
+    | Prim Blob -> [] (* out-parameter approach, no direct return *)
+    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+    | Prim (Nat64 | Int64) -> [I64Type]
+    | Prim Float -> [F64Type]
+    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_result: unsupported type %s" (string_of_typ motoko_type)) in
+
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
     imported_components := add_imported_component 
         ~component_name:component_name 
         ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
         !imported_components;
-    (* TODO: use proper arguments in add_func_import, dependent on the function's arguments *)
-    (* For now: every argument is a Blob, each needs pointer + length *)
-    let args = List.fold_left (fun acc _ -> I32Type :: I32Type :: acc) [I32Type] arg_types in
-    E.add_func_import env component_name function_name args [] in
+    
+    let wasm_args = List.fold_left (fun acc arg_type -> 
+      (map_motoko_type_to_wasm_args arg_type.Import_components_ir.arg_type) @ acc
+    ) [] arg_types in
+    
+    let final_args = match normalize return_type with
+      | Prim Blob -> wasm_args @ [I32Type] (* out-parameter *)
+      | _ -> wasm_args 
+    in
+    
+    let wasm_results = map_motoko_type_to_wasm_result return_type in
+    E.add_func_import env component_name function_name final_args wasm_results in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)

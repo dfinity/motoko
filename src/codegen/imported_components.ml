@@ -50,10 +50,21 @@ let print_imported_components (map : t) =
     Printf.printf "]\n"
   ) map
 
-
-let map_motoko_type_to_wit (motoko_type : Mo_types.Type.typ): string = match Mo_types.Type.string_of_typ motoko_type with
-    | "Blob" -> "list<u8>"
-    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (Mo_types.Type.string_of_typ motoko_type))
+let map_motoko_type_to_wit typ =
+  let open Mo_types.Type in
+  match normalize typ with
+  | Prim Blob -> "list<u8>"
+  | Prim Bool -> "bool"
+  | Prim Char -> "char"
+  | Prim Nat8 -> "u8"
+  | Prim Nat16 -> "u16"
+  | Prim Nat32 -> "u32"
+  | Prim Nat64 -> "u64"
+  | Prim Int8 -> "s8"
+  | Prim Int16 -> "s16"
+  | Prim Int32 -> "s32"
+  | Prim Int64 -> "s64"
+  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
 
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
