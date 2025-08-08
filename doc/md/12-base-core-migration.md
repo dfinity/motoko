@@ -17,9 +17,6 @@ This page provides a comprehensive guide for migrating from the `base` Motoko pa
 
 ### Project configuration
 
-**Requirements:**
-- Motoko compiler (`moc`) version 0.15 or higher
-
 Add the following to your `mops.toml` file to begin using the `core` package:
 
 ```toml
@@ -32,7 +29,7 @@ If you are migrating an existing project, you can keep the `base` import and gra
 ### Important considerations
 
 :::warning Version requirements
-The `core` package requires Motoko compiler 0.15+ due to dependencies on new language features.
+The `core` package depends on new language features, so make sure to update to the latest dfx / Motoko compiler version before migrating.
 :::
 
 When updating to the `core` package:
