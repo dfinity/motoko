@@ -30,7 +30,7 @@ While all shared types are stable, the reverse is not true. Some stable types ca
 
 | Type                                                                                         | Stable | Shared |
 |----------------------------------------------------------------------------------------------|--------|--------|
-| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/base/Nat), [`Text`](https://internetcomputer.org/docs/motoko/base/Text), [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool), etc.) | Yes    | Yes    |
+| Primitive types ([`Nat`](https://internetcomputer.org/docs/motoko/core/Nat), [`Text`](https://internetcomputer.org/docs/motoko/core/Text), [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool), etc.) | Yes    | Yes    |
 | Immutable arrays (`[T]`)                                                                     | Yes*   | Yes**  |
 | Mutable arrays (`[var T]`)                                                                   | Yes*   | No     |
 | Records with immutable fields                                                                | Yes    | Yes    |
@@ -134,7 +134,7 @@ persistent actor {
 
 ### Regions
 
-The [`Region`](https://internetcomputer.org/docs/motoko/base/Region) type, which provides low-level memory management, is stable.
+The [`Region`](https://internetcomputer.org/docs/motoko/core/Region) type, which provides low-level memory management, is stable.
 
 ```motoko no-repl
 persistent actor {

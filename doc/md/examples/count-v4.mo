@@ -1,4 +1,4 @@
-import Float "mo:base/Float";
+import Float "mo:core/Float";
 
 persistent actor Counter_v4 {
   var state : Float = 0.0; // implicitly `stable`

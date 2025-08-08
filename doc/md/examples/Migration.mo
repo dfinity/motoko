@@ -1,4 +1,4 @@
-import Float "mo:base/Float";
+import Float "mo:core/Float";
 
 module Migration {
 

@@ -25,7 +25,7 @@ Unlike `heartbeat()`, which runs automatically every subnet round, `timer()` req
 In the following example, `timer()` runs once immediately after deployment, then stops.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 system func timer(setGlobalTimer : Nat64 -> ()) : async () {
   Debug.print("Timer triggered!");
@@ -36,8 +36,8 @@ system func timer(setGlobalTimer : Nat64 -> ()) : async () {
 To run the timer every 20 seconds, it must be explicitly rescheduled.
 
 ```motoko no-repl
-import Time "mo:base/Time";
-import Debug "mo:base/Debug";
+import Time "mo:core/Time";
+import Debug "mo:core/Debug";
 
 system func timer(setGlobalTimer : Nat64 -> ()) : async () {
   let next = Nat64.fromIntWrap(Time.now()) + 20_000_000_000; // 20 seconds
@@ -59,13 +59,13 @@ The following example saves a `HashMap` of user balances into a stable variable 
 After upgrading, the `postupgrade()` function (#postupgrade) can restore the saved state.
 
 ```motoko no-repl
-import Iter "mo:base/Iter";
-import HashMap "mo:base/HashMap";
+import Iter "mo:core/Iter";
+import HashMap "mo:base/HashMap"; // Data structure from original standard library
 
 persistent actor Token {
 
   transient var balances = HashMap.HashMap<Text, Nat>(10, Text.equal, Text.hash); // Non-stable
-  var savedBalances : [(Text, Nat)] = []; // implicit stable storage
+  var savedBalances : [(Text, Nat)] = []; // Implicit stable storage
 
   system func preupgrade() {
     savedBalances := Iter.toArray(balances.entries()); // Save state before upgrade
@@ -81,7 +81,7 @@ The `postupgrade()` system function is called immediately after a canister upgra
 This example restores the `balances` `HashMap` using the data that was saved by `preupgrade()`.
 
 ```motoko no-repl
-import HashMap "mo:base/HashMap";
+import HashMap "mo:base/HashMap"; // Data structure from original standard library
 
 persistent actor Token {
 
@@ -130,7 +130,7 @@ However, `inspect()` should not be used for definitive access control because it
 The following actor defines an inspect function that blocks anonymous callers, limits message size, and rejects specific argument values.
 
 ```motoko no-repl
-import Principal "mo:base/Principal";
+import Principal "mo:core/Principal";
 
 persistent actor Counter {
   

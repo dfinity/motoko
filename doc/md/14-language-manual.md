@@ -1,5 +1,5 @@
 ---
-sidebar_position: 16
+sidebar_position: 14
 ---
 
 # Language reference
@@ -571,7 +571,6 @@ The syntax of a pattern is as follows:
 <pat-field> ::=                                Object pattern fields
   <id> (: <typ>) = <pat>                         Field
   <id> (: <typ>)                                 Punned field
-  type <id>                                      Type field
 ```
 
 ## Type syntax
@@ -638,7 +637,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Error`](https://internetcomputer.org/docs/motoko/core/Error.md)         |          | (Opaque) error values                                                  |
 | [`Region`](https://internetcomputer.org/docs/motoko/core/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous library in the core package providing related [functions and values](https://internetcomputer.org/docs/motoko/core/index.md). For example, the [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous library in the core package providing related [functions and values](https://internetcomputer.org/docs/motoko/core). For example, the [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md) module provides common functions on `Text` values.
 
 ### Type [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool.md)
 
@@ -652,7 +651,7 @@ TODO: Comparison.
 
 A `Char` of category O (Ordered) represents a character as a code point in the unicode character set.
 
-Core package function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md) value.
+The core package function `Char.toNat32(c)` converts a `Char` value, `c` to its [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32.md) code point. Function `Char.fromNat32(n)` converts a [`Nat32`](https://internetcomputer.org/docs/motoko/core/Nat32.md) value, `n`, in the range *0x0..xD7FF* or *0xE000..0x10FFFF* of valid code points to its `Char` value; this conversion traps on invalid arguments. Function `Char.toText(c)` converts the `Char` `c` into the corresponding, single character [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md) value.
 
 ### Type [`Text`](https://internetcomputer.org/docs/motoko/core/Text.md)
 
@@ -668,7 +667,7 @@ The type `Float` represents 64-bit floating point values of categories A (Arithm
 
 The semantics of `Float` and its operations is in accordance with standard [IEEE 754-2019](https://ieeexplore.ieee.org/document/8766229) (See [References](#references)).
 
-Common functions and values are defined in the [`Float`](https://internetcomputer.org/docs/motoko/core/Float.md) core package.
+Common functions and values are defined in the `Float` module in the core package.
 
 ### Types [`Int`](https://internetcomputer.org/docs/motoko/core/Int.md) and [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat.md)
 
@@ -1556,9 +1555,7 @@ Pattern matching fails if one of the patterns fails to match the corresponding i
 
 ### Object pattern
 
-The object pattern `{ <pat-field>;* }` matches an object value, a collection of named field values and named type fields, against a sequence of named pattern fields. The set of identifiers bound by each field of the object pattern must be distinct. The names of the pattern fields in the object pattern must be distinct.
-
-A type `<pat-field>` binds a type component from the matched object for the containing block.
+The object pattern `{ <pat-field>;* }` matches an object value, a collection of named field values, against a sequence of named pattern fields. The set of identifiers bound by each field of the object pattern must be distinct. The names of the pattern fields in the object pattern must be distinct.
 
 Object patterns support punning for concision. A punned field `<id>` is shorthand for `<id> = <id>`. Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both bind the matched value of the field named `<id>` to the identifier `<id>`.
 

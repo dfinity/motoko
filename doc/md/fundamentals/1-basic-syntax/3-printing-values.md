@@ -5,19 +5,19 @@ hide_table_of_contents: true
 # Printing values
 
 Motoko uses `Debug.print` to output text to the terminal or a canister's log depending on execution context.
-It takes a [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value and returns `()`.
+It takes a [`Text`](https://internetcomputer.org/docs/motoko/core/Text) value and returns `()`.
 `()` is the empty tuple and represents a token or trivial return value.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print("Hello, world!");
 ```
 
-For debugging purposes, `debug_show` converts most Motoko types into [`Text`](https://internetcomputer.org/docs/motoko/base/Text). The operator handles most types well, but may not work with cyclic data structures or types containing functions or type parameters.
+For debugging purposes, `debug_show` converts most Motoko types into [`Text`](https://internetcomputer.org/docs/motoko/core/Text). The operator handles most types well, but may not work with cyclic data structures or types containing functions or type parameters.
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print(debug_show {life = 42} ); // "{life = 42}"
 ```
@@ -29,5 +29,5 @@ In contrast, [**pure functions**](https://internetcomputer.org/docs/motoko/funda
 
 ## Resources
 
-- [Debug](https://internetcomputer.org/docs/motoko/base/Debug)
+- [Debug](https://internetcomputer.org/docs/motoko/core/Debug)
 

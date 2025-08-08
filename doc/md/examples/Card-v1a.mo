@@ -1,4 +1,4 @@
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 persistent actor {
   type OldCard = {

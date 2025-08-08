@@ -16,7 +16,7 @@ Callees can accept all, some, or none of the available cycles up to limit determ
 Motoko is adopting dedicated syntax and types to support safer programming with cycles. Users can now attach `(where cycles = <amount>)` as a prefix to message sends and async expressions.
 This new syntax will eventually obsolete the use of `ExperimentalCycles.add<system>(cycles)` in the examples that follow.
 
-For now (and until officially deprecating it), we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library in package `base`.
+The Motoko core package provides a way to manage cycles through a low-level imperative API provided by the [Cycles](../core/Cycles.md) module.
 
 :::note
 
@@ -24,9 +24,9 @@ This library is subject to change and likely to be replaced by more high-level s
 
 :::
 
-## The [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) Library
+## The [`Cycles`](https://internetcomputer.org/docs/motoko/core/Cycles.md) Library
 
-The [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
+The [`Cycles`](https://internetcomputer.org/docs/motoko/core/Cycles.md) library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
 
 The library provides the following operations:
 
@@ -50,14 +50,14 @@ The implicit register of added amounts, incremented on each `add`, is reset to z
 
 ### Example
 
-To illustrate, we will now use the [`ExperimentalCycles`](https://internetcomputer.org/docs/motoko/base/ExperimentalCycles.md) library to implement a simple piggy bank program for saving cycles.
+To illustrate, we will now use the [`Cycles`](https://internetcomputer.org/docs/motoko/core/Cycles.md) library to implement a simple piggy bank program for saving cycles.
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer withdrawn amounts.
 
 ``` motoko name=PiggyBank file=../../examples/PiggyBank.mo
 ```
 
-The owner of the bank is identified with the implicit caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a [`Principal`](../base/Principal.md) and is stored in private variable `owner` for future reference. See [principals and caller identification](../writing-motoko/caller-id.md) for more explanation of this syntax.
+The owner of the bank is identified with the implicit caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a [`Principal`](../core/Principal.md) and is stored in private variable `owner` for future reference. See [principals and caller identification](../writing-motoko/caller-id.md) for more explanation of this syntax.
 
 The piggy bank is initially empty, with zero current `savings`.
 

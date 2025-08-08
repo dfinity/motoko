@@ -58,7 +58,7 @@ Lastly, you can include extra features to be added to your project:
 
 ## Smart contract code
 
-This hello world actor has a single function called `greet`. It is marked as `query` because it doesn't modify the state of the actor. The function accepts a name as input in type [`Text`](../base/Text.md) and returns a greeting of type [`Text`](../base/Text.md).
+This hello world actor has a single function called `greet`. It is marked as `query` because it doesn't modify the state of the actor. The function accepts a name as input in type [`Text`](../core/Text.md) and returns a greeting of type [`Text`](../core/Text.md).
 
 
 ```motoko title="src/hello_backend/main.mo"

@@ -1,7 +1,7 @@
-import { print } = "mo:base/Debug";
-import { abs } = "mo:base/Int";
-import { now } = "mo:base/Time";
-import { setTimer; recurringTimer } = "mo:base/Timer";
+import { print } = "mo:core/Debug";
+import { abs } = "mo:core/Int";
+import { now } = "mo:core/Time";
+import { setTimer; recurringTimer } = "mo:core/Timer";
 
 persistent actor Reminder {
 

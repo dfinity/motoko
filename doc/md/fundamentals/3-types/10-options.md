@@ -17,7 +17,7 @@ var username : ?Text = null;
 username;
 ```
 
-`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/base/Text) value that starts as `null` (no username set).
+`username` is an optional [`Text`](https://internetcomputer.org/docs/motoko/core/Text) value that starts as `null` (no username set).
 
 :::info Null semantics
 
@@ -44,8 +44,8 @@ Sometimes, the verbosity of a `switch` expression can make code harder to read. 
 To determine if an option contains a value, function `Option.isSome` returns `true` if its argument is not `null`.
 
 ```motoko
-import Option "mo:base/Option";
-import Debug "mo:base/Debug";
+import Option "mo:core/Option";
+import Debug "mo:core/Debug";
 
 let value : ?Nat = ?5;
 if (Option.isSome(value)) {
@@ -60,7 +60,7 @@ By leveraging the `Option` module, handling optional values becomes more concise
 Instead of manually handling `null` cases with [pattern matching](https://internetcomputer.org/docs/motoko/fundamentals/pattern-matching), `Option.get` allows for cleaner fallback logic to ensure that missing values are safely replaced with a default.
 
 ```motoko no-repl
-import Option "mo:base/Option";
+import Option "mo:core/Option";
 
 Option.get(username, "Guest"); // "Guest" if username is null
 ```
@@ -112,7 +112,7 @@ Although convenient for option patterns, `let-else` also works with other types 
 The `Option.map` function applies a transformation only if the value is present.
 
 ```motoko
-import Option "mo:base/Option";
+import Option "mo:core/Option";
 
 let number : ?Nat = ?10;
 Option.map<Nat, Nat>(number, func(x : Nat) = x * 2); // ?20
@@ -125,7 +125,7 @@ In this example, if `number` is `null`, `map` ensures the result remains `null` 
 Sometimes, both the function and value are optional. `Option.apply` calls a function only if both are present. This is useful when chaining optional operations that may return `null`.
 
 ```motoko
-import Option "mo:base/Option";
+import Option "mo:core/Option";
 
 let maybeIncrement : ?(Nat -> Nat) = ?(func x: Nat = x + 1);
 let maybeValue : ?Nat = ?10;
@@ -140,7 +140,7 @@ If either `maybeFunction` or `maybeValue` is `null`, the result remains `null`.
 When working with multiple optional values, using `Option.chain` processes them safely without unnecessary `switch` statements.
 
 ```motoko
-import Option "mo:base/Option";
+import Option "mo:core/Option";
 
 let firstName : ?Text = ?"Motoko";
 let lastName : ?Text = ?"Ghost";
@@ -213,6 +213,6 @@ Each recursive call is checked for `null` using `!`, immediately exiting the out
 
 ## Resources
 
-- [`Option`](https://internetcomputer.org/docs/motoko/base/Option)
+- [`Option`](https://internetcomputer.org/docs/motoko/core/Option)
 
 

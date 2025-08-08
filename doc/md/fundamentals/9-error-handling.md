@@ -56,7 +56,7 @@ Function callsite:
 
 ## Pattern matching
 
-The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](https://internetcomputer.org/docs/motoko/base/Text) contents:
+The most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](https://internetcomputer.org/docs/motoko/core/Text) contents:
 
 ``` motoko no-repl file=../examples/error-examples.mo#L3-L10
 ```
@@ -70,7 +70,7 @@ With a `Result` type, you can use pattern matching to handle both success and er
 
 Sometimes you need to convert between `Option` and `Result` types. For example, a HashMap lookup returns `null` on failure (an `Option`), but if the caller has more context, they can turn that failure into a meaningful `Result` with an error message. On the other hand, sometimes you don’t need the extra detail from a `Result` and just want to convert any error (`#err`) into `null`.
 
-The [base](https://github.com/dfinity/motoko-base) library provides `fromOption` and `toOption` functions in the `Result` module that make converting between these two types easy.
+The [core](https://github.com/dfinity/motoko-core) package provides `fromOption` and `toOption` functions in the `Result` module that make converting between these two types easy.
 
 ## Error reporting with `Error` (asynchronous errors)
 
@@ -97,11 +97,11 @@ Function callsite:
 Traps immediately stop execution and roll back [state](https://internetcomputer.org/docs/motoko/fundamentals/state). They are used for fatal errors that cannot be recovered.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Runtime "mo:core/Runtime";
 
 func divide(a : Nat, b : Nat) : Nat {
     if (b == 0) {
-        Debug.trap("Cannot divide by zero");
+        Runtime.trap("Cannot divide by zero");
     };
     return a / b;
 };

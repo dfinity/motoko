@@ -42,7 +42,7 @@ account.balance := -100; //  Allowed
 This recommendation also applies to all `var` declarations, not just record fields.
 :::
 
-`person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat).
+`person` is a record with two labeled fields, `name` of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text) and `age` of type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat).
 
 The values of the fields are `"Motoko"` and `25` respectively.
 

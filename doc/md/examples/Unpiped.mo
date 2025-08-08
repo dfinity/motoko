@@ -1,7 +1,8 @@
-import Iter "mo:base/Iter";
-import List "mo:base/List";
+import Iter "mo:core/Iter";
+import List "mo:core/List";
+import Nat "mo:core/Nat";
 
 { multiples =
    List.filter<Nat>(
-     Iter.toList(Iter.range(0, 10)),
+     Iter.toList(Nat.range(0, 10)),
      func n { n % 3 == 0 }) };
