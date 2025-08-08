@@ -12,18 +12,15 @@ module Set {
 
   public func add<T, C <: Cmp<T>>(s : Set<T, C>, v : T) : Set<T, C> {
     let (cmp, l) = s;
-    ignore cmp(v,v);
     func add(l  : List<T>) : List<T> {
-      Prim.debugPrint "add";
       switch l {
         case null {
-         Prim.debugPrint "null";
          ?(v, null) };
         case (?(w, r)) {
           switch (cmp(v, w)) {
-            case (#less) { Prim.debugPrint "lt";?(v, l) };
-            case (#equal) { Prim.debugPrint "eq"; l };
-            case (#greater) { Prim.debugPrint "gt"; ?(w, add(r)) };
+            case (#less) { ?(v, l) };
+            case (#equal) {l };
+            case (#greater) { ?(w, add(r)) };
           };
         };
       };
