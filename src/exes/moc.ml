@@ -228,15 +228,15 @@ let argspec = [
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
-    upgrade = limit;
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   "--stable-memory-access-limit",
   Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
-    upgrade = limit;
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
