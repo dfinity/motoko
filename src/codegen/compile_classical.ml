@@ -11769,7 +11769,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
         (* print_endline (Printf.sprintf "arg_type: %s ; sr: %s" (Mo_types.Type.string_of_typ arg_type) (SR.string_of sr)); *)
         compile_exp_as env ae sr e ^^
         TaggedSmallWord.(if need_lsb_adjust prim then lsb_adjust prim else G.nop)
-      | Prim (Int64|Nat64) ->
+      | Prim (Int64|Nat64|Float) ->
         compile_exp_as env ae (StackRep.of_type arg_type) e
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
