@@ -18,7 +18,6 @@ This page provides a comprehensive guide for migrating from the `base` Motoko pa
 ### Project configuration
 
 **Requirements:**
-- `dfx` version 0.28 or higher
 - Motoko compiler (`moc`) version 0.15 or higher
 
 Add the following to your `mops.toml` file to begin using the `core` package:
@@ -32,8 +31,8 @@ If you are migrating an existing project, you can keep the `base` import and gra
 
 ### Important considerations
 
-:::warning Version Requirements
-The `core` package requires DFX 0.23.0+ and Motoko compiler 0.13.0+ due to dependencies on enhanced orthogonal persistence and other new language features. Ensure your development environment meets these requirements before migration.
+:::warning Version requirements
+The `core` package requires Motoko compiler 0.15+ due to dependencies on new language features.
 :::
 
 When updating to the `core` package:
@@ -939,8 +938,7 @@ actor App {
 If you encounter errors like `field Array_tabulateVar does not exist in module`, this indicates a version mismatch between your Motoko compiler and the `core` package. 
 
 **Solution:**
-1. Update to dfx 0.28 or higher: `dfx upgrade`
-2. Ensure you're using Motoko compiler 0.15 or higher
+2. Ensure you're using the latest Motoko compiler version
 3. Update the `core` package to the latest version in your `mops.toml`
 4. Clean and rebuild your project: `dfx stop && dfx start --clean`
 
