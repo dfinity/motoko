@@ -164,7 +164,12 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | Tup ts1, Tup ts2 ->
       bi_match_list bi_match_typ rel eq inst any ts1 ts2
     | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-      if s1 = s2 && c1 = c2 then
+      if
+         (match s1, s2 with
+          | Stable _, Local -> true
+          | _ -> s1 = s2) &&
+          c1 = c2
+      then
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
@@ -266,12 +271,12 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   and fail_open_bound c bd =
     let c = Cons.name c in
     raise (Bimatch (Format.asprintf
-      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+      "type parameter %s has an open bound%a\nmentioning a later type parameter, so that explicit type instantiation is required due to limitation of inference"
       c (Lib.Format.display pp_typ) bd))
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
-    List.iter2 (fun c bd -> if mentions bd cons then fail_open_bound c bd) cs bds;
+    let _ = List.fold_left2 (fun cons c bd -> if mentions bd cons then fail_open_bound c bd; ConSet.remove c cons) cons cs bds in
 
     let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
     let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
