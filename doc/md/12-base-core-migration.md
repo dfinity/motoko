@@ -18,8 +18,8 @@ This page provides a comprehensive guide for migrating from the `base` Motoko pa
 ### Project configuration
 
 **Requirements:**
-- DFX version 0.23.0 or higher
-- Motoko compiler (moc) version 0.13.0 or higher
+- `dfx` version 0.28 or higher
+- Motoko compiler (`moc`) version 0.15 or higher
 
 Add the following to your `mops.toml` file to begin using the `core` package:
 
