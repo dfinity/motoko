@@ -1,6 +1,7 @@
 import Prim "mo:prim";
 func fail<T>() : T = Prim.trap("fail");
 func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
+func check3<T>(t1 : T, t2 : T, t3 : T) : [T] = [t1, t2, t3]; // used to check type equality
 
 // Mock functions for Array module
 module Array {
@@ -306,22 +307,26 @@ let _ = Array.any(ar, func x = x > 3);
 // VarArray module explicit type instantiation tests
 let va1 = VarArray.tabulate<Int>(4, func i = i * 2);
 let va2 : [var Int] = VarArray.tabulate(4, func i = i * 2);
-let _ = check(va1, va2);
+let va2c = VarArray.tabulate(4, func i = i * 2);
+let _ = check3(va1, va2, va2c);
 let _ = VarArray.find(varAr, func x = x > 8);
 let _ = VarArray.findIndex([var 'A', 'B', 'C'], func x = x == 'C');
 let _ = VarArray.forEach(varAr, func(x) {});
 let va3 = VarArray.map<Nat, Int>(varAr, func x = x * 2);
 let va4 : [var Int] = VarArray.map(varAr, func x = x * 2);
-let _ = check(va3, va4);
+let va4c = VarArray.map(varAr, func x = x * 2);
+let _ = check3(va3, va4, va4c);
 let _ = VarArray.mapToImmutable(varAr, func x = x * 2);
 let _ = VarArray.mapInPlace(varAr, func x = x * 3);
 let _ = VarArray.filter(varAr, func x = x % 2 == 0);
 let va5 = VarArray.mapEntries<Nat, Int>(varAr, func(x, i) = i * x);
 let va6 : [var Int] = VarArray.mapEntries(varAr, func(x, i) = i * x);
-let _ = check(va5, va6);
+let va6c = VarArray.mapEntries(varAr, func(x, i) = i * x);
+let _ = check3(va5, va6, va6c);
 let va7 = VarArray.flatMap<Nat, Int>(varAr, func x = [x, -x]);
 let va8 : [var Int] = VarArray.flatMap(varAr, func x = [x, -x]);
-let _ = check(va7, va8);
+let va8c = VarArray.flatMap(varAr, func x = [x, -x]);
+let _ = check3(va7, va8, va8c);
 let _ = VarArray.foldRight(varAr, "", func(x, acc) = natToText(x) # acc);
 let _ = VarArray.all(varAr, func x = x > 0);
 let _ = VarArray.any(varAr, func x = x > 3);
@@ -348,10 +353,12 @@ let _ = Iter.unfold(1, func x = if (x <= 3) ?(x, x + 1) else null);
 let _ = List.filter(list, func x = x % 2 == 0);
 let l1 = List.map<Nat, Int>(list, func x = x * 2);
 let l2 : List<Int> = List.map(list, func x = x * 2);
-let _ = check(l1, l2);
+let l2c = List.map(list, func x = x * 2);
+let _ = check3(l1, l2, l2c);
 let l3 = List.filterMap<Nat, Int>(list, func x = if (x % 2 == 0) ?(x * 2) else null);
 let l4 : List<Int> = List.filterMap(list, func x = if (x % 2 == 0) ?(x * 2) else null);
-let _ = check(l3, l4);
+let l4c = List.filterMap(list, func x = if (x % 2 == 0) ?(x * 2) else null);
+let _ = check3(l3, l4, l4c);
 let _ = List.find(list, func x = x > 8);
 let _ = List.findIndex(list, func i = i % 2 == 0);
 let _ = List.findLastIndex(list, func i = i % 2 == 0);
@@ -374,7 +381,8 @@ let _ = Queue.any(queue, func x = x > 2);
 let _ = Queue.forEach(queue, func _ {});
 let q1 = Queue.map<Nat, Int>(queue, func x = x * 2);
 let q2 : Queue<Int> = Queue.map(queue, func x = x * 2);
-let _ = check(q1, q2);
+let q2c = Queue.map(queue, func x = x * 2);
+let _ = check3(q1, q2, q2c);
 let _ = Queue.filter(queue, func x = x % 2 == 0);
 
 // pure Queue module explicit type instantiation tests
@@ -388,17 +396,20 @@ let _ = PureQueue.filterMap(pureQueue, func n = if (n % 2 == 0) ?n else null);
 // Stack module explicit type instantiation tests
 let st1 = Stack.tabulate<Int>(3, func i = 2 * i);
 let st2 : Stack<Int> = Stack.tabulate(3, func i = 2 * i);
-let _ = check(st1, st2);
+let st2c = Stack.tabulate(3, func i = 2 * i);
+let _ = check3(st1, st2, st2c);
 let _ = Stack.all(stack, func n = n % 2 == 0);
 let _ = Stack.any(stack, func n = n == 2);
 let _ = Stack.forEach(stack, func _ {});
 let st3 = Stack.map<Nat, Int>(stack, func n = 2 * n);
 let st4 : Stack<Int> = Stack.map(stack, func n = 2 * n);
-let _ = check(st3, st4);
+let st4c = Stack.map(stack, func n = 2 * n);
+let _ = check3(st3, st4, st4c);
 let _ = Stack.filter(stack, func n = n % 2 == 0);
 let st5 = Stack.filterMap<Nat, Int>(stack, func n = if (n % 2 == 0) ?n else null);
 let st6 : Stack<Int> = Stack.filterMap(stack, func n = if (n % 2 == 0) ?n else null);
-let _ = check(st5, st6);
+let st6c = Stack.filterMap(stack, func n = if (n % 2 == 0) ?n else null);
+let _ = check3(st5, st6, st6c);
 
 // Set module explicit type instantiation tests
 let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
@@ -406,7 +417,8 @@ let _ = Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
 let s1 = Set.map<Nat, Text>(set, func n = natToText(n));
 let s2 : Set<Text> = Set.map(set, func n = natToText(n));
-let _ = check(s1, s2);
+let s2c = Set.map(set, func n = natToText(n));
+let _ = check3(s1, s2, s2c);
 let s3 = Set.filterMap<Nat, Text>(
   set,
   textCompare,
@@ -417,7 +429,12 @@ let s4 : Set<Text> = Set.filterMap(
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
-let _ = check(s3, s4);
+let s4c = Set.filterMap(
+  set,
+  textCompare,
+  func n = if (n % 2 == 0) ?natToText(n) else null,
+);
+let _ = check3(s3, s4, s4c);
 let _ = Set.all(set, func n = n < 10);
 let _ = Set.any(set, func n = n > 5);
 
@@ -446,7 +463,8 @@ let _ = Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
 let m1 = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
 let m2 : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
-let _ = check(m1, m2);
+let m2c = Map.map(mapInstance, func(key, value) = natToText(key));
+let _ = check3(m1, m2, m2c);
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
