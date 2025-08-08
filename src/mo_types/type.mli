@@ -233,12 +233,15 @@ val cons_kind : kind -> ConSet.t
 
 (* Equivalence and Subtyping *)
 
+type compatibility = Compatible | Incompatible of string
+
 exception Undecided (* raised if termination depth exceeded  *)
 
 val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 
 val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val sub_explained : ?src_fields : Field_sources.t -> typ -> typ -> compatibility
 val compatible : typ -> typ -> bool
 
 exception PreEncountered
@@ -274,6 +277,7 @@ val scope_bind : bind
 (* like sub, but disallows promotion to  Any or narrower object types
    that signal data loss *)
 val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val stable_sub_explained : ?src_fields : Field_sources.t -> typ -> typ -> compatibility
 
 type stab_sig =
   | Single of field list

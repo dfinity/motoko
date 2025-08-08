@@ -21,21 +21,23 @@ let error_discard s tf =
         tf.lab
         display_typ tf.typ))
 
-let error_sub s tf1 tf2 =
+let error_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at unrelated type%a. Use an explicit migration function."
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at unrelated type%a:\n %s.\n Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
-        display_typ_expand tf2.typ))
+        display_typ_expand tf2.typ
+        explanation))
 
-let error_stable_sub s tf1 tf2 =
+let error_stable_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0216" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a\nwithout loss of data. Use an explicit migration function."
+      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a\nwithout loss of data:\n %s.\n Use an explicit migration function."
         tf1.lab
         display_typ_expand tf1.typ
-        display_typ_expand tf2.typ))
+        display_typ_expand tf2.typ
+        explanation))
 
 let error_required s tf =
   Diag.add_msg s
@@ -74,10 +76,12 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
         (match Type.compare_field tf1 tf2 with
          | 0 ->
             begin
-              if not (Type.sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-                error_sub s tf1 tf2
-              else if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-                error_stable_sub s tf1 tf2;
+              match Type.sub_explained (as_immut tf1.typ) (as_immut tf2.typ) with
+              | Incompatible explanation -> error_sub s tf1 tf2 explanation
+              | Compatible -> 
+                match Type.stable_sub_explained (as_immut tf1.typ) (as_immut tf2.typ) with
+                | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
+                | Compatible -> ()
             end;
             go tfs1' tfs2'
          | -1 ->

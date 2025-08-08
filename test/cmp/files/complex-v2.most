@@ -1,0 +1,104 @@
+// Version: 3.0.0
+type ApprovalStatus__658775965 = {#approved; #pending; #rejected};
+type Dependency__964229317 = {shipItemId : Text; strength : Nat};
+type Map__806007384<K, V> = {root : Tree__343959595<K, V>; size : Nat};
+type OldDependency__958647022 = {productId : Text; strength : Nat};
+type OldProduct__979805366 =
+  {
+    acceptanceCriteria : [Text];
+    dependencies : [OldDependency__958647022];
+    description : Text;
+    githubRepos : [Text];
+    id : Text;
+    milestones : [Text];
+    name : Text;
+    owner : Principal;
+    riskFactors : [Text];
+    riskLevel : OldRiskLevel__75901218;
+    shipDate : Time__1059074300;
+    signalGroup : Text;
+    slackChannel : Text;
+    status : OldStatus__393854603;
+    team : OldTeam__328341939
+  };
+type OldRiskLevel__75901218 = {#high; #low; #medium};
+type OldStatus__393854603 = {#blocked; #inProgress; #planning; #shipped};
+type OldTeam__328341939 =
+  {
+    #crypto;
+    #defi;
+    #growth;
+    #identity;
+    #infrastructure;
+    #nns;
+    #node;
+    #research;
+    #runtime;
+    #sdk;
+    #security;
+    #storage
+  };
+type RiskLevel__780426047 = {#high; #low; #medium};
+type ShipItem__820287319 =
+  {
+    acceptanceCriteria : [Text];
+    dependencies : [Dependency__964229317];
+    description : Text;
+    githubRepos : [Text];
+    id : Text;
+    milestones : [Text];
+    name : Text;
+    owner : Principal;
+    riskFactors : [Text];
+    riskLevel : RiskLevel__780426047;
+    shipDate : Time__1059074300;
+    signalGroup : Text;
+    slackChannel : Text;
+    status : Status__109108858;
+    team : Team__356991023
+  };
+type Status__109108858 = {#blocked; #inProgress; #planning; #shipped};
+type Team__356991023 =
+  {
+    #caffeine;
+    #crypto;
+    #defi;
+    #growth;
+    #identity;
+    #infrastructure;
+    #nns;
+    #node;
+    #research;
+    #runtime;
+    #sdk;
+    #security;
+    #storage
+  };
+type Time__1059074300 = Int;
+type Tree__343959595<K, V> =
+  {
+    #black : (Tree__343959595<K, V>, K, V, Tree__343959595<K, V>);
+    #leaf;
+    #red : (Tree__343959595<K, V>, K, V, Tree__343959595<K, V>)
+  };
+type UserRole__189683214 = {#admin; #guest; #user};
+actor ({
+  stable multiUserState :
+    {
+      var adminAssigned : Bool;
+      var approvalStatus :
+        Map__806007384<Principal, ApprovalStatus__658775965>;
+      var userRoles : Map__806007384<Principal, UserRole__189683214>
+    };
+  in products : Map__806007384<Text, OldProduct__979805366>
+}, {
+  stable multiUserState :
+    {
+      var adminAssigned : Bool;
+      var approvalStatus :
+        Map__806007384<Principal, ApprovalStatus__658775965>;
+      var userRoles : Map__806007384<Principal, UserRole__189683214>
+    };
+  stable var shipItems :
+    {root : Tree__343959595<Text, ShipItem__820287319>; size : Nat}
+}) ;

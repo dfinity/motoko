@@ -1,0 +1,10 @@
+(unknown location): Compatibility error [M0170], stable variable products of previous type
+  var {root : Tree__343959595<Text, Product__367424679>; size : Nat}
+cannot be consumed at unrelated type
+  Map__806007384<Text, OldProduct__979805366> = {
+                                                  root :
+                                                    Tree__343959595<Text,
+                                                                    OldProduct__979805366>;
+                                                  size : Nat
+                                                }. Use an explicit migration function.
+FALSE
