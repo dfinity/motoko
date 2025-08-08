@@ -1478,28 +1478,29 @@ let and_compatible first second =
 let incompatible_types t1 t2 =
   Incompatible (Printf.sprintf "Incompatible types %s and %s" (string_of_typ t1) (string_of_typ t2))
 
+let missing_tag label t =
+  Incompatible (Printf.sprintf "Missing tag #%s in type %s" label (string_of_typ t))
+
+let missing_field label t =
+  Incompatible (Printf.sprintf "Missing field %s in type %s" label (string_of_typ t))
+
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let rel_list_explained d p rel eq xs1 xs2 =
-  let rec internal_rel_list index xs1 xs2 =
-    match xs1, xs2 with
-    | [], [] -> Compatible
-    | [], _ -> Incompatible (Printf.sprintf "Less arguments than target declaration")
-    | _, [] -> Incompatible (Printf.sprintf "More arguments than target declaration")
-    | x1::rest1, x2::rest2 ->
-      match p d rel eq x1 x2 with
-      | Compatible -> internal_rel_list (index + 1) rest1 rest2
-      | Incompatible explanation -> Incompatible (Printf.sprintf "Mismatch on argument %i: %s" index explanation)
-  in
-    internal_rel_list 0 xs1 xs2
+let rec rel_list_explained item_name d p rel eq xs1 xs2 =
+  match xs1, xs2 with
+  | [], [] -> Compatible
+  | [], _ -> Incompatible (Printf.sprintf "Too few %s" item_name)
+  | _, [] -> Incompatible (Printf.sprintf "Too many %s" item_name)
+  | x1::rest1, x2::rest2 ->
+    match p d rel eq x1 x2 with
+    | Compatible -> rel_list_explained item_name d p rel eq rest1 rest2
+    | Incompatible explanation -> Incompatible explanation
 
 let rec rel_typ d rel eq t1 t2 =
   match rel_typ_explained d rel eq t1 t2 with
   | Compatible -> true
-  | Incompatible explanation ->
-    (* Printf.printf "LUC TYPE ERROR: %s\n" explanation; *)
-    false
+  | Incompatible explanation -> false
 
 and rel_typ_explained d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
@@ -1542,7 +1543,7 @@ and rel_typ_explained d rel eq t1 t2 =
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ_explained d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      rel_list_explained d eq_typ_explained rel eq ts1 ts2
+      rel_list_explained "type arguments" d eq_typ_explained rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ_explained d rel eq (open_ ts1 t) t2
     | _ ->
@@ -1573,7 +1574,7 @@ and rel_typ_explained d rel eq t1 t2 =
     if s1 <> s2 then
       Incompatible (Printf.sprintf "Incompatible object sorts for %s and %s" (string_of_typ t1) (string_of_typ t2))
     else
-      rel_fields_explained d rel eq tfs1 tfs2
+      rel_fields_explained t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ_explained d rel eq t1' t2'
   | Opt t1', Opt t2' ->
@@ -1583,7 +1584,7 @@ and rel_typ_explained d rel eq t1 t2 =
   | Variant fs1, Variant fs2 ->
     rel_tags_explained d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list_explained d rel_typ_explained rel eq ts1 ts2
+    rel_list_explained "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
       Incompatible (Printf.sprintf "Incompatible function modifiers for %s and %s" (string_of_typ t1) (string_of_typ t2))
@@ -1592,8 +1593,8 @@ and rel_typ_explained d rel eq t1 t2 =
     else
       (match rel_binds d eq eq tbs1 tbs2 with
       | Some ts -> and_compatible
-        (rel_list_explained d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
-        (rel_list_explained d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
+        (rel_list_explained "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
+        (rel_list_explained "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
       | None -> Incompatible (Printf.sprintf "Incompatible function signatures %s and %s" (string_of_typ t1) (string_of_typ t2))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
@@ -1606,14 +1607,7 @@ and rel_typ_explained d rel eq t1 t2 =
   | _, _ -> incompatible_types t1 t2
   end
 
-and rel_fields d rel eq tfs1 tfs2 =
-  match rel_fields_explained d rel eq tfs1 tfs2 with
-  | Compatible -> true
-  | Incompatible explanation ->
-    (* Printf.printf "LUC FIELD ERROR: %s\n" explanation; *)
-    false
-
-and rel_fields_explained d rel eq tfs1 tfs2 =
+and rel_fields_explained t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1625,29 +1619,22 @@ and rel_fields_explained d rel eq tfs1 tfs2 =
     | 0 ->
       let compatible = and_compatible
         (rel_typ_explained d rel eq tf1.typ tf2.typ)
-        (rel_fields_explained d rel eq tfs1' tfs2')
+        (rel_fields_explained t1 t2 d rel eq tfs1' tfs2')
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields_explained d rel eq tfs1' tfs2
+      rel_fields_explained t1 t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        Incompatible (Printf.sprintf "Missing field %s in source type" tf2.lab)
+        missing_field tf2.lab t1
       else
-        Incompatible (Printf.sprintf "Missing field %s in target type" tf1.lab)
+        missing_field tf1.lab t2
     )
   | [], tf2::_ ->
-    Incompatible (Printf.sprintf "Missing field %s in source type" tf2.lab)
+    missing_field tf2.lab t1
   | tf1::_, [] ->
-    Incompatible (Printf.sprintf "Missing field %s in target type" tf1.lab)
-
-and rel_tags d rel eq tfs1 tfs2 =
-  match rel_tags_explained d rel eq tfs1 tfs2 with
-  | Compatible -> true
-  | Incompatible explanation ->
-    (* Printf.printf "LUC TAG ERROR: %s\n" explanation; *)
-    false
+    missing_field tf1.lab t2
 
 and rel_tags_explained d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -1669,14 +1656,14 @@ and rel_tags_explained d rel eq tfs1 tfs2 =
       rel_tags_explained d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        Incompatible (Printf.sprintf "Missing tag #%s in source type" tf2.lab)
+        missing_tag tf2.lab (Variant tfs1)
       else
-        Incompatible (Printf.sprintf "Missing tag #%s in target type" tf1.lab)
+        missing_tag tf1.lab (Variant tfs2)
     )
   | [], tf2::_ ->
-    Incompatible (Printf.sprintf "Missing tag #%s in source type" tf2.lab)
+    missing_tag tf2.lab (Variant tfs1)
   | tf1::_, [] ->
-    Incompatible (Printf.sprintf "Missing tag #%s in target type" tf1.lab)
+    missing_tag tf1.lab (Variant tfs2)
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1691,9 +1678,7 @@ and rel_bind ts d rel eq tb1 tb2 =
 and eq_typ d rel eq t1 t2 =
   match eq_typ_explained d rel eq t1 t2 with
   | Compatible -> true
-  | Incompatible explanation ->
-    (* Printf.printf "LUC EQ TYPE ERROR: %s\n" explanation; *)
-    false
+  | Incompatible explanation -> false
 
 and eq_typ_explained d rel eq t1 t2 = rel_typ_explained d eq eq t1 t2
 
