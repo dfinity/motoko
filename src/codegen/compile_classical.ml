@@ -11769,6 +11769,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
         (* print_endline (Printf.sprintf "arg_type: %s ; sr: %s" (Mo_types.Type.string_of_typ arg_type) (SR.string_of sr)); *)
         compile_exp_as env ae sr e ^^
         TaggedSmallWord.(if need_lsb_adjust prim then lsb_adjust prim else G.nop)
+      | Prim (Int64|Nat64) ->
+        compile_exp_as env ae (StackRep.of_type arg_type) e
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
@@ -13478,24 +13480,6 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_serialization_globals = Serialization.register_delayed_globals env in
   let imported_components = ref Imported_components.empty in
 
-  let open Mo_types.Type in
-
-  let map_motoko_type_to_wasm_args motoko_type = 
-    match normalize motoko_type with
-    | Prim Blob -> [I32Type; I32Type] (* pointer + length *)
-    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-    | Prim (Nat64 | Int64) -> [I64Type]
-    | Prim Float -> [F64Type]
-    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_args: unsupported type %s" (string_of_typ motoko_type)) in
-
-  let map_motoko_type_to_wasm_result motoko_type = 
-    match normalize motoko_type with
-    | Prim Blob -> [] (* out-parameter approach, no direct return *)
-    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-    | Prim (Nat64 | Int64) -> [I64Type]
-    | Prim Float -> [F64Type]
-    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_result: unsupported type %s" (string_of_typ motoko_type)) in
-
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
     imported_components := add_imported_component 
@@ -13503,17 +13487,13 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
         ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
         !imported_components;
     
+    let initial_args = Imported_components.initial_wasm_args return_type in
     let wasm_args = List.fold_left (fun acc arg_type -> 
-      (map_motoko_type_to_wasm_args arg_type.Import_components_ir.arg_type) @ acc
-    ) [] arg_types in
+      (Imported_components.map_motoko_type_to_wasm_args arg_type.Import_components_ir.arg_type) @ acc
+    ) initial_args arg_types in
     
-    let final_args = match normalize return_type with
-      | Prim Blob -> wasm_args @ [I32Type] (* out-parameter *)
-      | _ -> wasm_args 
-    in
-    
-    let wasm_results = map_motoko_type_to_wasm_result return_type in
-    E.add_func_import env component_name function_name final_args wasm_results in
+    let wasm_results = Imported_components.map_motoko_type_to_wasm_result return_type in
+    E.add_func_import env component_name function_name wasm_args wasm_results in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)
