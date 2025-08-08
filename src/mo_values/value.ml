@@ -1,4 +1,5 @@
 open Numerics
+
 module T = Mo_types.Type
 
 (* Environments *)
@@ -33,6 +34,8 @@ and func =
 and comp =
   value cont -> value cont -> unit
 
+and weak = value Weak.t
+
 and value =
   | Null
   | Bool of bool
@@ -59,6 +62,7 @@ and value =
   | Comp of comp
   | Mut of value ref
   | Iter of value Seq.t ref (* internal to {b.values(), t.chars()} iterator *)
+  | Weak of weak
 
 and res = Ok of value | Error of value
 and async = {result : res Lib.Promise.t ; mutable waiters : (value cont * value cont) list}
@@ -108,6 +112,7 @@ let as_func = function Func (cc, f) -> cc, f | _ -> invalid "as_func"
 let as_async = function Async a -> a | _ -> invalid "as_async"
 let as_comp = function Comp c -> c | _ -> invalid "as_comp"
 let as_mut = function Mut r -> r | _ -> invalid "as_mut"
+let as_weak = function Weak w -> w | _ -> invalid "as_weak"
 
 
 (* Ordering *)
@@ -271,6 +276,10 @@ and pp_val d ppf (t, v) =
     | Mut r ->
       let t' = match t with T.Mut t' -> t' | _ -> T.Non in
       pp_val d ppf (t', !r)
+    | Weak w ->
+      let t' = match t with T.Weak t' -> t' | _ -> T.Non in
+      let v'' = match Weak.get w 0 with None -> Null | Some v' -> Opt v' in
+      fprintf ppf "@[<1>weak %a@]" (pp_val_nullary d) (T.Opt t', v'')
     | v -> pp_val_nullary d ppf (t, v)
 
 and pp_res d ppf (t, result) =

@@ -61,6 +61,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ                       (* named type *)
+  | Weak of typ                               (* weak reference *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -138,6 +139,7 @@ let tag = function
   | Pre -> 13
   | Typ _ -> 14
   | Named _ -> 15
+  | Weak _ -> 16
 
 let compare_prim p1 p2 =
   let d = tag_prim p1 - tag_prim p2 in
@@ -433,6 +435,7 @@ let rec shift i n t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, shift i n t)
+  | Weak t -> Weak (shift i n t)
 
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
@@ -485,6 +488,7 @@ let rec subst sigma t =
                       (but can mention other (closed) type constructors).
                     *)
   | Named (name, t) -> Named (name, subst sigma t)
+  | Weak t -> Weak (subst sigma t)
 
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
@@ -536,6 +540,7 @@ let rec open' i ts t =
   | Pre -> Pre
   | Typ c -> Typ c
   | Named (name, t) -> Named (name, open' i ts t)
+  | Weak t -> Weak (open' i ts t)
 
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
@@ -689,6 +694,11 @@ let as_async_sub s default_scope t = match promote t with
   | Non -> default_scope, Non (* TBR *)
   | _ -> invalid "as_async_sub"
 
+let as_weak_sub t = match promote t with
+  | Weak t -> t
+  | Non -> Non
+  | _ -> invalid "as_weak_sub"
+
 let is_immutable_obj obj_type =
   let _, fields = as_obj_sub [] obj_type in
   List.for_all (fun f -> not (is_mut f.typ)) fields
@@ -749,6 +759,7 @@ let rec span = function
   | Non -> Some 0
   | Typ _ -> Some 1
   | Named (_, t) -> span t
+  | Weak t -> span t (* TBR *)
 
 
 (* Collecting type constructors *)
@@ -763,7 +774,7 @@ let rec cons' inTyp t cs =
   | Var _ | Prim _ | Any | Non | Pre -> cs
   | Con (c, ts) ->
     List.fold_right (cons' inTyp) ts (cons_con inTyp c cs)
-  | Opt t | Mut t | Array t ->
+  | Opt t | Mut t | Array t | Weak t ->
     cons' inTyp t cs
   | Async (_, t1, t2) ->
     cons' inTyp t2 (cons' inTyp t1 cs)
@@ -782,7 +793,6 @@ let rec cons' inTyp t cs =
       cons_kind' inTyp (Cons.kind c) cs
   | Named (_ , t) ->
     cons' inTyp t cs
-
 
 and cons_con inTyp c cs =
   if ConSet.mem c cs
@@ -838,6 +848,7 @@ let concrete t =
       | Typ c -> (* assumes type defs are closed *)
         true (* so we can transmit actors with typ fields *)
       | Named (_, t) -> go t
+      | Weak t -> go t
     end
   in go t
 
@@ -854,6 +865,11 @@ let serializable allow_mut t =
       | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
+      | Weak t ->
+         !Mo_config.Flags.enhanced_orthogonal_persistence &&
+         (* NB: Candid serialization doesn't preserve graph structure *)
+         (* weak references are stable if content is stable *)
+         allow_mut && go t
       | Mut t -> allow_mut && go t
       | Con (c, ts) ->
         (match Cons.kind c with
@@ -884,7 +900,7 @@ let find_unshared t =
       | Var _ | Pre -> assert false
       | Prim Error -> Some t
       | Any | Non | Prim _ | Typ _ -> None
-      | Async _ | Mut _ -> Some t
+      | Async _ | Mut _ | Weak _ -> Some t
       | Con (c, ts) ->
         (match Cons.kind c with
         | Abs _ -> None
@@ -1097,6 +1113,8 @@ let rec rel_typ d rel eq t1 t2 =
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
+  | Weak t1', Weak t2' ->
+    rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
@@ -1251,6 +1269,8 @@ let rec compatible_typ co t1 t2 =
     compatible_fields co tfs1 tfs2
   | Opt t1', Opt t2' ->
     compatible_typ co t1' t2'
+  | Weak t1', Weak t2' ->
+    compatible_typ co t1' t2' (* TBR *)
   | Prim Null, Opt _ | Opt _, Prim Null  ->
     true
   | Variant tfs1, Variant tfs2 ->
@@ -1302,6 +1322,7 @@ let rec inhabited_typ co t =
   | Pre -> assert false
   | Non -> false
   | Any | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> true
+  | Weak t' (* TBR *)
   | Mut t' -> inhabited_typ co t'
   | Tup ts -> List.for_all (inhabited_typ co) ts
   | Obj (_, tfs) -> List.for_all (inhabited_field co) tfs
@@ -1332,7 +1353,8 @@ let rec singleton_typ co t =
 
   | Non -> false
   | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
-  | Mut t' -> false
+  | Weak _
+  | Mut _ -> false
   | Obj (_, _) -> false
   | Variant _ -> false
   | Var _ -> false
@@ -1373,7 +1395,9 @@ let rec combine rel lubs glbs t1 t2 =
       if rel == lubs then t else Non
     | Prim Nat, Prim Int
     | Prim Int, Prim Nat ->
-      Prim (if rel == lubs then Int else Nat)
+       Prim (if rel == lubs then Int else Nat)
+    | Weak t1', Weak t2' ->
+      Weak (combine rel lubs glbs t1' t2')
     | Opt t1', Opt t2' ->
       Opt (combine rel lubs glbs t1' t2')
     | (Opt _ as t), (Prim Null as t')
@@ -1729,7 +1753,7 @@ and can_omit n t =
     | Pre -> assert false
     | Prim _ | Any | Non -> true
     | Con (c, ts) -> List.for_all (go i ) ts
-    | Array t | Opt t | Mut t -> go i t
+    | Array t | Opt t | Mut t | Weak t -> go i t
     | Async (s, Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
     | Async (s, t1, t2) -> go i t1 && go i t2
     | Tup ts -> List.for_all (go i ) ts
@@ -1800,6 +1824,8 @@ and pp_typ_un vs ppf t =
   match t with
   | Opt t ->
     fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
+  | Weak t ->
+    fprintf ppf "@[<1>weak %a@]"  (pp_typ_un vs) t
   | t ->
     pp_typ_nullary vs ppf t
 

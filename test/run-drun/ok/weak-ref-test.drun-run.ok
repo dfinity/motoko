@@ -1,0 +1,43 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: "================"
+debug.print: ?[var 1, 1, 1]
+debug.print: true
+debug.print: ?[var 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+debug.print: true
+debug.print: ?[var 3]
+debug.print: true
+debug.print: "================"
+debug.print: "================"
+debug.print: null
+debug.print: false
+debug.print: ?[var 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+debug.print: true
+debug.print: ?[var 3]
+debug.print: true
+debug.print: "================"
+debug.print: "================"
+debug.print: null
+debug.print: false
+debug.print: ?[var 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+debug.print: true
+debug.print: ?[var 3]
+debug.print: true
+debug.print: "================"
+debug.print: "================"
+debug.print: null
+debug.print: false
+debug.print: ?[var 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+debug.print: true
+debug.print: ?[var 3]
+debug.print: true
+debug.print: "================"
+debug.print: "================"
+debug.print: null
+debug.print: false
+debug.print: ?[var 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+debug.print: true
+debug.print: ?[var 3]
+debug.print: true
+debug.print: "================"
+ingress Completed: Reply: 0x4449444c0000

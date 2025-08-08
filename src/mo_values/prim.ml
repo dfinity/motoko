@@ -442,4 +442,22 @@ let prim trap =
       fun _ v k -> k (Tup [
         Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
 
+  | "alloc_weak_ref" ->
+     fun _ v k ->
+       let w = Weak.create 1 in
+       Weak.set w 0 (Some v);
+       k (Weak w)
+
+  | "weak_get" ->
+     fun _ v k ->
+      (let w = as_weak v in
+       match Weak.get w 0 with
+       | Some v -> k (Opt v)
+       | None -> k (Null))
+
+  | "weak_ref_is_live" ->
+     fun _ v k ->
+       let w = as_weak v in
+       k (Bool (Weak.check w 0))
+
   | s -> trap.trap ("Value.prim: " ^ s)

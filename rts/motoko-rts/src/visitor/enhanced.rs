@@ -42,6 +42,20 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
+        TAG_WEAK_REF => {
+            let weak_ref = obj as *mut crate::types::WeakRef;
+            let field_addr = &mut (*weak_ref).field;
+            if is_non_null_pointer_field(field_addr) {
+                // Marking phase is treated separately such that we
+                // don't break the way weak references are handled -- we don't mark their target
+                // as live through the weak reference, see mark_increment.rs mark_fields() for more details.
+                //
+                // The update phase though works as normally because we want to update the weak
+                // reference pointer in case the target object was moved by the GC.
+                visit_ptr_field(ctx, field_addr);
+            }
+        }
+
         TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
             let (_, slice_start) = slice_start(tag);
             let array = obj as *mut Array;
