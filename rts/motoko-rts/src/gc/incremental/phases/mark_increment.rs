@@ -58,7 +58,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         let mark_state = state.mark_state.as_ref().unwrap();
         debug_assert!(!mark_state.complete || mark_state.mark_stack.is_empty());
         #[cfg(feature = "enhanced_orthogonal_persistence")]
-        debug_assert!(mark_state.weak_ref_registry.is_empty());
+        debug_assert!(!mark_state.complete || mark_state.weak_ref_registry.is_empty());
         mark_state.complete
     }
 
@@ -182,7 +182,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 }
                 let weak_ref_obj = weak_ref_value.get_ptr() as *mut crate::types::WeakRef;
                 let target = (*weak_ref_obj).field;
-                if target.is_non_null_ptr() && target.get_ptr() >= self.heap.base_address() {
+                if target.is_non_null_ptr() {
                     let target_obj = target.as_obj();
                     if !self.heap.is_object_marked(target_obj) {
                         (*weak_ref_obj).field = NULL_POINTER;

@@ -6,6 +6,9 @@ use motoko_rts_macros::classical_persistence;
 use motoko_rts_macros::enhanced_orthogonal_persistence;
 use motoko_rts_macros::ic_mem_fn;
 
+#[enhanced_orthogonal_persistence]
+use crate::barriers::init_with_barrier;
+
 #[cfg(feature = "ic")]
 use crate::constants::MB;
 
@@ -90,12 +93,12 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, tag: Tag, len: usize) -> Value
 pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
     use crate::barriers::allocation_barrier;
 
-    let weak_ref = mem.alloc_words(size_of::<WeakRef>() + Words(16));
+    let weak_ref = mem.alloc_words(crate::types::size_of::<WeakRef>());
 
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
     (*weak_ref_obj).header.tag = TAG_WEAK_REF;
     (*weak_ref_obj).header.init_forward(weak_ref);
-    (*weak_ref_obj).field = target;
+    init_with_barrier(mem, &mut (*weak_ref_obj).field, target);
 
     // TODO: double check this!!!
     allocation_barrier(weak_ref)
@@ -106,7 +109,9 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
 #[ic_mem_fn]
 pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool {
     if !weak_ref.is_non_null_ptr() {
-        return false; // Invalid WeakRef pointer.
+        crate::rts_trap_with(
+            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report to Motoko team.",
+        );
     }
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
     let field_tag = (*weak_ref_obj).header.tag;
@@ -118,7 +123,7 @@ pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool
             return target.is_non_null_ptr();
         }
         _ => {
-            return false;
+            crate::rts_trap_with("weak_ref_is_live: Called on a non-weak reference.");
         }
     }
 }

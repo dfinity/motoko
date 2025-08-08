@@ -543,7 +543,7 @@ pub const TAG_WEAK_REF: Tag = 45;
 // a lower boundary to distinguish slice information from
 // the actual tag values.
 #[enhanced_orthogonal_persistence]
-pub const TAG_ARRAY_SLICE_MIN: Tag = 44;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 46;
 
 pub const TAG_SPACING: Tag = 2;
 
