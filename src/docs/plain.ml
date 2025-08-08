@@ -119,7 +119,7 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
       bprintf buf "?";
       plain_of_typ buf rf typ
   | Syntax.WeakT typ ->
-      bprintf buf "Weak";
+      bprintf buf "weak";
       plain_of_typ buf rf typ
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";

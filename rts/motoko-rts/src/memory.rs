@@ -94,13 +94,10 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
     use crate::barriers::allocation_barrier;
 
     let weak_ref = mem.alloc_words(crate::types::size_of::<WeakRef>());
-
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
     (*weak_ref_obj).header.tag = TAG_WEAK_REF;
     (*weak_ref_obj).header.init_forward(weak_ref);
     init_with_barrier(mem, &mut (*weak_ref_obj).field, target);
-
-    // TODO: double check this!!!
     allocation_barrier(weak_ref)
 }
 

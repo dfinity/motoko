@@ -1,1 +1,1 @@
-deserialize: Weak [var Nat64]
+deserialize: weak [var Nat64]

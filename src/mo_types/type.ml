@@ -1823,7 +1823,7 @@ and pp_typ_un vs ppf t =
   | Opt t ->
     fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
   | Weak t ->
-    fprintf ppf "@[<1>Weak %a@]"  (pp_typ_un vs) t
+    fprintf ppf "@[<1>weak %a@]"  (pp_typ_un vs) t
   | t ->
     pp_typ_nullary vs ppf t
 
