@@ -40,7 +40,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
         type Text = Text
       };
     abs : (x : Int) -> Nat;
-    allocWeakRef : <T>(obj : T) -> Weak T;
+    allocWeakRef : <T>(obj : T) -> weak T;
     arccos : (f : Float) -> Float;
     arcsin : (f : Float) -> Float;
     arctan : (f : Float) -> Float;
@@ -173,7 +173,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     intToNat64Wrap : (n : Int) -> Nat64;
     intToNat8Wrap : (n : Int) -> Nat8;
     isController : (p : Principal) -> Bool;
-    isLive : (weak_ref : Weak Any) -> Bool;
+    isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
@@ -284,6 +284,6 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     textUppercase : (t : Text) -> Text;
     time : () -> Nat64;
     trap : (x : Text) -> None;
-    weakGet : <T>(w : Weak T) -> ?T
+    weakGet : <T>(w : weak T) -> ?T
   }
 The field s is not available. Try something else?
