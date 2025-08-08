@@ -141,6 +141,7 @@ val is_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
+val is_var : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -197,7 +198,7 @@ val compare_field : field -> field -> int
 val set_kind : con -> kind -> unit
 
 module ConEnv : Env.S with type key = con
-module ConSet : Dom.S with type elt = con
+module ConSet = ConEnv.Dom
 
 
 (* Sets *)
@@ -229,6 +230,7 @@ val span : typ -> int option
 
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
+val cons_typs : typ list -> ConSet.t
 
 
 (* Equivalence and Subtyping *)

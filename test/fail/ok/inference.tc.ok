@@ -98,9 +98,9 @@ to argument of type
 to produce result of type
   ()
 because no instantiation of T makes
-  [Nat]  <:  (x : [var T])
-and
   T  <:  ()
+and
+  [Nat]  <:  (x : [var T])
 inference.mo:132.1-132.17: type error [M0098], cannot implicitly instantiate function of type
   <T>(x : [var T]) -> T
 to argument of type
