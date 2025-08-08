@@ -1435,6 +1435,9 @@ include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
 
+let remove_hash_suffix s =
+  Str.global_replace (Str.regexp "__[0-9]+$") "" s
+
 (* Equivalence & Subtyping *)
 
 exception PreEncountered
@@ -1475,34 +1478,54 @@ let and_compatible first second =
   | Incompatible explanation, _ -> Incompatible explanation
   | Compatible, Incompatible explanation -> Incompatible explanation
 
-let incompatible_types t1 t2 =
-  Incompatible (Printf.sprintf "Incompatible types %s and %s" (string_of_typ t1) (string_of_typ t2))
+type explanation_scope = NamedType of string
+type explanation_path = explanation_scope list
+type explanation_context = {
+  source: explanation_path;
+  target: explanation_path;
+}
 
-let missing_tag label t =
-  Incompatible (Printf.sprintf "Missing tag #%s in type %s" label (string_of_typ t))
+let empty_context : explanation_context = {
+  source = [];
+  target = [];
+}
 
-let missing_field label t =
-  Incompatible (Printf.sprintf "Missing field %s in type %s" label (string_of_typ t))
+let string_of_path (path : explanation_path) : string =
+  match path with
+  | [] -> "top level"
+  | scopes ->
+      scopes
+      |> List.map (function NamedType name -> name)
+      |> String.concat " in "
+
+let incompatible_types context t1 t2 =
+  Incompatible (Printf.sprintf "Incompatible types %s and %s, used in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
+
+let missing_tag label t scope =
+  Incompatible (Printf.sprintf "Missing tag #%s in type %s in %s" label (string_of_typ t) (string_of_path scope))
+
+let missing_field label t scope =
+  Incompatible (Printf.sprintf "Missing field %s in type %s in %s" label (string_of_typ t) (string_of_path scope))
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let rec rel_list_explained item_name d p rel eq xs1 xs2 =
+let rec rel_list_explained context item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
   | [], [] -> Compatible
-  | [], _ -> Incompatible (Printf.sprintf "Too few %s" item_name)
-  | _, [] -> Incompatible (Printf.sprintf "Too many %s" item_name)
+  | [], _ -> Incompatible (Printf.sprintf "Fewer %s in %s than in %s" item_name (string_of_path context.source) (string_of_path context.target))
+  | _, [] -> Incompatible (Printf.sprintf "More %s in %s than in %s" item_name (string_of_path context.source) (string_of_path context.target))
   | x1::rest1, x2::rest2 ->
-    match p d rel eq x1 x2 with
-    | Compatible -> rel_list_explained item_name d p rel eq rest1 rest2
+    match (p context) d rel eq x1 x2 with
+    | Compatible -> rel_list_explained context item_name d p rel eq rest1 rest2
     | Incompatible explanation -> Incompatible explanation
 
 let rec rel_typ d rel eq t1 t2 =
-  match rel_typ_explained d rel eq t1 t2 with
+  match rel_typ_explained empty_context d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
-and rel_typ_explained d rel eq t1 t2 =
+and rel_typ_explained context d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
   if RelArg.exceeds_max_depth d then 
     raise Undecided 
@@ -1515,53 +1538,68 @@ and rel_typ_explained d rel eq t1 t2 =
   | Pre, _ | _, Pre ->
     raise PreEncountered
   | Mut t1', Mut t2' ->
-    eq_typ_explained d rel eq t1' t2'
+    eq_typ_explained context d rel eq t1' t2'
   | Typ c1, Typ c2 ->
-    if eq_con d eq c1 c2 then Compatible else incompatible_types t1 t2
+    if eq_con d eq c1 c2 then Compatible else incompatible_types context t1 t2
   | Mut _, _ | _, Mut _
   | Typ _, _ | _, Typ _ ->
-    incompatible_types t1 t2
+    incompatible_types context t1 t2
   | Any, Any ->
     Compatible
   | _, Any when rel != eq ->
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (Printf.sprintf "Converting %s to Any is disallowed as it leads to data loss" (string_of_typ t1))
+      Incompatible (Printf.sprintf "Converting %s to Any is disallowed as it leads to data loss, in %s" (string_of_typ t1)  (string_of_path context.source))
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
     Compatible
-  | Named (_n, t1'), t2 ->
-    rel_typ_explained d rel eq t1' t2
-  | t1, Named (_n, t2') ->
-    rel_typ_explained d rel eq t1 t2'
+  | Named (n, t1'), t2 ->
+    let new_context = { context with source = (NamedType n)::context.source } in
+    rel_typ_explained new_context d rel eq t1' t2
+  | t1, Named (n, t2') ->
+    let new_context = { context with target = (NamedType n)::context.target } in
+    rel_typ_explained new_context d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
+    let name1 = remove_hash_suffix (Cons.name con1) in
+    let name2 = remove_hash_suffix (Cons.name con2) in
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ_explained d rel eq (open_ ts1 t) t2
+      let new_context = { context with source = (NamedType name1)::context.source } in
+      rel_typ_explained new_context d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ_explained d rel eq t1 (open_ ts2 t)
+      let new_context = { context with target = (NamedType name2)::context.target; } in
+      rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      rel_list_explained "type arguments" d eq_typ_explained rel eq ts1 ts2
+      let new_context = {
+        source = (NamedType name1)::context.source;
+        target = (NamedType name2)::context.target;
+      } in
+      rel_list_explained new_context "type arguments" d eq_typ_explained rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ_explained d rel eq (open_ ts1 t) t2
+      let new_context = { context with source = (NamedType name1)::context.source } in
+      rel_typ_explained new_context d rel eq (open_ ts1 t) t2
     | _ ->
-      incompatible_types t1 t2
+      incompatible_types context t1 t2
     )
   | Con (con1, ts1), t2 ->
+    let name1 = remove_hash_suffix (Cons.name con1) in
+    let new_context = { context with source = (NamedType name1)::context.source } in
     (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ_explained d rel eq (open_ ts1 t) t2
+      rel_typ_explained new_context d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ_explained d rel eq (open_ ts1 t) t2
-    | _ -> incompatible_types t1 t2
+      rel_typ_explained new_context d rel eq (open_ ts1 t) t2
+    | _ -> incompatible_types context t1 t2
     )
   | t1, Con (con2, ts2) ->
+    let name2 = remove_hash_suffix (Cons.name con2) in
+    let new_context = { context with target = (NamedType name2)::context.target; } in
     (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ_explained d rel eq t1 (open_ ts2 t)
-    | _ -> incompatible_types t1 t2
+      rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
+    | _ -> incompatible_types context t1 t2
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     Compatible
@@ -1569,45 +1607,45 @@ and rel_typ_explained d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (Printf.sprintf "Cannot implicitly convert %s to %s" (string_of_typ t1) (string_of_typ t2))
+      Incompatible (Printf.sprintf "Cannot implicitly convert %s to %s, in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible object sorts for %s and %s" (string_of_typ t1) (string_of_typ t2))
+      Incompatible (Printf.sprintf "Incompatible object sorts for %s and %s, in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
     else
-      rel_fields_explained t1 t2 d rel eq tfs1 tfs2
+      rel_fields_explained context t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ_explained d rel eq t1' t2'
+    rel_typ_explained context d rel eq t1' t2'
   | Opt t1', Opt t2' ->
-    rel_typ_explained d rel eq t1' t2'
+    rel_typ_explained context d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     Compatible
   | Variant fs1, Variant fs2 ->
-    rel_tags_explained d rel eq fs1 fs2
+    rel_tags_explained context d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list_explained "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
+    rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible function modifiers for %s and %s" (string_of_typ t1) (string_of_typ t2))
+      Incompatible (Printf.sprintf "Incompatible function modifiers for %s and %s, in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
     else if c1 <> c2 then
-      Incompatible (Printf.sprintf "Incompatible constraints for %s and %s" (string_of_typ t1) (string_of_typ t2))
+      Incompatible (Printf.sprintf "Incompatible constraints for %s and %s, in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
     else
       (match rel_binds d eq eq tbs1 tbs2 with
       | Some ts -> and_compatible
-        (rel_list_explained "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
-        (rel_list_explained "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
+        (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
+        (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
       | None -> Incompatible (Printf.sprintf "Incompatible function signatures %s and %s" (string_of_typ t1) (string_of_typ t2))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible async sorts for %s and %s" (string_of_typ t1) (string_of_typ t2))
+      Incompatible (Printf.sprintf "Incompatible async sorts for %s and %s, in %s and %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context.source) (string_of_path context.target))
     else
       and_compatible
-        (eq_typ_explained d rel eq t11 t21)
-        (rel_typ_explained d rel eq t12 t22)
-  | _, _ -> incompatible_types t1 t2
+        (eq_typ_explained context d rel eq t11 t21)
+        (rel_typ_explained context d rel eq t12 t22)
+  | _, _ -> incompatible_types context t1 t2
   end
 
-and rel_fields_explained t1 t2 d rel eq tfs1 tfs2 =
+and rel_fields_explained context t1 t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1618,25 +1656,25 @@ and rel_fields_explained t1 t2 d rel eq tfs1 tfs2 =
     (match compare_field tf1 tf2 with
     | 0 ->
       let compatible = and_compatible
-        (rel_typ_explained d rel eq tf1.typ tf2.typ)
-        (rel_fields_explained t1 t2 d rel eq tfs1' tfs2')
+        (rel_typ_explained context d rel eq tf1.typ tf2.typ)
+        (rel_fields_explained context t1 t2 d rel eq tfs1' tfs2')
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields_explained t1 t2 d rel eq tfs1' tfs2
+      rel_fields_explained context t1 t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        missing_field tf2.lab t1
+        missing_field tf2.lab t1 context.source
       else
-        missing_field tf1.lab t2
+        missing_field tf1.lab t2 context.target
     )
   | [], tf2::_ ->
-    missing_field tf2.lab t1
+    missing_field tf2.lab t1 context.source
   | tf1::_, [] ->
-    missing_field tf1.lab t2
+    missing_field tf1.lab t2 context.target
 
-and rel_tags_explained d rel eq tfs1 tfs2 =
+and rel_tags_explained context d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1647,23 +1685,23 @@ and rel_tags_explained d rel eq tfs1 tfs2 =
     (match compare_field tf1 tf2 with
     | 0 ->
       let compatible = and_compatible 
-          (rel_typ_explained d rel eq tf1.typ tf2.typ)
-          (rel_tags_explained d rel eq tfs1' tfs2')
+          (rel_typ_explained context d rel eq tf1.typ tf2.typ)
+          (rel_tags_explained context d rel eq tfs1' tfs2')
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | +1 when rel != eq ->
-      rel_tags_explained d rel eq tfs1 tfs2'
+      rel_tags_explained context d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        missing_tag tf2.lab (Variant tfs1)
+        missing_tag tf2.lab (Variant tfs1) context.source
       else
-        missing_tag tf1.lab (Variant tfs2)
+        missing_tag tf1.lab (Variant tfs2) context.target
     )
   | [], tf2::_ ->
-    missing_tag tf2.lab (Variant tfs1)
+    missing_tag tf2.lab (Variant tfs1) context.source
   | tf1::_, [] ->
-    missing_tag tf1.lab (Variant tfs2)
+    missing_tag tf1.lab (Variant tfs2) context.target
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1676,11 +1714,11 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 =
-  match eq_typ_explained d rel eq t1 t2 with
+  match eq_typ_explained empty_context d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
-and eq_typ_explained d rel eq t1 t2 = rel_typ_explained d eq eq t1 t2
+and eq_typ_explained context d rel eq t1 t2 = rel_typ_explained context d eq eq t1 t2
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
@@ -1719,7 +1757,7 @@ let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
 
 let sub_explained ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates_predicate_general src_fields (fun () ->
-    rel_typ_explained RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ_explained empty_context RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
     (fun result -> result = Compatible)
 
 let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
@@ -2139,7 +2177,7 @@ let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
 (* Stable signatures *)
 let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates_predicate_general src_fields (fun () ->
-    rel_typ_explained RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ_explained empty_context RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
     (fun result -> result = Compatible)
 
 let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
