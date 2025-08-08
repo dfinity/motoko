@@ -1195,6 +1195,21 @@ pub struct WeakRef {
     pub field: Value,
 }
 
+#[cfg(feature = "enhanced_orthogonal_persistence")]
+impl WeakRef {
+    pub unsafe fn is_live(&self) -> bool {
+        let field_tag = self.header.tag;
+        match field_tag {
+            TAG_WEAK_REF => {
+                return self.field.is_non_null_ptr();
+            }
+            _ => {
+                crate::rts_trap_with("weak_ref_is_live: Called on a non-weak reference.");
+            }
+        }
+    }
+}
+
 /// Returns the heap block size in words.
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`

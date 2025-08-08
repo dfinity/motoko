@@ -110,20 +110,9 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
 pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool {
     if !weak_ref.is_non_null_ptr() {
         crate::rts_trap_with(
-            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report to Motoko team.",
+            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report tothe Motoko team.",
         );
     }
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
-    let field_tag = (*weak_ref_obj).header.tag;
-
-    match field_tag {
-        TAG_WEAK_REF => {
-            // Get the target object and check if it is null.
-            let target = (*weak_ref_obj).field;
-            return target.is_non_null_ptr();
-        }
-        _ => {
-            crate::rts_trap_with("weak_ref_is_live: Called on a non-weak reference.");
-        }
-    }
+    return (*weak_ref_obj).is_live();
 }
