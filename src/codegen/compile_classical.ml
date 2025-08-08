@@ -417,9 +417,12 @@ module E = struct
     static_roots : int32 list ref;
       (* GC roots in static memory. (Everything that may be mutable.) *)
 
+    stable_funcs : int32 option ref; (* a well-known static root *)
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
-    *)
+     *)
+
     typtbl_typs : Type.typ list ref;
 
     (* Metadata *)
@@ -463,6 +466,7 @@ module E = struct
     static_memory = ref [];
     static_memory_frozen = ref false;
     static_roots = ref [];
+    stable_funcs = ref None;
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -689,6 +693,14 @@ module E = struct
 
   let get_static_memory env =
     !(env.static_memory)
+
+  let set_stable_funcs (env : t) ptr =
+    env.stable_funcs := Some ptr
+
+  let get_stable_funcs (env : t)  =
+    match !(env.stable_funcs) with
+    | None -> assert false
+    | Some ptr -> ptr
 
   let mem_size env =
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
@@ -926,6 +938,7 @@ module FakeMultiVal = struct
     load env bt
 
 end (* FakeMultiVal *)
+
 
 module Func = struct
   (* This module contains basic bookkeeping functionality to define functions,
@@ -6965,21 +6978,24 @@ module MakeSerialization (Strm : Stream) = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s);
+        assert (Type.is_shared_sort s || Type.is_stable_sort s);
         add_sleb128 idl_func;
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
         List.iter add_idx ts2;
         begin match s, c with
-          | _, Returns ->
+          | Shared Write, Returns ->
             add_leb128 1; add_u8 2; (* oneway *)
           | Shared Write, _ ->
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
-            add_leb128 1; add_u8 3; (* composite *)
+             add_leb128 1; add_u8 3; (* composite *)
+          | Stable id, _ -> (* todo: encode id? *)
+            assert (tbs = []);
+            add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -7167,6 +7183,8 @@ module MakeSerialization (Strm : Stream) = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
+      | Func (Type.Stable id, c, tbs, ts1 , ts2) ->
+         G.nop
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
@@ -7337,6 +7355,8 @@ module MakeSerialization (Strm : Stream) = struct
         write_blob env get_data_buf get_x
       | Prim Text ->
         write_text env get_data_buf get_x
+      | Func (Type.Stable _, _, _, _, _) ->
+        G.nop
       | Func _ ->
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
@@ -8063,7 +8083,12 @@ module MakeSerialization (Strm : Stream) = struct
             ( sort_by_hash vs )
             ( skip get_arg_typ ^^
               coercion_failed "IDL error: unexpected variant tag" )
-        )
+          )
+      | Func (Type.Stable id, c, tbs, ts1, ts2) ->
+          compile_unboxed_const (E.get_stable_funcs env) ^^
+          MutBox.load_field env ^^
+          Object.load_idx env Type.(obj Object [(id, Mut t)]) id
+         (* TODO: if we knew the full object type, load_idx would be faster *)
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
@@ -11014,9 +11039,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
            raise (Invalid_argument "call_as_prim was true?")
          end
       | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
-         assert (sort = Type.Local);
+         assert (sort = Type.Local); (* TBR - allow Type.stable _?*)
          StackRep.of_arity return_arity,
-
          code1 ^^
          compile_unboxed_zero ^^ (* A dummy closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
@@ -11490,6 +11514,19 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i Drop ^^
     compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
+  (* stable function record *)
+
+  | OtherPrim "set_stable_funcs", [e] ->
+    SR.unit,
+    compile_unboxed_const (E.get_stable_funcs env) ^^
+    compile_exp_vanilla env ae e ^^
+    MutBox.store_field env
+
+  | OtherPrim "get_stable_funcs", [] ->
+    SR.Vanilla,
+    compile_unboxed_const (E.get_stable_funcs env) ^^
+    MutBox.load_field env
 
   (* Other prims, unary *)
 
@@ -13164,6 +13201,8 @@ and export_actor_field env  ae (f : Ir.field) =
 and main_actor as_opt mod_env ds fs up =
   let build_stable_actor = up.stable_record in
   Func.define_built_in mod_env "init" [] [] (fun env ->
+    let stable_funcs_ptr = MutBox.static env in
+    E.set_stable_funcs env stable_funcs_ptr;
     let ae0 = VarEnv.empty_ae in
 
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in

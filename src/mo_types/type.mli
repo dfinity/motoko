@@ -85,6 +85,7 @@ end
 (* Function sorts *)
 
 val is_shared_sort : 'a shared -> bool
+val is_stable_sort : 'a shared -> bool
 
 
 (* Shorthands *)
