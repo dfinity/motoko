@@ -1,6 +1,7 @@
 (* imported_components.ml *)
 
 open Ir_def
+open Wasm_exts.Types
 
 type imported_function = { function_name : string; args : Import_components_ir.arg_data list; return_type : Mo_types.Type.typ }
 
@@ -50,10 +51,46 @@ let print_imported_components (map : t) =
     Printf.printf "]\n"
   ) map
 
+let map_motoko_type_to_wit typ =
+  let open Mo_types.Type in
+  match normalize typ with
+  | Prim Blob -> "list<u8>"
+  | Prim Bool -> "bool"
+  | Prim Char -> "char"
+  | Prim Nat8 -> "u8"
+  | Prim Int8 -> "s8"
+  | Prim Nat16 -> "u16"
+  | Prim Int16 -> "s16"
+  | Prim Nat32 -> "u32"
+  | Prim Int32 -> "s32"
+  | Prim Nat64 -> "u64"
+  | Prim Int64 -> "s64"
+  | Prim Float -> "f64"
+  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
 
-let map_motoko_type_to_wit (motoko_type : Mo_types.Type.typ): string = match Mo_types.Type.string_of_typ motoko_type with
-    | "Blob" -> "list<u8>"
-    | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (Mo_types.Type.string_of_typ motoko_type))
+let map_motoko_type_to_wasm_args motoko_type = 
+  let open Mo_types.Type in
+  match normalize motoko_type with
+  | Prim Blob -> [I32Type; I32Type] (* pointer + length *)
+  | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+  | Prim (Nat64 | Int64) -> [I64Type]
+  | Prim Float -> [F64Type]
+  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_args: unsupported type %s" (string_of_typ motoko_type))
+
+let map_motoko_type_to_wasm_result motoko_type = 
+  let open Mo_types.Type in
+  match normalize motoko_type with
+  | Prim Blob -> [] (* out-parameter approach, no direct return *)
+  | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+  | Prim (Nat64 | Int64) -> [I64Type]
+  | Prim Float -> [F64Type]
+  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_result: unsupported type %s" (string_of_typ motoko_type))
+
+let initial_wasm_args return_type = 
+  let open Mo_types.Type in
+  match normalize return_type with
+  | Prim Blob -> [I32Type] (* out-parameter *)
+  | _ -> [] 
 
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
