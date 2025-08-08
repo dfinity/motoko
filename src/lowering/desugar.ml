@@ -577,7 +577,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let fids = List.concat fidss in
   let ids = List.concat idss in
   let stable_func_fields = List.sort T.compare_field
-    (List.map (fun (i, t) -> T.{lab = i; typ = T.Mut (T.Opt t); src = empty_src}) fids)
+    (List.map (fun (i, t) -> T.{lab = i; typ = T.Mut t; src = empty_src}) fids)
   in
   let stab_fields = List.sort T.compare_field
     (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
@@ -675,7 +675,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let ds =
     letD stable_funcs
       (objectE T.Object
-         (List.map (fun (i, t) -> (i, optE (stable_func (i, t)))) fids)
+         (List.map (fun (i, t) -> (i, stable_func stable_func_fields i t)) fids)
          stable_func_fields)
     ::
     expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
@@ -752,7 +752,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
      },
      obj_typ))
 
-and stable_func (i, t) =
+and stable_func stable_func_fields i t =
   match T.normalize t with
   | T.Func(T.Stable f as s, c, tbs, ts1, ts2) ->
       let tys = T.open_binds tbs in
@@ -763,23 +763,16 @@ and stable_func (i, t) =
       let typ_binds = List.map2
           (fun tb c -> {it = I.{con = c; bound = T.open_ tys tb.T.bound; sort = tb.T.sort}; at = no_region; note = ()}) tbs cs in
       let args = List.map arg_of_var vs in
-      let v = fresh_var "v" t in
       funcE ("stable_"^i) s c typ_binds args tys2
-                  (callE
-                     (switch_optE
-                        (dotE (
-                             { it = I.PrimE (I.OtherPrim "get_stable_funcs", []);
-                               at = Source.no_region;
-                               note = Note.{ def with typ = T.obj T.Object [(i, T.Mut (T.Opt t))]} (*fill me*)
-                           })
-                           i
-                           ((*T.Mut*) T.Opt t))
-                        (primE (Ir.OtherPrim "trap") (* TBR *)
-                           [textE ("stable functon "^i^" not yet defined")])
-                        (varP v) (varE v)
-                        t)
-                     tys
-                     (seqE (List.map varE vs)))
+        (callE
+          (dotE
+            ({ it = I.PrimE (I.OtherPrim "get_stable_funcs", []);
+               at = Source.no_region;
+               note = Note.{ def with typ = T.Obj(T.Object,stable_func_fields) }})
+            i
+            t)
+         tys
+         (seqE (List.map varE vs)))
   | _ -> assert false
 
 and stabilize stab_opt d =
@@ -808,8 +801,8 @@ and stabilize stab_opt d =
           { it = I.AssignE
                    (({it = I.DotLE(callE (varE get_stable_funcs) [] (unitE ()), i);
                       at = no_region;
-                      note = T.Mut (T.Opt t)}),
-                    optE (varE (var i t)));
+                      note = T.Mut t}),
+                    varE (var i t));
             at = no_region;
             note = Note.{def with typ = T.unit } }]
        )
