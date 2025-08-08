@@ -1,0 +1,45 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: #cmp({i = 0; j = 0; ver = 0})
+debug.print: add
+debug.print: null
+ingress Completed: Reply: 0x4449444c0000
+debug.print: #cmp({i = +1; j = +1; ver = 1})
+debug.print: add
+debug.print: #cmp({i = +1; j = 0; ver = 1})
+debug.print: gt
+debug.print: add
+debug.print: null
+debug.print: #cmp({i = +2; j = +2; ver = 1})
+debug.print: add
+debug.print: #cmp({i = +2; j = 0; ver = 1})
+debug.print: gt
+debug.print: add
+debug.print: #cmp({i = +2; j = +1; ver = 1})
+debug.print: gt
+debug.print: add
+debug.print: null
+ingress Completed: Reply: 0x4449444c0000
+debug.print: #cmp({i = +2; j = +2; ver = 2})
+debug.print: add
+debug.print: #cmp({i = +2; j = 0; ver = 2})
+debug.print: gt
+debug.print: add
+debug.print: #cmp({i = +2; j = +1; ver = 2})
+debug.print: gt
+debug.print: add
+debug.print: #cmp({i = +2; j = +2; ver = 2})
+debug.print: eq
+ingress Completed: Reply: 0x4449444c0000
+debug.print: #cmp({i = +3; j = +3; ver = 3})
+debug.print: add
+debug.print: #cmp({i = +3; j = 0; ver = 3})
+debug.print: gt
+debug.print: add
+debug.print: #cmp({i = +3; j = +1; ver = 3})
+debug.print: gt
+debug.print: add
+debug.print: #cmp({i = +3; j = +2; ver = 3})
+debug.print: gt
+debug.print: add
+debug.print: null
+ingress Completed: Reply: 0x4449444c0000

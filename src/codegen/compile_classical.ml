@@ -8085,6 +8085,7 @@ module MakeSerialization (Strm : Stream) = struct
               coercion_failed "IDL error: unexpected variant tag" )
           )
       | Func (Type.Stable id, c, tbs, ts1, ts2) ->
+
           let (set_o, get_o) = new_local env "o" in
           compile_unboxed_const (E.get_stable_funcs env) ^^
           MutBox.load_field env ^^
@@ -8095,7 +8096,7 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
             ( get_o ^^
               Opt.project env)
-            (coercion_failed ("IDL error: uninitialized stable function" ^ id))
+            (E.trap_with env (*coercion_failed*) ("IDL error: uninitialized stable function" ^ id))
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
