@@ -34,7 +34,7 @@ The `core` package depends on new language features, so make sure to update to t
 
 When updating to the `core` package:
 
-- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks.
+- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks, provided those data structures are instantiated at stable type arguments.
 - `range()` functions in the `core` library are now exclusive rather than inclusive! Keep this in mind when replacing `Iter.range()` with `Nat.range()`.
 - Functions previously named `vals()` are renamed to `values()`. This also applies to fields. For example, `array.vals()` can be replaced with `array.values()`.
 - Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
@@ -108,7 +108,7 @@ The core package introduces a fundamental reorganization of data structures with
 | ----------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **List**          | `List`               | Mutable list                                                                                                                                                |
 | **Map**           | `Map`                | Mutable map                                                                                                                                                 |
-| **Queue**         | `Queue`              | Mutable queue (evolved from `mo:base/Deque`)                                                                                                                |
+| **Queue**         | `Queue`              | Mutable queue
 | **Set**           | `Set`                | Mutable set                                                                                                                                                 |
 | **Array**         | `Array`              | Immutable array                                                                                                                                             |
 | **VarArray**      | `VarArray`           | Mutable array                                                                                                                                               |
