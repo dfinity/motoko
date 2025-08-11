@@ -28,9 +28,13 @@ If you are migrating an existing project, you can keep the `base` import and gra
 
 ### Important considerations
 
+:::warning Version requirements
+The `core` package depends on new language features, so make sure to update to the latest dfx (0.28+) or Motoko compiler (0.15+) before migrating.
+:::
+
 When updating to the `core` package:
 
-- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks.
+- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks, provided those data structures are instantiated at stable type arguments.
 - `range()` functions in the `core` library are now exclusive rather than inclusive! Keep this in mind when replacing `Iter.range()` with `Nat.range()`.
 - Functions previously named `vals()` are renamed to `values()`. This also applies to fields. For example, `array.vals()` can be replaced with `array.values()`.
 - Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
@@ -61,17 +65,17 @@ The following modules are **new** in the `core` package:
 
 ### 2. Renamed modules
 
-| Base module | Core module | Notes |
-|-------------|-------------|-------|
-| `ExperimentalCycles` | `Cycles` | Stabilized module for cycle management |
-| `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface |
-| `Deque` | `pure/Queue` | Enhanced double-ended queue becomes mutable queue |
-| `List` | `pure/List` | Original immutable list moved to `pure/` namespace |
-| `OrderedMap` | `pure/Map` | Ordered map moved to `pure/` namespace |
-| `OrderedSet` | `pure/Set` | Ordered set moved to `pure/` namespace |
+| Base module                    | Core module        | Notes                                               |
+| ------------------------------ | ------------------ | --------------------------------------------------- |
+| `ExperimentalCycles`           | `Cycles`           | Stabilized module for cycle management              |
+| `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface                  |
+| `Deque`                        | `pure/Queue`       | Enhanced double-ended queue becomes immutable queue |
+| `List`                         | `pure/List`        | Original immutable list moved to `pure/` namespace  |
+| `OrderedMap`                   | `pure/Map`         | Ordered map moved to `pure/` namespace              |
+| `OrderedSet`                   | `pure/Set`         | Ordered set moved to `pure/` namespace              |
 
 :::info
-The last three entries represent the migration of immutable data structures to the `pure/` namespace. The `core` package introduces a clear separation between mutable data structures (root namespace) and purely functional data structures (`pure/` namespace).
+The `pure/` namespace contains immutable (purely functional) data structures where operations return new instances rather than modifying existing ones. This naming follows functional programming conventions and makes the distinction between mutable and immutable data structures explicit.
 :::
 
 ### 3. Removed modules
@@ -100,18 +104,18 @@ Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in cor
 
 The core package introduces a fundamental reorganization of data structures with a clear separation between mutable and immutable (purely functional) APIs. All data structures are now usable in stable memory.
 
-| Structure | Module | Description |
-|-----------|--------|-------------|
-| **List** | `List` | Mutable list |
-| **Map** | `Map` | Mutable map |
-| **Queue** | `Queue` | Mutable queue (evolved from `mo:base/Deque`) |
-| **Set** | `Set` | Mutable set |
-| **Array** | `Array` | Immutable array |
-| **VarArray** | `VarArray` | Mutable array |
-| **List** | `pure/List` | Immutable list (originally `mo:base/List`) |
-| **Map** | `pure/Map` | Immutable map (originally `mo:base/OrderedMap`) |
-| **Set** | `pure/Set` | Immutable set (originally `mo:base/OrderedSet`) |
-| **Queue** | `pure/Queue` | Immutable queue |
+| Structure         | Module               | Description                                                                                                                                                 |
+| ----------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **List**          | `List`               | Mutable list                                                                                                                                                |
+| **Map**           | `Map`                | Mutable map                                                                                                                                                 |
+| **Queue**         | `Queue`              | Mutable queue
+| **Set**           | `Set`                | Mutable set                                                                                                                                                 |
+| **Array**         | `Array`              | Immutable array                                                                                                                                             |
+| **VarArray**      | `VarArray`           | Mutable array                                                                                                                                               |
+| **List**          | `pure/List`          | Immutable list (originally `mo:base/List`)                                                                                                                  |
+| **Map**           | `pure/Map`           | Immutable map (originally `mo:base/OrderedMap`)                                                                                                             |
+| **Set**           | `pure/Set`           | Immutable set (originally `mo:base/OrderedSet`)                                                                                                             |
+| **Queue**         | `pure/Queue`         | Immutable queue  (orginally `mo:base/Deque`)                                                                                                                                              |
 | **RealTimeQueue** | `pure/RealTimeQueue` | Real-time queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
 
 ## Interface changes by module
@@ -230,6 +234,9 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `rangeInclusive()` - Inclusive range
 - `toNat()` - Convert Int to Nat (safe conversion)
 
+#### Modified functions
+- `fromText()` - Now returns `null` instead of `?0` for the inputs "+" and "-"
+
 #### Removed functions
 - `hash()`
 - `hashAcc()` 
@@ -342,6 +349,35 @@ persistent actor {
 - `toList()` - Use `toIter()` and convert to list if needed
 
 ## Data structure migration examples
+
+This section provides detailed migration examples showing how to convert common data structures from the `base` package to the `core` package. Each example demonstrates:
+
+1. **Original implementation** using the `base` package with pre/post-upgrade hooks
+2. **Updated implementation** using the `core` package with automatic stable memory support
+3. **Migration pattern** using the new `with migration` syntax for seamless data structure conversion
+
+:::tip
+The new migration pattern allows you to automatically convert existing stable data from `base` package structures to `core` package structures during canister upgrades. The migration function runs once during the first upgrade and the converted data becomes the new stable state.
+:::
+
+### Understanding the migration pattern
+
+The `with migration` syntax follows this structure:
+
+```motoko
+(
+  with migration = func(
+    state : { /* old stable state types */ }
+  ) : { /* new stable state types */ } = {
+    /* conversion logic */
+  }
+)
+actor App {
+  // New stable declarations
+};
+```
+
+This pattern ensures that existing stable data is preserved and converted to the new format during canister upgrades.
 
 ### `Buffer`
 
@@ -891,3 +927,23 @@ actor App {
   };
 };
 ```
+
+## Troubleshooting
+
+### Version compatibility errors
+
+If you encounter errors like `field Array_tabulateVar does not exist in module`, this indicates a version mismatch between your Motoko compiler and the `core` package. 
+
+**Solution:**
+2. Ensure you're using the latest Motoko compiler version
+3. Update the `core` package to the latest version in your `mops.toml`
+4. Clean and rebuild your project: `dfx stop && dfx start --clean`
+
+### Migration issues
+
+If you experience issues with the migration pattern:
+1. Ensure your project structure follows the new `with migration` syntax exactly
+2. Verify that all types referenced in the migration function are accessible (marked as `public` if needed)
+3. Test the migration incrementally by converting one data structure at a time
+
+For additional help, visit the ICP [developer forum](https://forum.dfinity.org/c/developers) or [Discord community](https://discord.com/invite/e8Xr8A5pX3).
