@@ -115,7 +115,7 @@ The core package introduces a fundamental reorganization of data structures with
 | **List**          | `pure/List`          | Immutable list (originally `mo:base/List`)                                                                                                                  |
 | **Map**           | `pure/Map`           | Immutable map (originally `mo:base/OrderedMap`)                                                                                                             |
 | **Set**           | `pure/Set`           | Immutable set (originally `mo:base/OrderedSet`)                                                                                                             |
-| **Queue**         | `pure/Queue`         | Immutable queue                                                                                                                                             |
+| **Queue**         | `pure/Queue`         | Immutable queue  (orginally `mo:base/Deque`)                                                                                                                                              |
 | **RealTimeQueue** | `pure/RealTimeQueue` | Real-time queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
 
 ## Interface changes by module
