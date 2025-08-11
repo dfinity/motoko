@@ -1,6 +1,6 @@
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
-import List "mo:core/List";
+import List "mo:core/pure/List";
 
 Nat.range(0, 10) |>
   List.fromIter _ |>

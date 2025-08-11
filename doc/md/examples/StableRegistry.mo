@@ -14,7 +14,7 @@ persistent actor Registry {
   public func register(name : Text) : async () {
     switch (Map.get(map, Text.compare, name)) {
       case null  {
-        Map.put(map, Text.compare, name, map.size());
+        Map.add(map, Text.compare, name, Map.size(map));
       };
       case (?_) { };
     }
@@ -26,7 +26,7 @@ persistent actor Registry {
 
 // Using preupgrade is discouraged and should be avoided if possible.
   system func preupgrade() {
-    entries := Iter.toArray(map.entries());
+    entries := Iter.toArray(Map.entries(map));
   };
 
 // Using postupgrade is discouraged and should be avoided if possible.
