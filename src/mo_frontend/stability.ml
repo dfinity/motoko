@@ -2,6 +2,8 @@ open Mo_types
 
 open Type
 
+let migration_link = "https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function"
+
 (* Signature matching *)
 
 let cat = "Compatibility"
@@ -17,34 +19,31 @@ let display_typ_expand = Lib.Format.display Type.pp_typ_expand
 let error_discard s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be implicitly discarded. This may cause data loss. Use an explicit migration function."
+      (Format.asprintf "the stable variable %s of the previous program version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see %s"
         tf.lab
-        display_typ tf.typ))
+        migration_link))
 
 let error_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at unrelated type%a:\n %s.\n Use an explicit migration function."
+      (Format.asprintf "the type of stable variable %s is not compatible to the previous program version:\n %s.\n Write an explicit migration function, please see %s."
         tf1.lab
-        display_typ_expand tf1.typ
-        display_typ_expand tf2.typ
-        explanation))
+        explanation
+        migration_link))
 
 let error_stable_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0216" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at supertype%a\nwithout loss of data:\n %s.\n Use an explicit migration function."
+      (Format.asprintf "the type of stable variable %s implicitly drops data of the previous program version:\n %s.\n The data can only be dropped by an explicit migration function, please see %s."
         tf1.lab
-        display_typ_expand tf1.typ
-        display_typ_expand tf2.typ
-        explanation))
+        explanation
+        migration_link))
 
 let error_required s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\nis required but not provided."
-        tf.lab
-        display_typ tf.typ))
+      (Format.asprintf "the previous program version does not contain the required stable variable %s."
+        tf.lab))
 
 
 (* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.

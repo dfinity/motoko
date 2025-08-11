@@ -1087,7 +1087,12 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
-let string_of_con c = Cons.to_string Cfg.show_stamps Cfg.con_sep c
+let remove_hash_suffix s =
+  Str.global_replace (Str.regexp "__[0-9]+$") "" s
+
+let string_of_con c = 
+  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  if Cfg.show_stamps then name else remove_hash_suffix name
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)
@@ -1435,9 +1440,6 @@ include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
 
-let remove_hash_suffix s =
-  Str.global_replace (Str.regexp "__[0-9]+$") "" s
-
 (* Equivalence & Subtyping *)
 
 exception PreEncountered
@@ -1491,7 +1493,7 @@ let string_of_path path =
     match path with
     | [] -> "top level"
     | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
-    | (NamedType name)::rest when not nested -> Printf.sprintf "%s\n  used by %s" name (emit_path true rest)
+    | (NamedType name)::rest when not nested -> Printf.sprintf "%s (used by %s)" name (emit_path true rest)
     | (NamedType name)::rest -> Printf.sprintf "%s in %s" name (emit_path true rest)
     | (StableVariable name)::_ -> name
   in
@@ -1616,7 +1618,7 @@ and rel_typ_explained context d rel eq t1 t2 =
   | Prim Null, Opt t2' when rel != eq ->
     Compatible
   | Variant fs1, Variant fs2 ->
-    rel_tags_explained context d rel eq fs1 fs2
+    rel_tags_explained context t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
     rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
@@ -1671,7 +1673,7 @@ and rel_fields_explained context t1 t2 d rel eq tfs1 tfs2 =
   | tf1::_, [] ->
     missing_field tf1.lab t2 context
 
-and rel_tags_explained context d rel eq tfs1 tfs2 =
+and rel_tags_explained context t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1683,22 +1685,22 @@ and rel_tags_explained context d rel eq tfs1 tfs2 =
     | 0 ->
       let compatible = and_compatible 
           (rel_typ_explained context d rel eq tf1.typ tf2.typ)
-          (rel_tags_explained context d rel eq tfs1' tfs2')
+          (rel_tags_explained context t2 d rel eq tfs1' tfs2')
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | +1 when rel != eq ->
-      rel_tags_explained context d rel eq tfs1 tfs2'
+      rel_tags_explained context t2 d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        unexpected_tag tf2.lab (Variant tfs2) context
+        unexpected_tag tf2.lab t2 context
       else
-        missing_tag tf1.lab (Variant tfs2) context
+        missing_tag tf1.lab t2 context
     )
   | [], tf2::_ ->
-    unexpected_tag tf2.lab (Variant tfs2) context
+    unexpected_tag tf2.lab t2 context
   | tf1::_, [] ->
-    missing_tag tf1.lab (Variant tfs2) context
+    missing_tag tf1.lab t2 context
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
