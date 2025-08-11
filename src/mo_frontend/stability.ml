@@ -75,11 +75,12 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
       | tf1::tfs1', (is_required, tf2)::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
+            let context = [StableVariable tf2.lab] in
             begin
-              match Type.sub_explained (as_immut tf1.typ) (as_immut tf2.typ) with
+              match Type.sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
               | Incompatible explanation -> error_sub s tf1 tf2 explanation
               | Compatible -> 
-                match Type.stable_sub_explained (as_immut tf1.typ) (as_immut tf2.typ) with
+                match Type.stable_sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
                 | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
                 | Compatible -> ()
             end;
