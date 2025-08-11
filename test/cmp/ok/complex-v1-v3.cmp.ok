@@ -1,0 +1,4 @@
+(unknown location): Compatibility error [M0170], the type of stable variable products is not compatible to the previous program version:
+ The original type {acceptanceCriteria : [Text]; dependencies : [Dependency]; description : Text; githubRepos : [Text]; id : Text; milestones : [Text]; name : Text; owner : Principal; riskFactors : [Text]; riskLevel : RiskLevel; shipDate : Time; signalGroup : Text; slackChannel : Text; status : Status; team : Team} is not compatible to target type (Text, Nat) of OldProduct (used by Tree in Map in products.root).
+ Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
+FALSE
