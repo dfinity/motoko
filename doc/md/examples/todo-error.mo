@@ -18,7 +18,7 @@ persistent actor Todo {
   type TodoMap = Map.Map<TodoId, Todo>;
 
   var idGen : TodoId = 0;
-  let todos : TodoMap = Map.empty(Int.compare);
+  let todos : TodoMap = Map.empty();
 
   private func nextId() : TodoId {
     let id = idGen;
@@ -30,7 +30,7 @@ persistent actor Todo {
   public shared func newTodo(txt : Text) : async TodoId {
     let id = nextId();
     let now = Time.now();
-    Map.put(todos, Int.compare, id, #todo({ text = txt; opened = now }));
+    Map.add(todos, Int.compare, id, #todo({ text = txt; opened = now }));
     id
   };
 
@@ -38,7 +38,7 @@ persistent actor Todo {
     switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        Map.put(todos, Int.compare, id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         secondsBetween(todo.opened, now)
       };
       case _ { -1 };
@@ -49,7 +49,7 @@ persistent actor Todo {
     switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        Map.put(todos, Int.compare, id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         ?(secondsBetween(todo.opened, now))
       };
       case _ { null };
@@ -62,7 +62,7 @@ persistent actor Todo {
     switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        Map.put(todos, Int.compare, id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         #ok(secondsBetween(todo.opened, now))
       };
       case (?(#done(time))) {
@@ -78,7 +78,7 @@ persistent actor Todo {
     switch (Map.get(todos, Int.compare, id)) {
       case (?(#todo(todo))) {
         let now = Time.now();
-        Map.put(todos, Int.compare, id, #done(now));
+        Map.add(todos, Int.compare, id, #done(now));
         secondsBetween(todo.opened, now)
       };
       case (?(#done _)) {

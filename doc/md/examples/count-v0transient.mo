@@ -1,7 +1,7 @@
 import Debug "mo:core/Debug";
 
-actor Counter_v0 {
-  transient var state : Nat = 0; // explicitly `transient`
+persistent actor Counter_v0 {
+  transient var state : Nat = 0;
 
   public func increment() : async () {
     state += 1;
