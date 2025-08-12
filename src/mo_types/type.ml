@@ -931,6 +931,7 @@ let stable t = serializable true t
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
+let display_typ = ref (fun (ppf: Format.formatter) (t: typ) -> ())
 
 
 (* Aggregation of source fields, for use by the language server. *)
@@ -1070,11 +1071,6 @@ let string_of_func_sort = function
 
 type compatibility = Compatible | Incompatible of string
 
-let and_compatible first second = 
-  match first, second with
-  | Compatible, Compatible -> Compatible
-  | Incompatible explanation, _ -> Incompatible explanation
-  | Compatible, Incompatible explanation -> Incompatible explanation
 
 type explanation_scope = 
   | NamedType of string
@@ -1151,20 +1147,22 @@ let readable_type typ =
   in
     print_type 0 typ
 
+let readable_type x = (!display_typ) x
+
 let incompatible_types context t1 t2 =
-  Incompatible (Printf.sprintf "The original type %s is not compatible to target type %s of %s" (readable_type t1) (readable_type t2) (string_of_path context))
+  Incompatible (Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" readable_type t1 readable_type t2 (string_of_path context))
 
 let missing_tag label t context =
-  Incompatible (Printf.sprintf "Missing tag #%s in type %s of %s" label (readable_type t) (string_of_path context))
+  Incompatible (Format.asprintf "Missing tag #%s in type %a\n of %s" label readable_type t (string_of_path context))
 
 let unexpected_tag label t context =
-  Incompatible (Printf.sprintf "Unsupported additional tag #%s in type %s of %s" label (readable_type t) (string_of_path context))
+  Incompatible (Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" label readable_type t (string_of_path context))
 
 let missing_field label t context =
-  Incompatible (Printf.sprintf "Missing field %s in type %s of %s" label (readable_type t) (string_of_path context))
+  Incompatible (Format.asprintf "Missing field %s in type %a\n of %s" label readable_type t (string_of_path context))
 
 let unexpected_field label t context =
-  Incompatible (Printf.sprintf "Unsupported additional field %s in type %s of %s" label (readable_type t) (string_of_path context))
+  Incompatible (Format.asprintf "Unsupported additional field %s in type %a\n of %s" label readable_type t (string_of_path context))
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
@@ -1209,7 +1207,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (Printf.sprintf "Converting %s to Any is disallowed as it leads to data loss: %s" (readable_type t1) (string_of_path context))
+      Incompatible (Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" readable_type t1 (string_of_path context))
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
@@ -1257,10 +1255,10 @@ and rel_typ_explained context d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (Printf.sprintf "Cannot implicitly convert %s to %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+      Incompatible (Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible object sorts: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+      Incompatible (Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
     else
       rel_fields_explained context t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
@@ -1275,23 +1273,25 @@ and rel_typ_explained context d rel eq t1 t2 =
     rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible function modifiers: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+      Incompatible (Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
     else if c1 <> c2 then
-      Incompatible (Printf.sprintf "Incompatible generic type generic constraints: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+      Incompatible (Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
     else
       (match rel_binds d eq eq tbs1 tbs2 with
-      | Some ts -> and_compatible
-        (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
-        (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
-      | None -> Incompatible (Printf.sprintf "Incompatible function signatures: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+       | Some ts ->
+         (match (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11)) with
+          | Compatible -> (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
+          | incompatible -> incompatible)
+      | None -> Incompatible (Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible async sorts: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
+      Incompatible (Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
     else
-      and_compatible
-        (eq_typ_explained context d rel eq t11 t21)
-        (rel_typ_explained context d rel eq t12 t22)
+      (match eq_typ_explained context d rel eq t11 t21 with
+       | Compatible ->
+          rel_typ_explained context d rel eq t12 t22
+       | incompatible -> incompatible)
   | _, _ -> incompatible_types context t1 t2
   end
 
@@ -1306,9 +1306,11 @@ and rel_fields_explained context t1 t2 d rel eq tfs1 tfs2 =
     (match compare_field tf1 tf2 with
     | 0 ->
       let new_context = (Field tf2.lab)::context in
-      let compatible = and_compatible
-        (rel_typ_explained new_context d rel eq tf1.typ tf2.typ)
-        (rel_fields_explained context t1 t2 d rel eq tfs1' tfs2')
+      let compatible =
+        match rel_typ_explained new_context d rel eq tf1.typ tf2.typ with
+        | Compatible ->
+          rel_fields_explained context t1 t2 d rel eq tfs1' tfs2'
+        | incompatible -> incompatible
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
@@ -1335,9 +1337,11 @@ and rel_tags_explained context t2 d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      let compatible = and_compatible 
-          (rel_typ_explained context d rel eq tf1.typ tf2.typ)
-          (rel_tags_explained context t2 d rel eq tfs1' tfs2')
+      let compatible =
+        match rel_typ_explained context d rel eq tf1.typ tf2.typ with
+        | Compatible ->
+          rel_tags_explained context t2 d rel eq tfs1' tfs2'
+        | incompatible -> incompatible
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
@@ -2225,6 +2229,7 @@ end
 include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
+let _ = display_typ := Lib.Format.display pp_typ
 
 (* Stable signatures *)
 let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
