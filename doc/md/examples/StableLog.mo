@@ -1,8 +1,10 @@
-import Nat32 "mo:base/Nat32";
-import Nat64 "mo:base/Nat64";
-import Text "mo:base/Text";
-import Array "mo:base/Array";
-import StableMemory "mo:base/ExperimentalStableMemory";
+import Nat32 "mo:core/Nat32";
+import Nat64 "mo:core/Nat64";
+import Text "mo:core/Text";
+import Array "mo:core/Array";
+import VarArray "mo:core/VarArray";
+
+import StableMemory "mo:base/ExperimentalStableMemory"; // deprecated
 
 persistent actor StableLog {
 
@@ -27,7 +29,7 @@ persistent actor StableLog {
   };
 
   public query func readLast(count : Nat) : async [Text] {
-    let a = Array.init<Text>(count, "");
+    let a = VarArray.repeat<Text>("", count);
     var offset = base;
     var k = 0;
     while (k < count and offset > 0) {

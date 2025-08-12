@@ -74,7 +74,7 @@ If the expected return type is `()` then you can just write `return` instead of 
 A `switch` expression matches a value against multiple cases and executes the block of code associated with the first matching case.
 
 ```motoko no-repl
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 type HttpRequestStatus = {
   #ok: Nat;
@@ -96,7 +96,7 @@ The `let-else` construct allows conditional binding of the variables in a patter
 Since the code following the `let` cannot execute without its matching bindings, the `else` clause must have type `None`, typically by diverting control using `return`, `throw`, `break` or `continue`.
 
 ```motoko no-repl
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 type HttpRequestStatus = {
   #ok: Nat;
@@ -181,8 +181,8 @@ Labels provide fine control over execution, allowing early exits and helping to 
 A `loop` expression repeatedly executes a block of code (forever).
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 var i = 0;
 loop {
@@ -196,8 +196,8 @@ loop {
 A `loop-while` expression repeatedly executes a block of code (at least once) until the while condition evaluates to `false`.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 var i = 0;
 loop {
@@ -213,8 +213,8 @@ A `while` loop repeatedly executes a block of code as long as a specified condit
 If the condition is initially `false`, the block is never executed.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 var i = 0;
 while (i < 5) {
@@ -228,8 +228,8 @@ while (i < 5) {
 A `for` loop iterates over the elements of an iterator, and object of type `{ next: () -> ?T }`, executing a block of code for each element.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 let numbers = [0, 1, 2, 3, 4];
 for (num in numbers.vals()) {
@@ -267,8 +267,6 @@ You can alway exit a labelled `loop`, `loop-while`, `while` or `for` loop or usi
 A function call executes a function by passing arguments and receiving a result. In Motoko, function calls can be synchronous (executing immediately within the same [canister](https://internetcomputer.org/docs/building-apps/essentials/canisters)) or [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await) (message passing between canisters). Asynchronous calls use `async`/`await` and are essential for inter-canister communication.
 
 ```motoko no-repl
-import Nat "mo:base/Nat";
-
 persistent actor {
 
   func product(numbers : [Int]) : Int {
