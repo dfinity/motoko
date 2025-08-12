@@ -107,7 +107,7 @@ pub unsafe fn alloc_weak_ref<M: Memory>(mem: &mut M, target: Value) -> Value {
 pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool {
     if !weak_ref.is_non_null_ptr() {
         crate::rts_trap_with(
-            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report tothe Motoko team.",
+            "weak_ref_is_live: Invalid WeakRef pointer. This is a bug, report to the Motoko team.",
         );
     }
     let weak_ref_obj = weak_ref.get_ptr() as *mut WeakRef;
