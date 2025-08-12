@@ -1034,11 +1034,11 @@ end
 
 type compatibility = Compatible | Incompatible of string
 
-
-type explanation_scope = 
-  | NamedType of string
-  | StableVariable of string
-  | Field of string
+type explanation_scope =
+  | ConsType of con
+  | NamedType of name
+  | StableVariable of lab
+  | Field of lab
 
 type explanation_path = explanation_scope list
 let empty_explanation : explanation_path = []
@@ -1052,10 +1052,14 @@ let string_of_path path =
     match path with
     | [] -> "top level"
     | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
+    | (ConsType c)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
+    | (ConsType c)::rest ->
+       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
     | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix name) (emit_path true rest)
+       Printf.sprintf "%s (used by %s)" name (emit_path true rest)
     | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix name) (emit_path true rest)
+       Printf.sprintf "%s in %s" name (emit_path true rest)
     | (StableVariable name)::_ -> name
   in
     emit_path false path
@@ -1185,15 +1189,14 @@ and rel_typ_explained context d rel eq t1 t2 =
     let new_context = (NamedType n)::context in
     rel_typ_explained new_context d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
-    let name2 = Cons.name con2 in
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ_explained context d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      let new_context = (NamedType name2)::context in
+      let new_context = (ConsType con2)::context in
       rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      let new_context = (NamedType name2)::context in
+      let new_context = (ConsType con2)::context in
       rel_list_explained new_context "type arguments" d eq_typ_explained rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ_explained context d rel eq (open_ ts1 t) t2
@@ -1209,8 +1212,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     | _ -> incompatible_types context t1 t2
     )
   | t1, Con (con2, ts2) ->
-    let name2 = Cons.name con2 in
-    let new_context = (NamedType name2)::context in
+    let new_context = (ConsType con2)::context in
     (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
       rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
@@ -1257,7 +1259,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     else
       (match eq_typ_explained context d rel eq t11 t21 with
        | Compatible ->
-          rel_typ_explained context d rel eq t12 t22
+         rel_typ_explained context d rel eq t12 t22
        | incompatible -> incompatible)
   | _, _ -> incompatible_types context t1 t2
   end

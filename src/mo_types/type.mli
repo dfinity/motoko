@@ -235,10 +235,11 @@ val cons_kind : kind -> ConSet.t
 
 type compatibility = Compatible | Incompatible of string
 
-type explanation_scope = 
-  | NamedType of string
-  | StableVariable of string
-  | Field of string
+type explanation_scope =
+  | ConsType of con
+  | NamedType of name
+  | StableVariable of lab
+  | Field of lab
 
 type explanation_path = explanation_scope list
 
