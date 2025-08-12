@@ -1,0 +1,926 @@
+// Version: 1.0.0
+type ADLevel = {#level0; #level1; #level2};
+type AccessNumberDataSet =
+  {map : TrieMap<DID, AccessNumberRecord__1>; order : Buffer<DID>};
+type AccessNumberRecord =
+  {
+    var accessNumber : MobileNumber;
+    var carrier : Text;
+    var expiration : Expiration;
+    var online : Timestamp;
+    var reqNum : Nat;
+    var rewards : Nat;
+    var succNum : Nat
+  };
+type AccessNumberRecord__1 = AccessNumberRecord;
+type AccountActorData =
+  {Actor : AccountActor__2; var end : Nat; var fulled : Bool; start : Index};
+type AccountActor__2 = Account__2;
+type AccountBasic =
+  {
+    avatar : Text;
+    cCode : CountryCode;
+    created : Timestamp;
+    credits :
+      {
+        DTCT : Int;
+        DTCTdecimals : Nat8;
+        IncDTCT : Nat;
+        IncUSCT : Nat;
+        USCT : Int;
+        USCTdecimals : Nat8
+      };
+    index : Index;
+    miningDetail : MiningDetailArgs;
+    mobile : MobileNumber;
+    nickname : Nickname;
+    referees : [DID];
+    referrer : DID;
+    roles : [(Role, Timestamp)];
+    safetyCirclesLength : Nat
+  };
+type AccountBasic2 =
+  {
+    avatar : Text;
+    cCode : CountryCode;
+    created : Timestamp;
+    credits :
+      {
+        DTCT : Int;
+        DTCTdecimals : Nat8;
+        IncDTCT : Nat;
+        IncUSCT : Nat;
+        USCTdecimals : Nat8
+      };
+    index : Uid;
+    miningDetail : MiningDetailArgs;
+    mobile : MobileNumber;
+    nickname : Nickname;
+    refereesLength : Nat;
+    referrer : DID;
+    roles : [(Role, Timestamp)];
+    safetyCirclesLength : Nat
+  };
+type AccountIdentifier__1 = [Nat8];
+type AccountNow =
+  {
+    credits :
+      {
+        DTCT : Int;
+        DTCTdecimals : Nat8;
+        IncDTCT : Nat;
+        IncUSCT : Nat;
+        USCT : Int;
+        USCTdecimals : Nat8
+      };
+    miningDetail : MiningDetailArgs
+  };
+type AccountReferee = (Uid, (DID, Nat));
+type AccountReferre1Detail =
+  {
+    avatar : Text;
+    childs : [(Uid, DID)];
+    contribution : Nat;
+    did : DID;
+    miningStatus : MiningStatus;
+    nickname : Nickname;
+    uid : Uid
+  };
+type AccountStatus = {#delete; #logIn; #logOut; #unregistered};
+type Account__1 =
+  actor {
+    _appendReferee : shared (DID, Nat, AccountReferee, Nat) -> ();
+    _childRewardTimeAndReferees :
+      shared query ([Uid], DID, ADLevel, [Timestamp]) ->
+        async RefereesRewardResult;
+    _compareMobile : shared query [(MobileNumber, Nat)] -> async Bool;
+    _delete : shared (Uid, IdentityToken, Text, ?DID, Bool) -> async Uid;
+    _depositSafetyCode : shared (DID, Text) -> ();
+    _getMiningStatusAndInfo :
+      shared query ([Uid], Bool) -> async [AccountReferre1Detail];
+    _getWalletBalance :
+      shared query (Index, MoneyAddress, CoinCode) -> async Balance;
+    _getWalletBalanceDebug :
+      shared query (DID, ?Text, CoinCode, Text) ->
+        async ?(Balance, Balance, ?(ChainIdent, Timestamp, Note));
+    _markDeveloperRole : shared (Text, IdentityToken) -> async Bool;
+    _modifyReferrer : shared (Uid, DID) -> ();
+    _removeReferee : shared (Uid, Uid) -> ();
+    _setProvideSafety : shared (Index, DID, Text) -> async Bool;
+    _syncWalletBalanceDebug :
+      shared (Text, CoinCode, Text) -> async (Balance, Balance, Text);
+    _transferReferrerChain : shared (Uid, DID, [AccountReferee]) -> ();
+    _updateWallet : shared (Index, MoneyAddress, CoinCode, Balance) -> ();
+    _walletDefaultAddress : shared query Nat -> async MoneyAddress;
+    addendDSMSVerifyReward : shared (DID, Nat, DID) -> ();
+    allowChangeMobile : shared (IdentityToken, Text, Text) -> async Bool;
+    appTokenStatus : shared query (AppId, IdentityToken) -> async Text;
+    applyAndRenewDepositAddress :
+      shared (MoneyAddress, CoinCode, Text, IdentityToken) ->
+        async DepositAddressArgs;
+    applyDSMSVerifierIdentity :
+      shared (Text, Text, IdentityToken) -> async Bool;
+    changeMobileHistory :
+      shared query IdentityToken -> async [(MobileNumber, Timestamp)];
+    changeMobileNumber :
+      shared (IdentityToken, MobileNumber, Text) -> async Bool;
+    checkExist : shared query Nat -> async Bool;
+    checkIdentity : shared query IdentityToken -> async Bool;
+    clearSafetyCircle : shared (DID, Text, Text) -> async Bool;
+    clearWalletExportError :
+      shared (MoneyAddress, CoinCode, IdentityToken) -> async Bool;
+    createDappToken : shared (AppId, IdentityToken) -> async AppIdentityToken;
+    createOne2 :
+      shared (Text, MobileNumber, CountryCode, DID, Text, Nat, VerifyFee) ->
+        async (Bool, Nat, DID, Token);
+    crowdfundingICP :
+      shared (Nat, MoneyAddress, IdentityToken) -> async Balance;
+    cyclesBalance : shared query () -> async Nat;
+    dailyMining : shared IdentityToken -> async Bool;
+    dailyMiningCount :
+      shared composite query IdentityToken ->
+        async (MiningCountRow, MiningCountRow, MiningCountRow);
+    dailyMiningCount2 :
+      shared IdentityToken ->
+        async (MiningCountRow, MiningCountRow, MiningCountRow);
+    debugAcctMiningDetail : shared (Uid, Nat) -> async MiningDetail2;
+    debugAcctMiningDetailXf : shared (Uid, Blob, Nat) -> async MiningDetail2;
+    debugGetAccountInfo : shared query (Index, Text) -> async ?AccountBasic;
+    debugGetAcct :
+      shared query (Uid, Nat) ->
+        async
+          ?{
+             credits : {DTCT : Int; IncDTCT : Nat; IncUSCT : Nat};
+             index : Index;
+             mobile : MobileNumber;
+             referrer : DID
+           };
+    debugGetAcctExt : shared query (Uid, Nat, Nat) -> async Uid;
+    debugGetAcctMiningDetail : shared query (Uid, Nat, Nat) -> async Uid;
+    debugGetAcctReferees : shared query (Uid, Nat, Nat) -> async Uid;
+    debugSwitchData : shared (DID, DID, Text) -> async Bool;
+    delSafetyCircle : shared (IdentityToken, SafetyCircle) -> async Bool;
+    deleteDSMSVerifierIdentity : shared (IdentityToken2, Text) -> async Bool;
+    depositCallBack :
+      shared (Balance, TxHash, OutsideAdderss, MoneyAddress, CoinCode,
+              ChainIdent) ->
+        ();
+    distributeECIF : shared (DID, Nat, Text, Timestamp) -> async Bool;
+    dsmsAccessStatus :
+      shared query IdentityToken -> async ?(Timestamp, Timestamp);
+    exportToken :
+      shared (MoneyAddress, CoinCode, Nat, Text, ChainIdent, IdentityToken) ->
+        async Balance;
+    exportTokenCallBack :
+      shared (ExportTokenResult, OutsideAdderss, MoneyAddress, CoinCode,
+              ChainIdent) ->
+        async Bool;
+    generateSafetyCode2 : shared (DID, SafetyCircle) -> async ?SafetyCircle;
+    getAccountInfo : shared query IdentityToken -> async AccountBasic2;
+    getAccountInfo2 : shared query IdentityToken -> async AccountBasic;
+    getAccountNowData : shared query IdentityToken2 -> async AccountNow;
+    getAccountStatus : shared query DID -> async AccountStatus;
+    getDAppAcctInfo :
+      shared query (IdentityToken, AppId) -> async DAppAcctInfo;
+    getDepositAddress :
+      shared query (MoneyAddress, CoinCode, Text, IdentityToken) ->
+        async DepositAddressArgs;
+    getReferees : shared query (Nat, IdentityToken) -> async [DID];
+    getReferrer : shared query Nat -> async DID;
+    getWalletBalance :
+      shared query (MoneyAddress, CoinCode, IdentityToken) ->
+        async (Balance, ExportTokenError);
+    listAvatarNickname : shared query [DID] -> async [(DID, Nickname, Text)];
+    listDTCTBuffer : shared query IdentityToken -> async [DTCTHistory];
+    listReferees1 :
+      shared composite query IdentityToken2 -> async [AccountReferre1Detail];
+    listReferees2 :
+      shared query [Uid] -> async [(Uid, MiningStatus, Nickname, Avatar)];
+    listSecondReferees :
+      shared query ([DID], Bool, IdentityToken) ->
+        async [(DID, Nickname, MiningStatus, Text, [DID])];
+    listTempDepositAddress :
+      shared query IdentityToken -> async [(Text, DepositAddress)];
+    listWalletBalance :
+      shared query (MoneyAddress, [CoinCode], IdentityToken) ->
+        async [{balance : Balance; coinCode : CoinCode}];
+    logOut : shared IdentityToken -> async Bool;
+    loginVerifyStrategy :
+      shared query DID -> async (AccountStatus, LoginVerifyStrategy);
+    matchMoblie : shared query Text -> async Nat;
+    miningUSCT : shared (IdentityToken, Advertiser, Text) -> async Bool;
+    miningUSCT2 :
+      shared (IdentityToken, Advertiser, Text) -> async [USCTminingRule];
+    nextUid : shared query () -> async Nat;
+    overViewWallet :
+      shared query ([CoinCode], IdentityToken) ->
+        async
+          {
+            defaultAddress : MoneyAddress;
+            list : [(MoneyAddress, Note)];
+            total : [{balance : Balance; coinCode : CoinCode}]
+          };
+    overwrite :
+      shared (Uid, Text, MobileNumber, CountryCode, DID, Text, Nat,
+              VerifyFee) ->
+        async (Nat, DID, Token);
+    pendingUSCTHistory :
+      shared composite query (IdentityToken, Nat64, Nat8) ->
+        async [PenUSCTHistory];
+    pendingUSCTWeight : shared composite query IdentityToken -> async Int32;
+    pendingUSCTWeight2 :
+      shared composite query (IdentityToken, ?Advertiser) -> async Int32;
+    pourFuelICP : shared IdentityToken -> async Balance;
+    putOfferwallUSCT :
+      shared ([DID], [Nat], [Int32], [Advertiser], Text) ->
+        async [(Nat, Text)];
+    queryDatabase : shared query () -> async (Nat, Nat, Nat);
+    queryProvideSafety : shared query IdentityToken -> async [DID];
+    querySafetyCircles : shared query IdentityToken -> async [SafetyCircle];
+    querySafetyCircles2 :
+      shared query (DID, MobileNumber) -> async [SafetyCircle];
+    readSafetyCode : shared query (IdentityToken, DID) -> async ?Text;
+    receiveBroadcast : shared (?Index, Update2Acct) -> ();
+    renewalDSMSVerifierIdentity : shared IdentityToken -> async Bool;
+    rts_info : shared query () -> async [(Text, Nat)];
+    setAccount : shared (Text, Text, IdentityToken) -> async Bool;
+    setLogin2 : shared (DID, Token, VerifyFee) -> async ?[(DID, Balance)];
+    setPauseTip :
+      shared ({#pauseTip : Text; #pauseWalletTip : Text}, Text) -> async Bool;
+    setSafetyCircle : shared (IdentityToken, SafetyCircle) -> async Text;
+    setWallet :
+      shared ({#default : MoneyAddress; #new; #note : [Text]}, IdentityToken) ->
+        async {defaultAddress : MoneyAddress; list : [(MoneyAddress, Note)]};
+    settlementUSCT : shared (Nat16, IdentityToken) -> async Nat32;
+    showContribution :
+      shared query Uid ->
+        async {miningDetail : MiningDetail2; referees : [AccountReferee]};
+    showMoneyAddressBalance :
+      shared query (MoneyAddress, CoinCode) ->
+        async ?(Balance, Balance, ?(ChainIdent, Timestamp, Note));
+    showStatsDTCTMining : shared query () -> async (Nat, Nat, Nat);
+    sizeAcct : shared query () -> async (Nat, Nat, Nat);
+    testQualificatin : shared query (Text, IdentityToken) -> async Bool;
+    transferToken :
+      shared (MoneyAddress, CoinCode, Nat, MoneyAddress, Text, IdentityToken) ->
+        async Balance;
+    transferToken2 :
+      shared (MoneyAddress, CoinCode, Nat, MoneyAddress, Text, IdentityToken) ->
+        async (Index, Balance, Balance);
+    unbindDepositAddress :
+      shared (MoneyAddress, CoinCode, Text, IdentityToken) -> async Bool;
+    updateUsctMiningRulelimit :
+      shared USCTminingRulelimit -> async USCTminingRulelimit;
+    usctMiningRules :
+      shared query IdentityToken ->
+        async {limit : USCTminingRulelimit; rules : [USCTminingRule]};
+    verifySecurityCircle :
+      shared query (DID, SecurityCircleVerify) ->
+        async [(CanisterId, [(MobileNumber, Index)])];
+    verifySecurityCircle2 :
+      shared composite query (DID, SecurityCircleVerify) -> async Bool;
+    walletAddressList :
+      shared query IdentityToken ->
+        async {defaultAddress : MoneyAddress; list : [(MoneyAddress, Note)]};
+    withdrawalUSCT :
+      shared (Nat, MoneyAddress, IdentityToken) -> async Balance;
+    xf820MobErr : shared Text -> async [Text];
+    xfMobAndCountry : shared () -> async Bool;
+    xfMobDid : shared (Text, Index, Text, Text) -> async Bool;
+    xfMobErr : shared (Text, Text, Text) -> async Text
+  };
+type Account__2 = Account__1;
+type ActiveCodeObj = {code : Text; generateTime : Timestamp};
+type Actor__2 =
+  actor {
+    append : shared [PenUSCTHistoryArgs] -> async Result__20<Bool>;
+    convert2USDT : shared ReportConvertArgs -> async Result__20<Nat32>;
+    countParticipants : shared query (Nat32, Text) -> async Nat32;
+    cyclesBalance : shared query () -> async Nat64;
+    did_balance : shared query DID__2 -> async Nat64;
+    filter : shared query (DID__2, Nat64, Nat8) -> async [PenUSCTHistory];
+    generateSettlementArgs :
+      shared query (Nat32, Nat32, Text) ->
+        async Result__20<USCTSettlReportArgs>;
+    get_balance : shared query (DID__2, ?Text) -> async Int32;
+    update_rts_info : shared () -> async ()
+  };
+type Actor__3 =
+  actor {
+    append_DTCT : shared [DTCTHistory64] -> async Bool;
+    append_USCT : shared [USCTHistory64__1] -> async Bool;
+    count_and_fulled : shared query () -> async (Nat64, Bool);
+    cyclesBalance : shared query () -> async Nat64;
+    remaining_capacity : shared query () -> async Nat
+  };
+type Advertiser = Text;
+type AppId = Nat;
+type AppIdentityToken =
+  {
+    accCanisterId : CanisterId;
+    dAppIdentToken : IdentityToken;
+    expiration : Expiration
+  };
+type AssocList<K, V> = List<(K, V)>;
+type AssocList__1<K, V> = AssocList<K, V>;
+type Avatar = Text;
+type Balance = Nat;
+type BindDataAgs =
+  {
+    canisterId : CanisterId;
+    confirming : ?(TxHash, Text);
+    expiry : Timestamp;
+    moneyAddress : MoneyAddress;
+    received : Nat;
+    startTime : Timestamp
+  };
+type BindKey = Text;
+type BitcoinAddress = Text;
+type Branch<K, V> = {left : Trie<K, V>; right : Trie<K, V>; size : Nat};
+type Buffer<X> =
+  {var _size : Nat; var elements : [var ?X]; initCapacity : Nat};
+type CanisterDate =
+  {canisterId : CanisterId; end : Index; fulled : Bool; start : Index};
+type CanisterId = Text;
+type CanisterId__1 = {canister_id : Principal};
+type CanisterSettings =
+  {
+    compute_allocation : ?Nat;
+    controllers : ?[Principal];
+    freezing_threshold : ?Nat;
+    memory_allocation : ?Nat
+  };
+type CanisterStatus =
+  {
+    cycles : Nat;
+    memory_metrics : MemoryMetrics;
+    memory_size : Nat;
+    module_hash : ?Blob;
+    settings : CanisterSettings;
+    status : Status
+  };
+type ChainIdent = Text;
+type ChainInfo =
+  {
+    addressLength : Text;
+    addressPath : Text;
+    chainType : ChainType;
+    coinCode : CoinCode;
+    confirmations : Nat8;
+    explorer : Url;
+    ident : ChainIdent;
+    name : ChainName;
+    netFee : {#baseBid; #baseBidTip; #custom; #fixed : Nat; #smartFee};
+    transactionPath : Text
+  };
+type ChainName = Text;
+type ChainType = {#EVM : Nat; #Null; #TRON : Nat; #UTXO};
+type CoinCode = Text;
+type CoinName = Text;
+type ContractConf =
+  {
+    chainIdent : ChainIdent;
+    inputDecimals : Nat;
+    standard : Text;
+    tokenAddress : Text
+  };
+type CountryCode = Text;
+type CreateCanisterParams = {settings : ?CanisterSettings};
+type CreditsActorData =
+  {Actor : Actor__3; var fulled : Bool; var length : Index; skip : Index};
+type CrossChainConf =
+  {
+    #Delta;
+    #contract : ContractConf;
+    #native : {chainIdent : ChainIdent; inputDecimals : Nat}
+  };
+type DAppAcctInfo =
+  {
+    avatar : Text;
+    cCode : CountryCode;
+    nickname : Nickname;
+    roles : [(Role, Timestamp)];
+    uid : Uid
+  };
+type DID = Text;
+type DID__1 = Text;
+type DID__2 = Text;
+type DID__3 = Text;
+type DTCTHistory =
+  {
+    amount : Int;
+    did : DID__3;
+    index : Nat;
+    summary : Summary;
+    timestamp : Nat
+  };
+type DTCTHistory64 =
+  {
+    amount : Int64;
+    did : DID__3;
+    index : Nat64;
+    summary : Summary;
+    timestamp : Nat64
+  };
+type Days = Nat;
+type DaysCountItems = [{name : Text; val : Nat}];
+type DepositAddress = {address : OutsideAdderss; expiryTime : Timestamp};
+type DepositAddressArgs =
+  {address : OutsideAdderss; expiryTime : Timestamp; now : Timestamp};
+type Duration = Nat;
+type E164Code = Text;
+type ECDSAPublicKey =
+  {canister_id : ?Principal; derivation_path : [Blob]; key_id : EcdsaKeyId};
+type ECDSAPublicKeyReply = {chain_code : Blob; public_key : Blob};
+type ECIFDistLog =
+  {
+    DTCTqty : Nat;
+    did : DID;
+    index : TxIndex;
+    reason : Text;
+    timestamp : Timestamp
+  };
+type EcdsaCurve = {#secp256k1};
+type EcdsaKeyId = {curve : EcdsaCurve; name : Text};
+type Expiration = Nat;
+type ExportTokenError = ?(ChainIdent, Timestamp, Note);
+type ExportTokenFee = {In : Nat; out : (Nat, CoinCode)};
+type ExportTokenResult =
+  {
+    #err : Note;
+    #execution;
+    #ok :
+      {
+        amount : Balance;
+        chainCoinCode : CoinCode;
+        chainFee : Balance;
+        txHash : TxHash
+      };
+    #pending : TxHash;
+    #rebuild
+  };
+type Hash = Nat32;
+type HttpHeader = {name : Text; value : Text};
+type HttpMethod = {#get; #head; #post};
+type HttpRequestArgs =
+  {
+    body : ?[Nat8];
+    headers : [HttpHeader];
+    max_response_bytes : ?Nat64;
+    method : HttpMethod;
+    transform : ?TransformContext;
+    url : Text
+  };
+type HttpResponsePayload =
+  {body : [Nat8]; headers : [HttpHeader]; status : Nat};
+type ICActor =
+  actor {
+    canister_status : shared query CanisterId__1 -> async CanisterStatus;
+    create_canister : shared CreateCanisterParams -> async CanisterId__1;
+    delete_canister : shared {canister_id : Principal} -> async ();
+    deposit_cycles : shared {canister_id : Principal} -> async ();
+    ecdsa_public_key : shared ECDSAPublicKey -> async ECDSAPublicKeyReply;
+    http_request : shared HttpRequestArgs -> async HttpResponsePayload;
+    install_code : shared InstallCodeParams -> async ();
+    sign_with_ecdsa : shared SignWithECDSA -> async SignWithECDSAReply;
+    start_canister : shared {canister_id : Principal} -> async ();
+    stop_canister : shared {canister_id : Principal} -> async ();
+    uninstall_code : shared {canister_id : Principal} -> async ();
+    update_settings : shared UpdateSettingsParams -> async ()
+  };
+type ICPfundsActor__1 = Main__1;
+type IdentityToken = {did : DID; token : Token};
+type IdentityToken2 = {d : DID; t : Token; uid : Uid};
+type Index = Nat;
+type InstallCodeParams =
+  {
+    arg : Blob;
+    canister_id : Principal;
+    mode : InstallMode;
+    wasm_module : Blob
+  };
+type InstallMode = {#install; #reinstall; #upgrade};
+type Key<K> = {hash : Hash; key : K};
+type Leaf<K, V> = {keyvals : AssocList__1<Key<K>, V>; size : Nat};
+type LedgerInitArgs =
+  {
+    code : CoinCode;
+    crossChainConfs : [CrossChainConf];
+    decimals : Nat;
+    name : CoinName;
+    symbol : Text;
+    transferFee : TransferFee;
+    web : Text
+  };
+type List<T> = ?(T, List<T>);
+type LoginVerifyStrategy =
+  {#accsNum1; #accsNum1AndSafetyCircle; #accsNum2AndDemoSafetyCircle};
+type MCWalletActor__1 = Main__3;
+type Main =
+  actor {
+    type Transaction =
+      {
+        DTCTqty : Nat;
+        ICPqty : Nat;
+        addressId : DID;
+        index : TxIndex;
+        soldDTCTqty : Nat;
+        timestamp : Timestamp
+      };
+    addECIFDistLogs : shared ECIFDistLog -> async Nat;
+    allocateAmount : shared query () -> async [(Uid, Balance)];
+    computeCrowdfund : shared query (Nat, Nat) -> async Nat;
+    computeExchangeAmount : shared query (Nat, Nat) -> async Nat;
+    crowdfunding : shared (DID, Nat, Nat) -> async (TxIndex, Nat);
+    cyclesBalance : shared query () -> async Nat;
+    getECIFDistLogs : shared query (Nat, Nat) -> async [ECIFDistLog];
+    getTrx : shared query Nat -> async Transaction;
+    get_transactions : shared query (Nat, Nat) -> async [Transaction];
+    rts_info : shared query () -> async [(Text, Nat)];
+    soldDTCT : shared query () -> async Nat;
+    stateInfo : shared query Nat -> async (Nat, Nat, Nat, Nat);
+    trendPoints : shared query Nat -> async [(Nat, Nat, Nat)];
+    xfId : shared (Nat, Text) -> async Nat
+  };
+type Main__1 = Main;
+type Main__2 =
+  actor {
+    _testFindWalletMap :
+      shared query (Text, OutsideAdderss) -> async [(Text, WalletDatas)];
+    _testlistWalletMap : shared query () -> async [(Text, WalletDatas)];
+    activateCoinLedger : shared Text -> async CanisterId;
+    bindDepositReceivWalletAddress :
+      shared (MoneyAddress, CoinCode, ChainIdent) -> async DepositAddress;
+    bitcoin_balance : shared (Network, BitcoinAddress) -> async Satoshi;
+    buildTransaction :
+      shared (MoneyAddress, CoinCode, ChainIdent, Nat, OutsideAdderss) ->
+        async Bool;
+    callBackOfTask :
+      shared TaskCBargs ->
+        async
+          {receivedAmountResp : [(Nat, Text)]; sentTxRawResp : [(Nat, Text)]};
+    cyclesBalance : shared query () -> async Nat;
+    estimateNetWorkFee :
+      shared query (CoinCode, ChainIdent) -> async (Nat, CoinCode);
+    fixReceivedCallback : shared ReceivedAmountAgrs -> async (Nat, Text);
+    getBindAdderss : shared query Text -> async (?OutsideAdderss, Nat);
+    getChainInfos : shared query () -> async [ChainInfo];
+    getLedgerInitArgs : shared query CoinCode -> async LedgerInitArgs;
+    getOutFee : shared query ChainIdent -> async TransferOutFee;
+    get_current_fee_percentiles :
+      shared Network -> async [MillisatoshiPerByte];
+    httpTransform : shared query TransformArgs -> async HttpResponsePayload;
+    listLedgerInitArgs : shared query () -> async [LedgerInitArgs];
+    queryRSstatus :
+      shared query (MoneyAddress, CoinCode, [ChainIdent]) -> async RSstatus;
+    queryTask : shared query () -> async TaskResult;
+    removeChainInfo : shared ChainIdent -> async Bool;
+    removeLedgerInitArg : shared Text -> async Bool;
+    rts_info : shared query () -> async [(Text, Nat)];
+    saveChainInfo : shared [ChainInfo] -> async Bool;
+    saveLedgerInitArgs : shared LedgerInitArgs -> async Bool;
+    testQueryRawTransactionPool :
+      shared query () -> async [QueryRawTxBindData];
+    testTransferNetWorkFee :
+      shared query (CoinCode, ChainIdent, Nat) -> async ExportTokenFee;
+    transferOutBTC : shared (OutsideAdderss, Nat) -> async (Text, Nat);
+    transferOutICP : shared (AccountIdentifier__1, Nat) -> async Nat64;
+    unbindDeposit : shared (MoneyAddress, CoinCode, ChainIdent) -> ()
+  };
+type Main__3 = Main__2;
+type Main__4 =
+  actor {
+    type CountDate = TrieMap<Text, Nat>;
+    countByCountry : shared query Text -> async [(CountryCode, Nat)];
+    countByDays : shared query (Nat, Nat) -> async [(Nat, DaysCountItems)];
+    cyclesBalance : shared query () -> async Nat;
+    getByCountry : shared query (CountryCode, Text) -> async Nat;
+    getTop100IncomeUSCT : shared query () -> async [(DID, Balance)];
+    registerOne2 : shared (CountryCode, Nat) -> ();
+    rts_info : shared query () -> async [(Text, Nat)];
+    update : shared ([(Days, Nat)], [(DID, Balance)]) -> async Bool
+  };
+type Main__5 = Main__4;
+type MemoryMetrics =
+  {
+    canister_history_size : Nat;
+    custom_sections_size : Nat;
+    global_memory_size : Nat;
+    snapshots_size : Nat;
+    stable_memory_size : Nat;
+    wasm_binary_size : Nat;
+    wasm_chunk_store_size : Nat;
+    wasm_memory_size : Nat
+  };
+type MillisatoshiPerByte = Nat64;
+type MiningCountRow = {award : Nat; countMining : Nat; validTime : Nat};
+type MiningDetail2 =
+  {
+    basicValue : Nat;
+    clickTime : [Timestamp];
+    days : Nat;
+    referrerValue : Nat
+  };
+type MiningDetailArgs =
+  {clickTime : [Timestamp]; days : Nat; status : MiningStatus};
+type MiningStatus = {#inactive; #mining};
+type Mobile =
+  actor {
+    changeDid2 : shared ((MobileNumber, DID), Text) -> async Bool;
+    changeMobile : shared (MobileNumber, MobileNumber, DID) -> async Bool;
+    changeMobile2 : shared (MobileNumber, MobileNumber) -> async Bool;
+    checkMob : shared query (Text, E164Code, CountryCode) -> async ?DID;
+    checkMob2 : shared query Nat -> async ?(DID, Nat);
+    checkMobList : shared query [Nat] -> async [(Nat, Bool)];
+    createOne : shared (MobileNumber, DID) -> async Bool;
+    createOne2 : shared (Nat, DID) -> async Bool;
+    cyclesBalance : shared query () -> async Nat;
+    delete : shared Nat -> async Bool;
+    listMobAndDid : shared query [Nat] -> async [(Nat, DID)];
+    memory_size : shared query () -> async Nat;
+    rts_info : shared query () -> async [(Text, Nat)];
+    rts_version : shared query () -> async Text;
+    setPauseTip : shared (Text, Text) -> async Bool;
+    showStoreInfo : shared query () -> async StoreInfo
+  };
+type MobileActor__2 = Mobile__1;
+type MobileNumber = Text;
+type Mobile__1 = Mobile;
+type MoneyAddress = Text;
+type Network = {#Mainnet; #Regtest; #Testnet};
+type Nickname = Text;
+type Note = Text;
+type OutsideAdderss = Text;
+type PenUSCTHistory =
+  {
+    advertiser : Text;
+    amount : Int32;
+    dayTime : Nat32;
+    did : DID__2;
+    endTime : Nat64;
+    id : Nat64;
+    startTime : Nat64;
+    status : Text;
+    summary : USCTSummary
+  };
+type PenUSCTHistoryArgs =
+  {
+    advertiser : Text;
+    amount : Int32;
+    did : DID__2;
+    startTime : Nat64;
+    summary : USCTSummary
+  };
+type PendingRawTransaction =
+  {bindKey : BindKey; nonce : Nat; raw : Text; sendAddr : OutsideAdderss};
+type QueryRawTxBindData =
+  {
+    amount : Nat;
+    bindKey : Text;
+    canisterId : CanisterId;
+    chainCoinCode : CoinCode;
+    nonce : Nat;
+    raw : Text;
+    sendAddr : OutsideAdderss;
+    status : Text;
+    toAddr : OutsideAdderss;
+    txId : Text
+  };
+type RSstatus = {received : [ReceivedStatus]; sendTrx : [SendTrxStatus]};
+type ReceivedAmountAgrs =
+  {
+    chainIdent : ChainIdent;
+    coinCode : CoinCode;
+    id : Nat;
+    outsideAdderss : OutsideAdderss;
+    result :
+      {
+        #confirming : (TxHash, Text);
+        #received : (TxHash, Nat, OutsideAdderss)
+      };
+    trxTime : Timestamp
+  };
+type ReceivedStatus =
+  {
+    chainIdent : ChainIdent;
+    expiryTimeDiff : Timestamp;
+    outsideAdderss : OutsideAdderss;
+    status : {confirming : ?(TxHash, Text); received : Nat}
+  };
+type RefereesRewardResult =
+  {
+    contributions : [(Uid, Duration)];
+    countMining : Nat;
+    referees2Link : [(Uid, Uid)];
+    referrerValue : Duration;
+    validTime : Nat
+  };
+type ReportConvertArgs =
+  {
+    advertiser : Text;
+    convertRate : Float;
+    dayTime_end : Nat32;
+    dayTime_start : Nat32;
+    did : DID__1;
+    report_id : Nat16
+  };
+type Result__20<T> = {#Err : Text; #Ok : T};
+type Role = {#ambassador; #core; #developer; #miner; #verifier};
+type SBuffer<X> = Buffer<X>;
+type SafetyCircle = {appellation : Text; did : DID};
+type Satoshi = Nat64;
+type SecurityCircleVerify =
+  {
+    #code : Text;
+    #identity : IdentityToken;
+    #mobs : [{did : DID; mob : MobileNumber}]
+  };
+type SendTrxStatus =
+  {
+    chainIdent : ChainIdent;
+    status : Text;
+    toAddr : OutsideAdderss;
+    txId : Text
+  };
+type SignWithECDSA =
+  {derivation_path : [Blob]; key_id : EcdsaKeyId; message_hash : Blob};
+type SignWithECDSAReply = {signature : Blob};
+type StatsActor__1 = Main__5;
+type Status = {#running; #stopped; #stopping};
+type StoreInfo =
+  {
+    key_size : Nat;
+    memory_used : Nat;
+    nodeItems : Nat;
+    pages : Nat64;
+    pagesSpace : Nat64;
+    usedStableMemory : Text
+  };
+type Summary =
+  {
+    #DSMSVerifyReward : DID__3;
+    #ECIF : Text;
+    #ICPCrowdfunding : Nat32;
+    #Mining : Text;
+    #MiningReferralLevel1 : Text;
+    #MiningReferralLevel2 : Text;
+    #PreMint1DTCInEcosystem : Nat64;
+    #RecommendNewcomers : DID__3;
+    #RegisterFromReferrer : DID__3;
+    #ReleaseToMintDTC : Nat64
+  };
+type TaskCBargs =
+  {
+    monitoredAddress : [Text];
+    receivedAmount : [ReceivedAmountAgrs];
+    sentTxRaw : [(Nat, BindKey, ExportTokenResult)];
+    updateOutFee : [(ChainIdent, TransferOutFee)]
+  };
+type TaskResult =
+  {beMonitorAddress : [Text]; beSentTransactions : [PendingRawTransaction]};
+type TimerId = Nat;
+type Timestamp = Nat;
+type Token = Text;
+type TotalCredit__1 =
+  {
+    var consensusDev : Nat;
+    var ecolog : Nat;
+    var fuel : Nat;
+    max_supply : Nat;
+    var mining : Nat
+  };
+type Transaction =
+  {
+    DTCTqty : Nat;
+    ICPqty : Nat;
+    addressId : DID;
+    index : TxIndex;
+    soldDTCTqty : Nat;
+    timestamp : Timestamp
+  };
+type TransferFee = {max : Nat; min : Nat; rate : Nat};
+type TransferOutFee =
+  {
+    #baseBid : {gasPrice : Nat};
+    #baseBidTip : {gasPrice : Nat; maxPriorityFeePerGas : Nat};
+    #smartFee : {estimateSmartFee : Float}
+  };
+type TransformArgs = {context : Blob; response : HttpResponsePayload};
+type TransformContext =
+  {
+    context : Blob;
+    function : shared query TransformArgs -> async HttpResponsePayload
+  };
+type Trie<K, V> = {#branch : Branch<K, V>; #empty; #leaf : Leaf<K, V>};
+type TrieMap<K, V> = {var _size : Nat; var map : Trie<K, V>};
+type TxHash = Text;
+type TxIndex = Nat;
+type USCTHistory64 =
+  {
+    adId : Text;
+    advertiser : Text;
+    amount : Int64;
+    checkTime : Nat64;
+    created : Nat64;
+    did : DID__2;
+    index : Nat64;
+    summary : USCTSummary
+  };
+type USCTHistory64__1 = USCTHistory64;
+type USCTSettlReportArgs =
+  {
+    advertiser : Text;
+    convertRate : Float;
+    dayTime_end : Nat32;
+    dayTime_start : Nat32;
+    participants : Nat32;
+    usct_amount : Nat64;
+    usdt_amount : Nat32
+  };
+type USCTSummary =
+  {
+    #AdRewards;
+    #AdRewardsLevel1;
+    #AdRewardsLevel2;
+    #ConvertToUSDT : (Float, Nat32, Nat32)
+  };
+type USCTminingRule = (Advertiser, (Timestamp, Nat8));
+type USCTminingRulelimit = {interval : Nat; times : Nat8};
+type Uid = Nat;
+type Update2Acct =
+  {#Ledgers : (CoinCode, CanisterId); #Null; #account : CanisterDate};
+type UpdateSettingsParams =
+  {canister_id : Principal; settings : CanisterSettings};
+type Url = Text;
+type VerifyFee =
+  {
+    #award : {allAward : Nat; verifierDids : [DID]};
+    #exempt;
+    #payFee : {verifierDids : [DID]}
+  };
+type VerifyQueue =
+  {
+    accessNumberData :
+      [{did : DID; number : MobileNumber; verifyStatus : VerifyStatus__1}];
+    accountDid : ?DID;
+    encryptKey : Text;
+    generateTime : Timestamp;
+    verifyCode : Text;
+    verifyType : VerifyType
+  };
+type VerifyStatus__1 = {#partSuccs; #success; #waiting};
+type VerifyType = {#login; #reg};
+type WalletDatas =
+  {
+    balance : Balance;
+    lastTxhash : TxHash;
+    lastsBind : [BindDataAgs];
+    lockAmount : Balance;
+    publicKeyId : Nat
+  };
+actor {
+  stable AccessNumberActiveCodeMap :
+    {var _size : Nat; var map : Trie<MobileNumber, ActiveCodeObj>};
+  stable CanisterMap :
+    {
+      DTCTArchives : SBuffer<CreditsActorData>;
+      var ICPfundsActor : [ICPfundsActor__1];
+      LedgerArchives : TrieMap<Text, [CanisterId]>;
+      Ledgers : TrieMap<CoinCode, CanisterId>;
+      USCTArchives : SBuffer<CreditsActorData>;
+      accountCanisters : SBuffer<AccountActorData>;
+      adminPrincipal : Principal;
+      var dappCenterCanisterId : CanisterId;
+      var dappCenterSqlCanister : CanisterId;
+      ic : ICActor;
+      var index : Index;
+      var mcWalletActor : [MCWalletActor__1];
+      var mobileActor : [MobileActor__2];
+      var pendingUSCTActor : [Actor__2];
+      var roadMapCanisterId : CanisterId;
+      var statsActor : [StatsActor__1];
+      totalCredit : TotalCredit__1
+    };
+  stable var CreditArchive_wasm_module : Blob;
+  stable Database :
+    {
+      accessNumbers : TrieMap<CountryCode, AccessNumberDataSet>;
+      verifyQueues : TrieMap<MobileNumber, VerifyQueue>
+    };
+  stable var LedgerArchive_wasm_module : Blob;
+  stable var OnePassArchiveCanIds : [CanisterId];
+  stable var OnePassCanisterId : Text;
+  stable var SettleUSCTCanisterId : Text;
+  stable var access_token : Text;
+  stable deletedUids :
+    {var _size : Nat; var elements : [var ?Uid]; initCapacity : Nat};
+  stable var gsmsToken : Text;
+  stable misc : {var _size : Nat; var map : Trie<Text, Nat>};
+  stable mobileApplastVersion :
+    {
+      var android : {apk : Text; notes : Text; store : Text; version : Text};
+      var ios : {notes : Text; store : Text; version : Text}
+    };
+  stable var timerId3600s : ?TimerId;
+  stable var timerId60s : ?TimerId
+};

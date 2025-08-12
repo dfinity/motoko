@@ -1,4 +1,4 @@
 (unknown location): Compatibility error [M0170], the type of stable variable state is not compatible to the previous program version:
- Missing tag #v3 in type {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}} of state.
+ Missing tag #v3 in type {#v1; #v2} of state.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

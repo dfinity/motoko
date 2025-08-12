@@ -1,0 +1,4 @@
+(unknown location): Compatibility error [M0170], the type of stable variable CanisterMap is not compatible to the previous program version:
+ Unsupported additional field dailyMiningCount2 in type actor {_appendReferee; _childRewardTimeAndReferees; _compareMobile; _delete; ...} of Account (used by Account in AccountActor in AccountActorData in Buffer in SBuffer in CanisterMap.accountCanisters.elements.Actor).
+ Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
+FALSE

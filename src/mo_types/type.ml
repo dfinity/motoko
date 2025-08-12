@@ -998,8 +998,38 @@ let add_src_field_update is_rel rel eq tf1 tf2 =
     in
     src_field_updates := src_field_update :: !src_field_updates
 
+(* Equivalence & Subtyping *)
 
-(* Pretty printing *)
+exception PreEncountered
+
+exception Undecided
+
+module SS = Set.Make (OrdPair)
+
+module RelArg :
+  sig
+    type arg
+    val sub : arg (* ordinary subtyping, with loss of info *)
+    val stable_sub : arg (* stable subtyping, without loss of info*)
+    val inc_depth : arg -> arg
+    val is_stable_sub : arg -> bool
+    val exceeds_max_depth : arg -> bool
+end
+=
+struct
+  let max_depth = 10_000
+  type arg = int
+  let sub = 0
+  let stable_sub = 1
+  let inc_depth arg =
+    let drop_bit = Int.logand arg 1 in
+    let depth = Int.shift_right arg 1 in
+    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
+  let is_stable_sub arg = Int.logand arg 1 = 1
+  let exceeds_max_depth d =
+    Int.shift_right d 1 > max_depth
+end
+
 
 let string_of_async_sort = function
   | Fut -> ""
@@ -1038,440 +1068,6 @@ let string_of_func_sort = function
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
 
-(* PrettyPrinter configurations *)
-
-module type PrettyConfig = sig
-  val show_stamps : bool
-  val show_scopes : bool
-  val con_sep : string
-  val par_sep : string
-end
-
-module ShowStamps = struct
-  let show_stamps = true
-  let show_scopes = true
-  let con_sep = "__" (* TODO: revert to "/" *)
-  let par_sep = "_"
-end
-
-module ElideStamps = struct
-  let show_stamps = false
-  let show_scopes = true
-  let con_sep = ShowStamps.con_sep
-  let par_sep = ShowStamps.par_sep
-end
-
-module ParseableStamps = struct
-  let show_stamps = true
-  let show_scopes = true (* false ok too *)
-  let con_sep = "__"
-  let par_sep = "_"
-end
-
-module MakePretty(Cfg : PrettyConfig) = struct
-
-open Format
-
-let pr = pp_print_string
-
-let comma ppf () = fprintf ppf ",@ "
-
-let semi ppf () = fprintf ppf ";@ "
-
-module StringSet = Set.Make(String)
-
-let vs_of_cs cs =
-  let names = ConSet.fold (fun c ns -> StringSet.add (Cons.name c) ns) cs StringSet.empty in
-  StringSet.fold (fun n vs -> (n, 0)::vs) names []
-
-let string_of_var (x, i) =
-  if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
-
-let remove_hash_suffix s =
-  Str.global_replace (Str.regexp "__[0-9]+$") "" s
-
-let string_of_con c = 
-  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_stamps then name else remove_hash_suffix name
-
-let rec can_sugar = function
-  | Func(s, Promises, tbs, ts1, ts2)
-  | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
-  | Func(s, Returns, (_::_ as tbs), ts1, ([Async (_, Var(_, 0),_)] as ts2)) ->
-    List.for_all (fun tb -> can_omit 0 tb.bound) tbs &&
-    List.for_all (can_omit 0) ts1 &&
-    List.for_all (can_omit 0) ts2
-  | _ -> false
-
-and can_omit n t =
-  let rec go i = function
-    | Var (_, j) -> i <> j
-    | Pre -> assert false
-    | Prim _ | Any | Non -> true
-    | Con (c, ts) -> List.for_all (go i ) ts
-    | Array t | Opt t | Mut t -> go i t
-    | Async (s, Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
-    | Async (s, t1, t2) -> go i t1 && go i t2
-    | Tup ts -> List.for_all (go i ) ts
-    | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
-    | Func (s, c, tbs, ts1, ts2) ->
-      let i' = i+List.length tbs in
-      List.for_all (fun tb -> go i' tb.bound) tbs &&
-      List.for_all (go i') ts1 &&
-      List.for_all (go i') ts2
-    | Typ c -> true (* assumes type defs are closed *)
-    | Named (n, t) -> go i t
-  in go n t
-
-let rec pp_typ_obj vs ppf o =
-  match o with
-  | (Object, fs) ->
-    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
-      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-  | (s, fs) ->
-    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
-      (string_of_obj_sort s)
-      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-
-and pp_typ_variant vs ppf fs =
-  match fs with
-  | [] -> pr ppf "{#}"
-  | fs ->
-    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
-      (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
-
-and pp_typ_item vs ppf t =
-  match t with
-  | Named (n, t) ->
-    fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
-  | typ -> pp_typ' vs ppf t
-
-and pp_typ_nullary vs ppf t =
-  match t with
-  | Named (n, t) ->
-    fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
-  | Tup ts ->
-    fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_typ_item vs)) ts
-      (if List.length ts = 1 then "," else "")
-  | Pre -> pr ppf "???"
-  | Any -> pr ppf "Any"
-  | Non -> pr ppf "None"
-  | Prim p -> pr ppf (string_of_prim p)
-  | Var (s, i) ->
-    pr ppf (try string_of_var (List.nth vs i) with _ -> Printf.sprintf "??? %s %i" s i)
-  | Con (c, []) -> pr ppf (string_of_con c)
-  | Con (c, ts) ->
-    fprintf ppf "@[%s<@[<1>%a@]>@]" (string_of_con c)
-      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
-  | Array (Mut t) ->
-    fprintf ppf "@[<1>[var %a]@]" (pp_typ' vs) t
-  | Array t ->
-    fprintf ppf "@[<1>[%a]@]" (pp_typ' vs) t
-  | Obj (Object, fs) ->
-    pp_typ_obj vs ppf (Object, fs)
-  | Variant fs ->
-    pp_typ_variant vs ppf fs
-  | t ->
-    (* In the parser, this case is subsumed by the grammar production for `LPAR .. RPAR` *)
-    fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
-
-and pp_typ_un vs ppf t =
-  match t with
-  | Opt t ->
-    fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
-  | t ->
-    pp_typ_nullary vs ppf t
-
-and pp_typ_pre vs ppf t =
-  match t with
-  (* No case for grammar production `PRIM s` *)
-  | Async (s, t1, t2) ->
-    if Cfg.show_scopes then
-      match t1 with
-      | Var(_, n) when fst (List.nth vs n) = "" ->
-        fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-      | _ ->
-        fprintf ppf "@[<2>async%s<%a>@ %a@]"
-          (string_of_async_sort s)
-          (pp_typ' vs) t1
-          (pp_typ_pre vs) t2
-    else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory) as os, fs) ->
-    pp_typ_obj vs ppf (os, fs)
-  | t ->
-    pp_typ_un vs ppf t
-
-and sequence pp ppf ts =
-  match ts with
-  | [Tup _] ->
-    fprintf ppf "@[<1>(%a)@]" pp (seq ts)
-  | ts ->
-    pp ppf (seq ts)
-
-and pp_typ_nobin vs ppf t =
-  match t with
-  | Func (s, c, tbs, ts1, ts2) ->
-    let sugar = can_sugar t in
-    let vs' = vars_of_binds vs tbs in
-    let vs'', tbs' =
-      if sugar then
-        List.tl vs', List.tl tbs
-      else
-        match tbs with
-        | { sort = Scope; _ } :: _ -> ("system", List.hd vs' |> snd) :: List.tl vs', tbs
-        | _ -> vs', tbs
-    in
-    let vs'vs = vs' @ vs in
-    fprintf ppf "@[<2>%s%a%a ->@ %a@]"
-      (string_of_func_sort s)
-      (pp_binds vs'vs vs'') tbs'
-      (sequence (pp_typ_un vs'vs)) ts1
-      (pp_control_cod sugar c vs'vs) ts2
-  | t ->
-     pp_typ_pre vs ppf t
-
-and pp_control_cod sugar c vs ppf ts =
-  match c, ts with
-  (* sugar *)
-  | Returns, [Async (s, _, t)] when sugar ->
-    fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t
-  | Promises, ts ->
-    fprintf ppf "@[<2>async@ %a@]" (sequence (pp_typ_pre vs)) ts
-  | Returns, _ ->
-    sequence (pp_typ_nobin vs) ppf ts
-  | Replies, _ ->
-    fprintf ppf "@[<2>replies@ %a@]" (sequence (pp_typ_nobin vs)) ts
-
-and pp_typ' vs ppf t =
-  match t with
-  (* special, additional cases for printing second-class types *)
-  | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
-  | Mut t ->
-    fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
-  (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
-  | t -> pp_typ_nobin vs ppf t
-
-and pp_field vs ppf {lab; typ; src} =
-  match typ with
-  | Typ c ->
-    let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
-    fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
-  | Mut t' ->
-    fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
-  | _ ->
-    fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
-
-and pp_stab_field vs ppf {lab; typ; src} =
-  match typ with
-  | Mut t' ->
-    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
-  | _ ->
-    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
-
-and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
-  let req = if required then "in" else "stable" in
-  match typ with
-  | Mut t' ->
-    fprintf ppf "@[<2>%s var %s :@ %a@]" req lab (pp_typ' vs) t'
-  | _ ->
-    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
-
-
-and pp_tag vs ppf {lab; typ; src} =
-  match typ with
-  | Tup [] ->
-    fprintf ppf "#%s" lab
-  | _ ->
-    fprintf ppf "@[<2>#%s :@ %a@]" lab (pp_typ' vs) typ
-
-and vars_of_binds vs bs =
-  List.map (fun b -> name_of_var vs (b.var, 0)) bs
-
-and name_of_var vs v =
-  match vs with
-  | [] -> v
-  | v'::vs' -> name_of_var vs' (if fst v = fst v' then (fst v, snd v + 1) else v)
-
-and pp_bind vs ppf (v, {bound; _}) =
-  if bound = Any then
-    pr ppf (string_of_var v)
-  else
-    fprintf ppf "%s <: %a"
-      (string_of_var v)
-      (pp_typ' vs) bound
-
-and pp_binds vs vs' ppf = function
-  | [] -> ()
-  | tbs ->
-    fprintf ppf "@[<1><%a>@]"
-      (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
-
-and pps_of_kind' vs k =
-  let op, tbs, t =
-    match k with
-    | Def (tbs, t) -> "=", tbs, t
-    | Abs (tbs, t) -> "<:", tbs, t
-  in
-  let vs' = vars_of_binds vs tbs in
-  let vs'vs = vs'@vs in
-  op,
-  (fun ppf () -> pp_binds vs'vs vs' ppf tbs),
-  (fun ppf () -> pp_typ' vs'vs ppf t)
-
-and pps_of_kind k =
-  let cs = cons_kind k in
-  let vs = vs_of_cs cs in
-  pps_of_kind' vs k
-
-and pp_kind' vs ppf k =
-  let op, sbs, st = pps_of_kind' vs k in
-  fprintf ppf "%s %a%a" op sbs () st ()
-
-and pp_kind ppf k =
-  let cs = cons_kind k in
-  let vs = vs_of_cs cs in
-  pp_kind' vs ppf k
-
-and pp_stab_sig ppf sig_ =
-  let all_fields = match sig_ with
-    | Single tfs -> tfs
-    | PrePost (pre, post) -> List.map snd pre @ post
-  in
-  let cs = List.fold_right
-    (cons_field false)
-    (* false here ^ means ignore unreferenced Typ c components
-       that would produce unreferenced bindings when unfolded *)
-    all_fields ConSet.empty in
-  let vs = vs_of_cs cs in
-  let ds =
-    let cs' = ConSet.filter (fun c ->
-      match Cons.kind c with
-      | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
-      | Def ([], Any) when string_of_con c = "Any" -> false
-      | Def ([], Non) when string_of_con c = "None" -> false
-      | Def _ -> true
-      | Abs _ -> false) cs in
-    ConSet.elements cs' in
-  let fs =
-    List.sort compare_field
-      (List.map (fun c ->
-        { lab = string_of_con c;
-          typ = Typ c;
-          src = empty_src }) ds)
-  in
-  let pp_stab_actor ppf sig_ =
-    match sig_ with
-    | Single tfs ->
-      fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
-        (string_of_obj_sort Actor)
-        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
-    | PrePost (pre, post) ->
-      fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
-        (string_of_obj_sort Actor)
-        (pp_print_list ~pp_sep:semi (pp_pre_stab_field vs)) pre
-        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
-  in
-  fprintf ppf "@[<v 0>%a%a%a;@]"
-    (pp_print_list ~pp_sep:semi (pp_field vs)) fs
-    (if fs = [] then fun ppf () -> () else semi) ()
-    pp_stab_actor sig_
-
-let rec pp_typ_expand' vs ppf t =
-  match t with
-  | Con (c, ts) ->
-    (match Cons.kind c with
-    | Abs _ -> pp_typ' vs ppf t
-    | Def _ ->
-      match normalize t with
-      | Prim _ | Any | Non -> pp_typ' vs ppf t
-      | t' -> fprintf ppf "%a = %a"
-        (pp_typ' vs) t
-        (pp_typ_expand' vs) t'
-    )
-  | _ -> pp_typ' vs ppf t
-
-let pp_lab = pr
-
-let pp_typ ppf t =
-  let vs = vs_of_cs (cons t) in
-  pp_typ' vs ppf t
-
-let pp_typ_expand ppf t =
-  let vs = vs_of_cs (cons t) in
-  pp_typ_expand' vs ppf t
-
-let string_of_typ typ : string =
-  Lib.Format.with_str_formatter (fun ppf ->
-    pp_typ ppf) typ
-
-let string_of_kind k : string =
-  Lib.Format.with_str_formatter (fun ppf ->
-    pp_kind ppf) k
-
-let strings_of_kind k : string * string * string =
-  let op, sbs, st = pps_of_kind k in
-  op, Lib.Format.with_str_formatter sbs (), Lib.Format.with_str_formatter st ()
-
-let string_of_typ_expand typ : string =
-  Lib.Format.with_str_formatter (fun ppf ->
-    pp_typ_expand ppf) typ
-
-end
-
-module type Pretty = sig
-  val pp_lab : Format.formatter -> lab -> unit
-  val pp_typ : Format.formatter -> typ -> unit
-  val pp_typ_expand : Format.formatter -> typ -> unit
-  val pps_of_kind : kind ->
-    string *
-    (Format.formatter -> unit -> unit) *
-      (Format.formatter -> unit -> unit)
-
-  val string_of_con : con -> string
-  val string_of_typ : typ -> string
-  val string_of_kind : kind -> string
-  val strings_of_kind : kind -> string * string * string
-  val string_of_typ_expand : typ -> string
-end
-
-include MakePretty(ElideStamps)
-
-let _ = str := string_of_typ
-
-(* Equivalence & Subtyping *)
-
-exception PreEncountered
-
-exception Undecided
-
-module SS = Set.Make (OrdPair)
-
-module RelArg :
-  sig
-    type arg
-    val sub : arg (* ordinary subtyping, with loss of info *)
-    val stable_sub : arg (* stable subtyping, without loss of info*)
-    val inc_depth : arg -> arg
-    val is_stable_sub : arg -> bool
-    val exceeds_max_depth : arg -> bool
-end
-=
-struct
-  let max_depth = 10_000
-  type arg = int
-  let sub = 0
-  let stable_sub = 1
-  let inc_depth arg =
-    let drop_bit = Int.logand arg 1 in
-    let depth = Int.shift_right arg 1 in
-    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
-  let is_stable_sub arg = Int.logand arg 1 = 1
-  let exceeds_max_depth d =
-    Int.shift_right d 1 > max_depth
-end
-
 type compatibility = Compatible | Incompatible of string
 
 let and_compatible first second = 
@@ -1499,20 +1095,76 @@ let string_of_path path =
   in
     emit_path false path
 
+let remove_hash_suffix s =
+  Str.global_replace (Str.regexp "__[0-9]+$") "" s
+
+let readable_list map separator list =
+  let rec print_list index list =
+    match list with
+    | [] -> ""
+    | _ when index > 3 -> "..."
+    | item::[] -> map item
+    | item::rest ->
+      Printf.sprintf "%s%s%s" (map item) separator (print_list (index + 1) rest)
+  in
+    print_list 0 list
+
+let readable_type typ =
+  let rec print_type_list depth list =
+    if depth >= 3 then "..." else
+      readable_list (fun inner -> print_type (depth + 1) inner) ", " list
+  and print_type depth typ =
+    match typ with
+    | _ when depth >= 3 -> "..."
+    | Var (var, _) -> var
+    | Con (con, _) | Typ con -> remove_hash_suffix (Cons.name con)
+    | Prim prim -> string_of_prim prim
+    | Obj (obj_sort, fields) ->
+      let print_fields = readable_list (fun field -> Printf.sprintf "%s" field.lab) "; " in
+      Printf.sprintf "%s{%s}" (string_of_obj_sort obj_sort) (print_fields fields)
+    | Variant tags ->
+      let print_tags = readable_list (fun tag -> "#" ^ tag.lab) "; " in
+      Printf.sprintf "{%s}" (print_tags tags)
+    | Array element ->
+      Printf.sprintf "[%s]" (print_type (depth + 1) typ)
+    | Opt option ->
+      Printf.sprintf "?%s" (print_type (depth + 1) typ)
+    | Tup types ->
+      Printf.sprintf "(%s)" (print_type_list (depth + 1) types)
+    | Func (func_sort, control, generics, parameters, returns) ->
+      let generics_text = List.map (fun {var; _} -> var) generics |> String.concat ", " in
+      let generics_text = if (List.length generics) > 0 then "" else Printf.sprintf "<%s>" generics_text in
+      let async_text = match control with
+      | Returns -> ""
+      | Promises -> "async "
+      | Replies -> assert false
+      in
+      Printf.sprintf "%sfunc%s(%s):%s(%s)" (string_of_func_sort func_sort) generics_text (print_type_list (depth + 1) parameters) async_text (print_type_list (depth + 1) returns)
+    | Async (async_sort, _, inner) ->
+      Printf.sprintf "%s %s" (string_of_async_sort async_sort) (print_type (depth + 1) inner)
+    | Mut inner ->
+      Printf.sprintf "var %s" (print_type (depth + 1) inner)
+    | Any -> "Any"
+    | Non -> "()"
+    | Named (name, _) -> remove_hash_suffix name
+    | Pre -> assert false
+  in
+    print_type 0 typ
+
 let incompatible_types context t1 t2 =
-  Incompatible (Printf.sprintf "The original type %s is not compatible to target type %s of %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+  Incompatible (Printf.sprintf "The original type %s is not compatible to target type %s of %s" (readable_type t1) (readable_type t2) (string_of_path context))
 
 let missing_tag label t context =
-  Incompatible (Printf.sprintf "Missing tag #%s in type %s of %s" label (string_of_typ t) (string_of_path context))
+  Incompatible (Printf.sprintf "Missing tag #%s in type %s of %s" label (readable_type t) (string_of_path context))
 
 let unexpected_tag label t context =
-  Incompatible (Printf.sprintf "Unsupported additional tag #%s in type %s of %s" label (string_of_typ t) (string_of_path context))
+  Incompatible (Printf.sprintf "Unsupported additional tag #%s in type %s of %s" label (readable_type t) (string_of_path context))
 
 let missing_field label t context =
-  Incompatible (Printf.sprintf "Missing field %s in type %s of %s" label (string_of_typ t) (string_of_path context))
+  Incompatible (Printf.sprintf "Missing field %s in type %s of %s" label (readable_type t) (string_of_path context))
 
 let unexpected_field label t context =
-  Incompatible (Printf.sprintf "Unsupported additional field %s in type %s of %s" label (string_of_typ t) (string_of_path context))
+  Incompatible (Printf.sprintf "Unsupported additional field %s in type %s of %s" label (readable_type t) (string_of_path context))
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
@@ -1557,7 +1209,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (Printf.sprintf "Converting %s to Any is disallowed as it leads to data loss: %s" (string_of_typ t1)  (string_of_path context))
+      Incompatible (Printf.sprintf "Converting %s to Any is disallowed as it leads to data loss: %s" (readable_type t1) (string_of_path context))
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
@@ -1605,10 +1257,10 @@ and rel_typ_explained context d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (Printf.sprintf "Cannot implicitly convert %s to %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      Incompatible (Printf.sprintf "Cannot implicitly convert %s to %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible object sorts: %s does not match %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      Incompatible (Printf.sprintf "Incompatible object sorts: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
     else
       rel_fields_explained context t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
@@ -1623,19 +1275,19 @@ and rel_typ_explained context d rel eq t1 t2 =
     rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible function modifiers: %s does not match %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      Incompatible (Printf.sprintf "Incompatible function modifiers: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
     else if c1 <> c2 then
-      Incompatible (Printf.sprintf "Incompatible generic type generic constraints: %s does not match %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      Incompatible (Printf.sprintf "Incompatible generic type generic constraints: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
     else
       (match rel_binds d eq eq tbs1 tbs2 with
       | Some ts -> and_compatible
         (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11))
         (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
-      | None -> Incompatible (Printf.sprintf "Incompatible function signatures: %s does not match %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      | None -> Incompatible (Printf.sprintf "Incompatible function signatures: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Printf.sprintf "Incompatible async sorts: %s does not match %s in %s" (string_of_typ t1) (string_of_typ t2) (string_of_path context))
+      Incompatible (Printf.sprintf "Incompatible async sorts: %s does not match %s in %s" (readable_type t1) (readable_type t2) (string_of_path context))
     else
       and_compatible
         (eq_typ_explained context d rel eq t11 t21)
@@ -2172,6 +1824,407 @@ let timeout_lab = "timeout"
 
 let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
 let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
+
+(* Pretty printing *)
+
+(* PrettyPrinter configurations *)
+
+module type PrettyConfig = sig
+  val show_stamps : bool
+  val show_scopes : bool
+  val con_sep : string
+  val par_sep : string
+end
+
+module ShowStamps = struct
+  let show_stamps = true
+  let show_scopes = true
+  let con_sep = "__" (* TODO: revert to "/" *)
+  let par_sep = "_"
+end
+
+module ElideStamps = struct
+  let show_stamps = false
+  let show_scopes = true
+  let con_sep = ShowStamps.con_sep
+  let par_sep = ShowStamps.par_sep
+end
+
+module ParseableStamps = struct
+  let show_stamps = true
+  let show_scopes = true (* false ok too *)
+  let con_sep = "__"
+  let par_sep = "_"
+end
+
+module MakePretty(Cfg : PrettyConfig) = struct
+
+open Format
+
+let pr = pp_print_string
+
+let comma ppf () = fprintf ppf ",@ "
+
+let semi ppf () = fprintf ppf ";@ "
+
+module StringSet = Set.Make(String)
+
+let vs_of_cs cs =
+  let names = ConSet.fold (fun c ns -> StringSet.add (Cons.name c) ns) cs StringSet.empty in
+  StringSet.fold (fun n vs -> (n, 0)::vs) names []
+
+let string_of_var (x, i) =
+  if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
+
+let string_of_con c = 
+  let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
+  if Cfg.show_stamps then name else remove_hash_suffix name
+
+let rec can_sugar = function
+  | Func(s, Promises, tbs, ts1, ts2)
+  | Func((Shared _ as s), Returns, tbs, ts1, ([] as ts2))
+  | Func(s, Returns, (_::_ as tbs), ts1, ([Async (_, Var(_, 0),_)] as ts2)) ->
+    List.for_all (fun tb -> can_omit 0 tb.bound) tbs &&
+    List.for_all (can_omit 0) ts1 &&
+    List.for_all (can_omit 0) ts2
+  | _ -> false
+
+and can_omit n t =
+  let rec go i = function
+    | Var (_, j) -> i <> j
+    | Pre -> assert false
+    | Prim _ | Any | Non -> true
+    | Con (c, ts) -> List.for_all (go i ) ts
+    | Array t | Opt t | Mut t -> go i t
+    | Async (s, Var (_, j), t2) when j = i && i <= n -> go i t2 (* t1 is a phantom type *)
+    | Async (s, t1, t2) -> go i t1 && go i t2
+    | Tup ts -> List.for_all (go i ) ts
+    | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
+    | Func (s, c, tbs, ts1, ts2) ->
+      let i' = i+List.length tbs in
+      List.for_all (fun tb -> go i' tb.bound) tbs &&
+      List.for_all (go i') ts1 &&
+      List.for_all (go i') ts2
+    | Typ c -> true (* assumes type defs are closed *)
+    | Named (n, t) -> go i t
+  in go n t
+
+let rec pp_typ_obj vs ppf o =
+  match o with
+  | (Object, fs) ->
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+  | (s, fs) ->
+    fprintf ppf "@[<hv 2>%s{@;<0 0>%a@;<0 -2>}@]"
+      (string_of_obj_sort s)
+      (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+
+and pp_typ_variant vs ppf fs =
+  match fs with
+  | [] -> pr ppf "{#}"
+  | fs ->
+    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+      (pp_print_list ~pp_sep:semi (pp_tag vs)) fs
+
+and pp_typ_item vs ppf t =
+  match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>%s : %a@]" n (pp_typ' vs) t
+  | typ -> pp_typ' vs ppf t
+
+and pp_typ_nullary vs ppf t =
+  match t with
+  | Named (n, t) ->
+    fprintf ppf "@[<1>(%s : %a)@]" n (pp_typ' vs) t
+  | Tup ts ->
+    fprintf ppf "@[<1>(%a%s)@]"
+      (pp_print_list ~pp_sep:comma (pp_typ_item vs)) ts
+      (if List.length ts = 1 then "," else "")
+  | Pre -> pr ppf "???"
+  | Any -> pr ppf "Any"
+  | Non -> pr ppf "None"
+  | Prim p -> pr ppf (string_of_prim p)
+  | Var (s, i) ->
+    pr ppf (try string_of_var (List.nth vs i) with _ -> Printf.sprintf "??? %s %i" s i)
+  | Con (c, []) -> pr ppf (string_of_con c)
+  | Con (c, ts) ->
+    fprintf ppf "@[%s<@[<1>%a@]>@]" (string_of_con c)
+      (pp_print_list ~pp_sep:comma (pp_typ' vs)) ts
+  | Array (Mut t) ->
+    fprintf ppf "@[<1>[var %a]@]" (pp_typ' vs) t
+  | Array t ->
+    fprintf ppf "@[<1>[%a]@]" (pp_typ' vs) t
+  | Obj (Object, fs) ->
+    pp_typ_obj vs ppf (Object, fs)
+  | Variant fs ->
+    pp_typ_variant vs ppf fs
+  | t ->
+    (* In the parser, this case is subsumed by the grammar production for `LPAR .. RPAR` *)
+    fprintf ppf "@[<1>(%a)@]" (pp_typ' vs) t
+
+and pp_typ_un vs ppf t =
+  match t with
+  | Opt t ->
+    fprintf ppf "@[<1>?%a@]"  (pp_typ_un vs) t
+  | t ->
+    pp_typ_nullary vs ppf t
+
+and pp_typ_pre vs ppf t =
+  match t with
+  (* No case for grammar production `PRIM s` *)
+  | Async (s, t1, t2) ->
+    if Cfg.show_scopes then
+      match t1 with
+      | Var(_, n) when fst (List.nth vs n) = "" ->
+        fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
+      | _ ->
+        fprintf ppf "@[<2>async%s<%a>@ %a@]"
+          (string_of_async_sort s)
+          (pp_typ' vs) t1
+          (pp_typ_pre vs) t2
+    else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
+  | Obj ((Module | Actor | Memory) as os, fs) ->
+    pp_typ_obj vs ppf (os, fs)
+  | t ->
+    pp_typ_un vs ppf t
+
+and sequence pp ppf ts =
+  match ts with
+  | [Tup _] ->
+    fprintf ppf "@[<1>(%a)@]" pp (seq ts)
+  | ts ->
+    pp ppf (seq ts)
+
+and pp_typ_nobin vs ppf t =
+  match t with
+  | Func (s, c, tbs, ts1, ts2) ->
+    let sugar = can_sugar t in
+    let vs' = vars_of_binds vs tbs in
+    let vs'', tbs' =
+      if sugar then
+        List.tl vs', List.tl tbs
+      else
+        match tbs with
+        | { sort = Scope; _ } :: _ -> ("system", List.hd vs' |> snd) :: List.tl vs', tbs
+        | _ -> vs', tbs
+    in
+    let vs'vs = vs' @ vs in
+    fprintf ppf "@[<2>%s%a%a ->@ %a@]"
+      (string_of_func_sort s)
+      (pp_binds vs'vs vs'') tbs'
+      (sequence (pp_typ_un vs'vs)) ts1
+      (pp_control_cod sugar c vs'vs) ts2
+  | t ->
+     pp_typ_pre vs ppf t
+
+and pp_control_cod sugar c vs ppf ts =
+  match c, ts with
+  (* sugar *)
+  | Returns, [Async (s, _, t)] when sugar ->
+    fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t
+  | Promises, ts ->
+    fprintf ppf "@[<2>async@ %a@]" (sequence (pp_typ_pre vs)) ts
+  | Returns, _ ->
+    sequence (pp_typ_nobin vs) ppf ts
+  | Replies, _ ->
+    fprintf ppf "@[<2>replies@ %a@]" (sequence (pp_typ_nobin vs)) ts
+
+and pp_typ' vs ppf t =
+  match t with
+  (* special, additional cases for printing second-class types *)
+  | Typ c ->
+    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
+  | Mut t ->
+    fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
+  (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
+  | t -> pp_typ_nobin vs ppf t
+
+and pp_field vs ppf {lab; typ; src} =
+  match typ with
+  | Typ c ->
+    let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
+    fprintf ppf "@[<2>type %s%a %s@ %a@]" lab sbs () op st ()
+  | Mut t' ->
+    fprintf ppf "@[<2>var %s :@ %a@]" lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
+
+and pp_stab_field vs ppf {lab; typ; src} =
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
+
+and pp_pre_stab_field vs ppf (required, {lab; typ; src}) =
+  let req = if required then "in" else "stable" in
+  match typ with
+  | Mut t' ->
+    fprintf ppf "@[<2>%s var %s :@ %a@]" req lab (pp_typ' vs) t'
+  | _ ->
+    fprintf ppf "@[<2>%s %s :@ %a@]" req lab (pp_typ' vs) typ
+
+
+and pp_tag vs ppf {lab; typ; src} =
+  match typ with
+  | Tup [] ->
+    fprintf ppf "#%s" lab
+  | _ ->
+    fprintf ppf "@[<2>#%s :@ %a@]" lab (pp_typ' vs) typ
+
+and vars_of_binds vs bs =
+  List.map (fun b -> name_of_var vs (b.var, 0)) bs
+
+and name_of_var vs v =
+  match vs with
+  | [] -> v
+  | v'::vs' -> name_of_var vs' (if fst v = fst v' then (fst v, snd v + 1) else v)
+
+and pp_bind vs ppf (v, {bound; _}) =
+  if bound = Any then
+    pr ppf (string_of_var v)
+  else
+    fprintf ppf "%s <: %a"
+      (string_of_var v)
+      (pp_typ' vs) bound
+
+and pp_binds vs vs' ppf = function
+  | [] -> ()
+  | tbs ->
+    fprintf ppf "@[<1><%a>@]"
+      (pp_print_list ~pp_sep:comma (pp_bind vs)) (List.combine vs' tbs)
+
+and pps_of_kind' vs k =
+  let op, tbs, t =
+    match k with
+    | Def (tbs, t) -> "=", tbs, t
+    | Abs (tbs, t) -> "<:", tbs, t
+  in
+  let vs' = vars_of_binds vs tbs in
+  let vs'vs = vs'@vs in
+  op,
+  (fun ppf () -> pp_binds vs'vs vs' ppf tbs),
+  (fun ppf () -> pp_typ' vs'vs ppf t)
+
+and pps_of_kind k =
+  let cs = cons_kind k in
+  let vs = vs_of_cs cs in
+  pps_of_kind' vs k
+
+and pp_kind' vs ppf k =
+  let op, sbs, st = pps_of_kind' vs k in
+  fprintf ppf "%s %a%a" op sbs () st ()
+
+and pp_kind ppf k =
+  let cs = cons_kind k in
+  let vs = vs_of_cs cs in
+  pp_kind' vs ppf k
+
+and pp_stab_sig ppf sig_ =
+  let all_fields = match sig_ with
+    | Single tfs -> tfs
+    | PrePost (pre, post) -> List.map snd pre @ post
+  in
+  let cs = List.fold_right
+    (cons_field false)
+    (* false here ^ means ignore unreferenced Typ c components
+       that would produce unreferenced bindings when unfolded *)
+    all_fields ConSet.empty in
+  let vs = vs_of_cs cs in
+  let ds =
+    let cs' = ConSet.filter (fun c ->
+      match Cons.kind c with
+      | Def ([], Prim p) when string_of_con c = string_of_prim p -> false
+      | Def ([], Any) when string_of_con c = "Any" -> false
+      | Def ([], Non) when string_of_con c = "None" -> false
+      | Def _ -> true
+      | Abs _ -> false) cs in
+    ConSet.elements cs' in
+  let fs =
+    List.sort compare_field
+      (List.map (fun c ->
+        { lab = string_of_con c;
+          typ = Typ c;
+          src = empty_src }) ds)
+  in
+  let pp_stab_actor ppf sig_ =
+    match sig_ with
+    | Single tfs ->
+      fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) tfs
+    | PrePost (pre, post) ->
+      fprintf ppf "@[<v 2>%s({@;<0 0>%a@;<0 -2>}, {@;<0 0>%a@;<0 -2>}) @]"
+        (string_of_obj_sort Actor)
+        (pp_print_list ~pp_sep:semi (pp_pre_stab_field vs)) pre
+        (pp_print_list ~pp_sep:semi (pp_stab_field vs)) post
+  in
+  fprintf ppf "@[<v 0>%a%a%a;@]"
+    (pp_print_list ~pp_sep:semi (pp_field vs)) fs
+    (if fs = [] then fun ppf () -> () else semi) ()
+    pp_stab_actor sig_
+
+let rec pp_typ_expand' vs ppf t =
+  match t with
+  | Con (c, ts) ->
+    (match Cons.kind c with
+    | Abs _ -> pp_typ' vs ppf t
+    | Def _ ->
+      match normalize t with
+      | Prim _ | Any | Non -> pp_typ' vs ppf t
+      | t' -> fprintf ppf "%a = %a"
+        (pp_typ' vs) t
+        (pp_typ_expand' vs) t'
+    )
+  | _ -> pp_typ' vs ppf t
+
+let pp_lab = pr
+
+let pp_typ ppf t =
+  let vs = vs_of_cs (cons t) in
+  pp_typ' vs ppf t
+
+let pp_typ_expand ppf t =
+  let vs = vs_of_cs (cons t) in
+  pp_typ_expand' vs ppf t
+
+let string_of_typ typ : string =
+  Lib.Format.with_str_formatter (fun ppf ->
+    pp_typ ppf) typ
+
+let string_of_kind k : string =
+  Lib.Format.with_str_formatter (fun ppf ->
+    pp_kind ppf) k
+
+let strings_of_kind k : string * string * string =
+  let op, sbs, st = pps_of_kind k in
+  op, Lib.Format.with_str_formatter sbs (), Lib.Format.with_str_formatter st ()
+
+let string_of_typ_expand typ : string =
+  Lib.Format.with_str_formatter (fun ppf ->
+    pp_typ_expand ppf) typ
+
+end
+
+module type Pretty = sig
+  val pp_lab : Format.formatter -> lab -> unit
+  val pp_typ : Format.formatter -> typ -> unit
+  val pp_typ_expand : Format.formatter -> typ -> unit
+  val pps_of_kind : kind ->
+    string *
+    (Format.formatter -> unit -> unit) *
+      (Format.formatter -> unit -> unit)
+
+  val string_of_con : con -> string
+  val string_of_typ : typ -> string
+  val string_of_kind : kind -> string
+  val strings_of_kind : kind -> string * string * string
+  val string_of_typ_expand : typ -> string
+end
+
+include MakePretty(ElideStamps)
+
+let _ = str := string_of_typ
 
 (* Stable signatures *)
 let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
