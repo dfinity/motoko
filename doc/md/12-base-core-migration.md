@@ -7,14 +7,7 @@ sidebar_position: 12
 * [GitHub repository](https://github.com/dfinity/motoko-core)
 * [Documentation](https://internetcomputer.org/docs/motoko/core/)
 
-The `core` package is a Helper functions have been added, such as `allValues()`, for each finite type in the `base` package.
-
-### [`List`](https://internetcomputer.org/docs/motoko/core/List)
-
-#### New functions
-- `binarySearch()` - Search for element in sorted mutable list using binary search
-
-### [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) and improved standard library for Motoko, focusing on:
+The `core` package is a new and improved standard library for Motoko, focusing on:
 * AI-friendly design patterns.
 * Familiarity coming from languages such as JavaScript, Python, Java, and Rust.
 * Simplified usage of data structures in stable memory.
@@ -137,16 +130,10 @@ The core package introduces a fundamental reorganization of data structures with
 - `thaw()` → `toVarArray()`
 - `vals()` → `values()`
 
-#### Parameter ordering changes
-- `indexOf<T>`: `(element, array, equal)` → `(array, equal, element)`
-- `lastIndexOf<T>`: `(element, array, equal)` → `(array, equal, element)`
-- `nextIndexOf<T>`: `(element, array, fromInclusive, equal)` → `(array, equal, element, fromInclusive)`
-- `prevIndexOf<T>`: `(element, array, fromExclusive, equal)` → `(array, equal, element, fromExclusive)`
-
 #### New functions
 - `all()` - Check if all elements satisfy predicate
 - `any()` - Check if any element satisfies predicate
-- `binarySearch()` - Search for element in sorted array using binary search
+- `binarySearch()` - Perform binary search on sorted array
 - `compare()` - Compare two arrays
 - `empty()` - Create empty array
 - `enumerate()` - Get indexed iterator
@@ -156,6 +143,12 @@ The core package introduces a fundamental reorganization of data structures with
 - `isEmpty()` - Check if array is empty
 - `join()` - Join arrays from iterator
 - `toText()` - Convert array to text representation
+
+#### Parameter order changes
+- `indexOf(element, array, equal)` → `indexOf(array, equal, element)`
+- `lastIndexOf(element, array, equal)` → `lastIndexOf(array, equal, element)`
+- `nextIndexOf(element, array, fromInclusive, equal)` → `nextIndexOf(array, equal, element, fromInclusive)`
+- `prevIndexOf(element, array, fromExclusive, equal)` → `prevIndexOf(array, equal, element, fromExclusive)`
 
 #### Removed functions
 - `take()` - Use `sliceToArray()` instead
@@ -338,11 +331,6 @@ persistent actor {
 - `forErr()` - Apply function to `#err` value
 - `fromBool()` - Create Result from boolean
 
-### [`Stack`](https://internetcomputer.org/docs/motoko/core/Stack)
-
-#### Parameter ordering changes
-- `contains<T>`: `(stack, element, equal)` → `(stack, equal, element)`
-
 ### [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
 
 #### Renamed functions
@@ -359,17 +347,6 @@ persistent actor {
 - `hash()`
 - `fromList()` - Use `fromIter()` with list iterator instead
 - `toList()` - Use `toIter()` and convert to list if needed
-
-### [`VarArray`](https://internetcomputer.org/docs/motoko/core/VarArray)
-
-#### Parameter ordering changes
-- `indexOf<T>`: `(element, array, equal)` → `(array, equal, element)`
-- `lastIndexOf<T>`: `(element, array, equal)` → `(array, equal, element)`
-- `nextIndexOf<T>`: `(element, array, fromInclusive, equal)` → `(array, equal, element, fromInclusive)`
-- `prevIndexOf<T>`: `(element, array, fromExclusive, equal)` → `(array, equal, element, fromExclusive)`
-
-#### New functions
-- `binarySearch()` - Search for element in sorted mutable array using binary search
 
 ## Data structure migration examples
 
