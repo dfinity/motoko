@@ -1032,43 +1032,6 @@ struct
 end
 
 
-let string_of_async_sort = function
-  | Fut -> ""
-  | Cmp -> "*"
-
-let string_of_prim = function
-  | Null -> "Null"
-  | Bool -> "Bool"
-  | Nat -> "Nat"
-  | Nat8 -> "Nat8"
-  | Nat16 -> "Nat16"
-  | Nat32 -> "Nat32"
-  | Nat64 -> "Nat64"
-  | Int -> "Int"
-  | Int8 -> "Int8"
-  | Int16 -> "Int16"
-  | Int32 -> "Int32"
-  | Int64 -> "Int64"
-  | Float -> "Float"
-  | Char -> "Char"
-  | Text -> "Text"
-  | Blob -> "Blob"
-  | Error -> "Error"
-  | Principal -> "Principal"
-  | Region -> "Region"
-
-let string_of_obj_sort = function
-  | Object -> ""
-  | Module -> "module "
-  | Actor -> "actor "
-  | Memory -> "memory "
-
-let string_of_func_sort = function
-  | Local -> ""
-  | Shared Write -> "shared "
-  | Shared Query -> "shared query "
-  | Shared Composite -> "shared composite query " (* TBR *)
-
 type compatibility = Compatible | Incompatible of string
 
 
@@ -1076,24 +1039,28 @@ type explanation_scope =
   | NamedType of string
   | StableVariable of string
   | Field of string
-  
+
 type explanation_path = explanation_scope list
 let empty_explanation : explanation_path = []
+
+(* HACK: expensive too *)
+let remove_hash_suffix s =
+  Str.global_replace (Str.regexp "__[0-9]+$") "" s
 
 let string_of_path path =
   let rec emit_path nested path =
     match path with
     | [] -> "top level"
     | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
-    | (NamedType name)::rest when not nested -> Printf.sprintf "%s (used by %s)" name (emit_path true rest)
-    | (NamedType name)::rest -> Printf.sprintf "%s in %s" name (emit_path true rest)
+    | (NamedType name)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" (remove_hash_suffix name) (emit_path true rest)
+    | (NamedType name)::rest ->
+       Printf.sprintf "%s in %s" (remove_hash_suffix name) (emit_path true rest)
     | (StableVariable name)::_ -> name
   in
     emit_path false path
 
-let remove_hash_suffix s =
-  Str.global_replace (Str.regexp "__[0-9]+$") "" s
-
+(* TBD
 let readable_list map separator list =
   let rec print_list index list =
     match list with
@@ -1146,7 +1113,7 @@ let readable_type typ =
     | Pre -> assert false
   in
     print_type 0 typ
-
+*)
 let readable_type x = (!display_typ) x
 
 let incompatible_types context t1 t2 =
@@ -1218,7 +1185,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     let new_context = (NamedType n)::context in
     rel_typ_explained new_context d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
-    let name2 = remove_hash_suffix (Cons.name con2) in
+    let name2 = Cons.name con2 in
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ_explained context d rel eq (open_ ts1 t) t2
@@ -1242,7 +1209,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     | _ -> incompatible_types context t1 t2
     )
   | t1, Con (con2, ts2) ->
-    let name2 = remove_hash_suffix (Cons.name con2) in
+    let name2 = Cons.name con2 in
     let new_context = (NamedType name2)::context in
     (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
@@ -1830,6 +1797,43 @@ let cycles_fld = { lab = cycles_lab; typ = nat; src = empty_src }
 let timeout_fld = { lab = timeout_lab; typ = nat32; src = empty_src }
 
 (* Pretty printing *)
+
+let string_of_async_sort = function
+  | Fut -> ""
+  | Cmp -> "*"
+
+let string_of_prim = function
+  | Null -> "Null"
+  | Bool -> "Bool"
+  | Nat -> "Nat"
+  | Nat8 -> "Nat8"
+  | Nat16 -> "Nat16"
+  | Nat32 -> "Nat32"
+  | Nat64 -> "Nat64"
+  | Int -> "Int"
+  | Int8 -> "Int8"
+  | Int16 -> "Int16"
+  | Int32 -> "Int32"
+  | Int64 -> "Int64"
+  | Float -> "Float"
+  | Char -> "Char"
+  | Text -> "Text"
+  | Blob -> "Blob"
+  | Error -> "Error"
+  | Principal -> "Principal"
+  | Region -> "Region"
+
+let string_of_obj_sort = function
+  | Object -> ""
+  | Module -> "module "
+  | Actor -> "actor "
+  | Memory -> "memory "
+
+let string_of_func_sort = function
+  | Local -> ""
+  | Shared Write -> "shared "
+  | Shared Query -> "shared query "
+  | Shared Composite -> "shared composite query " (* TBR *)
 
 (* PrettyPrinter configurations *)
 
