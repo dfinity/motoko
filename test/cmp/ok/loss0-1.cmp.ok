@@ -1,11 +1,11 @@
-(unknown location): Compatibility error [M0216], stable variable one of previous type
-  var {field : Nat}
-cannot be consumed at supertype
-  var {}
-without loss of data. Use an explicit migration function.
-(unknown location): Compatibility error [M0216], stable variable two of previous type
-  var Nat
-cannot be consumed at supertype
-  var Any
-without loss of data. Use an explicit migration function.
+(unknown location): Compatibility error [M0216], the type of stable variable one implicitly drops data of the previous program version:
+ Missing field field in type 
+  {}
+ of one.
+ The data can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
+(unknown location): Compatibility error [M0216], the type of stable variable two implicitly drops data of the previous program version:
+ Converting 
+  Nat
+ to Any is disallowed as it leads to data loss: Any (used by two).
+ The data can only be dropped by an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

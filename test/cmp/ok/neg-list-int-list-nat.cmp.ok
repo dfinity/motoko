@@ -1,7 +1,15 @@
 (unknown location): Compatibility error [M0170], the type of stable variable ln is not compatible to the previous program version:
- Cannot implicitly convert Int to Nat in Nat (used by List in ln).
+ Cannot implicitly convert 
+  Int
+ to 
+  Nat
+ in Nat (used by List in ln).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 (unknown location): Compatibility error [M0170], the type of stable variable lnn is not compatible to the previous program version:
- Cannot implicitly convert Int to Nat in Nat (used by List in lnn).
+ Cannot implicitly convert 
+  Int
+ to 
+  Nat
+ in Nat (used by List in lnn).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

@@ -1,4 +1,8 @@
 (unknown location): Compatibility error [M0170], the type of stable variable z is not compatible to the previous program version:
- Cannot implicitly convert Text to Bool in Bool (used by z).
+ Cannot implicitly convert 
+  Text
+ to 
+  Bool
+ in Bool (used by z).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE

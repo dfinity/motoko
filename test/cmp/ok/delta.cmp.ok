@@ -1,4 +1,206 @@
 (unknown location): Compatibility error [M0170], the type of stable variable CanisterMap is not compatible to the previous program version:
- Unsupported additional field dailyMiningCount2 in type actor {_appendReferee; _childRewardTimeAndReferees; _compareMobile; _delete; ...} of Account (used by Account in AccountActor in AccountActorData in Buffer in SBuffer in CanisterMap.accountCanisters.elements.Actor).
+ Unsupported additional field dailyMiningCount2 in type 
+  actor {
+    _appendReferee : shared (DID, Nat, AccountReferee, Nat) -> ();
+    _childRewardTimeAndReferees :
+      shared query ([Uid], DID, ADLevel, [Timestamp]) ->
+        async RefereesRewardResult;
+    _compareMobile : shared query [(MobileNumber, Nat)] -> async Bool;
+    _delete : shared (Uid, IdentityToken, Text, ?DID, Bool) -> async Uid;
+    _depositSafetyCode : shared (DID, Text) -> ();
+    _getMiningStatusAndInfo :
+      shared query ([Uid], Bool) -> async [AccountReferre1Detail];
+    _getWalletBalance :
+      shared query (Index, MoneyAddress, CoinCode) -> async Balance;
+    _getWalletBalanceDebug :
+      shared query (DID, ?Text, CoinCode, Text) ->
+        async ?(Balance, Balance, ?(ChainIdent, Timestamp, Note));
+    _markDeveloperRole : shared (Text, IdentityToken) -> async Bool;
+    _modifyReferrer : shared (Uid, DID) -> ();
+    _removeReferee : shared (Uid, Uid) -> ();
+    _setProvideSafety : shared (Index, DID, Text) -> async Bool;
+    _syncWalletBalanceDebug :
+      shared (Text, CoinCode, Text) -> async (Balance, Balance, Text);
+    _transferReferrerChain : shared (Uid, DID, [AccountReferee]) -> ();
+    _updateWallet : shared (Index, MoneyAddress, CoinCode, Balance) -> ();
+    _walletDefaultAddress : shared query Nat -> async MoneyAddress;
+    addendDSMSVerifyReward : shared (DID, Nat, DID) -> ();
+    allowChangeMobile : shared (IdentityToken, Text, Text) -> async Bool;
+    appTokenStatus : shared query (AppId, IdentityToken) -> async Text;
+    applyAndRenewDepositAddress :
+      shared (MoneyAddress, CoinCode, Text, IdentityToken) ->
+        async DepositAddressArgs;
+    applyDSMSVerifierIdentity :
+      shared (Text, Text, IdentityToken) -> async Bool;
+    changeMobileHistory :
+      shared query IdentityToken -> async [(MobileNumber, Timestamp)];
+    changeMobileNumber :
+      shared (IdentityToken, MobileNumber, Text) -> async Bool;
+    checkExist : shared query Nat -> async Bool;
+    checkIdentity : shared query IdentityToken -> async Bool;
+    clearSafetyCircle : shared (DID, Text, Text) -> async Bool;
+    clearWalletExportError :
+      shared (MoneyAddress, CoinCode, IdentityToken) -> async Bool;
+    createDappToken : shared (AppId, IdentityToken) -> async AppIdentityToken;
+    createOne2 :
+      shared (Text, MobileNumber, CountryCode, DID, Text, Nat, VerifyFee) ->
+        async (Bool, Nat, DID, Token);
+    crowdfundingICP :
+      shared (Nat, MoneyAddress, IdentityToken) -> async Balance;
+    cyclesBalance : shared query () -> async Nat;
+    dailyMining : shared IdentityToken -> async Bool;
+    dailyMiningCount :
+      shared composite query IdentityToken ->
+        async (MiningCountRow, MiningCountRow, MiningCountRow);
+    dailyMiningCount2 :
+      shared IdentityToken ->
+        async (MiningCountRow, MiningCountRow, MiningCountRow);
+    debugAcctMiningDetail : shared (Uid, Nat) -> async MiningDetail2;
+    debugAcctMiningDetailXf : shared (Uid, Blob, Nat) -> async MiningDetail2;
+    debugGetAccountInfo : shared query (Index, Text) -> async ?AccountBasic;
+    debugGetAcct :
+      shared query (Uid, Nat) ->
+        async
+          ?{
+             credits : {DTCT : Int; IncDTCT : Nat; IncUSCT : Nat};
+             index : Index;
+             mobile : MobileNumber;
+             referrer : DID
+           };
+    debugGetAcctExt : shared query (Uid, Nat, Nat) -> async Uid;
+    debugGetAcctMiningDetail : shared query (Uid, Nat, Nat) -> async Uid;
+    debugGetAcctReferees : shared query (Uid, Nat, Nat) -> async Uid;
+    debugSwitchData : shared (DID, DID, Text) -> async Bool;
+    delSafetyCircle : shared (IdentityToken, SafetyCircle) -> async Bool;
+    deleteDSMSVerifierIdentity : shared (IdentityToken2, Text) -> async Bool;
+    depositCallBack :
+      shared (Balance, TxHash, OutsideAdderss, MoneyAddress, CoinCode,
+              ChainIdent) ->
+        ();
+    distributeECIF : shared (DID, Nat, Text, Timestamp) -> async Bool;
+    dsmsAccessStatus :
+      shared query IdentityToken -> async ?(Timestamp, Timestamp);
+    exportToken :
+      shared (MoneyAddress, CoinCode, Nat, Text, ChainIdent, IdentityToken) ->
+        async Balance;
+    exportTokenCallBack :
+      shared (ExportTokenResult, OutsideAdderss, MoneyAddress, CoinCode,
+              ChainIdent) ->
+        async Bool;
+    generateSafetyCode2 : shared (DID, SafetyCircle) -> async ?SafetyCircle;
+    getAccountInfo : shared query IdentityToken -> async AccountBasic2;
+    getAccountInfo2 : shared query IdentityToken -> async AccountBasic;
+    getAccountNowData : shared query IdentityToken2 -> async AccountNow;
+    getAccountStatus : shared query DID -> async AccountStatus;
+    getDAppAcctInfo :
+      shared query (IdentityToken, AppId) -> async DAppAcctInfo;
+    getDepositAddress :
+      shared query (MoneyAddress, CoinCode, Text, IdentityToken) ->
+        async DepositAddressArgs;
+    getReferees : shared query (Nat, IdentityToken) -> async [DID];
+    getReferrer : shared query Nat -> async DID;
+    getWalletBalance :
+      shared query (MoneyAddress, CoinCode, IdentityToken) ->
+        async (Balance, ExportTokenError);
+    listAvatarNickname : shared query [DID] -> async [(DID, Nickname, Text)];
+    listDTCTBuffer : shared query IdentityToken -> async [DTCTHistory];
+    listReferees1 :
+      shared composite query IdentityToken2 -> async [AccountReferre1Detail];
+    listReferees2 :
+      shared query [Uid] -> async [(Uid, MiningStatus, Nickname, Avatar)];
+    listSecondReferees :
+      shared query ([DID], Bool, IdentityToken) ->
+        async [(DID, Nickname, MiningStatus, Text, [DID])];
+    listTempDepositAddress :
+      shared query IdentityToken -> async [(Text, DepositAddress)];
+    listWalletBalance :
+      shared query (MoneyAddress, [CoinCode], IdentityToken) ->
+        async [{balance : Balance; coinCode : CoinCode}];
+    logOut : shared IdentityToken -> async Bool;
+    loginVerifyStrategy :
+      shared query DID -> async (AccountStatus, LoginVerifyStrategy);
+    matchMoblie : shared query Text -> async Nat;
+    miningUSCT : shared (IdentityToken, Advertiser, Text) -> async Bool;
+    miningUSCT2 :
+      shared (IdentityToken, Advertiser, Text) -> async [USCTminingRule];
+    nextUid : shared query () -> async Nat;
+    overViewWallet :
+      shared query ([CoinCode], IdentityToken) ->
+        async
+          {
+            defaultAddress : MoneyAddress;
+            list : [(MoneyAddress, Note)];
+            total : [{balance : Balance; coinCode : CoinCode}]
+          };
+    overwrite :
+      shared (Uid, Text, MobileNumber, CountryCode, DID, Text, Nat,
+              VerifyFee) ->
+        async (Nat, DID, Token);
+    pendingUSCTHistory :
+      shared composite query (IdentityToken, Nat64, Nat8) ->
+        async [PenUSCTHistory];
+    pendingUSCTWeight : shared composite query IdentityToken -> async Int32;
+    pendingUSCTWeight2 :
+      shared composite query (IdentityToken, ?Advertiser) -> async Int32;
+    pourFuelICP : shared IdentityToken -> async Balance;
+    putOfferwallUSCT :
+      shared ([DID], [Nat], [Int32], [Advertiser], Text) ->
+        async [(Nat, Text)];
+    queryDatabase : shared query () -> async (Nat, Nat, Nat);
+    queryProvideSafety : shared query IdentityToken -> async [DID];
+    querySafetyCircles : shared query IdentityToken -> async [SafetyCircle];
+    querySafetyCircles2 :
+      shared query (DID, MobileNumber) -> async [SafetyCircle];
+    readSafetyCode : shared query (IdentityToken, DID) -> async ?Text;
+    receiveBroadcast : shared (?Index, Update2Acct) -> ();
+    renewalDSMSVerifierIdentity : shared IdentityToken -> async Bool;
+    rts_info : shared query () -> async [(Text, Nat)];
+    setAccount : shared (Text, Text, IdentityToken) -> async Bool;
+    setLogin2 : shared (DID, Token, VerifyFee) -> async ?[(DID, Balance)];
+    setPauseTip :
+      shared ({#pauseTip : Text; #pauseWalletTip : Text}, Text) -> async Bool;
+    setSafetyCircle : shared (IdentityToken, SafetyCircle) -> async Text;
+    setWallet :
+      shared ({#default : MoneyAddress; #new; #note : [Text]}, IdentityToken) ->
+        async {defaultAddress : MoneyAddress; list : [(MoneyAddress, Note)]};
+    settlementUSCT : shared (Nat16, IdentityToken) -> async Nat32;
+    showContribution :
+      shared query Uid ->
+        async {miningDetail : MiningDetail2; referees : [AccountReferee]};
+    showMoneyAddressBalance :
+      shared query (MoneyAddress, CoinCode) ->
+        async ?(Balance, Balance, ?(ChainIdent, Timestamp, Note));
+    showStatsDTCTMining : shared query () -> async (Nat, Nat, Nat);
+    sizeAcct : shared query () -> async (Nat, Nat, Nat);
+    testQualificatin : shared query (Text, IdentityToken) -> async Bool;
+    transferToken :
+      shared (MoneyAddress, CoinCode, Nat, MoneyAddress, Text, IdentityToken) ->
+        async Balance;
+    transferToken2 :
+      shared (MoneyAddress, CoinCode, Nat, MoneyAddress, Text, IdentityToken) ->
+        async (Index, Balance, Balance);
+    unbindDepositAddress :
+      shared (MoneyAddress, CoinCode, Text, IdentityToken) -> async Bool;
+    updateUsctMiningRulelimit :
+      shared USCTminingRulelimit -> async USCTminingRulelimit;
+    usctMiningRules :
+      shared query IdentityToken ->
+        async {limit : USCTminingRulelimit; rules : [USCTminingRule]};
+    verifySecurityCircle :
+      shared query (DID, SecurityCircleVerify) ->
+        async [(CanisterId, [(MobileNumber, Index)])];
+    verifySecurityCircle2 :
+      shared composite query (DID, SecurityCircleVerify) -> async Bool;
+    walletAddressList :
+      shared query IdentityToken ->
+        async {defaultAddress : MoneyAddress; list : [(MoneyAddress, Note)]};
+    withdrawalUSCT :
+      shared (Nat, MoneyAddress, IdentityToken) -> async Balance;
+    xf820MobErr : shared Text -> async [Text];
+    xfMobAndCountry : shared () -> async Bool;
+    xfMobDid : shared (Text, Index, Text, Text) -> async Bool;
+    xfMobErr : shared (Text, Text, Text) -> async Text
+  }
+ of Account (used by Account in AccountActor in AccountActorData in Buffer in SBuffer in CanisterMap.accountCanisters.elements.Actor).
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE
