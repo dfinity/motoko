@@ -1073,7 +1073,7 @@ pub(crate) unsafe fn intra_partition_memory_grow<M: Memory>(_mem: &mut M, addres
     // Allocate the memory without keeping the usual memory reserve.
     // This is because the partition may have been allocated in a moment
     // where the reserve was granted. Such a partition remains available for
-    // subsequent incremental allocations even when the reserve is reactivated.        
+    // subsequent incremental allocations even when the reserve is reactivated.
     allocate_wasm_memory(Bytes(address));
 }
 
