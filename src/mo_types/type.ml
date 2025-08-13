@@ -1004,31 +1004,6 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-module RelArg :
-  sig
-    type arg
-    val sub : arg (* ordinary subtyping, with loss of info *)
-    val stable_sub : arg (* stable subtyping, without loss of info*)
-    val inc_depth : arg -> arg
-    val is_stable_sub : arg -> bool
-    val exceeds_max_depth : arg -> bool
-end
-=
-struct
-  let max_depth = 10_000
-  type arg = int
-  let sub = 0
-  let stable_sub = 1
-  let inc_depth arg =
-    let drop_bit = Int.logand arg 1 in
-    let depth = Int.shift_right arg 1 in
-    Int.logor (Int.shift_left (depth + 1) 1) drop_bit
-  let is_stable_sub arg = Int.logand arg 1 = 1
-  let exceeds_max_depth d =
-    Int.shift_right d 1 > max_depth
-end
-
-
 
 type compatibility = Compatible | Incompatible of explanation
 and explanation =
@@ -1054,40 +1029,70 @@ and context_item =
 and context = context_item list
 let empty_context : context = []
 
-let incompatible_types context t1 t2 =
-  Incompatible (IncompatibleTypes (context, t1, t2))
+module RelArg :
+  sig
+    type arg
+    val sub : context -> arg (* ordinary subtyping, with loss of info *)
+    val stable_sub : context -> arg (* stable subtyping, without loss of info*)
+    val inc_depth : arg -> arg
+    val push : context_item -> arg -> arg
+    val is_stable_sub : arg -> bool
+    val exceeds_max_depth : arg -> bool
+    val context : arg -> context
+end
+=
+struct
+  let max_depth = 10_000
+  type arg = {
+      is_stable_sub : bool;
+      depth : int;
+      context : context;
+    }
+  let sub context = { context; depth = 0; is_stable_sub = false }
+  let stable_sub context =  { (sub context) with is_stable_sub = true }
+  let inc_depth arg =
+    { arg with depth = arg.depth + 1 }
+  let push context_item arg =
+    { arg with context = context_item :: arg.context }
+  let is_stable_sub arg = arg.is_stable_sub
+  let exceeds_max_depth arg = arg.depth > max_depth
+  let context arg = arg.context
+end
 
-let missing_tag lab t context =
-  Incompatible (MissingTag (context, lab, t))
+let incompatible_types d t1 t2 =
+  Incompatible (IncompatibleTypes (RelArg.context d, t1, t2))
 
-let unexpected_tag lab t context =
-  Incompatible (UnexpectedTag (context, lab, t))
+let missing_tag d lab t =
+  Incompatible (MissingTag (RelArg.context d, lab, t))
 
-let missing_field lab t context =
-  Incompatible (MissingField (context, lab, t))
+let unexpected_tag d lab t =
+  Incompatible (UnexpectedTag (RelArg.context d, lab, t))
 
-let unexpected_field lab t context =
-  Incompatible (UnexpectedField (context, lab, t))
+let missing_field d lab t =
+  Incompatible (MissingField (RelArg.context d, lab, t))
+
+let unexpected_field d lab t =
+  Incompatible (UnexpectedField (RelArg.context d, lab, t))
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
-let rec rel_list_explained context item_name d p rel eq xs1 xs2 =
+let rec rel_list_explained item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
   | [], [] -> Compatible
-  | [], _ -> Incompatible (FewerItems (context, item_name))
-  | _, [] -> Incompatible (MoreItems (context, item_name))
+  | [], _ -> Incompatible (FewerItems (RelArg.context d, item_name))
+  | _, [] -> Incompatible (MoreItems (RelArg.context d, item_name))
   | x1::rest1, x2::rest2 ->
-    match (p context) d rel eq x1 x2 with
-    | Compatible -> rel_list_explained context item_name d p rel eq rest1 rest2
+    match p d rel eq x1 x2 with
+    | Compatible -> rel_list_explained item_name d p rel eq rest1 rest2
     | Incompatible explanation -> Incompatible explanation
 
 let rec rel_typ d rel eq t1 t2 =
-  match rel_typ_explained empty_context d rel eq t1 t2 with
+  match rel_typ_explained d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
-and rel_typ_explained context d rel eq t1 t2 =
+and rel_typ_explained d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
   if RelArg.exceeds_max_depth d then
     raise Undecided
@@ -1100,57 +1105,57 @@ and rel_typ_explained context d rel eq t1 t2 =
   | Pre, _ | _, Pre ->
     raise PreEncountered
   | Mut t1', Mut t2' ->
-    eq_typ_explained context d rel eq t1' t2'
+    eq_typ_explained d rel eq t1' t2'
   | Typ c1, Typ c2 ->
-    if eq_con d eq c1 c2 then Compatible else incompatible_types context t1 t2
+    if eq_con d eq c1 c2 then Compatible else incompatible_types d t1 t2
   | Mut _, _ | _, Mut _
   | Typ _, _ | _, Typ _ ->
-    incompatible_types context t1 t2
+    incompatible_types d t1 t2
   | Any, Any ->
     Compatible
   | _, Any when rel != eq ->
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (PromotionToAny (context, t1))
+      Incompatible (PromotionToAny (RelArg.context d, t1))
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
     Compatible
   | Named (n, t1'), t2 ->
-    rel_typ_explained context d rel eq t1' t2
+    rel_typ_explained d rel eq t1' t2
   | t1, Named (n, t2') ->
-    let new_context = (NamedType n)::context in
-    rel_typ_explained new_context d rel eq t1 t2'
+    let new_d = RelArg.push (NamedType n) d in
+    rel_typ_explained new_d rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ_explained context d rel eq (open_ ts1 t) t2
+      rel_typ_explained d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      let new_context = (ConsType con2)::context in
-      rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
+      let new_d =  RelArg.push (ConsType con2) d in
+      rel_typ_explained new_d rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      let new_context = (ConsType con2)::context in
-      rel_list_explained new_context "type arguments" d eq_typ_explained rel eq ts1 ts2
+      let new_d = RelArg.push (ConsType con2) d in
+      rel_list_explained "type arguments" new_d eq_typ_explained rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ_explained context d rel eq (open_ ts1 t) t2
+      rel_typ_explained d rel eq (open_ ts1 t) t2
     | _ ->
-      incompatible_types context t1 t2
+      incompatible_types d t1 t2
     )
   | Con (con1, ts1), t2 ->
     (match Cons.kind con1, t2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-      rel_typ_explained context d rel eq (open_ ts1 t) t2
+      rel_typ_explained d rel eq (open_ ts1 t) t2
     | Abs (tbs, t), _ when rel != eq ->
-      rel_typ_explained context d rel eq (open_ ts1 t) t2
-    | _ -> incompatible_types context t1 t2
+      rel_typ_explained d rel eq (open_ ts1 t) t2
+    | _ -> incompatible_types d t1 t2
     )
   | t1, Con (con2, ts2) ->
-    let new_context = (ConsType con2)::context in
+    let new_d = RelArg.push (ConsType con2) d in
     (match Cons.kind con2 with
     | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ_explained new_context d rel eq t1 (open_ ts2 t)
-    | _ -> incompatible_types context t1 t2
+      rel_typ_explained new_d rel eq t1 (open_ ts2 t)
+    | _ -> incompatible_types d t1 t2
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     Compatible
@@ -1158,47 +1163,47 @@ and rel_typ_explained context d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (IncompatiblePrims (context, t1, t2))
+      Incompatible (IncompatiblePrims (RelArg.context d, t1, t2))
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleObjSorts (context, t1, t2))
+      Incompatible (IncompatibleObjSorts (RelArg.context d, t1, t2))
     else
-      rel_fields_explained context t2 d rel eq tfs1 tfs2
+      rel_fields_explained t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ_explained context d rel eq t1' t2'
+    rel_typ_explained  d rel eq t1' t2'
   | Opt t1', Opt t2' ->
-    rel_typ_explained context d rel eq t1' t2'
+    rel_typ_explained d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     Compatible
   | Variant fs1, Variant fs2 ->
-    rel_tags_explained context t2 d rel eq fs1 fs2
+    rel_tags_explained t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
+    rel_list_explained "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleFuncSorts (context, t1, t2))
+      Incompatible (IncompatibleFuncSorts (RelArg.context d, t1, t2))
     else if c1 <> c2 then
-      Incompatible (IncompatibleBounds (context, t1, t2))
+      Incompatible (IncompatibleBounds (RelArg.context d, t1, t2))
     else
       (match rel_binds d eq eq tbs1 tbs2 with
        | Some ts ->
-         (match (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11)) with
-          | Compatible -> (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
+         (match (rel_list_explained "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11)) with
+          | Compatible -> (rel_list_explained "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
           | incompatible -> incompatible)
-      | None -> Incompatible (IncompatibleFuncs (context, t1, t2))
+      | None -> Incompatible (IncompatibleFuncs (RelArg.context d, t1, t2))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleAsyncSorts (context, t1, t2))
+      Incompatible (IncompatibleAsyncSorts (RelArg.context d, t1, t2))
     else
-      (match eq_typ_explained context d rel eq t11 t21 with
+      (match eq_typ_explained d rel eq t11 t21 with
        | Compatible ->
-         rel_typ_explained context d rel eq t12 t22
+         rel_typ_explained d rel eq t12 t22
        | incompatible -> incompatible)
-  | _, _ -> incompatible_types context t1 t2
+  | _, _ -> incompatible_types d t1 t2
   end
 
-and rel_fields_explained context t2 d rel eq tfs1 tfs2 =
+and rel_fields_explained t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1208,29 +1213,29 @@ and rel_fields_explained context t2 d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
     | 0 ->
-      let new_context = (Field tf2.lab)::context in
+      let new_d = RelArg.push (Field tf2.lab) d in
       let compatible =
-        match rel_typ_explained new_context d rel eq tf1.typ tf2.typ with
+        match rel_typ_explained new_d rel eq tf1.typ tf2.typ with
         | Compatible ->
-          rel_fields_explained context t2 d rel eq tfs1' tfs2'
+          rel_fields_explained t2 d rel eq tfs1' tfs2'
         | incompatible -> incompatible
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields_explained context t2 d rel eq tfs1' tfs2
+      rel_fields_explained t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
-        unexpected_field tf2.lab t2 context
+        unexpected_field d tf2.lab t2
       else
-        missing_field tf1.lab t2 context
+        missing_field d tf1.lab t2
     )
   | [], tf2::_ ->
-    unexpected_field tf2.lab t2 context
+    unexpected_field d tf2.lab t2
   | tf1::_, [] ->
-    missing_field tf1.lab t2 context
+    missing_field d tf1.lab t2
 
-and rel_tags_explained context t2 d rel eq tfs1 tfs2 =
+and rel_tags_explained t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1241,25 +1246,25 @@ and rel_tags_explained context t2 d rel eq tfs1 tfs2 =
     (match compare_field tf1 tf2 with
     | 0 ->
       let compatible =
-        match rel_typ_explained context d rel eq tf1.typ tf2.typ with
+        match rel_typ_explained d rel eq tf1.typ tf2.typ with
         | Compatible ->
-          rel_tags_explained context t2 d rel eq tfs1' tfs2'
+          rel_tags_explained t2 d rel eq tfs1' tfs2'
         | incompatible -> incompatible
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | +1 when rel != eq ->
-      rel_tags_explained context t2 d rel eq tfs1 tfs2'
+      rel_tags_explained t2 d rel eq tfs1 tfs2'
     | result ->
       if result > 0 then
-        unexpected_tag tf2.lab t2 context
+        unexpected_tag d tf2.lab t2
       else
-        missing_tag tf1.lab t2 context
+        missing_tag d tf1.lab t2
     )
   | [], tf2::_ ->
-    unexpected_tag tf2.lab t2 context
+    unexpected_tag d tf2.lab t2
   | tf1::_, [] ->
-    missing_tag tf1.lab t2 context
+    missing_tag d tf1.lab t2
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
@@ -1272,18 +1277,18 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 =
-  match eq_typ_explained empty_context d rel eq t1 t2 with
+  match eq_typ_explained d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
-and eq_typ_explained context d rel eq t1 t2 = rel_typ_explained context d eq eq t1 t2
+and eq_typ_explained d rel eq t1 t2 = rel_typ_explained d eq eq t1 t2
 
 and eq_kind' eq k1 k2 : bool =
   match k1, k2 with
   | Def (tbs1, t1), Def (tbs2, t2)
   | Abs (tbs1, t1), Abs (tbs2, t2) ->
-    (match rel_binds RelArg.sub eq eq tbs1 tbs2 with
-    | Some ts -> eq_typ RelArg.sub eq eq (open_ ts t1) (open_ ts t2)
+    (match rel_binds (RelArg.sub []) eq eq tbs1 tbs2 with
+    | Some ts -> eq_typ (RelArg.sub []) eq eq (open_ ts t1) (open_ ts t2)
     | None -> false
     )
   | _ -> false
@@ -1303,11 +1308,11 @@ and eq_con d eq c1 c2 =
 
 let eq_binds ?(src_fields = empty_srcs_tbl ()) tbs1 tbs2 =
   with_src_field_updates_predicate src_fields (fun () ->
-    let eq = ref SS.empty in rel_binds RelArg.sub eq eq tbs1 tbs2 <> None)
+    let eq = ref SS.empty in rel_binds (RelArg.sub []) eq eq tbs1 tbs2 <> None)
 
 let eq ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
-    let eq = ref SS.empty in eq_typ RelArg.sub eq eq t1 t2)
+    let eq = ref SS.empty in eq_typ (RelArg.sub []) eq eq t1 t2)
 
 let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
@@ -1315,12 +1320,12 @@ let eq_kind ?(src_fields = empty_srcs_tbl ()) k1 k2 : bool =
 
 let sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
   with_src_field_updates_predicate_general src_fields (fun () ->
-    rel_typ_explained context RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ_explained (RelArg.sub context) (ref SS.empty) (ref SS.empty) t1 t2)
     (fun result -> result = Compatible)
 
 let sub ?(src_fields = empty_srcs_tbl ()) t1 t2 : bool =
   with_src_field_updates_predicate src_fields (fun () ->
-    rel_typ RelArg.sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ (RelArg.sub []) (ref SS.empty) (ref SS.empty) t1 t2)
 
 (* Compatibility *)
 
@@ -2274,12 +2279,12 @@ let _ = str := string_of_typ
 (* Stable signatures *)
 let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =
   with_src_field_updates_predicate_general src_fields (fun () ->
-    rel_typ_explained context RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ_explained (RelArg.stable_sub context) (ref SS.empty) (ref SS.empty) t1 t2)
     (fun result -> result = Compatible)
 
 let stable_sub ?(src_fields = empty_srcs_tbl ()) t1 t2 =
   with_src_field_updates_predicate src_fields (fun () ->
-    rel_typ RelArg.stable_sub (ref SS.empty) (ref SS.empty) t1 t2)
+    rel_typ (RelArg.stable_sub []) (ref SS.empty) (ref SS.empty) t1 t2)
 
 let pre = function
   | Single tfs ->
