@@ -2,6 +2,8 @@ open Mo_types
 
 open Type
 
+module Pretty = Type.MakePretty(Type.ElideStampsAndHashes)
+
 let migration_link = "https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function"
 
 (* Signature matching *)
@@ -11,10 +13,6 @@ let cat = "Compatibility"
 (* signature matching with multiple error reporting
    c.f. (simpler) Types.match_sig.
 *)
-
-let display_typ = Lib.Format.display Type.pp_typ
-
-let display_typ_expand = Lib.Format.display Type.pp_typ_expand
 
 let error_discard s tf =
   Diag.add_msg s
@@ -28,7 +26,7 @@ let error_sub s tf1 tf2 explanation =
     (Diag.error_message Source.no_region "M0170" cat
       (Format.asprintf "the type of stable variable %s is not compatible to the previous program version:\n %s.\n Write an explicit migration function, please see %s."
         tf1.lab
-        (string_of_explanation explanation)
+        (Pretty.string_of_explanation explanation)
         migration_link))
 
 let error_stable_sub s tf1 tf2 explanation =
@@ -36,7 +34,7 @@ let error_stable_sub s tf1 tf2 explanation =
     (Diag.error_message Source.no_region "M0216" cat
       (Format.asprintf "the type of stable variable %s implicitly drops data of the previous program version:\n %s.\n The data can only be dropped by an explicit migration function, please see %s."
         tf1.lab
-        (string_of_explanation explanation)
+        (Pretty.string_of_explanation explanation)
         migration_link))
 
 let error_required s tf =

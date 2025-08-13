@@ -1055,10 +1055,6 @@ and context_item =
 and context = context_item list
 let empty_context : context = []
 
-(* HACK: expensive too *)
-let remove_hash_suffix s =
-  Str.global_replace (Str.regexp "__[0-9]+$") "" s
-
 let incompatible_types context t1 t2 =
   Incompatible (IncompatibleTypes (context, t1, t2))
 
@@ -1781,6 +1777,7 @@ let string_of_func_sort = function
 module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
+  val show_hash_suffix : bool (* TODO: remove once we pretty print stable sigs without hashes *)
   val con_sep : string
   val par_sep : string
 end
@@ -1788,6 +1785,7 @@ end
 module ShowStamps = struct
   let show_stamps = true
   let show_scopes = true
+  let show_hash_suffix = true
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
 end
@@ -1795,6 +1793,7 @@ end
 module ElideStamps = struct
   let show_stamps = false
   let show_scopes = true
+  let show_hash_suffix = true
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
 end
@@ -1804,9 +1803,33 @@ module ParseableStamps = struct
   let show_scopes = true (* false ok too *)
   let con_sep = "__"
   let par_sep = "_"
+  let show_hash_suffix = true
+end
+
+module ElideStampsAndHashes = struct
+  include ElideStamps
+  let show_hash_suffix = false
 end
 
 module MakePretty(Cfg : PrettyConfig) = struct
+
+let remove_hash_suffix s =
+  let len = String.length s in
+  if len = 0 then s
+  else
+    (* Find the end of any trailing digits *)
+    let rec find_digit_end i =
+      if i < 0 then -1
+      else if s.[i] >= '0' && s.[i] <= '9' then find_digit_end (i - 1)
+      else i
+    in
+    let digit_end = find_digit_end (len - 1) in
+    (* Check if we found digits and they're preceded by "__" *)
+    if digit_end >= 0 && digit_end < len - 1 && digit_end >= 1 &&
+       s.[digit_end] = '_' && s.[digit_end - 1] = '_' then
+      String.sub s 0 (digit_end - 1)
+    else
+      s
 
 open Format
 
@@ -1825,9 +1848,10 @@ let vs_of_cs cs =
 let string_of_var (x, i) =
   if i = 0 then sprintf "%s" x else sprintf "%s%s%d" x Cfg.par_sep i
 
-let string_of_con c = 
+let string_of_con c =
   let name = Cons.to_string Cfg.show_stamps Cfg.con_sep c in
-  if Cfg.show_stamps then name else remove_hash_suffix name
+  if Cfg.show_hash_suffix then name
+  else remove_hash_suffix name
 
 let rec can_sugar = function
   | Func(s, Promises, tbs, ts1, ts2)

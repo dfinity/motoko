@@ -361,6 +361,7 @@ end
 module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
+  val show_hash_suffix : bool
   val con_sep : string
   val par_sep : string
 end
@@ -370,6 +371,8 @@ module ShowStamps : PrettyConfig
 module ElideStamps : PrettyConfig
 
 module ParseableStamps : PrettyConfig
+
+module ElideStampsAndHashes : PrettyConfig
 
 module MakePretty(_ : PrettyConfig) : Pretty
 
