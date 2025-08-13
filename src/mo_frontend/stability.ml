@@ -65,9 +65,9 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
-         List.iter (fun (required, tf) ->
-           if required then error_required s tf) tfs2;
-         Some () (* new fields ok *)
+        List.iter (fun (required, tf) ->
+          if required then error_required s tf) tfs2;
+        Some () (* new fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropped field rejected, recurse on tfs1' *)
         error_discard s tf1;

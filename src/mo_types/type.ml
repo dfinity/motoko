@@ -1780,6 +1780,7 @@ module type PrettyConfig = sig
   val show_hash_suffix : bool (* TODO: remove once we pretty print stable sigs without hashes *)
   val con_sep : string
   val par_sep : string
+  val max_list : int option
 end
 
 module ShowStamps = struct
@@ -1788,6 +1789,7 @@ module ShowStamps = struct
   let show_hash_suffix = true
   let con_sep = "__" (* TODO: revert to "/" *)
   let par_sep = "_"
+  let max_list = None
 end
 
 module ElideStamps = struct
@@ -1796,6 +1798,7 @@ module ElideStamps = struct
   let show_hash_suffix = true
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
+  let max_list = Some 10
 end
 
 module ParseableStamps = struct
@@ -1804,6 +1807,7 @@ module ParseableStamps = struct
   let con_sep = "__"
   let par_sep = "_"
   let show_hash_suffix = true
+  let max_list = None
 end
 
 module ElideStampsAndHashes = struct
@@ -1831,7 +1835,24 @@ let remove_hash_suffix s =
     else
       s
 
+
 open Format
+
+(* To format a list *)
+let pp_print_list ?(pp_sep = pp_print_cut) pp_v ppf v =
+  match Cfg.max_list with
+  | None -> pp_print_list ~pp_sep pp_v ppf v
+  | Some max ->
+     let len = List.length v in
+     if len < max then
+       pp_print_list ~pp_sep pp_v ppf v
+     else
+       let pre_vs = Lib.List.take (max / 2) v in
+       let post_vs = Lib.List.drop (len - (max / 2)) v in
+       pp_print_list ~pp_sep pp_v ppf pre_vs;
+       pp_sep ppf ();
+       fprintf ppf "...@ ";
+       pp_print_list ~pp_sep pp_v ppf post_vs
 
 let pr = pp_print_string
 
@@ -2226,7 +2247,6 @@ let string_of_explanation explanation =
     Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleAsyncSorts (context, t1, t2) ->
     Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
-
 
 end
 

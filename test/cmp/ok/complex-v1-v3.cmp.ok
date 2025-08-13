@@ -10,11 +10,7 @@
     description : Text;
     githubRepos : [Text];
     id : Text;
-    milestones : [Text];
-    name : Text;
-    owner : Principal;
-    riskFactors : [Text];
-    riskLevel : RiskLevel;
+    ...
     shipDate : Time;
     signalGroup : Text;
     slackChannel : Text;

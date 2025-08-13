@@ -12,6 +12,11 @@ struct
 
   let display pp ppf x =
     Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+
+  let display_outline pp ppf x =
+    Format.pp_set_max_boxes ppf 4;
+    Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+
 end
 
 module Fun =

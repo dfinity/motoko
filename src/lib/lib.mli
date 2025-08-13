@@ -8,6 +8,9 @@ sig
   (* Display input on newline vertically indented 2 spaces *)
   val display : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
 
+  (* Display input on newline vertically indented 2 spaces *)
+  val display_outline : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+
 end
 
 module Fun :
