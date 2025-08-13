@@ -2167,7 +2167,7 @@ module WeakRef = struct
       Weak references
 
        ┌──────┬─────┬─────────┐
-       │ obj header │ payload │
+       │ obj header │ field │
        └──────┴─────┴─────────┘
 
      The object header includes the obj tag (Weak) and the forwarding pointer.
