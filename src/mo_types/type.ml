@@ -515,7 +515,6 @@ let close_binds cs tbs =
   if cs = [] then tbs else
   List.map (fun tb -> { tb with bound = close cs tb.bound })  tbs
 
-
 let rec open' i ts t =
   match t with
   | Prim _ -> t
@@ -933,7 +932,6 @@ let stable t = serializable true t
 let str = ref (fun _ -> failwith "")
 let display_typ = ref (fun (ppf: Format.formatter) (t: typ) -> ())
 
-
 (* Aggregation of source fields, for use by the language server. *)
 let src_field_updates = ref []
 let src_field_map = ref (empty_srcs_tbl ())
@@ -1032,16 +1030,30 @@ struct
 end
 
 
-type compatibility = Compatible | Incompatible of string
 
-type explanation_scope =
+type compatibility = Compatible | Incompatible of reason
+and reason =
+  | IncompatibleTypes of context * typ * typ
+  | MissingTag of context * lab * typ
+  | UnexpectedTag of context * lab * typ
+  | MissingField of context * lab * typ
+  | UnexpectedField of context * lab * typ
+  | FewerItems of context * string
+  | MoreItems of context * string
+  | PromotionToAny of context * typ
+  | IncompatiblePrims of context * typ * typ
+  | IncompatibleObjSorts of context * typ * typ
+  | IncompatibleFuncSorts of context * typ * typ
+  | IncompatibleBounds of context * typ * typ
+  | IncompatibleFuncs of context * typ * typ
+  | IncompatibleAsyncSorts of context * typ * typ
+and context_item =
   | ConsType of con
   | NamedType of name
   | StableVariable of lab
   | Field of lab
-
-type explanation_path = explanation_scope list
-let empty_explanation : explanation_path = []
+and context = context_item list
+let empty_context : context = []
 
 (* HACK: expensive too *)
 let remove_hash_suffix s =
@@ -1121,19 +1133,19 @@ let readable_type typ =
 let readable_type x = (!display_typ) x
 
 let incompatible_types context t1 t2 =
-  Incompatible (Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" readable_type t1 readable_type t2 (string_of_path context))
+  Incompatible (IncompatibleTypes (context, t1, t2))
 
-let missing_tag label t context =
-  Incompatible (Format.asprintf "Missing tag #%s in type %a\n of %s" label readable_type t (string_of_path context))
+let missing_tag lab t context =
+  Incompatible (MissingTag (context, lab, t))
 
-let unexpected_tag label t context =
-  Incompatible (Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" label readable_type t (string_of_path context))
+let unexpected_tag lab t context =
+  Incompatible (UnexpectedTag (context, lab, t))
 
-let missing_field label t context =
-  Incompatible (Format.asprintf "Missing field %s in type %a\n of %s" label readable_type t (string_of_path context))
+let missing_field lab t context =
+  Incompatible (MissingField (context, lab, t))
 
-let unexpected_field label t context =
-  Incompatible (Format.asprintf "Unsupported additional field %s in type %a\n of %s" label readable_type t (string_of_path context))
+let unexpected_field lab t context =
+  Incompatible (UnexpectedField (context, lab, t))
 
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
@@ -1141,22 +1153,22 @@ let rel_list d p rel eq xs1 xs2 =
 let rec rel_list_explained context item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
   | [], [] -> Compatible
-  | [], _ -> Incompatible (Printf.sprintf "Fewer %s in %s than expected" item_name (string_of_path context))
-  | _, [] -> Incompatible (Printf.sprintf "More %s in %s than expected" item_name (string_of_path context))
+  | [], _ -> Incompatible (FewerItems (context, item_name))
+  | _, [] -> Incompatible (MoreItems (context, item_name))
   | x1::rest1, x2::rest2 ->
     match (p context) d rel eq x1 x2 with
     | Compatible -> rel_list_explained context item_name d p rel eq rest1 rest2
     | Incompatible explanation -> Incompatible explanation
 
 let rec rel_typ d rel eq t1 t2 =
-  match rel_typ_explained empty_explanation d rel eq t1 t2 with
+  match rel_typ_explained empty_context d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
 and rel_typ_explained context d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
-  if RelArg.exceeds_max_depth d then 
-    raise Undecided 
+  if RelArg.exceeds_max_depth d then
+    raise Undecided
   else if t1 == t2 || SS.mem (t1, t2) !rel then
     Compatible
   else begin
@@ -1178,7 +1190,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" readable_type t1 (string_of_path context))
+      Incompatible (PromotionToAny (context, t1))
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
@@ -1224,10 +1236,10 @@ and rel_typ_explained context d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      Incompatible (IncompatiblePrims (context, t1, t2))
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      Incompatible (IncompatibleObjSorts (context, t1, t2))
     else
       rel_fields_explained context t1 t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
@@ -1242,20 +1254,20 @@ and rel_typ_explained context d rel eq t1 t2 =
     rel_list_explained context "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      Incompatible (IncompatibleFuncSorts (context, t1, t2))
     else if c1 <> c2 then
-      Incompatible (Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      Incompatible (IncompatibleBounds (context, t1, t2))
     else
       (match rel_binds d eq eq tbs1 tbs2 with
        | Some ts ->
          (match (rel_list_explained context "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11)) with
           | Compatible -> (rel_list_explained context "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
           | incompatible -> incompatible)
-      | None -> Incompatible (Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      | None -> Incompatible (IncompatibleFuncs (context, t1, t2))
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context))
+      Incompatible (IncompatibleAsyncSorts (context, t1, t2))
     else
       (match eq_typ_explained context d rel eq t11 t21 with
        | Compatible ->
@@ -1338,7 +1350,7 @@ and rel_bind ts d rel eq tb1 tb2 =
   rel_typ d rel eq (open_ ts tb1.bound) (open_ ts tb2.bound)
 
 and eq_typ d rel eq t1 t2 =
-  match eq_typ_explained empty_explanation d rel eq t1 t2 with
+  match eq_typ_explained empty_context d rel eq t1 t2 with
   | Compatible -> true
   | Incompatible explanation -> false
 
@@ -2212,7 +2224,39 @@ let strings_of_kind k : string * string * string =
 
 let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_typ_expand ppf) typ
+      pp_typ_expand ppf) typ
+
+let string_of_reason reason =
+  match reason with
+  | IncompatibleTypes (context, t1, t2) ->
+    Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" readable_type t1 readable_type t2 (string_of_path context)
+  | MissingTag (context, lab, t) ->
+    Format.asprintf "Missing tag #%s in type %a\n of %s" lab readable_type t (string_of_path context)
+  | UnexpectedTag (context, lab, t) ->
+    Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" lab readable_type t (string_of_path context)
+  | MissingField (context, lab, t) ->
+    Format.asprintf "Missing field %s in type %a\n of %s" lab readable_type t (string_of_path context)
+  | UnexpectedField (context, lab, t) ->
+    Format.asprintf "Unsupported additional field %s in type %a\n of %s" lab readable_type t (string_of_path context)
+  | FewerItems (context, desc) ->
+    Format.asprintf "Fewer %s in %s than expected" desc (string_of_path context)
+  | MoreItems (context, desc) ->
+    Format.asprintf "More %s in %s than expected" desc (string_of_path context)
+  | PromotionToAny (context, t) ->
+    Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" readable_type t (string_of_path context)
+  | IncompatiblePrims (context, t1, t2) ->
+    Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+  | IncompatibleObjSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+  | IncompatibleFuncSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+  | IncompatibleBounds (context, t1, t2) ->
+    Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+  | IncompatibleFuncs (context, t1, t2) ->
+    Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+  | IncompatibleAsyncSorts (context, t1, t2) ->
+    Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+
 
 end
 
@@ -2230,6 +2274,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_reason : reason -> string
 end
 
 include MakePretty(ElideStamps)
