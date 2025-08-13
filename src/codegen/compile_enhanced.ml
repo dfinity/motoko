@@ -1951,7 +1951,7 @@ module Tagged = struct
     | Region -> 39L
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
-    | ArraySliceMinimum -> 44L
+    | ArraySliceMinimum -> 46L
     | WeakRef -> 45L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
