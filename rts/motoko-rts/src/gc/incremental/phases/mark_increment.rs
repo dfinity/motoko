@@ -15,7 +15,7 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
-#[enhanced_orthogonal_persistence]
+#[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
 use crate::persistence::{
     clear_weak_ref_registry, get_weak_ref_registry, initialize_weak_ref_registry,
     is_weak_ref_registry_null,
