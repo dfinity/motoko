@@ -1031,8 +1031,8 @@ end
 
 
 
-type compatibility = Compatible | Incompatible of reason
-and reason =
+type compatibility = Compatible | Incompatible of explanation
+and explanation =
   | IncompatibleTypes of context * typ * typ
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
@@ -2170,9 +2170,9 @@ let string_of_context path =
   in
     emit_path false path
 
-let string_of_reason reason =
+let string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
-  match reason with
+  match explanation with
   | IncompatibleTypes (context, t1, t2) ->
     Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
   | MissingTag (context, lab, t) ->
@@ -2219,7 +2219,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_reason : reason -> string
+  val string_of_explanation : explanation -> string
 end
 
 include MakePretty(ElideStamps)

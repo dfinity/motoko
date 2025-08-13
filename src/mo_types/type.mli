@@ -233,8 +233,8 @@ val cons_kind : kind -> ConSet.t
 
 (* Equivalence and Subtyping *)
 
-type compatibility = Compatible | Incompatible of reason
-and reason =
+type compatibility = Compatible | Incompatible of explanation
+and explanation =
   | IncompatibleTypes of context * typ * typ
   | MissingTag of context * lab * typ
   | UnexpectedTag of context * lab * typ
@@ -355,7 +355,7 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
-  val string_of_reason : reason -> string
+  val string_of_explanation : explanation -> string
 end
 
 module type PrettyConfig = sig
