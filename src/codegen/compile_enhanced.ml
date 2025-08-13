@@ -2179,8 +2179,8 @@ module WeakRef = struct
     Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
 
   let load_field env =
-     Tagged.load_forwarding_pointer env ^^
-     Tagged.load_field env field
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
 
   let store_field env =
     let (set_weak_value, get_weak_value) = new_local env "weak_value" in
