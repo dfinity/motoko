@@ -2230,22 +2230,22 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
       pp_typ_expand ppf) typ
 
-let string_of_context path =
-  let rec emit_path nested path =
-    match path with
+let string_of_context context =
+  let rec emit_context nested context =
+    match context with
     | [] -> "top level"
-    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
+    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_context nested rest) label
     | (ConsType c)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
+       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (ConsType c)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
+       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" name (emit_path true rest)
+       Printf.sprintf "%s (used by %s)" name (emit_context true rest)
     | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" name (emit_path true rest)
+       Printf.sprintf "%s in %s" name (emit_context true rest)
     | (StableVariable name)::_ -> name
   in
-    emit_path false path
+    emit_context false context
 
 let string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
