@@ -1074,14 +1074,41 @@ let missing_field d lab t =
 let unexpected_field d lab t =
   Incompatible (UnexpectedField (RelArg.context d, lab, t))
 
+let fewer_items d desc =
+  Incompatible (FewerItems (RelArg.context d, desc))
+
+let more_items d desc =
+  Incompatible (MoreItems (RelArg.context d, desc))
+
+let promotion_to_any d t =
+  Incompatible (PromotionToAny (RelArg.context d, t))
+
+let incompatible_prims d t1 t2 =
+  Incompatible (IncompatiblePrims (RelArg.context d, t1, t2))
+
+let incompatible_obj_sorts d t1 t2 =
+  Incompatible (IncompatibleObjSorts (RelArg.context d, t1, t2))
+
+let incompatible_func_sorts d t1 t2 =
+  Incompatible (IncompatibleObjSorts (RelArg.context d, t1, t2))
+
+let incompatible_bounds d t1 t2 =
+  Incompatible (IncompatibleBounds (RelArg.context d, t1, t2))
+
+let incompatible_funcs d t1 t2 =
+  Incompatible (IncompatibleFuncs (RelArg.context d, t1, t2))
+
+let incompatible_async_sorts d t1 t2 =
+  Incompatible (IncompatibleAsyncSorts (RelArg.context d, t1, t2))
+
 let rel_list d p rel eq xs1 xs2 =
   try List.for_all2 (p d rel eq) xs1 xs2 with Invalid_argument _ -> false
 
 let rec rel_list_explained item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
   | [], [] -> Compatible
-  | [], _ -> Incompatible (FewerItems (RelArg.context d, item_name))
-  | _, [] -> Incompatible (MoreItems (RelArg.context d, item_name))
+  | [], _ -> fewer_items d item_name
+  | _, [] -> more_items d item_name
   | x1::rest1, x2::rest2 ->
     match p d rel eq x1 x2 with
     | Compatible -> rel_list_explained item_name d p rel eq rest1 rest2
@@ -1117,7 +1144,7 @@ and rel_typ_explained d rel eq t1 t2 =
     if not (RelArg.is_stable_sub d) then
       Compatible
     else
-      Incompatible (PromotionToAny (RelArg.context d, t1))
+      promotion_to_any d t1
   | Non, Non ->
     Compatible
   | Non, _ when rel != eq ->
@@ -1163,10 +1190,10 @@ and rel_typ_explained d rel eq t1 t2 =
     if p1 = Nat && p2 = Int then
       Compatible
     else
-      Incompatible (IncompatiblePrims (RelArg.context d, t1, t2))
+      incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleObjSorts (RelArg.context d, t1, t2))
+      incompatible_obj_sorts d t1 t2
     else
       rel_fields_explained t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
@@ -1181,20 +1208,20 @@ and rel_typ_explained d rel eq t1 t2 =
     rel_list_explained "tuple type arguments" d rel_typ_explained rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleFuncSorts (RelArg.context d, t1, t2))
+      incompatible_func_sorts d t1 t2
     else if c1 <> c2 then
-      Incompatible (IncompatibleBounds (RelArg.context d, t1, t2))
+      incompatible_bounds d t1 t2
     else
       (match rel_binds d eq eq tbs1 tbs2 with
        | Some ts ->
          (match (rel_list_explained "function parameters" d rel_typ_explained rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11)) with
           | Compatible -> (rel_list_explained "return types" d rel_typ_explained rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22))
           | incompatible -> incompatible)
-      | None -> Incompatible (IncompatibleFuncs (RelArg.context d, t1, t2))
+      | None -> incompatible_funcs d t1 t2
       )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     if s1 <> s2 then
-      Incompatible (IncompatibleAsyncSorts (RelArg.context d, t1, t2))
+      incompatible_async_sorts d t1 t2
     else
       (match eq_typ_explained d rel eq t11 t21 with
        | Compatible ->
