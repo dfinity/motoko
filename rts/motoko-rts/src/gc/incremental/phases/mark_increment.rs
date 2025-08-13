@@ -16,10 +16,7 @@ use crate::{
 };
 
 #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
-use crate::persistence::{
-    clear_weak_ref_registry, get_weak_ref_registry, initialize_weak_ref_registry,
-    is_weak_ref_registry_null,
-};
+use crate::persistence::{clear_weak_ref_registry, get_weak_ref_registry};
 
 /// Use a long-term representation by relying on C layout.
 #[repr(C)]
@@ -46,31 +43,25 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             mark_stack,
             complete: false,
         });
-
-        // Initialize weak_ref_registry in persistent metadata
-        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
-        {
-            initialize_weak_ref_registry(mem);
-        }
     }
 
-    pub unsafe fn complete_phase(state: &mut State) {
-        debug_assert!(Self::mark_completed(state));
+    pub unsafe fn complete_phase(mem: &mut M, state: &mut State) {
+        debug_assert!(Self::mark_completed(mem, state));
         state.mark_state = StableOption::None;
         #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
         {
             // The weak reference registry must be empty at the end of the marking phase.
-            debug_assert!(get_weak_ref_registry().is_empty());
+            debug_assert!(get_weak_ref_registry(mem).is_empty());
             // Clear weak_ref_registry in persistent metadata for the next GC run.
             clear_weak_ref_registry();
         }
     }
 
-    pub unsafe fn mark_completed(state: &State) -> bool {
+    pub unsafe fn mark_completed(_mem: &mut M, state: &State) -> bool {
         let mark_state = state.mark_state.as_ref().unwrap();
         debug_assert!(!mark_state.complete || mark_state.mark_stack.is_empty());
         #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
-        debug_assert!(!mark_state.complete || get_weak_ref_registry().is_empty());
+        debug_assert!(!mark_state.complete || get_weak_ref_registry(_mem).is_empty());
         mark_state.complete
     }
 
@@ -102,17 +93,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             // Allocation after complete marking: Wait until the next GC increment.
             debug_assert!(self.mark_stack.is_empty());
             return;
-        }
-        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
-        {
-            if is_weak_ref_registry_null() {
-                // This is an increment from a version of the RTS without weak reference
-                // support. In this case, the weak reference registry is NULL_POINTER.
-                // We need to properly initialize it so that it can be used if needed.
-                // Also certain assertions in the weak reference code rely on an existing
-                // weak reference registry on which we can call is_empty().
-                initialize_weak_ref_registry(self.mem);
-            }
         }
         loop {
             let value = self.mark_stack.pop();
@@ -161,7 +141,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                     // no weak reference is collected twice.
                     // That is because the mark_object() primitive above
                     // ensures that we do not mark the same object twice.
-                    get_weak_ref_registry().push(self.mem, value);
+                    get_weak_ref_registry(self.mem).push(self.mem, value);
                 }
             }
         }
@@ -207,7 +187,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             // Process all weak references collected during marking.
             // If the target object is not marked, clear the weak reference.
             loop {
-                let weak_ref_value = get_weak_ref_registry().pop();
+                let weak_ref_value = get_weak_ref_registry(self.mem).pop();
                 if weak_ref_value == STACK_EMPTY {
                     break;
                 }

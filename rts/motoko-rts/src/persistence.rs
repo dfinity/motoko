@@ -116,6 +116,7 @@ pub unsafe fn initialize_memory<M: Memory>() {
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
+        // Explicit migration from a version of the RTS without weak reference support.
         if (*metadata).weak_ref_registry.get_raw() == 0 {
             // This is the first upgrade from a version of the RTS without weak reference
             // support. We need to initialize the weak reference registry to NULL_POINTER.
@@ -282,9 +283,19 @@ pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
 }
 
 /// Accessor method for the weak reference registry.
-pub(crate) unsafe fn get_weak_ref_registry() -> &'static mut MarkStack {
-    debug_assert!((*PersistentMetadata::get()).weak_ref_registry != NULL_POINTER);
+pub(crate) unsafe fn get_weak_ref_registry<M: Memory>(mem: &mut M) -> &'static mut MarkStack {
     debug_assert!((*PersistentMetadata::get()).weak_ref_registry.get_raw() != 0);
+
+    // Lazy initialization of the weak reference registry.
+    if is_weak_ref_registry_null() {
+        // This can be run during an increment from a version of the RTS without weak reference
+        // support. In this case, the weak reference registry is NULL_POINTER (see the initial migration
+        // in function `initialize_memory`).
+        // We need to properly initialize it so that it can be used if needed.
+        // Also certain assertions in the weak reference code rely on an existing
+        // weak reference registry on which we can call is_empty().
+        initialize_weak_ref_registry(mem);
+    }
 
     let metadata = PersistentMetadata::get();
     let registry_value = (*metadata).weak_ref_registry;
@@ -293,7 +304,7 @@ pub(crate) unsafe fn get_weak_ref_registry() -> &'static mut MarkStack {
 }
 
 /// Initialize the weak reference registry in persistent metadata.
-pub(crate) unsafe fn initialize_weak_ref_registry<M: Memory>(mem: &mut M) {
+unsafe fn initialize_weak_ref_registry<M: Memory>(mem: &mut M) {
     debug_assert!((*PersistentMetadata::get()).weak_ref_registry == NULL_POINTER);
     // Allocate a pointer to a MarkStack object explicitly on the heap, through a blob.
     // No barrier needed, the lifetime of the whole weak reference registry
@@ -316,7 +327,7 @@ pub(crate) unsafe fn clear_weak_ref_registry() {
 }
 
 /// Check if the weak reference registry is NULL_POINTER.
-pub(crate) unsafe fn is_weak_ref_registry_null() -> bool {
+unsafe fn is_weak_ref_registry_null() -> bool {
     let metadata = PersistentMetadata::get();
     (*metadata).weak_ref_registry == NULL_POINTER
 }
