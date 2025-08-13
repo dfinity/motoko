@@ -930,7 +930,6 @@ let stable t = serializable true t
 (* Forward declare
    TODO: haul string_of_typ before the lub/glb business, if possible *)
 let str = ref (fun _ -> failwith "")
-let display_typ = ref (fun (ppf: Format.formatter) (t: typ) -> ())
 
 (* Aggregation of source fields, for use by the language server. *)
 let src_field_updates = ref []
