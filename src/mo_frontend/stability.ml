@@ -21,7 +21,7 @@ let display_typ_expand = Lib.Format.display Pretty.pp_typ_expand
 let error_discard s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "the stable variable %s of the previous version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see %s"
+      (Format.asprintf "the stable variable `%s` of the previous version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see %s"
         tf.lab
         migration_link))
 
