@@ -1059,79 +1059,6 @@ let empty_context : context = []
 let remove_hash_suffix s =
   Str.global_replace (Str.regexp "__[0-9]+$") "" s
 
-let string_of_path path =
-  let rec emit_path nested path =
-    match path with
-    | [] -> "top level"
-    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
-    | (ConsType c)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
-    | (ConsType c)::rest ->
-       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
-    | (NamedType name)::rest when not nested ->
-       Printf.sprintf "%s (used by %s)" name (emit_path true rest)
-    | (NamedType name)::rest ->
-       Printf.sprintf "%s in %s" name (emit_path true rest)
-    | (StableVariable name)::_ -> name
-  in
-    emit_path false path
-
-(* TBD
-let readable_list map separator list =
-  let rec print_list index list =
-    match list with
-    | [] -> ""
-    | _ when index > 3 -> "..."
-    | item::[] -> map item
-    | item::rest ->
-      Printf.sprintf "%s%s%s" (map item) separator (print_list (index + 1) rest)
-  in
-    print_list 0 list
-
-let readable_type typ =
-  let rec print_type_list depth list =
-    if depth >= 3 then "..." else
-      readable_list (fun inner -> print_type (depth + 1) inner) ", " list
-  and print_type depth typ =
-    match typ with
-    | _ when depth >= 3 -> "..."
-    | Var (var, _) -> var
-    | Con (con, _) | Typ con -> remove_hash_suffix (Cons.name con)
-    | Prim prim -> string_of_prim prim
-    | Obj (obj_sort, fields) ->
-      let print_fields = readable_list (fun field -> Printf.sprintf "%s" field.lab) "; " in
-      Printf.sprintf "%s{%s}" (string_of_obj_sort obj_sort) (print_fields fields)
-    | Variant tags ->
-      let print_tags = readable_list (fun tag -> "#" ^ tag.lab) "; " in
-      Printf.sprintf "{%s}" (print_tags tags)
-    | Array element ->
-      Printf.sprintf "[%s]" (print_type (depth + 1) typ)
-    | Opt option ->
-      Printf.sprintf "?%s" (print_type (depth + 1) typ)
-    | Tup types ->
-      Printf.sprintf "(%s)" (print_type_list (depth + 1) types)
-    | Func (func_sort, control, generics, parameters, returns) ->
-      let generics_text = List.map (fun {var; _} -> var) generics |> String.concat ", " in
-      let generics_text = if (List.length generics) > 0 then "" else Printf.sprintf "<%s>" generics_text in
-      let async_text = match control with
-      | Returns -> ""
-      | Promises -> "async "
-      | Replies -> assert false
-      in
-      Printf.sprintf "%sfunc%s(%s):%s(%s)" (string_of_func_sort func_sort) generics_text (print_type_list (depth + 1) parameters) async_text (print_type_list (depth + 1) returns)
-    | Async (async_sort, _, inner) ->
-      Printf.sprintf "%s %s" (string_of_async_sort async_sort) (print_type (depth + 1) inner)
-    | Mut inner ->
-      Printf.sprintf "var %s" (print_type (depth + 1) inner)
-    | Any -> "Any"
-    | Non -> "()"
-    | Named (name, _) -> remove_hash_suffix name
-    | Pre -> assert false
-  in
-    print_type 0 typ
-*)
-let readable_type x = (!display_typ) x
-
 let incompatible_types context t1 t2 =
   Incompatible (IncompatibleTypes (context, t1, t2))
 
@@ -2226,36 +2153,54 @@ let string_of_typ_expand typ : string =
   Lib.Format.with_str_formatter (fun ppf ->
       pp_typ_expand ppf) typ
 
+let string_of_context path =
+  let rec emit_path nested path =
+    match path with
+    | [] -> "top level"
+    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_path nested rest) label
+    | (ConsType c)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
+    | (ConsType c)::rest ->
+       Printf.sprintf "%s in %s" (remove_hash_suffix (Cons.name c)) (emit_path true rest)
+    | (NamedType name)::rest when not nested ->
+       Printf.sprintf "%s (used by %s)" name (emit_path true rest)
+    | (NamedType name)::rest ->
+       Printf.sprintf "%s in %s" name (emit_path true rest)
+    | (StableVariable name)::_ -> name
+  in
+    emit_path false path
+
 let string_of_reason reason =
+  let display_typ = Lib.Format.display pp_typ in
   match reason with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
   | MissingTag (context, lab, t) ->
-    Format.asprintf "Missing tag #%s in type %a\n of %s" lab readable_type t (string_of_path context)
+    Format.asprintf "Missing tag #%s in type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedTag (context, lab, t) ->
-    Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" lab readable_type t (string_of_path context)
+    Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" lab display_typ t (string_of_context context)
   | MissingField (context, lab, t) ->
-    Format.asprintf "Missing field %s in type %a\n of %s" lab readable_type t (string_of_path context)
+    Format.asprintf "Missing field %s in type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedField (context, lab, t) ->
-    Format.asprintf "Unsupported additional field %s in type %a\n of %s" lab readable_type t (string_of_path context)
+    Format.asprintf "Unsupported additional field %s in type %a\n of %s" lab display_typ t (string_of_context context)
   | FewerItems (context, desc) ->
-    Format.asprintf "Fewer %s in %s than expected" desc (string_of_path context)
+    Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
   | MoreItems (context, desc) ->
-    Format.asprintf "More %s in %s than expected" desc (string_of_path context)
+    Format.asprintf "More %s in %s than expected" desc (string_of_context context)
   | PromotionToAny (context, t) ->
-    Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" readable_type t (string_of_path context)
+    Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
   | IncompatiblePrims (context, t1, t2) ->
-    Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleObjSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleFuncSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleBounds (context, t1, t2) ->
-    Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleFuncs (context, t1, t2) ->
-    Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleAsyncSorts (context, t1, t2) ->
-    Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" readable_type t1 readable_type t2 (string_of_path context)
+    Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
 
 
 end
@@ -2280,7 +2225,6 @@ end
 include MakePretty(ElideStamps)
 
 let _ = str := string_of_typ
-let _ = display_typ := Lib.Format.display pp_typ
 
 (* Stable signatures *)
 let stable_sub_explained ?(src_fields = empty_srcs_tbl ()) context t1 t2 =

@@ -46,16 +46,10 @@ let error_required s tf =
         tf.lab))
 
 
-(* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
+(*
    - Mutability of stable fields can be changed because they are never aliased.
-   - Stable fields can be dropped, however, with a warning of potential data loss.
-     For this, we give up the transitivity property of upgrades.
-
-   Upgrade transitivity means that an upgrade from a program A to B and then from B to C
-   should have the same effect as directly upgrading from A to C. If B discards a field
-   and C re-adds it, this transitivity is no longer maintained. However, rigorous upgrade
-   transitivity was also not guaranteed before, since B may contain initialization logic
-   or pre-/post-upgrade hooks that alter the stable data.
+   - Stable fields cannot be dropped.
+   - Lossy promotion to any or dropping record fields is rejected (stricter than subtyping to prevent data loss).
 *)
 let match_stab_sig sig1 sig2 : unit Diag.result =
   let tfs1 = post sig1 in
@@ -78,7 +72,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
             begin
               match Type.sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
               | Incompatible explanation -> error_sub s tf1 tf2 explanation
-              | Compatible -> 
+              | Compatible ->
                 match Type.stable_sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
                 | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
                 | Compatible -> ()
