@@ -1,4 +1,14 @@
-(unknown location): Compatibility error [M0170], the type of stable variable state is not compatible to the previous program version:
+(unknown location): Compatibility error [M0170], the new type of stable variable state is not compatible to the previous program version.
+ The previous type
+  var
+   {
+     #v1 : [[var Cell]];
+     #v2 : {bits : [var Nat64]; size : Nat};
+     #v3 : {offset : Nat32; size : Nat}
+   }
+ is not a subtype of
+  var {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
+ because:
  Missing tag #v3 in type 
   {#v1 : [[var Cell]]; #v2 : {bits : [var Nat64]; size : Nat}}
  of state.

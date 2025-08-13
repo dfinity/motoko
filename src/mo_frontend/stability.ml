@@ -14,6 +14,10 @@ let cat = "Compatibility"
    c.f. (simpler) Types.match_sig.
 *)
 
+let display_typ = Lib.Format.display Pretty.pp_typ
+
+let display_typ_expand = Lib.Format.display Pretty.pp_typ_expand
+
 let error_discard s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
@@ -24,16 +28,21 @@ let error_discard s tf =
 let error_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "the type of stable variable %s is not compatible to the previous program version:\n %s.\n Write an explicit migration function, please see %s."
+      (Format.asprintf "the new type of stable variable %s is not compatible to the previous program version.\n The previous type%a\n is not a subtype of%a\n because:\n %s.\n Write an explicit migration function, please see %s."
         tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ
         (Pretty.string_of_explanation explanation)
-        migration_link))
+        migration_link
+))
 
 let error_stable_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0216" cat
-      (Format.asprintf "the type of stable variable %s implicitly drops data of the previous program version:\n %s.\n The data can only be dropped by an explicit migration function, please see %s."
+      (Format.asprintf "the type of stable variable %s implicitly drops data of the previous program version. \n The previous type%a\n is not a stable subtype of%a because:\n %s.\n The data can only be dropped by an explicit migration function, please see %s."
         tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ
         (Pretty.string_of_explanation explanation)
         migration_link))
 
