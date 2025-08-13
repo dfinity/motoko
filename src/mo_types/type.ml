@@ -2198,31 +2198,32 @@ let string_of_explanation explanation =
   let display_typ = Lib.Format.display pp_typ in
   match explanation with
   | IncompatibleTypes (context, t1, t2) ->
-    Format.asprintf "The original type %a\n is not compatible to target type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "The type %a\n is not compatible with type %a\n of %s" display_typ t1 display_typ t2 (string_of_context context)
   | MissingTag (context, lab, t) ->
-    Format.asprintf "Missing tag #%s in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Missing tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedTag (context, lab, t) ->
-    Format.asprintf "Unsupported additional tag #%s in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | MissingField (context, lab, t) ->
-    Format.asprintf "Missing field %s in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Missing field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedField (context, lab, t) ->
-    Format.asprintf "Unsupported additional field %s in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Unsupported additional field `%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | FewerItems (context, desc) ->
     Format.asprintf "Fewer %s in %s than expected" desc (string_of_context context)
   | MoreItems (context, desc) ->
     Format.asprintf "More %s in %s than expected" desc (string_of_context context)
   | PromotionToAny (context, t) ->
-    Format.asprintf "Converting %a\n to Any is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
+    Format.asprintf "Converting %a\n to `Any` is disallowed as it leads to data loss: %s" display_typ t (string_of_context context)
   | IncompatiblePrims (context, t1, t2) ->
-    Format.asprintf "Cannot implicitly convert %a\n to %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    let context = match context with h::tl -> tl | _ -> context in
+    Format.asprintf "The type %a\n is not compatible with type %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleObjSorts (context, t1, t2) ->
     Format.asprintf "Incompatible object sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleFuncSorts (context, t1, t2) ->
     Format.asprintf "Incompatible function modifiers: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleBounds (context, t1, t2) ->
-    Format.asprintf "Incompatible generic type generic constraints: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "Incompatible type parameters: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleFuncs (context, t1, t2) ->
-    Format.asprintf "Incompatible function signatures: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
+    Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleAsyncSorts (context, t1, t2) ->
     Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
 
