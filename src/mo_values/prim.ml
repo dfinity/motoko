@@ -444,6 +444,7 @@ let prim trap =
 
   | "alloc_weak_ref" ->
      fun _ v k ->
+      (* TODO: model trapping on non-scalars *)
        let w = Weak.create 1 in
        Weak.set w 0 (Some v);
        k (Weak w)

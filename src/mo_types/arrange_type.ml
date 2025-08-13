@@ -93,7 +93,7 @@ module Make (Cfg : Config) = struct
     | Pre                    -> Atom "Pre"
     | Typ c                  -> "Typ" $$ [con c]
     | Named (n, t)           -> "Name" $$ [Atom n; typ t]
-    | Weak t                 -> "weak" $$ [ typ t]
+    | Weak t                 -> "Weak" $$ [ typ t]
 
   and typ_bind (tb : Type.bind) =
     tb.var $$ [typ tb.bound]

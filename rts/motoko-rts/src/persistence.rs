@@ -316,6 +316,8 @@ unsafe fn initialize_weak_ref_registry<M: Memory>(mem: &mut M) {
     *markstack_ptr = MarkStack::new(mem);
 
     let metadata = PersistentMetadata::get();
+    // Barrier is not needed here, as object is transitional and
+    // thus marking of previous weak ref object is not needed.
     (*metadata).weak_ref_registry = Value::from_ptr(markstack_ptr as usize);
 }
 
@@ -329,5 +331,7 @@ pub(crate) unsafe fn clear_weak_ref_registry() {
 /// Check if the weak reference registry is NULL_POINTER.
 unsafe fn is_weak_ref_registry_null() -> bool {
     let metadata = PersistentMetadata::get();
+    // Barrier is not needed here, as object is transitional and
+    // thus marking of previous weak ref object is not needed.
     (*metadata).weak_ref_registry == NULL_POINTER
 }
