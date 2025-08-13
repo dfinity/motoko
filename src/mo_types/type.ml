@@ -1798,7 +1798,7 @@ module ElideStamps = struct
   let show_hash_suffix = true
   let con_sep = ShowStamps.con_sep
   let par_sep = ShowStamps.par_sep
-  let max_list = Some 10
+  let max_list = None
 end
 
 module ParseableStamps = struct
@@ -1813,6 +1813,7 @@ end
 module ElideStampsAndHashes = struct
   include ElideStamps
   let show_hash_suffix = false
+  let max_list = Some 10
 end
 
 module MakePretty(Cfg : PrettyConfig) = struct
