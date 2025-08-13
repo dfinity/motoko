@@ -1,23 +1,21 @@
-import Nat "mo:base/Nat";
-import Map "mo:base/OrderedMap";
+import Nat "mo:core/Nat";
+import Map "mo:core/Map";
 
 persistent actor class Bucket(n : Nat, i : Nat) {
 
   type Key = Nat;
   type Value = Text;
 
-  transient let keyMap = Map.Make<Key>(Nat.compare);
-
-  var map : Map.Map<Key, Value> = keyMap.empty();
+  let map = Map.empty<Key, Value>();
 
   public func get(k : Key) : async ?Value {
     assert((k % n) == i);
-    keyMap.get(map, k);
+    Map.get(map, Nat.compare,  k);
   };
 
   public func put(k : Key, v : Value) : async () {
     assert((k % n) == i);
-    map := keyMap.put(map, k, v);
+    Map.add(map, Nat.compare, k, v);
   };
 
 };

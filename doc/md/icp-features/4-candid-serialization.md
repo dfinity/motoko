@@ -43,7 +43,7 @@ let encoding =  to_candid(true, "hello", 68, -90) // (Bool, Text, Nat, Int)
 Each argument must be composed of sharable types. The resulting `Blob` precisely represents the original Motoko values according to Candid specifications.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor {
   public type User = {
@@ -66,7 +66,7 @@ The `from_candid` function deserializes a Candid-encoded binary `Blob` back into
 To decode a `Blob` correctly, `from_candid` requires an explicit type annotation or a clear type context. The result is returned as an optional (`?`) value, allowing you to safely handle potential failures caused by type mismatches or malformed data.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 actor {
   public type User = {
@@ -95,17 +95,17 @@ actor {
 
 Although most canisters on ICP support Candid, this is not a requirement enforced by the network. At the protocol level, canisters communicate in raw binary data. Candid is just a common interpretation of that data that allows canisters written in different languages to interoperate.
 
-Most users should never need to use `to_candid` and `from_candid`, however one scenario in which these operations are useful is when canister methods are called **dynamically** using the `call` function from the `ExperimentalInternetComputer` base library. The `call` function takes a canister `Principal`, the name of a method as `Text`, and a raw binary `Blob`, then returns a future containing the result of the call, also as a raw binary `Blob`. Typically, you might use `to_candid` to prepare the argument of a call and `from_candid` to process its result.
+Most users should never need to use `to_candid` and `from_candid`, however one scenario in which these operations are useful is when canister methods are called **dynamically** using the `call` function from the `InternetComputer` core module. The `call` function takes a canister `Principal`, the name of a method as `Text`, and a raw binary `Blob`, then returns a future containing the result of the call, also as a raw binary `Blob`. Typically, you might use `to_candid` to prepare the argument of a call and `from_candid` to process its result.
 
 Dynamic calls are particularly useful when working with canisters or services that have complex or non-standard interfaces, or when you need fine-grained control over the calling process. However, they require manual handling of binary encoding and decoding, which is more error-prone than using the high-level abstractions provided by Motoko.
 
 In this example, use the imported `call` function to make a dynamic call on the actor:
 
 ``` motoko no-repl
-import Principal "mo:base/Principal";
-import {call} "mo:base/ExperimentalInternetComputer";
+import Principal "mo:core/Principal";
+import { call } "mo:core/InternetComputer";
 
-persistent actor This {
+persistent actor MyActor {
 
    public func concat(ts : [Text]) : async Text {
       var r = "";
@@ -115,7 +115,7 @@ persistent actor This {
 
    public func test() : async Text {
        let arguments = to_candid (["a", "b", "c"]);
-       let results = await call(Principal.fromActor(This), "concat", arguments);
+       let results = await call(Principal.fromActor(MyActor), "concat", arguments);
        let ?t = from_candid(results) : ?Text;
        t
    }
