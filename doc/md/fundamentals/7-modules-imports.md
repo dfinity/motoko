@@ -4,22 +4,22 @@ sidebar_position: 7
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base package of modules to provide essential functionality. This modular approach keeps the language simple.
+Motoko minimizes built-in types and operations, relying on a core package of modules to provide essential functionality. This modular approach keeps the language simple.
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
 :::caution
 
-The base package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+The core package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
 
 :::
 
-## Importing from the base package
+## Importing from the core package
 
-The Motoko base package includes common utilities for working with data structures, debugging, and other functionality. To import from the base package, use the `import` keyword, followed by the `mo:base/<name>` module path.
+The Motoko core package includes common utilities for working with data structures, debugging, and other functionality. To import from the core package, use the `import` keyword, followed by the `mo:core/<name>` module path.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print("Hello, world!");
 ```
@@ -29,7 +29,7 @@ The `mo:` prefix identifies a Motoko module. The declaration does not include th
 You can also selectively import and rename a subset of named values and types from a module by using the object pattern syntax:
 
 ``` motoko
-import { type List; get; foldLeft = fold } "mo:base/List";
+import { type List; get; foldLeft = fold } "mo:core/List";
 ```
 
 ## Importing from another file
@@ -103,9 +103,9 @@ import Vec "mo:vector";
 While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
 
 ```motoko no-repl
-import List "mo:base/List";
-import L "mo:base/List";
-import PureList "mo:base/pure/List";
+import List "mo:core/List";
+import L "mo:core/List";
+import PureList "mo:core/pure/List";
 ```
 
 ## Importing from another canister
@@ -169,8 +169,8 @@ It can be imported into another file:
 
 ```motoko no-repl
 import Counters "Counters";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 persistent actor CountToTen {
   public func countToTen() : async () {
