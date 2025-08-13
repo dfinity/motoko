@@ -1163,7 +1163,7 @@ and rel_typ_explained context d rel eq t1 t2 =
     if s1 <> s2 then
       Incompatible (IncompatibleObjSorts (context, t1, t2))
     else
-      rel_fields_explained context t1 t2 d rel eq tfs1 tfs2
+      rel_fields_explained context t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ_explained context d rel eq t1' t2'
   | Opt t1', Opt t2' ->
@@ -1198,7 +1198,7 @@ and rel_typ_explained context d rel eq t1 t2 =
   | _, _ -> incompatible_types context t1 t2
   end
 
-and rel_fields_explained context t1 t2 d rel eq tfs1 tfs2 =
+and rel_fields_explained context t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
   | [], [] ->
@@ -1212,13 +1212,13 @@ and rel_fields_explained context t1 t2 d rel eq tfs1 tfs2 =
       let compatible =
         match rel_typ_explained new_context d rel eq tf1.typ tf2.typ with
         | Compatible ->
-          rel_fields_explained context t1 t2 d rel eq tfs1' tfs2'
+          rel_fields_explained context t2 d rel eq tfs1' tfs2'
         | incompatible -> incompatible
       in
       add_src_field_update (compatible = Compatible) rel eq tf1 tf2;
       compatible
     | -1 when rel != eq && not (RelArg.is_stable_sub d) ->
-      rel_fields_explained context t1 t2 d rel eq tfs1' tfs2
+      rel_fields_explained context t2 d rel eq tfs1' tfs2
     | result ->
       if result > 0 then
         unexpected_field tf2.lab t2 context
