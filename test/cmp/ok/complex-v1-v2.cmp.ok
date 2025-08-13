@@ -1,10 +1,9 @@
-(unknown location): Compatibility error [M0170], the new type of stable variable products is not compatible to the previous program version.
+(unknown location): Compatibility error [M0170], the new type of stable variable `products` is not compatible with the previous version.
  The previous type
   var {root : Tree<Text, Product>; size : Nat}
  is not a subtype of
   Map<Text, OldProduct> = {root : Tree<Text, OldProduct>; size : Nat}
- because:
- Missing tag #caffeine in type 
+ because: Missing tag `#caffeine` in type 
   {
     #crypto;
     #defi;

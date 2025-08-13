@@ -1,4 +1,4 @@
-(unknown location): Compatibility error [M0170], the new type of stable variable CanisterMap is not compatible to the previous program version.
+(unknown location): Compatibility error [M0170], the new type of stable variable `CanisterMap` is not compatible with the previous version.
  The previous type
   {
     DTCTArchives : SBuffer<CreditsActorData>;
@@ -39,8 +39,7 @@
     var statsActor : [StatsActor];
     totalCredit : TotalCredit
   }
- because:
- Unsupported additional field dailyMiningCount2 in type 
+ because: Unsupported additional field `dailyMiningCount2` in type 
   actor {
     _appendReferee : shared (DID, Nat, AccountReferee, Nat) -> ();
     _childRewardTimeAndReferees :

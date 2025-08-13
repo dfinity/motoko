@@ -1,13 +1,12 @@
-(unknown location): Compatibility error [M0170], the new type of stable variable z is not compatible to the previous program version.
+(unknown location): Compatibility error [M0170], the new type of stable variable `z` is not compatible with the previous version.
  The previous type
   Text
  is not a subtype of
   Bool
- because:
- Cannot implicitly convert 
+ because: The type 
   Text
- to 
+ is not compatible with type 
   Bool
- in Bool (used by z).
+ in z.
  Write an explicit migration function, please see https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function.
 FALSE
