@@ -133,7 +133,6 @@ The core package introduces a fundamental reorganization of data structures with
 #### New functions
 - `all()` - Check if all elements satisfy predicate
 - `any()` - Check if any element satisfies predicate
-- `binarySearch()` - Perform binary search on sorted array
 - `compare()` - Compare two arrays
 - `empty()` - Create empty array
 - `enumerate()` - Get indexed iterator
