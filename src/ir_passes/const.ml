@@ -106,6 +106,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       begin match s, lvl with
       (* shared functions are not const for now *)
       | Type.Shared _, _ -> surely_false
+      | Type.Stable _, _ -> surely_false (* TBR *)
       (* top-level functions can always be const (all free variables are top-level) *)
       | _, TopLvl -> surely_true
       | _, NotTopLvl ->
