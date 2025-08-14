@@ -1247,9 +1247,8 @@ and rel_tags t2 d rel eq tfs1 tfs2 =
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-      let d' = RelArg.push (Field tf2.lab) d in
       let is_rel =
-       rel_typ d' rel eq tf1.typ tf2.typ &&
+       rel_typ d rel eq tf1.typ tf2.typ &&
        rel_tags t2 d rel eq tfs1' tfs2'
       in
       add_src_field_update is_rel rel eq tf1 tf2;
