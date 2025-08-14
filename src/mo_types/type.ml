@@ -1149,11 +1149,10 @@ let rec rel_typ d rel eq t1 t2 =
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      let d' =  RelArg.push (ConsType con2) d in
+      let d' = RelArg.push (ConsType con2) d in
       rel_typ d' rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      let d' = RelArg.push (ConsType con2) d in
-      rel_list "type arguments" d' eq_typ rel eq ts1 ts2
+      rel_list "type arguments" d eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ ->
@@ -1168,11 +1167,11 @@ let rec rel_typ d rel eq t1 t2 =
     | _ -> incompatible_types d t1 t2
     )
   | t1, Con (con2, ts2) ->
-    let new_d = RelArg.push (ConsType con2) d in
     (match Cons.kind con2 with
-    | Def (tbs, t) -> (* TBR this may fail to terminate *)
-      rel_typ new_d rel eq t1 (open_ ts2 t)
-    | _ -> incompatible_types d t1 t2
+     | Def (tbs, t) -> (* TBR this may fail to terminate *)
+       let d' = RelArg.push (ConsType con2) d in
+       rel_typ d' rel eq t1 (open_ ts2 t)
+     | _ -> incompatible_types d t1 t2
     )
   | Prim p1, Prim p2 when p1 = p2 ->
     true
@@ -1180,8 +1179,8 @@ let rec rel_typ d rel eq t1 t2 =
     (p1 = Nat && p2 = Int) ||
     incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
-     (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
-     rel_fields t2 d rel eq tfs1 tfs2
+    (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
+    rel_fields t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
     rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
@@ -1270,7 +1269,7 @@ and rel_tags t2 d rel eq tfs1 tfs2 =
 
 and rel_binds d rel eq tbs1 tbs2 =
   let ts = open_binds tbs2 in
-  if rel_list "type parameter" d (rel_bind ts) rel eq tbs2 tbs1
+  if rel_list "type parameters" d (rel_bind ts) rel eq tbs2 tbs1
   then Some ts
   else None
 
