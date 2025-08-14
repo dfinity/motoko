@@ -48,15 +48,13 @@ function ImmutableCodeBlock({ id, code, language, defaultCopy }) {
 
 export default function StringWrapper(props) {
   if (props.className === "language-motoko" && ExecutionEnvironment.canUseDOM) {
-    if (props.hasOwnProperty("no-repl")) {
-      return (
-        <ImmutableCodeBlock
-          id={props.name}
-          code={props.children}
-          language="language-motoko"
-        />
-      );
-    }
+
+    // color no-repl blocks pink but allow running (for review)
+    const backColor =
+      (!props.hasOwnProperty("no-repl"))?
+        "var(--prism-background-color)" :
+        "pink";
+
     const { useCodeJar } = require('react-codejar');
     const [code, setCode] = useState(props.children || "");
     const [output, setOutput] = useState("");
@@ -80,7 +78,7 @@ export default function StringWrapper(props) {
               id={props.name}
               ref={editorRef}
               className="language-motoko"
-              style={{ backgroundColor: "var(--prism-background-color)" }}
+              style={{ backgroundColor: backColor }}
             >
               <code>{code}</code>
             </pre>
