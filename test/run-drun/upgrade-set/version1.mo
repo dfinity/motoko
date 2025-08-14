@@ -2,7 +2,7 @@ import Prim "mo:prim";
 import Set "lib1/set";
 
 actor Ok {
-  flexible let ver = 1;
+  transient let ver = 1;
 
   // stable func dec
   stable func cmp(i : Int, j : Int) : Set.Order {
@@ -12,8 +12,8 @@ actor Ok {
 
   type Cmp = stable cmp (Int, Int) -> Set.Order; // singleton stable func type
 
-  stable var s1 : Set.Set<Int, Cmp> = Prim.trap("oops"); //Set.empty<Int, Cmp>(cmp);
-  s1 := Set.add<Int, Cmp>(s1, ver);
-  s1 := Set.add<Int, Cmp>(s1, ver + 1);
+  stable var s1 : Set.Set<Int, Cmp> = Prim.trap("oops");
+  s1 := Set.add(s1, ver);
+
 
 };
