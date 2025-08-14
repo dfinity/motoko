@@ -6,4 +6,6 @@ in
 pkgs.runCommandNoCC "motoko-release-${common.releaseVersion}" { } ''
   mkdir $out
   cp ${common.as_tarball "Linux-aarch64" (with packages.release; [ mo-doc moc ])} $out/motoko-Linux-aarch64-${common.releaseVersion}.tar.gz
+  tar --exclude=.github -C ${pkgs.sources.motoko-base-src} -czvf $out/motoko-base-library.tar.gz .
+  tar --exclude=.github -C ${pkgs.sources.motoko-core-src} -czvf $out/motoko-core.tar.gz .
 '' 
