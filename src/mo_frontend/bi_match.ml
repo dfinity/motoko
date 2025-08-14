@@ -105,8 +105,8 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       if mentions t1 any || not (denotable t1) then
         None
       else Some
-       (update lub con2 t1 l,
-        if rel != eq then u else update glb con2 t1 u)
+        (update lub con2 t1 l,
+         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
@@ -271,15 +271,25 @@ let bi_match_subs scope_opt tbs subs typ_opt =
   and fail_open_bound c bd =
     let c = Cons.name c in
     raise (Bimatch (Format.asprintf
-      "type parameter %s has an open bound%a\nmentioning a later type parameter, so that explicit type instantiation is required due to limitation of inference"
+      "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference" (* TODO: change wording to later type parameter *)
       c (Lib.Format.display pp_typ) bd))
+
+  and _report_bound c l u =
+    let c = Cons.name c in
+    Printf.printf
+      "type parameter %s l:%s u: %s"
+      c (Type.string_of_typ l) (Type.string_of_typ u)
 
   in
     let bds = List.map (fun tb -> open_ ts tb.bound) tbs in
+
     let _ = List.fold_left2 (fun cons c bd -> if mentions bd cons then fail_open_bound c bd; ConSet.remove c cons) cons cs bds in
 
     let l = ConSet.fold (fun c l -> ConEnv.add c Non l) cons ConEnv.empty in
-    let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) cons ConEnv.empty in
+    (* HACK: DO NOT MERGE *)
+    let u = ConSet.fold (fun c u -> ConEnv.add c
+                            (if not (mentions (bound c) cons) then (bound c) else Any) u)
+             cons ConEnv.empty in
 
     let l, u = match scope_opt, tbs with
       | Some c, {sort = Scope; _}::tbs ->
@@ -301,7 +311,8 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         (fun c ->
           match ConEnv.find c l, ConEnv.find c u with
           | lb, ub ->
-            if eq lb ub then
+             (*            report_bound c lb ub; *)
+             if eq lb ub then
               ub
             else if sub lb ub then
               choose_under_constrained lb c ub
