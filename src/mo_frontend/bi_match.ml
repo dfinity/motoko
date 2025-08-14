@@ -382,13 +382,13 @@ let solve ctx (ts1, ts2) must_solve =
     let var_set = !unsolved in
     let remaining = if ConSet.is_empty var_set then empty_ctx else {
       var_set;
-      var_env = ConEnv.intersect_dom var_set ctx.var_env;
+      var_env = ConEnv.restrict var_set ctx.var_env;
       var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
       bounds = (
         (* Note that these bounds are not the same as [ctx.bounds], deferred variables might have tigher bounds after solving *)
-        ConEnv.intersect_dom var_set l,
-        ConEnv.intersect_dom var_set u);
-      variances = ConEnv.intersect_dom var_set ctx.variances;
+        ConEnv.restrict var_set l,
+        ConEnv.restrict var_set u);
+      variances = ConEnv.restrict var_set ctx.variances;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else

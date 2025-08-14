@@ -2300,12 +2300,14 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
             (* [codom] comes from [ts2] which might contain unsolved type variables. *)
             let closed = Bi_match.is_closed remaining codom in
-            if not env.pre && (closed || body_typ <> codom) then
+            if not env.pre && (closed || body_typ <> codom) then begin
               (* Closed [codom] implies closed [body_typ].
                * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
-               * Since [body_typ] is closed, no need to infer.
                *)
+              assert (Bi_match.is_closed remaining body_typ);
+              (* Since [body_typ] is closed, no need to infer *)
               check_exp env' body_typ body;
+            end;
 
             (* When [codom] is open, we need to solve it *)
             if not closed then
