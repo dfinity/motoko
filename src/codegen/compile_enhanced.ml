@@ -2196,7 +2196,7 @@ module Opt = struct
   (* The Option type. Optional values are represented as
 
     1. The null literal being the sentinel null pointer value, see above.
-       
+
     2. ┌──────┬─────────┐
        │ some │ payload │
        └──────┴─────────┘
@@ -7003,10 +7003,13 @@ module Serialization = struct
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
+        (* For now, trap on WeakRef *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        E.then_trap_with env "object_size/Mut: Unexpected tag WeakRef" ^^
         (* Sanity check *)
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
@@ -7104,6 +7107,7 @@ module Serialization = struct
       | Mut t ->
          size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | Weak t ->
+         E.trap_with env "buffer_size: Weak" ^^
          size_alias (fun () -> get_x ^^ WeakRef.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
@@ -7281,6 +7285,7 @@ module Serialization = struct
           get_x ^^ MutBox.load_field env ^^ write env t
           )
       | Weak t ->
+        E.trap_with env "serialize_go: Weak" ^^
         write_alias (fun () ->
           get_x ^^ WeakRef.load_field env ^^ write env t
         )
@@ -8084,6 +8089,16 @@ module Serialization = struct
           get_result ^^
           get_arg_typ ^^ go env t ^^
           MutBox.store_field env
+          )
+      | Weak t ->
+        E.trap_with env "deserialize_go: Weak" ^^
+        read_alias env (Weak t) (fun get_arg_typ on_alloc ->
+          let (set_result, get_result) = new_local env "result" in
+          WeakRef.alloc env ^^ set_result ^^
+          on_alloc get_result ^^
+          get_result ^^
+          get_arg_typ ^^ go env t ^^
+          WeakRef.store_field env
         )
       | Non ->
         skip get_idltyp ^^
