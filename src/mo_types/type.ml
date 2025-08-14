@@ -1004,8 +1004,8 @@ exception Undecided
 
 module SS = Set.Make (OrdPair)
 
-
 type compatibility = Compatible | Incompatible of explanation
+
 and explanation =
   | IncompatibleTypes of context * typ * typ
   | MissingTag of context * lab * typ
@@ -1112,15 +1112,13 @@ let rec rel_list item_name d p rel eq xs1 xs2 =
   | [], _ -> fewer_items d item_name
   | _, [] -> more_items d item_name
   | x1::rest1, x2::rest2 ->
-    p d rel eq x1 x2 && rel_list item_name d p rel eq rest1 rest2
+    p d rel eq x1 x2 &&
+    rel_list item_name d p rel eq rest1 rest2
 
 let rec rel_typ d rel eq t1 t2 =
   let d = RelArg.inc_depth d in
-  if RelArg.exceeds_max_depth d then
-    raise Undecided
-  else if t1 == t2 || SS.mem (t1, t2) !rel then
-    true
-  else begin
+  if RelArg.exceeds_max_depth d then raise Undecided else
+  t1 == t2 || SS.mem (t1, t2) !rel || begin
   rel := SS.add (t1, t2) !rel;
   match t1, t2 with
   (* Second-class types first, since they mustn't relate to Any/Non *)
@@ -1136,27 +1134,26 @@ let rec rel_typ d rel eq t1 t2 =
   | Any, Any ->
     true
   | _, Any when rel != eq ->
-    if not (RelArg.is_stable_sub d) then
-      true
-    else
-      promotion_to_any d t1
-  | Non, Non -> true
-  | Non, _ when rel != eq ->  true
+    not (RelArg.is_stable_sub d) || promotion_to_any d t1
+  | Non, Non ->
+    true
+  | Non, _ when rel != eq ->
+    true
   | Named (n, t1'), t2 ->
     rel_typ d rel eq t1' t2
   | t1, Named (n, t2') ->
-    let new_d = RelArg.push (NamedType n) d in
-    rel_typ new_d rel eq t1 t2'
+    let d' = RelArg.push (NamedType n) d in
+    rel_typ d' rel eq t1 t2'
   | Con (con1, ts1), Con (con2, ts2) ->
     (match Cons.kind con1, Cons.kind con2 with
     | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
       rel_typ d rel eq (open_ ts1 t) t2
     | _, Def (tbs, t) -> (* TBR this may fail to terminate *)
-      let new_d =  RelArg.push (ConsType con2) d in
-      rel_typ new_d rel eq t1 (open_ ts2 t)
+      let d' =  RelArg.push (ConsType con2) d in
+      rel_typ d' rel eq t1 (open_ ts2 t)
     | _ when Cons.eq con1 con2 ->
-      let new_d = RelArg.push (ConsType con2) d in
-      rel_list "type arguments" new_d eq_typ rel eq ts1 ts2
+      let d' = RelArg.push (ConsType con2) d in
+      rel_list "type arguments" d' eq_typ rel eq ts1 ts2
     | Abs (tbs, t), _ when rel != eq ->
       rel_typ d rel eq (open_ ts1 t) t2
     | _ ->
@@ -1177,19 +1174,16 @@ let rec rel_typ d rel eq t1 t2 =
       rel_typ new_d rel eq t1 (open_ ts2 t)
     | _ -> incompatible_types d t1 t2
     )
-  | Prim p1, Prim p2 when p1 = p2 -> true
+  | Prim p1, Prim p2 when p1 = p2 ->
+    true
   | Prim p1, Prim p2 when rel != eq ->
-    if p1 = Nat && p2 = Int then
-      true
-    else
-      incompatible_prims d t1 t2
+    (p1 = Nat && p2 = Int) ||
+    incompatible_prims d t1 t2
   | Obj (s1, tfs1), Obj (s2, tfs2) ->
-    if s1 <> s2 then
-      incompatible_obj_sorts d t1 t2
-    else
-      rel_fields t2 d rel eq tfs1 tfs2
+     (s1 = s2 || incompatible_obj_sorts d t1 t2) &&
+     rel_fields t2 d rel eq tfs1 tfs2
   | Array t1', Array t2' ->
-    rel_typ  d rel eq t1' t2'
+    rel_typ d rel eq t1' t2'
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
@@ -1197,32 +1191,28 @@ let rec rel_typ d rel eq t1 t2 =
   | Variant fs1, Variant fs2 ->
     rel_tags t2 d rel eq fs1 fs2
   | Tup ts1, Tup ts2 ->
-    rel_list "tuple type arguments" d rel_typ rel eq ts1 ts2
+    rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    if s1 <> s2 then
-      incompatible_func_sorts d t1 t2
-    else if c1 <> c2 then
-      incompatible_bounds d t1 t2
-    else
-      (match rel_binds d eq eq tbs1 tbs2 with
-       | Some ts ->
-         rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
-         rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
-      | None -> incompatible_funcs d t1 t2
-      )
+    (s1 = s2 || incompatible_func_sorts d t1 t2) &&
+    (c1 = c2 || incompatible_bounds d t1 t2) &&
+    (match rel_binds d eq eq tbs1 tbs2 with
+     | Some ts ->
+        rel_list "function parameters" d rel_typ rel eq (List.map (open_ ts) t21) (List.map (open_ ts) t11) &&
+        rel_list "return types" d rel_typ rel eq (List.map (open_ ts) t12) (List.map (open_ ts) t22)
+     | None -> incompatible_funcs d t1 t2
+    )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
-    if s1 <> s2 then
-      incompatible_async_sorts d t1 t2
-    else
-      eq_typ d rel eq t11 t21 &&
-      rel_typ d rel eq t12 t22
+    (s1 = s2 || incompatible_async_sorts d t1 t2) &&
+    eq_typ d rel eq t11 t21 &&
+    rel_typ d rel eq t12 t22
   | _, _ -> incompatible_types d t1 t2
   end
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
-  | [], [] -> true
+  | [], [] ->
+    true
   | tf1::_, [] when rel != eq && not (RelArg.is_stable_sub d) ->
     true
   | tf1::tfs1', tf2::tfs2' ->
