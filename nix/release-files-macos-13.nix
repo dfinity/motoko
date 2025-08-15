@@ -6,5 +6,4 @@ in
 pkgs.runCommandNoCC "motoko-release-${common.releaseVersion}" { } ''
   mkdir $out
   cp ${common.as_tarball "Darwin-x86_64" (with packages.release; [ mo-doc moc ])} $out/motoko-Darwin-x86_64-${common.releaseVersion}.tar.gz
-  tar --exclude=.github -C ${pkgs.sources.motoko-base-src} -czvf $out/motoko-base-library.tar.gz .
 '' 
