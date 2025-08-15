@@ -145,6 +145,7 @@ The core package introduces a fundamental reorganization of data structures with
 - `fromIter()` - Create array from iterator
 - `isEmpty()` - Check if array is empty
 - `join()` - Join arrays from iterator
+- `sliceToVarArray()` - Equivalent to `sliceToArray()` except returns a `[var]` array
 - `toText()` - Convert array to text representation
 
 #### Removed functions
