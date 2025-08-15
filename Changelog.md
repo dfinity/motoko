@@ -29,8 +29,13 @@
     - Invariant type parameters must be explicitly provided in most cases.
       e.g. `VarArray.map` must have the return type annotation:
       ```motoko
-      let result : [var Int] = VarArray.map(varAr, func x = x * 2);
+      let result = VarArray.map<Nat, Nat>(varAr, func x = x * 2);
       ```
+      Or the type of the result must be explicitly provided:
+      ```motoko
+      let result : [var Nat] = VarArray.map(varAr, func x = x * 2);
+      ```
+
     - When there is not enough type information from the non-`func` arguments, the type inference will not be able to infer the `func` arguments.
       However this is not a problem in most cases.
 
