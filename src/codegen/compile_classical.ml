@@ -1265,7 +1265,7 @@ module GC = struct
     | Flags.(ICMode | RefMode)  ->
       instruction_counter env ^^
       get_mutator_instructions env ^^
-      G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
       set_collector_instructions env
     | _ -> G.nop
 
@@ -1274,9 +1274,9 @@ module GC = struct
     | Flags.(ICMode | RefMode)  ->
       get_mutator_instructions env ^^
       get_lifetime_instructions env ^^
-      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       get_collector_instructions env ^^
-      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       set_lifetime_instructions env
     | _ -> G.nop
 
