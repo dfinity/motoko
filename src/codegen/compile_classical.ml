@@ -11757,10 +11757,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let compile_arg_for_component e arg_type =
       let open Mo_types.Type in
       match normalize arg_type with
-      | Prim Blob -> 
-        (* Blob: compile as vanilla, extract pointer and length *)
+      | Prim (Blob | Text as prim) ->
         let set_blob, get_blob = new_local env "blob_arg" in
-        compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
+        compile_exp_as env ae SR.Vanilla e ^^
+        (if prim = Text then Text.to_blob env else G.nop) ^^
+        set_blob ^^
         get_blob ^^ Blob.payload_ptr_unskewed env ^^
         get_blob ^^ Blob.len env
       | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
@@ -11785,14 +11786,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
        available in compile_prim_invocation. *)
     let compile_return_handling = 
       let open Mo_types.Type in
+      let call_component_return_blob () =
+        Stack.with_words env "ret" 2l (fun get ->
+          get ^^ E.call_import env component_name function_name ^^
+          get ^^ E.call_import env "rts" "blob_of_cabi"
+        )
+      in
       match normalize return_type with
       | Prim Blob ->
-        let set_ret, get_ret = new_local env "ret" in
-        Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
-        get_ret ^^ Blob.payload_ptr_unskewed env ^^
-        E.call_import env component_name function_name ^^
-        get_ret ^^ Blob.payload_ptr_unskewed env ^^
-        E.call_import env "rts" "blob_of_cabi"
+        call_component_return_blob ()
+      | Prim Text ->
+        call_component_return_blob () ^^
+        Text.of_blob env
       | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
         E.call_import env component_name function_name ^^
         TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)

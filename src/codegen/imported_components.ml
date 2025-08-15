@@ -55,6 +55,7 @@ let map_motoko_type_to_wit typ =
   let open Mo_types.Type in
   match normalize typ with
   | Prim Blob -> "list<u8>"
+  | Prim Text -> "string"
   | Prim Bool -> "bool"
   | Prim Char -> "char"
   | Prim Nat8 -> "u8"
@@ -71,7 +72,7 @@ let map_motoko_type_to_wit typ =
 let map_motoko_type_to_wasm_args motoko_type = 
   let open Mo_types.Type in
   match normalize motoko_type with
-  | Prim Blob -> [I32Type; I32Type] (* pointer + length *)
+  | Prim (Blob | Text) -> [I32Type; I32Type] (* pointer + length *)
   | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
   | Prim (Nat64 | Int64) -> [I64Type]
   | Prim Float -> [F64Type]
@@ -80,7 +81,7 @@ let map_motoko_type_to_wasm_args motoko_type =
 let map_motoko_type_to_wasm_result motoko_type = 
   let open Mo_types.Type in
   match normalize motoko_type with
-  | Prim Blob -> [] (* out-parameter approach, no direct return *)
+  | Prim (Blob | Text) -> [] (* out-parameter approach, no direct return *)
   | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
   | Prim (Nat64 | Int64) -> [I64Type]
   | Prim Float -> [F64Type]
@@ -89,7 +90,7 @@ let map_motoko_type_to_wasm_result motoko_type =
 let initial_wasm_args return_type = 
   let open Mo_types.Type in
   match normalize return_type with
-  | Prim Blob -> [I32Type] (* out-parameter *)
+  | Prim (Blob | Text) -> [I32Type] (* out-parameter *)
   | _ -> [] 
 
 let map_motoko_name_to_wit (motoko_name : string) : string =
