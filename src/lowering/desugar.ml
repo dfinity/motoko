@@ -1234,10 +1234,10 @@ let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
 let transform_import (i : S.import) : import_declaration =
-  let (p, f, ir) = i.it in
+  let (p, f, ri) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
-  let rhs = match !ir with
+  let rhs = match !ri with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath {path = fp; _} ->
       varE (var (id_of_full_path fp) t)
@@ -1245,6 +1245,10 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
+    | S.ImportedValuePath path ->
+       let contents = Lib.FilePath.contents path in
+       assert T.(t = Prim Blob);
+       blobE contents
   in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
@@ -1289,6 +1293,8 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
+  | S.FileU str ->
+    I.LibU ([], { (unitE ()) with at = u.at })
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in

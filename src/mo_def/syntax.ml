@@ -17,6 +17,7 @@ type resolved_import =
   | Unresolved
   | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
+  | ImportedValuePath of string
   | PrimPath (* the built-in prim module *)
 
 (* Identifiers *)
@@ -267,6 +268,7 @@ and comp_unit_body' =
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
      persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+ | FileU of string                           (* literal file value *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {
