@@ -746,7 +746,17 @@ pub(crate) unsafe fn memory_compatible(
         (IDL_EXT_weak, IDL_EXT_weak) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
-            memory_compatible(rel, TypeVariance::Invariance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+            memory_compatible(
+                rel,
+                TypeVariance::Invariance,
+                typtbl1,
+                typtbl2,
+                end1,
+                end2,
+                t11,
+                t21,
+                false,
+            )
         }
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
