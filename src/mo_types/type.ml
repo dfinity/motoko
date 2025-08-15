@@ -1095,7 +1095,7 @@ let incompatible_obj_sorts d t1 t2 =
   RelArg.false_with d (IncompatibleObjSorts (RelArg.context d, t1, t2))
 
 let incompatible_func_sorts d t1 t2 =
-  RelArg.false_with d (IncompatibleObjSorts (RelArg.context d, t1, t2))
+  RelArg.false_with d (IncompatibleFuncSorts (RelArg.context d, t1, t2))
 
 let incompatible_bounds d t1 t2 =
   RelArg.false_with d (IncompatibleBounds (RelArg.context d, t1, t2))
