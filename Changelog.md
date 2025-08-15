@@ -8,7 +8,7 @@
 
     ```motoko
     let ar = [1, 2, 3];
-    Array.map(ar, func x = x * 2);  // Needs no explicit type arguments!
+    Array.map(ar, func x = x * 2);  // Needs no explicit type arguments anymore!
     ```
 
     Previously, type arguments were usually required when there was an anonymous not annotated function in arguments.
