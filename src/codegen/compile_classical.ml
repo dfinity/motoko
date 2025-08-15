@@ -19,6 +19,8 @@ open Wasm_exts.Ast
 open Source
 
 open Compile_common
+open Imported_components
+
 
 module Wasm = struct
 include Wasm
@@ -280,6 +282,17 @@ module Const = struct
 
   let t_of_v v = (Lib.Promise.make (), v)
 
+  let string_of_lit = function
+    | Vanilla i -> Printf.sprintf "Vanilla %d" (Int32.to_int i)
+    | BigInt i -> Printf.sprintf "BigInt %s" (Big_int.string_of_big_int i)
+    | Bool b -> Printf.sprintf "Bool %b" b
+    | Word32 (ty, i) -> Printf.sprintf "Word32 (%s, %d)" (Type.string_of_prim ty) (Int32.to_int i)
+    | Word64 (ty, i) -> Printf.sprintf "Word64 (%s, %Ld)" (Type.string_of_prim ty) i
+    | Float64 f -> Printf.sprintf "Float64 %f" (Numerics.Float.to_float f)
+    | Text s -> Printf.sprintf "Text %s" s
+    | Blob s -> Printf.sprintf "Blob %s" s
+    | Null -> "Null"
+
 end (* Const *)
 
 module SR = struct
@@ -327,6 +340,18 @@ module SR = struct
     | UnboxedTuple n -> fatal "to_var_type: UnboxedTuple"
     | Const _ -> fatal "to_var_type: Const"
     | Unreachable -> fatal "to_var_type: Unreachable"
+
+  let string_of = function
+    | Vanilla -> "Vanilla"
+    | UnboxedTuple n -> Printf.sprintf "UnboxedTuple %d" n
+    | UnboxedWord64 _ -> "UnboxedWord64"
+    | UnboxedWord32 _ -> "UnboxedWord32"
+    | UnboxedFloat64 -> "UnboxedFloat64"
+    | Unreachable -> "Unreachable"
+    | Const c -> 
+      match snd c with
+      | Const.Lit l -> Printf.sprintf "Const.Lit %s" (Const.string_of_lit l)
+      | _ -> "Const"
 
 end (* SR *)
 
@@ -1205,6 +1230,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    if !Flags.wasm_components then (
+      E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
+      E.add_func_import env "rts" "cabi_realloc" [I32Type; I32Type; I32Type; I32Type] [I32Type]);
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -2759,6 +2787,12 @@ module TaggedSmallWord = struct
     | Type.(Int8|Int16) as ty -> compile_shrS_const (shift_of_type ty)
     | Type.Char as ty -> compile_shrU_const (shift_of_type ty)
     | _ -> assert false
+
+  let need_adjust = function
+    | Type.(Nat8|Nat16) -> true
+    | Type.(Int8|Int16) -> true
+    | Type.Char -> true
+    | _ -> false
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
@@ -10903,6 +10937,10 @@ let compile_relop env t op =
 let compile_load_field env typ name =
   Object.load_idx env typ name
 
+let starts_with ~prefix s =
+  let prefix_len = String.length prefix in
+  String.length s >= prefix_len &&
+  String.sub s 0 prefix_len = prefix
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces
@@ -11705,6 +11743,69 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
+
+  | ComponentPrim (maybe_component, return_type), es ->
+    assert !Flags.wasm_components;
+    StackRep.of_type return_type,
+    (* Parse the component name and function name *)
+    let parts = String.split_on_char ':' maybe_component in
+    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
+    let component_name = List.nth parts 1 in
+    let function_name = List.nth parts 2 in 
+    
+    (* Helper function to compile arguments for component calls *)
+    let compile_arg_for_component e arg_type =
+      let open Mo_types.Type in
+      match normalize arg_type with
+      | Prim (Blob | Text as prim) ->
+        let set_blob, get_blob = new_local env "blob_arg" in
+        compile_exp_as env ae SR.Vanilla e ^^
+        (if prim = Text then Text.to_blob env else G.nop) ^^
+        set_blob ^^
+        get_blob ^^ Blob.payload_ptr_unskewed env ^^
+        get_blob ^^ Blob.len env
+      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+        compile_exp_as env ae (StackRep.of_type arg_type) e ^^
+        TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
+      | typ ->
+        print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
+        assert false
+    in
+    
+    (* Extract actual argument types from the expressions *)
+    let arg_types = List.map (fun e -> e.note.Note.typ) es in
+
+    (* Compile all arguments *)
+    let compile_args = List.fold_left2 (fun acc e arg_type ->
+      acc ^^ compile_arg_for_component e arg_type
+    ) G.nop es arg_types in
+    
+    (* For return type, we need to assume Blob for now since we don't have access to 
+       the full expression context here. The return type should be determined from
+       the type annotation in the Motoko source, but that information is not 
+       available in compile_prim_invocation. *)
+    let compile_return_handling = 
+      let open Mo_types.Type in
+      let call_component_return_blob () =
+        Stack.with_words env "ret" 2l (fun get ->
+          get ^^ E.call_import env component_name function_name ^^
+          get ^^ E.call_import env "rts" "blob_of_cabi"
+        )
+      in
+      match normalize return_type with
+      | Prim Blob ->
+        call_component_return_blob ()
+      | Prim Text ->
+        call_component_return_blob () ^^
+        Text.of_blob env
+      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+        E.call_import env component_name function_name ^^
+        TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
+      | typ ->
+        print_endline (Printf.sprintf "Unsupported return type: %s" (Mo_types.Type.string_of_typ typ));
+        assert false
+    in
+    compile_args ^^ compile_return_handling
 
   (* Other prims, nullary *)
 
@@ -13272,7 +13373,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o =
+and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content =
 
   RTS_Exports.system_exports env;
 
@@ -13364,6 +13465,8 @@ and conclude_module env set_serialization_globals start_fi_o =
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;
+      wit_file_content = maybe_wit_file_content;
+      wac_file_content = maybe_wac_file_content;
     } in
 
   match E.get_rts env with
@@ -13383,6 +13486,38 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
+  let imported_components = ref Imported_components.empty in
+
+  (* Add imports to the environment *)
+  let add_import component_name function_name arg_types return_type = 
+    imported_components := add_imported_component 
+        ~component_name:component_name 
+        ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
+        !imported_components;
+    
+    let initial_args = Imported_components.initial_wasm_args return_type in
+    let wasm_args = List.fold_left (fun acc arg_type -> 
+      (Imported_components.map_motoko_type_to_wasm_args arg_type.Import_components_ir.arg_type) @ acc
+    ) initial_args arg_types in
+    
+    let wasm_results = Imported_components.map_motoko_type_to_wasm_result return_type in
+    E.add_func_import env component_name function_name wasm_args wasm_results in
+
+  let _prog_text = (Import_components_ir.prog_fun add_import prog) in
+  (*Wasm.Sexpr.print 80 _prog_text;*)
+
+  (* Print the imported components as WIT *)
+
+  let wit_file_content = (imported_components_to_wit !imported_components) in
+  Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wit_file_content));
+
+  (* Print the imported components as WAC *)
+
+  let wac_file_content = (imported_components_to_wac !imported_components) in
+  Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wac_file_content));
+
+
+  (* Register the imports *)
 
   IC.system_imports env;
   RTS.system_imports env;
@@ -13399,4 +13534,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o
+  conclude_module env set_serialization_globals start_fi_o (Some wit_file_content)  (Some wac_file_content)

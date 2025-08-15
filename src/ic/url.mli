@@ -3,6 +3,7 @@ type parsed =
   | Relative of string
   | Ic of string
   | IcAlias of string
+  | Component of (string * string)
   | Prim
 
 val string_of_parsed : parsed -> string
