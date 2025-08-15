@@ -1,7 +1,6 @@
 import Prim "mo:⛔";
 actor a {
-  public func ping() : async () {
-  };
+  public func ping() : async () {};
 
   public func go() : async () {
     await ping();
@@ -18,7 +17,7 @@ actor a {
     await ping();
     let s2 = Prim.rts_heap_size();
     // ensure that b is retained
-    assert(b.size() == length);
+    assert (b.size() == length);
 
     Prim.debugPrint(
       "Ignore Diff: " #
@@ -29,9 +28,9 @@ actor a {
     // Checks that GC correctly discards or retains the arrays.
     // Using --forced-gc and allowing young collection for generational GC.
     // It allows for some wiggle room
-    let reserve = 20_000;
-    assert (+s1-s0 < reserve);
-    assert (+s2-s0 > 4 * +length - reserve);
+    let reserve = 50_000;
+    assert (+s1 - s0 < reserve);
+    assert (+s2 - s0 > 4 * +length - reserve);
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"

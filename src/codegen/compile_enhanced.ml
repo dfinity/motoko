@@ -1270,6 +1270,8 @@ module RTS = struct
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
+    E.add_func_import env "rts" "alloc_weak_ref" [I64Type] [I64Type];
+    E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1916,6 +1918,7 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | Region
+    | WeakRef
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
@@ -1948,7 +1951,8 @@ module Tagged = struct
     | Region -> 39L
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
-    | ArraySliceMinimum -> 44L
+    | WeakRef -> 45L
+    | ArraySliceMinimum -> 46L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -2158,12 +2162,41 @@ module MutBox = struct
     E.object_pool_add env __LINE__ alloc
 end
 
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ field │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
+end
+
 
 module Opt = struct
   (* The Option type. Optional values are represented as
 
     1. The null literal being the sentinel null pointer value, see above.
-       
+
     2. ┌──────┬─────────┐
        │ some │ payload │
        └──────┴─────────┘
@@ -6711,9 +6744,11 @@ module Serialization = struct
   let idl_func      = -22l
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
-  
+
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
+  let idl_weak     = -131l (* UNUSED FOR NOW, might need eventually *)
+
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -6744,6 +6779,7 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Weak t -> go t
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
@@ -6863,7 +6899,10 @@ module Serialization = struct
           add_idx f.typ
         ) fs
       | Mut t ->
-        add_sleb128 idl_alias; add_idx t
+         add_sleb128 idl_alias; add_idx t
+      | Weak t -> (* TODO  - probably want another idl_type, idl_weak, for Weak, otherwise we can
+         deserialize one as the other *)
+         add_sleb128 idl_alias; add_idx (Weak t)
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -6964,7 +7003,12 @@ module Serialization = struct
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
+        (* For now, trap on WeakRef *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        E.then_trap_with env "object_size/Mut: Unexpected tag WeakRef" ^^
         (* Sanity check *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
@@ -7061,7 +7105,10 @@ module Serialization = struct
           inc_data_size (compile_unboxed_const 12L) ^^ (* |id| + |page_count| = 8 + 4 *)
           get_x ^^ Region.vec_pages env ^^ size env blob)
       | Mut t ->
-        size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+      | Weak t ->
+         E.trap_with env "buffer_size: Weak" ^^
+         size_alias (fun () -> get_x ^^ WeakRef.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       (* Check 32-bit overflow of buffer_size *)
@@ -7119,6 +7166,8 @@ module Serialization = struct
           (* This is a reference *)
           write_byte env get_data_buf (compile_unboxed_const 1L) ^^
           (* Sanity Checks *)
+          get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+          E.then_trap_with env "unvisited mutable data in serialize_go (WeakRef)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
@@ -7234,6 +7283,11 @@ module Serialization = struct
       | Mut t ->
         write_alias (fun () ->
           get_x ^^ MutBox.load_field env ^^ write env t
+          )
+      | Weak t ->
+        E.trap_with env "serialize_go: Weak" ^^
+        write_alias (fun () ->
+          get_x ^^ WeakRef.load_field env ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
@@ -8035,6 +8089,16 @@ module Serialization = struct
           get_result ^^
           get_arg_typ ^^ go env t ^^
           MutBox.store_field env
+          )
+      | Weak t ->
+        E.trap_with env "deserialize_go: Weak" ^^
+        read_alias env (Weak t) (fun get_arg_typ on_alloc ->
+          let (set_result, get_result) = new_local env "result" in
+          WeakRef.alloc env ^^ set_result ^^
+          on_alloc get_result ^^
+          get_result ^^
+          get_arg_typ ^^ go env t ^^
+          WeakRef.store_field env
         )
       | Non ->
         skip get_idltyp ^^
@@ -11955,6 +12019,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
     Persistence.in_upgrade env
+
+  | OtherPrim "alloc_weak_ref", [target] ->
+    SR.Vanilla,
+    Opt.inject env (compile_exp_vanilla env ae target) ^^
+    E.call_import env "rts" "alloc_weak_ref"
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    WeakRef.load_field env
+
+  | OtherPrim "weak_ref_is_live", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    E.call_import env "rts" "weak_ref_is_live" ^^
+    Bool.from_rts_int32
 
   (* Regions *)
 

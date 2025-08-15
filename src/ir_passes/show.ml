@@ -178,6 +178,11 @@ let show_for : T.typ -> Ir.dec * T.typ list = fun t ->
     let t' = T.normalize t' in
     define_show t (invoke_text_of_option t' (varE (show_var_for t')) (argE t)),
     [t']
+  | T.Weak t' ->
+    let t' = T.normalize t' in
+    define_show t (catE (textE ("weak "))
+                        (invoke_text_of_option t' (varE (show_var_for t')) (primE (OtherPrim "weak_get")  [argE t]))),
+    [t']
   | T.Array t' ->
     let t' = T.normalize t' in
     begin match t' with
