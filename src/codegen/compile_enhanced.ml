@@ -12021,7 +12021,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "alloc_weak_ref", [target] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae target ^^
+    Opt.inject env (compile_exp_vanilla env ae target) ^^
     E.call_import env "rts" "alloc_weak_ref"
 
   | OtherPrim "weak_get", [weak_ref] ->
