@@ -2788,7 +2788,7 @@ module TaggedSmallWord = struct
     | Type.Char as ty -> compile_shrU_const (shift_of_type ty)
     | _ -> assert false
 
-  let need_lsb_adjust = function
+  let need_adjust = function
     | Type.(Nat8|Nat16) -> true
     | Type.(Int8|Int16) -> true
     | Type.Char -> true
@@ -11744,9 +11744,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
 
-  | OtherPrim maybe_component, es when starts_with ~prefix:"component:" maybe_component ->
+  | ComponentPrim (maybe_component, return_type), es ->
     assert !Flags.wasm_components;
-    SR.Vanilla,
+    StackRep.of_type return_type,
     (* Parse the component name and function name *)
     let parts = String.split_on_char ':' maybe_component in
     (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
@@ -11763,14 +11763,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
         compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
         get_blob ^^ Blob.payload_ptr_unskewed env ^^
         get_blob ^^ Blob.len env
-      | Prim (Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
-        (* For primitive types, use StackRep.of_type, then ensure small words are LSB-adjusted *)
-        let sr = StackRep.of_type arg_type in
-        (* print_endline (Printf.sprintf "arg_type: %s ; sr: %s" (Mo_types.Type.string_of_typ arg_type) (SR.string_of sr)); *)
-        compile_exp_as env ae sr e ^^
-        TaggedSmallWord.(if need_lsb_adjust prim then lsb_adjust prim else G.nop)
-      | Prim (Int64|Nat64|Float) ->
-        compile_exp_as env ae (StackRep.of_type arg_type) e
+      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+        compile_exp_as env ae (StackRep.of_type arg_type) e ^^
+        TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
@@ -11789,13 +11784,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
        the type annotation in the Motoko source, but that information is not 
        available in compile_prim_invocation. *)
     let compile_return_handling = 
-      (* For now, assume Blob return type *)
-      let set_ret, get_ret = new_local env "ret" in
-      Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
-      get_ret ^^ Blob.payload_ptr_unskewed env ^^
-      E.call_import env component_name function_name ^^
-      get_ret ^^ Blob.payload_ptr_unskewed env ^^
-      E.call_import env "rts" "blob_of_cabi"
+      let open Mo_types.Type in
+      match normalize return_type with
+      | Prim Blob ->
+        let set_ret, get_ret = new_local env "ret" in
+        Blob.lit env Tagged.B "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
+        get_ret ^^ Blob.payload_ptr_unskewed env ^^
+        E.call_import env component_name function_name ^^
+        get_ret ^^ Blob.payload_ptr_unskewed env ^^
+        E.call_import env "rts" "blob_of_cabi"
+      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+        E.call_import env component_name function_name ^^
+        TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
+      | typ ->
+        print_endline (Printf.sprintf "Unsupported return type: %s" (Mo_types.Type.string_of_typ typ));
+        assert false
     in
     compile_args ^^ compile_return_handling
 

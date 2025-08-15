@@ -53,6 +53,10 @@ and exp e =
     | S.AnnotE (e', t) -> exp e'
     | _ -> typed_phrase' exp' e
 
+and exps_or_single e = match e.it with
+  | S.TupE es -> exps es
+  | _ -> [exp e]
+
 and exp' at note = function
   | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
   | S.ActorUrlE e ->
@@ -197,6 +201,9 @@ and exp' at note = function
     I.PrimE (I.SetCertifiedData, [exp e])
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.GetCertificate, [])
+  (* Component *)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_);_}, _, e) when Lib.String.chop_prefix "component:" fn <> None ->
+    I.PrimE (I.ComponentPrim (fn, T.normalize note.Note.typ), exps_or_single e)
   (* Other *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)

@@ -125,7 +125,7 @@ and prim e es = function
   | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
-  | OtherPrim maybe_component when starts_with ~prefix:"component:" maybe_component -> 
+  | ComponentPrim (maybe_component, _) -> 
       (* Parse the component name and function name *)
       let parts = String.split_on_char ':' maybe_component in
       (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
