@@ -147,6 +147,12 @@ The core package introduces a fundamental reorganization of data structures with
 - `join()` - Join arrays from iterator
 - `toText()` - Convert array to text representation
 
+#### Parameter order changes
+- `indexOf(element, array, equal)` → `indexOf(array, equal, element)`
+- `lastIndexOf(element, array, equal)` → `lastIndexOf(array, equal, element)`
+- `nextIndexOf(element, array, fromInclusive, equal)` → `nextIndexOf(array, equal, element, fromInclusive)`
+- `prevIndexOf(element, array, fromExclusive, equal)` → `prevIndexOf(array, equal, element, fromExclusive)`
+
 #### Removed functions
 - `take()` - Use `sliceToArray()` instead
 - `sortInPlace()` - Use `VarArray.sortInPlace()` instead
