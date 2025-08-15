@@ -1112,7 +1112,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
   | Weak t1', Weak t2' ->
-    rel_typ d rel eq t1' t2'
+    eq_typ d rel eq t1' t2' (* NB: invariant *)
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
@@ -1385,7 +1385,8 @@ let rec combine rel lubs glbs t1 t2 =
     | Pre, _ | _, Pre ->
       raise PreEncountered
     | Mut _, _ | _, Mut _
-    | Typ _, _ | _, Typ _ ->
+    | Typ _, _ | _, Typ _
+    | Weak _, _ | _, Weak _ ->  (* invariant *)
       raise Mismatch
     | Any, t | t, Any ->
       if rel == lubs then Any else t
@@ -1394,8 +1395,6 @@ let rec combine rel lubs glbs t1 t2 =
     | Prim Nat, Prim Int
     | Prim Int, Prim Nat ->
        Prim (if rel == lubs then Int else Nat)
-    | Weak t1', Weak t2' ->
-      Weak (combine rel lubs glbs t1' t2')
     | Opt t1', Opt t2' ->
       Opt (combine rel lubs glbs t1' t2')
     | (Opt _ as t), (Prim Null as t')

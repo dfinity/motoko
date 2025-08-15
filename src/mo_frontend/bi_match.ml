@@ -189,7 +189,7 @@ let bi_match_subs scope_opt tbs subs typ_opt =
     | Mut t1', Mut t2' ->
       bi_equate_typ rel eq inst any t1' t2'
     | Weak t1', Weak t2' ->
-      bi_match_typ rel eq inst any t1' t2'
+      bi_equate_typ rel eq inst any t1' t2'
     | Typ c1, Typ c2 ->
       (* NB: we assume c1, c2 closed *)
       if Type.eq t1 t2 then Some inst else None
