@@ -1385,8 +1385,7 @@ let rec combine rel lubs glbs t1 t2 =
     | Pre, _ | _, Pre ->
       raise PreEncountered
     | Mut _, _ | _, Mut _
-    | Typ _, _ | _, Typ _
-    | Weak _, _ | _, Weak _ ->  (* invariant *)
+    | Typ _, _ | _, Typ _ ->
       raise Mismatch
     | Any, t | t, Any ->
       if rel == lubs then Any else t
@@ -1402,7 +1401,9 @@ let rec combine rel lubs glbs t1 t2 =
       if rel == lubs then t else t'
     | Array t1', Array t2' ->
       (try Array (combine rel lubs glbs t1' t2')
-      with Mismatch -> if rel == lubs then Any else Non)
+       with Mismatch -> if rel == lubs then Any else Non)
+    | Weak _, _ | _, Weak _ ->  (* invariant *)
+      if rel == lubs then Any else Non
     | Variant t1', Variant t2' ->
       Variant (combine_tags rel lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->
