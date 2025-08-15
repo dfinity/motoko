@@ -6900,9 +6900,8 @@ module Serialization = struct
         ) fs
       | Mut t ->
          add_sleb128 idl_alias; add_idx t
-      | Weak t -> (* TODO  - probably want another idl_type, idl_weak, for Weak, otherwise we can
-         deserialize one as the other *)
-         add_sleb128 idl_alias; add_idx (Weak t)
+      | Weak t ->
+         add_sleb128 idl_weak; add_idx t
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
