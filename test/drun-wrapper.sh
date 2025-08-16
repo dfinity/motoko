@@ -44,6 +44,14 @@ export RUST_MIN_STACK=$((10*1024*1024))
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
 
+# If it is an application subnet, we need to change the canister ID, otherwise pocket-ic will not work properly.
+# Enable this only when running test-runner.
+# For drun, we need to use the default canister ID.
+if [[ "$@" == *"--subnet-type application"* ]]
+then
+  ID=22ajg-aqaaa-aaaap-adukq-cai
+fi
+
 # encoded `{ canister_id = $ID }`
 # this is useful for `ingress aaaaa-aa start/stop_canister $PRINCIPAL`
 PRINCIPAL=0x4449444c016c01b3c4b1f204680100010a00000000000000000101
@@ -53,7 +61,7 @@ then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,\$ID,'$ID',g; s,\$PRINCIPAL,'$PRINCIPAL',g' $1
-  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | test-runner -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
