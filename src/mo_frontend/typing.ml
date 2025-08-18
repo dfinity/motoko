@@ -1069,6 +1069,10 @@ and is_explicit_dec d =
   | ClassD (_, _, _, _, _, p, _, _, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+  | MixinD (p, dfs) ->
+    is_explicit_pat p &&
+    List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
+  | IncludeD (_, es) -> List.for_all is_explicit_exp es
 
 
 (* Literals *)
@@ -2273,7 +2277,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       in
 
       (* Incorporate the return type into the subtyping constraints *)
-      let ret_typ_opt, subs = 
+      let ret_typ_opt, subs =
         match t_expect_opt with
         | None -> Some t_ret, subs
         | Some expected_ret -> None, (t_ret, expected_ret) :: subs
@@ -2822,6 +2826,8 @@ and vis_dec src dec xs : visibility_env =
   | ClassD (_, _, _, id, _, _, _, _, _) ->
     vis_val_id src {id with note = ()} (vis_typ_id src id xs)
   | TypD (id, _, _) -> vis_typ_id src id xs
+  | MixinD _
+  | IncludeD _ -> xs
 
 and vis_pat src pat xs : visibility_env =
   match pat.it with
@@ -3292,6 +3298,10 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
+  | MixinD _
+  | IncludeD _ ->
+    (* TODO *)
+    T.blob
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
@@ -3441,6 +3451,8 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
+  | MixinD _ -> scope
+  | IncludeD(i, _) -> scope
   | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -3547,6 +3559,10 @@ and infer_block_typdecs env decs : Scope.t =
 
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
+  | MixinD _
+  | IncludeD _ ->
+    (* TODO *)
+    Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3639,6 +3655,8 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
+  | MixinD _
+  | IncludeD(_) -> Scope.empty
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
