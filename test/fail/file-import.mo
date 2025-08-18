@@ -1,2 +1,2 @@
-import (f : Nat) = "file:../index.html";
+import (f : Nat) = "blob:file:../index.html";
 

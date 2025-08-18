@@ -45,6 +45,6 @@ let%test "it should parse a relative import (2)" =
 let%test "it should parse a relative import (3)" =
   parse_test "./foo" (Ok (Relative "foo"))
 let%test "it should parse a raw file value import" =
-  parse_test "file:foo" (Ok (FileValue "foo"))
+  parse_test "blob:file:foo" (Ok (FileValue "foo"))
 let%test "it should fail to parse an unknown URL scheme" =
   parse_test "something:else" (Error "Unrecognized URL")
