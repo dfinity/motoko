@@ -11753,7 +11753,84 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let component_name = List.nth parts 1 in
     let function_name = List.nth parts 2 in 
     
-    (* Helper function to compile arguments for component calls *)
+    let elem_size t : int32 =
+      let open Mo_types.Type in
+      match normalize t with
+      | Prim (Nat8 | Int8 | Bool) -> 1l
+      | Prim (Nat16 | Int16) -> 2l
+      | Prim (Nat32 | Int32 | Char) -> 4l
+      | Prim (Nat64 | Int64 | Float) -> 8l
+      | Prim (Text | Blob) -> 8l (* ptr,len *)
+      | Array _ -> 8l (* nested list: ptr,len *)
+      | _ ->
+        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+        assert false
+    in
+
+    let store ?sz ty = G.i (Store {ty; align = 0; offset = 0L; sz}) in
+    let store_blob get_addr get_val =
+      get_addr ^^ (get_val ^^ Blob.payload_ptr_unskewed env) ^^ store I32Type ^^
+      (get_addr ^^ compile_add_const 4l) ^^ (get_val ^^ Blob.len env) ^^ store I32Type
+    in
+
+    let rec write_elem t get_addr get_val =
+      let open Mo_types.Type in
+      match normalize t with
+      | Prim Bool ->
+        get_addr ^^ get_val ^^ store I32Type ~sz:Pack8
+      | Prim ((Nat8|Int8) as ty) ->
+        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store I32Type ~sz:Pack8
+      | Prim ((Nat16|Int16) as ty) ->
+        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store I32Type ~sz:Pack16
+      | Prim Char ->
+        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) ^^ store I32Type
+      | Prim ((Nat32|Int32) as ty) ->
+        get_addr ^^ (get_val ^^ BoxedSmallWord.unbox env ty) ^^ store I32Type
+      | Prim ((Nat64|Int64) as ty) ->
+        get_addr ^^ (get_val ^^ BoxedWord64.unbox env ty) ^^ store I64Type
+      | Prim Float ->
+        get_addr ^^ (get_val ^^ Float.unbox env) ^^ store F64Type
+      | Prim Text ->
+        let (set_bl, get_bl) = new_local env "bl" in
+        get_val ^^ Text.to_blob env ^^ set_bl ^^
+        store_blob get_addr get_bl
+      | Prim Blob ->
+        store_blob get_addr get_val
+      | Array t2 ->
+        let (set_p, get_p) = new_local env "p" in
+        let (set_l, get_l) = new_local env "l" in
+        build_list_buffer_of_value t2 get_val ^^ set_l ^^ set_p ^^
+        get_addr ^^ get_p ^^ store I32Type ^^
+        (get_addr ^^ compile_add_const 4l) ^^ get_l ^^ store I32Type
+      | _ ->
+        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+        assert false
+    and build_list_buffer_of_value (t : Mo_types.Type.typ) (get_list_value : G.t) : G.t =
+      let open Mo_types.Type in
+      let t = normalize t in
+      let (set_arr, get_arr) = new_local env "arr" in
+      let (set_len, get_len) = new_local env "len" in
+      let (set_buf, get_buf) = new_local env "buf" in
+      (* Evaluate list value and determine length *)
+      get_list_value ^^ set_arr ^^
+      get_arr ^^ Arr.len env ^^ set_len ^^
+      let esize = elem_size t in
+      (* Allocate buffer: len * esize *)
+      (let (set_bytes, get_bytes) = new_local env "bytes" in
+       get_len ^^ compile_mul_const esize ^^ set_bytes ^^
+       Blob.alloc env Tagged.B get_bytes ^^ set_buf) ^^
+      (* Fill buffer *)
+      get_len ^^ from_0_to_n env (fun get_i ->
+        let get_base = get_buf ^^ Blob.payload_ptr_unskewed env in
+        let get_addr = get_base ^^ (get_i ^^ compile_mul_const esize) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
+        let get_elem_val = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
+        write_elem t get_addr get_elem_val
+      ) ^^
+      (* Leave ptr,len *)
+      get_buf ^^ Blob.payload_ptr_unskewed env ^^
+      get_len
+    in
+
     let compile_arg_for_component e arg_type =
       let open Mo_types.Type in
       match normalize arg_type with
@@ -11767,6 +11844,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
         compile_exp_as env ae (StackRep.of_type arg_type) e ^^
         TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
+      | Array t ->
+        build_list_buffer_of_value t (compile_exp_as env ae SR.Vanilla e)
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
@@ -11780,10 +11859,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
       acc ^^ compile_arg_for_component e arg_type
     ) G.nop es arg_types in
     
-    (* For return type, we need to assume Blob for now since we don't have access to 
-       the full expression context here. The return type should be determined from
-       the type annotation in the Motoko source, but that information is not 
-       available in compile_prim_invocation. *)
     let compile_return_handling = 
       let open Mo_types.Type in
       let call_component_return_blob () =

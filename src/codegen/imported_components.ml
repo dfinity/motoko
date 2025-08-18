@@ -51,7 +51,7 @@ let print_imported_components (map : t) =
     Printf.printf "]\n"
   ) map
 
-let map_motoko_type_to_wit typ =
+let rec map_motoko_type_to_wit typ =
   let open Mo_types.Type in
   match normalize typ with
   | Prim Blob -> "list<u8>"
@@ -67,12 +67,14 @@ let map_motoko_type_to_wit typ =
   | Prim Nat64 -> "u64"
   | Prim Int64 -> "s64"
   | Prim Float -> "f64"
+  | Array t -> "list<" ^ map_motoko_type_to_wit t ^ ">"
   | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
 
 let map_motoko_type_to_wasm_args motoko_type = 
   let open Mo_types.Type in
   match normalize motoko_type with
   | Prim (Blob | Text) -> [I32Type; I32Type] (* pointer + length *)
+  | Array _ -> [I32Type; I32Type] (* canonical list: ptr,len *)
   | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
   | Prim (Nat64 | Int64) -> [I64Type]
   | Prim Float -> [F64Type]
