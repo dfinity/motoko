@@ -105,8 +105,8 @@ func weakGet<T>(w : weak T) : ?T {
   (prim "weak_get" : weak T -> ?T)(w);
 };
 
-func isLive<T>(weak_ref : weak T) : Bool {
-  (prim "weak_ref_is_live" : weak T -> Bool)(weak_ref);
+func isLive(weak_ref : weak Any) : Bool {
+  (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
 };
 
 // Total conversions (fixed to big)

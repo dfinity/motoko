@@ -1112,7 +1112,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Opt t1', Opt t2' ->
     rel_typ d rel eq t1' t2'
   | Weak t1', Weak t2' ->
-    eq_typ d rel eq t1' t2' (* NB: invariant *)
+    rel_typ d rel eq t1' t2'
   | Prim Null, Opt t2' when rel != eq ->
     true
   | Variant fs1, Variant fs2 ->
@@ -1393,17 +1393,17 @@ let rec combine rel lubs glbs t1 t2 =
       if rel == lubs then t else Non
     | Prim Nat, Prim Int
     | Prim Int, Prim Nat ->
-       Prim (if rel == lubs then Int else Nat)
+      Prim (if rel == lubs then Int else Nat)
     | Opt t1', Opt t2' ->
       Opt (combine rel lubs glbs t1' t2')
+    | Weak t1', Weak t2' ->
+      Weak (combine rel lubs glbs t1' t2')
     | (Opt _ as t), (Prim Null as t')
     | (Prim Null as t'), (Opt _ as t) ->
       if rel == lubs then t else t'
     | Array t1', Array t2' ->
       (try Array (combine rel lubs glbs t1' t2')
        with Mismatch -> if rel == lubs then Any else Non)
-    | Weak _, _ | _, Weak _ ->  (* invariant *)
-      if rel == lubs then Any else Non
     | Variant t1', Variant t2' ->
       Variant (combine_tags rel lubs glbs t1' t2')
     | Tup ts1, Tup ts2 when List.(length ts1 = length ts2) ->

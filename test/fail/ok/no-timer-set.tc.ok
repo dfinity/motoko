@@ -172,7 +172,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     intToNat64Wrap : (n : Int) -> Nat64;
     intToNat8Wrap : (n : Int) -> Nat8;
     isController : (p : Principal) -> Bool;
-    isLive : <T>(weak_ref : weak T) -> Bool;
+    isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;

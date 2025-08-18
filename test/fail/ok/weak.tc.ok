@@ -1,10 +1,3 @@
-weak.mo:17.26-17.27: type error [M0096], expression of type
-  weak Blob
-cannot produce expected type
-  weak Any
-weak.mo:21.15-21.41: warning [M0074], this array has type
-  [Any]
-because elements have inconsistent types
 weak.mo:12.14-12.18: type error [M0131], variable bad1 is declared stable but has non-stable type
   weak (() -> ())
 weak.mo:28.26-28.41: type error [M0031], shared function has non-shared parameter type

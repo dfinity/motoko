@@ -14,11 +14,11 @@ actor a {
   let bad1Alive = Prim.isLive(bad1);
 
   do {
-    let bad : weak Any = w ; // weak T invariant, reject
+    let bad : weak Any = w ; // weak T invariant, accept
   };
 
   do {
-    let bad = [alloc "hello", alloc {} ]; // weak T invariant, reject
+    let bad = [alloc "hello", alloc {} ]; // weak T invariant, accept
   };
 
 };
