@@ -235,14 +235,28 @@ val cons_typs : typ list -> ConSet.t
 
 (* Equivalence and Subtyping *)
 
-type compatibility = Compatible | Incompatible of string
-
-type explanation_scope = 
-  | NamedType of string
-  | StableVariable of string
-  | Field of string
-
-type explanation_path = explanation_scope list
+type compatibility = Compatible | Incompatible of explanation
+and explanation =
+  | IncompatibleTypes of context * typ * typ
+  | MissingTag of context * lab * typ
+  | UnexpectedTag of context * lab * typ
+  | MissingField of context * lab * typ
+  | UnexpectedField of context * lab * typ
+  | FewerItems of context * string
+  | MoreItems of context * string
+  | PromotionToAny of context * typ
+  | IncompatiblePrims of context * typ * typ
+  | IncompatibleObjSorts of context * typ * typ
+  | IncompatibleFuncSorts of context * typ * typ
+  | IncompatibleBounds of context * typ * typ
+  | IncompatibleFuncs of context * typ * typ
+  | IncompatibleAsyncSorts of context * typ * typ
+and context_item =
+  | ConsType of con
+  | NamedType of name
+  | StableVariable of lab
+  | Field of lab
+and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)
 
@@ -250,7 +264,7 @@ val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 
 val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
-val sub_explained : ?src_fields : Field_sources.t -> explanation_path -> typ -> typ -> compatibility
+val sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
 val compatible : typ -> typ -> bool
 
 exception PreEncountered
@@ -286,7 +300,7 @@ val scope_bind : bind
 (* like sub, but disallows promotion to  Any or narrower object types
    that signal data loss *)
 val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
-val stable_sub_explained : ?src_fields : Field_sources.t -> explanation_path -> typ -> typ -> compatibility
+val stable_sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
 
 type stab_sig =
   | Single of field list
@@ -343,13 +357,16 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_explanation : explanation -> string
 end
 
 module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
+  val show_hash_suffix : bool
   val con_sep : string
   val par_sep : string
+  val max_list : int option
 end
 
 module ShowStamps : PrettyConfig
@@ -357,6 +374,8 @@ module ShowStamps : PrettyConfig
 module ElideStamps : PrettyConfig
 
 module ParseableStamps : PrettyConfig
+
+module ElideStampsAndHashes : PrettyConfig
 
 module MakePretty(_ : PrettyConfig) : Pretty
 
