@@ -17,11 +17,11 @@ let symbol : Char = '✮';
 ```
 
 
-:::info [Iter](https://internetcomputer.org/docs/motoko/base/Iter)
+:::info [Iter](https://internetcomputer.org/docs/motoko/core/Iter)
 An `Iter<T>` is an object that sequentially produces values of specified type `T` until no more values remain.
 :::
 ``` motoko
-import Char "mo:base/Char";
+import Char "mo:core/Char";
 
 func reverse(t: Text) : Text {
   var result = "";
@@ -37,9 +37,9 @@ reverse("Motoko");
 The operator `#` concatenates two `Text` values.
 
 ```motoko
-import Text "mo:base/Text";
-import Iter "mo:base/Iter";
-import Char "mo:base/Char";
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+import Char "mo:core/Char";
 
 persistent actor Alternator {
 
@@ -57,9 +57,9 @@ persistent actor Alternator {
       let charAsText = Char.toText(c);
       let transformedText =
         if (index % 2 == 0) {
-          Text.toUppercase(charAsText)
+          Text.toUpper(charAsText)
         } else {
-          Text.toLowercase(charAsText)
+          Text.toLower(charAsText)
         };
       index += 1;
       transformedText;
@@ -79,7 +79,7 @@ persistent actor Alternator {
 
 ## Text
 
-Strings of characters, familiar from other languages, are called **text** in Motoko, and represented using the [`Text`](https://internetcomputer.org/docs/motoko/base/Text) type. A text value is an immutable sequence of Unicode characters delimited with a double quotation mark (`"`).
+Strings of characters, familiar from other languages, are called **text** in Motoko, and represented using the [`Text`](https://internetcomputer.org/docs/motoko/core/Text) type. A text value is an immutable sequence of Unicode characters delimited with a double quotation mark (`"`).
 
 ```motoko
 let greeting : Text = "Hello, world!";
@@ -102,8 +102,8 @@ The `#` operator concatenates two `Text` values:
 `t.chars()` returns an iterator enumerating the characters in `t`. For example:
 
 ```motoko
-import Char "mo:base/Char";
-import Debug "mo:base/Debug";
+import Char "mo:core/Char";
+import Debug "mo:core/Debug";
 
 for (c in "abc".chars()) {
   Debug.print(Char.toText(c));
@@ -114,7 +114,7 @@ Text values can be compared using "==", "<" and all the other relational operato
 
 ## Resources
 
-- [`Char`](https://internetcomputer.org/docs/motoko/base/Char)
-- [`Text`](https://internetcomputer.org/docs/motoko/base/Text)
-- [`Iter`](https://internetcomputer.org/docs/motoko/base/Iter)
+- [`Char`](https://internetcomputer.org/docs/motoko/core/Char)
+- [`Text`](https://internetcomputer.org/docs/motoko/core/Text)
+- [`Iter`](https://internetcomputer.org/docs/motoko/core/Iter)
 

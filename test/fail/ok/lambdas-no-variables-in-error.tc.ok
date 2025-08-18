@@ -1,0 +1,4 @@
+lambdas-no-variables-in-error.mo:3.28-3.30: type error [M0050], literal of type
+  Int
+does not have expected type
+  Nat
