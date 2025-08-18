@@ -43,6 +43,8 @@
 
 * motoko (`moc`)
 
+  * More explanatory upgrade error messages with detailing of cause (#5391).
+
   * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
 
   * Allow matching type fields of modules and objects in patterns (#5056)
