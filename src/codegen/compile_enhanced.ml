@@ -2162,34 +2162,6 @@ module MutBox = struct
     E.object_pool_add env __LINE__ alloc
 end
 
-module WeakRef = struct
-  (*
-      Weak references
-
-       ┌──────┬─────┬─────────┐
-       │ obj header │ field │
-       └──────┴─────┴─────────┘
-
-     The object header includes the obj tag (Weak) and the forwarding pointer.
-  *)
-
-  let field = Tagged.header_size
-
-  let alloc env =
-    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
-
-  let load_field env =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env field
-
-  let store_field env =
-    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
-    set_weak_value ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_weak_value ^^
-    Tagged.store_field env field
-
-end
 
 
 module Opt = struct
@@ -2279,6 +2251,63 @@ module Opt = struct
     )
 
 end (* Opt *)
+
+
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ field │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
+  let try_inject env e =
+    e ^^
+    Func.share_code1 Func.Never env "weak_try_inject" ("x", I64Type) [I64Type] (fun env get_x ->
+      get_x ^^ Opt.is_null env ^^ E.then_trap_with env "weak reference of null" ^^
+      get_x ^^ BitTagged.if_tagged_scalar env [I64Type]
+       ( E.trap_with env "weak reference of non-reference"
+         (* FUTURE: improve message by decoding scalar tag *)) (* scalar, trap *)
+       ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+          E.if_ env [I64Type]
+            ( E.trap_with env "weak reference of `true`" ) (* true literal, scalar *)
+            ( get_x ^^ Opt.is_some env ^^
+              E.if_ env [I64Type]
+                ( get_x ^^ Tagged.branch_default env [I64Type]
+                  ( get_x ) (* default tag, no wrapping *)
+                  [ (Tagged.Some, Opt.alloc_some env get_x);
+                    (Tagged.BigInt, E.trap_with env "weak reference of Int");
+                    (Tagged.Bits64 Tagged.U, E.trap_with env "weak reference of Nat64");
+                    (Tagged.Bits64 Tagged.S, E.trap_with env "weak reference of Int64");
+                    (Tagged.Bits64 Tagged.F, E.trap_with env "weak reference of Float") ]
+                )
+               ( Opt.alloc_some env get_x ) (* ?ⁿnull for n > 0 *)
+            )
+        )
+    )
+
+
+end
+
 
 module Variant = struct
   (* The Variant type. We store the variant tag in a first word; we can later
@@ -12020,7 +12049,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "alloc_weak_ref", [target] ->
     SR.Vanilla,
-    Opt.inject env (compile_exp_vanilla env ae target) ^^
+    WeakRef.try_inject env (compile_exp_vanilla env ae target) ^^
     E.call_import env "rts" "alloc_weak_ref"
 
   | OtherPrim "weak_get", [weak_ref] ->
