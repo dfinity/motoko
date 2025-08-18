@@ -245,6 +245,8 @@ let bi_match_typs ctx =
       bi_match_typ rel eq inst any t1' t2'
     | Opt t1', Opt t2' ->
       bi_match_typ rel eq inst any t1' t2'
+    | Weak t1', Weak t2' ->
+      bi_match_typ rel eq inst any t1' t2'
     | Prim Null, Opt t2' when rel != eq ->
       Some inst
     | Variant fs1, Variant fs2 ->
@@ -276,8 +278,6 @@ let bi_match_typs ctx =
       else None
     | Mut t1', Mut t2' ->
       bi_equate_typ rel eq inst any t1' t2'
-    | Weak t1', Weak t2' ->
-      bi_match_typ rel eq inst any t1' t2'
     | Typ c1, Typ c2 ->
       (* NB: we assume c1, c2 closed *)
       if Type.eq t1 t2 then Some inst else None
