@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
   * Improved type inference for calling generic functions (#5180).
     This means that type arguments can be omitted when calling generic functions in _most common cases_.
     For example:
