@@ -6,7 +6,7 @@ sidebar_position: 7
 
 In Motoko, a **module** is a collection of related types, values, and functions grouped under a single namespace. Unlike actors and objects, modules cannot declare mutable state or have side effects during their construction. This restriction makes them ideal for defining code libraries, since you don’t need to worry about the side effects or state implications of importing the same library multiple times or removing an unused one.
 
-Modules are mainly used to build libraries, such as those in the [base package](https://internetcomputer.org/docs/motoko/main/base/) or packages available through [Mops, the Motoko package manager](https://mops.one).
+Modules are mainly used to build libraries, such as those in the [core package](https://internetcomputer.org/docs/motoko/main/base/) or packages available through [Mops, the Motoko package manager](https://mops.one).
 
 A module in Motoko can define:
 
@@ -18,7 +18,7 @@ A module in Motoko can define:
 Modules provide encapsulation and structure, allowing code to be organized and reused across different parts of an application.
 
 ```motoko no-repl
-import Array "mo:base/Array";
+import Array "mo:core/Array";
 
 module Matrix {
   // Define what a matrix is - a 2D array of Nat
@@ -71,7 +71,7 @@ This module follows a functional programming approach. All operations return new
 Modules cannot contain mutable state (`var`) or non-static expressions.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 module myModule {
   var x = 0; // Not allowed, non-static expression in library
   Debug.print("hello"); // Not allowed, side-effect in library
@@ -147,7 +147,7 @@ A module class can be used to produce multiple modules with different configurat
 <!-- TODO: a better example would have type fields, e.g. a simple vector lib -->
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 module class ExchangeRate(baseRate : Float) {
     public func convert(amount : Nat) : Float {
