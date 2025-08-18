@@ -387,7 +387,9 @@ seplist1(X, SEP) :
 
 %inline obj_sort_opt :
   | os=obj_sort { os }
-  | (* empty *) { (false @@ no_region, Type.Object @@ no_region) }
+  | (* empty *) {
+      ((!Flags.actors = Flags.DefaultPersistentActors) @@ no_region, Type.Object @@ no_region)
+    }
 
 %inline query:
   | QUERY { Type.Query }
