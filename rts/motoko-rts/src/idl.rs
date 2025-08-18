@@ -753,7 +753,8 @@ pub(crate) unsafe fn memory_compatible(
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
         }
-        (_, IDL_CON_opt) => false, // BUG?: what about Null <: ?T
+        (IDL_PRIM_null, IDL_CON_opt) => true,
+        (_, IDL_CON_opt) => false,
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);

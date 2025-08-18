@@ -17,6 +17,8 @@
 
     Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
 
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+  
   * More explanatory upgrade error messages with detailing of cause (#5391).
 
   * Improved type inference for calling generic functions (#5180).
