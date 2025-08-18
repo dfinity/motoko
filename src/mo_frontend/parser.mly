@@ -228,7 +228,7 @@ and objblock eo s id ty dec_fields =
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
 %token AND OR NOT
-%token IMPORT MODULE
+%token IMPORT INCLUDE MODULE MIXIN
 %token DEBUG_SHOW
 %token TO_CANDID FROM_CANDID
 %token ASSERT
@@ -928,6 +928,8 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
+  | MIXIN p=pat_plain dfs=obj_body { MixinD(p, dfs) @? at $sloc }
+  | INCLUDE x=id LPAR exps=seplist(exp(ob), COMMA) RPAR { IncludeD(x, exps) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body

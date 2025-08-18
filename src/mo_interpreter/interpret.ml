@@ -989,7 +989,10 @@ and interpret_block env decs ro (k : V.value V.cont) =
 and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
-  | TypD _ -> V.Env.empty
+  | TypD _
+  | MixinD (_) -> V.Env.empty
+  | IncludeD (_, _) -> (* TODO *)
+    V.Env.empty
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
@@ -1021,6 +1024,9 @@ and interpret_dec env dec (k : V.value V.cont) =
       k V.unit
     )
   | TypD _ ->
+    k V.unit
+  | MixinD _ | IncludeD _ ->
+    (* TODO *)
     k V.unit
   | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)

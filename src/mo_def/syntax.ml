@@ -238,6 +238,8 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
+  | MixinD of pat * dec_field list                   (* mixin *)
+  | IncludeD of id * exp list                  (* mixin include *)
 
 
 (* Program (pre unit detection) *)
