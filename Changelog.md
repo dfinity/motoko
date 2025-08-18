@@ -2,6 +2,21 @@
 
 * motoko (`moc`)
 
+  * Breaking change: add new type constructor `weak T` for constructing weak references.
+
+    ```motoko
+        Prim.allocWeakRef: <T>(value : T) -> weak T
+        Prim.weakGet: <T>weak T -> ?(value : T)
+        Prim.isLive: weak Any -> Bool
+    ```
+
+    A weak reference can only be allocated from a value whose type representation is always a heap reference; `allowWeakRef` will trap on values of other types.
+    A weak reference does not count as a reference to its value and allows the collector to collect the value once no other references to it remain.
+    `weakGet` will return `null`, and `isLive` will return false once the value of the reference has been collected by the garbage collector.
+    The type constructor `weak T` is covariant.
+
+    Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
+
   * Improved type inference for calling generic functions (#5180).
     This means that type arguments can be omitted when calling generic functions in _most common cases_.
     For example:
