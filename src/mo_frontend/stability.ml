@@ -49,8 +49,9 @@ let error_stable_sub s tf1 tf2 explanation =
 let error_required s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "the previous version does not contain the required stable variable `%s`."
-        tf.lab))
+      (Format.asprintf "the previous program version does not contain the stable variable %s. The migration function cannot require this variable as input, please see %s."
+        tf.lab
+        migration_link))
 
 
 (*
