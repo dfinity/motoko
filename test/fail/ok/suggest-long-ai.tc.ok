@@ -234,6 +234,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
     rts_heap_size : () -> Nat;
+    rts_lifetime_instructions : () -> Nat;
     rts_logical_stable_memory_size : () -> Nat;
     rts_max_live_size : () -> Nat;
     rts_max_stack_size : () -> Nat;
