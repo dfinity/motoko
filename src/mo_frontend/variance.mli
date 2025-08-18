@@ -16,3 +16,7 @@ type t = Bivariant | Covariant | Contravariant | Invariant
     its variance in `typ`
 *)
 val variances : Type.ConSet.t -> Type.typ -> t Type.ConEnv.t
+
+val update : ?start:t -> t Type.ConEnv.t -> Type.typ -> t Type.ConEnv.t
+
+val string_of : t -> string
