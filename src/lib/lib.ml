@@ -12,6 +12,7 @@ struct
 
   let display pp ppf x =
     Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+
 end
 
 module Fun =

@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
   * Improved type inference for calling generic functions (#5180).
     This means that type arguments can be omitted when calling generic functions in _most common cases_.
     For example:
@@ -42,6 +44,8 @@
 ## 0.15.1 (2025-07-30)
 
 * motoko (`moc`)
+
+  * More explanatory upgrade error messages with detailing of cause (#5391).
 
   * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
 
