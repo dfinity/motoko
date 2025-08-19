@@ -245,6 +245,8 @@ let bi_match_typs ctx =
       bi_match_typ rel eq inst any t1' t2'
     | Opt t1', Opt t2' ->
       bi_match_typ rel eq inst any t1' t2'
+    | Weak t1', Weak t2' ->
+      bi_match_typ rel eq inst any t1' t2'
     | Prim Null, Opt t2' when rel != eq ->
       Some inst
     | Variant fs1, Variant fs2 ->

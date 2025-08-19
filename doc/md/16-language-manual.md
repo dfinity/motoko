@@ -89,12 +89,11 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-
 actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
 from_candid func if ignore import in module not null persistent object or label
 let loop private public query return shared stable switch system throw
-to_candid true transient try type var while with
+to_candid true transient try type var weak while with
 ```
 
 ### Identifiers
@@ -834,6 +833,10 @@ The `Null` type has a single value, the literal `null`. `Null` is a subtype of t
 
 `? <typ>` specifies the type of values that are either `null` or a proper value of the form `? <v>` where `<v>` has type `<typ>`.
 
+### Weak reference types
+
+`weak <typ>` specifies the type of weak references to values of type `<typ>`.
+
 ### Function types
 
 Type `<shared>? <typ-params>? <typ1> -> <typ2>` specifies the type of functions that consume optional type parameters `<typ-params>`, consume a value parameter of type `<typ1>` and produce a result of type `<typ2>`.
@@ -1056,9 +1059,11 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 10.  `T` is `? V`, `U` is `? W` and `V <: W`.
 
-11.   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
+11.  `T` is `weak V`, `U` is `weak W` and `V <: W`.
 
-12.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
+12.   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
+
+13.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
 
       1. `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
 
@@ -1071,13 +1076,13 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
       That is, object type `T` is a subtype of object type `U` if they have the same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
       Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.
 
-13.   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
+14.   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
 
        1.   If field `# id : V` is in `fts0` then `# id : W` is in `fts1` and `V <: W`.
 
        That is, variant type `T` is a subtype of variant type `U` if every field of `T` subtypes the same field of `U`. In particular, `T` may specify fewer variants than `U`.
 
-14.   `T` is a function type `<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
+15.   `T` is a function type `<shared>? <X0 <: V0, ..., Xn <: Vn> T1 -> T2`, `U` is a function type `<shared>? <X0 <: W0, ..., Xn <: Wn> U1 -> U2` and
 
        1.   `T` and `U` are either both equivalently `<shared>?`, and
 
@@ -1091,9 +1096,9 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
             That is, function type `T` is a subtype of function type `U` if they have same `<shared>?` qualification, they have the same type parameters (modulo renaming) and assuming the bounds in `U`, every bound in `T` supertypes the corresponding parameter bound in `U` (contra-variance), the domain of `T` supertypes the domain of `U` (contra-variance) and the range of `T` subtypes the range of `U` (co-variance).
 
-15.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
+16.   `T` (respectively `U`) is a constructed type `C<V0, …​, Vn>` that is equal, by definition of type constructor `C`, to `W`, and `W <: U` (respectively `U <: W`).
 
-16.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
+17.   For some type `V`, `T <: V` and `V <: U` (*transitivity*).
 
 #### Stable Subtyping
 
@@ -1104,7 +1109,7 @@ as subtyping but replacing occurences of `_ <: _` by `_ < _` and, crucially, exc
 
 And adopting a more restrictive rule for object types:
 
-12.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
+13.   `T` is an object type `<typ-sort0> { fts0 }`, `U` is an object type `<typ-sort1> { fts1 }` and
 
       1. `<typ-sort0>` == `<typ-sort1>`, and, for all fields,
 
@@ -1126,7 +1131,7 @@ A type `T` is **shared** if it is:
 
 -   `Any` or `None`, or
 
--   A primitive type other than [`Error`](https://internetcomputer.org/docs/motoko/core/Error.md), or
+-   A primitive type other than [`Error`](https://internetcomputer.org/docs/motoko/core/Error.md) and [`Region`](https://internetcomputer.org/docs/motoko/core/Region.md), or
 
 -   An option type `? V` where `V` is shared, or
 
@@ -1144,7 +1149,7 @@ A type `T` is **shared** if it is:
 
 ### Stability
 
-Stability extends shareability to include mutable types. More precisely:
+Stability extends shareability to include mutable types, regions and weak references. More precisely:
 
 A type `T` is **stable** if it is:
 
@@ -1153,6 +1158,8 @@ A type `T` is **stable** if it is:
 -   A primitive type other than [`Error`](https://internetcomputer.org/docs/motoko/core/Error.md), or
 
 -   An option type `? V` where `V` is stable, or
+
+-   An weak reference type `weak V` where `V` is stable, or
 
 -   A tuple type `(T0, …​, Tn)` where all `Ti` are stable, or
 
@@ -1173,6 +1180,8 @@ The types of actor fields declared with the `stable` qualifier must have stable 
 The current value of such a field is preserved upon upgrade, whereas the values of other fields are reinitialized after an upgrade.
 
 Note: the primitive `Region` type is stable.
+
+Note: a weak reference type is stable when its content is stable.
 
 ## Static and dynamic semantics
 
