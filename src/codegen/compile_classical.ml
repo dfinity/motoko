@@ -10290,6 +10290,17 @@ module Cost = struct
       )
 end
 
+module WasmComponent = struct
+  let realloc env elem_align byte_len =
+    (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
+    compile_unboxed_const 0l ^^
+    compile_unboxed_const 0l ^^
+    compile_unboxed_const elem_align ^^
+    byte_len ^^
+    (* TODO: refactor using Func.share_code *)
+    E.call_import env "rts" "cabi_realloc"
+end
+
 (* The actual compiler code that looks at the AST *)
 
 (* wraps a bigint in range [0…2^32-1] into range [-2^31…2^31-1] *)
@@ -11760,8 +11771,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Prim (Nat16 | Int16) -> 2l
       | Prim (Nat32 | Int32 | Char) -> 4l
       | Prim (Nat64 | Int64 | Float) -> 8l
-      | Prim (Text | Blob) -> 8l (* ptr,len *)
-      | Array _ -> 8l (* nested list: ptr,len *)
+      | Prim (Text | Blob)
+      | Array _ -> 8l (* ptr,len *)
       | _ ->
         print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
         assert false
@@ -11774,7 +11785,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Prim (Nat32 | Int32 | Char) -> 4l
       | Prim (Nat64 | Int64 | Float) -> 8l
       (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
-      | Prim (Text | Blob) -> 4l
+      | Prim (Text | Blob)
       | Array _ -> 4l
       | _ ->
         print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
@@ -11810,42 +11821,35 @@ and compile_prim_invocation (env : E.t) ae p es at =
         store_blob get_addr get_bl
       | Prim Blob ->
         store_blob get_addr get_val
-      | Array t2 ->
+      | Array elem_t ->
         let (set_p, get_p) = new_local env "p" in
         let (set_l, get_l) = new_local env "l" in
-        build_list_buffer_of_value t2 get_val ^^ set_l ^^ set_p ^^
+        store_list_into_range get_val elem_t ^^ set_l ^^ set_p ^^
         get_addr ^^ get_p ^^ store I32Type ^^
         (get_addr ^^ compile_add_const 4l) ^^ get_l ^^ store I32Type
       | _ ->
         print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
         assert false
-    and build_list_buffer_of_value (t : Mo_types.Type.typ) (get_list_value : G.t) : G.t =
+
+    (* The name of the function comes from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
+    and store_list_into_range get_list_value elem_t =
       let open Mo_types.Type in
-      let t = normalize t in
+      let elem_t = normalize elem_t in
       let (set_arr, get_arr) = new_local env "arr" in
       let (set_len, get_len) = new_local env "len" in
       let (set_buf, get_buf) = new_local env "buf" in
       (* Evaluate list value and determine length *)
       get_list_value ^^ set_arr ^^
       get_arr ^^ Arr.len env ^^ set_len ^^
-      let esize = elem_size t in
-      let ealign = elem_alignment t in
-      (* Allocate buffer: len * esize *)
-      (let (set_bytes, get_bytes) = new_local env "bytes" in
-       get_len ^^ compile_mul_const esize ^^ set_bytes ^^
-       (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
-       compile_unboxed_const 0l ^^
-       compile_unboxed_const 0l ^^
-       compile_unboxed_const ealign ^^
-       get_bytes ^^
-       E.call_import env "rts" "cabi_realloc" ^^
-       set_buf) ^^
+      let esize = elem_size elem_t in
+      WasmComponent.realloc env (elem_alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
+      set_buf ^^
       (* Fill buffer *)
       get_len ^^ from_0_to_n env (fun get_i ->
         let get_base = get_buf in
         let get_addr = get_base ^^ (get_i ^^ compile_mul_const esize) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
         let get_elem_val = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
-        write_elem t get_addr get_elem_val
+        write_elem elem_t get_addr get_elem_val
       ) ^^
       (* Leave ptr,len *)
       get_buf ^^
@@ -11865,8 +11869,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
         compile_exp_as env ae (StackRep.of_type arg_type) e ^^
         TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
-      | Array t ->
-        build_list_buffer_of_value t (compile_exp_as env ae SR.Vanilla e)
+      | Array elem_t ->
+        store_list_into_range (compile_exp_as env ae SR.Vanilla e) elem_t
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
