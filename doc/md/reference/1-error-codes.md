@@ -22,10 +22,10 @@ sidebar_position: 1
 | M0038 | Misplaced await. | ```func compute() { let x = await promise; }``` | `await` can only be used in an async function or block. |
 | M0045 | Wrong number of type arguments. | ```func process<T>(x : Array<T, Nat>) { ... }``` | `Array` type expects one type parameter, not two. |
 | M0047 | Send capability required. | ```actor { public func send() { IC.call(...); } }``` | Functions calling IC management require explicit capability declarations. |
-| M0050 | Literal does not have expected type. | ```let x : Text = 42;``` | Cannot assign a number literal to a variable of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). |
+| M0050 | Literal does not have expected type. | ```let x : Text = 42;``` | Cannot assign a number literal to a variable of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text). |
 | M0055 | Cannot infer type of forward variable. | ```func process() { x := 10; var x = 0; }``` | Variable `x` is used before its declaration. |
 | M0057 | Unbound variable. | ```func calculate() { return result; }``` | The variable `result` is used but hasn't been defined. |
-| M0060 | Operator is not defined for operand types. | ```let result = "text" - 5;``` | The subtraction operator isn't defined for [`Text`](https://internetcomputer.org/docs/motoko/base/Text) and [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) types. |
+| M0060 | Operator is not defined for operand types. | ```let result = "text" - 5;``` | The subtraction operator isn't defined for [`Text`](https://internetcomputer.org/docs/motoko/core/Text) and [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) types. |
 | M0064 | Misplaced '!' without enclosing do block | ```func test() { someFunction!(); }``` | The `!` operator must be used within a `do` block. |
 | M0070 | Expected object type. | ```let name = person.name;``` (where `person` is not an object) | Trying to access a field on a non-object type. |
 | M0072 | Field does not exist in type. | ```type User = { id : Nat }; func getName(u : User) { u.name }``` | The field `name` doesn't exist in the `User` type. |
@@ -34,7 +34,7 @@ sidebar_position: 1
 | M0088 | Expected async type. | ```let result = await 42;``` | Cannot `await` on a non-async value. |
 | M0089 | Redundant ignore. | ```ignore (5);``` | The `ignore` is unnecessary for a value that doesn't need to be ignored. |
 | M0090 | Actor reference must have an [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) type .| ```let a = actor { ... }; a.someMethod();``` | The variable `a` must have an explicit [actor](https://internetcomputer.org/docs/motoko/fundamentals/actors-async) type to call its methods. |
-| M0096 | Expression can't produce expected type. | ```func getValue() : Bool { return "true"; }``` | String cannot be returned where a [`Bool`](https://internetcomputer.org/docs/motoko/base/Bool) is expected. |
+| M0096 | Expression can't produce expected type. | ```func getValue() : Bool { return "true"; }``` | String cannot be returned where a [`Bool`](https://internetcomputer.org/docs/motoko/core/Bool) is expected. |
 | M0097 | Expected function type. | ```let x = 5; x();``` | Cannot call a non-function value. |
 | M0098 | Cannot instantiate function type. | ```type Func = (Nat) -> Nat; let f = Func();``` | Function types cannot be instantiated directly. |
 | M0112 | Tuple pattern cannot consume type. | ```let (x, y) = { a = 1; b = 2 };``` | Cannot destructure an object using tuple pattern. |
@@ -49,7 +49,7 @@ sidebar_position: 1
 | M0151 | A object literal is missing some fields. | ```type Person = { name : Text; age : Nat }; let p : Person = { name = "John" };``` | The `age` field is missing from the object literal. |
 | M0153 | An imported Candid file (.did) mentions types that cannot be represented in Motoko. | ```import Types from "types.did";``` (where `types.did` contains incompatible types) | The imported Candid file contains types that don't map to Motoko types. |
 | M0154 | Deprecation annotation. | ```@deprecated("Use newFunction instead") func oldFunction() { ... }``` | Using a deprecated function or feature that has been marked with `@deprecated`. |
-| M0155 | Inferred type [`Nat`](https://internetcomputer.org/docs/motoko/base/Nat) for subtraction. | ```let x = 5 - 10;``` | Subtraction with natural numbers can underflow without type annotation. |
+| M0155 | Inferred type [`Nat`](https://internetcomputer.org/docs/motoko/core/Nat) for subtraction. | ```let x = 5 - 10;``` | Subtraction with natural numbers can underflow without type annotation. |
 | M0156 | A parameterized type definition, or set of type definitions, is too complicated for Motoko to accept. | ```type Complex<A,B,C,D,E,F> = ... (extremely nested recursive types)``` | Type definition too complex for the compiler to process. |
 | M0157 | A type definition, or set of type definitions, is ill-defined. | ```type RecursiveType = RecursiveType;``` | A type directly references itself without proper indirection. |
 | M0158 | A public class was declared without providing it with a name. | ```public class<T>() { ... }``` | Public parameterized classes must be named explicitly. |
