@@ -11766,6 +11766,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
         print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
         assert false
     in
+    let elem_alignment t : int32 =
+      let open Mo_types.Type in
+      match normalize t with
+      | Prim (Nat8 | Int8 | Bool) -> 1l
+      | Prim (Nat16 | Int16) -> 2l
+      | Prim (Nat32 | Int32 | Char) -> 4l
+      | Prim (Nat64 | Int64 | Float) -> 8l
+      (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
+      | Prim (Text | Blob) -> 4l
+      | Array _ -> 4l
+      | _ ->
+        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+        assert false
+    in
 
     let store ?pack ty = G.i (Store {ty; align = 0; offset = 0L; sz = pack}) in
     let store_blob get_addr get_val =
@@ -11815,19 +11829,26 @@ and compile_prim_invocation (env : E.t) ae p es at =
       get_list_value ^^ set_arr ^^
       get_arr ^^ Arr.len env ^^ set_len ^^
       let esize = elem_size t in
+      let ealign = elem_alignment t in
       (* Allocate buffer: len * esize *)
       (let (set_bytes, get_bytes) = new_local env "bytes" in
        get_len ^^ compile_mul_const esize ^^ set_bytes ^^
-       Blob.alloc env Tagged.B get_bytes ^^ set_buf) ^^
+       (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
+       compile_unboxed_const 0l ^^
+       compile_unboxed_const 0l ^^
+       compile_unboxed_const ealign ^^
+       get_bytes ^^
+       E.call_import env "rts" "cabi_realloc" ^^
+       set_buf) ^^
       (* Fill buffer *)
       get_len ^^ from_0_to_n env (fun get_i ->
-        let get_base = get_buf ^^ Blob.payload_ptr_unskewed env in
+        let get_base = get_buf in
         let get_addr = get_base ^^ (get_i ^^ compile_mul_const esize) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
         let get_elem_val = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
         write_elem t get_addr get_elem_val
       ) ^^
       (* Leave ptr,len *)
-      get_buf ^^ Blob.payload_ptr_unskewed env ^^
+      get_buf ^^
       get_len
     in
 
