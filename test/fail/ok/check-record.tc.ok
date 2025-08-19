@@ -16,3 +16,7 @@ check-record.mo:24.9-24.27: type error [M0096], expression of type
   {a : Nat}
 cannot produce expected type
   {b : Nat}
+because: Unsupported additional field `b` in type 
+  {b : Nat}
+ of top level
+

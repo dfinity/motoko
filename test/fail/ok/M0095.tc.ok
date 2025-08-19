@@ -2,3 +2,8 @@ M0095.mo:1.15-1.17: type error [M0095], function return type
   ()
 does not match expected return type
   Bool
+because: The type 
+  ()
+ is not compatible with type 
+  Bool
+ of Bool (used by top level)

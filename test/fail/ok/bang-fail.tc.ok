@@ -12,3 +12,9 @@ bang-fail.mo:18.17-18.19: type error [M0096], expression of type
   ()
 cannot produce expected type
   Nat
+because: The type 
+  ()
+ is not compatible with type 
+  Nat
+ of top level
+

@@ -11,3 +11,9 @@ queries.mo:26.5-26.14: type error [M0096], expression of type
   async<$bogus> ()
 cannot produce expected type
   ()
+because: The type 
+  async<$bogus> ()
+ is not compatible with type 
+  ()
+ of top level
+

@@ -2,3 +2,9 @@ issue2062.mo:2.3-3.11: type error [M0096], expression of type
   ()
 cannot produce expected type
   Nat
+because: The type 
+  ()
+ is not compatible with type 
+  Nat
+ of top level
+

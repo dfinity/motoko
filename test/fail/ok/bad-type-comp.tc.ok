@@ -2,10 +2,20 @@ bad-type-comp.mo:5.10-5.19: type error [M0096], expression of type
   module {}
 cannot produce expected type
   module {type T = Null}
+because: Unsupported additional field `T` in type 
+  module {type T = Null}
+ of top level
+
 bad-type-comp.mo:6.10-6.39: type error [M0096], expression of type
   module {type T = Int}
 cannot produce expected type
   module {type T = Null}
+because: The type 
+  = (type = Int)
+ is not compatible with type 
+  = (type = Null)
+ of top level.T
+
 bad-type-comp.mo:7.73-7.74: type error [M0018], duplicate type field name T in object type
 bad-type-comp.mo:11.15-11.16: type error [M0029], unbound type T
 Did you mean type Text?

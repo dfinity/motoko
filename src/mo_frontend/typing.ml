@@ -337,6 +337,13 @@ let sub env at t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
+let sub_explained env at t1 t2 =
+  try T.sub_explained ~src_fields:env.srcs [] t1 t2 with T.Undecided ->
+    error env at "M0200" "cannot decide subtyping between type%a\nand%a"
+      display_typ_expand t1
+      display_typ_expand t2
+
+
 let eq env at t1 t2 =
   try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
     error env at "M0200" "cannot decide equality between type%a\nand%a"
@@ -1465,12 +1472,14 @@ and infer_exp'' env exp : T.typ =
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
-        if not (sub env exp.at t t') then
-          local_error env exp.at "M0192"
-            "body of type%a\ndoes not match expected type%a"
+        (match sub_explained env exp.at t t' with
+        | T.Incompatible reason ->
+           local_error env exp.at "M0192"
+            "body of type%a\ndoes not match expected type%a\nbecause: %s"
             display_typ_expand t
             display_typ_expand t'
-        else detect_lost_fields env t' e;
+            (T.string_of_explanation reason)
+        | T.Compatible -> detect_lost_fields env t' e)
       | _ -> ()
     end;
     t
@@ -2067,20 +2076,26 @@ and check_exp' env0 t exp : T.typ =
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
-    if not (sub env Source.no_region t2 codom) then
-      error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a"
-        display_typ_expand t2
-        display_typ_expand codom;
+    (match sub_explained env Source.no_region t2 codom with
+     | T.Incompatible reason ->
+        error env exp.at "M0095"
+          "function return type%a\ndoes not match expected return type%a\nbecause: %s"
+          display_typ_expand t2
+          display_typ_expand codom
+          (T.string_of_explanation reason)
+     | T.Compatible -> ());
     check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
-    if not (sub env exp1.at t' t) then
-      local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
-        display_typ_expand t'
-        display_typ_expand t;
+    (match sub_explained env exp1.at t' t with
+     | T.Incompatible reason ->
+        local_error env0 exp.at "M0096"
+          "expression of type%a\ncannot produce expected type%a\nbecause: %s"
+          display_typ_expand t'
+          display_typ_expand t
+          (T.string_of_explanation reason)
+     | T.Compatible -> ());
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
@@ -2089,15 +2104,16 @@ and check_exp' env0 t exp : T.typ =
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
-    if not (sub env exp.at t' t) then
-    begin
+    (match sub_explained env exp.at t' t with
+    | T.Incompatible reason ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a%s"
+        "expression of type%a\ncannot produce expected type%a\nbecause: %s\n%s"
         display_typ_expand t'
         display_typ_expand t
+        (T.string_of_explanation reason)
         (Suggest.suggest_conversion env.libs env.vals t' t)
-    end
-    else detect_lost_fields env t e;
+    | T.Compatible ->
+      detect_lost_fields env t e);
     t'
 
 and check_exp_field env (ef : exp_field) fts =

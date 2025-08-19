@@ -2,6 +2,12 @@ suggest-conversion-ai.mo:7.3-7.5: type error [M0096], expression of type
   Nat8
 cannot produce expected type
   Nat
+because: The type 
+  Nat8
+ is not compatible with type 
+  Nat
+ in top level
+
 Maybe try conversion:
   `Nat8.toNat(_)`,
   `Nat8.fromNat8(_)`,
@@ -11,6 +17,12 @@ suggest-conversion-ai.mo:8.3-8.6: type error [M0096], expression of type
   Nat16
 cannot produce expected type
   Nat
+because: The type 
+  Nat16
+ is not compatible with type 
+  Nat
+ in top level
+
 Maybe try conversion:
   `Nat16.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"`,
   `Nat16.fromNat16(_)` after adding `import Nat16 = "mo:conv/Nat16"`,

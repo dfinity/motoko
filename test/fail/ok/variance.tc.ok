@@ -2,10 +2,22 @@ variance.mo:17.3-17.5: type error [M0096], expression of type
   {get : () -> ?None}
 cannot produce expected type
   ()
+because: The type 
+  {get : () -> ?None}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:32.3-32.9: type error [M0096], expression of type
   {put : (i : Any) -> ()}
 cannot produce expected type
   ()
+because: The type 
+  {put : (i : Any) -> ()}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:44.24-44.27: type error [M0046], type argument
   Any
 does not match parameter bound
@@ -14,26 +26,62 @@ variance.mo:44.10-44.15: type error [M0096], expression of type
   {put : (i : Nat) -> ()}
 cannot produce expected type
   {put : (i : Any) -> ()}
+because: The type 
+  Any
+ is not compatible with type 
+  Nat
+ of Nat (used by i in top level.put)
+
 variance.mo:48.3-48.8: type error [M0096], expression of type
   {put : (i : Nat) -> ()}
 cannot produce expected type
   ()
+because: The type 
+  {put : (i : Nat) -> ()}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:64.3-64.6: type error [M0096], expression of type
   {get : () -> ?Any; put : (i : Any) -> ()}
 cannot produce expected type
   ()
+because: The type 
+  {get : () -> ?Any; put : (i : Any) -> ()}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:80.3-80.10: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   ()
+because: The type 
+  {get : () -> ?Nat; put : (i : Nat) -> ()}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:81.3-81.10: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   ()
+because: The type 
+  {get : () -> ?Nat; put : (i : Nat) -> ()}
+ is not compatible with type 
+  ()
+ of top level
+
 variance.mo:82.11-82.18: type error [M0096], expression of type
   {get : () -> ?Nat; put : (i : Nat) -> ()}
 cannot produce expected type
   {get : () -> ?Any; put : (i : Any) -> ()}
+because: The type 
+  Any
+ is not compatible with type 
+  Nat
+ of Nat (used by i in top level.put)
+
 variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate function of type
   <A>() -> Inv<A>
 to argument of type
