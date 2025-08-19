@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.16.0 (2025-08-19)
+
 * motoko (`moc`)
 
   * Breaking change: add new type constructor `weak T` for constructing weak references.
