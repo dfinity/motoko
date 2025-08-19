@@ -10291,6 +10291,8 @@ module Cost = struct
 end
 
 module WasmComponent = struct
+  let (let*) f k = f k
+
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
     compile_unboxed_const 0l ^^
@@ -10328,67 +10330,62 @@ module WasmComponent = struct
       assert false
 
   (* Names come from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
-  let store_int ?pack ty = G.i (Store {ty; align = 0; offset = 0L; sz = pack})
 
-  let store_blob env get_addr get_val =
-    get_addr ^^ (get_val ^^ Blob.payload_ptr_unskewed env) ^^ store_int I32Type ^^
-    (get_addr ^^ compile_add_const 4l) ^^ (get_val ^^ Blob.len env) ^^ store_int I32Type
-
-  let rec store env t get_addr get_val =
+  let rec store env get_val typ get_addr =
     let open Mo_types.Type in
-    match normalize t with
-    | Prim Bool ->
-      get_addr ^^ get_val ^^ store_int I32Type ~pack:Pack8
-    | Prim ((Nat8|Int8) as ty) ->
-      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store_int I32Type ~pack:Pack8
-    | Prim ((Nat16|Int16) as ty) ->
-      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store_int I32Type ~pack:Pack16
-    | Prim Char ->
-      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) ^^ store_int I32Type
-    | Prim ((Nat32|Int32) as ty) ->
-      get_addr ^^ (get_val ^^ BoxedSmallWord.unbox env ty) ^^ store_int I32Type
-    | Prim ((Nat64|Int64) as ty) ->
-      get_addr ^^ (get_val ^^ BoxedWord64.unbox env ty) ^^ store_int I64Type
-    | Prim Float ->
-      get_addr ^^ (get_val ^^ Float.unbox env) ^^ store_int F64Type
-    | Prim Text ->
-      let (set_bl, get_bl) = new_local env "bl" in
-      get_val ^^ Text.to_blob env ^^ set_bl ^^
-      store_blob env get_addr get_bl
-    | Prim Blob ->
-      store_blob env get_addr get_val
-    | Array elem_t ->
-      let (set_p, get_p) = new_local env "p" in
-      let (set_l, get_l) = new_local env "l" in
-      store_list_into_range env get_val elem_t ^^ set_l ^^ set_p ^^
-      get_addr ^^ get_p ^^ store_int I32Type ^^
-      (get_addr ^^ compile_add_const 4l) ^^ get_l ^^ store_int I32Type
+    match normalize typ with
+    | Prim Bool                  -> store_int I32Type ~pack:Pack8 get_val get_addr
+    | Prim ((Nat8 |Int8 ) as ty) -> store_int I32Type ~pack:Pack8 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
+    | Prim ((Nat16|Int16) as ty) -> store_int I32Type ~pack:Pack16 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
+    | Prim Char                  -> store_int I32Type (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) get_addr
+    | Prim ((Nat32|Int32) as ty) -> store_int I32Type (get_val ^^ BoxedSmallWord.unbox env ty) get_addr
+    | Prim ((Nat64|Int64) as ty) -> store_int I64Type (get_val ^^ BoxedWord64.unbox env ty) get_addr
+    | Prim Float                 -> store_int F64Type (get_val ^^ Float.unbox env) get_addr
+    | Prim Text                  -> store_string env get_val get_addr
+    | Prim Blob                  -> store_blob env get_val get_addr
+    | Array elem_t               -> store_list env get_val elem_t get_addr
     | _ ->
-      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ typ));
       assert false
 
-  and store_list_into_range env get_list_value elem_t =
+  and store_int ?pack ty get_val get_addr =
+    get_addr ^^ get_val ^^ G.i (Store {ty; align = 0; offset = 0L; sz = pack})
+
+  and store_blob env get_val get_addr =
+    store_int I32Type (get_val ^^ Blob.payload_ptr_unskewed env) get_addr ^^
+    store_int I32Type (get_val ^^ Blob.len env) (get_addr ^^ compile_add_const 4l)
+
+  and store_string env get_val get_addr =
+    let (set_bl, get_bl) = new_local env "bl" in
+    (* TODO: implement proper store_string_into_range if needed *)
+    get_val ^^ Text.to_blob env ^^ set_bl ^^
+    store_blob env get_bl get_addr
+
+  and store_list env get_list_value elem_t get_pair_addr =
+    let* get_buf, get_len = store_list_into_range env get_list_value elem_t in
+    store_int I32Type get_buf get_pair_addr ^^
+    store_int I32Type get_len (get_pair_addr ^^ compile_add_const 4l)
+
+  and store_list_into_range env get_list_value elem_t k =
     let open Mo_types.Type in
     let elem_t = normalize elem_t in
     let (set_arr, get_arr) = new_local env "arr" in
     let (set_len, get_len) = new_local env "len" in
     let (set_buf, get_buf) = new_local env "buf" in
+    let esize = elem_size elem_t in
     (* Evaluate list value and determine length *)
     get_list_value ^^ set_arr ^^
     get_arr ^^ Arr.len env ^^ set_len ^^
-    let esize = elem_size elem_t in
     realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
     set_buf ^^
     store_list_into_valid_range env (get_arr, get_len) get_buf elem_t ^^
-    (* Leave ptr,len *)
-    get_buf ^^
-    get_len
+    k (get_buf, get_len)
 
   and store_list_into_valid_range env (get_arr, get_len) get_buf elem_t =
     get_len ^^ from_0_to_n env (fun get_i ->
       let dest_ptr = get_buf ^^ (get_i ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
       let elem_v = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
-      store env elem_t dest_ptr elem_v
+      store env elem_v elem_t dest_ptr
     )
 
 end
@@ -11858,6 +11855,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     
     let compile_arg_for_component e arg_type =
       let open Mo_types.Type in
+      let open WasmComponent in
       match normalize arg_type with
       | Prim (Blob | Text as prim) ->
         let set_blob, get_blob = new_local env "blob_arg" in
@@ -11870,7 +11868,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
         compile_exp_as env ae (StackRep.of_type arg_type) e ^^
         TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
       | Array elem_t ->
-        WasmComponent.store_list_into_range env(compile_exp_as env ae SR.Vanilla e) elem_t
+        let* get_arr, get_len = store_list_into_range env (compile_exp_as env ae SR.Vanilla e) elem_t in
+        get_arr ^^ get_len
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
