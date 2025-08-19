@@ -10299,6 +10299,98 @@ module WasmComponent = struct
     byte_len ^^
     (* TODO: refactor using Func.share_code *)
     E.call_import env "rts" "cabi_realloc"
+
+  let elem_size t : int32 =
+    let open Mo_types.Type in
+    match normalize t with
+    | Prim (Nat8 | Int8 | Bool) -> 1l
+    | Prim (Nat16 | Int16) -> 2l
+    | Prim (Nat32 | Int32 | Char) -> 4l
+    | Prim (Nat64 | Int64 | Float) -> 8l
+    | Prim (Text | Blob)
+    | Array _ -> 8l (* ptr,len *)
+    | _ ->
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+      assert false
+
+  let alignment t : int32 =
+    let open Mo_types.Type in
+    match normalize t with
+    | Prim (Nat8 | Int8 | Bool) -> 1l
+    | Prim (Nat16 | Int16) -> 2l
+    | Prim (Nat32 | Int32 | Char) -> 4l
+    | Prim (Nat64 | Int64 | Float) -> 8l
+    (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
+    | Prim (Text | Blob)
+    | Array _ -> 4l
+    | _ ->
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+      assert false
+
+  (* Names come from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
+  let store_int ?pack ty = G.i (Store {ty; align = 0; offset = 0L; sz = pack})
+
+  let store_blob env get_addr get_val =
+    get_addr ^^ (get_val ^^ Blob.payload_ptr_unskewed env) ^^ store_int I32Type ^^
+    (get_addr ^^ compile_add_const 4l) ^^ (get_val ^^ Blob.len env) ^^ store_int I32Type
+
+  let rec store env t get_addr get_val =
+    let open Mo_types.Type in
+    match normalize t with
+    | Prim Bool ->
+      get_addr ^^ get_val ^^ store_int I32Type ~pack:Pack8
+    | Prim ((Nat8|Int8) as ty) ->
+      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store_int I32Type ~pack:Pack8
+    | Prim ((Nat16|Int16) as ty) ->
+      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store_int I32Type ~pack:Pack16
+    | Prim Char ->
+      get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) ^^ store_int I32Type
+    | Prim ((Nat32|Int32) as ty) ->
+      get_addr ^^ (get_val ^^ BoxedSmallWord.unbox env ty) ^^ store_int I32Type
+    | Prim ((Nat64|Int64) as ty) ->
+      get_addr ^^ (get_val ^^ BoxedWord64.unbox env ty) ^^ store_int I64Type
+    | Prim Float ->
+      get_addr ^^ (get_val ^^ Float.unbox env) ^^ store_int F64Type
+    | Prim Text ->
+      let (set_bl, get_bl) = new_local env "bl" in
+      get_val ^^ Text.to_blob env ^^ set_bl ^^
+      store_blob env get_addr get_bl
+    | Prim Blob ->
+      store_blob env get_addr get_val
+    | Array elem_t ->
+      let (set_p, get_p) = new_local env "p" in
+      let (set_l, get_l) = new_local env "l" in
+      store_list_into_range env get_val elem_t ^^ set_l ^^ set_p ^^
+      get_addr ^^ get_p ^^ store_int I32Type ^^
+      (get_addr ^^ compile_add_const 4l) ^^ get_l ^^ store_int I32Type
+    | _ ->
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+      assert false
+
+  and store_list_into_range env get_list_value elem_t =
+    let open Mo_types.Type in
+    let elem_t = normalize elem_t in
+    let (set_arr, get_arr) = new_local env "arr" in
+    let (set_len, get_len) = new_local env "len" in
+    let (set_buf, get_buf) = new_local env "buf" in
+    (* Evaluate list value and determine length *)
+    get_list_value ^^ set_arr ^^
+    get_arr ^^ Arr.len env ^^ set_len ^^
+    let esize = elem_size elem_t in
+    realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
+    set_buf ^^
+    store_list_into_valid_range env (get_arr, get_len) get_buf elem_t ^^
+    (* Leave ptr,len *)
+    get_buf ^^
+    get_len
+
+  and store_list_into_valid_range env (get_arr, get_len) get_buf elem_t =
+    get_len ^^ from_0_to_n env (fun get_i ->
+      let dest_ptr = get_buf ^^ (get_i ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
+      let elem_v = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
+      store env elem_t dest_ptr elem_v
+    )
+
 end
 
 (* The actual compiler code that looks at the AST *)
@@ -11764,98 +11856,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let component_name = List.nth parts 1 in
     let function_name = List.nth parts 2 in 
     
-    let elem_size t : int32 =
-      let open Mo_types.Type in
-      match normalize t with
-      | Prim (Nat8 | Int8 | Bool) -> 1l
-      | Prim (Nat16 | Int16) -> 2l
-      | Prim (Nat32 | Int32 | Char) -> 4l
-      | Prim (Nat64 | Int64 | Float) -> 8l
-      | Prim (Text | Blob)
-      | Array _ -> 8l (* ptr,len *)
-      | _ ->
-        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
-        assert false
-    in
-    let elem_alignment t : int32 =
-      let open Mo_types.Type in
-      match normalize t with
-      | Prim (Nat8 | Int8 | Bool) -> 1l
-      | Prim (Nat16 | Int16) -> 2l
-      | Prim (Nat32 | Int32 | Char) -> 4l
-      | Prim (Nat64 | Int64 | Float) -> 8l
-      (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
-      | Prim (Text | Blob)
-      | Array _ -> 4l
-      | _ ->
-        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
-        assert false
-    in
-
-    let store ?pack ty = G.i (Store {ty; align = 0; offset = 0L; sz = pack}) in
-    let store_blob get_addr get_val =
-      get_addr ^^ (get_val ^^ Blob.payload_ptr_unskewed env) ^^ store I32Type ^^
-      (get_addr ^^ compile_add_const 4l) ^^ (get_val ^^ Blob.len env) ^^ store I32Type
-    in
-
-    let rec write_elem t get_addr get_val =
-      let open Mo_types.Type in
-      match normalize t with
-      | Prim Bool ->
-        get_addr ^^ get_val ^^ store I32Type ~pack:Pack8
-      | Prim ((Nat8|Int8) as ty) ->
-        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store I32Type ~pack:Pack8
-      | Prim ((Nat16|Int16) as ty) ->
-        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust ty) ^^ store I32Type ~pack:Pack16
-      | Prim Char ->
-        get_addr ^^ (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) ^^ store I32Type
-      | Prim ((Nat32|Int32) as ty) ->
-        get_addr ^^ (get_val ^^ BoxedSmallWord.unbox env ty) ^^ store I32Type
-      | Prim ((Nat64|Int64) as ty) ->
-        get_addr ^^ (get_val ^^ BoxedWord64.unbox env ty) ^^ store I64Type
-      | Prim Float ->
-        get_addr ^^ (get_val ^^ Float.unbox env) ^^ store F64Type
-      | Prim Text ->
-        let (set_bl, get_bl) = new_local env "bl" in
-        get_val ^^ Text.to_blob env ^^ set_bl ^^
-        store_blob get_addr get_bl
-      | Prim Blob ->
-        store_blob get_addr get_val
-      | Array elem_t ->
-        let (set_p, get_p) = new_local env "p" in
-        let (set_l, get_l) = new_local env "l" in
-        store_list_into_range get_val elem_t ^^ set_l ^^ set_p ^^
-        get_addr ^^ get_p ^^ store I32Type ^^
-        (get_addr ^^ compile_add_const 4l) ^^ get_l ^^ store I32Type
-      | _ ->
-        print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
-        assert false
-
-    (* The name of the function comes from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
-    and store_list_into_range get_list_value elem_t =
-      let open Mo_types.Type in
-      let elem_t = normalize elem_t in
-      let (set_arr, get_arr) = new_local env "arr" in
-      let (set_len, get_len) = new_local env "len" in
-      let (set_buf, get_buf) = new_local env "buf" in
-      (* Evaluate list value and determine length *)
-      get_list_value ^^ set_arr ^^
-      get_arr ^^ Arr.len env ^^ set_len ^^
-      let esize = elem_size elem_t in
-      WasmComponent.realloc env (elem_alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
-      set_buf ^^
-      (* Fill buffer *)
-      get_len ^^ from_0_to_n env (fun get_i ->
-        let get_base = get_buf in
-        let get_addr = get_base ^^ (get_i ^^ compile_mul_const esize) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
-        let get_elem_val = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
-        write_elem elem_t get_addr get_elem_val
-      ) ^^
-      (* Leave ptr,len *)
-      get_buf ^^
-      get_len
-    in
-
     let compile_arg_for_component e arg_type =
       let open Mo_types.Type in
       match normalize arg_type with
@@ -11870,7 +11870,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
         compile_exp_as env ae (StackRep.of_type arg_type) e ^^
         TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
       | Array elem_t ->
-        store_list_into_range (compile_exp_as env ae SR.Vanilla e) elem_t
+        WasmComponent.store_list_into_range env(compile_exp_as env ae SR.Vanilla e) elem_t
       | typ ->
         print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
         assert false
@@ -11934,7 +11934,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          load I32Type ^^ set_len) ^^
         (* Allocate Motoko array and fill elements *)
         Arr.alloc env Tagged.M get_len ^^ set_arr ^^
-        let esize = elem_size t in
+        let esize = WasmComponent.elem_size t in
         get_len ^^ from_0_to_n env (fun get_i ->
           let get_src_addr =
             get_ptr ^^
