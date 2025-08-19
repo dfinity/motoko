@@ -66,6 +66,8 @@ const IDL_PRIM_lowest: i32 = -17;
 const IDL_EXT_blob: i32 = -129;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
+#[enhanced_orthogonal_persistence]
+const IDL_EXT_weak: i32 = -131;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -741,11 +743,17 @@ pub(crate) unsafe fn memory_compatible(
         (_, IDL_PRIM_reserved) => false, // information lost
         (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
+        (IDL_EXT_weak, IDL_EXT_weak) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
         (IDL_CON_opt, IDL_CON_opt) => {
             let t11 = sleb128_decode(&mut tb1);
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
         }
+        (IDL_PRIM_null, IDL_CON_opt) => true,
         (_, IDL_CON_opt) => false,
         (IDL_CON_vec, IDL_CON_vec) => {
             let t11 = sleb128_decode(&mut tb1);

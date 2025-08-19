@@ -1,4 +1,4 @@
-import Array "mo:base/Array";
+import VarArray "mo:core/VarArray";
 import Buckets "Buckets";
 
 persistent actor Map {
@@ -10,7 +10,7 @@ persistent actor Map {
 
   type Bucket = Buckets.Bucket;
 
-  let buckets : [var ?Bucket] = Array.init(n, null);
+  let buckets : [var ?Bucket] = VarArray.repeat(null, n);
 
   public func get(k : Key) : async ?Value {
     switch (buckets[k % n]) {

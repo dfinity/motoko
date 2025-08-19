@@ -6,7 +6,7 @@ sidebar_position: 26
 
 
 
-On ICP, canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Times in Motoko are implemented using the [`Timer.mo`](../base/Timer.md) module, and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple timers.
+On ICP, canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Times in Motoko are implemented using the [`Timer.mo`](../core/Timer.md) module, and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple timers.
 
 ## Example
 
@@ -23,7 +23,7 @@ The timer mechanism can be disabled completely by passing the `-no-timer` flag t
 
 When lower-level access to the canister global timer is desired, an actor can elect to receive timer expiry messages by declaring a `system` function named `timer`. The function takes one argument used to reset the global timer and returns a future of unit type `async ()`.
 
-If the `timer` system method is declared, the [`Timer.mo`](../base/Timer.md) base library module may not function correctly and should not be used.
+If the `timer` system method is declared, the [`Timer`](../core/Timer.md) module in the core package may not function correctly and should not be used.
 
 The following example of a global timer expiration callback gets called immediately after the canister starts, i.e. after install, and periodically every twenty seconds thereafter:
 

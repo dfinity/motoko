@@ -52,6 +52,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ
+  | Weak of typ                               (* weak references *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -141,6 +142,7 @@ val is_fut : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
+val is_var : typ -> bool
 
 val as_prim : prim -> typ -> unit
 val as_obj : typ -> obj_sort * field list
@@ -168,7 +170,7 @@ val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : async_sort -> typ -> typ -> typ * typ
-
+val as_weak_sub : typ -> typ
 
 (* Argument/result sequences *)
 
@@ -197,7 +199,7 @@ val compare_field : field -> field -> int
 val set_kind : con -> kind -> unit
 
 module ConEnv : Env.S with type key = con
-module ConSet : Dom.S with type elt = con
+module ConSet = ConEnv.Dom
 
 
 (* Sets *)
@@ -229,9 +231,33 @@ val span : typ -> int option
 
 val cons: typ -> ConSet.t
 val cons_kind : kind -> ConSet.t
+val cons_typs : typ list -> ConSet.t
 
 
 (* Equivalence and Subtyping *)
+
+type compatibility = Compatible | Incompatible of explanation
+and explanation =
+  | IncompatibleTypes of context * typ * typ
+  | MissingTag of context * lab * typ
+  | UnexpectedTag of context * lab * typ
+  | MissingField of context * lab * typ
+  | UnexpectedField of context * lab * typ
+  | FewerItems of context * string
+  | MoreItems of context * string
+  | PromotionToAny of context * typ
+  | IncompatiblePrims of context * typ * typ
+  | IncompatibleObjSorts of context * typ * typ
+  | IncompatibleFuncSorts of context * typ * typ
+  | IncompatibleBounds of context * typ * typ
+  | IncompatibleFuncs of context * typ * typ
+  | IncompatibleAsyncSorts of context * typ * typ
+and context_item =
+  | ConsType of con
+  | NamedType of name
+  | StableVariable of lab
+  | Field of lab
+and context = context_item list
 
 exception Undecided (* raised if termination depth exceeded  *)
 
@@ -239,6 +265,7 @@ val eq : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 
 val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
 val compatible : typ -> typ -> bool
 
 exception PreEncountered
@@ -274,6 +301,7 @@ val scope_bind : bind
 (* like sub, but disallows promotion to  Any or narrower object types
    that signal data loss *)
 val stable_sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
+val stable_sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
 
 type stab_sig =
   | Single of field list
@@ -330,13 +358,16 @@ module type Pretty = sig
   val string_of_kind : kind -> string
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
+  val string_of_explanation : explanation -> string
 end
 
 module type PrettyConfig = sig
   val show_stamps : bool
   val show_scopes : bool
+  val show_hash_suffix : bool
   val con_sep : string
   val par_sep : string
+  val max_list : int option
 end
 
 module ShowStamps : PrettyConfig
@@ -344,6 +375,8 @@ module ShowStamps : PrettyConfig
 module ElideStamps : PrettyConfig
 
 module ParseableStamps : PrettyConfig
+
+module ElideStampsAndHashes : PrettyConfig
 
 module MakePretty(_ : PrettyConfig) : Pretty
 
