@@ -106,6 +106,7 @@ let is_motoko_keyword = function
   | "true"
   | "type"
   | "var"
+  | "weak"
   | "while"
   | "with"
   -> true
