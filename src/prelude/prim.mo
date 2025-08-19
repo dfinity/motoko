@@ -97,8 +97,6 @@ func rts_stable_memory_size() : Nat {
 
 func rts_logical_stable_memory_size() : Nat {
   (prim "rts_logical_stable_memory_size" : () -> Nat)();
-<<<<<<< HEAD
-=======
 };
 
 //TODO: just call this `weak`?
@@ -112,7 +110,6 @@ func weakGet<T>(w : weak T) : ?T {
 
 func isLive(weak_ref : weak Any) : Bool {
   (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
->>>>>>> master
 };
 
 // Total conversions (fixed to big)
