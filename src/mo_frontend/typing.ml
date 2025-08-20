@@ -345,11 +345,15 @@ let sub_explained env at t1 t2 =
 
 let check_sub_explained env at t1 t2 on_incompatible =
   match sub_explained env at t1 t2 with
-  | T.Incompatible (T.IncompatibleTypes ([], t1', t2')) when t1 = t1' && t2 = t2' ->
-    (* Skip redundant explanation *)
-    on_incompatible ""
   | T.Incompatible reason ->
-    on_incompatible ("\nbecause: " ^ (T.string_of_explanation reason))
+    begin match reason with
+    | T.IncompatibleTypes (_, t1', t2')
+    | T.IncompatiblePrims (_, t1', t2') when T.eq t1 t1' && T.eq t2 t2' ->
+      (* Skip redundant explanation *)
+      on_incompatible ""
+    | _ ->
+      on_incompatible ("\nbecause: " ^ (T.string_of_explanation reason))
+    end
   | T.Compatible -> ()
 
 let eq env at t1 t2 =

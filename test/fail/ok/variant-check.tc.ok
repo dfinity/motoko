@@ -2,8 +2,3 @@ variant-check.mo:6.23-6.26: type error [M0096], expression of type
   Nat
 cannot produce expected type
   Nat8
-because: The type 
-  Nat
- is not compatible with type 
-  Nat8
- in top level
