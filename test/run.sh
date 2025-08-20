@@ -317,6 +317,14 @@ do
         continue
       fi
     fi
+    if grep -q "//SKIP-SANITY-CHECKS" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--sanity-checks"* ]]
+      then
+        $ECHO " Skipped (not applicable to --sanity-checks)"
+        continue
+      fi
+    fi
     if [[ $moc_extra_flags == *"-measure-rts-stack"* ]]
     then
       if [[ $(uname -m) != "x86_64" ]]
