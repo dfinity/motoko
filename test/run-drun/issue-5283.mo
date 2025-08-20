@@ -1,18 +1,14 @@
-//MOC-FLAC --package base $MOTOKO_BASE
-import Mod "issue-5283/mod";
+persistent actor {
 
-persistent actor HelloWorld {
-  // We store the greeting in a stable variable such that it gets persisted over canister upgrades.
-  var greeting : Text = "Hello, ";
+ class C() = this {
+   public func m() : async () {
+     label l {
+       for (l in [0, 1, 2, 3].values()) {
+         ignore l == 0;
+         break l; // label l, not identifier l!
+       }
+     }
+   }
+ }
 
-  // This update method stores the greeting prefix in stable memory.
-  public func setGreeting(prefix : Text) : async () {
-    let x = Mod.ICRC8IntentMarketplace();
-    greeting := prefix;
-  };
-
-  // This query method returns the currently persisted greeting with the given name.
-  public query func greet(name : Text) : async Text {
-    return greeting # name # "!";
-  };
 };

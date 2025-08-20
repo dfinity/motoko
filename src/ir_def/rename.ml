@@ -26,7 +26,7 @@ let id rho i =
   with Not_found -> i
 
 let lab rho i =
-  try Renaming.find (Binder.Lab i) rho
+  try Renaming.find (Binder.Id i) rho
   with Not_found -> i
 
 let id_bind rho i =
@@ -41,7 +41,7 @@ let rec ids_bind rho = function
 
 let lab_bind rho i =
   let i' = fresh_id i in
-  (i', Renaming.add (Binder.Lab i) i' rho)
+  (i', Renaming.add (Binder.Id i) i' rho)
 
 let arg_bind rho a =
   let i', rho' = id_bind rho a.it in
