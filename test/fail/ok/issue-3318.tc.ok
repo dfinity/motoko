@@ -7,7 +7,6 @@ because: The type
  is not compatible with type 
   (Int, Int)
  of top level
-
 issue-3318.mo:15.41-15.42: type error [M0096], expression of type
   (Nat, Nat) -> (Nat, Nat)
 cannot produce expected type
@@ -17,7 +16,6 @@ because: The type
  is not compatible with type 
   (Nat, Nat)
  of top level
-
 issue-3318.mo:18.41-18.42: type error [M0096], expression of type
   (Nat, Nat) -> (Nat, Nat)
 cannot produce expected type
@@ -27,7 +25,6 @@ because: The type
  is not compatible with type 
   Nat
  of Nat (used by top level)
-
 issue-3318.mo:21.43-21.44: type error [M0096], expression of type
   (Nat, Nat) -> (Nat, Nat)
 cannot produce expected type
@@ -37,7 +34,6 @@ because: The type
  is not compatible with type 
   Nat
  of Nat (used by top level)
-
 issue-3318.mo:24.39-24.40: type error [M0096], expression of type
   (Nat, Nat) -> ((Nat, Nat))
 cannot produce expected type
@@ -47,7 +43,6 @@ because: The type
  is not compatible with type 
   Nat
  of Nat (used by top level)
-
 issue-3318.mo:33.43-33.44: type error [M0096], expression of type
   (Nat, Nat) -> ((Nat, Nat))
 cannot produce expected type
@@ -57,4 +52,3 @@ because: The type
  is not compatible with type 
   Nat
  of Nat (used by top level)
-

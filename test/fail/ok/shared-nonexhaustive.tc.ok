@@ -10,12 +10,6 @@ shared-nonexhaustive.mo:5.2-5.75: type error [M0096], expression of type
   shared Bool -> async ()
 cannot produce expected type
   ()
-because: The type 
-  shared Bool -> async ()
- is not compatible with type 
-  ()
- of top level
-
 shared-nonexhaustive.mo:7.19-7.32: type error [M0145], this pattern of type
   Bool
 does not cover value

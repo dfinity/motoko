@@ -21,31 +21,6 @@ cannot produce expected type
       ddddddddddddddddddd : Nat;
       eeeeeeeeeeeeeeeeeee : Nat
     }
-because: The type 
-  {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
-  }
- is not compatible with type 
-  {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
-  } ->
-    {
-      aaaaaaaaaaaaaaaaaaa : Nat;
-      bbbbbbbbbbbbbbbbbbb : Nat;
-      ccccccccccccccccccc : Nat;
-      ddddddddddddddddddd : Nat;
-      eeeeeeeeeeeeeeeeeee : Nat
-    }
- of top level
-
 pretty.mo:24.25-24.26: type error [M0096], expression of type
   Int
 cannot produce expected type
@@ -55,7 +30,6 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-
 pretty.mo:26.23-26.24: type error [M0096], expression of type
   Int
 cannot produce expected type
@@ -66,18 +40,6 @@ cannot produce expected type
     ddddddddddddddddddd : Nat;
     eeeeeeeeeeeeeeeeeee : Nat
   }
-because: The type 
-  Int
- is not compatible with type 
-  {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
-  }
- of top level
-
 pretty.mo:28.23-28.24: type error [M0096], expression of type
   {
     aaaaaaaaaaaaaaaaaaa : Nat;
@@ -88,18 +50,6 @@ pretty.mo:28.23-28.24: type error [M0096], expression of type
   }
 cannot produce expected type
   Nat
-because: The type 
-  {
-    aaaaaaaaaaaaaaaaaaa : Nat;
-    bbbbbbbbbbbbbbbbbbb : Nat;
-    ccccccccccccccccccc : Nat;
-    ddddddddddddddddddd : Nat;
-    eeeeeeeeeeeeeeeeeee : Nat
-  }
- is not compatible with type 
-  Nat
- of top level
-
 pretty.mo:40.13-40.16: type error [M0072], field foo does not exist in type:
   module {
     bar1 : Nat;
@@ -117,39 +67,33 @@ pretty.mo:43.4-43.53: type error [M0096], expression of type
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:47.4-47.57: type error [M0096], expression of type
   (Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat, Nat,
    (Nat, Nat, Nat, (Nat, Nat, Nat, Nat, Nat, Nat)))
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:53.4-53.6: type error [M0096], expression of type
   ({#A}, {#B})
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:55.4-55.6: type error [M0096], expression of type
   (({#A}, {#B}), ({#A}, {#B}))
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:57.4-57.6: type error [M0096], expression of type
   ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:59.4-59.6: type error [M0096], expression of type
   (((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
    ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))))
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:61.4-61.6: type error [M0096], expression of type
   ((((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B}))),
     ((({#A}, {#B}), ({#A}, {#B})), (({#A}, {#B}), ({#A}, {#B})))),
@@ -158,27 +102,14 @@ pretty.mo:61.4-61.6: type error [M0096], expression of type
 cannot produce expected type
   ()
 because: More tuple arguments in top level than expected
-
 pretty.mo:67.4-67.6: type error [M0096], expression of type
   {A : {#A}; B : {#B}}
 cannot produce expected type
   ()
-because: The type 
-  {A : {#A}; B : {#B}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:69.4-69.6: type error [M0096], expression of type
   {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
 cannot produce expected type
   ()
-because: The type 
-  {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:71.4-71.6: type error [M0096], expression of type
   {
     A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
@@ -186,15 +117,6 @@ pretty.mo:71.4-71.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-    B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:73.4-73.6: type error [M0096], expression of type
   {
     A :
@@ -210,23 +132,6 @@ pretty.mo:73.4-73.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    A :
-      {
-        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-      };
-    B :
-      {
-        A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-        B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:75.4-75.6: type error [M0096], expression of type
   {
     A :
@@ -258,59 +163,14 @@ pretty.mo:75.4-75.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    A :
-      {
-        A :
-          {
-            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-          };
-        B :
-          {
-            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-          }
-      };
-    B :
-      {
-        A :
-          {
-            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-          };
-        B :
-          {
-            A : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}};
-            B : {A : {A : {#A}; B : {#B}}; B : {A : {#A}; B : {#B}}}
-          }
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:81.4-81.6: type error [M0096], expression of type
   module {A : {#A}; B : {#B}}
 cannot produce expected type
   ()
-because: The type 
-  module {A : {#A}; B : {#B}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:83.4-83.6: type error [M0096], expression of type
   module {A : module {A : {#A}; B : {#B}}; B : module {A : {#A}; B : {#B}}}
 cannot produce expected type
   ()
-because: The type 
-  module {A : module {A : {#A}; B : {#B}}; B : module {A : {#A}; B : {#B}}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:85.4-85.6: type error [M0096], expression of type
   module {
     A :
@@ -326,23 +186,6 @@ pretty.mo:85.4-85.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  module {
-    A :
-      module {
-        A : module {A : {#A}; B : {#B}};
-        B : module {A : {#A}; B : {#B}}
-      };
-    B :
-      module {
-        A : module {A : {#A}; B : {#B}};
-        B : module {A : {#A}; B : {#B}}
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:87.4-87.6: type error [M0096], expression of type
   module {
     A :
@@ -374,39 +217,6 @@ pretty.mo:87.4-87.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  module {
-    A :
-      module {
-        A :
-          module {
-            A : module {A : {#A}; B : {#B}};
-            B : module {A : {#A}; B : {#B}}
-          };
-        B :
-          module {
-            A : module {A : {#A}; B : {#B}};
-            B : module {A : {#A}; B : {#B}}
-          }
-      };
-    B :
-      module {
-        A :
-          module {
-            A : module {A : {#A}; B : {#B}};
-            B : module {A : {#A}; B : {#B}}
-          };
-        B :
-          module {
-            A : module {A : {#A}; B : {#B}};
-            B : module {A : {#A}; B : {#B}}
-          }
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:89.4-89.6: type error [M0096], expression of type
   module {
     A :
@@ -470,103 +280,19 @@ pretty.mo:89.4-89.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  module {
-    A :
-      module {
-        A :
-          module {
-            A :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              };
-            B :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              }
-          };
-        B :
-          module {
-            A :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              };
-            B :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              }
-          }
-      };
-    B :
-      module {
-        A :
-          module {
-            A :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              };
-            B :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              }
-          };
-        B :
-          module {
-            A :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              };
-            B :
-              module {
-                A : module {A : {#A}; B : {#B}};
-                B : module {A : {#A}; B : {#B}}
-              }
-          }
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:95.4-95.6: type error [M0096], expression of type
   ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  ({#B} -> {#A}) -> {#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:97.4-97.6: type error [M0096], expression of type
   (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:99.4-99.6: type error [M0096], expression of type
   ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
     (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-    (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:101.4-101.6: type error [M0096], expression of type
   (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
      (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
@@ -574,15 +300,6 @@ pretty.mo:101.4-101.6: type error [M0096], expression of type
       (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
-     (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-    ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:103.4-103.6: type error [M0096], expression of type
   ((((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
       (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
@@ -594,42 +311,16 @@ pretty.mo:103.4-103.6: type error [M0096], expression of type
         (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  ((((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-      (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
-     ((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
-       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-    (((({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}) ->
-       (({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-      ((({#B} -> {#A}) -> {#A} -> {#B}) -> ({#A} -> {#B}) -> {#B} -> {#A}) ->
-        (({#A} -> {#B}) -> {#B} -> {#A}) -> ({#B} -> {#A}) -> {#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:107.62-107.63: type error [M0103], cannot infer type of variable
 pretty.mo:109.4-109.6: type error [M0096], expression of type
   <W>(<X>{#B} -> {#A}) -> <Y>{#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  <W>(<X>{#B} -> {#A}) -> <Y>{#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:111.4-111.6: type error [M0096], expression of type
   <W>(<X>(<Y>{#A} -> {#B}) -> <X_1>{#B} -> {#A}) ->
     <Y>(<X>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  <W>(<X>(<Y>{#A} -> {#B}) -> <X_1>{#B} -> {#A}) ->
-    <Y>(<X>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:113.4-113.6: type error [M0096], expression of type
   <W>(<X>(<Y>(<X_1>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}) ->
         <X_1>(<Y>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
@@ -637,15 +328,6 @@ pretty.mo:113.4-113.6: type error [M0096], expression of type
       <Y_1>(<X>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  <W>(<X>(<Y>(<X_1>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}) ->
-        <X_1>(<Y>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-    <Y>(<X>(<Y_1>{#A} -> {#B}) -> <X_1>{#B} -> {#A}) ->
-      <Y_1>(<X>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:115.4-115.6: type error [M0096], expression of type
   <W>(<X>(<Y>(<X_1>(<Y_1>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
             <Y_1>(<X_1>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
@@ -657,19 +339,6 @@ pretty.mo:115.4-115.6: type error [M0096], expression of type
         <Y_2>(<X>{#B} -> {#A}) -> <Y_3>{#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  <W>(<X>(<Y>(<X_1>(<Y_1>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-            <Y_1>(<X_1>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
-        <X_1>(<Y>(<X_2>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}) ->
-          <X_2>(<Y>{#A} -> {#B}) -> <X_3>{#B} -> {#A}) ->
-    <Y>(<X>(<Y_1>(<X_1>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
-          <X_1>(<Y_1>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-      <Y_1>(<X>(<Y_2>{#A} -> {#B}) -> <X_1>{#B} -> {#A}) ->
-        <Y_2>(<X>{#B} -> {#A}) -> <Y_3>{#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:117.4-117.6: type error [M0096], expression of type
   <W>(<X>(<Y>(<X_1>(<Y_1>(<X_2>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
                 <X_2>(<Y_1>{#A} -> {#B}) -> <X_3>{#B} -> {#A}) ->
@@ -689,69 +358,23 @@ pretty.mo:117.4-117.6: type error [M0096], expression of type
           <Y_3>(<X>{#B} -> {#A}) -> <Y_4>{#A} -> {#B}
 cannot produce expected type
   ()
-because: The type 
-  <W>(<X>(<Y>(<X_1>(<Y_1>(<X_2>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
-                <X_2>(<Y_1>{#A} -> {#B}) -> <X_3>{#B} -> {#A}) ->
-            <Y_1>(<X_1>(<Y_2>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-              <Y_2>(<X_1>{#B} -> {#A}) -> <Y_3>{#A} -> {#B}) ->
-        <X_1>(<Y>(<X_2>(<Y_1>{#A} -> {#B}) -> <X_3>{#B} -> {#A}) ->
-                <Y_1>(<X_2>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
-          <X_2>(<Y>(<X_3>{#B} -> {#A}) -> <Y_1>{#A} -> {#B}) ->
-            <X_3>(<Y>{#A} -> {#B}) -> <X_4>{#B} -> {#A}) ->
-    <Y>(<X>(<Y_1>(<X_1>(<Y_2>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-              <Y_2>(<X_1>{#B} -> {#A}) -> <Y_3>{#A} -> {#B}) ->
-          <X_1>(<Y_1>(<X_2>{#B} -> {#A}) -> <Y_2>{#A} -> {#B}) ->
-            <X_2>(<Y_1>{#A} -> {#B}) -> <X_3>{#B} -> {#A}) ->
-      <Y_1>(<X>(<Y_2>(<X_1>{#B} -> {#A}) -> <Y_3>{#A} -> {#B}) ->
-              <X_1>(<Y_2>{#A} -> {#B}) -> <X_2>{#B} -> {#A}) ->
-        <Y_2>(<X>(<Y_3>{#A} -> {#B}) -> <X_1>{#B} -> {#A}) ->
-          <Y_3>(<X>{#B} -> {#A}) -> <Y_4>{#A} -> {#B}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:123.4-123.6: type error [M0096], expression of type
   ?(Nat, Nat)
 cannot produce expected type
   ()
-because: The type 
-  ?(Nat, Nat)
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:125.4-125.6: type error [M0096], expression of type
   ?(?(Nat, Nat), ?(Nat, Nat))
 cannot produce expected type
   ()
-because: The type 
-  ?(?(Nat, Nat), ?(Nat, Nat))
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:127.4-127.6: type error [M0096], expression of type
   ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))
 cannot produce expected type
   ()
-because: The type 
-  ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:129.4-129.6: type error [M0096], expression of type
   ?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
     ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))))
 cannot produce expected type
   ()
-because: The type 
-  ?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
-    ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))))
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:131.4-131.6: type error [M0096], expression of type
   ?(?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
       ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))),
@@ -759,35 +382,14 @@ pretty.mo:131.4-131.6: type error [M0096], expression of type
       ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))))
 cannot produce expected type
   ()
-because: The type 
-  ?(?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
-      ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))),
-    ?(?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat))),
-      ?(?(?(Nat, Nat), ?(Nat, Nat)), ?(?(Nat, Nat), ?(Nat, Nat)))))
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:137.4-137.6: type error [M0096], expression of type
   {#A : {#Foo}; #B : {#Bar}}
 cannot produce expected type
   ()
-because: The type 
-  {#A : {#Foo}; #B : {#Bar}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:139.4-139.6: type error [M0096], expression of type
   {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
 cannot produce expected type
   ()
-because: The type 
-  {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:141.4-141.6: type error [M0096], expression of type
   {
     #A : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
@@ -795,15 +397,6 @@ pretty.mo:141.4-141.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    #A : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
-    #B : {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:143.4-143.6: type error [M0096], expression of type
   {
     #A :
@@ -823,27 +416,6 @@ pretty.mo:143.4-143.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    #A :
-      {
-        #A :
-          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
-        #B :
-          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
-      };
-    #B :
-      {
-        #A :
-          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}};
-        #B :
-          {#A : {#A : {#Foo}; #B : {#Bar}}; #B : {#A : {#Foo}; #B : {#Bar}}}
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-
 pretty.mo:145.4-145.6: type error [M0096], expression of type
   {
     #A :
@@ -907,68 +479,3 @@ pretty.mo:145.4-145.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-because: The type 
-  {
-    #A :
-      {
-        #A :
-          {
-            #A :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              };
-            #B :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              }
-          };
-        #B :
-          {
-            #A :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              };
-            #B :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              }
-          }
-      };
-    #B :
-      {
-        #A :
-          {
-            #A :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              };
-            #B :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              }
-          };
-        #B :
-          {
-            #A :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              };
-            #B :
-              {
-                #A : {#A : {#Foo}; #B : {#Bar}};
-                #B : {#A : {#Foo}; #B : {#Bar}}
-              }
-          }
-      }
-  }
- is not compatible with type 
-  ()
- of top level
-

@@ -345,10 +345,12 @@ let sub_explained env at t1 t2 =
 
 let check_sub_explained env at t1 t2 on_incompatible =
   match sub_explained env at t1 t2 with
+  | T.Incompatible (T.IncompatibleTypes ([], t1', t2')) when t1 = t1' && t2 = t2' ->
+    (* Skip redundant explanation *)
+    on_incompatible ""
   | T.Incompatible reason ->
-     on_incompatible (T.string_of_explanation reason)
+    on_incompatible ("\nbecause: " ^ (T.string_of_explanation reason))
   | T.Compatible -> ()
-
 
 let eq env at t1 t2 =
   try T.eq ~src_fields:env.srcs t1 t2 with T.Undecided ->
@@ -1480,7 +1482,7 @@ and infer_exp'' env exp : T.typ =
         let t' = check_typ env' typ in
         check_sub_explained env exp.at t t' (fun explanation ->
           local_error env exp.at "M0192"
-            "body of type%a\ndoes not match expected type%a\nbecause: %s"
+            "body of type%a\ndoes not match expected type%a%s"
             display_typ_expand t
             display_typ_expand t'
             explanation);
@@ -2083,7 +2085,7 @@ and check_exp' env0 t exp : T.typ =
     let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
     check_sub_explained env Source.no_region t2 codom (fun explanation ->
       error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a\nbecause: %s"
+        "function return type%a\ndoes not match expected return type%a%s"
         display_typ_expand t2
         display_typ_expand codom
         explanation);
@@ -2093,7 +2095,7 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     check_sub_explained env0 exp1.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a\nbecause: %s"
+        "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
         display_typ_expand t
         explanation);
@@ -2107,7 +2109,7 @@ and check_exp' env0 t exp : T.typ =
     let t' = infer_exp env0 exp in
     check_sub_explained env exp.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a\nbecause: %s%s"
+        "expression of type%a\ncannot produce expected type%a%s%s"
         display_typ_expand t'
         display_typ_expand t
         explanation

@@ -7,7 +7,6 @@ because: Incompatible function types:
  does not match 
   <A>() -> ()
  in top level
-
 bounds-mismatch.mo:18.5-18.17: type error [M0096], expression of type
   <A>() -> ()
 cannot produce expected type
@@ -17,7 +16,6 @@ because: Incompatible function types:
  does not match 
   () -> ()
  in top level
-
 bounds-mismatch.mo:23.5-23.24: type error [M0096], expression of type
   <A <: Nat>() -> ()
 cannot produce expected type
@@ -27,7 +25,6 @@ because: Incompatible function types:
  does not match 
   <A>() -> ()
  in top level
-
 bounds-mismatch.mo:28.5-28.17: type error [M0096], expression of type
   <A>() -> ()
 cannot produce expected type
@@ -37,7 +34,6 @@ because: Incompatible function types:
  does not match 
   <A <: Nat>() -> ()
  in top level
-
 bounds-mismatch.mo:33.5-33.24: type error [M0096], expression of type
   <A <: Nat>() -> ()
 cannot produce expected type
@@ -47,7 +43,6 @@ because: Incompatible function types:
  does not match 
   <A <: Int>() -> ()
  in top level
-
 bounds-mismatch.mo:38.5-38.24: type error [M0096], expression of type
   <A <: Int>() -> ()
 cannot produce expected type
@@ -57,7 +52,6 @@ because: Incompatible function types:
  does not match 
   <A <: Nat>() -> ()
  in top level
-
 bounds-mismatch.mo:50.11-50.36: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
@@ -76,7 +70,6 @@ because: Incompatible function types:
  does not match 
   <Y <: Nat>Y -> Y
  in top level
-
 bounds-mismatch.mo:81.21-81.22: type error [M0096], expression of type
   <X <: Int, Y <: {}>X -> Y
 cannot produce expected type
@@ -86,7 +79,6 @@ because: Incompatible function types:
  does not match 
   <X <: Int, Y <: {x : Nat}>X -> Y
  in top level
-
 bounds-mismatch.mo:87.21-87.22: type error [M0096], expression of type
   <X <: Nat, Y>X -> Y
 cannot produce expected type
@@ -96,7 +88,6 @@ because: Incompatible function types:
  does not match 
   <Y <: Nat, X <: Y>Y -> X
  in top level
-
 bounds-mismatch.mo:93.21-93.22: type error [M0096], expression of type
   <X, Y>X -> X
 cannot produce expected type
@@ -106,7 +97,6 @@ because: Incompatible function types:
  does not match 
   <X <: Y, Y>X -> X
  in top level
-
 bounds-mismatch.mo:99.21-99.22: type error [M0096], expression of type
   <X, Y, Z <: X>X -> X
 cannot produce expected type
@@ -116,7 +106,6 @@ because: Incompatible function types:
  does not match 
   <X, Y <: X, Z <: Y>X -> X
  in top level
-
 bounds-mismatch.mo:106.21-106.22: type error [M0096], expression of type
   <X <: {x : Int}>X -> X
 cannot produce expected type
@@ -126,7 +115,6 @@ because: Incompatible function types:
  does not match 
   <X <: C>X -> X
  in top level
-
 bounds-mismatch.mo:113.21-113.22: type error [M0096], expression of type
   <X, Y <: {f : () -> X}>X -> X
 cannot produce expected type
@@ -136,7 +124,6 @@ because: Incompatible function types:
  does not match 
   <X <: Nat, Y <: C<X>>X -> X
  in top level
-
 bounds-mismatch.mo:120.21-120.22: type error [M0096], expression of type
   <X, Y <: {f : () -> Nat}>X -> X
 cannot produce expected type
@@ -146,7 +133,6 @@ because: Incompatible function types:
  does not match 
   <X <: Nat, Y <: C<X>>X -> X
  in top level
-
 bounds-mismatch.mo:125.21-128.4: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types

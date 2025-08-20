@@ -7,7 +7,6 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-
 Maybe try conversion:
   `Nat8.toNat(_)`,
   `Nat8.fromNat8(_)`,
@@ -22,4 +21,3 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-

@@ -14,12 +14,6 @@ par-bad-base.mo:10.17-10.23: type error [M0096], expression of type
   () -> ()
 cannot produce expected type
   Nat
-because: The type 
-  () -> ()
- is not compatible with type 
-  Nat
- of top level
-
 par-bad-base.mo:11.27-11.29: type error [M0050], literal of type
   Text
 does not have expected type

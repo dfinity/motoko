@@ -7,7 +7,6 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-
 Maybe try conversion:
   `Nat8.toNat(_)`,
   `Nat8.fromNat8(_)`,
@@ -22,7 +21,6 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-
 Maybe try conversion:
   `Nat16.toNat(_)` after adding `import Nat16 = "mo:conv/Nat16"`,
   `Nat16.fromNat16(_)` after adding `import Nat16 = "mo:conv/Nat16"`,

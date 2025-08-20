@@ -7,7 +7,6 @@ because: The type
  is not compatible with type 
   Nat
  in top level
-
 issue-3265-fail.mo:3.33-3.46: type error [M0149], expected mutable 'var' field x of type
   Int
 but found immutable field (insert 'var'?)
