@@ -19,4 +19,5 @@ cannot produce expected type
 because: Unsupported additional field `b` in type 
   {b : Nat}
  of top level
-
+check-record.mo:24.19-24.24: warning [M0215], field `a` is provided but not expected in record extension of type
+  {b : Nat}

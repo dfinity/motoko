@@ -343,15 +343,10 @@ let sub_explained env at t1 t2 =
       display_typ_expand t1
       display_typ_expand t2
 
-(* Helper function to handle sub_explained results with error reporting *)
-let check_sub_explained env at t1 t2 error_func message_fmt =
+let check_sub_explained env at t1 t2 on_incompatible =
   match sub_explained env at t1 t2 with
   | T.Incompatible reason ->
-     error_func
-       (message_fmt ^^ "\nbecause: %s")
-       display_typ_expand t1
-       display_typ_expand t2
-       (T.string_of_explanation reason)
+     on_incompatible (T.string_of_explanation reason)
   | T.Compatible -> ()
 
 
@@ -1483,8 +1478,12 @@ and infer_exp'' env exp : T.typ =
     begin match env.pre, typ_opt with
       | false, (_, Some typ) ->
         let t' = check_typ env' typ in
-        check_sub_explained env exp.at t t' (local_error env exp.at "M0192")
-          "body of type%a\ndoes not match expected type%a";
+        check_sub_explained env exp.at t t' (fun explanation ->
+          local_error env exp.at "M0192"
+            "body of type%a\ndoes not match expected type%a\nbecause: %s"
+            display_typ_expand t
+            display_typ_expand t'
+            explanation);
         detect_lost_fields env t' e
       | _ -> ()
     end;
@@ -2082,14 +2081,22 @@ and check_exp' env0 t exp : T.typ =
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
-    check_sub_explained env Source.no_region t2 codom (error env exp.at "M0095")
-      "function return type%a\ndoes not match expected return type%a";
+    check_sub_explained env Source.no_region t2 codom (fun explanation ->
+      error env exp.at "M0095"
+        "function return type%a\ndoes not match expected return type%a\nbecause: %s"
+        display_typ_expand t2
+        display_typ_expand codom
+        explanation);
     check_exp_strong env' t2 exp;
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
-    check_sub_explained env0 exp1.at t' t (local_error env0 exp.at "M0096")
-      "expression of type%a\ncannot produce expected type%a";
+    check_sub_explained env0 exp1.at t' t (fun explanation ->
+      local_error env0 exp.at "M0096"
+        "expression of type%a\ncannot produce expected type%a\nbecause: %s"
+        display_typ_expand t'
+        display_typ_expand t
+        explanation);
     if not env.pre then check_parenthetical env (Some exp1.note.note_typ) par_opt;
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
@@ -2098,16 +2105,14 @@ and check_exp' env0 t exp : T.typ =
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
-    (match sub_explained env exp.at t' t with
-    | T.Incompatible reason ->
+    check_sub_explained env exp.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a\nbecause: %s\n%s"
+        "expression of type%a\ncannot produce expected type%a\nbecause: %s%s"
         display_typ_expand t'
         display_typ_expand t
-        (T.string_of_explanation reason)
-        (Suggest.suggest_conversion env.libs env.vals t' t)
-    | T.Compatible ->
-      detect_lost_fields env t e);
+        explanation
+        (Suggest.suggest_conversion env.libs env.vals t' t));
+    detect_lost_fields env t e;
     t'
 
 and check_exp_field env (ef : exp_field) fts =
