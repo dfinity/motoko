@@ -7,7 +7,8 @@
   - [1. Update Changelog](#1-update-changelog)
   - [2. Open a release PR](#2-open-a-release-pr)
   - [3. Wait for the release to complete, and verify it](#3-wait-for-the-release-to-complete-and-verify-it)
-  - [4. Update `motoko-base`](#4-update-motoko-base)
+  - [4. Update `motoko-core`](#4-update-motoko-core)
+  - [5. Update `motoko-base`](#5-update-motoko-base)
   - [Downstream](#downstream)
 - [Coverage report](#coverage-report)
 - [Profile the compiler](#profile-the-compiler)
@@ -247,7 +248,18 @@ the build artifacts for this revision. In this case, restart the GitHub Action
 on GitHub's UI.
 </details>
 
-### 4. Update `motoko-base`
+### 4. Update `motoko-core`
+
+From the `main` branch, push a tag for the new `moc` version:
+
+```bash
+git checkout main
+git pull
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
+```
+
+### 5. Update `motoko-base`
 
 After releasing the compiler, update `motoko-base`'s `master` branch to the `next-moc` branch.
 
