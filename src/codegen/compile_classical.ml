@@ -859,6 +859,10 @@ let new_local64 env name =
   let (set_i, get_i, _) = new_local_ env I64Type name
   in (set_i, get_i)
 
+let cache env name exp k =
+  let (set_i, get_i, _) = new_local_ env I32Type name in
+  exp ^^ set_i ^^ k get_i
+
 (* Some common code macros *)
 
 (* Iterates while cond is true. *)
@@ -10292,6 +10296,7 @@ end
 
 module WasmComponent = struct
   let (let*) f k = f k
+  let seq2 (a, b) = a ^^ b
 
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
@@ -10388,6 +10393,30 @@ module WasmComponent = struct
       store env elem_v elem_t dest_ptr
     )
 
+  and lower_flat env compute_val typ =
+    let open Mo_types.Type in
+    match normalize typ with
+    | Prim Blob -> lower_flat_blob env compute_val
+    | Prim Text -> lower_flat_text env compute_val
+    | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+      compute_val ^^
+      TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
+    | Array elem_t ->
+      let* get_arr, get_len = store_list_into_range env compute_val elem_t in
+      get_arr ^^ get_len
+    | typ ->
+      print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
+      assert false
+
+  and lower_flat_text env compute_val =
+    (* TODO: this might need store_string_into_range *)
+    lower_flat_blob env (compute_val ^^ Text.to_blob env)
+
+  and lower_flat_blob env compute_val =
+    let* get_blob = cache env "blob_arg" compute_val in
+    (* ptr, len *)
+    get_blob ^^ Blob.payload_ptr_unskewed env ^^
+    get_blob ^^ Blob.len env
 end
 
 (* The actual compiler code that looks at the AST *)
@@ -11853,35 +11882,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let component_name = List.nth parts 1 in
     let function_name = List.nth parts 2 in 
     
-    let compile_arg_for_component e arg_type =
-      let open Mo_types.Type in
-      let open WasmComponent in
-      match normalize arg_type with
-      | Prim (Blob | Text as prim) ->
-        let set_blob, get_blob = new_local env "blob_arg" in
-        compile_exp_as env ae SR.Vanilla e ^^
-        (if prim = Text then Text.to_blob env else G.nop) ^^
-        set_blob ^^
-        get_blob ^^ Blob.payload_ptr_unskewed env ^^
-        get_blob ^^ Blob.len env
-      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
-        compile_exp_as env ae (StackRep.of_type arg_type) e ^^
-        TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
-      | Array elem_t ->
-        let* get_arr, get_len = store_list_into_range env (compile_exp_as env ae SR.Vanilla e) elem_t in
-        get_arr ^^ get_len
-      | typ ->
-        print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
-        assert false
-    in
-    
-    (* Extract actual argument types from the expressions *)
-    let arg_types = List.map (fun e -> e.note.Note.typ) es in
-
-    (* Compile all arguments *)
-    let compile_args = List.fold_left2 (fun acc e arg_type ->
-      acc ^^ compile_arg_for_component e arg_type
-    ) G.nop es arg_types in
+    (* Compile all arguments. TODO: review lower_flat_values, do we need `max_flat` or `out_param`? *)
+    let compile_args = List.fold_left (fun acc e ->
+      let arg_type = e.note.Note.typ in
+      let get_val = compile_exp_as env ae (StackRep.of_type arg_type) e in
+      acc ^^ WasmComponent.lower_flat env get_val arg_type
+    ) G.nop es in
     
     let compile_return_handling = 
       let open Mo_types.Type in
