@@ -135,7 +135,15 @@ and t_exp' context exp =
       match LabelEnv.find_opt (Named id) context with
       | Some (Cont k) -> (retE (varE k -*- t_exp context exp1)).it
       | Some Label -> (breakE id (t_exp context exp1)).it
-      | None -> assert false
+      | None ->
+         Printf.printf "can't find label %s at %s" id (Source.string_of_region exp.at);
+         LabelEnv.iter (fun k v ->
+             match k with
+             | Named id -> Printf.printf "%s\n" id
+             | Return ->  Printf.printf "Return\n"
+             | Throw -> Printf.printf "Throw\n"
+             | Cleanup -> Printf.printf "Cleanup\n") context;
+         assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
