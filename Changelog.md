@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
+
 ## 0.16.0 (2025-08-19)
 
 * motoko (`moc`)
@@ -20,7 +24,7 @@
     Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
 
   * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
-  
+
   * More explanatory upgrade error messages with detailing of cause (#5391).
 
   * Improved type inference for calling generic functions (#5180).
