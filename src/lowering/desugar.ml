@@ -203,7 +203,11 @@ and exp' at note = function
     I.PrimE (I.GetCertificate, [])
   (* Component *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_);_}, _, e) when Lib.String.chop_prefix "component:" fn <> None ->
-    I.PrimE (I.ComponentPrim (fn, T.normalize note.Note.typ), exps_or_single e)
+    let parts = String.split_on_char ':' fn in
+    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
+    let component_name = List.nth parts 1 in
+    let function_name = List.nth parts 2 in
+    I.PrimE (I.ComponentPrim (fn, component_name, function_name, T.normalize note.Note.typ), exps_or_single e)
   (* Other *)
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)

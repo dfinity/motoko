@@ -125,12 +125,7 @@ and prim e es = function
   | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
-  | ComponentPrim (maybe_component, _) -> 
-      (* Parse the component name and function name *)
-      let parts = String.split_on_char ':' maybe_component in
-      (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
-      let component_name = List.nth parts 1 in
-      let function_name = List.nth parts 2 in
+  | ComponentPrim (full_name, component_name, function_name, _) -> 
       let string_of_arg arg =
         match arg.it with
         | VarE (_, i) -> i
@@ -142,7 +137,7 @@ and prim e es = function
       let return_type = e.note.Note.typ in
       (* Add the import to the component *)
       add_import component_name function_name function_args return_type;
-      "imported component: " $$ [Atom maybe_component]
+      "imported component: " $$ [Atom full_name]
   | OtherPrim s       -> "OtherPrim non-component" $$ [Atom s]
   (* CPS primitives *)
   | CPSAwait (Type.AwaitFut false, t) -> "CPSAwait" $$ [typ t]

@@ -11970,17 +11970,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
 
-  | ComponentPrim (maybe_component, return_type), es ->
+  | ComponentPrim (_, component_name, function_name, return_type), es ->
     assert !Flags.wasm_components;
     StackRep.of_type return_type,
-    (* Parse the component name and function name *)
-    let parts = String.split_on_char ':' maybe_component in
-    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
-    let component_name = List.nth parts 1 in
-    let function_name = List.nth parts 2 in
-
     let open WasmComponent in
-    
     (* Compile all arguments. TODO: review lower_flat_values, do we need `max_flat` or `out_param`? *)
     let lower_args = List.fold_left (fun acc e ->
       let arg_type = e.note.Note.typ in
@@ -13678,14 +13671,15 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
     imported_components := add_imported_component 
-        ~component_name:component_name 
-        ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
-        !imported_components;
+      ~component_name:component_name 
+      ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
+      !imported_components;
     
     let wasm_args = List.concat_map (fun arg -> Imported_components.map_motoko_type_to_wasm_args arg.Import_components_ir.arg_type) arg_types in
     let wasm_args = wasm_args @ Imported_components.return_wasm_args return_type in
     let wasm_results = Imported_components.map_motoko_type_to_wasm_result return_type in
-    E.add_func_import env component_name function_name wasm_args wasm_results in
+    E.add_func_import env component_name function_name wasm_args wasm_results
+  in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)
