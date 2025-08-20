@@ -359,6 +359,7 @@ module type Pretty = sig
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
   val string_of_explanation : explanation -> string
+  val is_redundant_explanation : typ -> typ -> explanation -> bool
 end
 
 module type PrettyConfig = sig

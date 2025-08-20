@@ -2279,6 +2279,11 @@ let string_of_explanation explanation =
   | IncompatibleAsyncSorts (context, t1, t2) ->
     Format.asprintf "Incompatible async sorts: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
 
+let is_redundant_explanation t1 t2 = function
+  | IncompatibleTypes (_, t1', t2')
+  | IncompatiblePrims (_, t1', t2') when eq t1 t1' && eq t2 t2' -> true
+  | _ -> false
+
 end
 
 module type Pretty = sig
@@ -2296,6 +2301,7 @@ module type Pretty = sig
   val strings_of_kind : kind -> string * string * string
   val string_of_typ_expand : typ -> string
   val string_of_explanation : explanation -> string
+  val is_redundant_explanation : typ -> typ -> explanation -> bool
 end
 
 include MakePretty(ElideStamps)

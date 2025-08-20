@@ -25,11 +25,6 @@ pretty.mo:24.25-24.26: type error [M0096], expression of type
   Int
 cannot produce expected type
   Nat
-because: The type 
-  Int
- is not compatible with type 
-  Nat
- in top level
 pretty.mo:26.23-26.24: type error [M0096], expression of type
   Int
 cannot produce expected type
