@@ -1,0 +1,7 @@
+issue-5283/mod.mo:17.28-17.34: warning [M0194], unused identifier config (delete or rename to wildcard `_` or `_config`)
+issue-5283/mod.mo:54.23-54.36: warning [M0194], unused identifier escrow_result (delete or rename to wildcard `_` or `_escrow_result`)
+issue-5283/mod.mo:103.29-103.34: warning [M0194], unused identifier found (delete or rename to wildcard `_` or `_found`)
+issue-5283/mod.mo:140.25-140.29: warning [M0194], unused identifier ival (delete or rename to wildcard `_` or `_ival`)
+issue-5283/mod.mo:148.21-148.26: warning [M0194], unused identifier found (delete or rename to wildcard `_` or `_found`)
+issue-5283/mod.mo:158.21-158.26: warning [M0194], unused identifier found (delete or rename to wildcard `_` or `_found`)
+issue-5283.mo:10.9-10.10: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
