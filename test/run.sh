@@ -297,6 +297,7 @@ do
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
+        SKIP_RUNNING=yes
         $ECHO " Skipped (not applicable to classical orthogonal persistence)"
         continue
       fi
@@ -443,7 +444,7 @@ do
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if grep -F -q CHECK $mangled
+            if grep -F -q ^//CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --enable-memory64 --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
