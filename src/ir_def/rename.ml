@@ -29,14 +29,9 @@ let lab rho i =
   try Renaming.find (Binder.Lab i) rho
   with Not_found -> i
 
-
 let id_bind rho i =
   let i' = fresh_id i in
   (i', Renaming.add (Binder.Id i) i' rho)
-
-let lab_bind rho i =
-  let i' = fresh_id i in
-  (i', Renaming.add (Binder.Lab i) i' rho)
 
 let rec ids_bind rho = function
   | [] -> rho
@@ -44,9 +39,13 @@ let rec ids_bind rho = function
     let (i', rho') = id_bind rho i in
     ids_bind rho' is'
 
+let lab_bind rho i =
+  let i' = fresh_id i in
+  (i', Renaming.add (Binder.Lab i) i' rho)
+
 let arg_bind rho a =
-  let i' = fresh_id a.it in
-  ({a with it = i'}, Renaming.add (Binder.Id a.it) i' rho)
+  let i', rho' = id_bind rho a.it in
+  ({a with it = i'}, rho')
 
 let rec prim rho p =
   Ir.map_prim Fun.id (lab rho) p (* rename BreakPrim id etc *)
