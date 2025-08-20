@@ -22,12 +22,14 @@ module Renaming = Map.Make(Binder)
 let fresh_id id = Construct.fresh_id id ()
 
 let id rho i =
-  try Renaming.find (Binder.Id i) rho
-  with Not_found -> i
+  match Renaming.find_opt (Binder.Id i) rho with
+  | Some i1 -> i1
+  | None -> i
 
-let lab rho i =
-  try Renaming.find (Binder.Id i) rho
-  with Not_found -> i
+let lab rho l =
+  match Renaming.find_opt (Binder.Lab l) rho with
+  | Some l1 -> l1
+  | None -> l
 
 let id_bind rho i =
   let i' = fresh_id i in
@@ -41,7 +43,7 @@ let rec ids_bind rho = function
 
 let lab_bind rho i =
   let i' = fresh_id i in
-  (i', Renaming.add (Binder.Id i) i' rho)
+  (i', Renaming.add (Binder.Lab i) i' rho)
 
 let arg_bind rho a =
   let i', rho' = id_bind rho a.it in
