@@ -13201,8 +13201,10 @@ and export_actor_field env  ae (f : Ir.field) =
 and main_actor as_opt mod_env ds fs up =
   let build_stable_actor = up.stable_record in
   Func.define_built_in mod_env "init" [] [] (fun env ->
+
     let stable_funcs_ptr = MutBox.static env in
     E.set_stable_funcs env stable_funcs_ptr;
+
     let ae0 = VarEnv.empty_ae in
 
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in

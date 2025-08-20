@@ -465,6 +465,8 @@ module E = struct
     constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
 
+    stable_funcs : int64 option ref; (* a well-known object pool index *)
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
@@ -515,6 +517,7 @@ module E = struct
     data_segments = ref Table.empty;
     constant_pool = ref ConstEnv.empty;
     object_pool = { objects = ref Table.empty; frozen = ref false };
+    stable_funcs = ref None;
     typtbl_typs = ref Table.empty;
     (* Metadata *)
     args = ref None;
@@ -758,6 +761,14 @@ module E = struct
 
   let iterate_object_pool (env : t) f =
     G.concat_mapi f (List.map (fun (l, a) -> a) (Table.to_list !(env.object_pool.objects)))
+
+  let set_stable_funcs (env : t) idx =
+    env.stable_funcs := Some idx
+
+  let get_stable_funcs (env : t)  =
+    match !(env.stable_funcs) with
+    | None -> assert false
+    | Some ptr -> ptr
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -7047,6 +7058,11 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
+      | Func (Type.Stable id, c, tbs, ts1, ts2) ->
+          compile_unboxed_const (E.get_stable_funcs env) ^^
+          MutBox.load_field env ^^
+          Object.load_idx env Type.(obj Object [(id, Mut t)]) id
+         (* TODO: if we knew the full object type, load_idx would be faster *)
       | Func _ ->
         inc_data_size (compile_unboxed_const 1L) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0L ^^ size env (Obj (Actor, [])) ^^
@@ -11666,6 +11682,24 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 Type.Nat64,
     E.trap_with env "Deprecated with enhanced orthogonal persistence"
 
+
+  (* stable function record *)
+
+  | OtherPrim "set_stable_funcs", [e] ->
+    SR.unit,
+    Heap.get_static_variable env (E.get_stable_funcs env) ^^
+    Tagged.load_forwarding_pointer env ^^
+    compile_add_const ptr_unskew ^^
+    compile_add_const (Int64.mul MutBox.field Heap.word_size) ^^
+    compile_exp_vanilla env ae e ^^
+    Tagged.write_with_barrier env
+
+  | OtherPrim "get_stable_funcs", [] ->
+    SR.Vanilla,
+    Heap.get_static_variable env (E.get_stable_funcs env) ^^
+    Tagged.load_forwarding_pointer env ^^
+    MutBox.load_field env
+
   (* Other prims, unary *)
 
   | OtherPrim "array_len", [e] ->
@@ -13367,6 +13401,7 @@ and export_actor_field env  ae (f : Ir.field) =
 and main_actor as_opt mod_env ds fs up =
   let stable_actor_type = up.stable_type in
   let build_stable_actor = up.stable_record in
+
   IncrementalGraphStabilization.define_methods mod_env stable_actor_type;
 
   (* Export metadata *)
@@ -13375,6 +13410,10 @@ and main_actor as_opt mod_env ds fs up =
   mod_env.E.args := metadata "candid:args" up.meta.candid.args;
 
   Func.define_built_in mod_env IC.initialize_main_actor_function_name [] [] (fun env ->
+
+    let stable_funcs_idx = MutBox.add_global_mutbox env in
+    E.set_stable_funcs env stable_funcs_idx;
+
     let ae0 = VarEnv.empty_ae in
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
     (* Add any params to the environment *)
