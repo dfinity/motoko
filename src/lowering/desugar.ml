@@ -214,8 +214,10 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (par_opt, e1, inst, e2) ->
-    let s, _, _, _, _ = T.as_func (e1.note.S.note_typ) in
-    let ds = if T.is_shared_sort s || T.is_fut note.Note.typ then parenthetical par_opt else [] in
+    let send e1_typ = T.(is_func e1_typ &&
+                           (let s, _, _, _, _ = as_func e1_typ in
+                            is_shared_sort s || is_fut note.Note.typ)) in
+    let ds = parenthetical (send e1.note.S.note_typ) par_opt in
     (blockE ds { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
@@ -248,7 +250,7 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    let ds = parenthetical par_opt in
+    let ds = parenthetical true par_opt in
     let it = I.AsyncE (s, typ_bind tb, exp e,
                        match note.Note.typ with
                        | T.Async (_, t, _) -> t
@@ -265,8 +267,9 @@ and exp' at note = function
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
-and parenthetical = function
+and parenthetical send = function
   | None -> []
+  | Some par when not send -> [expD (exp par)]
   | Some par ->
     (* fishing for relevant attributes in the parenthetical based on its static type *)
     let cycles, clean_cycles =

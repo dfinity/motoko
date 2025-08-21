@@ -141,7 +141,7 @@ actor A {
 
     public func test11() : async () {
         debugPrint "test11()";
-        await* (with timeout = 1; cycles = 987) star();
+        await* (with timeout = 1; cycles = do { debugPrint "evaled"; 987 }) star();
     }
 }
 
