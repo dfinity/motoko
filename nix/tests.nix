@@ -258,7 +258,7 @@ fix_names
     trap = test_subdir "trap" [ moc ];
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
-    # perf = perf_subdir false "perf" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.pocket-ic.library pkgs.cacert ];
+    perf = perf_subdir false "perf" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.pocket-ic.library pkgs.cacert ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
     inherit qc unit candid coverage test-runner;
