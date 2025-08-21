@@ -162,8 +162,8 @@ A function expecting `PremiumAccount` expects `withdraw`, so it cannot accept `b
 However, a function expecting `BasicAccount` only needs `getBalance`, so it can accept all three type of objects.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 func printBalance(account : { getBalance : () -> Nat }) {
   Debug.print("Balance: " # Nat.toText(account.getBalance()));
@@ -176,7 +176,7 @@ printBalance(_premiumAccount);
 ```
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 func withdrawFromAccount(account : { withdraw : Nat -> Bool }) {
   let success = account.withdraw(100);
   Debug.print(if success "Withdrawal successful" else "Insufficient funds");

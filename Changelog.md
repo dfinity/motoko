@@ -1,5 +1,93 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
+
+## 0.16.0 (2025-08-19)
+
+* motoko (`moc`)
+
+  * Breaking change: add new type constructor `weak T` for constructing weak references.
+
+    ```motoko
+        Prim.allocWeakRef: <T>(value : T) -> weak T
+        Prim.weakGet: <T>weak T -> ?(value : T)
+        Prim.isLive: weak Any -> Bool
+    ```
+
+    A weak reference can only be allocated from a value whose type representation is always a heap reference; `allowWeakRef` will trap on values of other types.
+    A weak reference does not count as a reference to its value and allows the collector to collect the value once no other references to it remain.
+    `weakGet` will return `null`, and `isLive` will return false once the value of the reference has been collected by the garbage collector.
+    The type constructor `weak T` is covariant.
+
+    Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
+
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
+  * More explanatory upgrade error messages with detailing of cause (#5391).
+
+  * Improved type inference for calling generic functions (#5180).
+    This means that type arguments can be omitted when calling generic functions in _most common cases_.
+    For example:
+
+    ```motoko
+    let ar = [1, 2, 3];
+    Array.map(ar, func x = x * 2);  // Needs no explicit type arguments anymore!
+    ```
+
+    Previously, type arguments were usually required when there was an anonymous not annotated function in arguments.
+    The reason being that the type inference algorithm cannot infer the type of `func`s in general,
+    e.g. `func x = x * 2` cannot be inferred without knowing the type of `x`.
+
+    Now, the improved type inference can handle such `func`s when there is enough type information from other arguments.
+    It works by splitting the type inference into two phases:
+    1. In the first phase, it infers part of the instantiation from the non-`func` arguments.
+       The goal is to infer all parameters of the `func` arguments, e.g. `x` in the example above.
+       The `ar` argument in the example above is used to infer the partial instantiation `Array.map<Nat, O>`, leaving the second type argument `O` to be inferred in the second phase.
+       With this partial instantiation, it knows that `x : Nat`.
+    2. In the second phase, it completes the instantiation by inferring the bodies of the `func` arguments; assuming that all parameters were inferred in the first phase.
+       In the example above, it knows that `x : Nat`, so inferring the body `x * 2` will infer the type `O` to be `Nat`.
+       With this, the full instantiation `Array.map<Nat, Nat>` is inferred, and the type arguments can be omitted.
+
+    Limitations:
+    - Invariant type parameters must be explicitly provided in most cases.
+      e.g. `VarArray.map` must have the return type annotation:
+      ```motoko
+      let result = VarArray.map<Nat, Nat>(varAr, func x = x * 2);
+      ```
+      Or the type of the result must be explicitly provided:
+      ```motoko
+      let result : [var Nat] = VarArray.map(varAr, func x = x * 2);
+      ```
+
+    - When there is not enough type information from the non-`func` arguments, the type inference will not be able to infer the `func` arguments.
+      However this is not a problem in most cases.
+
+## 0.15.1 (2025-07-30)
+
+* motoko (`moc`)
+
+  * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
+
+  * Allow matching type fields of modules and objects in patterns (#5056)
+    This allows importing a type from a module without requiring an indirection or extra binding.
+
+    ```
+    // What previously required indirection, ...
+    import Result "mo:core/Result";
+    type MyResult<Ok> = Result.Result<Ok, Text>;
+
+    // or rebinding, ...
+    import Result "mo:core/Result";
+    type Result<Ok, Err> = Result.Result<Ok, Err>;
+    type MyResult<Ok> = Result<Ok, Text>;
+
+    // can now be written more concisely as:
+    import { type Result } "mo:core/Result";
+    type MyResult<Ok> = Result<Ok, Text>;
+    ```
+
 ## 0.15.0 (2025-07-25)
 
 * motoko (`moc`)

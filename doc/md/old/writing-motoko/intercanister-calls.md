@@ -53,7 +53,7 @@ persistent actor Foo {
 Below is an implementation for `bar` (`src/Bar.mo`):
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 persistent actor Bar {
 
@@ -101,13 +101,13 @@ dfx canister call foo main "canister-id"
 
 ## Advanced usage
 
-If the method name or input types are unknown at compile time, it's possible to call arbitrary canister methods using the `ExperimentalInternetComputer` module.
+If the method name or input types are unknown at compile time, it's possible to call arbitrary canister methods using the `InternetComputer` module.
 
 Here is an example which you can modify for your specific use case:
 
 ```motoko
-import IC "mo:base/ExperimentalInternetComputer";
-import Debug "mo:base/Debug";
+import IC "mo:core/InternetComputer";
+import Debug "mo:core/Debug";
 
 persistent actor AdvancedCanister1 {
 
@@ -129,7 +129,7 @@ persistent actor AdvancedCanister1 {
 ```
 
 ```motoko
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 persistent actor AdvancedCanister2 {
 

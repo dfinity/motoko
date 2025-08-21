@@ -5,7 +5,7 @@ open Type
 open MakePretty(struct let show_stamps = false end)
 *)
 
-(* Turn on/off debug prints *)
+(** Turn on/off debug prints *)
 let debug = false
 
 let pp_rel ppf (t1, rel, t2) =
@@ -70,6 +70,31 @@ let verify_ctx ctx =
 let string_of_bounds (l, u) =
   String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s <: %s <: %s" (string_of_typ t) (Cons.name c) (string_of_typ (ConEnv.find c u))) (ConEnv.bindings l))
 
+(** Functions used only for debugging *)
+module Debug = struct
+  let print_solve ctx (ts1, ts2) must_solve =
+    print_endline "solve ctx";
+    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
+    print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
+    print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
+    print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
+    print_endline (Printf.sprintf "must_solve : %s" (String.concat ", " (List.map string_of_typ must_solve)));
+    verify_ctx ctx
+
+  let print_variables_to_defer used to_defer to_solve =
+    print_endline (Printf.sprintf "used : %s" (String.concat ", " (List.map Cons.name (ConSet.elements used))));
+    print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))));
+    print_endline (Printf.sprintf "to_solve : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_solve))))
+
+  let print_solved_bounds l u =
+    print_endline (Printf.sprintf "bi_match_typs : %s" (string_of_bounds (l, u)))
+
+  let print_partial_solution env unsolved =
+    print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
+    print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
+    print_endline ""
+end
+
 module SS = Set.Make (OrdPair)
 
 (* Types that are denotable (ranged over) by type variables *)
@@ -90,8 +115,8 @@ let is_unsolved_var ctx t =
   | Con (c, []) -> ConSet.mem c ctx.var_set
   | _ -> false
 
-(* Check partial instantiation `env` satisfies bounds and all the pairwise sub-typing relations in `(ts1, ts2)`;
-   used to sanity check inferred instantiations *)
+(** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
+    used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env (ts1, ts2) =
   List.length (ConEnv.keys ctx.var_env) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
@@ -241,6 +266,8 @@ let bi_match_typs ctx =
       bi_match_typ rel eq inst any t1' t2'
     | Opt t1', Opt t2' ->
       bi_match_typ rel eq inst any t1' t2'
+    | Weak t1', Weak t2' ->
+      bi_match_typ rel eq inst any t1' t2'
     | Prim Null, Opt t2' when rel != eq ->
       Some inst
     | Variant fs1, Variant fs2 ->
@@ -331,62 +358,34 @@ let bi_match_typs ctx =
   in
   bi_match_list bi_match_typ
 
-(* Solves the given constraints in the given context.
- * Unused type variables can be deferred to the next round.
+(** Solves the given constraints [ts1, ts2] in the given context [ctx].
+    Unused type variables can be deferred to the next round.
+    [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
  *)
-let solve ctx (ts1, ts2) deferred_typs =
-  if debug then begin
-    print_endline "solve ctx";
-    print_endline (Printf.sprintf "var_list: %s" (String.concat ", " (List.map Cons.name ctx.var_list)));
-    print_endline (Printf.sprintf "bounds: %s" (string_of_bounds ctx.bounds));
-    print_endline (Printf.sprintf "variances: %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s: %s" (Cons.name c) (Variance.string_of t)) (ConEnv.bindings ctx.variances))));
-    print_endline (Printf.sprintf "subs: %s" (String.concat ", " (List.map (fun (t1, t2) -> Printf.sprintf "%s <: %s" (string_of_typ t1) (string_of_typ t2)) (List.combine ts1 ts2))));
-    verify_ctx ctx;
-  end;
-  let no_another_round = deferred_typs = [] in
-  let to_defer, defer_verify = if no_another_round then (ConSet.empty, false) else
-    (* Find unused type variables to defer solving to the next round.
-     * Only needed if there is another round.
-     * Unused type variables are always deferred to the next round since there are no constraints that would help us solve them now.
-     *)
-    let unused =
-      let cons1 = cons_typs ts1 in
-      let cons2 = cons_typs ts2 in
-      let used = ConSet.union cons1 cons2
-      in
-      ConSet.diff ctx.var_set used
-    in
-    (* Defer variables that appear in the bodies of deferred funcs, we don't need to pick a bound for them now, it might restrict the solution.
-    * But we must fix variables that appear in the arguments of deferred funcs, because they are needed to infer the bodies.
-    *)
-    let must_fix, can_defer = List.fold_left (fun (must_fix, can_defer) t ->
-      match promote t with
-      | Func (_, _, _, t1, t2) ->
-        let must_fix = ConSet.union must_fix (cons_typs t1) in
-        let can_defer = ConSet.union can_defer (cons_typs t2) in
-        (must_fix, can_defer)
-      | _ ->
-        (ConSet.union must_fix (cons t), can_defer)
-      ) (ConSet.empty, ConSet.empty) deferred_typs
-    in
-    let must_fix, can_defer = ConSet.inter must_fix ctx.var_set, ConSet.inter can_defer ctx.var_set in
-    let can_defer = ConSet.diff can_defer must_fix in
-    let to_defer = ConSet.union unused can_defer in
-    if debug then begin
-      print_endline (Printf.sprintf "unused : %s" (String.concat ", " (List.map Cons.name (ConSet.elements unused))));
-      print_endline (Printf.sprintf "can_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements can_defer))));
-      print_endline (Printf.sprintf "must_fix : %s" (String.concat ", " (List.map Cons.name (ConSet.elements must_fix))));
-      print_endline (Printf.sprintf "to_defer : %s" (String.concat ", " (List.map Cons.name (ConSet.elements to_defer))));
-    end;
-    to_defer, not (ConSet.is_empty can_defer)
+let solve ctx (ts1, ts2) must_solve =
+  if debug then Debug.print_solve ctx (ts1, ts2) must_solve;
+
+  (* Defer solving type variables that can be solved later. More constraints appear in the next round, let them influence as many variables as possible *)
+  let to_defer, defer_verify = if must_solve = [] then (ConSet.empty, false) else
+    (* Type variables mentioned/used in subtyping constraints *)
+    let cons1 = cons_typs ts1 in
+    let cons2 = cons_typs ts2 in
+    let used = ConSet.inter ctx.var_set (ConSet.union cons1 cons2) in
+    let unused = ConSet.diff ctx.var_set used in
+
+    (* Solve only variables that need to be solved now *)
+    let to_solve = cons_typs must_solve in
+    (* Exclude variables that are not used in the constraints, it is better to raise an error than infer a default bound that could lead to confusing errors *)
+    let to_solve = ConSet.diff to_solve unused in
+    let to_defer = ConSet.diff ctx.var_set to_solve in
+    if debug then Debug.print_variables_to_defer used to_defer (ConSet.inter to_solve ctx.var_set);
+    to_defer, not (ConSet.disjoint used to_defer)
   in
   match
     bi_match_typs ctx (ref SS.empty) (ref SS.empty) ctx.bounds ConSet.empty ts1 ts2
   with
   | Some (l, u) ->
-    if debug then begin
-      print_endline (Printf.sprintf "bi_match_typs : %s" (string_of_bounds (l, u)));
-    end;
+    if debug then Debug.print_solved_bounds l u;
     let unsolved = ref ConSet.empty in
     let env = l |> ConEnv.mapi (fun c lb ->
       let ub = ConEnv.find c u in
@@ -402,21 +401,17 @@ let solve ctx (ts1, ts2) deferred_typs =
       else
         fail_over_constrained lb c ub)
     in
-    if debug then begin
-      print_endline (Printf.sprintf "env : %s" (String.concat ", " (List.map (fun (c, t) -> Printf.sprintf "%s := %s" (Cons.name c) (string_of_typ t)) (ConEnv.bindings env))));
-      print_endline (Printf.sprintf "unsolved : %s" (String.concat ", " (List.map Cons.name (ConSet.elements !unsolved))));
-      print_endline "";
-    end;
+    if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
-    let (l, u) = ctx.bounds in
-    let remaining = {
+    let remaining = if ConSet.is_empty var_set then empty_ctx else {
       var_set;
-      var_env = ConEnv.filterDom var_set ctx.var_env;
+      var_env = ConEnv.restrict var_set ctx.var_env;
       var_list = List.filter (fun c -> ConSet.mem c var_set) ctx.var_list;
       bounds = (
-        ConEnv.filterDom var_set l,
-        ConEnv.filterDom var_set u);
-      variances = ConEnv.filterDom var_set ctx.variances;
+        (* Note that these bounds are not the same as [ctx.bounds], deferred variables might have tigher bounds after solving *)
+        ConEnv.restrict var_set l,
+        ConEnv.restrict var_set u);
+      variances = ConEnv.restrict var_set ctx.variances;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -491,42 +486,42 @@ let bi_match_subs scope_opt tbs typ_opt =
   in
   let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; to_verify = ([], [])} in
 
-  fun subs deferred_typs ->
-    let deferred_typs = List.map (open_ ts) deferred_typs in
+  fun subs must_solve ->
+    let must_solve = List.map (open_ ts) must_solve in
     let ts1 = List.map (fun (t1, _) -> open_ ts t1) subs in
     let ts2 = List.map (fun (_, t2) -> open_ ts t2) subs in
-    let env, remaining = solve ctx (ts1, ts2) (List.map (open_ ts) deferred_typs) in
-
-    let remaining = if deferred_typs <> [] then Some remaining else begin
-      (* No deferred types means no another round, which implies every type variable is solved *)
-      assert (is_ctx_empty remaining);
-      None
-    end in
+    let env, remaining = solve ctx (ts1, ts2) must_solve in
     List.map (subst env) ts, remaining
 
 let finalize ts1 ctx subs =
-  (* Finalize should only be called when there are subtyping constraints to solve *)
-  assert (subs <> []);
-  
-  (* Solve the 2nd round of sub-type problems *)
-  let env, remaining = solve ctx (List.split subs) [] in
+  if is_ctx_empty ctx then begin
+    assert (subs = []);
+    ts1, ConEnv.empty
+  end else begin
+    (* Solve the 2nd round of sub-type problems *)
+    let env, remaining = solve ctx (List.split subs) [] in
 
-  (* The 2nd round should not leave any remaining type variables *)
-  assert (is_ctx_empty remaining);
+    (* The 2nd round should not leave any remaining type variables *)
+    assert (is_ctx_empty remaining);
 
-  (* create a final combined `ts` solution *)
-  let ts = List.map (fun t ->
-    match t with
-    | Con (c, []) -> ConEnv.find_opt c env |> Option.value ~default:t
-    | _ -> t
-  ) ts1 in
+    (* create a final combined `ts` solution *)
+    let ts = List.map (fun t ->
+      match t with
+      | Con (c, []) -> ConEnv.find_opt c env |> Option.value ~default:t
+      | _ -> t
+    ) ts1 in
 
-  (* Return the final solution together with the substitution of open type variables *)
-  ts, env
+    (* Return the final solution together with the substitution of open type variables *)
+    ts, env
+  end
 
 let fail_when_types_are_not_closed remaining typs = if is_ctx_empty remaining then () else
-  let allCons = cons_typs typs in
-  let openConSet = ConSet.inter remaining.var_set allCons in
-  if not (ConSet.is_empty openConSet) then
-    let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements openConSet))) in
+  let all_cons = cons_typs typs in
+  let open_con_set = ConSet.inter remaining.var_set all_cons in
+  if not (ConSet.is_empty open_con_set) then
+    let message = Printf.sprintf "cannot infer %s" (String.concat ", " (List.map Cons.name (ConSet.elements open_con_set))) in
     raise (Bimatch message)
+
+let is_closed ctx t = if is_ctx_empty ctx then true else
+  let all_cons = cons_typs [t] in
+  ConSet.disjoint ctx.var_set all_cons
