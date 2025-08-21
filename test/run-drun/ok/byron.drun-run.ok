@@ -1,0 +1,18 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: {cycles = 100; deadline = 1_755_789_114_000_000_000}
+debug.print: f()
+debug.print: f()
+debug.print: fstar()
+debug.print: {cycles = 200; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 400; deadline = 1_755_789_214_000_000_000}
+debug.print: f()
+debug.print: f()
+debug.print: f()
+debug.print: {cycles = 600; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 600; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 600; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 800; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 800; deadline = 1_755_789_214_000_000_000}
+debug.print: {cycles = 800; deadline = 1_755_789_214_000_000_000}
+ingress Completed: Reply: 0x4449444c0000

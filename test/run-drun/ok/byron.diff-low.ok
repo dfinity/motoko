@@ -1,0 +1,7 @@
+--- byron.run
++++ byron.run-low
+@@ -1 +1,3 @@
+-prim:___: execution error, Value.prim: cyclesAvailable
++prim:___: execution error, Unknown prim or wrong number of arguments (0 given):
++  SystemCyclesAvailablePrim
++
