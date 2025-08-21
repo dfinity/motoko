@@ -348,7 +348,7 @@ let check_sub_explained env at t1 t2 on_incompatible =
   | T.Incompatible reason ->
     let explanation =
       if T.is_redundant_explanation t1 t2 reason then ""
-      else "\nbecause: " ^ (T.string_of_explanation reason)
+      else Printf.sprintf "\nbecause: %s" (T.string_of_explanation reason)
     in
     on_incompatible explanation
   | T.Compatible -> ()
