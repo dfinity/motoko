@@ -387,6 +387,17 @@ actor App {
 };
 ```
 
+It's also possible to use a function defined in an imported module:
+
+```motoko
+import { migrate } "Migration";
+
+(with migration = migrate)
+actor App {
+  // New stable declarations
+};
+```
+
 This pattern ensures that existing stable data is preserved and converted to the new format during canister upgrades.
 
 ### `Buffer`
