@@ -1,29 +1,34 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test()
+debug.print: timeoutSet: 55
 debug.print: foo: 1_000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test2()
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test3()
+debug.print: test3a()
 debug.print: oneshot deadline set: false
 debug.print: oneshot cycles: 0
 debug.print: oneshot deadline set: false
-debug.print: oneshot cycles: 3_456
-debug.print: oneshot deadline set: true
 debug.print: oneshot cycles: 0
-debug.print: oneshot deadline set: true
-debug.print: oneshot cycles: 4_567
+debug.print: oneshot deadline set: false
+debug.print: oneshot cycles: 0
+debug.print: oneshot deadline set: false
+debug.print: oneshot cycles: 0
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test4()
 debug.print: rawable: 0
 debug.print: rawable: 3_456
 ingress Completed: Reply: 0x4449444c0000
+debug.print: timeoutSet: 3
 debug.print: test5()
 ingress Completed: Reply: 0x4449444c0000
+debug.print: timeoutSet: 3
 debug.print: ext: 6_543
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test7()
+debug.print: timeoutSet: 1
 debug.print: CAUGHT: #system_unknown "Call deadline has expired."
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test8()
@@ -37,4 +42,6 @@ debug.print: local: 42
 ingress Completed: Reply: 0x4449444c0000
 debug.print: test10()
 debug.print: anon: 34_567
+ingress Completed: Reply: 0x4449444c0000
+debug.print: star: 0
 ingress Completed: Reply: 0x4449444c0000

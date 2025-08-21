@@ -132,6 +132,14 @@ actor A {
         debugPrint "test10()";
 
         await (with cycles = 34567) (func(name : Text) : async () { debugPrint (name # ": " # debug_show(Cycles.available())) }) "anon";
+    };
+
+    func star() : async* () {
+        debugPrint ("star: " # debug_show(Cycles.available()));
+    };
+
+    public func test11() : async () {
+        await* (with timeout = 1) star();
     }
 }
 
@@ -150,3 +158,4 @@ actor A {
 //CALL ingress test8 "DIDL\x00\x00"
 //CALL ingress test9 "DIDL\x00\x00"
 //CALL ingress test10 "DIDL\x00\x00"
+//CALL ingress test11 "DIDL\x00\x00"
