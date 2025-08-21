@@ -65,7 +65,7 @@ The following modules are **new** in the `core` package:
 
 ### 2. Renamed modules
 
-| Base module                    | Core module        | Notes                                               |
+| Base package                   | Core package       | Notes                                               |
 | ------------------------------ | ------------------ | --------------------------------------------------- |
 | `ExperimentalCycles`           | `Cycles`           | Stabilized module for cycle management              |
 | `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface                  |
@@ -75,7 +75,7 @@ The following modules are **new** in the `core` package:
 | `OrderedSet`                   | `pure/Set`         | Ordered set moved to `pure/` namespace              |
 
 :::info
-The `pure/` namespace contains immutable (purely functional) data structures where operations return new instances rather than modifying existing ones. This naming follows functional programming conventions and makes the distinction between mutable and immutable data structures explicit.
+The `pure/` namespace contains immutable (purely functional) data structures where operations return new values rather than modifying in place. The namespace makes it clear which data structures are mutable and which are immutable.
 :::
 
 ### 3. Removed modules
@@ -104,19 +104,19 @@ Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in cor
 
 The `core` package brings significant changes to data structures, making a clear separation between mutable and immutable (purely functional) APIs. All data structures can now be stored directly in stable memory.
 
-| Structure         | Module               | Description                                                                                                                                                 |
-| ----------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **List**          | `List`               | Mutable list (originally [`mo:vector`](https://mops.one/vector))                                                                                            |
-| **Map**           | `Map`                | Mutable map (originally [`mo:stableheapbtreemap`](https://mops.one/stableheapbtreemap))                                                                     |
-| **Queue**         | `Queue`              | Mutable queue
-| **Set**           | `Set`                | Mutable set                                                                                                                                                 |
-| **Array**         | `Array`              | Immutable array                                                                                                                                             |
-| **VarArray**      | `VarArray`           | Mutable array                                                                                                                                               |
-| **List**          | `pure/List`          | Immutable list (originally `mo:base/List`)                                                                                                                  |
-| **Map**           | `pure/Map`           | Immutable map (originally `mo:base/OrderedMap`)                                                                                                             |
-| **Set**           | `pure/Set`           | Immutable set (originally `mo:base/OrderedSet`)                                                                                                             |
-| **Queue**         | `pure/Queue`         | Immutable queue  (orginally `mo:base/Deque`)                                                                                                                                              |
-| **RealTimeQueue** | `pure/RealTimeQueue` | Real-time queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
+| Data Structure         | Description                                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **List**               | Mutable list (originally [`mo:vector`](https://mops.one/vector))                                                                                            |
+| **Map**                | Mutable map (originally [`mo:stableheapbtreemap`](https://mops.one/stableheapbtreemap))                                                                     |
+| **Queue**              | Mutable queue
+| **Set**                | Mutable set                                                                                                                                                 |
+| **Array**              | Immutable array                                                                                                                                             |
+| **VarArray**           | Mutable array                                                                                                                                               |
+| **pure/List**          | Immutable list (originally `mo:base/List`)                                                                                                                  |
+| **pure/Map**           | Immutable map (originally `mo:base/OrderedMap`)                                                                                                             |
+| **pure/Set**           | Immutable set (originally `mo:base/OrderedSet`)                                                                                                             |
+| **pure/Queue**         | Immutable queue  (orginally `mo:base/Deque`)                                                                                                                                              |
+| **pure/RealTimeQueue** | Immutable queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
 
 ## Interface changes by module
 
