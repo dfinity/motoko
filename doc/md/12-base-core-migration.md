@@ -382,7 +382,7 @@ The `with migration` syntax follows this structure:
     // Conversion logic
   }
 )
-actor App {
+persistent actorApp {
   // New stable declarations
 };
 ```
@@ -393,7 +393,7 @@ It's also possible to use a function defined in an imported module:
 import { migrate } "Migration";
 
 (with migration = migrate)
-actor App {
+persistent actorApp {
   // New stable declarations
 };
 ```
@@ -407,7 +407,7 @@ This pattern ensures that existing stable data is preserved and converted to the
 ```motoko
 import Buffer "mo:base/Buffer";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var items : [Item] = [];
@@ -447,7 +447,7 @@ import List "mo:core/List";
     list = List.fromArray(state.items);
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let list = List.empty<Item>();
@@ -469,7 +469,7 @@ actor App {
 ```motoko
 import Deque "mo:base/Deque";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var deque = Deque.empty<Item>();
@@ -542,7 +542,7 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   stable var mapEntries : [(Text, Nat)] = [];
   let map = HashMap.fromIter<Text, Nat>(mapEntries.vals(), 10, Text.equal, Text.hash);
 
@@ -586,7 +586,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(state.mapEntries.vals(), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -612,7 +612,7 @@ import OrderedMap "mo:base/OrderedMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   let textMap = OrderedMap.Make<Text>(Text.compare);
   stable var map = textMap.empty<Nat>();
 
@@ -654,7 +654,7 @@ import Iter "mo:core/Iter";
     { map };
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -680,7 +680,7 @@ import OrderedSet "mo:base/OrderedSet";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   type Item = Text;
 
   let textSet = OrderedSet.Make<Item>(Text.compare);
@@ -724,7 +724,7 @@ import Iter "mo:core/Iter";
     { set };
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let set = Set.empty<Item>();
@@ -752,7 +752,7 @@ import Trie "mo:base/Trie";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   type Key = Text;
   type Value = Nat;
 
@@ -795,7 +795,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(Trie.iter(state.trie), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -821,7 +821,7 @@ import TrieMap "mo:base/TrieMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   stable var mapEntries : [(Text, Nat)] = [];
   let map = TrieMap.fromEntries<Text, Nat>(mapEntries.vals(), Text.equal, Text.hash);
 
@@ -865,7 +865,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(state.mapEntries.values(), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -890,7 +890,7 @@ actor {
 import TrieSet "mo:base/TrieSet";
 import Text "mo:base/Text";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var set : TrieSet.Set<Item> = TrieSet.empty<Item>();
@@ -930,7 +930,7 @@ import TrieSet "mo:base/TrieSet";
     set = Set.fromIter(TrieSet.toArray(state.set).vals(), Text.compare);
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let set = Set.empty<Item>();
