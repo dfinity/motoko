@@ -3,7 +3,7 @@ lambdas-open-types-in-deferred.mo:4.11-4.30: type error [M0098], cannot implicit
 to argument of type
   (Nat, f : I -> T)
 because cannot infer I
-lambdas-open-types-in-deferred.mo:8.11-14.4: type error [M0098], cannot implicitly instantiate function of type
+lambdas-open-types-in-deferred.mo:8.11-11.5: type error [M0098], cannot implicitly instantiate function of type
   <T, I>(t : T, f : I -> T) -> ()
 to argument of type
   (Nat, f : I -> T)

@@ -65,7 +65,7 @@ module ClosedBody1 {
   func _main() {
     let _ = f1(1, func _ = 1);
     let _ = f2(1, func _ = 1); // extra unused type variable B
-  };
+  }
 };
 
 module ClosedBody2 {
@@ -75,7 +75,7 @@ module ClosedBody2 {
   func _main() {
     let _ = f1(1, func _ : Int = 1);
     let _ = f2(1, func _ : Int = 1); // extra unused type variable C
-  };
+  }
 };
 
 module MustSolveComplex {
@@ -87,10 +87,10 @@ module MustSolveComplex {
   func f2<A, B, O>(_ : Arg<A, B>, _ : (In1<A>, In2<B>) -> O) : O = fail();
   func _main() {
     let a = { var x = [(#v1(1), 0xf)] };
-    let _ = f1(a, func(x, y) = (x[0], switch y { case (#v2(y)) y }));
-    let _ = f2(a, func p = (p.0 [0], switch (p.1) { case (#v2(y)) y }));
-  };
-};
+    let _ = f1(a, func (x, y) = (x[0], switch y { case (#v2(y)) y }));
+    let _ = f2(a, func p = (p.0[0], switch (p.1) { case (#v2(y)) y }));
+  }
+}
 //SKIP comp
 //SKIP run
 //SKIP run-drun

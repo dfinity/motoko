@@ -5,12 +5,9 @@ func _main1() {
 };
 
 func _main2() {
-  let _ = foo(
-    1,
-    func x {
-      let y = x + 1;
-      y;
-    },
-  );
-};
+  let _ = foo(1, func x {
+    let y = x + 1;
+    y
+  });
+}
 // `1` is used to infer `T`, however `I` cannot be inferred, error
