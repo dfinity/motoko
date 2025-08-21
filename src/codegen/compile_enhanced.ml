@@ -13469,10 +13469,6 @@ and main_actor as_opt mod_env ds fs up =
   mod_env.E.args := metadata "candid:args" up.meta.candid.args;
 
   Func.define_built_in mod_env IC.initialize_main_actor_function_name [] [] (fun env ->
-
-    let stable_funcs_idx = MutBox.add_global_mutbox env in
-    E.set_stable_funcs env stable_funcs_idx;
-
     let ae0 = VarEnv.empty_ae in
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
     (* Add any params to the environment *)
@@ -13697,6 +13693,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   assert !Flags.rtti; (* Use precise tagging for graph copy. *)
   assert (!Flags.gc_strategy = Flags.Incremental); (* Define heap layout with the incremental GC. *)
   let env = E.mk_global mode rts IC.trap_with in
+
+  let stable_funcs_idx = MutBox.add_global_mutbox env in
+  E.set_stable_funcs env stable_funcs_idx;
 
   IC.register_globals env;
   Stack.register_globals env;
