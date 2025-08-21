@@ -132,20 +132,18 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
-let try_pick_not_trivial_bound lb ub =
-  match normalize lb, normalize ub with
-  | Non, _ when ub <> Any -> Some ub
-  | _, Any -> Some lb
-  | _ -> None
-
 let choose_under_constrained ctx lb c ub =
   match ConEnv.find c ctx.variances with
   | Variance.Covariant -> lb
   | Variance.Contravariant -> ub
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
-    match try_pick_not_trivial_bound lb ub with
-    | Some bound when isolated bound -> bound
+    match normalize lb, normalize ub with
+    (* Ignore [Any] when choosing a bound for the solution *)
+    (* Restrict to [isolated] types only, at least for now *)
+    | t, Any when isolated t ->
+      assert (t <> Non);
+      lb
     | _ ->
       raise (Bimatch (Format.asprintf
         "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
