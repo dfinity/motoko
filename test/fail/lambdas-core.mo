@@ -2,6 +2,8 @@ import Prim "mo:prim";
 func fail<T>() : T = Prim.trap("fail");
 func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
 
+type Order = { #less; #equal; #greater };
+
 // Mock functions for Array module
 module Array {
   public func tabulate<T>(_size : Nat, _f : Nat -> T) : [T] = [];
@@ -221,6 +223,7 @@ module Map {
   public func all<K, V>(_map : Map<K, V>, _predicate : (K, V) -> Bool) : Bool = true;
   public func any<K, V>(_map : Map<K, V>, _predicate : (K, V) -> Bool) : Bool = false;
   public func toText<K, V>(_map : Map<K, V>, _keyToText : K -> Text, _valueToText : V -> Text) : Text = "";
+  public func fromIter<K, V>(_iter : Iter<(K, V)>, _compare : (K, K) -> Order) : Map<K, V> = fail();
 };
 
 // Mock functions for pure Map module
@@ -450,6 +453,7 @@ let _ = check(m1, m2);
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
+let _ = Map.fromIter([(0, "0")].values(), natCompare);
 
 // pure Map module explicit type instantiation tests
 let _ = PureMap.all(pureMap, func(k, v) = v == natToText(k));
