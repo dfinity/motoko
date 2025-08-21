@@ -4,7 +4,7 @@ actor a {
   public func m() : async () {
     Prim.debugPrint(debug_show {
       cycles = Prim.cyclesAvailable();
-      deadline = Prim.replyDeadline()
+      deadline = Prim.replyDeadline()/1000_000_000_000;
     });
   };
 
