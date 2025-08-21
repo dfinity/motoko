@@ -142,6 +142,15 @@ actor A {
     public func test11() : async () {
         debugPrint "test11()";
         await* (with timeout = 1; cycles = do { debugPrint "evaled"; 987 }) star();
+    };
+
+    func outer(_ : Nat) : async () {
+        debugPrint ("outer cycles: " # debug_show(Cycles.available()));
+    };
+
+    public func test12() : async () {
+        debugPrint "test12()";
+        await (with cycles = 9876) outer(await async { debugPrint ("inner cycles: " # debug_show(Cycles.available())); 42 });
     }
 }
 
@@ -161,3 +170,4 @@ actor A {
 //CALL ingress test9 "DIDL\x00\x00"
 //CALL ingress test10 "DIDL\x00\x00"
 //CALL ingress test11 "DIDL\x00\x00"
+//CALL ingress test12 "DIDL\x00\x00"

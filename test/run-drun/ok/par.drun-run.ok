@@ -44,3 +44,7 @@ debug.print: star: 0
 debug.print: oneshot deadline set: false
 debug.print: oneshot cycles: 0
 ingress Completed: Reply: 0x4449444c0000
+debug.print: test12()
+debug.print: inner cycles: 9_876
+debug.print: outer cycles: 0
+ingress Completed: Reply: 0x4449444c0000
