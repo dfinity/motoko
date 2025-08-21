@@ -1,6 +1,7 @@
 import Prim "mo:prim";
 func fail<T>() : T = Prim.trap("fail");
 func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
+func check3<T>(t1 : T, t2 : T, t3 : T) : [T] = [t1, t2, t3]; // used to check type equality
 
 type Order = { #less; #equal; #greater };
 
@@ -408,9 +409,15 @@ let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
 let _ = Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
 let s1 = Set.map<Nat, Text>(set, func n = natToText(n));
+let s1i = Set.map(set, func n = natToText(n));
 let s2 : Set<Text> = Set.map(set, func n = natToText(n));
-let _ = check(s1, s2);
+let _ = check3(s1, s1i, s2);
 let s3 = Set.filterMap<Nat, Text>(
+  set,
+  textCompare,
+  func n = if (n % 2 == 0) ?natToText(n) else null,
+);
+let s3i = Set.filterMap(
   set,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
@@ -420,7 +427,7 @@ let s4 : Set<Text> = Set.filterMap(
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
-let _ = check(s3, s4);
+let _ = check3(s3, s3i, s4);
 let _ = Set.all(set, func n = n < 10);
 let _ = Set.any(set, func n = n > 5);
 
@@ -448,8 +455,9 @@ let _ = PureSet.any(pureSet, func n = n > 5);
 let _ = Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
 let m1 = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
+let m1i = Map.map(mapInstance, func(key, value) = natToText(key));
 let m2 : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
-let _ = check(m1, m2);
+let _ = check3(m1, m1i, m2);
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
