@@ -2,5 +2,4 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {heap_diff = 0; instr_diff = 6_914_163_110}
 ingress Completed: Reply: 0x4449444c0000
-debug.print: instructions: 6_919_388_305
 ingress Completed: Reply: 0x4449444c0000

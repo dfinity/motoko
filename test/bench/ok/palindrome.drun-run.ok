@@ -7,5 +7,4 @@ debug.print: (true, +2_184, 23_533)
 debug.print: (false, +2_160, 21_608)
 debug.print: (false, +2_160, 23_333)
 ingress Completed: Reply: 0x4449444c0000
-debug.print: instructions: 5_421_419
 ingress Completed: Reply: 0x4449444c0000

@@ -197,6 +197,14 @@ function run_if () {
   if test -e $out/$base.$ext
   then
     run "$@"
+    # Extract instruction count for performance mode.
+    if [ "$PERF" = "yes" -a -e $out/$base.drun-run ]; then
+      PERF_INSTRUCTION_COUNT=$(LANG=C perl -ne "s/_//g; print \$1 if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run)
+      # echo $PERF_INSTRUCTION_COUNT
+      # Remove the instruction count line from the output file so that tests with different
+      # performance numbers do not affect the .ok files.
+      sed -i '/^debug\.print: instructions: [0-9_]*$/d' $out/$base.drun-run
+    fi
   else
     return 1
   fi
@@ -465,11 +473,13 @@ do
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
-              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              if [ -n "$PERF_OUT" ]
               then
                 #LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
-                LANG=C perl -ne "s/_//g; print \"gas/$base;\$1\n\" if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run >> $PERF_OUT;
+                #LANG=C perl -ne "s/_//g; print \"gas/$base;\$1\n\" if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run >> $PERF_OUT;
+                echo "gas/$base;$PERF_INSTRUCTION_COUNT" >> $PERF_OUT;
+                unset PERF_INSTRUCTION_COUNT  # Clear for next test.
               fi
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
