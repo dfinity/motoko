@@ -153,9 +153,15 @@ let rec is_isolated_type t =
     | Principal
     | Region
     (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
-    ) -> true
+    )
+  | Mut _ -> true
   | Array t
-  | Mut t -> is_isolated_type t
+  | Async (_, _, t)
+  | Weak t -> is_isolated_type t
+  | Tup ts -> List.for_all is_isolated_type ts
+  | Func (_, _, _, ts1, ts2) ->
+    List.for_all is_isolated_type ts1 &&
+    List.for_all is_isolated_type ts2
   | _ -> false
 
 let try_pick_not_trivial_bound lb ub =
