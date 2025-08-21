@@ -102,12 +102,12 @@ Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in cor
 
 ## Data structure improvements
 
-The core package introduces a fundamental reorganization of data structures with a clear separation between mutable and immutable (purely functional) APIs. All data structures are now usable in stable memory.
+The `core` package brings significant changes to data structures, making a clear separation between mutable and immutable (purely functional) APIs. All data structures can now be stored directly in stable memory.
 
 | Structure         | Module               | Description                                                                                                                                                 |
 | ----------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **List**          | `List`               | Mutable list                                                                                                                                                |
-| **Map**           | `Map`                | Mutable map                                                                                                                                                 |
+| **List**          | `List`               | Mutable list (originally [`mo:vector`](https://mops.one/vector))                                                                                            |
+| **Map**           | `Map`                | Mutable map (originally [`mo:stableheapbtreemap`](https://mops.one/stableheapbtreemap))                                                                     |
 | **Queue**         | `Queue`              | Mutable queue
 | **Set**           | `Set`                | Mutable set                                                                                                                                                 |
 | **Array**         | `Array`              | Immutable array                                                                                                                                             |
