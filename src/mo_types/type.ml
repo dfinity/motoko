@@ -1479,7 +1479,7 @@ and singleton_field co tf = singleton_typ co tf.typ
 
 and singleton t : bool = singleton_typ (ref S.empty) t
 
-(** A type is isolated if it has no proper supertypes nor proper subtypes (except top [Any] and bottom [Non]). *)
+(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
 let rec isolated t =
   match normalize t with
   | Prim
