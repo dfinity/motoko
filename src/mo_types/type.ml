@@ -2294,7 +2294,7 @@ let rec string_of_explanation explanation =
 
 let is_redundant_explanation t1 t2 = function
   | IncompatibleTypes (_, t1', t2')
-  | IncompatiblePrims (_, t1', t2') when eq t1 t1' && eq t2 t2' -> true
+  | IncompatiblePrims (_, t1', t2') -> eq t1 t1' && eq t2 t2'
   | _ -> false
 
 end
