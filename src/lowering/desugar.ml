@@ -214,7 +214,8 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (par_opt, e1, inst, e2) ->
-    let ds = if T.is_fut note.Note.typ then parenthetical par_opt else [] in
+    let s, _, _, _, _ = T.as_func (e1.note.S.note_typ) in
+    let ds = if T.is_shared_sort s || T.is_fut note.Note.typ then parenthetical par_opt else [] in
     (blockE ds { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
