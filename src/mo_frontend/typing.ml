@@ -2094,7 +2094,7 @@ and check_exp' env0 t exp : T.typ =
     t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
-    check_sub_explained env0 exp1.at t' t (fun explanation ->
+    check_sub_explained env exp1.at t' t (fun explanation ->
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a%s"
         display_typ_expand t'
