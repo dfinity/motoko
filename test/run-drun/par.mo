@@ -136,10 +136,12 @@ actor A {
 
     func star() : async* () {
         debugPrint ("star: " # debug_show(Cycles.available()));
+        oneshot();
     };
 
     public func test11() : async () {
-        await* (with timeout = 1) star();
+        debugPrint "test11()";
+        await* (with timeout = 1; cycles = 987) star();
     }
 }
 

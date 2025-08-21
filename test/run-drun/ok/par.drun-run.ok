@@ -38,5 +38,8 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: test10()
 debug.print: anon: 34_567
 ingress Completed: Reply: 0x4449444c0000
+debug.print: test11()
 debug.print: star: 0
+debug.print: oneshot deadline set: false
+debug.print: oneshot cycles: 0
 ingress Completed: Reply: 0x4449444c0000
