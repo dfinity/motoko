@@ -373,9 +373,13 @@ The `with migration` syntax follows this structure:
 ```motoko
 (
   with migration = func(
-    state : { /* old stable state types */ }
-  ) : { /* new stable state types */ } = {
-    /* conversion logic */
+    state : {
+      // Original state types
+    }
+  ) : {
+    // New state types
+  } = {
+    // Conversion logic
   }
 )
 actor App {
