@@ -132,20 +132,41 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
-let try_choose_invariant lb ub =
-  (* When there is exactly one non-trivial bound, choose it as the solution.
-   * Note that this is not a principal solution! A user might need to fix it by type annotation or explicit instantiation.
-   * However, without this strategy the user ALWAYS needs to supply a type annotation or explicit instantiation.
-   *)
-  (* TODO: more tests: try to push it to create test cases that create confusing errors when this strategy is used,
-   e.g. it causes errors later when coding a function, when the user forgot that the compiler made some not optimal choices
-  in these cases in might be better without this strategy, ask about type annotation early to avoid confusion later. *)
-  (* TODO: Can we restrict the types when this strategy can be applied?
-    Is it reasonable to pick a solution for some types and not for others?
-    Do we want to restrict the type of the chosen bound? e.g. exclude unannotated variants or sth like this? *)
-  match promote lb, promote ub with
+(** A type is isolated if it has no proper supertypes nor proper subtypes (except top [Any] and bottom [Non]). *)
+let rec is_isolated_type t =
+  match normalize t with
+  | Prim
+    ( Bool
+    | Nat8
+    | Nat16
+    | Nat32
+    | Nat64
+    | Int8
+    | Int16
+    | Int32
+    | Int64
+    | Float
+    | Char
+    | Text
+    | Blob
+    | Error
+    | Principal
+    | Region
+    (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
+    ) -> true
+  | Array t
+  | Mut t -> is_isolated_type t
+  | _ -> false
+
+let try_pick_not_trivial_bound lb ub =
+  match normalize lb, normalize ub with
   | Non, _ when ub <> Any -> Some ub
   | _, Any -> Some lb
+  | _ -> None
+
+let try_pick_principal_bound lb ub =
+  match try_pick_not_trivial_bound lb ub with
+  | Some bound when is_isolated_type bound -> Some bound
   | _ -> None
 
 let choose_under_constrained ctx lb c ub =
@@ -154,7 +175,7 @@ let choose_under_constrained ctx lb c ub =
   | Variance.Contravariant -> ub
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
-    match try_choose_invariant lb ub with
+    match try_pick_principal_bound lb ub with
     | Some b ->
       if debug then print_endline (Printf.sprintf "choose_invariant: %s <: %s <: %s, choosing %s" (string_of_typ lb) (Cons.name c) (string_of_typ ub) (string_of_typ b));
       b

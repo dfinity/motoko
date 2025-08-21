@@ -1,0 +1,9 @@
+lambdas-invariant.mo:16.9-16.64: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>([var T], T -> U) -> [var U]
+to argument of type
+  ([var Nat], Nat -> U)
+because implicit instantiation of type parameter U is under-constrained with
+  ?Nat  <:  U  <:  Any
+where
+  ?Nat  =/=  Any
+so that explicit type instantiation is required
