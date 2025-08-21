@@ -11046,7 +11046,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-      | _, (Type.Local | Type.Stable _) ->
+      | _, (Type.Local | Type.Stable _) -> (* TBR: - optimize stable call to lookup? *)
          let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
