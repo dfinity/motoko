@@ -38,7 +38,7 @@ When updating to the `core` package:
 - `range()` functions in the `core` library are now exclusive rather than inclusive! Keep this in mind when replacing `Iter.range()` with `Nat.range()`.
 - Functions previously named `vals()` are renamed to `values()`. This also applies to fields. For example, `array.vals()` can be replaced with `array.values()`.
 - Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
-In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
+- In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
 
 For details on function signatures, please refer to the official [documentation](https://internetcomputer.org/docs/motoko/core/).
 
