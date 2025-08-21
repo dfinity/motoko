@@ -138,25 +138,20 @@ let try_pick_not_trivial_bound lb ub =
   | _, Any -> Some lb
   | _ -> None
 
-let try_pick_principal_bound lb ub =
-  match try_pick_not_trivial_bound lb ub with
-  | Some bound when isolated bound -> Some bound
-  | _ -> None
-
 let choose_under_constrained ctx lb c ub =
   match ConEnv.find c ctx.variances with
   | Variance.Covariant -> lb
   | Variance.Contravariant -> ub
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
-    match try_pick_principal_bound lb ub with
-    | Some b -> b
-    | None ->
-    raise (Bimatch (Format.asprintf
-      "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb,"=/=",ub)))
+    match try_pick_not_trivial_bound lb ub with
+    | Some bound when isolated bound -> bound
+    | _ ->
+      raise (Bimatch (Format.asprintf
+        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+        (Cons.name c)
+        display_constraint (lb, c, ub)
+        display_rel (lb,"=/=",ub)))
 
 let fail_over_constrained lb c ub =
   raise (Bimatch (Format.asprintf

@@ -224,6 +224,8 @@ val stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool
+
+(** A type is isolated if it has no proper supertypes nor proper subtypes (except top [Any] and bottom [Non]). *)
 val isolated : typ -> bool
 val span : typ -> int option
 
