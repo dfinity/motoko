@@ -1479,6 +1479,37 @@ and singleton_field co tf = singleton_typ co tf.typ
 
 and singleton t : bool = singleton_typ (ref S.empty) t
 
+(** A type is isolated if it has no proper supertypes nor proper subtypes (except top [Any] and bottom [Non]). *)
+let rec isolated t =
+  match normalize t with
+  | Prim
+    ( Bool
+    | Nat8
+    | Nat16
+    | Nat32
+    | Nat64
+    | Int8
+    | Int16
+    | Int32
+    | Int64
+    | Float
+    | Char
+    | Text
+    | Blob
+    | Error
+    | Principal
+    | Region
+    (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
+    )
+  | Mut _ -> true
+  | Array t
+  | Async (_, _, t)
+  | Weak t -> isolated t
+  | Tup ts -> List.for_all isolated ts
+  | Func (_, _, _, ts1, ts2) ->
+    List.for_all isolated ts1 &&
+    List.for_all isolated ts2
+  | _ -> false
 
 (* Least upper bound and greatest lower bound *)
 

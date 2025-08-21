@@ -224,6 +224,7 @@ val stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool
+val isolated : typ -> bool
 val span : typ -> int option
 
 

@@ -132,38 +132,6 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
-(** A type is isolated if it has no proper supertypes nor proper subtypes (except top [Any] and bottom [Non]). *)
-let rec is_isolated_type t =
-  match normalize t with
-  | Prim
-    ( Bool
-    | Nat8
-    | Nat16
-    | Nat32
-    | Nat64
-    | Int8
-    | Int16
-    | Int32
-    | Int64
-    | Float
-    | Char
-    | Text
-    | Blob
-    | Error
-    | Principal
-    | Region
-    (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
-    )
-  | Mut _ -> true
-  | Array t
-  | Async (_, _, t)
-  | Weak t -> is_isolated_type t
-  | Tup ts -> List.for_all is_isolated_type ts
-  | Func (_, _, _, ts1, ts2) ->
-    List.for_all is_isolated_type ts1 &&
-    List.for_all is_isolated_type ts2
-  | _ -> false
-
 let try_pick_not_trivial_bound lb ub =
   match normalize lb, normalize ub with
   | Non, _ when ub <> Any -> Some ub
@@ -172,7 +140,7 @@ let try_pick_not_trivial_bound lb ub =
 
 let try_pick_principal_bound lb ub =
   match try_pick_not_trivial_bound lb ub with
-  | Some bound when is_isolated_type bound -> Some bound
+  | Some bound when isolated bound -> Some bound
   | _ -> None
 
 let choose_under_constrained ctx lb c ub =
@@ -182,9 +150,7 @@ let choose_under_constrained ctx lb c ub =
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
     match try_pick_principal_bound lb ub with
-    | Some b ->
-      if debug then print_endline (Printf.sprintf "choose_invariant: %s <: %s <: %s, choosing %s" (string_of_typ lb) (Cons.name c) (string_of_typ ub) (string_of_typ b));
-      b
+    | Some b -> b
     | None ->
     raise (Bimatch (Format.asprintf
       "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
