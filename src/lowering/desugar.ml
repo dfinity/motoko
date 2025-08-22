@@ -215,12 +215,16 @@ and exp' at note = function
   (* Normal call *)
   | S.CallE (None, e1, inst, e2) ->
     I.(PrimE (CallPrim inst.note, [exp e1; exp e2]))
-  | S.CallE (par_opt, e1, inst, e2) ->
+  (* Call with parenthetical *)
+  | S.CallE (Some _ as par_opt, e1, inst, e2) ->
     let send e1_typ = T.(is_func e1_typ &&
                            (let s, _, _, _, _ = as_func e1_typ in
                             is_shared_sort s || is_fut note.Note.typ)) in
     let ds, rs = parenthetical (send e1.note.S.note_typ) par_opt in
-    (blockE (ds @ rs) I.{ at; note; it = PrimE (CallPrim inst.note, [exp e1; exp e2]) }).it
+    let v1, v2 = fresh_var "e1" e1.note.S.note_typ, fresh_var "e2" e2.note.S.note_typ in
+    (blockE
+       (ds @ [letD v1 (exp e1); letD v2 (exp e2)])
+       (blockE rs I.{ at; note; it = PrimE (CallPrim inst.note, [varE v1; varE v2]) })).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)

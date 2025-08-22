@@ -144,13 +144,15 @@ actor A {
         await* (with timeout = 1; cycles = do { debugPrint "evaled"; 987 }) star();
     };
 
-    func outer(_ : Nat) : async () {
+    func outer() : async () {
         debugPrint ("outer cycles: " # debug_show(Cycles.available()));
     };
 
     public func test12() : async () {
         debugPrint "test12()";
-        await (with cycles = 9876) outer(await async { debugPrint ("inner cycles: " # debug_show(Cycles.available())); 42 });
+        await (with cycles = 9876) outer(await async { debugPrint ("inner cycles: " # debug_show(Cycles.available())) });
+        func p(c : Nat) : Nat { debugPrint (debug_show c); c };
+        await (with cycles = p 8765) outer(await (with cycles = p 7654) async { debugPrint ("inner cycles: " # debug_show(Cycles.available())) });
     }
 }
 
