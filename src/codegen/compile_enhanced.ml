@@ -7109,11 +7109,8 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
-      | Func (Type.Stable id, c, tbs, ts1, ts2) ->
-          compile_unboxed_const (E.get_stable_funcs __LINE__ env) ^^
-          MutBox.load_field env ^^
-          Object.load_idx env Type.(obj Object [(id, Mut t)]) id
-         (* TODO: if we knew the full object type, load_idx would be faster *)
+      | Func (Type.Stable id, c, tbs, ts1 , ts2) ->
+        G.nop
       | Func _ ->
         inc_data_size (compile_unboxed_const 1L) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0L ^^ size env (Obj (Actor, [])) ^^
@@ -8058,7 +8055,20 @@ module Serialization = struct
             ( sort_by_hash vs )
             ( skip get_arg_typ ^^
               coercion_failed "IDL error: unexpected variant tag" )
-        )
+          )
+      | Func (Type.Stable lab, c, tbs, ts1, ts2) ->
+        (* See Note [Candid subtype checks] *)
+        get_rel_buf_opt ^^
+        E.if1 I64Type
+          begin
+            get_idltyp ^^
+            idl_sub env t
+          end
+          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
+        E.if1 I64Type
+          (Closure.stable_func env lab)
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible function type")
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
@@ -12858,8 +12868,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_vanilla env ae
       { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
         at = exp.at;
-        (*   note = { exp.note with Note.const = false }; (* FIX sort, remove const hack *) *)
-        note = exp.note; (* FIX sort, remove const hack *)        
+        note = exp.note; (* FIX sort *)
       } ^^
     (* Write to stable func record *)
     Tagged.write_with_barrier env ^^
