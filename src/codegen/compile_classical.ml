@@ -12658,25 +12658,39 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_as env ae sr e ^^
     code
   | FuncE (x, Type.Stable lab, control, typ_binds, args, res_tys, e) ->
-    assert (!Flags.gc_strategy = Flags.Copying);
-    (* TODO: add appropriate barriers for generational and incremental *)
     let obj_typ = Type.(obj Object [(lab, Mut exp.note.Note.typ)]) in (* FIX ME: other fields and func sort *)
     SR.Vanilla,
     (* Load stable_funcs record *)
     compile_unboxed_const (E.get_stable_funcs env) ^^
     (* static: Tagged.load_forwarding_pointer env not needed *)
     MutBox.load_field env ^^
+    Tagged.load_forwarding_pointer env ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
+    let (set_ptr, get_ptr) = new_local env "ptr" in
     Object.idx env obj_typ lab ^^ (* idx would be faster with full obj_typ *)
+    set_ptr ^^
+    get_ptr ^^
+    (match !Flags.gc_strategy with (* c.f. Var.set_val *)
+     | Flags.Incremental ->
+       compile_add_const ptr_unskew
+     | _ -> G.nop) ^^
     (* Compile the implementation as a `Local` function *)
     compile_exp_vanilla env ae
       { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
         at = exp.at;
         note = exp.note; (* FIX ME: sort *)
       } ^^
-    (* Write to stable func record field *)
-    store_ptr ^^
-    (*    Tagged.write_with_barrier env ^^ etc. *)
+      (* Write to stable func record field *)
+     (match !Flags.gc_strategy with (* c.f. Var.set_val *)
+     | Flags.Incremental ->
+       Tagged.write_with_barrier env
+     | Flags.Generational ->
+       store_ptr ^^
+       get_ptr ^^
+       Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
+       E.call_import env "rts" "post_write_barrier"
+     | _ ->
+       store_ptr) ^^
     (* Allocate the proxy *)
     Closure.stable_func env lab
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
