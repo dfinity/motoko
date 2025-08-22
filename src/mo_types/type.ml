@@ -1480,7 +1480,9 @@ and singleton_field co tf = singleton_typ co tf.typ
 and singleton t : bool = singleton_typ (ref S.empty) t
 
 (** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
-let rec isolated t =
+let rec isolated_typ co t =
+  S.mem t !co || begin
+  co := S.add t !co;
   match normalize t with
   | Prim
     ( Bool
@@ -1504,12 +1506,15 @@ let rec isolated t =
   | Mut _ -> true
   | Array t
   | Async (_, _, t)
-  | Weak t -> isolated t
-  | Tup ts -> List.for_all isolated ts
+  | Weak t -> isolated_typ co t
+  | Tup ts -> List.for_all (isolated_typ co) ts
   | Func (_, _, _, ts1, ts2) ->
-    List.for_all isolated ts1 &&
-    List.for_all isolated ts2
+    List.for_all (isolated_typ co) ts1 &&
+    List.for_all (isolated_typ co) ts2
   | _ -> false
+  end
+
+and isolated t = isolated_typ (ref S.empty) t
 
 (* Least upper bound and greatest lower bound *)
 

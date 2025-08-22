@@ -45,6 +45,10 @@ func _m7() {
   let _ = VarArray.map(va, func x = #c(x)); // { #c : Nat }
 };
 
+// Termination check: should succeed
+type Bot = [Bot];
+let _ = VarArray.map(va, func x = [] : [Bot]); // [Bot]
+
 //SKIP comp
 //SKIP run
 //SKIP run-drun
