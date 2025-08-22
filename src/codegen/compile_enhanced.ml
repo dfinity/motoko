@@ -12841,17 +12841,26 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
-(*
   | FuncE (x, Type.Stable lab, control, typ_binds, args, res_tys, e) ->
-    let captured = Freevars.captured exp in
-    let return_tys = match control with
-      | Type.Returns -> res_tys
-      | Type.Replies -> assert false
-      | Type.Promises -> assert false in
-    let return_arity = List.length return_tys in
-    let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
-    FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
- *)
+    let obj_typ = Type.(obj Object [(lab, Mut exp.note.Note.typ)]) in (* Fix me *)
+    SR.Vanilla,
+    (* Load stable_funcs record *)
+    Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
+    Tagged.load_forwarding_pointer env ^^
+    MutBox.load_field env ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env obj_typ lab ^^
+    compile_add_const ptr_unskew ^^
+    (* Compile the implementation as a `Local` function *)
+    compile_exp_vanilla env ae
+      { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
+        at = exp.at;
+        note = exp.note; (* FIX sort *)
+      } ^^
+    (* Write to stable func record *)
+    Tagged.write_with_barrier env ^^
+    (* Allocate the proxy *)
+    Closure.stable_func env lab
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
