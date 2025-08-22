@@ -223,8 +223,8 @@ and exp' at note = function
     let ds, rs = parenthetical (send e1.note.S.note_typ) par_opt in
     let v1, v2 = fresh_var "e1" e1.note.S.note_typ, fresh_var "e2" e2.note.S.note_typ in
     (blockE
-       (ds @ [letD v1 (exp e1); letD v2 (exp e2)])
-       (blockE rs I.{ at; note; it = PrimE (CallPrim inst.note, [varE v1; varE v2]) })).it
+       (ds @ letD v1 (exp e1) :: letD v2 (exp e2) :: rs)
+       I.{ at; note; it = PrimE (CallPrim inst.note, [varE v1; varE v2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -256,7 +256,7 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    let ds, rs = parenthetical (s.it = Fut) par_opt in
+    let ds, rs = parenthetical (s = T.Fut) par_opt in
     let it = I.AsyncE (s, typ_bind tb, exp e,
                        match note.Note.typ with
                        | T.Async (_, t, _) -> t
