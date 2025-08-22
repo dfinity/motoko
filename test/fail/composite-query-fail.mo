@@ -49,7 +49,7 @@ actor Composites {
 
    public composite query func cqas() : async () {
      //ignore async* (); // odd syntax error!
-     ignore async* {}; // reject anonymous async*
+     ignore async* {};
      // actually, it might be safe to allow this, but disallow await* (coz lazy)
    };
 
