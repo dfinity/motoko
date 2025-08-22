@@ -213,9 +213,18 @@ and exp' at note = function
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
-  | S.CallE (par_opt, e1, inst, e2) ->
-    let ds = parenthetical par_opt in
-    (blockE ds { at; note; it = I.PrimE (I.CallPrim inst.note, [exp e1; exp e2]) }).it
+  | S.CallE (None, e1, inst, e2) ->
+    I.(PrimE (CallPrim inst.note, [exp e1; exp e2]))
+  (* Call with parenthetical *)
+  | S.CallE (Some _ as par_opt, e1, inst, e2) ->
+    let send e1_typ = T.(is_func e1_typ &&
+                           (let s, _, _, _, _ = as_func e1_typ in
+                            is_shared_sort s || is_fut note.Note.typ)) in
+    let ds, rs = parenthetical (send e1.note.S.note_typ) par_opt in
+    let v1, v2 = fresh_var "e1" e1.note.S.note_typ, fresh_var "e2" e2.note.S.note_typ in
+    (blockE
+       (ds @ letD v1 (exp e1) :: letD v2 (exp e2) :: rs)
+       I.{ at; note; it = PrimE (CallPrim inst.note, [varE v1; varE v2]) }).it
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)
@@ -247,12 +256,12 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    let ds = parenthetical par_opt in
+    let ds, rs = parenthetical (s = T.Fut) par_opt in
     let it = I.AsyncE (s, typ_bind tb, exp e,
                        match note.Note.typ with
                        | T.Async (_, t, _) -> t
                        | _ -> assert false) in
-    (blockE ds { at; note; it }).it
+    (blockE (ds @ rs) { at; note; it }).it
   | S.AwaitE (sort, e) -> I.PrimE I.(AwaitPrim sort, [exp e])
   | S.AssertE (Runtime, e) -> I.PrimE (I.AssertPrim, [exp e])
   | S.AssertE (_, e) -> (unitE ()).it
@@ -264,8 +273,9 @@ and exp' at note = function
       { it = I.LetD ({it = I.WildP; at = e.at; note = T.Any}, exp e);
         at = e.at; note = ()}], (unitE ()))
 
-and parenthetical = function
-  | None -> []
+and parenthetical send = function
+  | None -> [], []
+  | Some par when not send -> [expD (exp par)], []
   | Some par ->
     (* fishing for relevant attributes in the parenthetical based on its static type *)
     let cycles, clean_cycles =
@@ -282,9 +292,9 @@ and parenthetical = function
       let parV = fresh_var "par" par.note.note_typ in
       (* for present attributes we evaluate the parenthetical record, and use the binding
          to get the attributes' values from it, then set the backend variables *)
-      letD parV (exp par) :: List.map (fun attr -> attr (varE parV)) present @ absent
+      [letD parV (exp par)], List.map (fun attr -> attr (varE parV)) present @ absent
     (* if all attributes are absent, we still have to evaluate the parenthetical for side-effects *)
-    else expD (exp par) :: absent
+    else [expD (exp par)], absent
 
 and url e at =
     (* Set position explicitly *)
