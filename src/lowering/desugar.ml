@@ -256,7 +256,7 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (par_opt, s, tb, e) ->
-    let ds, rs = parenthetical true par_opt in
+    let ds, rs = parenthetical (s.it = Fut) par_opt in
     let it = I.AsyncE (s, typ_bind tb, exp e,
                        match note.Note.typ with
                        | T.Async (_, t, _) -> t
