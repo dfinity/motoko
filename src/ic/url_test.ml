@@ -19,9 +19,9 @@ let%test "it should parse a package import (3)" =
 let%test "it should parse a package import (4)" =
   parse_test "mo:foo" (Ok (Package ("foo", "")))
 let%test "it should reject package imports that try to escape" =
-  parse_test "mo:foo/../bar" (Error "Package imports musn't access parent directories: ../bar is invalid.")
+  parse_test "mo:foo/../bar" (Error "Package imports mustn't access parent directories: ../bar is invalid.")
 let%test "it should reject package imports that try to escape (2)" =
-  parse_test "mo:foo/bar/../../baz" (Error "Package imports musn't access parent directories: bar/../../baz is invalid.")
+  parse_test "mo:foo/bar/../../baz" (Error "Package imports mustn't access parent directories: bar/../../baz is invalid.")
 let%test "it normalises filepaths for the escape check (3)" =
   parse_test "mo:foo/bar/../baz" (Ok (Package ("foo", "bar/../baz")))
 
@@ -44,5 +44,7 @@ let%test "it should parse a relative import (2)" =
   parse_test "foo" (Ok (Relative "foo"))
 let%test "it should parse a relative import (3)" =
   parse_test "./foo" (Ok (Relative "foo"))
+let%test "it should parse a raw file value import" =
+  parse_test "blob:file:foo" (Ok (FileValue "foo"))
 let%test "it should fail to parse an unknown URL scheme" =
   parse_test "something:else" (Error "Unrecognized URL")
