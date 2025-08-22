@@ -49,6 +49,19 @@ func _m7() {
 type Bot = [Bot];
 let _ = VarArray.map(va, func x = [] : [Bot]); // [Bot]
 
+// Type variables: isolated when unbounded
+func tvUnbounded<Ok>(t : Ok) {
+  let _ = VarArray.map(va, func _ = t); // Ok
+};
+
+func tvBoundedToIsolated<Er <: Text>(t : Er) {
+  let _ = VarArray.map(va, func _ = t); // Er, should still fail because [var Er] =/= [var Text]
+};
+
+func tvBoundedToNat<Er <: Nat>(t : Er) {
+  let _ = VarArray.map(va, func _ = t); // Er, should fail
+};
+
 //SKIP comp
 //SKIP run
 //SKIP run-drun

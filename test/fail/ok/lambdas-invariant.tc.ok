@@ -61,3 +61,21 @@ because implicit instantiation of type parameter U is under-constrained with
 where
   {#c : Nat}  =/=  Any
 so that explicit type instantiation is required
+lambdas-invariant.mo:58.11-58.39: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>([var T], T -> U) -> [var U]
+to argument of type
+  ([var Nat], Nat -> U)
+because implicit instantiation of type parameter U is under-constrained with
+  Er  <:  U  <:  Any
+where
+  Er  =/=  Any
+so that explicit type instantiation is required
+lambdas-invariant.mo:62.11-62.39: type error [M0098], cannot implicitly instantiate function of type
+  <T, U>([var T], T -> U) -> [var U]
+to argument of type
+  ([var Nat], Nat -> U)
+because implicit instantiation of type parameter U is under-constrained with
+  Er  <:  U  <:  Any
+where
+  Er  =/=  Any
+so that explicit type instantiation is required

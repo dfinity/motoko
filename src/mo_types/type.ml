@@ -1480,10 +1480,21 @@ and singleton_field co tf = singleton_typ co tf.typ
 and singleton t : bool = singleton_typ (ref S.empty) t
 
 (** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
-let rec isolated_typ co t =
-  S.mem t !co || begin
-  co := S.add t !co;
-  match normalize t with
+let rec isolated_typ co = function
+  | Con (c, ts) as t ->
+    (match Cons.kind c with
+    | Abs (_, bound) ->
+      (* Type parameters are isolated when unbounded. *)
+      bound = Any
+    | Def (tbs, def) ->
+      (* Cyclic definitions are isolated until proven otherwise. *)
+      S.mem t !co || begin
+        co := S.add t !co;
+        isolated_typ co (reduce tbs def ts)
+      end
+    )
+  | Mut _ -> true
+  | Named (_, t) -> isolated_typ co t
   | Prim
     ( Bool
     | Nat8
@@ -1502,8 +1513,7 @@ let rec isolated_typ co t =
     | Principal
     | Region
     (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
-    )
-  | Mut _ -> true
+    ) -> true
   | Array t
   | Async (_, _, t)
   | Weak t -> isolated_typ co t
@@ -1512,7 +1522,6 @@ let rec isolated_typ co t =
     List.for_all (isolated_typ co) ts1 &&
     List.for_all (isolated_typ co) ts2
   | _ -> false
-  end
 
 and isolated t = isolated_typ (ref S.empty) t
 
