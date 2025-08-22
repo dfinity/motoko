@@ -4191,13 +4191,13 @@ module Closure = struct
     Tagged.store_field env len_field ^^
 
     (* Store the hash as tagged Nat32 *)
+    get_clos ^^
     compile_unboxed_const (E.hash env lab) ^^
     BitTagged.tag env Type.Nat32 ^^
     Tagged.store_field env stable_hash_field ^^
 
     get_clos ^^
-    Tagged.allocation_barrier env ^^
-    G.i Drop
+    Tagged.allocation_barrier env
 
 end (* Closure *)
 
@@ -6896,7 +6896,7 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s);
+        assert (Type.is_shared_sort s || Type.is_stable_sort s);
         add_sleb128 idl_func;
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
@@ -6911,6 +6911,9 @@ module Serialization = struct
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
+          | Stable id, _ -> (* todo: encode id? *)
+            assert (tbs = []);
+            add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -12855,7 +12858,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_vanilla env ae
       { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
         at = exp.at;
-        note = exp.note; (* FIX sort *)
+        (*   note = { exp.note with Note.const = false }; (* FIX sort, remove const hack *) *)
+        note = exp.note; (* FIX sort, remove const hack *)        
       } ^^
     (* Write to stable func record *)
     Tagged.write_with_barrier env ^^

@@ -6992,7 +6992,7 @@ module MakeSerialization (Strm : Stream) = struct
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
-             add_leb128 1; add_u8 3; (* composite *)
+            add_leb128 1; add_u8 3; (* composite *)
           | Stable id, _ -> (* todo: encode id? *)
             assert (tbs = []);
             add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)

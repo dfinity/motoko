@@ -754,7 +754,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
 
 and stable_func stable_func_fields i t =
   match T.normalize t with
-  | T.Func(T.Stable f as s, c, tbs, ts1, ts2) ->
+  | T.Func(T.Local, c, tbs, ts1, ts2) ->
       let tys = T.open_binds tbs in
       let cs = List.map (function (T.Con(c, [])) -> c | _ -> assert false) tys in
       let tys1 = List.map (T.open_ tys) ts1 in
@@ -763,7 +763,7 @@ and stable_func stable_func_fields i t =
       let typ_binds = List.map2
           (fun tb c -> {it = I.{con = c; bound = T.open_ tys tb.T.bound; sort = tb.T.sort}; at = no_region; note = ()}) tbs cs in
       let args = List.map arg_of_var vs in
-      funcE ("stable_"^i) s c typ_binds args tys2
+      funcE ("stable_"^i) T.Local c typ_binds args tys2
         (callE
           (dotE
             ({ it = I.PrimE (I.OtherPrim "get_stable_funcs", []);
@@ -794,17 +794,17 @@ and stabilize stab_opt d =
     let t = p.note in
     (match T.normalize t with
      | T.Func(T.Stable f, c, tbs, ts1, ts2) when i = f->
-        ([(i, t)], [(i, t)],
+        ([(i, t)], [(i, T.Func(T.Local, c, tbs, ts1, ts2))],
         fun get_state get_stable_funcs ->
-       [letP p e;
-        expD
+        [letP p e; (* compilation of e will update stable_funcs and return a proxy *)
+(*        expD
           { it = I.AssignE
                    (({it = I.DotLE(callE (varE get_stable_funcs) [] (unitE ()), i);
                       at = no_region;
                       note = T.Mut t}),
                     varE (var i t));
             at = no_region;
-            note = Note.{def with typ = T.unit } }]
+            note = Note.{def with typ = T.unit } }*)]
        )
      | _ ->
        ([(i, t)], [],
