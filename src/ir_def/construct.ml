@@ -132,6 +132,8 @@ let primE prim es =
     | OtherPrim "rts_callback_table_count" -> T.nat
     | OtherPrim "rts_callback_table_size" -> T.nat
     | OtherPrim "rts_in_upgrade" -> T.bool
+    | OtherPrim "set_stable_funcs" -> T.unit
+    | OtherPrim "get_stable_funcs" -> T.Obj(T.Object, []) (* unused? *)
     | _ -> assert false (* implement more as needed *)
   in
   let eff = map_max_effs eff es in

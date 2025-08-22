@@ -911,7 +911,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     match exp.it with
     | VarE (Const, id) -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
-      check (s = T.Local) "constant FuncE cannot be of shared sort";
+      check (s = T.Local) "constant FuncE cannot be of shared sort"; (* TBR *)
       if env.lvl = NotTopLvl then
       Freevars.M.iter (fun v _ ->
         if (T.Env.find v env.vals).loc_known then () else
