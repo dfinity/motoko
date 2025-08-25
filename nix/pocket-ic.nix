@@ -69,23 +69,11 @@ pkgs: let
     doCheck = false;
   };
 
-  # Server package
+  # Pocket-ic server package.
   server = pkgs.rustPlatform-stable.buildRustPackage (commonAttrs // {
     buildAndTestSubdir = "rs/pocket_ic_server";
   });
 
-  # Library package
-  library = pkgs.rustPlatform-stable.buildRustPackage (commonAttrs // {
-    buildAndTestSubdir = "packages/pocket-ic";
-    cargoBuildFlags = [ "-p" "pocket-ic" "--lib" ];
-    installPhase = ''
-      mkdir -p $out/lib
-      # Get the target triple from the build environment
-      TARGET_TRIPLE=$(rustc --version --verbose | grep "host:" | cut -d' ' -f2)
-      cp target/$TARGET_TRIPLE/release/libpocket_ic* $out/lib/ || true
-    '';
-  });
-
 in {
-  inherit server library;
+  inherit server;
 } 

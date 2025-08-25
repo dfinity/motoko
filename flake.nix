@@ -224,11 +224,10 @@
 
         inherit (pkgs) nix-build-uncached drun ic-wasm pocket-ic;
 
-        # Split pocket-ic into server and library
+        # Get pocket-ic server.
         pocket-ic-server = pkgs.pocket-ic.server;
-        pocket-ic-library = pkgs.pocket-ic.library;
 
-        # Define test-runner package
+        # Define test-runner package.
         test-runner = pkgs.rustPlatform-stable.buildRustPackage {
           pname = "test-runner";
           version = "0.1.0";
@@ -237,19 +236,12 @@
             lockFile = ./test-runner/Cargo.lock;
           };
           buildInputs = [
-            pkgs.pocket-ic.library
             pkgs.pocket-ic.server
           ];
-          POCKET_IC_LIBRARY = "${pkgs.sources.pocket-ic-src}/packages/pocket-ic";
           POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-          
-          # Update Cargo.toml with the correct path
-          # preBuild = ''           
-          #   sed -i "s|pocket-ic = { path = \".*\" }|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" Cargo.toml
-          # '';
         };
 
-        # Platform-specific release files
+        # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
         "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
         release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };
