@@ -128,7 +128,7 @@ fn parse_escape(chars: &mut Chars<'_>, radix: Radix) -> Result<u8, String> {
 
 fn parse_quoted(quoted_str: &str) -> Result<Vec<u8>, String> {
     if !quoted_str.is_ascii() {
-        return Err(String::from("Only ASCII strings are allowed."));
+        return Err("Only ASCII strings are allowed.".to_string());
     }
 
     let mut chars = quoted_str.chars();
@@ -136,9 +136,7 @@ fn parse_quoted(quoted_str: &str) -> Result<Vec<u8>, String> {
     let mut escaped = false;
 
     if Some('"') != chars.next() {
-        return Err(String::from(
-            "Double-quoted string must be enclosed in double quotes.",
-        ));
+        return Err("Double-quoted string must be enclosed in double quotes.".to_string());
     }
 
     let mut c = chars.next();
@@ -167,7 +165,7 @@ fn parse_quoted(quoted_str: &str) -> Result<Vec<u8>, String> {
     }
 
     if chars.next().is_some() {
-        return Err(String::from("Trailing characters after string terminator."));
+        return Err("Trailing characters after string terminator.".to_string());
     }
 
     Ok(res)
@@ -192,7 +190,7 @@ fn parse_str_args(input_str: &str) -> Result<Vec<u8>, String> {
 fn contains_icp_private_custom_section(wasm_binary: &[u8], name: &str) -> Result<bool, String> {
     use wasmparser::{Parser, Payload::CustomSection};
 
-    let icp_section_name = format!("icp:private {name}");
+    let icp_section_name = format!("icp:private {}", name);
     let parser = Parser::new(0);
     for payload in parser.parse_all(wasm_binary) {
         if let CustomSection(reader) = payload.map_err(|e| format!("Wasm parsing error: {}", e))? {
@@ -226,19 +224,15 @@ impl ResultExtractor for () {
 // For query messages, the output prepends always "Ok: Reply".
 impl ResultExtractor for Vec<u8> {
     fn extract(&self, command: TestCommand) -> String {
-        let hex_str = self
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<Vec<String>>()
-            .join("");
+        let hex_str: String = self.iter().map(|b| format!("{:02x}", b)).collect();
         match command {
             TestCommand::Ingress { .. }
             | TestCommand::Reinstall { .. }
             | TestCommand::Upgrade { .. }
             | TestCommand::Install { .. } => {
-                format!("ingress Completed: Reply: 0x{}", hex_str).to_string()
+                format!("ingress Completed: Reply: 0x{}", hex_str)
             }
-            TestCommand::Query { .. } => format!("Ok: Reply: 0x{}", hex_str).to_string(),
+            TestCommand::Query { .. } => format!("Ok: Reply: 0x{}", hex_str),
         }
     }
 }
@@ -335,10 +329,10 @@ impl TestCommand {
                     | TestCommand::Reinstall { .. }
                     | TestCommand::Upgrade { .. }
                     | TestCommand::Install { .. } => {
-                        format!("ingress Err: {}: {}", e.error_code, e.reject_message).to_string()
+                        format!("ingress Err: {}: {}", e.error_code, e.reject_message)
                     }
                     TestCommand::Query { .. } => {
-                        format!("Err: {}: {}", e.error_code, e.reject_message).to_string()
+                        format!("Err: {}: {}", e.error_code, e.reject_message)
                     }
                 }
             }
