@@ -1039,6 +1039,7 @@ and explanation =
   | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
   | IncompatibleAsyncSorts of context * async_sort * async_sort
+  | IncompatibleAsyncScopes of context * typ * typ
 and context_item =
   | ConsType of con
   | NamedType of name
@@ -1131,6 +1132,9 @@ let incompatible_funcs d t1 t2 =
 
 let incompatible_async_sorts d s1 s2 =
   RelArg.false_with d (IncompatibleAsyncSorts (RelArg.context d, s1, s2))
+
+let incompatible_async_scopes d t1 t2 =
+  RelArg.false_with d (IncompatibleAsyncScopes (RelArg.context d, t1, t2))
 
 let rec rel_list item_name d p rel eq xs1 xs2 =
   match xs1, xs2 with
@@ -1232,7 +1236,7 @@ let rec rel_typ d rel eq t1 t2 =
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     (s1 = s2 || incompatible_async_sorts d s1 s2) &&
-    eq_typ d rel eq t11 t21 &&
+    (eq_typ d rel eq t11 t21 || incompatible_async_scopes d t11 t21) &&
     rel_typ d rel eq t12 t22
   | _, _ -> incompatible_types d t1 t2
   end
@@ -2342,6 +2346,8 @@ let rec string_of_explanation explanation =
     Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleAsyncSorts (context, s1, s2) ->
     Format.asprintf "Incompatible async sorts: %s\n does not match %s\n in %s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context context)
+  | IncompatibleAsyncScopes (context, t1, t2) ->
+    Format.asprintf "Incompatible async scopes: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
 
 let is_redundant_explanation t1 t2 = function
   | IncompatibleTypes (_, t1', t2')

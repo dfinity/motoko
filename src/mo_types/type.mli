@@ -256,6 +256,7 @@ and explanation =
   | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
   | IncompatibleAsyncSorts of context * async_sort * async_sort
+  | IncompatibleAsyncScopes of context * typ * typ
 and context_item =
   | ConsType of con
   | NamedType of name
