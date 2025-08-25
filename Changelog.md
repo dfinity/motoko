@@ -1,6 +1,22 @@
 # Motoko compiler changelog
 
+## 0.16.1 (2025-08-25)
+
 * motoko (`moc`)
+  * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
+
+  * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).
+    This addresses the limitation mentioned in #5180.
+    Examples of isolated types include all primitive types except `Nat` and `Int`, such as `Bool`, `Text`, `Blob`, `Float`, `Char`, `Int32`, etc.
+    `Nat` and `Int` are not isolated because `Nat` is a subtype of `Int` (`Nat <: Int`).
+
+    For example, the following code now works without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = debug_show (x) # "!"); // [var Text]
+    ```
 
   * `ignore` now warns when its argument has type `async*`, as it will have no effect (#5419).
 
