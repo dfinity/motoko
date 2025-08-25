@@ -87,9 +87,9 @@ pkgs.mkShell {
     unset XDG_DATA_DIRS
 
     # Update Cargo.toml with the correct pocket-ic path if it exists
-    if [ -f "test-runner/Cargo.toml" ]; then
-      sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" test-runner/Cargo.toml
-    fi
+    # if [ -f "test-runner/Cargo.toml" ]; then
+    #  sed -i "s|pocket-ic = \".*\"|pocket-ic = { path = \"$POCKET_IC_LIBRARY\" }|" test-runner/Cargo.toml
+    #fi
   '';
   ESM = esm;
   TOMMATHSRC = pkgs.sources.libtommath-src;
