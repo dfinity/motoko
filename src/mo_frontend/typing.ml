@@ -1800,7 +1800,9 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp_strong env T.Any exp1;
       if sub env exp1.at exp1.note.note_typ T.unit then
-        warn env exp.at "M0089" "redundant ignore, operand already has type ()"
+        warn env exp.at "M0089" "redundant ignore, operand already has type ()";
+      if T.is_cmp exp1.note.note_typ then
+        warn env exp.at "M0222" "ignored argument of `async*` type has no effect"
     end;
     T.unit
   | ImportE (f, ri) ->
@@ -2290,7 +2292,6 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
         (* Prepare subtyping constraints for the 2nd round *)
         let subs = ref [] in
-        let to_fix2 = ref [] in
         deferred |> List.iter (fun (exp, typ) ->
           (* Substitute fixed type variables *)
           let typ = T.open_ ts typ in
@@ -2319,7 +2320,6 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               else begin
                 (* We just have open [codom], we need to infer the body *)
                 let actual_t = infer_exp env' body in
-                to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
                 subs := (actual_t, body_typ) :: !subs;
               end
           | _ ->
@@ -2332,7 +2332,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           (* Fix the manually decomposed terms as if they were inferred *)
           let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
           fix (T.open_ ts) to_fix;
-          fix (T.subst subst_env) !to_fix2;
+          fix (T.open_ ts) deferred;
         end;
 (*
         if not env.pre then
@@ -2970,7 +2970,8 @@ and check_parenthetical env typ_opt = function
        let s, _, _, _, ts2 = T.as_func fun_ty in
        begin match ts2 with
        | _ when T.is_shared_sort s -> ()
-       | [cod] when T.is_async cod -> ()
+       | [cod] when T.is_fut cod -> ()
+       | [cod] when T.is_cmp cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
        | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
        end
      | _ -> ()

@@ -139,6 +139,7 @@ val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
 val is_fut : typ -> bool
+val is_cmp : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
@@ -224,6 +225,9 @@ val stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool
+
+(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
+val isolated : typ -> bool
 val span : typ -> int option
 
 
