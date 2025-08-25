@@ -1800,7 +1800,9 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       check_exp_strong env T.Any exp1;
       if sub env exp1.at exp1.note.note_typ T.unit then
-        warn env exp.at "M0089" "redundant ignore, operand already has type ()"
+        warn env exp.at "M0089" "redundant ignore, operand already has type ()";
+      if T.is_cmp exp1.note.note_typ then
+        warn env exp.at "M0222" "ignored argument of `async*` type has no effect"
     end;
     T.unit
   | ImportE (f, ri) ->
@@ -2969,7 +2971,7 @@ and check_parenthetical env typ_opt = function
        begin match ts2 with
        | _ when T.is_shared_sort s -> ()
        | [cod] when T.is_fut cod -> ()
-       | [cod] when T.is_async cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
+       | [cod] when T.is_cmp cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
        | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
        end
      | _ -> ()

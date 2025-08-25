@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * `ignore` now warns when its argument has type `async*`, as it will have no effect (#5419).
+
   * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
 
   * bugfix: `moc` now warns about parentheticals on `async*` calls, and makes sure that they get discarded (#5415).
