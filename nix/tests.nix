@@ -63,6 +63,9 @@ let
         mkdir -p $out/share
         cp -v ${dir}/ok/*.ok $out/share
       '';
+    } // pkgs.lib.optionalAttrs (builtins.elem test-runner deps) {
+      POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+      SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
     });
 
   test_subdir = dir: deps: acceptable_subdir false dir deps;
@@ -183,6 +186,20 @@ let
     deriv.overrideAttrs { name = "test-${name}"; }
   );
 
+  # Add test-runner test
+  test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+    pname = "test-runner";
+    version = "0.1.0";
+    src = ../test-runner;
+    cargoLock = {
+      lockFile = ../test-runner/Cargo.lock;
+    };
+    buildInputs = [
+      pkgs.pocket-ic.server
+    ];
+    POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+  };
+
   coverage = testDerivation {
     # this runs all subdirectories, so let's just depend on all of test/
     src = ../test;
@@ -216,13 +233,13 @@ fix_names
     run-debug = snty_subdir "run" [ moc ];
     run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
     run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
-    drun-release = test_subdir "run-drun" [ moc pkgs.drun ];
-    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun ];
-    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
-    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun ];
+    drun-release = test_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-debug = snty_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
+    drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
@@ -233,11 +250,11 @@ fix_names
     trap = test_subdir "trap" [ moc ];
     trap-eop = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
     run-deser = test_subdir "run-deser" [ deser ];
-    perf = perf_subdir false "perf" [ moc pkgs.drun ];
+    perf = perf_subdir false "perf" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.cacert ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
-    inherit qc unit candid coverage;
+    inherit qc unit candid coverage test-runner;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)
-  (fix_names { bench = perf_subdir true "bench" [ moc pkgs.drun pkgs.ic-wasm ]; })
+  (fix_names { bench = perf_subdir true "bench" [ moc pkgs.drun test-runner pkgs.pocket-ic.server pkgs.ic-wasm pkgs.cacert ]; })

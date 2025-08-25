@@ -29,6 +29,10 @@
       url = "github:dfinity/ic";
       flake = false;
     };
+    pocket-ic-src = {
+      url = "github:dfinity/ic/master";
+      flake = false;
+    };
     ic-wasm-src = {
       url = "github:dfinity/ic-wasm";
       flake = false;
@@ -73,6 +77,7 @@
     , viper-server
     , candid-src
     , ic-src
+    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
@@ -89,6 +94,7 @@
           inherit
             candid-src
             ic-src
+            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
@@ -157,10 +163,12 @@
               matchDebug = builtins.match ".*-debug$" name;
               matchRelease = builtins.match ".*-release$" name;
               matchGC = builtins.match ".*-gc$" name;
-              # Common tests are those that do not match -debug, -release, or -gc.
+              matchPerf = builtins.match ".*(bench|perf)$" name;
+              # Common tests are those that do not match -debug, -release, -gc, or -bench, -perf.
               matchCommon = matchDebug == null &&
                 matchRelease == null &&
-                matchGC == null;
+                matchGC == null &&
+                matchPerf == null;
             in {
               debug = matchDebug != null;
               release = matchRelease != null;
@@ -195,6 +203,7 @@
       shell = import ./nix/shell.nix {
         inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
         inherit (checks) check-rts-formatting;
+        test-runner = self.packages.${system}.test-runner;
       };
 
       common-constituents = rec {
@@ -213,9 +222,26 @@
 
         inherit nix-update tests js;
 
-        inherit (pkgs) nix-build-uncached drun ic-wasm;
+        inherit (pkgs) nix-build-uncached drun ic-wasm pocket-ic;
 
-        # Platform-specific release files
+        # Get pocket-ic server.
+        pocket-ic-server = pkgs.pocket-ic.server;
+
+        # Define test-runner package.
+        test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+          pname = "test-runner";
+          version = "0.1.0";
+          src = ./test-runner;
+          cargoLock = {
+            lockFile = ./test-runner/Cargo.lock;
+          };
+          buildInputs = [
+            pkgs.pocket-ic.server
+          ];
+          POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        };
+
+        # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
         "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
         release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };

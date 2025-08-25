@@ -95,7 +95,13 @@ function normalize () {
 
     # Normalize canister id prefixes and timestamps in debug prints
     sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
-        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' \
+        -e '/^ic_trap$/d' |
+
+    # Normalize the output of the test-runner.
+    # remove all lines containing PocketIC.
+    sed -e '/PocketIC/d' |
+
     # Delete everything after Oom
     sed -e '/RTS error: Cannot grow memory/q' \
         -e '/RTS error: Cannot allocate memory/q' |
@@ -191,6 +197,14 @@ function run_if () {
   if test -e $out/$base.$ext
   then
     run "$@"
+    # Extract instruction count for performance mode.
+    if [ "$PERF" = "yes" -a -e $out/$base.drun-run ]; then
+      PERF_INSTRUCTION_COUNT=$(LANG=C perl -ne "s/_//g; print \$1 if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run)
+      # echo $PERF_INSTRUCTION_COUNT
+      # Remove the instruction count line from the output file so that tests with different
+      # performance numbers do not affect the .ok files.
+      sed -i '/^debug\.print: instructions: [0-9_]*$/d' $out/$base.drun-run
+    fi
   else
     return 1
   fi
@@ -291,6 +305,7 @@ do
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
+        SKIP_RUNNING=yes
         $ECHO " Skipped (not applicable to classical orthogonal persistence)"
         continue
       fi
@@ -308,6 +323,14 @@ do
       if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
       then
         $ECHO " Skipped (not applicable to incremental gc)"
+        continue
+      fi
+    fi
+    if grep -q "//SKIP-SANITY-CHECKS" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--sanity-checks"* ]]
+      then
+        $ECHO " Skipped (not applicable to --sanity-checks)"
         continue
       fi
     fi
@@ -429,7 +452,7 @@ do
           # Check filecheck
           if [ "$SKIP_RUNNING" != yes ]
           then
-            if grep -F -q CHECK $mangled
+            if grep -F -q ^//CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
               wasm2wat --enable-memory64 --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
@@ -450,10 +473,13 @@ do
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
-              if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              if [ -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                #LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                #LANG=C perl -ne "s/_//g; print \"gas/$base;\$1\n\" if /^debug\.print: instructions: ([0-9]+)\$/" $out/$base.drun-run >> $PERF_OUT;
+                echo "gas/$base;$PERF_INSTRUCTION_COUNT" >> $PERF_OUT;
+                unset PERF_INSTRUCTION_COUNT  # Clear for next test.
               fi
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
