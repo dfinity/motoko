@@ -2970,7 +2970,8 @@ and check_parenthetical env typ_opt = function
        let s, _, _, _, ts2 = T.as_func fun_ty in
        begin match ts2 with
        | _ when T.is_shared_sort s -> ()
-       | [cod] when T.is_async cod -> ()
+       | [cod] when T.is_fut cod -> ()
+       | [cod] when T.is_async cod -> warn env par.at "M0210" "misplaced parenthetical (`async*` calls cannot be modified)"
        | _ -> warn env par.at "M0210" "misplaced parenthetical (this call does not send a message)"
        end
      | _ -> ()
