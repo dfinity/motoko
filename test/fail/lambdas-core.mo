@@ -1,6 +1,7 @@
-import Prim "mo:prim";
-func fail<T>() : T = Prim.trap("fail");
 func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
+func check3<T>(t1 : T, t2 : T, t3 : T) : [T] = [t1, t2, t3]; // used to check type equality
+
+type Order = { #less; #equal; #greater };
 
 // Mock functions for Array module
 module Array {
@@ -16,6 +17,7 @@ module Array {
   public func foldRight<T, A>(_array : [T], _base : A, _f : (T, A) -> A) : A = _base;
   public func all<T>(_array : [T], _predicate : T -> Bool) : Bool = true;
   public func any<T>(_array : [T], _predicate : T -> Bool) : Bool = false;
+  public func sort<T>(_array : [T], _compare : (T, T) -> Order) : [T] = [];
 };
 
 // Mock functions for VarArray module
@@ -38,22 +40,29 @@ module VarArray {
 // Mock functions for Iter module
 type Iter<T> = { next : () -> ?T };
 module Iter {
+  public func empty<T>() : Iter<T> {
+    object {
+      public func next() : ?T {
+        null;
+      };
+    };
+  };
   public func forEach<T>(_iter : Iter<T>, _f : T -> ()) {};
-  public func map<T, R>(_iter : Iter<T>, _f : T -> R) : Iter<R> = fail();
+  public func map<T, R>(_iter : Iter<T>, _f : T -> R) : Iter<R> = empty();
   public func filter<T>(_iter : Iter<T>, _f : T -> Bool) : Iter<T> = _iter;
-  public func filterMap<T, R>(_iter : Iter<T>, _f : T -> ?R) : Iter<R> = fail();
-  public func flatMap<T, R>(_iter : Iter<T>, _f : T -> Iter<R>) : Iter<R> = fail();
+  public func filterMap<T, R>(_iter : Iter<T>, _f : T -> ?R) : Iter<R> = empty();
+  public func flatMap<T, R>(_iter : Iter<T>, _f : T -> Iter<R>) : Iter<R> = empty();
   public func takeWhile<T>(_iter : Iter<T>, _predicate : T -> Bool) : Iter<T> = _iter;
   public func dropWhile<T>(_iter : Iter<T>, _predicate : T -> Bool) : Iter<T> = _iter;
-  public func zipWith<T, U, R>(_iter1 : Iter<T>, _iter2 : Iter<U>, _f : (T, U) -> R) : Iter<R> = fail();
-  public func zipWith3<T, U, V, R>(_iter1 : Iter<T>, _iter2 : Iter<U>, _iter3 : Iter<V>, _f : (T, U, V) -> R) : Iter<R> = fail();
+  public func zipWith<T, U, R>(_iter1 : Iter<T>, _iter2 : Iter<U>, _f : (T, U) -> R) : Iter<R> = empty();
+  public func zipWith3<T, U, V, R>(_iter1 : Iter<T>, _iter2 : Iter<U>, _iter3 : Iter<V>, _f : (T, U, V) -> R) : Iter<R> = empty();
   public func all<T>(_iter : Iter<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_iter : Iter<T>, _predicate : T -> Bool) : Bool = false;
   public func find<T>(_iter : Iter<T>, _predicate : T -> Bool) : ?T = null;
   public func findIndex<T>(_iter : Iter<T>, _predicate : T -> Bool) : ?Nat = null;
   public func foldLeft<T, A>(_iter : Iter<T>, _base : A, _f : (A, T) -> A) : A = _base;
   public func foldRight<T, A>(_iter : Iter<T>, _base : A, _f : (T, A) -> A) : A = _base;
-  public func unfold<T, S>(_init : S, _f : S -> ?(T, S)) : Iter<T> = fail();
+  public func unfold<T, S>(_init : S, _f : S -> ?(T, S)) : Iter<T> = empty();
 };
 
 // Mock functions for List module
@@ -63,9 +72,14 @@ type List<T> = {
   var elementIndex : Nat;
 };
 module List {
+  public func empty<T>() : List<T> = {
+    var blocks = [var];
+    var blockIndex = 0;
+    var elementIndex = 0;
+  };
   public func filter<T>(_list : List<T>, _predicate : T -> Bool) : List<T> = _list;
-  public func map<T, R>(_list : List<T>, _f : T -> R) : List<R> = fail();
-  public func filterMap<T, R>(_list : List<T>, _f : T -> ?R) : List<R> = fail();
+  public func map<T, R>(_list : List<T>, _f : T -> R) : List<R> = empty();
+  public func filterMap<T, R>(_list : List<T>, _f : T -> ?R) : List<R> = empty();
   public func find<T>(_list : List<T>, _predicate : T -> Bool) : ?T = null;
   public func findIndex<T>(_list : List<T>, _predicate : T -> Bool) : ?Nat = null;
   public func findLastIndex<T>(_list : List<T>, _predicate : T -> Bool) : ?Nat = null;
@@ -75,15 +89,16 @@ module List {
 
 // Mock functions for pure List module
 module PureList {
+  public func empty<T>() : PureList<T> = null;
   public func forEach<T>(_list : PureList<T>, _f : T -> ()) {};
-  public func map<T, R>(_list : PureList<T>, _f : T -> R) : PureList<R> = fail();
-  public func filter<T>(_list : PureList<T>, _predicate : T -> Bool) : PureList<T> = fail();
-  public func partition<T>(_list : PureList<T>, _predicate : T -> Bool) : (PureList<T>, PureList<T>) = (fail(), fail());
+  public func map<T, R>(_list : PureList<T>, _f : T -> R) : PureList<R> = empty();
+  public func filter<T>(_list : PureList<T>, _predicate : T -> Bool) : PureList<T> = empty();
+  public func partition<T>(_list : PureList<T>, _predicate : T -> Bool) : (PureList<T>, PureList<T>) = (empty(), empty());
   public func find<T>(_list : PureList<T>, _predicate : T -> Bool) : ?T = null;
   public func findIndex<T>(_list : PureList<T>, _predicate : T -> Bool) : ?Nat = null;
   public func all<T>(_list : PureList<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_list : PureList<T>, _predicate : T -> Bool) : Bool = false;
-  public func tabulate<T>(_size : Nat, _f : Nat -> T) : PureList<T> = fail();
+  public func tabulate<T>(_size : Nat, _f : Nat -> T) : PureList<T> = empty();
 };
 
 // Mock functions for Queue module
@@ -99,10 +114,15 @@ type Node<T> = {
   var previous : ?Node<T>;
 };
 module Queue {
+  public func empty<T>() : Queue<T> = {
+    var front = null;
+    var back = null;
+    var size = 0;
+  };
   public func all<T>(_queue : Queue<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_queue : Queue<T>, _predicate : T -> Bool) : Bool = false;
   public func forEach<T>(_queue : Queue<T>, _f : T -> ()) {};
-  public func map<T, R>(_queue : Queue<T>, _f : T -> R) : Queue<R> = fail();
+  public func map<T, R>(_queue : Queue<T>, _f : T -> R) : Queue<R> = empty();
   public func filter<T>(_queue : Queue<T>, _predicate : T -> Bool) : Queue<T> = _queue;
 };
 
@@ -110,12 +130,13 @@ module Queue {
 type PureList<T> = ?(T, PureList<T>);
 type PureQueue<T> = (PureList<T>, Nat, PureList<T>);
 module PureQueue {
+  public func empty<T>() : PureQueue<T> = (null, 0, null);
   public func all<T>(_queue : PureQueue<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_queue : PureQueue<T>, _predicate : T -> Bool) : Bool = false;
   public func forEach<T>(_queue : PureQueue<T>, _f : T -> ()) {};
   public func filter<T>(_queue : PureQueue<T>, _predicate : T -> Bool) : PureQueue<T> = _queue;
-  public func map<T, R>(_queue : PureQueue<T>, _f : T -> R) : PureQueue<R> = fail();
-  public func filterMap<T, R>(_queue : PureQueue<T>, _f : T -> ?R) : PureQueue<R> = fail();
+  public func map<T, R>(_queue : PureQueue<T>, _f : T -> R) : PureQueue<R> = empty();
+  public func filterMap<T, R>(_queue : PureQueue<T>, _f : T -> ?R) : PureQueue<R> = empty();
 };
 
 // Mock functions for Stack module
@@ -124,13 +145,17 @@ type Stack<T> = {
   var size : Nat;
 };
 module Stack {
-  public func tabulate<T>(_size : Nat, _f : Nat -> T) : Stack<T> = fail();
+  public func empty<T>() : Stack<T> = {
+    var top = null;
+    var size = 0;
+  };
+  public func tabulate<T>(_size : Nat, _f : Nat -> T) : Stack<T> = empty();
   public func all<T>(_stack : Stack<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_stack : Stack<T>, _predicate : T -> Bool) : Bool = false;
   public func forEach<T>(_stack : Stack<T>, _f : T -> ()) {};
-  public func map<T, R>(_stack : Stack<T>, _f : T -> R) : Stack<R> = fail();
+  public func map<T, R>(_stack : Stack<T>, _f : T -> R) : Stack<R> = empty();
   public func filter<T>(_stack : Stack<T>, _predicate : T -> Bool) : Stack<T> = _stack;
-  public func filterMap<T, R>(_stack : Stack<T>, _f : T -> ?R) : Stack<R> = fail();
+  public func filterMap<T, R>(_stack : Stack<T>, _f : T -> ?R) : Stack<R> = empty();
 };
 
 // Mock functions for Set module
@@ -160,11 +185,15 @@ module Set {
     var root : Node<T>;
     var size : Nat;
   };
+  public func empty<T>() : Set<T> = {
+    var root = #leaf { data = { elements = [var]; var count = 0 } };
+    var size = 0;
+  };
   public func retainAll<T>(_set : Set<T>, _compare : Compare<T>, _predicate : T -> Bool) : Bool = true;
   public func forEach<T>(_set : Set<T>, _f : T -> ()) {};
   public func filter<T>(_set : Set<T>, _compare : Compare<T>, _predicate : T -> Bool) : Set<T> = _set;
-  public func map<T, R>(_set : Set<T>, _f : T -> R) : Set<R> = fail();
-  public func filterMap<T, R>(_set : Set<T>, _compare : Compare<R>, _f : T -> ?R) : Set<R> = fail();
+  public func map<T, R>(_set : Set<T>, _f : T -> R) : Set<R> = empty();
+  public func filterMap<T, R>(_set : Set<T>, _compare : Compare<R>, _f : T -> ?R) : Set<R> = empty();
   public func all<T>(_set : Set<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_set : Set<T>, _predicate : T -> Bool) : Bool = false;
 };
@@ -180,10 +209,11 @@ module PureSet {
 
   public type Set<T> = { size : Nat; root : Tree<T> };
 
+  public func empty<T>() : PureSet<T> = { size = 0; root = #leaf };
   public func forEach<T>(_set : PureSet<T>, _f : T -> ()) {};
   public func filter<T>(_set : PureSet<T>, _compare : Compare<T>, _predicate : T -> Bool) : PureSet<T> = _set;
-  public func map<T, R>(_set : PureSet<T>, _f : T -> R) : PureSet<R> = fail();
-  public func filterMap<T, R>(_set : PureSet<T>, _compare : Compare<R>, _f : T -> ?R) : PureSet<R> = fail();
+  public func map<T, R>(_set : PureSet<T>, _f : T -> R) : PureSet<R> = empty();
+  public func filterMap<T, R>(_set : PureSet<T>, _compare : Compare<R>, _f : T -> ?R) : PureSet<R> = empty();
   public func all<T>(_set : PureSet<T>, _predicate : T -> Bool) : Bool = true;
   public func any<T>(_set : PureSet<T>, _predicate : T -> Bool) : Bool = false;
 };
@@ -215,12 +245,17 @@ module Map {
     var root : Node<K, V>;
     var size : Nat;
   };
-  public func map<K, V, R>(_map : Map<K, V>, _f : (K, V) -> R) : Map<K, R> = fail();
+  public func empty<K, V>() : Map<K, V> = {
+    var root = #leaf { data = { kvs = [var]; var count = 0 } };
+    var size = 0;
+  };
+  public func map<K, V, R>(_map : Map<K, V>, _f : (K, V) -> R) : Map<K, R> = empty();
   public func forEach<K, V>(_map : Map<K, V>, _f : (K, V) -> ()) {};
   public func filter<K, V>(_map : Map<K, V>, _compare : Compare<K>, _predicate : (K, V) -> Bool) : Map<K, V> = _map;
   public func all<K, V>(_map : Map<K, V>, _predicate : (K, V) -> Bool) : Bool = true;
   public func any<K, V>(_map : Map<K, V>, _predicate : (K, V) -> Bool) : Bool = false;
   public func toText<K, V>(_map : Map<K, V>, _keyToText : K -> Text, _valueToText : V -> Text) : Text = "";
+  public func fromIter<K, V>(_iter : Iter<(K, V)>, _compare : (K, K) -> Order) : Map<K, V> = empty();
 };
 
 // Mock functions for pure Map module
@@ -235,19 +270,26 @@ module PureMap {
     #black : (Tree<K, V>, K, V, Tree<K, V>);
     #leaf;
   };
+  public func empty<K, V>() : PureMap<K, V> = { size = 0; root = #leaf };
   public func all<K, V>(_map : PureMap<K, V>, _predicate : (K, V) -> Bool) : Bool = true;
   public func any<K, V>(_map : PureMap<K, V>, _predicate : (K, V) -> Bool) : Bool = false;
   public func forEach<K, V>(_map : PureMap<K, V>, _f : (K, V) -> ()) {};
   public func filter<K, V>(_map : PureMap<K, V>, _compare : Compare<K>, _predicate : (K, V) -> Bool) : PureMap<K, V> = _map;
-  public func map<K, V, R>(_map : PureMap<K, V>, _f : (K, V) -> R) : PureMap<K, R> = fail();
+  public func map<K, V, R>(_map : PureMap<K, V>, _f : (K, V) -> R) : PureMap<K, R> = empty();
   public func toText<K, V>(_map : PureMap<K, V>, _keyToText : K -> Text, _valueToText : V -> Text) : Text = "";
 };
 
 // Mock functions for Result module
 type Result<T, E> = { #ok : T; #err : E };
 module Result {
-  public func mapOk<T, R, E>(_result : Result<T, E>, _f : T -> R) : Result<R, E> = #err(fail());
-  public func mapErr<T, E, F>(_result : Result<T, E>, _f : E -> F) : Result<T, F> = #err(fail());
+  public func mapOk<T, R, E>(result : Result<T, E>, f : T -> R) : Result<R, E> = switch result {
+    case (#err(e)) { #err(e) };
+    case (#ok(r)) { #ok(f(r)) };
+  };
+  public func mapErr<T, E, F>(result : Result<T, E>, f : E -> F) : Result<T, F> = switch result {
+    case (#ok(r)) { #ok(r) };
+    case (#err(e)) { #err(f(e)) };
+  };
   public func forOk<T, E>(_result : Result<T, E>, _f : T -> ()) {};
   public func forErr<T, E>(_result : Result<T, E>, _f : E -> ()) {};
 };
@@ -267,6 +309,9 @@ module Tuple3 {
 };
 
 // Mock comparison and conversion functions
+module Int {
+  public func compare(_a : Int, _b : Int) : { #less; #equal; #greater } = #equal;
+};
 func natCompare(_a : Nat, _b : Nat) : { #less; #equal; #greater } = #equal;
 func textCompare(_a : Text, _b : Text) : { #less; #equal; #greater } = #equal;
 func natToText(_n : Nat) : Text = "";
@@ -276,15 +321,15 @@ let varAr : [var Nat] = [var 1, 2, 3];
 let iter : Iter<Nat> = { next = func() : ?Nat = null };
 let iterText : Iter<Text> = { next = func() : ?Text = null };
 let iterChar : Iter<Char> = { next = func() : ?Char = null };
-let list : List<Nat> = fail();
+let list : List<Nat> = List.empty();
 let pureList : PureList<Nat> = null;
-let queue : Queue<Nat> = fail();
-let pureQueue : PureQueue<Nat> = fail();
-let stack : Stack<Nat> = fail();
-let set : Set<Nat> = fail();
-let pureSet : PureSet<Nat> = fail();
-let mapInstance : Map<Nat, Text> = fail();
-let pureMap : PureMap<Nat, Text> = fail();
+let queue : Queue<Nat> = Queue.empty();
+let pureQueue : PureQueue<Nat> = PureQueue.empty();
+let stack : Stack<Nat> = Stack.empty();
+let set : Set<Nat> = Set.empty();
+let pureSet : PureSet<Nat> = PureSet.empty();
+let mapInstance : Map<Nat, Text> = Map.empty();
+let pureMap : PureMap<Nat, Text> = PureMap.empty();
 let resultOk : Result<Nat, Text> = #ok(1);
 let resultErr : Result<Nat, Text> = #err("");
 let optionSome : ?Nat = ?1;
@@ -302,6 +347,7 @@ let _ = Array.flatMap(ar, func x = [x, -x]);
 let _ = Array.foldRight(ar, "", func(x, acc) = natToText(x) # acc);
 let _ = Array.all(ar, func x = x > 0);
 let _ = Array.any(ar, func x = x > 3);
+let _ = Array.sort(ar, func(a, b) { Int.compare(b, a) });
 
 // VarArray module explicit type instantiation tests
 let va1 = VarArray.tabulate<Int>(4, func i = i * 2);
@@ -405,9 +451,15 @@ let _ = Set.retainAll(set, natCompare, func n = n % 2 == 0);
 let _ = Set.forEach(set, func _ {});
 let _ = Set.filter(set, natCompare, func n = n % 2 == 0);
 let s1 = Set.map<Nat, Text>(set, func n = natToText(n));
+let s1i = Set.map(set, func n = natToText(n));
 let s2 : Set<Text> = Set.map(set, func n = natToText(n));
-let _ = check(s1, s2);
+let _ = check3(s1, s1i, s2);
 let s3 = Set.filterMap<Nat, Text>(
+  set,
+  textCompare,
+  func n = if (n % 2 == 0) ?natToText(n) else null,
+);
+let s3i = Set.filterMap(
   set,
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
@@ -417,7 +469,7 @@ let s4 : Set<Text> = Set.filterMap(
   textCompare,
   func n = if (n % 2 == 0) ?natToText(n) else null,
 );
-let _ = check(s3, s4);
+let _ = check3(s3, s3i, s4);
 let _ = Set.all(set, func n = n < 10);
 let _ = Set.any(set, func n = n > 5);
 
@@ -445,11 +497,13 @@ let _ = PureSet.any(pureSet, func n = n > 5);
 let _ = Map.forEach(mapInstance, func(key, value) {});
 let _ = Map.filter(mapInstance, natCompare, func(key, value) = key % 2 == 0);
 let m1 = Map.map<Nat, Text, Text>(mapInstance, func(key, value) = natToText(key));
+let m1i = Map.map(mapInstance, func(key, value) = natToText(key));
 let m2 : Map<Nat, Text> = Map.map(mapInstance, func(key, value) = natToText(key));
-let _ = check(m1, m2);
+let _ = check3(m1, m1i, m2);
 let _ = Map.all(mapInstance, func(k, v) = v == natToText(k));
 let _ = Map.any(mapInstance, func(k, v) = k >= 0);
 let _ = Map.toText(mapInstance, natToText, func t = t);
+let _ = Map.fromIter([(0, "0")].values(), natCompare);
 
 // pure Map module explicit type instantiation tests
 let _ = PureMap.all(pureMap, func(k, v) = v == natToText(k));
@@ -481,8 +535,14 @@ let _ = Option.map(optionSome, func x = x + 1);
 // let _ = Tuple2.makeToText(natToText, func x = x);
 // let _ = Tuple3.makeToText(natToText, func x = x, natToText);
 
+module Issue5418 {
+  public func test() : async [Int] {
+    Array.sort(
+      [-1, 0, 1],
+      func(a, b) { Int.compare(b, a) },
+    );
+  };
+};
 //SKIP comp
-//SKIP run
-//SKIP run-drun
 //SKIP run-ir
 //SKIP run-low

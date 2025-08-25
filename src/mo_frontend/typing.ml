@@ -2292,7 +2292,6 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
         (* Prepare subtyping constraints for the 2nd round *)
         let subs = ref [] in
-        let to_fix2 = ref [] in
         deferred |> List.iter (fun (exp, typ) ->
           (* Substitute fixed type variables *)
           let typ = T.open_ ts typ in
@@ -2321,7 +2320,6 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
               else begin
                 (* We just have open [codom], we need to infer the body *)
                 let actual_t = infer_exp env' body in
-                to_fix2 := (exp, T.Func (s, c, [], ts1, T.as_seq actual_t)) :: !to_fix2;
                 subs := (actual_t, body_typ) :: !subs;
               end
           | _ ->
@@ -2334,7 +2332,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           (* Fix the manually decomposed terms as if they were inferred *)
           let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
           fix (T.open_ ts) to_fix;
-          fix (T.subst subst_env) !to_fix2;
+          fix (T.open_ ts) deferred;
         end;
 (*
         if not env.pre then
