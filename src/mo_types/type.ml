@@ -2114,7 +2114,8 @@ and pp_typ' vs ppf t =
   match t with
   (* special, additional cases for printing second-class types *)
   | Typ c ->
-    fprintf ppf "@[<1>=@ @[(type@ %a)@]@]" (pp_kind' vs) (Cons.kind c)
+    let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
+    fprintf ppf "@[<1>type %s%a %s@ %a@]" (Cons.name c) sbs () op st ()
   | Mut t ->
     fprintf ppf "@[<1>var@ %a@]" (pp_typ_un vs) t
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
@@ -2289,7 +2290,7 @@ let string_of_context context =
   let rec emit_context nested context =
     match context with
     | [] -> "top level"
-    | (Field label)::rest -> Printf.sprintf "%s.%s" (emit_context nested rest) label
+    | (Field label)::rest -> Printf.sprintf "%s in %s" label (emit_context true rest)
     | (ConsType c)::rest when not nested ->
        Printf.sprintf "%s (used by %s)" (remove_hash_suffix (Cons.name c)) (emit_context true rest)
     | (ConsType c)::rest ->

@@ -10,10 +10,10 @@ bad-type-comp.mo:6.10-6.39: type error [M0096], expression of type
 cannot produce expected type
   module {type T = Null}
 because: The type 
-  = (type = Int)
+  type T = Int
  is not compatible with type 
-  = (type = Null)
- of top level.T
+  type T = Null
+ of T in top level
 bad-type-comp.mo:7.73-7.74: type error [M0018], duplicate type field name T in object type
 bad-type-comp.mo:11.15-11.16: type error [M0029], unbound type T
 Did you mean type Text?
