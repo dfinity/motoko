@@ -251,11 +251,11 @@ and explanation =
   | MoreItems of context * string
   | PromotionToAny of context * typ
   | IncompatiblePrims of context * typ * typ
-  | IncompatibleObjSorts of context * typ * typ
-  | IncompatibleFuncSorts of context * typ * typ
-  | IncompatibleBounds of context * typ * typ
+  | IncompatibleObjSorts of context * obj_sort * obj_sort
+  | IncompatibleFuncSorts of context * func_sort * func_sort
+  | IncompatibleFuncControls of context * control * control
   | IncompatibleFuncs of context * typ * typ
-  | IncompatibleAsyncSorts of context * typ * typ
+  | IncompatibleAsyncSorts of context * async_sort * async_sort
 and context_item =
   | ConsType of con
   | NamedType of name
