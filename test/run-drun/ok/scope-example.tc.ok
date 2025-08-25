@@ -2,8 +2,8 @@ scope-example.mo:12.13-12.27: type error [M0096], expression of type
   async<$@anon-async-10.12> Int
 cannot produce expected type
   async<$@anon-async-6.60> Int
-because: The type 
+because: Incompatible async scopes: 
   $@anon-async-10.12
- is not compatible with type 
+ does not match 
   $@anon-async-6.60
- of top level
+ in top level
