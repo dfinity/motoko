@@ -2,14 +2,14 @@ pipe-ill-typed.mo:7.33-7.34: type error [M0096], expression of type
   {#B}
 cannot produce expected type
   {#A}
-because: Missing tag `#B` in type 
+because: Case `#B` missing from type 
   {#A}
  of top level
 pipe-ill-typed.mo:11.37-11.38: type error [M0096], expression of type
   {#A}
 cannot produce expected type
   {#B}
-because: Missing tag `#A` in type 
+because: Case `#A` missing from type 
   {#B}
  of top level
 pipe-ill-typed.mo:16.33-16.34: type error [M0096], expression of type

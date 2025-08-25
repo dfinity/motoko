@@ -2320,7 +2320,7 @@ let rec string_of_explanation explanation =
   | FailedUpcast (t1, bound, inner_explanation) ->
     Format.asprintf "Type variable %a\n was upcast to its bound %a\n and: %s" display_typ t1 display_typ bound (string_of_explanation inner_explanation)
   | MissingTag (context, lab, t) ->
-    Format.asprintf "Missing tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
+    Format.asprintf "Case `#%s` missing from type %a\n of %s" lab display_typ t (string_of_context context)
   | UnexpectedTag (context, lab, t) ->
     Format.asprintf "Unsupported additional tag `#%s` in type %a\n of %s" lab display_typ t (string_of_context context)
   | MissingField (context, lab, t) ->
