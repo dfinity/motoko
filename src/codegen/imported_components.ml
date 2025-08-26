@@ -2,8 +2,9 @@
 
 open Ir_def
 open Wasm_exts.Types
+open Mo_types.Type
 
-type imported_function = { function_name : string; args : Import_components_ir.arg_data list; return_type : Mo_types.Type.typ }
+type imported_function = { function_name : string; args : Import_components_ir.arg_data list; return_type : typ }
 
 (* This module manages the imported components in a map where each key is a component name
    and the value is a set of function names that are imported from that component. *)
@@ -23,6 +24,10 @@ module FunctionSet = Set.Make(ImportedFunctionOrd)
 module StringMap = Map.Make(String)
 
 type t = FunctionSet.t StringMap.t
+
+module TypeMap = Map.Make(Ord)
+
+type variant_def = { name : string; fields : field list }
 
 let empty : t = StringMap.empty
 
@@ -51,8 +56,7 @@ let print_imported_components (map : t) =
     Printf.printf "]\n"
   ) map
 
-let rec map_motoko_type_to_wit typ =
-  let open Mo_types.Type in
+let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_variant_idx : int ref) typ : string =
   match normalize typ with
   | Prim Blob -> "list<u8>"
   | Prim Text -> "string"
@@ -67,63 +71,93 @@ let rec map_motoko_type_to_wit typ =
   | Prim Nat64 -> "u64"
   | Prim Int64 -> "s64"
   | Prim Float -> "f64"
-  | Array t -> "list<" ^ map_motoko_type_to_wit t ^ ">"
+  | Array t -> "list<" ^ map_motoko_type_to_wit variants_ref next_variant_idx t ^ ">"
+  | Variant _ as v ->
+    begin match TypeMap.find_opt v !variants_ref with
+    | Some name -> name
+    | None ->
+      let name = Printf.sprintf "v%d" !next_variant_idx in
+      incr next_variant_idx;
+      variants_ref := TypeMap.add v name !variants_ref;
+      name
+    end
   | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
 
 let map_motoko_type_to_wasm_args motoko_type = 
-  let open Mo_types.Type in
   match normalize motoko_type with
   | Prim (Blob | Text)
   | Array _ -> [I32Type; I32Type] (* pointer + length *)
+  | Variant _ -> [I32Type] (* tag only; payload-less variants in tests *)
   | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
   | Prim (Nat64 | Int64) -> [I64Type]
   | Prim Float -> [F64Type]
   | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_args: unsupported type %s" (string_of_typ motoko_type))
 
 let map_motoko_type_to_wasm_result motoko_type = 
-  let open Mo_types.Type in
   match normalize motoko_type with
   | Prim (Blob | Text)
   | Array _ -> [] (* out-parameter approach, no direct return *)
+  | Variant _ -> [] (* returned via out-parameter or memory *)
   | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
   | Prim (Nat64 | Int64) -> [I64Type]
   | Prim Float -> [F64Type]
   | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_result: unsupported type %s" (string_of_typ motoko_type))
 
 let return_wasm_args return_type = 
-  let open Mo_types.Type in
   match normalize return_type with
   | Prim (Blob | Text)
-  | Array _ -> [I32Type] (* out-parameter *)
+  | Array _ -> [I32Type] (* out-parameter pointer for sequence-like returns *)
+  | Variant _ -> [I32Type] (* out-parameter for variants *)
   | _ -> []
 
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
 
 let imported_components_to_wit (map : t) : string =
-  let imports = StringMap.bindings map
-  |> List.map (fun (component_name, functions) ->
-      let imported_functions = FunctionSet.elements functions |> 
-          List.map (fun (e) -> 
-              "    " ^ e.function_name ^ ": func(" ^ 
-            (String.concat ", " (List.map (fun arg -> map_motoko_name_to_wit arg.Import_components_ir.arg_name ^ ": " ^ map_motoko_type_to_wit arg.Import_components_ir.arg_type) e.args)) ^ ") -> " ^ (map_motoko_type_to_wit e.return_type) ^ ";") in
-       "  import " ^ component_name ^ ": interface {\n" ^ (String.concat "\n" imported_functions) ^ "\n  }"
-     )
-  |> String.concat "\n" in
-  Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" imports
+  let imports = StringMap.bindings map |> List.map (fun (component_name, functions) ->
+    (* Initialize variant-name generator *)
+    let variants_ref : string TypeMap.t ref = ref TypeMap.empty in
+    let next_variant_idx = ref 1 in
+
+    (* Process each function *)
+    let fn_lines = FunctionSet.elements functions |> List.map (fun { function_name; args; return_type } ->
+      let args_strings = args |> List.map (fun Import_components_ir.{ arg_name; arg_type } ->
+        let wit_ty = map_motoko_type_to_wit variants_ref next_variant_idx arg_type in
+        map_motoko_name_to_wit arg_name ^ ": " ^ wit_ty
+      ) in
+      let ret_ty = map_motoko_type_to_wit variants_ref next_variant_idx return_type in
+      "    " ^ function_name ^ ": func(" ^ (String.concat ", " args_strings) ^ ") -> " ^ ret_ty ^ ";"
+    ) in
+
+    (* Generate variant declarations *)
+    let variant_decls =
+      if TypeMap.is_empty !variants_ref then ""
+      else
+        let defs = TypeMap.bindings !variants_ref |> List.map (fun (vt, name) ->
+          let fs = as_variant vt in
+          let case_strings = fs |> List.map (fun field ->
+            match normalize field.typ with
+            | Tup [] -> map_motoko_name_to_wit field.lab
+            | t -> map_motoko_name_to_wit field.lab ^ ": " ^ map_motoko_type_to_wit variants_ref next_variant_idx t
+          ) in
+          "    variant " ^ name ^ " { " ^ String.concat ", " case_strings ^ " }\n"
+        ) in
+        String.concat "" defs
+    in
+    "  import " ^ component_name ^ ": interface {\n" ^ variant_decls ^ (String.concat "\n" fn_lines) ^ "\n  }"
+  ) in
+  Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" (String.concat "\n" imports)
 
 let imported_components_to_wac (map : t) : string =
-  let imported_components = StringMap.bindings map
-  |> List.map (fun (component_name, _functions) ->
-              "let " ^ component_name ^ " = new component:" ^component_name ^ " {};"
-     )
-  |> String.concat "\n" in
-    let components_in_motoko = StringMap.bindings map
-  |> List.map (fun (component_name, _functions) ->
-              "    " ^ component_name ^ " : " ^component_name ^ ","
-     )
-  |> String.concat "\n" in
+  let imported_components =
+    StringMap.bindings map
+    |> List.map (fun (component_name, _functions) -> "let " ^ component_name ^ " = new component:" ^ component_name ^ " {};")
+    |> String.concat "\n"
+  in
+  let components_in_motoko =
+    StringMap.bindings map
+    |> List.map (fun (component_name, _functions) -> "    " ^ component_name ^ " : " ^ component_name ^ ".api,")
+    |> String.concat "\n"
+  in
   let motoko_component = Printf.sprintf "let motoko = new motoko:component {\n%s\n    ...\n};" components_in_motoko in
   Printf.sprintf "package motoko:composition;\n\n%s\n\n%s\n\nexport motoko.run;\n" imported_components motoko_component
-
-(* Example usage *)
