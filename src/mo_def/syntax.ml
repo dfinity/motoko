@@ -239,8 +239,8 @@ and dec' =
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
   | MixinD of pat * dec_field list             (* mixin *)
-  | IncludeD of id * exp list                  (* mixin include *)
-
+  | IncludeD of id * exp list * include_note (* mixin include *)
+and include_note = dec_field list option ref
 
 (* Program (pre unit detection) *)
 
@@ -270,6 +270,7 @@ and comp_unit_body' =
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
      persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+ | MixinU of pat * dec_field list            (* Mixins *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {

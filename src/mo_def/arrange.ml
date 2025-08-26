@@ -325,7 +325,7 @@ module Make (Cfg : Config) = struct
         id i
       ] @ List.map dec_field dfs)
     | MixinD (_, dfs) -> "MixinD" $$ List.map dec_field dfs
-    | IncludeD (i, es) -> "IncludeD" $$ [id i] @ List.map (fun e -> exp e) es))
+    | IncludeD (i, es, _) -> "IncludeD" $$ [id i] @ List.map (fun e -> exp e) es))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

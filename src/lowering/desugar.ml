@@ -1261,6 +1261,7 @@ let transform_import (i : S.import) : import_declaration =
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
+  | S.MixinU _ -> assert false
   | S.ProgU ds -> I.ProgU (decs ds)
   | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {

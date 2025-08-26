@@ -197,7 +197,7 @@ and dec msgs d = match d.it with
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
   | MixinD (_)
-  | IncludeD (_, _) ->
+  | IncludeD (_, _, _) ->
     (* TODO *)
     (M.empty, S.empty)
 
