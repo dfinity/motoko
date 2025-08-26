@@ -860,6 +860,7 @@ let new_local64 env name =
   in (set_i, get_i)
 
 let cache env name exp k =
+  (* TODO: if the exp is a LocalGet, we can just use that local *)
   let (set_i, get_i, _) = new_local_ env I32Type name in
   exp ^^ set_i ^^ k get_i
 
@@ -10532,41 +10533,32 @@ module WasmComponent = struct
     get_addr ^^ get_val ^^ G.i (Store {ty; align = 0; offset = 0L; sz = pack})
 
   and store_blob env get_val get_addr =
-    store_int I32Type (get_val ^^ Blob.payload_ptr_unskewed env) get_addr ^^
-    store_int I32Type (get_val ^^ Blob.len env) (get_addr ^^ compile_add_const 4l)
+    (* Future work: could be optimized to use memcpy and avoid the intermediate array *)
+    store_list env (get_val ^^ Arr.ofBlob env Tagged.I) (Prim Nat8) get_addr
 
   and store_string env get_val get_addr =
-    let (set_bl, get_bl) = new_local env "bl" in
-    (* TODO: implement proper store_string_into_range if needed *)
-    get_val ^^ Text.to_blob env ^^ set_bl ^^
-    store_blob env get_bl get_addr
+    (* Future work: implement proper store_string_into_range and could be optimized to avoid the intermediate blob *)
+    store_blob env (get_val ^^ Text.to_blob env) get_addr
 
   and store_list env get_list_value elem_t get_pair_addr =
     let* get_buf, get_len = store_list_into_range env get_list_value elem_t in
     store_int I32Type get_buf get_pair_addr ^^
     store_int I32Type get_len (get_pair_addr ^^ compile_add_const 4l)
 
-  and store_list_into_range env get_list_value elem_t k =
+  and store_list_into_range env get_value elem_t k =
     let open Mo_types.Type in
     let elem_t = normalize elem_t in
-    let (set_arr, get_arr) = new_local env "arr" in
-    let (set_len, get_len) = new_local env "len" in
-    let (set_buf, get_buf) = new_local env "buf" in
     let esize = elem_size elem_t in
+    let* get_arr = cache env "arr" get_value in
+    let* get_len = cache env "len" (get_arr ^^ Arr.len env) in
+    let* get_buf = cache env "buf" (realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize)) in
     (* Evaluate list value and determine length *)
-    get_list_value ^^ set_arr ^^
-    get_arr ^^ Arr.len env ^^ set_len ^^
-    realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
-    set_buf ^^
-    store_list_into_valid_range env (get_arr, get_len) get_buf elem_t ^^
-    k (get_buf, get_len)
-
-  and store_list_into_valid_range env (get_arr, get_len) get_buf elem_t =
     get_len ^^ from_0_to_n env (fun get_i ->
       let elem_ptr = elem_ptr get_buf get_i elem_t in
       let elem_v = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
       store env elem_v elem_t elem_ptr
-    )
+    ) ^^
+    k (get_buf, get_len)
 
   and lower_flat env compute_val typ =
     let open Mo_types.Type in
