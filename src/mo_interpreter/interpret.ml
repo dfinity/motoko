@@ -991,7 +991,7 @@ and declare_dec dec : val_env =
   | ExpD _
   | TypD _
   | MixinD (_) -> V.Env.empty
-  | IncludeD (_, _) -> (* TODO *)
+  | IncludeD (_, _, _) -> (* TODO *)
     V.Env.empty
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id

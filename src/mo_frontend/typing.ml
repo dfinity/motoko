@@ -1072,7 +1072,7 @@ and is_explicit_dec d =
   | MixinD (p, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
-  | IncludeD (_, es) -> List.for_all is_explicit_exp es
+  | IncludeD (_, es, _) -> List.for_all is_explicit_exp es
 
 
 (* Literals *)
@@ -3453,7 +3453,7 @@ and gather_block_decs env decs : Scope.t =
 and gather_dec env scope dec : Scope.t =
   match dec.it with
   | MixinD _ -> scope
-  | IncludeD(i, _) -> scope
+  | IncludeD(i, _, _) -> scope
   | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -3824,6 +3824,9 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 (id.it, fun_typ);
                 ("system", obj Module [id.it, install_typ (List.map (close cs) ts1) class_typ])
               ])
+            | MixinU _ ->
+              (* TODO *)
+              error env cub.at "M0999" "TODO: Importing a mixin"
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
