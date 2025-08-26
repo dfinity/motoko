@@ -96,6 +96,9 @@ clean:
 	rm -f moc mo-ld moc.js didc deser $(SOURCE_ID)
 	dune clean
 
+watch:
+	dune build -w $(MOC_TARGET)
+
 test:
 	make
 	make -C ../test
