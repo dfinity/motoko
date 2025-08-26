@@ -87,12 +87,12 @@ The following modules have been **removed** in the core package:
 - `ExperimentalStableMemory` - Deprecated
 - `Hash` - Vulnerable to hash collision attacks
 - `HashMap` - Use `Map` or `pure/Map`
-- `Heap`
+- `Heap` - Use `Map` or `Set` instead
 - `IterType` - Merged into `Types` module
 - `None`
 - `Prelude` - Merged into `Debug` and `Runtime`
-- `RBTree`
-- `Trie`
+- `RBTree` - Use `Map` instead
+- `Trie` - Use `Map` instead
 - `TrieMap` - Use `Map` or `pure/Map` instead
 - `TrieSet` - Use `Set` or `pure/Set` instead
 
