@@ -10575,14 +10575,12 @@ module WasmComponent = struct
       assert false
 
   and lower_flat_text env compute_val =
-    (* TODO: this might need store_string_into_range *)
+    (* Future work: optimize, avoid intermediate blob *)
     lower_flat_blob env (compute_val ^^ Text.to_blob env)
 
   and lower_flat_blob env compute_val =
-    let* get_blob = cache env "blob_arg" compute_val in
-    (* ptr, len *)
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env
+    (* Future work: optimize, avoid intermediate array *)
+    lower_flat_list env (compute_val ^^ Arr.ofBlob env Tagged.I) (Prim Nat8)
 
   and lower_flat_list env compute_val elem_t =
     let* get_arr, get_len = store_list_into_range env compute_val elem_t in
