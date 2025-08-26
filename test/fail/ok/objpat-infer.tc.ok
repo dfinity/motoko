@@ -4,44 +4,29 @@ objpat-infer.mo:23.13-23.21: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   {}
-because: Incompatible object sorts: 
-  actor {}
- does not match 
-  {}
- in top level
+because: Incompatible object sorts:
+ actor does not match object in top level
 objpat-infer.mo:26.13-26.14: type error [M0096], expression of type
   actor {bar : shared {} -> async Nat}
 cannot produce expected type
   {}
-because: Incompatible object sorts: 
-  actor {bar : shared {} -> async Nat}
- does not match 
-  {}
- in top level
+because: Incompatible object sorts:
+ actor does not match object in top level
 objpat-infer.mo:29.13-29.15: type error [M0096], expression of type
   {}
 cannot produce expected type
   actor {}
-because: Incompatible object sorts: 
-  {}
- does not match 
-  actor {}
- in top level
+because: Incompatible object sorts:
+ object does not match actor in top level
 objpat-infer.mo:30.13-30.22: type error [M0096], expression of type
   {}
 cannot produce expected type
   actor {}
-because: Incompatible object sorts: 
-  {}
- does not match 
-  actor {}
- in top level
+because: Incompatible object sorts:
+ object does not match actor in top level
 objpat-infer.mo:35.15-35.23: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   {}
-because: Incompatible object sorts: 
-  actor {}
- does not match 
-  {}
- in top level
+because: Incompatible object sorts:
+ actor does not match object in top level

@@ -1860,11 +1860,6 @@ let string_of_func_sort = function
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
 
-let string_of_control = function
-  | Returns -> "returns"
-  | Promises -> "promises"
-  | Replies -> "replies"
-
 (* PrettyPrinter configurations *)
 
 module type PrettyConfig = sig
@@ -2337,14 +2332,30 @@ let rec string_of_explanation explanation =
     let context = match context with h::tl -> tl | _ -> context in
     Format.asprintf "The type %a\n is not compatible with type %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleObjSorts (context, s1, s2) ->
-    Format.asprintf "Incompatible object sorts: %s\n does not match %s\n in %s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context context)
+    let string_of_obj_sort = function
+      | Object -> "object"
+      | Actor -> "actor"
+      | Module -> "module"
+      | Memory -> "memory"
+    in
+    Format.asprintf "Incompatible object sorts:\n %s does not match %s in %s" (string_of_obj_sort s1) (string_of_obj_sort s2) (string_of_context context)
   | IncompatibleFuncSorts (context, s1, s2) ->
     Format.asprintf "Incompatible function modifiers: %s\n does not match %s\n in %s" (string_of_func_sort s1) (string_of_func_sort s2) (string_of_context context)
   | IncompatibleFuncControls (context, c1, c2) ->
+    let string_of_control = function
+      | Returns -> "regular function or one-shot shared function"
+      | Promises -> "shared function that returns a future"
+      | Replies -> "compiler-internal reply function"
+    in
     Format.asprintf "Incompatible function controls: %s\n does not match %s\n in %s" (string_of_control c1) (string_of_control c2) (string_of_context context)
   | IncompatibleFuncs (context, t1, t2) ->
     Format.asprintf "Incompatible function types: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
   | IncompatibleAsyncSorts (context, s1, s2) ->
+    (* TODO: refactor with other string_of_async_sort function, look at other uses of this function *)
+    let string_of_async_sort = function
+      | Fut -> "async"
+      | Cmp -> "async*"
+    in
     Format.asprintf "Incompatible async sorts: %s\n does not match %s\n in %s" (string_of_async_sort s1) (string_of_async_sort s2) (string_of_context context)
   | IncompatibleAsyncScopes (context, t1, t2) ->
     Format.asprintf "Incompatible async scopes: %a\n does not match %a\n in %s" display_typ t1 display_typ t2 (string_of_context context)
