@@ -929,7 +929,7 @@ dec_nonvar :
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
   | MIXIN p=pat_plain dfs=obj_body { MixinD(p, dfs) @? at $sloc }
-  | INCLUDE x=id LPAR exps=seplist(exp(ob), COMMA) RPAR { IncludeD(x, exps) @? at $sloc }
+  | INCLUDE x=id LPAR exps=seplist(exp(ob), COMMA) RPAR { IncludeD(x, exps, ref None) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
