@@ -1,7 +1,6 @@
 (* imported_components.ml *)
 
 open Ir_def
-open Wasm_exts.Types
 open Mo_types.Type
 
 type imported_function = { function_name : string; args : Import_components_ir.arg_data list; return_type : typ }
@@ -82,33 +81,6 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_varia
       name
     end
   | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
-
-let map_motoko_type_to_wasm_args motoko_type = 
-  match normalize motoko_type with
-  | Prim (Blob | Text)
-  | Array _ -> [I32Type; I32Type] (* pointer + length *)
-  | Variant _ -> [I32Type] (* tag only; payload-less variants in tests *)
-  | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-  | Prim (Nat64 | Int64) -> [I64Type]
-  | Prim Float -> [F64Type]
-  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_args: unsupported type %s" (string_of_typ motoko_type))
-
-let map_motoko_type_to_wasm_result motoko_type = 
-  match normalize motoko_type with
-  | Prim (Blob | Text)
-  | Array _ -> [] (* out-parameter approach, no direct return *)
-  | Variant _ -> [] (* returned via out-parameter or memory *)
-  | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-  | Prim (Nat64 | Int64) -> [I64Type]
-  | Prim Float -> [F64Type]
-  | _ -> failwith (Printf.sprintf "map_motoko_type_to_wasm_result: unsupported type %s" (string_of_typ motoko_type))
-
-let return_wasm_args return_type = 
-  match normalize return_type with
-  | Prim (Blob | Text)
-  | Array _ -> [I32Type] (* out-parameter pointer for sequence-like returns *)
-  | Variant _ -> [I32Type] (* out-parameter for variants *)
-  | _ -> []
 
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name

@@ -44,6 +44,8 @@ sig
   val iter_pairs : ('a -> 'a -> unit) -> 'a list -> unit
 
   val safe_map : ('a -> 'b) -> 'a list -> 'b list
+
+  val fold_lefti : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a list -> 'acc
 end
 
 module List32 :

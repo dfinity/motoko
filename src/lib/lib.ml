@@ -428,6 +428,12 @@ struct
   (* tail-recursive map *)
   (* TODO: can be replaced by [@tail_mod_cons] map (OCaml 0.4.14)/List.map once we upgrade OCaml *)
   let safe_map f l = List.rev (List.rev_map f l)
+
+  let fold_lefti f acc xs =
+    let rec loop acc i = function
+      | [] -> acc
+      | x::xs -> loop (f acc i x) (i+1) xs
+    in loop acc 0 xs
 end
 
 module List32 =
