@@ -89,7 +89,7 @@ The following modules have been **removed** in the core package:
 - `HashMap` - Use `Map` or `pure/Map`
 - `Heap` - Use `Map` or `Set` instead
 - `IterType` - Merged into `Types` module
-- `None`
+- `None` - Use `switch x {}` in place of `None.impossible(x)`
 - `Prelude` - Merged into `Debug` and `Runtime`
 - `RBTree` - Use `Map` instead
 - `Trie` - Use `Map` instead
