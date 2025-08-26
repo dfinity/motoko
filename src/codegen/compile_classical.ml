@@ -10301,6 +10301,8 @@ module WasmComponent = struct
   let (let*) f k = f k
   let seq2 (a, b) = a ^^ b
 
+  let foldMapi l f = Lib.List.fold_lefti (fun acc i x -> acc ^^ f i x) G.nop l
+
   let flatten_type typ =
     match normalize typ with
     | Prim (Blob | Text)
@@ -10345,6 +10347,12 @@ module WasmComponent = struct
     | 3 -> Nat32
     | _ -> assert false
 
+  let pack_of_prim = function
+    | (Nat8|Int8|Bool) -> Some Pack8
+    | (Nat16|Int16) -> Some Pack16
+    | (Nat32|Int32|Char|Nat64|Int64|Float) -> None
+    | _ -> assert false
+
   let discriminant_type cases = Prim (discriminant_prim cases)
 
   let rec alignment t : int32 =
@@ -10353,6 +10361,7 @@ module WasmComponent = struct
     | Prim (Nat16 | Int16) -> 2l
     | Prim (Nat32 | Int32 | Char) -> 4l
     | Prim (Nat64 | Int64 | Float) -> 8l
+    | Tup [] -> 1l
     (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
     | Prim (Text | Blob)
     | Array _ -> 4l
@@ -10379,6 +10388,7 @@ module WasmComponent = struct
     | Prim (Nat16 | Int16) -> 2l
     | Prim (Nat32 | Int32 | Char) -> 4l
     | Prim (Nat64 | Int64 | Float) -> 8l
+    | Tup [] -> 0l
     | Prim (Text | Blob)
     | Array _ -> 8l (* ptr,len *)
     | Variant cases -> elem_size_variant cases
@@ -10524,7 +10534,9 @@ module WasmComponent = struct
     | Prim Float                 -> store_int F64Type (get_val ^^ Float.unbox env) get_addr
     | Prim Text                  -> store_string env get_val get_addr
     | Prim Blob                  -> store_blob env get_val get_addr
+    | Variant cases              -> store_variant env get_val get_addr cases
     | Array elem_t               -> store_list env get_val elem_t get_addr
+    | Tup []                     -> G.nop
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ typ));
       assert false
@@ -10560,6 +10572,22 @@ module WasmComponent = struct
     ) ^^
     k (get_buf, get_len)
 
+  and store_variant env get_val get_addr cases =
+    let* get_variant = cache env "variant_arg" get_val in
+    let d = discriminant_prim cases in
+    let pack = pack_of_prim d in
+    let max_align = max_case_alignment cases in
+    let discr_size = elem_size (discriminant_type cases) in
+    let payload_off = align_to discr_size max_align in
+    let payload_ptr = get_addr ^^ compile_add_const payload_off in
+    foldMapi cases (fun i f ->
+      get_variant ^^ Variant.test_is env f.lab ^^
+      G.if0 (
+        store_int I32Type ?pack (compile_unboxed_const (Int32.of_int i)) get_addr ^^
+        store env (get_variant ^^ Variant.project env) f.typ payload_ptr
+        ) G.nop
+    )
+
   and lower_flat env compute_val typ =
     let open Mo_types.Type in
     match normalize typ with
@@ -10590,14 +10618,13 @@ module WasmComponent = struct
     let* get_variant = cache env "variant_arg" compute_val in
     let (set_res, get_res) = new_local env "variant_val" in
     (* for now we only support enums, variants with no payload *)
-    Lib.List.fold_lefti (fun acc i f ->
-      acc ^^
+    foldMapi cases (fun i f ->
       get_variant ^^ Variant.test_is env f.lab ^^
       G.if0 (
         compile_unboxed_const (Int32.of_int i) ^^
         set_res
       ) G.nop
-    ) G.nop cases ^^
+    ) ^^
     get_res
 end
 
