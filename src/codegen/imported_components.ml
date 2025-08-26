@@ -110,7 +110,7 @@ let imported_components_to_wit (map : t) : string =
           let case_strings = fs |> List.map (fun field ->
             match normalize field.typ with
             | Tup [] -> map_motoko_name_to_wit field.lab
-            | t -> map_motoko_name_to_wit field.lab ^ ": " ^ map_motoko_type_to_wit variants_ref next_variant_idx t
+            | t -> map_motoko_name_to_wit field.lab ^ "(" ^ map_motoko_type_to_wit variants_ref next_variant_idx t ^ ")"
           ) in
           "    variant " ^ name ^ " { " ^ String.concat ", " case_strings ^ " }\n"
         ) in
