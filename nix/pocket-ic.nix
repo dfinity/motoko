@@ -18,6 +18,22 @@ pkgs: let
       };
     };
     patchPhase = ''
+      # Apply RocksDB patch for Darwin (same as drun.nix).
+      cd ../cargo-vendor-dir
+      patch librocksdb-sys*/build.rs << EOF
+      @@ -249,6 +249,9 @@ fn build_rocksdb() {
+               config.flag("-Wno-missing-field-initializers");
+               config.flag("-Wno-strict-aliasing");
+               config.flag("-Wno-invalid-offsetof");
+      +        if target.contains("darwin") {
+      +            config.flag("-faligned-allocation");
+      +        }
+           }
+
+           for file in lib_sources {
+      EOF
+      cd -
+
       mkdir -p .cargo
       cat > .cargo/config.toml << EOF
       [target.x86_64-apple-darwin]
@@ -27,7 +43,7 @@ pkgs: let
       rustflags = [ "-C", "linker=c++" ]
       EOF
 
-      # Create the patch file
+      # Create a patch file for pocket-ic-server to disable canister backtrace.
       echo "Creating patch file..."
       echo 'diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs' > pocket_ic_server.patch
       echo 'index 9c32fb7d2a..453f44a4d3 100644' >> pocket_ic_server.patch
