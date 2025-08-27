@@ -85,6 +85,24 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_varia
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
 
+(* Experimental API version, unused for now *)
+let imported_components_to_wit_api (map : t) : string =
+  (* Emit a minimal aggregator world that imports each component's exported
+     `api` interface by package path. This avoids regenerating variants and
+     functions. The generated WIT is intended to be used within a WIT package
+     (e.g. alongside a deps/ tree), so dependency paths use slashes.
+
+       import component:<component-name>/api;
+  *)
+  let imports =
+    StringMap.bindings map
+    |> List.map (fun (component_name, _functions) ->
+         (* Alias must match the imported interface name Motoko expects at link time *)
+         "  import component:" ^ component_name ^ "/api;"
+       )
+  in
+  Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" (String.concat "\n" imports)
+
 let imported_components_to_wit (map : t) : string =
   let imports = StringMap.bindings map |> List.map (fun (component_name, functions) ->
     (* Initialize variant-name generator *)
