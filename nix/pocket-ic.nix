@@ -37,7 +37,7 @@ pkgs: let
       mkdir -p .cargo
       cat > .cargo/config.toml << EOF
       [target.x86_64-apple-darwin]
-      rustflags = [ "-C", "linker=c++" ]
+      rustflags = [ "-C", "linker=c++", "-C", "opt-level=0" ]
 
       [target.aarch64-apple-darwin]
       rustflags = [ "-C", "linker=c++" ]
