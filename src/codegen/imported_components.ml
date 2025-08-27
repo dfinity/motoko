@@ -71,6 +71,8 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_varia
   | Prim Int64 -> "s64"
   | Prim Float -> "f64"
   | Array t -> "list<" ^ map_motoko_type_to_wit variants_ref next_variant_idx t ^ ">"
+  | Variant [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] ->
+    Printf.sprintf "result<%s, %s>" (map_motoko_type_to_wit variants_ref next_variant_idx t2) (map_motoko_type_to_wit variants_ref next_variant_idx t1)
   | Variant _ as v ->
     begin match TypeMap.find_opt v !variants_ref with
     | Some name -> name
