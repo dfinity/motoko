@@ -10542,9 +10542,9 @@ module WasmComponent = struct
   (* and load_variant env ptr cases =
     let d = discriminant_prim cases in
     let pack_opt = match d with
-      | Mo_types.Type.Nat8 -> Some Pack8
-      | Mo_types.Type.Nat16 -> Some Pack16
-      | Mo_types.Type.Nat32 -> None
+      | Nat8 -> Some Pack8
+      | Nat16 -> Some Pack16
+      | Nat32 -> None
       | _ -> None in
     let* get_tag = cache env "tag" (ptr ^^ load_int I32Type ?pack:pack_opt) in
     let max_align = max_case_alignment cases in
@@ -10556,7 +10556,7 @@ module WasmComponent = struct
     E.else_trap_with env "canonical-abi: variant index out of bounds" ^^
     (* dispatch cases sequentially; exactly one matches *)
     let (set_res, get_res) = new_local env "variant_val" in
-    List.fold_left (fun acc (i,(f:Mo_types.Type.field)) ->
+    List.fold_left (fun acc (i,(f:field)) ->
       acc ^^
       get_tag ^^ compile_unboxed_const (Int32.of_int i) ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if0
@@ -10566,7 +10566,6 @@ module WasmComponent = struct
     get_res *)
 
   let rec store env get_val typ get_addr =
-    let open Mo_types.Type in
     match normalize typ with
     | Prim Bool                  -> store_int I32Type ~pack:Pack8 get_val get_addr
     | Prim ((Nat8 |Int8 ) as ty) -> store_int I32Type ~pack:Pack8 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
@@ -10631,7 +10630,6 @@ module WasmComponent = struct
     )
 
   and lower_flat env compute_val typ =
-    let open Mo_types.Type in
     match normalize typ with
     | Prim Blob -> lower_flat_blob env compute_val
     | Prim Text -> lower_flat_text env compute_val
@@ -10642,7 +10640,7 @@ module WasmComponent = struct
       compute_val ^^
       TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
     | typ ->
-      print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
+      print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
       assert false
 
   and lower_flat_text env compute_val =
