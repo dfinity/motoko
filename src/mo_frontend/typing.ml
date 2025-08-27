@@ -21,6 +21,7 @@ type avl = Available | Unavailable
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
+type mixin_env = (T.typ * dec_field list) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
@@ -42,6 +43,7 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
+    mixins : mixin_env;
     labs : lab_env;
     rets : ret_env;
     async : C.async_cap;
@@ -67,6 +69,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
+    mixins = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.NullCap;
@@ -3299,7 +3302,6 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | MixinD _
   | IncludeD _ ->
     (* TODO *)
     T.blob
@@ -3379,6 +3381,13 @@ and infer_dec env dec : T.typ =
       | _, T.Memory -> assert false
     end;
     T.normalize t
+  | MixinD (args, dec_fields) ->
+    let t_pat, ve = infer_pat_exhaustive error env args in
+    let env' = adjoin_vals env ve in
+    let obj_sort : obj_sort = { it = T.Actor ; at = no_region; note = { it = true; at = no_region; note = () } }  in
+    let t' = infer_obj { env' with check_unused = true } obj_sort None dec_fields dec.at in
+    Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t');
+    T.unit
   | TypD _ ->
     T.unit
   in
@@ -3474,6 +3483,7 @@ and gather_dec env scope dec : Scope.t =
       lib_env = scope.lib_env;
       con_env = scope.con_env;
       obj_env = obj_env;
+      mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
   | LetD (pat, _, _) -> gather_pat env scope pat
@@ -3510,6 +3520,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = T.ConSet.disjoint_add c scope.con_env;
       lib_env = scope.lib_env;
       obj_env = scope.obj_env;
+      mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
 
@@ -3656,7 +3667,6 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | MixinD _
   | IncludeD(_) -> Scope.empty
   | ExpD _ ->
     Scope.empty
@@ -3693,6 +3703,10 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
+  | MixinD (pat, fields) ->
+    let t1, _ = infer_pat true { env with pre = true } pat in
+    let _ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    Scope.empty
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
