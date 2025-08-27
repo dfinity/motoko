@@ -574,13 +574,26 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and includes ds = match ds with
+  | [] -> ([], [])
+  | { it = { dec = { it = IncludeD(_, _, note); _ }; stab; vis }; _}::ds' ->
+    (* TODO: Handle args *)
+    let included = Option.get (!note) in
+    let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) included in
+    let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
+    let stabs = List.map (fun ef -> ef.it.S.stab) es in
+    let (ds', stabs') = includes ds' in
+    (ds @ ds', stabs @ stabs')
+  | _::ds' -> includes ds'
+
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
-  let pairs = List.map2 stabilize stabs ds in
+  let (mixin_ds, mixin_stabs) = includes es in
+  let pairs = List.map2 stabilize (stabs @ mixin_stabs) (ds @ mixin_ds) in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let stab_fields = List.sort T.compare_field
@@ -920,7 +933,7 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
-and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+and is_not_typD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> false | _ -> true
 
 and decs ds =
   List.map dec (List.filter is_not_typD ds)

@@ -177,7 +177,8 @@ let async_cap_of_prog prog =
   match (CompUnit.comp_unit_of_prog false prog).it.body.it with
   | ActorClassU _ -> Async_cap.NullCap
   | ActorU _ -> Async_cap.initial_cap()
-  | ModuleU _ | MixinU _ -> assert false
+  | MixinU _ -> Async_cap.initial_cap()
+  | ModuleU _
   | ProgU _ ->
      if !Flags.compiled then
        Async_cap.NullCap
