@@ -10301,18 +10301,61 @@ module WasmComponent = struct
   let (let*) f k = f k
   let seq2 (a, b) = a ^^ b
 
-  let foldMapi l f = Lib.List.fold_lefti (fun acc i x -> acc ^^ f i x) G.nop l
+  let is_result cases = 
+    match cases with
+    | [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] -> true
+    | _ -> false
 
-  let flatten_type typ =
+  let normalize typ =
+    match normalize typ with
+    | Variant cases when is_result cases -> Variant (List.rev cases)
+    | typ -> typ
+
+  (* Todo: move to G module, use concat_mapi *)
+  let fold_mapi l f = Lib.List.fold_lefti (fun acc i x -> acc ^^ f i x) G.nop l
+  let fold_mapi_rev l f = Lib.List.fold_lefti (fun acc i x -> f i x ^^ acc) G.nop l
+  let fold_map2 l1 l2 f = List.fold_left2 (fun acc x y -> acc ^^ f x y) G.nop l1 l2
+
+  let discriminant_prim cases =
+    let n = List.length cases in
+    let open Stdlib.Float in
+    match int_of_float (ceil (log2 (of_int n) /. 8.)) with
+    | 0
+    | 1 -> Nat8
+    | 2 -> Nat16
+    | 3 -> Nat32
+    | _ -> assert false
+
+  let discriminant_type cases = Prim (discriminant_prim cases)
+
+  let rec flatten_type typ =
     match normalize typ with
     | Prim (Blob | Text)
     | Array _ -> [I32Type; I32Type] (* pointer + length *)
-    | Variant _ -> [I32Type] (* tag only; payload-less variants in tests *)
+    | Variant cases -> flatten_variant cases
+    | Tup [] -> []
     | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
     | Prim (Nat64 | Int64) -> [I64Type]
     | Prim Float -> [F64Type]
     | _ -> failwith (Printf.sprintf "flatten_type: unsupported type %s" (string_of_typ typ))
-  
+
+  and flatten_variant cases =
+    let join a b =
+      if a = b then a else
+      match a, b with
+      | I32Type, F32Type
+      | F32Type, I32Type -> I32Type
+      | _ -> I64Type
+    in
+    let flat = ref [] in
+    cases |> List.iter (fun f ->
+      flatten_type f.typ |> List.iteri (fun idx ft ->
+        if idx < List.length !flat then
+          flat := List.mapi (fun i t -> if idx = i then join t ft else t) !flat
+        else
+          flat := !flat @ [ft]));
+    flatten_type (discriminant_type cases) @ !flat
+
   let flatten_return_type typ = 
     match normalize typ with
     | Prim (Blob | Text)
@@ -10337,23 +10380,11 @@ module WasmComponent = struct
     (* TODO: refactor using Func.share_code *)
     E.call_import env "rts" "cabi_realloc"
 
-  let discriminant_prim cases =
-    let n = List.length cases in
-    let open Stdlib.Float in
-    match int_of_float (ceil (log2 (of_int n) /. 8.)) with
-    | 0
-    | 1 -> Nat8
-    | 2 -> Nat16
-    | 3 -> Nat32
-    | _ -> assert false
-
   let pack_of_prim = function
     | (Nat8|Int8|Bool) -> Some Pack8
     | (Nat16|Int16) -> Some Pack16
     | (Nat32|Int32|Char|Nat64|Int64|Float) -> None
     | _ -> assert false
-
-  let discriminant_type cases = Prim (discriminant_prim cases)
 
   let rec alignment t : int32 =
     match normalize t with
@@ -10379,8 +10410,20 @@ module WasmComponent = struct
   let ceil_int32 x =
     Int32.of_int (Stdlib.Float.to_int (Stdlib.Float.ceil (Stdlib.Float.of_int (Int32.to_int x))))
 
-  let align_to ptr alignment =
-    Int32.mul (ceil_int32 (Int32.div ptr alignment)) alignment
+  let align_to (ptr : G.t) alignment =
+    (* math.ceil(ptr / alignment) * alignment *)
+    if Int32.compare alignment 1l <= 0 then ptr else
+    ptr ^^
+    compile_add_const (Int32.sub alignment 1l) ^^
+    compile_divU_const alignment ^^
+    compile_mul_const alignment
+
+  let align_to_i32 (ptr : int32) (alignment : int32) : int32 =
+    (* Round up ptr to next multiple of alignment. Alignments are powers of two. *)
+    if Int32.compare alignment 1l <= 0 then ptr else
+    let open Int32 in
+    let mask = sub alignment 1l in
+    logand (add ptr mask) (lognot mask)
 
   let rec elem_size t : int32 =
     match normalize t with
@@ -10398,10 +10441,10 @@ module WasmComponent = struct
 
   and elem_size_variant cases =
     let s = elem_size (discriminant_type cases) in
-    let s = align_to s (max_case_alignment cases) in
+    let s = align_to_i32 s (max_case_alignment cases) in
     let cs = List.fold_left (fun m f -> Int32.max m (elem_size f.typ)) 0l cases in
     let s = Int32.add s cs in
-    align_to s (alignment_variant cases)
+    align_to_i32 s (alignment_variant cases)
 
   let elem_ptr base idx elem_t = 
     base ^^ (idx ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
@@ -10576,11 +10619,10 @@ module WasmComponent = struct
     let* get_variant = cache env "variant_arg" get_val in
     let d = discriminant_prim cases in
     let pack = pack_of_prim d in
-    let max_align = max_case_alignment cases in
     let discr_size = elem_size (discriminant_type cases) in
-    let payload_off = align_to discr_size max_align in
+    let payload_off = align_to_i32 discr_size (max_case_alignment cases) in
     let payload_ptr = get_addr ^^ compile_add_const payload_off in
-    foldMapi cases (fun i f ->
+    fold_mapi cases (fun i f ->
       get_variant ^^ Variant.test_is env f.lab ^^
       G.if0 (
         store_int I32Type ?pack (compile_unboxed_const (Int32.of_int i)) get_addr ^^
@@ -10595,6 +10637,7 @@ module WasmComponent = struct
     | Prim Text -> lower_flat_text env compute_val
     | Array elem_t -> lower_flat_list env compute_val elem_t
     | Variant cases -> lower_flat_variant env compute_val cases
+    | Tup [] -> G.nop
     | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
       compute_val ^^
       TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
@@ -10616,16 +10659,53 @@ module WasmComponent = struct
 
   and lower_flat_variant env compute_val cases =
     let* get_variant = cache env "variant_arg" compute_val in
-    let (set_res, get_res) = new_local env "variant_val" in
-    (* for now we only support enums, variants with no payload *)
-    foldMapi cases (fun i f ->
+    (* Prepare locals for discriminant and payload slots (only I32/I64). *)
+    let (set_case_index, get_case_index) = new_local env "variant_tag" in
+    let flat_types = flatten_variant cases in
+    assert (List.hd flat_types = I32Type);
+    let payload_types = List.tl flat_types in
+    let payload_locals = List.map (function
+      | I32Type -> new_local env "flat_i32"
+      | I64Type -> new_local64 env "flat_i64"
+      | _ -> assert false
+    ) payload_types in
+    (* Initialize all locals to zero/defaults *)
+    compile_unboxed_const 0l ^^ set_case_index ^^
+    fold_map2 payload_types payload_locals (fun vt (set_l, _) ->
+      match vt with
+      | I32Type -> compile_unboxed_const 0l ^^ set_l
+      | I64Type -> compile_const_64 0L ^^ set_l
+      | _ -> assert false
+    ) ^^
+    (* In one pass: set discriminant and payload locals for the matching case. *)
+    fold_mapi cases (fun idx f ->
       get_variant ^^ Variant.test_is env f.lab ^^
       G.if0 (
-        compile_unboxed_const (Int32.of_int i) ^^
-        set_res
+        (* Set tag local to the selected case index *)
+        compile_unboxed_const (Int32.of_int idx) ^^ set_case_index ^^
+        (* Write payload locals for this case, applying Canonical ABI conversions into I32/I64 slots *)
+        let* get_payload = cache env "variant_payload" (get_variant ^^ Variant.project env) in
+        let case_flats = flatten_type f.typ in
+        lower_flat env get_payload f.typ ^^
+        fold_mapi_rev case_flats (fun j have ->
+          let vt_want = List.nth payload_types j in
+          let (set_l, _) = List.nth payload_locals j in
+          (match have, vt_want with
+           (* i32 -> i32, i64 -> i64 direct *)
+           | I32Type, I32Type -> set_l
+           | I64Type, I64Type -> set_l
+           (* i32 -> i64 zero-extend *)
+           | I32Type, I64Type -> G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ set_l
+           (* f64 -> i64 reinterpret *)
+           | F64Type, I64Type -> G.i (Convert (Wasm.Values.I64 I64Op.ReinterpretFloat)) ^^ set_l
+           (* No other combinations expected in payload slots *)
+           | _ -> assert false)
+        )
       ) G.nop
     ) ^^
-    get_res
+    (* Finally, produce [case_index] followed by payload locals in order. *)
+    get_case_index ^^
+    G.concat_map (fun (_, get_l) -> get_l) payload_locals
 end
 
 (* The actual compiler code that looks at the AST *)
