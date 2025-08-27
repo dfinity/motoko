@@ -434,6 +434,14 @@ struct
       | [] -> acc
       | x::xs -> loop (f acc i x) (i+1) xs
     in loop acc 0 xs
+
+  let fold_left2i f acc xs ys =
+    let rec loop acc i xs ys =
+      match xs, ys with
+      | [], _
+      | _, [] -> acc
+      | x::xs', y::ys' -> loop (f acc i x y) (i+1) xs' ys'
+    in loop acc 0 xs ys
 end
 
 module List32 =

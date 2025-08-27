@@ -46,6 +46,7 @@ sig
   val safe_map : ('a -> 'b) -> 'a list -> 'b list
 
   val fold_lefti : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a list -> 'acc
+  val fold_left2i : ('acc -> int -> 'a -> 'b -> 'acc) -> 'acc -> 'a list -> 'b list -> 'acc
 end
 
 module List32 :
