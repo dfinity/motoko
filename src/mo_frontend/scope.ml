@@ -53,4 +53,7 @@ let adjoin scope1 scope2 =
 let adjoin_val_env scope ve = {scope with val_env = T.Env.adjoin scope.val_env ve}
 
 let lib f t =
-  { empty with lib_env = T.Env.add f t empty.lib_env }
+  { empty with lib_env = T.Env.singleton f t }
+
+let mixin f t =
+  { empty with mixin_env = T.Env.singleton f t }
