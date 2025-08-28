@@ -26,3 +26,4 @@ val adjoin : scope -> scope -> scope
 
 val adjoin_val_env : scope -> val_env -> scope
 val lib : string -> typ -> scope
+val mixin : string -> typ * Mo_def.Syntax.dec_field list -> scope

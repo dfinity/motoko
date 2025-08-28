@@ -579,7 +579,7 @@ and includes ds = match ds with
   | { it = { dec = { it = IncludeD(_, _, note); _ }; stab; vis }; _}::ds' ->
     (* TODO: Handle args *)
     let included = Option.get (!note) in
-    let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) included in
+    let es = List.filter (fun ef -> is_not_typ_mixinD ef.it.S.dec) included in
     let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
     let stabs = List.map (fun ef -> ef.it.S.stab) es in
     let (ds', stabs') = includes ds' in
@@ -589,11 +589,13 @@ and includes ds = match ds with
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
-  let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
+  let (mixin_ds, mixin_stabs) = includes es in
+  let es = List.filter (fun ef -> is_not_typ_mixinD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
-  let (mixin_ds, mixin_stabs) = includes es in
-  let pairs = List.map2 stabilize (stabs @ mixin_stabs) (ds @ mixin_ds) in
+  let stabs = stabs @ mixin_stabs in
+  let ds = ds @ mixin_ds in
+  let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let stab_fields = List.sort T.compare_field
@@ -933,10 +935,11 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
-and is_not_typD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> false | _ -> true
+and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+and is_not_typ_mixinD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> false | _ -> true
 
 and decs ds =
-  List.map dec (List.filter is_not_typD ds)
+  List.map dec (List.filter is_not_typ_mixinD ds)
 
 and dec d = { (phrase' dec' d) with note = () }
 
@@ -1262,6 +1265,10 @@ let transform_import (i : S.import) : import_declaration =
   let (p, f, ir) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
+  match t with
+  (* TODO: Hack! *)
+  | T.Tup [] -> []
+  | _ ->
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath {path = fp; _} ->
@@ -1331,6 +1338,9 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
   let { imports; body; _ } = u.it in
+  match body.it with
+  | S.MixinU _ -> []
+  | _ ->
   let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
