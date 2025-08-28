@@ -10311,11 +10311,6 @@ module WasmComponent = struct
     | Variant cases when is_result cases -> Variant (List.rev cases)
     | typ -> typ
 
-  (* Todo: move to G module, use concat_mapi *)
-  let fold_mapi l f = Lib.List.fold_lefti (fun acc i x -> acc ^^ f i x) G.nop l
-  let fold_mapi_rev l f = Lib.List.fold_lefti (fun acc i x -> f i x ^^ acc) G.nop l
-  let fold_map2 l1 l2 f = List.fold_left2 (fun acc x y -> acc ^^ f x y) G.nop l1 l2
-
   let discriminant_prim cases =
     let n = List.length cases in
     let open Stdlib.Float in
@@ -10621,13 +10616,13 @@ module WasmComponent = struct
     let discr_size = elem_size (discriminant_type cases) in
     let payload_off = align_to_i32 discr_size (max_case_alignment cases) in
     let payload_ptr = get_addr ^^ compile_add_const payload_off in
-    fold_mapi cases (fun i f ->
+    G.concat_mapi (fun i f ->
       get_variant ^^ Variant.test_is env f.lab ^^
       G.if0 (
         store_int I32Type ?pack (compile_unboxed_const (Int32.of_int i)) get_addr ^^
         store env (get_variant ^^ Variant.project env) f.typ payload_ptr
         ) G.nop
-    )
+    ) cases
 
   and lower_flat env compute_val typ =
     match normalize typ with
@@ -10669,25 +10664,26 @@ module WasmComponent = struct
     ) payload_types in
     (* Initialize all locals to zero/defaults *)
     compile_unboxed_const 0l ^^ set_case_index ^^
-    fold_map2 payload_types payload_locals (fun vt (set_l, _) ->
+    G.concat_map2 (fun vt (set_l, _) ->
       match vt with
       | I32Type -> compile_unboxed_const 0l ^^ set_l
       | I64Type -> compile_const_64 0L ^^ set_l
       | _ -> assert false
-    ) ^^
+    ) payload_types payload_locals ^^
     (* In one pass: set discriminant and payload locals for the matching case. *)
-    fold_mapi cases (fun idx f ->
+    G.concat_mapi (fun idx f ->
       get_variant ^^ Variant.test_is env f.lab ^^
       G.if0 (
         (* Set tag local to the selected case index *)
         compile_unboxed_const (Int32.of_int idx) ^^ set_case_index ^^
+        (* Push the payload *)
+        lower_flat env (get_variant ^^ Variant.project env) f.typ ^^
         (* Write payload locals for this case, applying Canonical ABI conversions into I32/I64 slots *)
-        let* get_payload = cache env "variant_payload" (get_variant ^^ Variant.project env) in
         let case_flats = flatten_type f.typ in
-        lower_flat env get_payload f.typ ^^
-        fold_mapi_rev case_flats (fun j have ->
-          let vt_want = List.nth payload_types j in
-          let (set_l, _) = List.nth payload_locals j in
+        Lib.List.zip3 case_flats payload_types payload_locals
+        |> List.mapi (fun i t -> (i, t))
+        |> List.rev
+        |> G.concat_map (fun (j, (have, vt_want, (set_l, _))) -> (* reverse order *)
           (match have, vt_want with
            (* i32 -> i32, i64 -> i64 direct *)
            | I32Type, I32Type -> set_l
@@ -10700,7 +10696,7 @@ module WasmComponent = struct
            | _ -> assert false)
         )
       ) G.nop
-    ) ^^
+    ) cases ^^
     (* Finally, produce [case_index] followed by payload locals in order. *)
     get_case_index ^^
     G.concat_map (fun (_, get_l) -> get_l) payload_locals

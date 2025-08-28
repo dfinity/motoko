@@ -47,6 +47,8 @@ sig
 
   val fold_lefti : ('acc -> int -> 'a -> 'acc) -> 'acc -> 'a list -> 'acc
   val fold_left2i : ('acc -> int -> 'a -> 'b -> 'acc) -> 'acc -> 'a list -> 'b list -> 'acc
+
+  val zip3 : 'a list -> 'b list -> 'c list -> ('a * 'b * 'c) list
 end
 
 module List32 :

@@ -187,6 +187,7 @@ let concat xs = List.fold_left (^^) nop xs
 let concat_map f xs = List.fold_left (fun acc a -> acc ^^ f a) nop xs
 let concat_map2 f xs ys = List.fold_left2 (fun acc x y -> acc ^^ f x y) nop xs ys
 let concat_mapi f xs = Lib.List.fold_lefti (fun acc i a -> acc ^^ f i a) nop xs
+let concat_mapi_rev f xs = Lib.List.fold_lefti (fun acc i a -> f i a ^^ acc) nop xs
 let table n f = List.fold_left (^^) nop (Lib.List.table n f)
 
 (* Region-managing combinator *)

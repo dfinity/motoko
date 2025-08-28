@@ -442,6 +442,13 @@ struct
       | _, [] -> acc
       | x::xs', y::ys' -> loop (f acc i x y) (i+1) xs' ys'
     in loop acc 0 xs ys
+
+  let zip3 xs ys zs =
+    let rec loop acc xs ys zs =
+      match xs, ys, zs with
+      | [], _, _ | _, [], _ | _, _, [] -> acc
+      | x::xs', y::ys', z::zs' -> loop ((x, y, z) :: acc) xs' ys' zs'
+    in loop [] xs ys zs |> List.rev
 end
 
 module List32 =
