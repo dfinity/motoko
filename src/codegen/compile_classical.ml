@@ -10325,6 +10325,14 @@ module WasmComponent = struct
 
   let discriminant_type cases = Prim (discriminant_prim cases)
 
+  let set_variant_tag env cases k =
+    let (set_tag, get_tag) = new_local env "variant_tag" in
+    set_tag ^^
+    (* bounds check *)
+    get_tag ^^ compile_unboxed_const (Int32.of_int (List.length cases)) ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.else_trap_with env "canonical-abi: variant index out of bounds" ^^
+    k get_tag
+
   let rec flatten_type typ =
     match normalize typ with
     | Prim (Blob | Text)
@@ -10353,13 +10361,18 @@ module WasmComponent = struct
           flat := !flat @ [ft]));
     flatten_type (discriminant_type cases) @ !flat
 
+  let needs_out_param = function
+    (* Canonical ABI allows for max 1 return value *)
+    | [_] | [] -> false
+    (* If there are multiple return values, we need to use out-parameters via a pointer *)
+    | _ -> true
+
   let flatten_return_type typ =
     let flat = flatten_type typ in
-    match flat with
-    (* Canonical ABI allows for max 1 return value *)
-    | [_] | [] -> [], flat
-    (* If there are multiple return values, we need to use out-parameters via a pointer *)
-    | _ -> [I32Type], []
+    if needs_out_param flat then
+      [I32Type], []
+    else
+      [], flat
 
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
@@ -10440,26 +10453,36 @@ module WasmComponent = struct
     base ^^ (idx ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
 
   module OutParams = struct
-    let create env = function
+    let words_to_allocate = function
       | Prim (Blob | Text) 
-      | Array _ ->
-        (* Allocate 2 words for the pair (ptr,len) *)
-        let word_size = 2l in
-        let (set_x, get_x) = new_local env "out_param" in
-        (Stack.alloc_words env word_size ^^ set_x ^^ get_x),
-        ref [get_x],
-        Stack.free_words env word_size
-      | _ -> (G.nop, ref [], G.nop)
+      | Array _ -> 2l
+      | Variant cases ->
+        let flat_types = flatten_variant cases in
+        if not (needs_out_param flat_types) then
+          0l
+        else
+          let byte_size = elem_size_variant cases in
+          let word_size =
+            let open Int32 in
+            div (add byte_size (sub Heap.word_size 1l)) Heap.word_size
+          in
+          word_size
+      | _ -> 0l
+
+    let alloc env return_type k =
+      (* TODO: this is wrong, there is always one out-param, do we need more? *)
+      let word_size = words_to_allocate return_type in
+      if word_size < 1l then k (ref []) else
+      let* ptr = cache env "out_param_ptr" (Stack.alloc_words env word_size) in
+      ptr ^^ (* Push the out-param argument *)
+      k (ref [ptr]) ^^ (* Continue with the program *)
+      Stack.free_words env word_size (* Free the out-param argument at the end *)
 
     let pop vi =
       match !vi with
       | [] -> assert false
       | h :: t -> vi := t; h
   end
-
-  let with_out_params env return_type k =
-    let init, out_params, free = OutParams.create env return_type in
-    init ^^ k out_params ^^ free
 
   (* Names come from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
 
@@ -10485,6 +10508,18 @@ module WasmComponent = struct
     let ptr_len = OutParams.pop out_params in
     load_list_from_valid_range env ptr_len elem_t
 
+  and lift_flat_variant env out_params cases =
+    let flat_types = flatten_variant cases in
+    if needs_out_param flat_types then
+      (* Results were written into the out-params buffer; load from memory. *)
+      let ptr = OutParams.pop out_params in
+      load_variant env ptr cases
+    else
+      (* Only the tag is returned on the stack; all cases have empty payloads. *)
+      let* get_tag = set_variant_tag env cases in
+      let payload_ptr = G.nop in (* No payload for empty tuple *)
+      load_variant' env get_tag payload_ptr cases
+
   and load_list env ptr_len elem_t =
     load_list_from_valid_range env ptr_len elem_t
 
@@ -10505,10 +10540,14 @@ module WasmComponent = struct
     Tagged.allocation_barrier env
 
   and load env ptr typ =
-    match normalize typ with
+    let typ = normalize typ in
+    (* Empty pointer implies empty tuple, no need to load *)
+    assert (not (G.is_nop ptr) || typ = Tup []);
+    match typ with
     | Prim prim -> load_prim env ptr prim
     | Array elem_t -> load_list env ptr elem_t
-    (* | Variant cases -> load_variant env ptr cases *)
+    | Variant cases -> load_variant env ptr cases
+    | Tup [] -> Tuple.compile_unit env
     | typ ->
       print_endline (Printf.sprintf "Unsupported array element type in return: %s" (string_of_typ typ));
       assert false
@@ -10530,31 +10569,26 @@ module WasmComponent = struct
       print_endline (Printf.sprintf "Unsupported type in load_prim: %s" (string_of_prim prim));
       assert false
 
-  (* and load_variant env ptr cases =
-    let d = discriminant_prim cases in
-    let pack_opt = match d with
-      | Nat8 -> Some Pack8
-      | Nat16 -> Some Pack16
-      | Nat32 -> None
-      | _ -> None in
-    let* get_tag = cache env "tag" (ptr ^^ load_int I32Type ?pack:pack_opt) in
-    let max_align = max_case_alignment cases in
+  and load_variant env ptr cases =
+    (* Load tag (zero-extended to i32) and bounds check *)
+    ptr ^^ load_int I32Type ?pack:(pack_of_prim (discriminant_prim cases)) ^^
+    let* get_tag = set_variant_tag env cases in
+    (* Compute payload pointer based on canonical layout *)
     let discr_size = elem_size (discriminant_type cases) in
-    let payload_off = align_to discr_size max_align in
+    let payload_off = align_to_i32 discr_size (max_case_alignment cases) in
     let payload_ptr = ptr ^^ compile_add_const payload_off in
-    (* bounds check *)
-    get_tag ^^ compile_unboxed_const (Int32.of_int (List.length cases)) ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-    E.else_trap_with env "canonical-abi: variant index out of bounds" ^^
-    (* dispatch cases sequentially; exactly one matches *)
+    load_variant' env get_tag payload_ptr cases
+
+  and load_variant' env get_tag payload_ptr cases =
+    (* dispatch and build Motoko value *)
     let (set_res, get_res) = new_local env "variant_val" in
-    List.fold_left (fun acc (i,(f:field)) ->
-      acc ^^
+    G.concat_mapi (fun i f ->
       get_tag ^^ compile_unboxed_const (Int32.of_int i) ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
       G.if0
         (Variant.inject env f.lab (load env payload_ptr f.typ) ^^ set_res)
         G.nop
-    ) G.nop (List.mapi (fun i f -> (i,f)) cases) ^^
-    get_res *)
+    ) cases ^^
+    get_res
 
   let rec store env get_val typ get_addr =
     match normalize typ with
@@ -12164,7 +12198,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     ) G.nop es in
     lower_args ^^
     (* Allocate and push out-params as extra arguments to the component function call *)
-    let* out_params = WasmComponent.with_out_params env return_type in
+    let* out_params = WasmComponent.OutParams.alloc env return_type in
     E.call_import env component_name function_name ^^
     (* Lift the return value to Motoko values *)
     WasmComponent.lift_flat env out_params return_type
