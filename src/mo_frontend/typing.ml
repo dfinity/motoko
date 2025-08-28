@@ -69,7 +69,7 @@ let env_of_scope ?(viper_mode=false) msgs scope =
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
-    mixins = T.Env.empty;
+    mixins = scope.Scope.mixin_env;
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.NullCap;
@@ -437,7 +437,10 @@ let check_import env at f ri =
   | Some T.Pre ->
     error env at "M0021" "cannot infer type of forward import %s" f
   | Some t -> t
-  | None -> error env at "M0022" "imported file %s not loaded" full_path
+  | None ->
+    match T.Env.find_opt full_path env.mixins with
+    | Some (t, dfs) -> t
+    | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
 (* Paths *)
@@ -3230,6 +3233,7 @@ and check_stab env sort scope dec_fields =
       local_error env stab.at "M0132"
         "misplaced stability declaration on field of non-actor";
       []
+    | T.Actor, _ , IncludeD _ -> []
     | T.Actor, Some {it = Stable; _}, VarD (id, _) ->
       check_stable id.it id.at;
       [id]
@@ -3667,7 +3671,11 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | IncludeD(_) -> Scope.empty
+  | IncludeD(id, _, n) ->
+    let ds = ref [] in
+    T.Env.iter (fun p (t, decs) -> ds := decs) env.mixins;
+    n := Some(!ds);
+    Scope.empty
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3807,7 +3815,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {empty_typ_note with note_typ = typ};
-          let imp_typ = match cub.it with
+          let imp_scope = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin
                 let r = Source.({
@@ -3816,7 +3824,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
-              typ
+              Scope.lib lib.note.filename typ
             | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
@@ -3833,14 +3841,15 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 | _ -> assert false
               in
               let con = Cons.fresh id.it (T.Def([], class_typ)) in
-              T.(obj Module [
+              let typ = T.(obj Module [
                 (id.it, Typ con);
                 (id.it, fun_typ);
                 ("system", obj Module [id.it, install_typ (List.map (close cs) ts1) class_typ])
-              ])
-            | MixinU _ ->
-              (* TODO *)
-              error env cub.at "M0999" "TODO: Importing a mixin"
+              ]) in
+              Scope.lib lib.note.filename typ
+            | MixinU (pat, decs) ->
+              (* TODO: typ is prob wrong here *)
+              Scope.mixin lib.note.filename (typ, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
@@ -3849,7 +3858,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
-          {(Scope.lib lib.note.filename imp_typ) with Scope.fld_src_env}
+          {imp_scope with Scope.fld_src_env}
         ) lib
     )
 

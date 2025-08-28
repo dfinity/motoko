@@ -1,0 +1,2 @@
+install $ID mixins/mixins.mo ""
+query $ID go "DIDL\x00\x00"

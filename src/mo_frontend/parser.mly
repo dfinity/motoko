@@ -928,7 +928,10 @@ dec_nonvar :
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
-  | MIXIN p=pat_plain dfs=obj_body { MixinD(p, dfs) @? at $sloc }
+  | MIXIN p=pat_plain dfs=obj_body {
+     let dfs = List.map (share_dec_field (Stable @@ no_region)) dfs in
+     MixinD(p, dfs) @? at $sloc
+  }
   | INCLUDE x=id LPAR exps=seplist(exp(ob), COMMA) RPAR { IncludeD(x, exps, ref None) @? at $sloc }
 
 obj_or_class_dec :
