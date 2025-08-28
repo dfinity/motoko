@@ -10308,6 +10308,8 @@ module WasmComponent = struct
 
   let normalize typ =
     match normalize typ with
+    (* My must flip the cases in the result variant because there is a mismatch between the
+       Canonical ABI and the Motoko type system. *)
     | Variant cases when is_result cases -> Variant (List.rev cases)
     | typ -> typ
 
@@ -10351,20 +10353,13 @@ module WasmComponent = struct
           flat := !flat @ [ft]));
     flatten_type (discriminant_type cases) @ !flat
 
-  let flatten_return_type typ = 
-    match normalize typ with
-    | Prim (Blob | Text)
-    | Array _ -> [] (* out-parameter approach, no direct return *)
-    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-    | Prim (Nat64 | Int64) -> [I64Type]
-    | Prim Float -> [F64Type]
-    | _ -> failwith (Printf.sprintf "flatten_return_type: unsupported type %s" (string_of_typ typ))
-  
-  let flatten_out_param_return_type typ = 
-    match normalize typ with
-    | Prim (Blob | Text)
-    | Array _ -> [I32Type] (* out-parameter pointer for sequence-like returns *)
-    | _ -> []
+  let flatten_return_type typ =
+    let flat = flatten_type typ in
+    match flat with
+    (* Canonical ABI allows for max 1 return value *)
+    | [_] | [] -> [], flat
+    (* If there are multiple return values, we need to use out-parameters via a pointer *)
+    | _ -> [I32Type], []
 
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
@@ -10470,11 +10465,12 @@ module WasmComponent = struct
 
   let rec lift_flat env out_params typ =
     match normalize typ with
+    | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+      TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
     | Prim Blob -> lift_flat_blob env out_params
     | Prim Text -> lift_flat_text env out_params
     | Array elem_t -> lift_flat_list env out_params elem_t
-    | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
-      TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
+    | Variant cases -> lift_flat_variant env out_params cases
     | typ ->
       print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
       assert false
@@ -13862,8 +13858,8 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       !imported_components;
 
     let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in
-    let wasm_args = wasm_args @ WasmComponent.flatten_out_param_return_type return_type in
-    let wasm_results = WasmComponent.flatten_return_type return_type in
+    let extra_out_param, wasm_results = WasmComponent.flatten_return_type return_type in
+    let wasm_args = wasm_args @ extra_out_param in
     (* Debug import signatures *)
     let vt_to_s = function
       | Wasm_exts.Types.I32Type -> "I32"
