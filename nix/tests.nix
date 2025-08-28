@@ -256,7 +256,7 @@ fix_names
     perf = perf_subdir false "perf" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
     viper = test_subdir "viper" [ moc pkgs.which pkgs.openjdk pkgs.z3_4_12 ];
     # TODO: profiling-graph is excluded because the underlying parity_wasm is deprecated and does not support passive data segments and memory64.
-    inherit qc unit candid coverage test-runner;
+    inherit qc unit candid coverage;
   }
   // pkgs.lib.optionalAttrs
   (pkgs.system == accept-bench)
