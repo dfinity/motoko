@@ -10452,7 +10452,7 @@ module WasmComponent = struct
   let elem_ptr base idx elem_t = 
     base ^^ (idx ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
 
-  module OutParams = struct
+  module OutParam = struct
     let words_to_allocate = function
       | Prim (Blob | Text) 
       | Array _ -> 2l
@@ -10470,49 +10470,45 @@ module WasmComponent = struct
       | _ -> 0l
 
     let alloc env return_type k =
-      (* TODO: this is wrong, there is always one out-param, do we need more? *)
       let word_size = words_to_allocate return_type in
-      if word_size < 1l then k (ref []) else
+      if word_size < 1l then k None else
       let* ptr = cache env "out_param_ptr" (Stack.alloc_words env word_size) in
       ptr ^^ (* Push the out-param argument *)
-      k (ref [ptr]) ^^ (* Continue with the program *)
+      k (Some ptr) ^^ (* Continue with the program *)
       Stack.free_words env word_size (* Free the out-param argument at the end *)
 
-    let pop vi =
-      match !vi with
-      | [] -> assert false
-      | h :: t -> vi := t; h
+    let get = Option.get
   end
 
   (* Names come from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
 
-  let rec lift_flat env out_params typ =
+  let rec lift_flat env out_param typ =
     match normalize typ with
     | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
       TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
-    | Prim Blob -> lift_flat_blob env out_params
-    | Prim Text -> lift_flat_text env out_params
-    | Array elem_t -> lift_flat_list env out_params elem_t
-    | Variant cases -> lift_flat_variant env out_params cases
+    | Prim Blob -> lift_flat_blob env out_param
+    | Prim Text -> lift_flat_text env out_param
+    | Array elem_t -> lift_flat_list env out_param elem_t
+    | Variant cases -> lift_flat_variant env out_param cases
     | typ ->
       print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
       assert false
 
-  and lift_flat_blob env out_params =
-    OutParams.pop out_params ^^ E.call_import env "rts" "blob_of_cabi"
+  and lift_flat_blob env out_param =
+    OutParam.get out_param ^^ E.call_import env "rts" "blob_of_cabi"
   
-  and lift_flat_text env out_params =
-    lift_flat_blob env out_params ^^ Text.of_blob env
+  and lift_flat_text env out_param =
+    lift_flat_blob env out_param ^^ Text.of_blob env
   
-  and lift_flat_list env out_params elem_t =
-    let ptr_len = OutParams.pop out_params in
+  and lift_flat_list env out_param elem_t =
+    let ptr_len = OutParam.get out_param in
     load_list_from_valid_range env ptr_len elem_t
 
-  and lift_flat_variant env out_params cases =
+  and lift_flat_variant env out_param cases =
     let flat_types = flatten_variant cases in
     if needs_out_param flat_types then
       (* Results were written into the out-params buffer; load from memory. *)
-      let ptr = OutParams.pop out_params in
+      let ptr = OutParam.get out_param in
       load_variant env ptr cases
     else
       (* Only the tag is returned on the stack; all cases have empty payloads. *)
@@ -12198,10 +12194,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     ) G.nop es in
     lower_args ^^
     (* Allocate and push out-params as extra arguments to the component function call *)
-    let* out_params = WasmComponent.OutParams.alloc env return_type in
+    let* out_param = WasmComponent.OutParam.alloc env return_type in
     E.call_import env component_name function_name ^^
     (* Lift the return value to Motoko values *)
-    WasmComponent.lift_flat env out_params return_type
+    WasmComponent.lift_flat env out_param return_type
 
   (* Other prims, nullary *)
 
