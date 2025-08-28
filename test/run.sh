@@ -225,7 +225,7 @@ FLAGS_drun=
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if drun --help >& /dev/null
+  if test-runner --help >& /dev/null
   then
     HAVE_drun=yes
   else
