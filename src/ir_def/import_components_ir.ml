@@ -4,6 +4,11 @@ open Source
 open Ir
 open Wasm.Sexpr
 
+type arg_data = {
+  arg_name : string;
+  arg_type : Type.typ;
+}
+
 let ($$) head inner = Node (head, inner)
 
 let id i = Atom i
@@ -12,10 +17,22 @@ let typ t = Atom (Type.string_of_typ t)
 let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
+let the_env : int ref  = ref 0
+
+let sent_env new_env =
+  the_env := new_env
+
+
+let starts_with ~prefix s =
+  let prefix_len = String.length prefix in
+  String.length s >= prefix_len &&
+  String.sub s 0 prefix_len = prefix 
+
+let prog_fun add_import p = 
 let rec exp e = match e.it with
   | VarE (m, i)         -> (if m = Var then "VarE!" else "VarE") $$ [id i]
   | LitE l              -> "LitE"    $$ [lit l]
-  | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
+  | PrimE (p, es)       -> "PrimE"   $$ [prim e es p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]
   | BlockE (ds, e1)     -> "BlockE"  $$ List.map dec ds @ [exp e1]
   | IfE (e1, e2, e3)    -> "IfE"     $$ [exp e1; exp e2; exp e3]
@@ -60,7 +77,7 @@ and args = function
 
 and arg a = Atom a.it
 
-and prim = function
+and prim e es = function
   | CallPrim ts       -> "CallPrim" $$ List.map typ ts
   | UnPrim (t, uo)    -> "UnPrim"     $$ [typ t; Arrange_ops.unop uo]
   | BinPrim (t, bo)   -> "BinPrim"    $$ [typ t; Arrange_ops.binop bo]
@@ -108,8 +125,21 @@ and prim = function
   | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
-  | ComponentPrim (full_name, _, _, _, _) -> Atom full_name
-  | OtherPrim s       -> Atom s
+  | ComponentPrim (full_name, component_name, function_name, arg_types, return_type) -> 
+      let string_of_arg arg =
+        match arg.it with
+        | VarE (_, i) -> i
+        | _ -> failwith "Expected VarE for argument name" in
+
+      Printf.printf "List.length es: %d, List.length arg_types: %d\n" (List.length es) (List.length arg_types);
+      assert (List.length es = List.length arg_types);
+      let function_args = List.map2 (fun arg arg_type -> {arg_name=string_of_arg arg; arg_type}) es arg_types in
+
+      (* Add the import to the component *)
+      add_import component_name function_name function_args return_type;
+      "imported component: " $$ [Atom full_name]
+  | OtherPrim s       -> "OtherPrim non-component" $$ [Atom s]
+  (* CPS primitives *)
   | CPSAwait (Type.AwaitFut false, t) -> "CPSAwait" $$ [typ t]
   | CPSAwait (Type.AwaitFut true, t) -> "CPSAwait?" $$ [typ t]
   | CPSAwait (Type.AwaitCmp, t) -> "CPSAwait*" $$ [typ t]
@@ -183,3 +213,5 @@ and comp_unit = function
   | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t]
 
 and prog (cu, _flavor) = comp_unit cu
+
+in prog p
