@@ -83,7 +83,7 @@ let normalize t =
   | Variant fields ->
     (* Order by their src *)
     let norm_fields = List.sort (fun a b -> Source.Region_ord.compare a.src.track_region b.src.track_region) fields in
-    Printf.printf "Before: %s\nAfter: %s\n" (string_of_typ t) (string_of_typ (Variant norm_fields));
+    (* Printf.printf "Before: %s\nAfter: %s\n" (string_of_typ t) (string_of_typ (Variant norm_fields)); *)
     Variant norm_fields
   | t -> t
 
