@@ -50,7 +50,6 @@ pkgs.mkShell {
         pkgs.openjdk
         pkgs.z3_4_12 # for viper dev
         pkgs.difftastic
-        pkgs.drun
         pkgs.pocket-ic.server
         pkgs.gh # GitHub CLI
         test-runner

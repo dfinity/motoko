@@ -18,7 +18,7 @@ pkgs: let
       };
     };
     patchPhase = ''
-      # Apply RocksDB patch for Darwin (same as drun.nix).
+      # Apply RocksDB patch for Darwin.
       cd ../cargo-vendor-dir
       patch librocksdb-sys*/build.rs << EOF
       @@ -249,6 +249,9 @@ fn build_rocksdb() {

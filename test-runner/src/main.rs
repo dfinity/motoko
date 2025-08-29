@@ -667,6 +667,14 @@ impl TestRunner {
 fn main() {
     // Parse command line arguments.
     let args = std::env::args().collect::<Vec<String>>();
+
+    // Check if user asked for --help.
+    if args.contains(&"--help".to_string()) {
+        println!("Usage: test-runner [--subnet-type application]");
+        println!("Pipe to stdin the .drun or .mo file contents.");
+        std::process::exit(0);
+    }
+
     // Go through the arguments and check for "--subnet-type application".
     // These are two elements in the args vector.
     // Check first for "--subnet-type" index and then check for subnet type and the next index.

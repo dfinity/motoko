@@ -56,9 +56,6 @@
     # wasm-profiler
     (self: super: import ./wasm-profiler.nix self)
 
-    # drun
-    (self: super: { drun = import ./drun.nix self; })
-
     # pocket-ic
     (self: super: { pocket-ic = import ./pocket-ic.nix self; })
 
