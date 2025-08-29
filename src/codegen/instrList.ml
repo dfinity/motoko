@@ -183,10 +183,12 @@ let (^^) (is1 : t) (is2 : t) : t = fun d pos rest -> is1 d pos (is2 d pos rest)
 let i (instr : instr') : t = fun _ pos rest -> (instr @@ pos) :: rest
 
 (* map and concat *)
-let concat xs = List.fold_right (^^) xs nop
-let concat_map f xs = List.fold_right (^^) (List.map f xs) nop
-let concat_mapi f xs = List.fold_right (^^) (List.mapi f xs) nop
-let table n f = List.fold_right (^^) (Lib.List.table n f) nop
+let concat xs = List.fold_left (^^) nop xs
+let concat_map f xs = List.fold_left (fun acc a -> acc ^^ f a) nop xs
+let concat_map2 f xs ys = List.fold_left2 (fun acc x y -> acc ^^ f x y) nop xs ys
+let concat_mapi f xs = Lib.List.fold_lefti (fun acc i a -> acc ^^ f i a) nop xs
+let concat_mapi_rev f xs = Lib.List.fold_lefti (fun acc i a -> f i a ^^ acc) nop xs
+let table n f = List.fold_left (^^) nop (Lib.List.table n f)
 
 (* Region-managing combinator *)
 

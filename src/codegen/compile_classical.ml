@@ -860,6 +860,7 @@ let new_local64 env name =
   in (set_i, get_i)
 
 let cache env name exp k =
+  (* TODO: if the exp is a LocalGet, we can just use that local *)
   let (set_i, get_i, _) = new_local_ env I32Type name in
   exp ^^ set_i ^^ k get_i
 
@@ -10295,8 +10296,81 @@ module Cost = struct
 end
 
 module WasmComponent = struct
+  open Mo_types.Type
+
   let (let*) f k = f k
   let seq2 (a, b) = a ^^ b
+
+  let is_result cases = 
+    match cases with
+    | [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] -> true
+    | _ -> false
+
+  let normalize typ = Imported_components.normalize typ
+
+  let discriminant_prim cases =
+    let n = List.length cases in
+    let open Stdlib.Float in
+    match int_of_float (ceil (log2 (of_int n) /. 8.)) with
+    | 0
+    | 1 -> Nat8
+    | 2 -> Nat16
+    | 3 -> Nat32
+    | _ -> assert false
+
+  let discriminant_type cases = Prim (discriminant_prim cases)
+
+  let set_variant_tag env cases k =
+    let (set_tag, get_tag) = new_local env "variant_tag" in
+    set_tag ^^
+    (* bounds check *)
+    get_tag ^^ compile_unboxed_const (Int32.of_int (List.length cases)) ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.else_trap_with env "canonical-abi: variant index out of bounds" ^^
+    k get_tag
+
+  let rec flatten_type typ =
+    match normalize typ with
+    | Prim (Blob | Text)
+    | Array _ -> [I32Type; I32Type] (* pointer + length *)
+    | Variant cases -> flatten_variant cases
+    | Tup ts -> flatten_tuple ts
+    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+    | Prim (Nat64 | Int64) -> [I64Type]
+    | Prim Float -> [F64Type]
+    | _ -> failwith (Printf.sprintf "flatten_type: unsupported type %s" (string_of_typ typ))
+
+  and flatten_tuple ts =
+    List.concat_map flatten_type ts
+
+  and flatten_variant cases =
+    let join a b =
+      if a = b then a else
+      match a, b with
+      | I32Type, F32Type
+      | F32Type, I32Type -> I32Type
+      | _ -> I64Type
+    in
+    let flat = ref [] in
+    cases |> List.iter (fun f ->
+      flatten_type f.typ |> List.iteri (fun idx ft ->
+        if idx < List.length !flat then
+          flat := List.mapi (fun i t -> if idx = i then join t ft else t) !flat
+        else
+          flat := !flat @ [ft]));
+    flatten_type (discriminant_type cases) @ !flat
+
+  let needs_out_param = function
+    (* Canonical ABI allows for max 1 return value *)
+    | [_] | [] -> false
+    (* If there are multiple return values, we need to use out-parameters via a pointer *)
+    | _ -> true
+
+  let flatten_return_type typ =
+    let flat = flatten_type typ in
+    if needs_out_param flat then
+      [I32Type], []
+    else
+      [], flat
 
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
@@ -10307,37 +10381,244 @@ module WasmComponent = struct
     (* TODO: refactor using Func.share_code *)
     E.call_import env "rts" "cabi_realloc"
 
-  let elem_size t : int32 =
-    let open Mo_types.Type in
-    match normalize t with
-    | Prim (Nat8 | Int8 | Bool) -> 1l
-    | Prim (Nat16 | Int16) -> 2l
-    | Prim (Nat32 | Int32 | Char) -> 4l
-    | Prim (Nat64 | Int64 | Float) -> 8l
-    | Prim (Text | Blob)
-    | Array _ -> 8l (* ptr,len *)
-    | _ ->
-      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
-      assert false
+  let pack_of_prim = function
+    | (Nat8|Int8|Bool) -> Some Pack8
+    | (Nat16|Int16) -> Some Pack16
+    | (Nat32|Int32|Char|Nat64|Int64|Float) -> None
+    | _ -> assert false
 
-  let alignment t : int32 =
-    let open Mo_types.Type in
+  let rec alignment t : int32 =
     match normalize t with
     | Prim (Nat8 | Int8 | Bool) -> 1l
     | Prim (Nat16 | Int16) -> 2l
     | Prim (Nat32 | Int32 | Char) -> 4l
     | Prim (Nat64 | Int64 | Float) -> 8l
+    | Tup ts -> alignment_tuple ts
     (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
     | Prim (Text | Blob)
     | Array _ -> 4l
+    | Variant cases -> alignment_variant cases
     | _ ->
-      print_endline (Printf.sprintf "Unsupported array element type: %s" (Mo_types.Type.string_of_typ t));
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ t));
       assert false
+
+  and alignment_tuple ts =
+    List.fold_left (fun m t -> Int32.max m (alignment t)) 1l ts
+
+  and alignment_variant cases =
+    max (max_case_alignment cases) (alignment (discriminant_type cases))
+
+  and max_case_alignment cases =
+    List.fold_left (fun m f -> Int32.max m (alignment f.typ)) 1l cases
+
+  let ceil_int32 x =
+    Int32.of_int (Stdlib.Float.to_int (Stdlib.Float.ceil (Stdlib.Float.of_int (Int32.to_int x))))
+
+  let align_to (ptr : G.t) alignment =
+    (* math.ceil(ptr / alignment) * alignment *)
+    if Int32.compare alignment 1l <= 0 then ptr else
+    ptr ^^
+    compile_add_const (Int32.sub alignment 1l) ^^
+    compile_divU_const alignment ^^
+    compile_mul_const alignment
+
+  let align_to_i32 (ptr : int32) (alignment : int32) : int32 =
+    (* Round up ptr to next multiple of alignment. Alignments are powers of two. *)
+    if Int32.compare alignment 1l <= 0 then ptr else
+    let open Int32 in
+    let mask = sub alignment 1l in
+    logand (add ptr mask) (lognot mask)
+
+  let rec elem_size t : int32 =
+    match normalize t with
+    | Prim (Nat8 | Int8 | Bool) -> 1l
+    | Prim (Nat16 | Int16) -> 2l
+    | Prim (Nat32 | Int32 | Char) -> 4l
+    | Prim (Nat64 | Int64 | Float) -> 8l
+    | Tup ts -> elem_size_tuple ts
+    | Prim (Text | Blob)
+    | Array _ -> 8l (* ptr,len *)
+    | Variant cases -> elem_size_variant cases
+    | _ ->
+      print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ t));
+      assert false
+
+  and elem_size_tuple ts =
+    List.fold_left (fun s t ->
+      let s = align_to_i32 s (alignment t) in
+      Int32.add s (elem_size t)
+    ) 0l ts
+
+  and elem_size_variant cases =
+    let s = elem_size (discriminant_type cases) in
+    let s = align_to_i32 s (max_case_alignment cases) in
+    let cs = List.fold_left (fun m f -> Int32.max m (elem_size f.typ)) 0l cases in
+    let s = Int32.add s cs in
+    align_to_i32 s (alignment_variant cases)
+
+  let elem_ptr base idx elem_t = 
+    base ^^ (idx ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
+
+  let next_tuple_elem_offset offset t =
+    let off = align_to_i32 !offset (alignment t) in
+    offset := Int32.add off (elem_size t);
+    off
+
+  module OutParam = struct
+    let word_size byte_size =
+      let open Int32 in
+      div (add byte_size (sub Heap.word_size 1l)) Heap.word_size
+
+    let words_to_allocate typ =
+      let flat_types = flatten_type typ in
+      if not (needs_out_param flat_types) then
+        0l
+      else
+        let byte_size = elem_size typ in
+        (* Note that word_size can be 1l, e.g. for {#err : Nat16; #ok : Nat16} *)
+        word_size byte_size
+
+    let alloc env return_type k =
+      let word_size = words_to_allocate return_type in
+      if word_size < 1l then k None else
+      let* ptr = cache env "out_param_ptr" (Stack.alloc_words env word_size) in
+      ptr ^^ (* Push the out-param argument *)
+      k (Some ptr) ^^ (* Continue with the program *)
+      Stack.free_words env word_size (* Free the out-param argument at the end *)
+
+    let get = Option.get
+  end
 
   (* Names come from https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#storing *)
 
+  let rec lift_flat env out_param typ =
+    match normalize typ with
+    | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
+      TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
+    | Prim Blob -> lift_flat_blob env out_param
+    | Prim Text -> lift_flat_text env out_param
+    | Array elem_t -> lift_flat_list env out_param elem_t
+    | Tup ts -> lift_flat_tuple env out_param ts
+    | Variant cases -> lift_flat_variant env out_param cases
+    | typ ->
+      print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
+      assert false
+
+  and lift_flat_blob env out_param =
+    OutParam.get out_param ^^ E.call_import env "rts" "blob_of_cabi"
+  
+  and lift_flat_text env out_param =
+    lift_flat_blob env out_param ^^ Text.of_blob env
+  
+  and lift_flat_list env out_param elem_t =
+    let ptr_len = OutParam.get out_param in
+    load_list_from_valid_range env ptr_len elem_t
+
+  and lift_flat_tuple env out_param ts =
+    let flat_types = flatten_tuple ts in
+    if needs_out_param flat_types then
+      let ptr = OutParam.get out_param in
+      load_tuple env ptr ts
+    else
+      match ts with
+      | [] -> Tuple.compile_unit env
+      | _ ->
+        (* Tuples with more elements are handled above *)
+        (* TODO: check 1-element tuples *)
+        assert false
+
+  and lift_flat_variant env out_param cases =
+    let flat_types = flatten_variant cases in
+    if needs_out_param flat_types then
+      (* Results were written into the out-params buffer; load from memory. *)
+      let ptr = OutParam.get out_param in
+      load_variant env ptr cases
+    else
+      (* Only the tag is returned on the stack; all cases have empty payloads. *)
+      let* get_tag = set_variant_tag env cases in
+      let payload_ptr = G.nop in (* No payload for empty tuple *)
+      load_variant' env get_tag payload_ptr cases
+
+  and load_list env ptr_len elem_t =
+    load_list_from_valid_range env ptr_len elem_t
+
+  and load_list_from_valid_range env ptr_len elem_t =
+    (* Load ptr,len from the canonical pair *)
+    let* get_ptr = cache env "ptr" (ptr_len ^^ load_int I32Type) in
+    let* get_len = cache env "len" (ptr_len ^^ compile_add_const 4l ^^ load_int I32Type) in
+    let (set_arr, get_arr) = new_local env "arr" in
+    (* Allocate Motoko array and fill elements *)
+    Arr.alloc env Tagged.M get_len ^^ set_arr ^^
+    get_len ^^ from_0_to_n env (fun get_i ->
+      let get_dst_addr = get_arr ^^ get_i ^^ Arr.unsafe_idx env in
+      get_dst_addr ^^
+      load env (elem_ptr get_ptr get_i elem_t) elem_t ^^
+      store_ptr
+    ) ^^
+    get_arr ^^
+    Tagged.allocation_barrier env
+
+  and load env ptr typ =
+    let typ = normalize typ in
+    (* Empty pointer implies empty tuple, no need to load *)
+    assert (not (G.is_nop ptr) || typ = Tup []);
+    match typ with
+    | Prim prim -> load_prim env ptr prim
+    | Array elem_t -> load_list env ptr elem_t
+    | Variant cases -> load_variant env ptr cases
+    | Tup ts -> load_tuple env ptr ts
+    | typ ->
+      print_endline (Printf.sprintf "Unsupported array element type in return: %s" (string_of_typ typ));
+      assert false
+
+  and load_int ?pack ty = G.i (Load {ty; align = 0; offset = 0L; sz = Option.map (fun pack -> (pack, ZX)) pack})
+
+  and load_prim env ptr = function
+    (* canonical bool stored as 0/1 byte; Vanilla bool is 0/1 word *)
+    | Bool                  -> ptr ^^ load_int I32Type ~pack:Pack8
+    | ((Nat8|Int8) as ty)   -> ptr ^^ load_int I32Type ~pack:Pack8 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
+    | ((Nat16|Int16) as ty) -> ptr ^^ load_int I32Type ~pack:Pack16 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
+    | Char                  -> ptr ^^ load_int I32Type ^^ TaggedSmallWord.check_and_msb_adjust_codepoint env ^^ TaggedSmallWord.tag env Char
+    | (Nat32|Int32)         -> ptr ^^ load_int I32Type
+    | ((Nat64|Int64) as ty) -> ptr ^^ load_int I64Type ^^ BoxedWord64.box env ty
+    | Float                 -> ptr ^^ load_int F64Type ^^ Float.box env
+    | Text                  -> ptr ^^ E.call_import env "rts" "blob_of_cabi" ^^ Text.of_blob env
+    | Blob                  -> ptr ^^ E.call_import env "rts" "blob_of_cabi"
+    | prim ->
+      print_endline (Printf.sprintf "Unsupported type in load_prim: %s" (string_of_prim prim));
+      assert false
+
+  and load_tuple env ptr ts =
+    (* Iterate fields like load_record: ptr = align(ptr, align(t)); load; ptr += size(t) *)
+    let offset = ref 0l in
+    G.concat_map (fun t ->
+      let off = next_tuple_elem_offset offset t in
+      load env (ptr ^^ compile_add_const off) t
+    ) ts ^^
+    Tuple.from_stack env (List.length ts)
+
+  and load_variant env ptr cases =
+    (* Load tag (zero-extended to i32) and bounds check *)
+    ptr ^^ load_int I32Type ?pack:(pack_of_prim (discriminant_prim cases)) ^^
+    let* get_tag = set_variant_tag env cases in
+    (* Compute payload pointer based on canonical layout *)
+    let discr_size = elem_size (discriminant_type cases) in
+    let payload_off = align_to_i32 discr_size (max_case_alignment cases) in
+    let payload_ptr = ptr ^^ compile_add_const payload_off in
+    load_variant' env get_tag payload_ptr cases
+
+  and load_variant' env get_tag payload_ptr cases =
+    (* dispatch and build Motoko value *)
+    let (set_res, get_res) = new_local env "variant_val" in
+    G.concat_mapi (fun i f ->
+      get_tag ^^ compile_unboxed_const (Int32.of_int i) ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if0
+        (Variant.inject env f.lab (load env payload_ptr f.typ) ^^ set_res)
+        G.nop
+    ) cases ^^
+    get_res
+
   let rec store env get_val typ get_addr =
-    let open Mo_types.Type in
     match normalize typ with
     | Prim Bool                  -> store_int I32Type ~pack:Pack8 get_val get_addr
     | Prim ((Nat8 |Int8 ) as ty) -> store_int I32Type ~pack:Pack8 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
@@ -10348,7 +10629,9 @@ module WasmComponent = struct
     | Prim Float                 -> store_int F64Type (get_val ^^ Float.unbox env) get_addr
     | Prim Text                  -> store_string env get_val get_addr
     | Prim Blob                  -> store_blob env get_val get_addr
+    | Variant cases              -> store_variant env get_val get_addr cases
     | Array elem_t               -> store_list env get_val elem_t get_addr
+    | Tup ts                     -> store_tuple env get_val get_addr ts
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ typ));
       assert false
@@ -10357,66 +10640,141 @@ module WasmComponent = struct
     get_addr ^^ get_val ^^ G.i (Store {ty; align = 0; offset = 0L; sz = pack})
 
   and store_blob env get_val get_addr =
-    store_int I32Type (get_val ^^ Blob.payload_ptr_unskewed env) get_addr ^^
-    store_int I32Type (get_val ^^ Blob.len env) (get_addr ^^ compile_add_const 4l)
+    (* Future work: could be optimized to use memcpy and avoid the intermediate array *)
+    store_list env (get_val ^^ Arr.ofBlob env Tagged.I) (Prim Nat8) get_addr
 
   and store_string env get_val get_addr =
-    let (set_bl, get_bl) = new_local env "bl" in
-    (* TODO: implement proper store_string_into_range if needed *)
-    get_val ^^ Text.to_blob env ^^ set_bl ^^
-    store_blob env get_bl get_addr
+    (* Future work: implement proper store_string_into_range and could be optimized to avoid the intermediate blob *)
+    store_blob env (get_val ^^ Text.to_blob env) get_addr
 
   and store_list env get_list_value elem_t get_pair_addr =
     let* get_buf, get_len = store_list_into_range env get_list_value elem_t in
     store_int I32Type get_buf get_pair_addr ^^
     store_int I32Type get_len (get_pair_addr ^^ compile_add_const 4l)
 
-  and store_list_into_range env get_list_value elem_t k =
+  and store_list_into_range env get_value elem_t k =
     let open Mo_types.Type in
     let elem_t = normalize elem_t in
-    let (set_arr, get_arr) = new_local env "arr" in
-    let (set_len, get_len) = new_local env "len" in
-    let (set_buf, get_buf) = new_local env "buf" in
     let esize = elem_size elem_t in
+    let* get_arr = cache env "arr" get_value in
+    let* get_len = cache env "len" (get_arr ^^ Arr.len env) in
+    let* get_buf = cache env "buf" (realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize)) in
     (* Evaluate list value and determine length *)
-    get_list_value ^^ set_arr ^^
-    get_arr ^^ Arr.len env ^^ set_len ^^
-    realloc env (alignment elem_t) (get_len ^^ compile_mul_const esize) ^^
-    set_buf ^^
-    store_list_into_valid_range env (get_arr, get_len) get_buf elem_t ^^
+    get_len ^^ from_0_to_n env (fun get_i ->
+      let elem_ptr = elem_ptr get_buf get_i elem_t in
+      let elem_v = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
+      store env elem_v elem_t elem_ptr
+    ) ^^
     k (get_buf, get_len)
 
-  and store_list_into_valid_range env (get_arr, get_len) get_buf elem_t =
-    get_len ^^ from_0_to_n env (fun get_i ->
-      let dest_ptr = get_buf ^^ (get_i ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
-      let elem_v = get_arr ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr in
-      store env elem_v elem_t dest_ptr
-    )
+  and store_tuple env get_val get_addr ts =
+    let* get_tup = cache env "tuple_arg" get_val in
+    let offset = ref 0l in
+    G.concat_mapi (fun i t ->
+      let get_elem = get_tup ^^ Tuple.load_n env (Int32.of_int i) in
+      let off = next_tuple_elem_offset offset t in
+      store env get_elem t (get_addr ^^ compile_add_const off)
+    ) ts
+
+  and store_variant env get_val get_addr cases =
+    let* get_variant = cache env "variant_arg" get_val in
+    let d = discriminant_prim cases in
+    let pack = pack_of_prim d in
+    let discr_size = elem_size (discriminant_type cases) in
+    let payload_off = align_to_i32 discr_size (max_case_alignment cases) in
+    let payload_ptr = get_addr ^^ compile_add_const payload_off in
+    G.concat_mapi (fun i f ->
+      get_variant ^^ Variant.test_is env f.lab ^^
+      G.if0 (
+        store_int I32Type ?pack (compile_unboxed_const (Int32.of_int i)) get_addr ^^
+        store env (get_variant ^^ Variant.project env) f.typ payload_ptr
+        ) G.nop
+    ) cases
 
   and lower_flat env compute_val typ =
-    let open Mo_types.Type in
     match normalize typ with
     | Prim Blob -> lower_flat_blob env compute_val
     | Prim Text -> lower_flat_text env compute_val
+    | Array elem_t -> lower_flat_list env compute_val elem_t
+    | Variant cases -> lower_flat_variant env compute_val cases
+    | Tup ts -> lower_flat_tuple env compute_val ts
     | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
       compute_val ^^
       TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
-    | Array elem_t ->
-      let* get_arr, get_len = store_list_into_range env compute_val elem_t in
-      get_arr ^^ get_len
     | typ ->
-      print_endline (Printf.sprintf "Unsupported type: %s" (Mo_types.Type.string_of_typ typ));
+      print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
       assert false
 
   and lower_flat_text env compute_val =
-    (* TODO: this might need store_string_into_range *)
+    (* Future work: optimize, avoid intermediate blob *)
     lower_flat_blob env (compute_val ^^ Text.to_blob env)
 
   and lower_flat_blob env compute_val =
-    let* get_blob = cache env "blob_arg" compute_val in
-    (* ptr, len *)
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env
+    (* Future work: optimize, avoid intermediate array *)
+    lower_flat_list env (compute_val ^^ Arr.ofBlob env Tagged.I) (Prim Nat8)
+
+  and lower_flat_list env compute_val elem_t =
+    let* get_arr, get_len = store_list_into_range env compute_val elem_t in
+    get_arr ^^ get_len
+
+  and lower_flat_tuple env compute_val ts =
+    let* get_tup = cache env "tuple_arg" compute_val in
+    G.concat_mapi (fun i t ->
+      let get_field = get_tup ^^ Tuple.load_n env (Int32.of_int i) in
+      let get_field_unboxed = get_field ^^ StackRep.adjust env SR.Vanilla (StackRep.of_type t) in
+      lower_flat env get_field_unboxed t
+    ) ts
+
+  and lower_flat_variant env compute_val cases =
+    let* get_variant = cache env "variant_arg" compute_val in
+    (* Prepare locals for discriminant and payload slots (only I32/I64). *)
+    let (set_case_index, get_case_index) = new_local env "variant_tag" in
+    let flat_types = flatten_variant cases in
+    assert (List.hd flat_types = I32Type);
+    let payload_types = List.tl flat_types in
+    let payload_locals = List.map (function
+      | I32Type -> new_local env "flat_i32"
+      | I64Type -> new_local64 env "flat_i64"
+      | _ -> assert false
+    ) payload_types in
+    (* Initialize all locals to zero/defaults *)
+    compile_unboxed_const 0l ^^ set_case_index ^^
+    G.concat_map2 (fun vt (set_l, _) ->
+      match vt with
+      | I32Type -> compile_unboxed_const 0l ^^ set_l
+      | I64Type -> compile_const_64 0L ^^ set_l
+      | _ -> assert false
+    ) payload_types payload_locals ^^
+    (* In one pass: set discriminant and payload locals for the matching case. *)
+    G.concat_mapi (fun idx f ->
+      get_variant ^^ Variant.test_is env f.lab ^^
+      G.if0 (
+        (* Set tag local to the selected case index *)
+        compile_unboxed_const (Int32.of_int idx) ^^ set_case_index ^^
+        (* Push the payload *)
+        lower_flat env (get_variant ^^ Variant.project env) f.typ ^^
+        (* Write payload locals for this case, applying Canonical ABI conversions into I32/I64 slots *)
+        let case_flats = flatten_type f.typ in
+        Lib.List.zip3 case_flats payload_types payload_locals
+        |> List.mapi (fun i t -> (i, t))
+        |> List.rev
+        |> G.concat_map (fun (j, (have, vt_want, (set_l, _))) -> (* reverse order *)
+          (match have, vt_want with
+           (* i32 -> i32, i64 -> i64 direct *)
+           | I32Type, I32Type -> set_l
+           | I64Type, I64Type -> set_l
+           (* i32 -> i64 zero-extend *)
+           | I32Type, I64Type -> G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^ set_l
+           (* f64 -> i64 reinterpret *)
+           | F64Type, I64Type -> G.i (Convert (Wasm.Values.I64 I64Op.ReinterpretFloat)) ^^ set_l
+           (* No other combinations expected in payload slots *)
+           | _ -> assert false)
+        )
+      ) G.nop
+    ) cases ^^
+    (* Finally, produce [case_index] followed by payload locals in order. *)
+    get_case_index ^^
+    G.concat_map (fun (_, get_l) -> get_l) payload_locals
 end
 
 (* The actual compiler code that looks at the AST *)
@@ -11873,106 +12231,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
 
-  | ComponentPrim (maybe_component, return_type), es ->
+  | ComponentPrim (_, component_name, function_name, arg_types, return_type), es ->
     assert !Flags.wasm_components;
     StackRep.of_type return_type,
-    (* Parse the component name and function name *)
-    let parts = String.split_on_char ':' maybe_component in
-    (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
-    let component_name = List.nth parts 1 in
-    let function_name = List.nth parts 2 in 
-    
-    (* Compile all arguments. TODO: review lower_flat_values, do we need `max_flat` or `out_param`? *)
-    let compile_args = List.fold_left (fun acc e ->
-      let arg_type = e.note.Note.typ in
+    let open WasmComponent in
+    assert (List.length es = List.length arg_types);
+    let lower_args = List.fold_left2 (fun acc e arg_type ->
       let get_val = compile_exp_as env ae (StackRep.of_type arg_type) e in
       acc ^^ WasmComponent.lower_flat env get_val arg_type
-    ) G.nop es in
-    
-    let compile_return_handling = 
-      let open Mo_types.Type in
-      let call_component_return_blob () =
-        Stack.with_words env "ret" 2l (fun get ->
-          get ^^ E.call_import env component_name function_name ^^
-          get ^^ E.call_import env "rts" "blob_of_cabi"
-        )
-      in
-      let load ?pack ty = G.i (Load {ty; align = 0; offset = 0L; sz = Option.map (fun pack -> (pack, ZX)) pack}) in
-      let rec read_elem_from_cabi t get_addr =
-        let open Mo_types.Type in
-        match normalize t with
-        | Prim Bool ->
-          (* canonical bool stored as 0/1 byte; Vanilla bool is 0/1 word *)
-          get_addr ^^ load I32Type ~pack:Pack8
-        | Prim ((Nat8|Int8) as ty) ->
-          get_addr ^^ load I32Type ~pack:Pack8 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
-        | Prim ((Nat16|Int16) as ty) ->
-          get_addr ^^ load I32Type ~pack:Pack16 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
-        | Prim Char ->
-          get_addr ^^ load I32Type ^^ TaggedSmallWord.check_and_msb_adjust_codepoint env ^^ TaggedSmallWord.tag env Char
-        | Prim (Nat32|Int32) ->
-          get_addr ^^ load I32Type
-        | Prim ((Nat64|Int64) as ty) ->
-          get_addr ^^ load I64Type ^^ BoxedWord64.box env ty
-        | Prim Float ->
-          get_addr ^^ load F64Type ^^ Float.box env
-        | Prim Text ->
-          get_addr ^^ E.call_import env "rts" "blob_of_cabi" ^^ Text.of_blob env
-        | Prim Blob ->
-          get_addr ^^ E.call_import env "rts" "blob_of_cabi"
-        | Array t2 ->
-          (* Nested list element is a pair (ptr,len) at get_addr *)
-          build_list_value_from_cabi_at t2 get_addr
-        | _ ->
-          print_endline (Printf.sprintf "Unsupported array element type in return: %s" (Mo_types.Type.string_of_typ t));
-          assert false
-      and build_list_value_from_cabi_at t get_pair_addr =
-        let open Mo_types.Type in
-        let t = normalize t in
-        let (set_ptr, get_ptr) = new_local env "ptr" in
-        let (set_len, get_len) = new_local env "len" in
-        let (set_arr, get_arr) = new_local env "arr" in
-        (* Load ptr,len from the canonical pair *)
-        get_pair_addr ^^
-        load I32Type ^^ set_ptr ^^
-        (get_pair_addr ^^ compile_add_const 4l ^^
-         load I32Type ^^ set_len) ^^
-        (* Allocate Motoko array and fill elements *)
-        Arr.alloc env Tagged.M get_len ^^ set_arr ^^
-        let esize = WasmComponent.elem_size t in
-        get_len ^^ from_0_to_n env (fun get_i ->
-          let get_src_addr =
-            get_ptr ^^
-            (get_i ^^ compile_mul_const esize) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.Add)) in
-          let get_dst_addr = get_arr ^^ get_i ^^ Arr.unsafe_idx env in
-          get_dst_addr ^^
-          (read_elem_from_cabi t get_src_addr) ^^
-          store_ptr
-        ) ^^
-        get_arr ^^
-        Tagged.allocation_barrier env
-      in
-      match normalize return_type with
-      | Prim Blob ->
-        call_component_return_blob ()
-      | Prim Text ->
-        call_component_return_blob () ^^
-        Text.of_blob env
-      | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
-        E.call_import env component_name function_name ^^
-        TaggedSmallWord.(if need_adjust prim then msb_adjust prim else G.nop)
-      | Array t ->
-        (* Receive a canonical list via out-parameter and convert to Motoko array *)
-        Stack.with_words env "ret" 2l (fun get ->
-          get ^^ E.call_import env component_name function_name ^^
-          build_list_value_from_cabi_at t get
-        )
-      | typ ->
-        print_endline (Printf.sprintf "Unsupported return type: %s" (Mo_types.Type.string_of_typ typ));
-        assert false
-    in
-    compile_args ^^ compile_return_handling
+    ) G.nop es arg_types in
+    lower_args ^^
+    (* Allocate and push out-params as extra arguments to the component function call *)
+    let* out_param = WasmComponent.OutParam.alloc env return_type in
+    E.call_import env component_name function_name ^^
+    (* Lift the return value to Motoko values *)
+    WasmComponent.lift_flat env out_param return_type
 
   (* Other prims, nullary *)
 
@@ -13658,14 +13931,25 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
     imported_components := add_imported_component 
-        ~component_name:component_name 
-        ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
-        !imported_components;
-    
-    let wasm_args = List.concat_map (fun arg -> Imported_components.map_motoko_type_to_wasm_args arg.Import_components_ir.arg_type) arg_types in
-    let wasm_args = wasm_args @ Imported_components.return_wasm_args return_type in
-    let wasm_results = Imported_components.map_motoko_type_to_wasm_result return_type in
-    E.add_func_import env component_name function_name wasm_args wasm_results in
+      ~component_name:component_name 
+      ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
+      !imported_components;
+
+    let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in
+    let extra_out_param, wasm_results = WasmComponent.flatten_return_type return_type in
+    let wasm_args = wasm_args @ extra_out_param in
+    (* Debug import signatures *)
+    let vt_to_s = function
+      | Wasm_exts.Types.I32Type -> "I32"
+      | Wasm_exts.Types.I64Type -> "I64"
+      | Wasm_exts.Types.F32Type -> "F32"
+      | Wasm_exts.Types.F64Type -> "F64" in
+    Printf.printf "IMPORT %s::%s args=[%s] results=[%s]\n"
+      component_name function_name
+      (String.concat ", " (List.map vt_to_s wasm_args))
+      (String.concat ", " (List.map vt_to_s wasm_results));
+    E.add_func_import env component_name function_name wasm_args wasm_results
+  in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
   (*Wasm.Sexpr.print 80 _prog_text;*)
