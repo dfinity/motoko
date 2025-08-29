@@ -10338,11 +10338,14 @@ module WasmComponent = struct
     | Prim (Blob | Text)
     | Array _ -> [I32Type; I32Type] (* pointer + length *)
     | Variant cases -> flatten_variant cases
-    | Tup [] -> []
+    | Tup ts -> flatten_tuple ts
     | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
     | Prim (Nat64 | Int64) -> [I64Type]
     | Prim Float -> [F64Type]
     | _ -> failwith (Printf.sprintf "flatten_type: unsupported type %s" (string_of_typ typ))
+
+  and flatten_tuple ts =
+    List.concat_map flatten_type ts
 
   and flatten_variant cases =
     let join a b =
@@ -10395,7 +10398,7 @@ module WasmComponent = struct
     | Prim (Nat16 | Int16) -> 2l
     | Prim (Nat32 | Int32 | Char) -> 4l
     | Prim (Nat64 | Int64 | Float) -> 8l
-    | Tup [] -> 1l
+    | Tup ts -> alignment_tuple ts
     (* Elements that are stored as (ptr,len) pairs have 4-byte alignment *)
     | Prim (Text | Blob)
     | Array _ -> 4l
@@ -10403,6 +10406,9 @@ module WasmComponent = struct
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ t));
       assert false
+
+  and alignment_tuple ts =
+    List.fold_left (fun m t -> Int32.max m (alignment t)) 1l ts
 
   and alignment_variant cases =
     max (max_case_alignment cases) (alignment (discriminant_type cases))
@@ -10434,13 +10440,19 @@ module WasmComponent = struct
     | Prim (Nat16 | Int16) -> 2l
     | Prim (Nat32 | Int32 | Char) -> 4l
     | Prim (Nat64 | Int64 | Float) -> 8l
-    | Tup [] -> 0l
+    | Tup ts -> elem_size_tuple ts
     | Prim (Text | Blob)
     | Array _ -> 8l (* ptr,len *)
     | Variant cases -> elem_size_variant cases
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ t));
       assert false
+
+  and elem_size_tuple ts =
+    List.fold_left (fun s t ->
+      let s = align_to_i32 s (alignment t) in
+      Int32.add s (elem_size t)
+    ) 0l ts
 
   and elem_size_variant cases =
     let s = elem_size (discriminant_type cases) in
@@ -10452,22 +10464,24 @@ module WasmComponent = struct
   let elem_ptr base idx elem_t = 
     base ^^ (idx ^^ compile_mul_const (elem_size elem_t)) ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add))
 
+  let next_tuple_elem_offset offset t =
+    let off = align_to_i32 !offset (alignment t) in
+    offset := Int32.add off (elem_size t);
+    off
+
   module OutParam = struct
-    let words_to_allocate = function
-      | Prim (Blob | Text) 
-      | Array _ -> 2l
-      | Variant cases ->
-        let flat_types = flatten_variant cases in
-        if not (needs_out_param flat_types) then
-          0l
-        else
-          let byte_size = elem_size_variant cases in
-          let word_size =
-            let open Int32 in
-            div (add byte_size (sub Heap.word_size 1l)) Heap.word_size
-          in
-          word_size
-      | _ -> 0l
+    let word_size byte_size =
+      let open Int32 in
+      div (add byte_size (sub Heap.word_size 1l)) Heap.word_size
+
+    let words_to_allocate typ =
+      let flat_types = flatten_type typ in
+      if not (needs_out_param flat_types) then
+        0l
+      else
+        let byte_size = elem_size typ in
+        (* Note that word_size can be 1l, e.g. for {#err : Nat16; #ok : Nat16} *)
+        word_size byte_size
 
     let alloc env return_type k =
       let word_size = words_to_allocate return_type in
@@ -10489,6 +10503,7 @@ module WasmComponent = struct
     | Prim Blob -> lift_flat_blob env out_param
     | Prim Text -> lift_flat_text env out_param
     | Array elem_t -> lift_flat_list env out_param elem_t
+    | Tup ts -> lift_flat_tuple env out_param ts
     | Variant cases -> lift_flat_variant env out_param cases
     | typ ->
       print_endline (Printf.sprintf "Unsupported type: %s" (string_of_typ typ));
@@ -10503,6 +10518,19 @@ module WasmComponent = struct
   and lift_flat_list env out_param elem_t =
     let ptr_len = OutParam.get out_param in
     load_list_from_valid_range env ptr_len elem_t
+
+  and lift_flat_tuple env out_param ts =
+    let flat_types = flatten_tuple ts in
+    if needs_out_param flat_types then
+      let ptr = OutParam.get out_param in
+      load_tuple env ptr ts
+    else
+      match ts with
+      | [] -> Tuple.compile_unit env
+      | _ ->
+        (* Tuples with more elements are handled above *)
+        (* TODO: check 1-element tuples *)
+        assert false
 
   and lift_flat_variant env out_param cases =
     let flat_types = flatten_variant cases in
@@ -10543,7 +10571,7 @@ module WasmComponent = struct
     | Prim prim -> load_prim env ptr prim
     | Array elem_t -> load_list env ptr elem_t
     | Variant cases -> load_variant env ptr cases
-    | Tup [] -> Tuple.compile_unit env
+    | Tup ts -> load_tuple env ptr ts
     | typ ->
       print_endline (Printf.sprintf "Unsupported array element type in return: %s" (string_of_typ typ));
       assert false
@@ -10564,6 +10592,15 @@ module WasmComponent = struct
     | prim ->
       print_endline (Printf.sprintf "Unsupported type in load_prim: %s" (string_of_prim prim));
       assert false
+
+  and load_tuple env ptr ts =
+    (* Iterate fields like load_record: ptr = align(ptr, align(t)); load; ptr += size(t) *)
+    let offset = ref 0l in
+    G.concat_map (fun t ->
+      let off = next_tuple_elem_offset offset t in
+      load env (ptr ^^ compile_add_const off) t
+    ) ts ^^
+    Tuple.from_stack env (List.length ts)
 
   and load_variant env ptr cases =
     (* Load tag (zero-extended to i32) and bounds check *)
@@ -10599,7 +10636,7 @@ module WasmComponent = struct
     | Prim Blob                  -> store_blob env get_val get_addr
     | Variant cases              -> store_variant env get_val get_addr cases
     | Array elem_t               -> store_list env get_val elem_t get_addr
-    | Tup []                     -> G.nop
+    | Tup ts                     -> store_tuple env get_val get_addr ts
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ typ));
       assert false
@@ -10635,6 +10672,15 @@ module WasmComponent = struct
     ) ^^
     k (get_buf, get_len)
 
+  and store_tuple env get_val get_addr ts =
+    let* get_tup = cache env "tuple_arg" get_val in
+    let offset = ref 0l in
+    G.concat_mapi (fun i t ->
+      let get_elem = get_tup ^^ Tuple.load_n env (Int32.of_int i) in
+      let off = next_tuple_elem_offset offset t in
+      store env get_elem t (get_addr ^^ compile_add_const off)
+    ) ts
+
   and store_variant env get_val get_addr cases =
     let* get_variant = cache env "variant_arg" get_val in
     let d = discriminant_prim cases in
@@ -10656,7 +10702,7 @@ module WasmComponent = struct
     | Prim Text -> lower_flat_text env compute_val
     | Array elem_t -> lower_flat_list env compute_val elem_t
     | Variant cases -> lower_flat_variant env compute_val cases
-    | Tup [] -> G.nop
+    | Tup ts -> lower_flat_tuple env compute_val ts
     | Prim (Int64|Nat64|Float|Int32|Nat32|Int16|Nat16|Int8|Nat8|Char|Bool as prim) ->
       compute_val ^^
       TaggedSmallWord.(if need_adjust prim then lsb_adjust prim else G.nop)
@@ -10675,6 +10721,14 @@ module WasmComponent = struct
   and lower_flat_list env compute_val elem_t =
     let* get_arr, get_len = store_list_into_range env compute_val elem_t in
     get_arr ^^ get_len
+
+  and lower_flat_tuple env compute_val ts =
+    let* get_tup = cache env "tuple_arg" compute_val in
+    G.concat_mapi (fun i t ->
+      let get_field = get_tup ^^ Tuple.load_n env (Int32.of_int i) in
+      let get_field_unboxed = get_field ^^ StackRep.adjust env SR.Vanilla (StackRep.of_type t) in
+      lower_flat env get_field_unboxed t
+    ) ts
 
   and lower_flat_variant env compute_val cases =
     let* get_variant = cache env "variant_arg" compute_val in

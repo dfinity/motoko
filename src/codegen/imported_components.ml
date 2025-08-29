@@ -55,6 +55,10 @@ let print_imported_components (map : t) =
     Printf.printf "]\n"
   ) map
 
+(* TODO: record *)
+(* TODO: option *)
+(* TODO: int/nat? They require custom types because, otherwise we can plumb it via [u8] *)
+(* TODO: custom rust types? *)
 let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_variant_idx : int ref) typ : string =
   match normalize typ with
   | Prim Blob -> "list<u8>"
@@ -70,7 +74,9 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) (next_varia
   | Prim Nat64 -> "u64"
   | Prim Int64 -> "s64"
   | Prim Float -> "f64"
-  | Array t -> "list<" ^ map_motoko_type_to_wit variants_ref next_variant_idx t ^ ">"
+  | Array t -> Printf.sprintf "list<%s>" (map_motoko_type_to_wit variants_ref next_variant_idx t)
+  | Opt t -> Printf.sprintf "option<%s>" (map_motoko_type_to_wit variants_ref next_variant_idx t)
+  | Tup ts -> Printf.sprintf "tuple<%s>" (String.concat ", " (List.map (map_motoko_type_to_wit variants_ref next_variant_idx) ts))
   | Variant [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] ->
     Printf.sprintf "result<%s, %s>" (map_motoko_type_to_wit variants_ref next_variant_idx t2) (map_motoko_type_to_wit variants_ref next_variant_idx t1)
   | Variant _ as v ->
