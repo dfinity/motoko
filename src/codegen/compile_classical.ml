@@ -12236,16 +12236,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log"
 
-  | ComponentPrim (_, component_name, function_name, return_type), es ->
+  | ComponentPrim (_, component_name, function_name, arg_types, return_type), es ->
     assert !Flags.wasm_components;
     StackRep.of_type return_type,
     let open WasmComponent in
-    (* Compile all arguments. TODO: review lower_flat_values, do we need `max_flat` or `out_param`? *)
-    let lower_args = List.fold_left (fun acc e ->
-      let arg_type = e.note.Note.typ in
+    assert (List.length es = List.length arg_types);
+    let lower_args = List.fold_left2 (fun acc e arg_type ->
       let get_val = compile_exp_as env ae (StackRep.of_type arg_type) e in
       acc ^^ WasmComponent.lower_flat env get_val arg_type
-    ) G.nop es in
+    ) G.nop es arg_types in
     lower_args ^^
     (* Allocate and push out-params as extra arguments to the component function call *)
     let* out_param = WasmComponent.OutParam.alloc env return_type in

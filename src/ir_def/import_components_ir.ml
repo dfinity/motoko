@@ -125,16 +125,16 @@ and prim e es = function
   | SystemTimeoutSetPrim -> Atom "SystemTimeoutSetPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
-  | ComponentPrim (full_name, component_name, function_name, _) -> 
+  | ComponentPrim (full_name, component_name, function_name, arg_types, return_type) -> 
       let string_of_arg arg =
         match arg.it with
         | VarE (_, i) -> i
         | _ -> failwith "Expected VarE for argument name" in
 
-      let function_args = List.map (fun arg -> {arg_name=(string_of_arg arg); arg_type=arg.note.Note.typ}) es in
-      (*let function_types = List.map (fun arg -> arg.note.Note.typ) es in  *)
+      Printf.printf "List.length es: %d, List.length arg_types: %d\n" (List.length es) (List.length arg_types);
+      assert (List.length es = List.length arg_types);
+      let function_args = List.map2 (fun arg arg_type -> {arg_name=string_of_arg arg; arg_type}) es arg_types in
 
-      let return_type = e.note.Note.typ in
       (* Add the import to the component *)
       add_import component_name function_name function_args return_type;
       "imported component: " $$ [Atom full_name]

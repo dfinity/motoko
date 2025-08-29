@@ -168,7 +168,7 @@ and prim =
   | SetCertifiedData
   | GetCertificate
   (* Wasm Component function *)
-  | ComponentPrim of string * string * string * Type.typ
+  | ComponentPrim of string * string * string * Type.typ list * Type.typ
 
   | OtherPrim of string               (* Other primitive operation, no custom typing rule *)
   (* backend stuff *)
