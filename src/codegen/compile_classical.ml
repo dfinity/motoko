@@ -10306,12 +10306,7 @@ module WasmComponent = struct
     | [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] -> true
     | _ -> false
 
-  let normalize typ =
-    match normalize typ with
-    (* My must flip the cases in the result variant because there is a mismatch between the
-       Canonical ABI and the Motoko type system. *)
-    | Variant cases when is_result cases -> Variant (List.rev cases)
-    | typ -> typ
+  let normalize typ = Imported_components.normalize typ
 
   let discriminant_prim cases =
     let n = List.length cases in
