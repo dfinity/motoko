@@ -222,7 +222,7 @@
 
         inherit nix-update tests js;
 
-        inherit (pkgs) nix-build-uncached drun ic-wasm pocket-ic;
+        inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 
         # Get pocket-ic server.
         pocket-ic-server = pkgs.pocket-ic.server;
