@@ -1,2 +1,2 @@
 install $ID mixins/mixins.mo ""
-query $ID go "DIDL\x00\x00"
+ingress $ID go "DIDL\x00\x00"

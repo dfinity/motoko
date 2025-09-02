@@ -587,7 +587,7 @@ and includes ds = match ds with
   | _::ds' -> includes ds'
 
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
-  let candid = build_candid ts obj_typ in
+  (* let candid = build_candid ts obj_typ in *)
   let fs = build_fields obj_typ in
   let (mixin_ds, mixin_stabs) = includes es in
   let es = List.filter (fun ef -> is_not_typ_mixinD ef.it.S.dec) es in
@@ -707,7 +707,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       with_self n.it obj_typ ds
     | None -> ds in
   let meta =
-    I.{ candid = candid;
+    I.{ candid = { args = ""; service = ""};
         sig_ = T.string_of_stab_sig sig_} in
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) mem_fields) in
@@ -941,7 +941,7 @@ and is_not_typ_mixinD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> 
 and decs ds =
   List.map dec (List.filter is_not_typ_mixinD ds)
 
-and dec d = { (phrase' dec' d) with note = () }
+and dec d = { it = dec' d.at d.note d.it; at = d.at; note = () }
 
 and dec' at n = function
   | S.ExpD e -> (expD (exp e)).it
@@ -1316,7 +1316,15 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     end
   | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
-    let actor_expression = build_actor u.at [] eo self_id fields u.note.S.note_typ in
+    let ty = match self_id with
+    | Some( { it="a"; _}) ->
+      (* shared query () -> async Nat *)
+      (* | Func of func_sort * control * bind list * typ list * typ list  (* function *) *)
+      let cs = T.open_binds [T.scope_bind] in
+      let func_ty = T.Func(T.Shared T.Query, T.Promises, [], [], [T.Async(T.Fut, List.hd cs, T.nat)])  in
+      T.obj T.Actor ["go", func_ty]
+    | _ -> u.note.S.note_typ in
+    let actor_expression = build_actor u.at [] eo self_id fields ty in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
       I.ActorU (None, ds, fs, u, t)
