@@ -1,5 +1,5 @@
 mixin() {
-  public func go() : async Nat {
-    1337;
+  public query func go() : async Nat {
+    20
   };
 };
