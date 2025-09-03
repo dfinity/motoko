@@ -4890,12 +4890,12 @@ module IC = struct
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
     E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
     E.add_func_import env "ic0" "time" [] [I64Type];
-    E.add_func_import env "ic0" "env_var_count" [] [I32Type];
-    E.add_func_import env "ic0" "env_var_name_size" [I32Type] [i];
-    E.add_func_import env "ic0" "env_var_name_copy" [I32Type; i; i; i] [];
-    E.add_func_import env "ic0" "env_var_name_exists" [I32Type; i] [I32Type];
-    E.add_func_import env "ic0" "env_var_value_size" [I32Type] [i];
-    E.add_func_import env "ic0" "env_var_value_copy" [I32Type; i; i; i] [];
+    E.add_func_import env "ic0" "env_var_count" [] [i];
+    E.add_func_import env "ic0" "env_var_name_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
+    E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
+    E.add_func_import env "ic0" "env_var_value_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_value_copy" (is 4) [];
     if !Flags.global_timer then
       E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
