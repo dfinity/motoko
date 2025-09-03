@@ -112,8 +112,8 @@ func isLive(weak_ref : weak Any) : Bool {
   (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
 };
 
-func getEnvVars() : [(Text, Text)] {
-  (prim "get_env_vars" : () -> [(Text, Text)])();
+func envVarNames() : [Text] {
+  (prim "env_var_names" : () -> [Text])();
 };
 
 // Total conversions (fixed to big)

@@ -5248,10 +5248,10 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get system time when running locally"
 
-  let get_env_vars env =
+  let env_var_names env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      Func.share_code0 Func.Never env "get_env_vars" [] (fun env ->
+      Func.share_code0 Func.Never env "env_var_names" [] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
         system_call env "env_var_count" ^^ set_len ^^
@@ -5262,13 +5262,7 @@ module IC = struct
             (fun env -> system_call env "env_var_name_size")
             (fun env -> system_call env "env_var_name_copy")
             (fun env -> compile_unboxed_const 0L) ^^
-          Text.of_blob env ^^ (* ??? *)
-          Blob.of_size_copy env Tagged.A
-            (fun env -> system_call env "env_var_value_size")
-            (fun env -> system_call env "env_var_value_copy")
-            (fun env -> compile_unboxed_const 0L) ^^
-          Text.of_blob env ^^ (* ??? *)
-          Tuple.from_stack env 2
+          Text.of_blob env (* ??? *)
         ) ^^
         get_x ^^
         Tagged.allocation_barrier env
@@ -5276,7 +5270,7 @@ module IC = struct
     | _ ->
       E.trap_with env "cannot get environment variables when running locally"
 
-  let get_env_var env =
+  let env_var env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
       (* TODO *)
@@ -12128,14 +12122,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     E.call_import env "rts" "weak_ref_is_live" ^^
     Bool.from_rts_int32
 
-  | OtherPrim "get_env_vars", [] ->
+  | OtherPrim "env_var_names", [] ->
     SR.Vanilla,
-    IC.get_env_vars env
+    IC.env_var_names env
 
-  | OtherPrim "get_env_var", [key] ->
+  | OtherPrim "env_var", [name] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae key ^^
-    IC.get_env_var env
+    compile_exp_vanilla env ae name ^^
+    IC.env_var env
 
   (* Regions *)
 

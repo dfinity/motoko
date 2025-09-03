@@ -1,6 +1,6 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 import Prim "mo:⛔";
 
-let envVars = Prim.getEnvVars();
+let names = Prim.envVarNames();
 
-assert envVars == [];
+assert names == [];
