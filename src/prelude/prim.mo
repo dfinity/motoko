@@ -112,6 +112,10 @@ func isLive(weak_ref : weak Any) : Bool {
   (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
 };
 
+func getEnvVars() : [(Text, Text)] {
+  (prim "get_env_vars" : () -> [(Text, Text)])();
+};
+
 // Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
