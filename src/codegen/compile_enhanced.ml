@@ -5251,7 +5251,7 @@ module IC = struct
   let env_var_names env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      Func.share_code0 Func.Never env "env_var_names" [] (fun env ->
+      Func.share_code0 Func.Never env "env_var_names" [i] (fun env ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
         system_call env "env_var_count" ^^ set_len ^^
@@ -5268,13 +5268,15 @@ module IC = struct
         Tagged.allocation_barrier env
       )
     | _ ->
-      E.trap_with env "cannot get environment variables when running locally"
+      E.trap_with env "cannot get environment variable names when running locally"
 
   let env_var env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      (* TODO *)
-      Opt.null_lit env
+      Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
+        (* TODO *)
+        Opt.null_lit env
+      )
     | _ ->
       E.trap_with env "cannot get environment variable when running locally"
 
