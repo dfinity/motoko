@@ -706,3 +706,36 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // TODO: Add more tests to cover all possible commands and their error cases.
+
+    #[test]
+    fn test_read_wasm_file() {
+        let wasm_path = PathBuf::from("invalid/wasm/path.wasm");
+        assert_eq!(true, TestCommand::read_wasm_file(&wasm_path).is_err());
+    }
+
+    #[test]
+    fn execute_install_bad_path() {
+        let mut server = PocketIcBuilder::new().with_application_subnet().build();
+        let command = TestCommand::Install {
+            canister_id: "aaaaa-aa".to_string(),
+            wasm_path: PathBuf::from("invalid/wasm/path.wasm"),
+            init_args: "".to_string(),
+        };
+        assert_eq!(true, command.execute(&mut server).is_err());
+    }
+
+    #[test]
+    fn execute_install_drun_string() {
+        let mut server = PocketIcBuilder::new().with_application_subnet().build();
+        let drun_str = "install aaaaa-aa invalid/wasm/path.wasm \"\"";
+        let commands = TestCommands::new(drun_str.to_string()).parse();
+        assert_eq!(true, commands.is_ok());
+        assert_eq!(true, commands.unwrap()[0].execute(&mut server).is_err());
+    }
+}

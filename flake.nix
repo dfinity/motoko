@@ -154,7 +154,60 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
+      # Define test-runner package.
+      test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+        pname = "test-runner";
+        version = "0.1.0";
+        src = ./test-runner;
+        cargoLock = {
+          lockFile = ./test-runner/Cargo.lock;
+        };
+        buildInputs = [
+          pkgs.pocket-ic.server
+        ];
+        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        
+        # Explicitly disable tests for the main package
+        doCheck = false;
+      };
+
+      # Separate derivation for running test-runner's Cargo tests in CI.
+      # TODO: Not run now, will add them later.
+      test-runner-tests = pkgs.rustPlatform-stable.buildRustPackage {
+        pname = "test-runner-tests";
+        version = "0.1.0";
+        src = ./test-runner;
+        cargoLock = {
+          lockFile = ./test-runner/Cargo.lock;
+        };
+        buildInputs = [
+          pkgs.pocket-ic.server
+          pkgs.cacert
+        ];
+        nativeBuildInputs = [
+          pkgs.pocket-ic.server
+        ];
+        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        
+        # Skip building, only run tests
+        dontBuild = true;
+        doCheck = true;
+        checkPhase = ''
+          runHook preCheck
+          export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
+          export PATH="${pkgs.pocket-ic.server}/bin:$PATH"
+          cargo test
+          runHook postCheck
+        '';
+        installPhase = ''
+          touch $out
+        '';
+      };
+
+      tests = import ./nix/tests.nix { 
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      };
 
       filterTests = type:
         pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
@@ -201,9 +254,8 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
+        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
-        test-runner = self.packages.${system}.test-runner;
       };
 
       common-constituents = rec {
@@ -220,26 +272,14 @@
         release = buildableReleaseMoPackages;
         debug = buildableDebugMoPackages;
 
-        inherit nix-update tests js;
+        inherit nix-update tests js test-runner test-runner-tests;
 
         inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 
         # Get pocket-ic server.
         pocket-ic-server = pkgs.pocket-ic.server;
 
-        # Define test-runner package.
-        test-runner = pkgs.rustPlatform-stable.buildRustPackage {
-          pname = "test-runner";
-          version = "0.1.0";
-          src = ./test-runner;
-          cargoLock = {
-            lockFile = ./test-runner/Cargo.lock;
-          };
-          buildInputs = [
-            pkgs.pocket-ic.server
-          ];
-          POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-        };
+
 
         # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
