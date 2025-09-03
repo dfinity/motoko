@@ -21,7 +21,7 @@ type avl = Available | Unavailable
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
-type mixin_env = (T.typ * dec_field list) T.Env.t
+type mixin_env = (T.typ * Scope.scope * dec_field list) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
@@ -439,7 +439,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (t, dfs) -> t
+    | Some (t, _, _) -> t
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -3307,8 +3307,8 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | IncludeD _ ->
-    (* TODO *)
-    T.blob
+    (* TODO: should check the arguments here *)
+    T.unit
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
@@ -3389,9 +3389,9 @@ and infer_dec env dec : T.typ =
     let t_pat, ve = infer_pat_exhaustive error env args in
     let env' = adjoin_vals env ve in
     let obj_sort : obj_sort = { it = T.Actor ; at = no_region; note = { it = true; at = no_region; note = () } }  in
-    let t' = infer_obj { env' with check_unused = true } obj_sort None dec_fields dec.at in
+    let t' = infer_obj { env' with check_unused = false } obj_sort None dec_fields dec.at in
     Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t');
-    T.unit
+    T.normalize t'
   | TypD _ ->
     T.unit
   in
@@ -3575,10 +3575,13 @@ and infer_block_typdecs env decs : Scope.t =
 
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
-  | MixinD _
-  | IncludeD _ ->
-    (* TODO *)
-    Scope.empty
+  | MixinD _ -> Scope.empty
+  | IncludeD (_, _, n) ->
+    (match Seq.uncons (T.Env.to_seq env.mixins) with
+    | Some ((_name, (t, scope, decs)), _) ->
+      n := Some(decs);
+      scope
+    | None -> error env dec.at "M01239" "No Mixin found")
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3671,10 +3674,7 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | IncludeD(id, _, n) ->
-    let ds = ref [] in
-    T.Env.iter (fun p (t, decs) -> ds := decs) env.mixins;
-    n := Some(!ds);
+  | IncludeD _ ->
     Scope.empty
   | ExpD _ ->
     Scope.empty
@@ -3812,7 +3812,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
+          let typ, scope = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {empty_typ_note with note_typ = typ};
           let imp_scope = match cub.it with
@@ -3849,7 +3849,8 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
               (* TODO: typ is prob wrong here *)
-              Scope.mixin lib.note.filename (typ, decs)
+              Printf.printf "typ: %s\nscope: %d" (T.string_of_typ typ) (T.Env.cardinal scope.val_env)
+              Scope.mixin lib.note.filename (typ, scope, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
