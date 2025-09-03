@@ -711,7 +711,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    // TODO: Add more tests.
+    // TODO: Add more tests to cover all possible commands and their error cases.
 
     #[test]
     fn test_read_wasm_file() {
