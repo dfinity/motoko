@@ -248,7 +248,6 @@ impl TestCommand {
     }
 
     fn read_wasm_file(wasm_path: &PathBuf) -> Result<Vec<u8>, std::io::Error> {
-        println!("Reading wasm file: {}", wasm_path.display());
         std::fs::read(wasm_path).map_err(|e| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,
