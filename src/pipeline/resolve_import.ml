@@ -194,13 +194,6 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | Some bytes -> resolve_ic bytes
     | None -> err_alias_not_defined msgs at alias
     end
-  | Ok (Url.Component (pkg,function_name)) ->
-    begin match M.find_opt pkg packages with
-    | Some pkg_path ->
-      add_lib_import msgs imported ri_ref at
-        { path = in_base pkg_path function_name; package = Some pkg }
-    | None -> err_package_not_defined msgs at pkg
-    end
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
