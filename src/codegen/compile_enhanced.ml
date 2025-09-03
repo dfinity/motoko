@@ -5258,11 +5258,10 @@ module IC = struct
         Arr.alloc env Tagged.M get_len ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
-          Blob.of_size_copy env Tagged.A
+          Blob.of_size_copy env Tagged.T
             (fun env -> system_call env "env_var_name_size")
             (fun env -> system_call env "env_var_name_copy")
-            (fun env -> compile_unboxed_const 0L) ^^
-          Text.of_blob env (* ??? *)
+            (fun env -> compile_unboxed_const 0L)
         ) ^^
         get_x ^^
         Tagged.allocation_barrier env
