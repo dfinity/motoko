@@ -1688,7 +1688,7 @@ let string_of_obj_sort = function
 
 let string_of_func_sort = function
   | Local Flexible -> ""
-  | Local Stable -> "stable "
+  | Local Stable -> "persistent "
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)

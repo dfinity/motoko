@@ -15,7 +15,7 @@ module Make (Cfg : Config) = struct
 
   let func_sort = function
     | Local Flexible -> "Local"
-    | Local Stable -> "Local Stable"
+    | Local Stable -> "Local Persistent"
     | Shared Write -> "Shared"
     | Shared Query -> "Shared Query"
     | Shared Composite -> "Shared Composite"
