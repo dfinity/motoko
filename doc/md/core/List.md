@@ -285,18 +285,19 @@ Amortized Space: `O(1)`, Worst Case Space: `O(sqrt(n))`
 
 ## Function `get`
 ``` motoko no-repl
-func get<T>(list : List<T>, index : Nat) : T
+func get<T>(list : List<T>, index : Nat) : ?T
 ```
 
-Returns the element at index `index`. Indexing is zero-based.
-Traps if `index >= size`, error message may not be descriptive.
+Returns the element at index `index` as an option.
+Returns `null` when `index >= size`. Indexing is zero-based.
 
 Example:
 ```motoko include=import
 let list = List.empty<Nat>();
 List.add(list, 10);
 List.add(list, 11);
-assert List.get(list, 0) == 10;
+assert List.get(list, 0) == ?10;
+assert List.get(list, 2) == null;
 ```
 
 Runtime: `O(1)`
@@ -317,27 +318,6 @@ List.add(list, 11);
 assert List.at(list, 0) == 10;
 assert List.at(list, 1) == 11;
 // List.at(list, 2); // would trap
-```
-
-Runtime: `O(1)`
-
-Space: `O(1)`
-
-## Function `getOpt`
-``` motoko no-repl
-func getOpt<T>(list : List<T>, index : Nat) : ?T
-```
-
-Returns the element at index `index` as an option.
-Returns `null` when `index >= size`. Indexing is zero-based.
-
-Example:
-```motoko include=import
-let list = List.empty<Nat>();
-List.add(list, 10);
-List.add(list, 11);
-assert List.getOpt(list, 0) == ?10;
-assert List.getOpt(list, 2) == null;
 ```
 
 Runtime: `O(1)`
