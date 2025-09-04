@@ -6,7 +6,7 @@ persistent actor {
   persistent func stableFunction4() {};
   persistent func stableFunction5() {};
   persistent func stableFunction6() : Nat { 1 };
-  persistent func stableFunction7() {};
+  persistent func _stableFunction7() {};
   persistent func stableFunction8() {};
   persistent func stableFunction9() {};
   persistent func stableFunction10() : Nat { 2 };
@@ -18,15 +18,15 @@ persistent actor {
     #second : (Nat, persistent () -> (), persistent () -> Nat);
   };
 
-  var stableVariant1 : StableVariant = #first(stableFunction1);
-  let stableVariant2 : StableVariant = #second(0, stableFunction2, stableFunction3);
-  var stableVariant3 = #first(stableFunction4);
-  let stableVariant4 = #second(0, stableFunction5, stableFunction6);
-  let stableTuple = (0, stableFunction3, 1.23);
-  let stableArray1 = [stableFunction8, stableFunction9];
-  let stableArray2 = [var ?stableFunction10, ?stableFunction11];
-  let stableArray3 : [persistent () -> ()] = [];
-  let mutable1 = {
+  var _stableVariant1 : StableVariant = #first(stableFunction1);
+  let _stableVariant2 : StableVariant = #second(0, stableFunction2, stableFunction3);
+  var _stableVariant3 = #first(stableFunction4);
+  let _stableVariant4 = #second(0, stableFunction5, stableFunction6);
+  let _stableTuple = (0, stableFunction3, 1.23);
+  let _stableArray1 = [stableFunction8, stableFunction9];
+  let _stableArray2 = [var ?stableFunction10, ?stableFunction11];
+  let _stableArray3 : [persistent () -> ()] = [];
+  let _mutable1 = {
     var first = stableFunction12;
   };
 };

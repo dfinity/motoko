@@ -1,30 +1,30 @@
 import Prim "mo:prim";
 
 actor {
-    func invalid1() {
+    persistent func invalid1() {
         Prim.trap("must not be called");
     };
 
-    func invalid2() {
+    persistent func invalid2() {
         Prim.trap("must not be called");
     };
 
-    func invalid3() {
+    persistent func invalid3() {
         Prim.trap("must not be called");
     };
 
-    func stableFunction1() {
+    persistent func stableFunction1() {
         Prim.debugPrint("Stable function 1 upgraded");
     };
 
-    func stableFunction2() {
+    persistent func stableFunction2() {
         Prim.debugPrint("Stable function 2 upgraded");
     };
 
     type FullObject = {
-        function1 : stable () -> ();
-        function2 : stable () -> ();
-        function3 : stable () -> ();
+        function1 : persistent () -> ();
+        function2 : persistent () -> ();
+        function3 : persistent () -> ();
     };
 
     func invalid() : FullObject {
@@ -41,11 +41,11 @@ actor {
     stable let partialView1 : Any = invalid();
 
     stable let partialView2 : {
-        function1 : stable () -> ();
+        function1 : persistent () -> ();
     } = invalid();
 
     stable let partialView3 : {
-        function2 : stable () -> ();
+        function2 : persistent () -> ();
     } = invalid();
 
     partialView2.function1();

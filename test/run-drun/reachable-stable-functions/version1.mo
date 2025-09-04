@@ -5,7 +5,7 @@ actor {
 
   func stableActorFunction3() {};
 
-  class StableClass<X>(functionParameter : stable () -> ()) {
+  persistent class StableClass<X>(functionParameter : persistent () -> ()) {
     var x: ?X = null;
 
     public func set(newX: X) {
@@ -17,7 +17,7 @@ actor {
     };
   };
 
-  stable let stableObject = StableClass<stable () -> ()>(stableActorFunction1);
+  stable let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
   stableObject.set(stableActorFunction2);
   stable let stableFunction = stableActorFunction3;
 
@@ -27,7 +27,7 @@ actor {
 
   func flexibleActorFunction3() {};
 
-  class FlexibleClass<X>(functionParameter : stable () -> ()) {
+  persistent class FlexibleClass<X>(functionParameter : persistent () -> ()) {
     var x: ?X = null;
 
     public func set(newX: X) {
@@ -39,7 +39,7 @@ actor {
     public func stableMethod() {};
   };
 
-  let flexibleObject = FlexibleClass<stable () -> ()>(flexibleActorFunction1);
+  let flexibleObject = FlexibleClass<persistent () -> ()>(flexibleActorFunction1);
   flexibleObject.set(flexibleActorFunction2);
   let flexibleFunction = flexibleActorFunction3;
 };

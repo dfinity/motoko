@@ -2,8 +2,8 @@
 import Prim "mo:prim";
 
 persistent actor {
-    type Equality<T> = stable (first : T, second : T) -> Bool;
-    type Hash<T> = stable (value : T) -> Nat;
+    type Equality<T> = persistent (first : T, second : T) -> Bool;
+    type Hash<T> = persistent (value : T) -> Nat;
 
     // a stable type
     class SimpleHashMap<K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) {
@@ -48,8 +48,8 @@ persistent actor {
 
     // a flexible type
     type Super = <K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) ->
-    { put : stable (K, V) -> ();
-      get : stable K -> ?V
+    { put : persistent (K, V) -> ();
+      get : persistent K -> ?V
     };
 
     // Not allowed, incompatible type parameter stability

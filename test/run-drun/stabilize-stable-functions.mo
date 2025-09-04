@@ -12,8 +12,8 @@ actor {
     "initial " # debug_show (x);
   };
 
-  stable var print : stable () -> () = initialPrint;
-  stable var map : stable Nat -> Text = initialMap;
+  stable var print : persistent () -> () = initialPrint;
+  stable var map : persistent Nat -> Text = initialMap;
 
   func newPrint() {
     Prim.debugPrint("New function");

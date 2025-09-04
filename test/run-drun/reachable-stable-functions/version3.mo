@@ -1,11 +1,11 @@
 actor {
-  func stableActorFunction1() {};
+  persistent func stableActorFunction1() {};
 
   // drop stableActorFunction2()
 
-  func stableActorFunction3() {};
+  persistent func stableActorFunction3() {};
 
-  class StableClass<X>(functionParameter : stable () -> ()) {
+  persistent class StableClass<X>(functionParameter : persistent () -> ()) {
     var x: ?X = null;
 
     public func set(newX: X) {
@@ -17,7 +17,7 @@ actor {
     };
   };
 
-  stable let stableObject = StableClass<stable () -> ()>(stableActorFunction1);
+  stable let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
   stableObject.set(stableActorFunction1);
   stable let stableFunction = stableActorFunction3;
 };

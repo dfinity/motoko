@@ -11,8 +11,8 @@ persistent actor {
 
     // a flexible type
     type Super = <T>(v : T) ->
-    { put : stable T -> ();
-      get : stable ()-> T
+    { put : persistent T -> ();
+      get : persistent ()-> T
     };
 
     // rejected due generic type parameter invariance

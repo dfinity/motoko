@@ -6,7 +6,7 @@ module {
         Prim.debugPrint("MODULE 2");
     };
 
-    public func getShared() : stable () -> () {
+    public func getShared() : persistent () -> () {
         Shared.testFunc;
     };
 };

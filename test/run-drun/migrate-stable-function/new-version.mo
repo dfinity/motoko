@@ -1,13 +1,13 @@
 import Prim "mo:prim";
 
 persistent actor {
-  class Wrapper(delegate : stable () -> ()) {
+  persistent class Wrapper(delegate : persistent () -> ()) {
     public func call() {
       delegate();
     };
   };
 
-  func print() {
+  persistent func print() {
     Prim.debugPrint("Test");
   };
 

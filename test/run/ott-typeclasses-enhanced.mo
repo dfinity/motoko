@@ -11,8 +11,8 @@ func equal<W <: Eq<T>, T>(w:W, t1 : T, t2 : T) : Bool = w.eq(t1, t2);
 type Order = { #LT; #EQ; #GT; };
 
 type Ord<T> = {
-   eq : stable (T,T) -> Bool;
-   cmp: stable (T,T) -> Order;
+   eq : persistent (T,T) -> Bool;
+   cmp: persistent (T,T) -> Order;
 };
 
 func compare<W <: Ord<T>, T>(w : W, t1 : T, t2 : T) : Order = w.cmp(t1,t2);

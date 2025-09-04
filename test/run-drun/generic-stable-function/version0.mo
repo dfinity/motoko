@@ -3,8 +3,8 @@ import Prim "mo:prim";
 actor {
     Prim.debugPrint("Version 0");
 
-    func outer<T>(x : T, op : stable T -> ()) : stable () -> () {
-        func inner() {
+    persistent func outer<T>(x : T, op : persistent T -> ()) : persistent () -> () {
+        persistent func inner() {
             op(x);
         };
         return inner;
@@ -12,7 +12,7 @@ actor {
 
     var global = false;
 
-    func setBool(x : Bool) {
+    persistent func setBool(x : Bool) {
         Prim.debugPrint("Writing bool");
         global := x;
     };

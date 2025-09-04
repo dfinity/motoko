@@ -1690,7 +1690,7 @@ and infer_exp'' env exp : T.typ =
         T.Env.iter (fun id T.{ variable_type; _ } ->
           if not (T.stable variable_type) then
           (error env exp1.at "M0222"
-                "stable function %s closes over non-stable variable %s"
+                "persistent function %s closes over non-stable variable %s"
                 name id)
           ) captured_variables
       | None -> ());
