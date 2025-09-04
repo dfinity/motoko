@@ -301,6 +301,28 @@ assert List.get(list, 0) == 10;
 
 Runtime: `O(1)`
 
+## Function `at`
+``` motoko no-repl
+func at<T>(list : List<T>, index : Nat) : T
+```
+
+Gets the element at `index`. Traps if `index >= size(list)`.
+Indexing is zero-based.
+
+Example:
+```motoko include=import
+let list = List.empty<Nat>();
+List.add(list, 10);
+List.add(list, 11);
+assert List.at(list, 0) == 10;
+assert List.at(list, 1) == 11;
+// List.at(list, 2); // would trap
+```
+
+Runtime: `O(1)`
+
+Space: `O(1)`
+
 ## Function `getOpt`
 ``` motoko no-repl
 func getOpt<T>(list : List<T>, index : Nat) : ?T
