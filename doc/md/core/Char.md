@@ -5,7 +5,7 @@ Characters in Motoko represent Unicode code points
 in the range 0 to 0x10FFFF, excluding the surrogate code points
 (0xD800 through 0xDFFF).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Char "mo:core/Char";
 ```
