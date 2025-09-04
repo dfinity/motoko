@@ -35,7 +35,7 @@ In other languages of orthogonal persistence, pointers are by default persistent
 ### Typing
 
 A stable declaration must have a _stable type_. Stable types are a superset of _shared_ types: specifically, they additionally allow objects or arrays with mutable components.
-Moreover, if enhanced orthogonal persistence is enabled, stable declarations also support [stable functions](StableFunctions.md) and thus stable objects and stable classes.
+Moreover, if enhanced orthogonal persistence is enabled, stable declarations also support [persistent functions](PersistentFunctions.md) and thus persistent objects and persistent classes.
 
 That is, shared entails stable.
 Note that this implies that stable types may contain actors or shared functions, but mutability of course does not extend into those.
