@@ -185,6 +185,7 @@
       "original": {
         "owner": "Mic92",
         "repo": "nix-update",
+        "rev": "09aadb5d6d9e1fc57df0b61def4bdd8b43ea47a1",
         "type": "github"
       }
     },

@@ -43,6 +43,7 @@ jobs:
             ic-wasm-src
             libtommath-src
             motoko-base-src
+            motoko-core-src
             motoko-matchers-src
             ocaml-vlq-src
             wasm-spec-src

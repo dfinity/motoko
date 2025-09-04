@@ -6,7 +6,7 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    nix-update-flake.url = "github:Mic92/nix-update";
+    nix-update-flake.url = "github:Mic92/nix-update/09aadb5d6d9e1fc57df0b61def4bdd8b43ea47a1";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
