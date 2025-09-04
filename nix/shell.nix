@@ -48,7 +48,7 @@ pkgs.mkShell {
         pkgs.moreutils # `chronic` for `make -C test quick`
         pkgs.wabt # `wasm-validate` for `test/run.sh`
         pkgs.openjdk
-        pkgs.z3_4_12 # for viper dev
+        pkgs.z3 # for viper dev
         pkgs.difftastic
         pkgs.pocket-ic.server
         pkgs.gh # GitHub CLI
