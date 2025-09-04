@@ -32,6 +32,7 @@ pub mod bitrel;
 mod blob_iter;
 pub mod buf;
 mod char;
+mod component;
 pub mod constants;
 pub mod continuation_table;
 #[cfg(feature = "ic")]
