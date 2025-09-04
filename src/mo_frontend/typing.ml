@@ -3238,7 +3238,7 @@ and infer_dec env dec : T.typ =
     T.unit
   | ClassD (exp_opt, shared_pat, obj_sort, id, typ_binds, pat, typ_opt, self_id, dec_fields, closure) ->
     let (t, _, _, _, _) = T.Env.find id.it env.vals in
-    let stable_scope = env.named_scope <> None in
+    let stable_scope = env.named_scope <> None && shared_pat.it = T.Local T.Stable in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let _typ_opt = infer_migration env obj_sort exp_opt in
@@ -3516,7 +3516,7 @@ and infer_dec_typdecs env dec : Scope.t =
      (*TODO exp_opt *)
     let c = T.Env.find id.it env.typs in
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
-    let stable_scope = env.named_scope <> None in
+    let stable_scope = env.named_scope <> None && shared_pat.it = T.Local T.Stable in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} stable_scope binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat true env' pat in
@@ -3605,7 +3605,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-  | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _, _) ->
+  | ClassD (_exp_opt, shared_pat, obj_sort, id, typ_binds, pat, _, _, _, _) ->
     shadow_parameter env id.it;
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
@@ -3616,7 +3616,7 @@ and infer_dec_valdecs env dec : Scope.t =
         local_error env dec.at "M0140"
           "actor classes with type parameters are not supported yet";
     end;
-    let stable_scope = env.named_scope <> None in
+    let stable_scope = env.named_scope <> None && shared_pat.it = T.Local T.Stable in
     let cs, tbs, te, ce = check_typ_binds env stable_scope typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
