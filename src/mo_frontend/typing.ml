@@ -1690,7 +1690,7 @@ and infer_exp'' env exp : T.typ =
         T.Env.iter (fun id T.{ variable_type; _ } ->
           if not (T.stable variable_type) then
           (error env exp1.at "M0222"
-                "persistent function %s closes over non-stable variable %s"
+                "persistent function %s closes over non-persistent variable %s"
                 name id)
           ) captured_variables
       | None -> ());
@@ -3129,7 +3129,7 @@ and check_stab env sort scope dec_fields =
       else
         if not !Mo_config.Flags.enhanced_orthogonal_persistence && not (T.old_stable t1) then
           local_error env at "M0221"
-            "Stable functions are only supported with enhanced orthogonal persistence"
+            "Persistent functions are only supported with enhanced orthogonal persistence"
   in
   let idss = List.map (fun df ->
     match sort.it, df.it.stab, df.it.dec.it with
