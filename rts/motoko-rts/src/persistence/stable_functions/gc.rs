@@ -39,7 +39,7 @@ impl FunctionGC {
         }
     }
 
-    unsafe fn run<M: Memory>(&mut self, mem: &mut M) {
+    unsafe fn run(&mut self) {
         self.clear_mark_bits();
         loop {
             match self.mark_stack.pop() {
@@ -49,7 +49,7 @@ impl FunctionGC {
                     if object.tag() == TAG_SOME {
                         // skip null boxes, not visited
                     } else if object.tag() == TAG_CLOSURE {
-                        self.visit_stable_closure(mem, object);
+                        self.visit_stable_closure(object);
                     } else {
                         // Specialized field visitor, as optimization.
                         moc_visit_stable_functions(object, type_id);
@@ -59,13 +59,13 @@ impl FunctionGC {
         }
     }
 
-    unsafe fn visit_stable_closure<M: Memory>(&mut self, mem: &mut M, object: Value) {
+    unsafe fn visit_stable_closure(&mut self, object: Value) {
         let closure = object.as_closure();
         let function_id = (*closure).funid;
         assert!(!is_flexible_function_id(function_id));
         self.mark_function(function_id);
         let closure_type_id = self.get_closure_type_id(function_id);
-        stable_functions_gc_visit(mem, object, closure_type_id);
+        moc_visit_stable_functions(object, closure_type_id);
     }
 
     unsafe fn get_function_entry(&mut self, function_id: FunctionId) -> *mut VirtualTableEntry {
@@ -103,7 +103,7 @@ pub unsafe fn garbage_collect_functions<M: Memory>(
     COLLECTOR_STATE = Some(FunctionGC::new(mem, virtual_table));
     const ACTOR_TYPE_ID: u64 = 0;
     stable_functions_gc_visit(mem, old_actor, ACTOR_TYPE_ID);
-    COLLECTOR_STATE.as_mut().unwrap().run(mem);
+    COLLECTOR_STATE.as_mut().unwrap().run();
     COLLECTOR_STATE = None;
 }
 
