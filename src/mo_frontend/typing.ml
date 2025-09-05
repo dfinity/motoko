@@ -3258,7 +3258,7 @@ and infer_dec env dec : T.typ =
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let async_cap, _, class_cs = infer_class_cap env obj_sort.it tbs cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
-      let named_scope = enter_named_scope env id.it in
+      let named_scope = if stable_scope then enter_named_scope env id.it else None in
       let env''' =
         { (add_val env'' self_id self_typ) with
           level = Nested;
@@ -3629,7 +3629,7 @@ and infer_dec_valdecs env dec : Scope.t =
         T.Async (T.Fut, T.Con (List.hd cs, []), obj_typ)
       else obj_typ
     in
-    let mode = if T.stable t1 && obj_sort.it = T.Object then T.Stable else T.Flexible in
+    let mode = if T.stable t1 && obj_sort.it = T.Object && stable_scope then T.Stable else T.Flexible in
     let t = T.Func (T.Local mode, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
       [T.close cs t2])
