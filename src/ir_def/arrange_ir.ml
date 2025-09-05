@@ -126,6 +126,8 @@ and prim = function
   | ICReplyDeadlinePrim  -> Atom "ICReplyDeadlinePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
+  | BeginMigration    -> Atom "BeginMigration"
+  | EndMigration      -> Atom "EndMigration"
 
 and mut = function
   | Const -> Atom "Const"

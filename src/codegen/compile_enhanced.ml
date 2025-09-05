@@ -1318,6 +1318,7 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
     E.add_func_import env "rts" "save_name_table" [I64Type] [];
+    E.add_func_import env "rts" "set_in_migration" [I32Type] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -13054,7 +13055,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableWrite _ty, [] ->
     SR.unit,
     Persistence.save env
-
+  | BeginMigration, [] ->
+    SR.unit,
+    Bool.lit_rts_int32 true ^^
+    E.call_import env "rts" "set_in_migration"
+  | EndMigration, [] ->
+    SR.unit,
+    Bool.lit_rts_int32 false ^^
+    E.call_import env "rts" "set_in_migration"
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
     SR.Vanilla, Cycles.balance env

@@ -682,6 +682,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableWrite";
       T.unit <: t
+    | BeginMigration, []
+    | EndMigration, [] ->
+      T.unit <: t
     | NumConvWrapPrim (p1, p2), [e] ->
       (* we should check if this conversion is supported *)
       typ e <: T.Prim p1;
