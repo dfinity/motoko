@@ -10,11 +10,15 @@ actor {
         return inner;
     };
 
-    var global = "";
+    transient var global = "";
 
     stable func setBool(x : Bool) {
         Prim.debugPrint("Calling setBool");
     };
+
+    // create function reference to retain
+    let _ignore = setBool;
+
     func setText(x : Text) {
         Prim.debugPrint("Writing text");
         global := x;

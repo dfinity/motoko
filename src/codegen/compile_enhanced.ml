@@ -9026,7 +9026,17 @@ module StableFunctionGC = struct
           | Obj ((Object | Memory), field_list) ->
             let relevant_fields = List.filter (fun field -> must_visit field.typ) field_list in
             G.concat_map (fun field ->
-              get_object ^^ Object.idx env typ field.lab ^^
+              get_object ^^ Tagged.load_tag env ^^
+              compile_eq_const (Tagged.int_of_tag Tagged.Closure) ^^
+              E.if1 I64Type (
+                get_object ^^ Closure.captured_address env field.lab
+              )
+              (
+                get_object ^^ Tagged.load_tag env ^^
+                compile_eq_const (Tagged.int_of_tag Tagged.Object) ^^
+                E.else_trap_with env "Stable function GC: Invalid object tag" ^^
+                get_object ^^ Object.idx env typ field.lab
+              ) ^^
               Heap.load_field 0L ^^ (* dereference field *)
               visit_field field.typ
               ) relevant_fields

@@ -10,7 +10,7 @@ actor {
         return inner;
     };
 
-    var global = false;
+    transient var global = false;
 
     func setBool(x : Bool) {
         Prim.debugPrint("Writing bool");

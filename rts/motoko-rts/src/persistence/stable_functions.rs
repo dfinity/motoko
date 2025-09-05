@@ -280,7 +280,9 @@ pub unsafe fn resolve_function_call(function_id: FunctionId) -> WasmTableIndex {
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(resolve_stable_function_id(function_id));
-    (*table_entry).wasm_table_index
+    let wasm_table_index = (*table_entry).wasm_table_index;
+    debug_assert_ne!(wasm_table_index, usize::MAX);
+    wasm_table_index
 }
 
 /// Indexed by Wasm table index.
