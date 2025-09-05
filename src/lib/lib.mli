@@ -111,6 +111,11 @@ sig
   val lazy_value : 'a t -> (unit -> 'a) -> 'a
 end
 
+module Debug :
+sig
+  val eprint_prefixed_callstack : ?prefix:string -> ?depth:int -> unit -> unit
+end
+
 module AllocOnUse :
 sig
   type ('a, 'b) t
