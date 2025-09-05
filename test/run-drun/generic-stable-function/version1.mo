@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-actor {
+persistent actor {
     Prim.debugPrint("Version 1");
 
     persistent func outer<T>(x : T, op : persistent T -> ()) : persistent () -> () {
@@ -20,7 +20,7 @@ actor {
         global := x;
     };
 
-    stable let stableFunction = outer<Text>("Hello", setText);
+    let stableFunction = outer<Text>("Hello", setText);
 
     Prim.debugPrint("Before: " # debug_show (global));
     stableFunction(); // stays with old `X = Bool` and calls the old `setBool`.

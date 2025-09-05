@@ -6,7 +6,7 @@ persistent actor {
     type Hash<T> = persistent (value : T) -> Nat;
 
     // a stable type
-    class SimpleHashMap<K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) {
+    persistent class SimpleHashMap<K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) {
         private let table = Prim.Array_init<?(K, V)>(capacity, null);
 
         public func put(key : K, value : V) {
@@ -38,11 +38,11 @@ persistent actor {
         };
     };
 
-    func natEqual(first : Nat, second : Nat) : Bool {
+    persistent func natEqual(first : Nat, second : Nat) : Bool {
         first == second;
     };
 
-    func natHash(number : Nat) : Nat {
+    persistent func natHash(number : Nat) : Nat {
         number;
     };
 

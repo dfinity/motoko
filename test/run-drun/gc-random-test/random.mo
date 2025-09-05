@@ -1,5 +1,5 @@
 module {
-    public class Random(seed : Nat) {
+    public persistent class Random(seed : Nat) {
         var number = seed;
 
         public func next() : Nat {

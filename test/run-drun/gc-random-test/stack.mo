@@ -2,7 +2,7 @@ import Prim "mo:prim";
 import Buffer "buffer";
 
 module {
-    public class Stack<T>() {
+    public persistent class Stack<T>() {
         let buffer = Buffer.Buffer<T>(0);
 
         public func isEmpty() : Bool {

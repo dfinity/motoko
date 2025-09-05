@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
 module {
-    public func testFunc() {
+    public persistent func testFunc() {
         Prim.debugPrint("SHARED MODULE");
     }
 }

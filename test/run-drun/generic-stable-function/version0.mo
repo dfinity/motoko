@@ -1,6 +1,6 @@
 import Prim "mo:prim";
 
-actor {
+persistent actor {
     Prim.debugPrint("Version 0");
 
     persistent func outer<T>(x : T, op : persistent T -> ()) : persistent () -> () {
@@ -17,7 +17,7 @@ actor {
         global := x;
     };
 
-    stable let stableFunction = outer<Bool>(true, setBool);
+    let stableFunction = outer<Bool>(true, setBool);
 
     Prim.debugPrint("Before: " # debug_show (global));
     stableFunction();

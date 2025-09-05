@@ -16,7 +16,7 @@ module {
     private let DECREASE_THRESHOLD = 4; // Don't decrease capacity too early to avoid thrashing
     private let DECREASE_FACTOR = 2;
     
-    private func newCapacity(oldCapacity : Nat) : Nat {
+    private persistent func newCapacity(oldCapacity : Nat) : Nat {
         if (oldCapacity == 0) {
             1;
         } else {
@@ -25,7 +25,7 @@ module {
         };
     };
 
-    public class Buffer<X>(initCapacity : Nat) = this {
+    public persistent class Buffer<X>(initCapacity : Nat) = this {
         var _size : Nat = 0; // avoid name clash with `size()` method
         var elements : [var ?X] = Prim.Array_init(initCapacity, null);
 

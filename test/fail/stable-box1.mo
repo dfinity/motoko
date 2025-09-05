@@ -3,7 +3,7 @@ import Prim "mo:prim";
 
 persistent actor {
     // a stable type
-    class Box<T>(v : T) {
+    persistent class Box<T>(v : T) {
         var value = v;
         public func get() : T = v;
         public func put(v : T) = value := v
