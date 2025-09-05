@@ -1,4 +1,4 @@
-actor {
+persistent actor {
   persistent func stableActorFunction1() {};
 
   // drop stableActorFunction2()
@@ -17,7 +17,7 @@ actor {
     };
   };
 
-  stable let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
+  let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
   stableObject.set(stableActorFunction1);
-  stable let stableFunction = stableActorFunction3;
+  let stableFunction = stableActorFunction3;
 };

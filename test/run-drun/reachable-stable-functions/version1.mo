@@ -1,9 +1,9 @@
-actor {
-  func stableActorFunction1() {};
+persistent actor {
+  persistent func stableActorFunction1() {};
 
-  func stableActorFunction2() {};
+  persistent func stableActorFunction2() {};
 
-  func stableActorFunction3() {};
+  persistent func stableActorFunction3() {};
 
   persistent class StableClass<X>(functionParameter : persistent () -> ()) {
     var x: ?X = null;
@@ -17,15 +17,15 @@ actor {
     };
   };
 
-  stable let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
+  let stableObject = StableClass<persistent () -> ()>(stableActorFunction1);
   stableObject.set(stableActorFunction2);
-  stable let stableFunction = stableActorFunction3;
+  let stableFunction = stableActorFunction3;
 
-  func flexibleActorFunction1() {};
+  persistent func flexibleActorFunction1() {};
 
-  func flexibleActorFunction2() {};
+  persistent func flexibleActorFunction2() {};
 
-  func flexibleActorFunction3() {};
+  persistent func flexibleActorFunction3() {};
 
   persistent class FlexibleClass<X>(functionParameter : persistent () -> ()) {
     var x: ?X = null;
@@ -39,7 +39,7 @@ actor {
     public func stableMethod() {};
   };
 
-  let flexibleObject = FlexibleClass<persistent () -> ()>(flexibleActorFunction1);
+  transient let flexibleObject = FlexibleClass<persistent () -> ()>(flexibleActorFunction1);
   flexibleObject.set(flexibleActorFunction2);
-  let flexibleFunction = flexibleActorFunction3;
+  transient let flexibleFunction = flexibleActorFunction3;
 };

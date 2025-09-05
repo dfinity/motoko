@@ -1,6 +1,6 @@
 import Test "test-class1";
 
-actor {
-  stable var instance = Test.TestClass();
+persistent actor {
+  var instance = Test.TestClass();
   instance.print();
 };

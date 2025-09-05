@@ -1,16 +1,16 @@
 import Prim "mo:prim";
 
-actor {
-    func requiredFunction() {
+persistent actor {
+    persistent func requiredFunction() {
         Prim.debugPrint("REQUIRED FUNCTION");
     };
 
-    func optionalFunction() {
+    persistent func optionalFunction() {
         Prim.debugPrint("OPTIONAL FUNCTION");
     };
 
-    stable let required = requiredFunction;
-    stable let optional = optionalFunction;
+    let required = requiredFunction;
+    let optional = optionalFunction;
     required();
     optional();
 }
