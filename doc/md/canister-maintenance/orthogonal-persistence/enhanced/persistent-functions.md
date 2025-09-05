@@ -78,6 +78,8 @@ This restriction does not apply to immutable variables (`let`) and actor variabl
 
 Generic type parameters of persistent functions and persistent classes are bounded to stable types.
 
+To avoid use-before-define errors, persistent functions cannot be called during migration.
+
 ## Persistent Function Types
 
 A persistent function type is also a stable type. Thus, a persistent function has a stable type.
@@ -113,7 +115,7 @@ Specific aspects apply to generic types used in a persistent closure:
 * Generic types used for captured variables must match the previous declaration order (e.g. one cannot swap generic types).
 * The generic type bounds must remain compatible.
 
-## Controller Only: Force Upgrade
+## Force Upgrade (Controller Only)
 
 Persistent function garbage collection can be skipped on upgrade, in the case the persistent types involve deeply nested persistent functions that require long garbage collection.
 
