@@ -112,3 +112,13 @@ On a persistent function upgrade, the closure type of the persistent function mu
 Specific aspects apply to generic types used in a persistent closure:
 * Generic types used for captured variables must match the previous declaration order (e.g. one cannot swap generic types).
 * The generic type bounds must remain compatible.
+
+## Controller Only: Force Upgrade
+
+Persistent function garbage collection can be skipped on upgrade, in the case the persistent types involve deeply nested persistent functions that require long garbage collection.
+
+For this purpose, the function `__motoko_force_upgrade` can be called before the actual upgrade (EOP or graph copy).
+
+```dfx canister call <canister_id> __motoko_force_upgrade "()"
+
+This admin function can only be called by the controller of the canister or the canister itself.

@@ -1319,6 +1319,7 @@ module RTS = struct
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
     E.add_func_import env "rts" "save_name_table" [I64Type] [];
     E.add_func_import env "rts" "set_in_migration" [I32Type] [];
+    E.add_func_import env "rts" "skip_persistent_function_gc" [] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     ()
 
@@ -5383,6 +5384,7 @@ module IC = struct
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
   let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
+  let force_upgrade_method_name = Type.(motoko_force_upgrade_fld.lab)
 
   let is_self_call env =
     let (set_len_self, get_len_self) = new_local env "len_self" in
@@ -10312,6 +10314,28 @@ module FuncDec = struct
     | _ -> ()
     end
 
+  let export_force_upgrade env =
+    let name = IC.force_upgrade_method_name in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        (* Check that we are called from this or a controller *)
+        IC.assert_caller_self_or_controller env ^^
+        E.call_import env "rts" "skip_persistent_function_gc" ^^
+        (* Ignore the argument and send nullary reply *)
+        IC.static_nullary_reply env ^^
+        message_cleanup env (Type.Shared Type.Write)
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+
   let export_gc_trigger_method env =
     let name = IC.gc_trigger_method_name in
     begin match E.mode env with
@@ -14019,6 +14043,7 @@ and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serializat
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
+  FuncDec.export_force_upgrade env;
   FuncDec.export_stabilization_limits env;
 
   (* See Note [Candid subtype checks] *)

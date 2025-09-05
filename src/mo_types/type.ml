@@ -1565,6 +1565,12 @@ let motoko_gc_trigger_fld =
     src = empty_src;
   }
 
+let motoko_force_upgrade_fld =
+  { lab = "__motoko_force_upgrade";
+    typ = Func(Shared Write, Promises, [scope_bind], [], []);
+    src = empty_src;
+  }
+
 let motoko_runtime_information_type =
   Obj(Object, [
     (* Fields must be sorted by label *)
@@ -1595,6 +1601,7 @@ let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
     motoko_gc_trigger_fld;
+    motoko_force_upgrade_fld;
   ]
 
 let decode_msg_typ tfs =

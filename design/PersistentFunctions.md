@@ -154,3 +154,13 @@ The runtime systems relies on a dedicated garbage collector of persistent functi
 Garbage collection is necessary to allow programs to use persistent classes and persistent functions in only transient contexts or not even using imported persistent classes or functions. Moreover, it allows programs to drop persistent functions and classes, if they are no longer used for persistence.
 
 The runtime system reports the fully qualified name of missing persistent functions (not only the internal name hash).
+
+## Force Upgrade (Controller Only)
+
+Persistent function garbage collection can be skipped on upgrade, in the case the persistent types involve deeply nested persistent functions that require long garbage collection.
+
+For this purpose, the function `__motoko_force_upgrade` can be called before the actual upgrade (EOP or graph copy).
+
+```dfx canister call <canister_id> __motoko_force_upgrade "()"
+
+This admin function can only be called by the controller of the canister or the canister itself.
