@@ -644,7 +644,9 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
                          (T.as_immut t)))
                   dom_fields)
                 dom_fields);
-            letD v_rng (callE e [] (varE v_dom))
+            expD (primE I.BeginMigration []);
+            letD v_rng (callE e [] (varE v_dom));
+            expD (primE I.EndMigration []);
           ]
           (objectE T.Memory
             (List.map

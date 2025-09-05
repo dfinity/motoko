@@ -12354,6 +12354,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_actor_to_persist env ^^
     Stabilization.stabilize env ty
 
+  | BeginMigration, []
+  | EndMigration, [] ->
+    SR.unit, G.nop
+
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
     SR.Vanilla, Cycles.balance env

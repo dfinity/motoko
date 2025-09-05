@@ -1,39 +1,34 @@
 //! Support for stable functions during persistence.
 //!
-//! A stable function is a named non-async local function in a stable scope,
-//! only closing over variables of a stable type.
+//! A persistent function is a function that is declared `persistent` and occurs in a persistent scope.
 //!
-//! A stable scope is:
+//! A persistent scope is:
 //! * the main actor,
 //! * an actor class,
-//! * a module imported with a unique identifier from a stable scope,
-//! * a named non-async function in a stable scope,
-//! * a class in a stable scope, or,
-//! * a named object in a stable scope.
-//!
-//! A stable function is also a stable type.
-//!
-//! Syntactically, function types are prefixed by `stable` to denote a stable function, e.g.
-//! `stable X -> Y`. Stable functions implicitly have a corresponding stable reference type.
-//!
-//! Stable functions are upgraded as follows:
-//! * All stable functions that are reachable from stable variables are considered alive.
-//! * Each alive stable function must have a matching declaration in the new program version.
-//! * Stable functions match between program versions if they have an equal fully qualified name.
+//! * a module imported with a unique identifier from a persistent scope,
+//! * a `persistent` function in a persistent scope,
+//! * a `persistent` class in a persistent persistent scope, 
+//! * a method in a `persistent` class in a persistent scope, or,
+//! * a named object in a persistent scope.
+//! 
+//! Persistent functions are upgraded as follows:
+//! * All persistent functions that are reachable from persistent actor variables are considered alive.
+//! * Each alive persistent function must have a matching declaration in the new program version.
+//! * Persistent functions match between program versions if they have an equal fully qualified name.
 //! * For matching functions, the function type of the new version must be compatible to the previous version (super-type).
 //! * For matching functions, the closure type in the new version must be compatible with the previous version (super-type).
 //!
-//! Stable closures compatibility is determined as followed:
+//! Persistent closures compatibility is determined as followed:
 //! * Captured parameters are identified by position (also considering nested functions).
 //! * Captured locals are identified by identifier (possibly applying shadowing).
-//! * The new stable closure can drop captured parameters or locals, but not introduce new ones.
+//! * The new persistent closure can drop captured parameters or locals, but not introduce new ones.
 //! * The types of the captured parameters/locals must match, i.e. new version is a super-type.
 //!
 //! All other functions, such as lambdas, named functions in a lambda, async functions, or functions
-//! imported from a module without a unique import identifier, are flexible functions.
+//! imported from a module without a unique import identifier, are transient functions.
 //!
-//! A stable function type is a sub-type of a flexible function type with
-//! type-compatible signature, i.e. `stable X' -> Y <: X -> Y'` for `X' <: X` and `Y' :< Y`.
+//! A persistent function type is a sub-type of a transient function type with
+//! type-compatible signature, i.e. `persistent X' -> Y <: X -> Y'` for `X' <: X` and `Y' :< Y`.
 //!
 //! Function references are encoded by a function ids in the following representation:
 //! * Stable function id, encoded as non-negative number:
@@ -99,6 +94,8 @@
 //! Garbage collection is necessary to allow programs to use classes and stable functions in only
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
+//! 
+//! To avoid use-before-define errors, persistent functions cannot be called during migration.
 
 pub mod gc;
 
@@ -271,11 +268,21 @@ pub struct VirtualTableEntry {
     marked: bool,    // set by stable function GC
 }
 
+static mut IN_MIGRATION: bool = false;
+
+#[no_mangle]
+pub unsafe fn set_in_migration(active: bool) {
+    IN_MIGRATION = active;
+}
+
 /// Determine the Wasm table index for a function call (stable or flexible function).
 #[no_mangle]
 pub unsafe fn resolve_function_call(function_id: FunctionId) -> WasmTableIndex {
     if is_flexible_function_id(function_id) {
         return resolve_flexible_function_id(function_id);
+    }
+    if IN_MIGRATION {
+        rts_trap_with("Persistent functions cannot be called during migration");
     }
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
