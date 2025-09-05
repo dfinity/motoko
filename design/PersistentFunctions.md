@@ -67,7 +67,7 @@ A persistent scope is:
 
 ## Restrictions
 
-Persistent functions have to be named, local, and non-async.
+Persistent functions anc classes cannot be anonymous.
 
 Persistent functions capture only local variables of surrounding functions/classes/objects (closure) if they are of a stable type.
 This restriction does not apply to immutable variables (`let`) and actor variables.
@@ -108,7 +108,7 @@ On a persistent function upgrade, the closure type of the persistent function mu
 Specific aspects apply to generic types used in a persistent closure:
 * Generic types used for captured variables must match the previous declaration order (e.g. one cannot swap generic types).
 * The generic type bounds must remain compatible.
-* However, generic types do not need to be reified, see the reasoning in [generics in stabe closures](GenericsInPersistentClosure.md).
+* However, generic types do not need to be reified, see the reasoning in [generics in persistent closures](GenericsInPersistentClosure.md).
 
 ## Runtime System Design
 
