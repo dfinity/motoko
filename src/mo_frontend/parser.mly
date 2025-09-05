@@ -535,7 +535,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
-    { let t = funcT(Type.Local Type.Stable @@ no_region, tps, t1, t2)
+    { let t = funcT(Type.Local Type.Flexible @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       ValF (x, t, Const @@ no_region) @@ at $sloc }
 
