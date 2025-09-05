@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID force_upgrade/version1.mo ""
+ingress $ID __motoko_force_upgrade "DIDL\x00\x00"
+upgrade $ID force_upgrade/version2.mo ""

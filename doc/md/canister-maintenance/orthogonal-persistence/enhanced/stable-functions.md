@@ -94,3 +94,13 @@ A stable function compatibility check is performed by the runtime system on upgr
 * The closure compatibility is additionally checked for each mapped stable function. This covers all captured variables of the stable function. This check is supported by the information of the persistent virtual table and the stable function map.
 
 Flexible function references are represented as negative function ids determining the Wasm table index, specifically `-wasm_table_index - 1`.
+
+## Force Upgrade (Controller Only)
+
+Stable function garbage collection can be skipped on upgrade, in the case the stable types involve deeply nested stable functions that require long garbage collection.
+
+For this purpose, the function `__motoko_force_upgrade` can be called before the actual upgrade (EOP or graph copy).
+
+```dfx canister call <canister_id> __motoko_force_upgrade "()"
+
+This admin function can only be called by the controller of the canister or the canister itself.

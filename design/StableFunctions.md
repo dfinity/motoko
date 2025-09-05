@@ -63,6 +63,8 @@ Stable functions are upgraded as follows:
 
 All other functions, such as lambdas, named functions in a lambda, async functions, or functions imported from a module without a unique import identifier, are flexible functions.
 
+To avoid use-before-define errors, persistent functions cannot be called during migration.
+
 ## Stable Closures
 
 The closures of stable functions are represented in a portable format with the following clearly defined binding of captured variables:
@@ -124,3 +126,13 @@ The runtime systems relies on a dedicated garbage collector of stable functions:
 Garbage collection is necessary to allow programs to use classes and stable functions in only flexible contexts or not even using imported classes or stable functions. Moreover, it allows programs to drop stable functions and classes, if they are no longer used for persistence.
 
 The runtime system reports the fully qualified name of missing stable functions (not only the internal name hash).
+
+## Force Upgrade (Controller Only)
+
+Stable function garbage collection can be skipped on upgrade, in the case the stable types involve deeply nested stable functions that require long garbage collection.
+
+For this purpose, the function `__motoko_force_upgrade` can be called before the actual upgrade (EOP or graph copy).
+
+```dfx canister call <canister_id> __motoko_force_upgrade "()"
+
+This admin function can only be called by the controller of the canister or the canister itself.

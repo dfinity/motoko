@@ -93,12 +93,30 @@ impl FunctionGC {
 
 static mut COLLECTOR_STATE: Option<FunctionGC> = None;
 
+static mut SKIP_FUNCTION_GC: bool = false;
+
+#[no_mangle]
+pub unsafe fn skip_persistent_function_gc() {
+    SKIP_FUNCTION_GC = true;
+}
+
+unsafe fn skip_garbage_collection(virtual_table: *mut PersistentVirtualTable) {
+    for index in 0..virtual_table.length() {
+        let entry = virtual_table.get(index);
+        (*entry).marked = true;
+    }
+}
+
 // Garbage collect the stable functions in the old version on an upgrade.
 pub unsafe fn garbage_collect_functions<M: Memory>(
     mem: &mut M,
     virtual_table: *mut PersistentVirtualTable,
     old_actor: Value,
 ) {
+    if SKIP_FUNCTION_GC {
+        skip_garbage_collection(virtual_table);
+        return;
+    }
     assert_eq!(old_actor.tag(), TAG_OBJECT);
     COLLECTOR_STATE = Some(FunctionGC::new(mem, virtual_table));
     const ACTOR_TYPE_ID: u64 = 0;
