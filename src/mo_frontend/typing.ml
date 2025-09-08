@@ -2204,15 +2204,6 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre then
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
-  (* TODO: allow shared with one scope par *)
-    let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
-    if not (sub env Source.no_region t2 codom) then
-      error env exp.at "M0095"
-        "function return type%a\ndoes not match expected return type%a"
-        display_typ_expand t2
-        display_typ_expand codom;
-    check_exp_strong env' t2 exp;
-    t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (sub env exp1.at t' t) then
@@ -2389,7 +2380,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
             to_fix := (exp, target_type') :: !to_fix;
             target_type'
           (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
-          | FuncE (_, _, _, pat, _, _, _), normalized_target when not (is_explicit_pat pat) ->
+          | FuncE (_, _, _, pat, _, _, _, _), normalized_target when not (is_explicit_pat pat) ->
             (* Cannot infer unannotated func, defer it *)
             deferred := (exp, target_type) :: !deferred;
             must_solve := (* Inputs of deferred functions must be solved first *)
@@ -2445,7 +2436,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           (* Substitute fixed type variables *)
           let typ = T.open_ ts typ in
           match exp.it, T.normalize typ with
-          | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+          | FuncE (_, shared_pat, [], pat, typ_opt, _, _, body), T.Func (s, c, [], ts1, ts2) ->
             (* Check that all type variables in the function input type are fixed, fail otherwise *)
             Bi_match.fail_when_types_are_not_closed remaining ts1;
             (* Check the function input type and prepare for inferring the body *)
@@ -3641,7 +3632,7 @@ and gather_dec env scope dec : Scope.t =
   | VarD (id, _) -> 
     shadow_parameter env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
-  | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
+  | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;

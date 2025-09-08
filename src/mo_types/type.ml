@@ -1504,7 +1504,7 @@ and singleton t : bool = singleton_typ (ref S.empty) t
 let rec isolated_typ co = function
   | Con (c, ts) as t ->
     (match Cons.kind c with
-    | Abs (_, bound) ->
+    | Abs (_, bound, _) ->
       (* Type parameters are isolated when unbounded. *)
       bound = Any
     | Def (tbs, def) ->
