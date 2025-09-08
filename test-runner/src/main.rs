@@ -1,5 +1,6 @@
 use candid::{CandidType, Principal};
 use hex::decode;
+use ic_management_canister_types::CanisterSettings;
 use pocket_ic::common::rest::RawEffectivePrincipal;
 use pocket_ic::{call_candid_as, PocketIc, PocketIcBuilder, RejectResponse};
 use serde::Serialize;
@@ -267,7 +268,15 @@ impl TestCommand {
 
     fn create_canister(&self, server: &mut PocketIc, canister_id: &str) -> std::io::Result<()> {
         let canister_principal = Self::principal_from_text(canister_id)?;
-        let result = server.create_canister_with_id(None, None, canister_principal);
+        let sender = Principal::anonymous();
+        let result = server.create_canister_with_id(
+            Some(sender),
+            Some(CanisterSettings {
+                controllers: Some(vec![sender, canister_principal]),
+                ..Default::default()
+            }),
+            canister_principal,
+        );
         server.add_cycles(canister_principal, 1_000_000_000_000_000);
 
         if let Err(e) = result {

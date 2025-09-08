@@ -4889,13 +4889,13 @@ module IC = struct
     E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
     E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
-    E.add_func_import env "ic0" "time" [] [I64Type];
     E.add_func_import env "ic0" "env_var_count" [] [i];
     E.add_func_import env "ic0" "env_var_name_size" [i] [i];
     E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
     E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
     E.add_func_import env "ic0" "env_var_value_size" [i] [i];
-    E.add_func_import env "ic0" "env_var_value_copy" (is 4) [];
+    E.add_func_import env "ic0" "env_var_value_copy" (is 5) [];
+    E.add_func_import env "ic0" "time" [] [I64Type];
     if !Flags.global_timer then
       E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
 
@@ -5253,17 +5253,17 @@ module IC = struct
     | Flags.(ICMode | RefMode) ->
       Func.share_code0 Func.Never env "env_var_names" [i] (fun env ->
         let (set_len, get_len) = new_local env "len" in
-        let (set_x, get_x) = new_local env "x" in
+        let (set_array, get_array) = new_local env "array" in
         system_call env "env_var_count" ^^ set_len ^^
-        Arr.alloc env Tagged.M get_len ^^ set_x ^^
+        Arr.alloc env Tagged.M get_len ^^ set_array ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
+          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
           Blob.of_size_copy env Tagged.T
-            (fun env -> system_call env "env_var_name_size")
-            (fun env -> system_call env "env_var_name_copy")
+            (fun env -> get_i (* TODO: `get_i` in front of other args *) ^^ system_call env "env_var_name_size")
+            (fun env -> get_i (* TODO: `get_i` in front of other args *) ^^ system_call env "env_var_name_copy")
             (fun env -> compile_unboxed_const 0L)
         ) ^^
-        get_x ^^
+        get_array ^^
         Tagged.allocation_barrier env
       )
     | _ ->
