@@ -17,7 +17,6 @@ use crate::{
     constants::{KB, MB},
     gc::incremental::{partitioned_heap::allocate_initial_memory, State},
     memory::{alloc_blob, Memory},
-    persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
