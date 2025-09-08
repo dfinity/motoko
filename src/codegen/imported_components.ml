@@ -110,7 +110,9 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) typ : strin
     | Prim Nat64 -> "u64"
     | Prim Int64 -> "s64"
     | Prim Float -> "f64"
-    | Array t -> Printf.sprintf "list<%s>" (map_motoko_type_to_wit variants_ref  t)
+    | Array t ->
+      if normalize t = Prim Nat8 then failwith "Motoko [Nat8] should be mapped to Blob, not list<u8>";
+      Printf.sprintf "list<%s>" (map_motoko_type_to_wit variants_ref  t)
     | Opt t -> Printf.sprintf "option<%s>" (map_motoko_type_to_wit variants_ref  t)
     | Tup ts ->
       assert (List.length ts > 0);
