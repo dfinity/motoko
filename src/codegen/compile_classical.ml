@@ -12688,6 +12688,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
        store_ptr ^^
        get_ptr ^^
        Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
+       compile_add_const ptr_unskew ^^
        E.call_import env "rts" "post_write_barrier"
      | _ ->
        store_ptr) ^^
