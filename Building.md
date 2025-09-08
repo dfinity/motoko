@@ -7,7 +7,8 @@
   - [1. Update Changelog](#1-update-changelog)
   - [2. Open a release PR](#2-open-a-release-pr)
   - [3. Wait for the release to complete, and verify it](#3-wait-for-the-release-to-complete-and-verify-it)
-  - [4. Update `motoko-base`](#4-update-motoko-base)
+  - [4. Update `motoko-core`](#4-update-motoko-core)
+  - [5. Update `motoko-base`](#5-update-motoko-base)
   - [Downstream](#downstream)
 - [Coverage report](#coverage-report)
 - [Profile the compiler](#profile-the-compiler)
@@ -101,7 +102,7 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.14.1) are:
+We make frequent releases, at least weekly. The steps to make a release are:
 
 Before starting the release process, ensure you are working with the latest version of the codebase. Run the following commands:
 
@@ -156,23 +157,26 @@ Make sure that the very top of `Changelog.md` **exactly** matches the following 
 
 ### 2. Open a release PR
 
-Define a shell variable `MOC_MINOR` with the next minor version number.
-E.g. `export MOC_MINOR=1`, or automatically (make sure it is correct!):
+Define a shell variable `NEXT_MOC_VERSION` with the next version number.
+The following command will automatically calculate a patch bump.
+Verify the version is correct. If you need a minor or major version bump, set the variable manually.
 
 ```bash
-export MOC_MINOR=$(($(git describe --tags --abbrev=0 | awk -F. '{print $3}') + 1))
-echo MOC_MINOR=$MOC_MINOR
+export LAST_MOC_VERSION=$(git describe --tags --abbrev=0)
+export NEXT_MOC_VERSION=$(echo $LAST_MOC_VERSION | awk -F. -v OFS=. '{$3++; print}')
+echo "Last version: $LAST_MOC_VERSION"
+echo "Next version: $NEXT_MOC_VERSION"
 ```
 
 Run the following command to create the release PR:
 
 ```bash
-(test -n "$MOC_MINOR" || (echo "MOC_MINOR is not set" && false)) && \
-git switch -c $USER/0.14.$MOC_MINOR && \
+(test -n "$NEXT_MOC_VERSION" || (echo "NEXT_MOC_VERSION is not set" && false)) && \
+git switch -c $USER/$NEXT_MOC_VERSION && \
 git add Changelog.md && \
-git commit -m "chore: Releasing 0.14."$MOC_MINOR && \
-git push --set-upstream origin $USER/0.14.$MOC_MINOR && \
-gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+git commit -m "chore: Releasing $NEXT_MOC_VERSION" && \
+git push --set-upstream origin $USER/$NEXT_MOC_VERSION && \
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release,automerge-squash" --base master --head $USER/$NEXT_MOC_VERSION --body ""
 ```
 
 <details>
@@ -181,20 +185,20 @@ gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automer
 Switch to a new release branch (creating it if it doesn't exist):
 
 ```bash
-git switch -c $USER/0.14.$MOC_MINOR
+git switch -c $USER/$NEXT_MOC_VERSION
 ```
 
 Commit the changes with exactly the following message:
 
 ```bash
 git add Changelog.md
-git commit -m "chore: Releasing 0.14."$MOC_MINOR
+git commit -m "chore: Releasing $NEXT_MOC_VERSION"
 ```
 
 Push the branch:
 
 ```bash
-git push --set-upstream origin $USER/0.14.$MOC_MINOR
+git push --set-upstream origin $USER/$NEXT_MOC_VERSION
 ```
 
 Create a PR from this commit:
@@ -203,7 +207,7 @@ Create a PR from this commit:
 
 To create the PR, you can use `gh` CLI:
 ```bash
-gh pr create --title "chore: Releasing 0.14."$MOC_MINOR --label "release,automerge-squash" --base master --head $USER/0.14.$MOC_MINOR --body ""
+gh pr create --title "chore: Releasing $NEXT_MOC_VERSION" --label "release,automerge-squash" --base master --head $USER/$NEXT_MOC_VERSION --body ""
 ```
 </details>
 
@@ -233,8 +237,8 @@ git show
 Push the tag:
 
 ```bash
-git tag 0.14.$MOC_MINOR -m "Motoko 0.14."$MOC_MINOR
-git push origin 0.14.$MOC_MINOR
+git tag $NEXT_MOC_VERSION -m "Motoko $NEXT_MOC_VERSION"
+git push origin $NEXT_MOC_VERSION
 ```
 
 Pushing the tag should cause GitHub Actions to create a "Release" on the GitHub
@@ -244,7 +248,18 @@ the build artifacts for this revision. In this case, restart the GitHub Action
 on GitHub's UI.
 </details>
 
-### 4. Update `motoko-base`
+### 4. Update `motoko-core`
+
+From the `main` branch, push a tag for the new `moc` version:
+
+```bash
+git checkout main
+git pull
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
+```
+
+### 5. Update `motoko-base`
 
 After releasing the compiler, update `motoko-base`'s `master` branch to the `next-moc` branch.
 
@@ -258,19 +273,21 @@ git switch next-moc; git pull
 * Bump `moc` and create a PR:
 ```bash
 # Create a new branch for the update
-git switch -c $USER/update-moc-0.14.$MOC_MINOR && \
+git switch -c $USER/update-moc-$NEXT_MOC_VERSION && \
 
 # Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml` to the new released version
-perl -pi -e "s/moc_version: \"0\.14\.\\d+\"/moc_version: \"0.14.$MOC_MINOR\"/g; s/moc = \"0\.14\.\\d+\"/moc = \"0.14.$MOC_MINOR\"/g; s/version = \"0\.14\.\\d+\"/version = \"0.14.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml && \
+perl -pi -e "s/moc_version: \"\\d+\.\\d+\.\\d+\"/moc_version: \"$NEXT_MOC_VERSION\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml && \
+perl -pi -e "s/moc = \"\\d+\.\\d+\.\\d+\"/moc = \"$NEXT_MOC_VERSION\"/g; s/version = \"\\d+\.\\d+\.\\d+\"/version = \"$NEXT_MOC_VERSION\"/g" mops.toml && \
 
 # Add the changed files and commit the changes
-git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.14."$MOC_MINOR && \
+git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko $NEXT_MOC_VERSION" && \
 
 # Push the branch
-git push --set-upstream origin $USER/update-moc-0.14.$MOC_MINOR && \
+git push --set-upstream origin $USER/update-moc-$NEXT_MOC_VERSION && \
 
 # Create a PR targeting `master`
-gh pr create --title "Motoko 0.14."$MOC_MINOR --base master --head $USER/update-moc-0.14.$MOC_MINOR --body ""
+gh pr create --title "Motoko $NEXT_MOC_VERSION" --base master --head $USER/update-moc-$NEXT_MOC_VERSION --body ""
+
 ```
 * You can check the status of the PR on GitHub with
 ```bash
@@ -289,8 +306,8 @@ git show
 ```
 * Tag and push the release
 ```bash
-git tag moc-0.14.$MOC_MINOR
-git push origin moc-0.14.$MOC_MINOR
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
 ```
 
 ### Downstream

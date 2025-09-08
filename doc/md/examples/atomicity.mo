@@ -1,7 +1,7 @@
-actor Atomicity {
+persistent actor Atomicity {
 
-  var s = 0;
-  var pinged = false;
+  transient var s = 0;
+  transient var pinged = false;
 
   public func ping() : async () {
     pinged := true;

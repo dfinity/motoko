@@ -102,6 +102,7 @@ let rec go = function
   | Tup ts -> ((Nary, ""), ts)
   | Array (Mut t) -> ((Unary, "V"), [t])
   | Array t -> ((Unary, "v"), [t])
+  | Weak t -> ((Unary, "w"), [t])
 
   (* Here we pretend we support first-class mutable values;
      this is useful for stable serialization *)

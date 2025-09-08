@@ -3,7 +3,7 @@ Utility functions on 64-bit signed integers.
 
 Note that most operations are available as built-in operators (e.g. `1 + 1`).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Int64 "mo:core/Int64";
 ```
@@ -720,6 +720,19 @@ Returns the count of trailing zero bits in `x`.
 Example:
 ```motoko include=import
 assert Int64.bitcountTrailingZero(0x0201_0000) == +16;
+```
+
+## Function `explode`
+``` motoko no-repl
+func explode(x : Int64) : (msb : Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant), lower (least significant)
+and in-between bytes of `x`.
+
+Example:
+```motoko include=import
+assert Int64.explode 0x33772266aa885511 == (51, 119, 34, 102, 170, 136, 85, 17);
 ```
 
 ## Function `addWrap`

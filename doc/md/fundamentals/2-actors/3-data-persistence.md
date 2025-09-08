@@ -178,7 +178,7 @@ A cleaner, more maintainable solution, is to declare an explicit migration expre
 
 Both of these data migration paths are supported by static and dynamic checks that prevent data loss or corruption. A user may still lose data due to coding errors, so should tread carefully.
 
-For more information, see the [example of explicit migration](https://internetcomputer.org/docs/motoko/fundamentals/data-persistence) and the
+For more information, see the [example of explicit migration](https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function) and the
 reference material on [migration expressions](https://internetcomputer.org/docs/motoko/language-manual#migration-expressions).
 
 ## Legacy features

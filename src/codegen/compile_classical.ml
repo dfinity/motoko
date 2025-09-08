@@ -1223,6 +1223,7 @@ module GC = struct
   let register_globals env =
     E.add_global64 env "__mutator_instructions" Mutable 0L;
     E.add_global64 env "__collector_instructions" Mutable 0L;
+    E.add_global64 env "__lifetime_instructions" Mutable 0L;
     if !Flags.gc_strategy <> Flags.Incremental then
       E.add_global32 env "_HP" Mutable 0l
 
@@ -1235,6 +1236,11 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_lifetime_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__lifetime_instructions")))
+  let set_lifetime_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__lifetime_instructions")))
 
   let get_heap_pointer env =
     if !Flags.gc_strategy <> Flags.Incremental then
@@ -1263,10 +1269,22 @@ module GC = struct
       set_collector_instructions env
     | _ -> G.nop
 
+  let record_lifetime_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      get_mutator_instructions env ^^
+      get_lifetime_instructions env ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+      get_collector_instructions env ^^
+      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+      set_lifetime_instructions env
+    | _ -> G.nop
+
   let collect_garbage env =
     record_mutator_instructions env ^^
     E.collect_garbage env false ^^
-    record_collector_instructions env
+    record_collector_instructions env ^^
+    record_lifetime_instructions env
 
 end (* GC *)
 
@@ -11764,6 +11782,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_lifetime_instructions", [] ->
+    SR.Vanilla,
+    GC.get_lifetime_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_upgrade_instructions", [] ->
     SR.Vanilla,
     UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
@@ -11782,6 +11804,29 @@ and compile_prim_invocation (env : E.t) ae p es at =
     StableMem.stable64_size env ^^
     G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
     Bool.neg
+
+  (* Weak refs are disallowed in classical mode *)
+  (* The compiler will exit with an error if it encounters a related call *)
+  | OtherPrim "alloc_weak_ref", [target] ->
+    let msg = Diag.error_message Source.no_region "alloc_weak_ref" "classical" 
+      "Weak references are not supported in classical mode."
+    in
+    Diag.print_messages [msg];
+    exit 0
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    let msg = Diag.error_message Source.no_region "weak_get" "classical" 
+      "Weak references are not supported in classical mode." 
+    in
+    Diag.print_messages [msg];
+    exit 0
+
+  | OtherPrim "weak_ref_is_live", [weak_ref] ->
+    let msg = Diag.error_message Source.no_region "weak_ref_is_live" "classical" 
+      "Weak references are not supported in classical mode." 
+    in
+    Diag.print_messages [msg];
+    exit 0
 
   (* Regions *)
 

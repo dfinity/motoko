@@ -57,7 +57,7 @@ If you run into this limitation in your code, you should accept a comparison fun
 Let’s look at a list membership test for example. This first implementation **does not** work:
 
 ``` motoko run
-import List "mo:base/List";
+import List "mo:core/List";
 
 func contains<A>(element : A, list : List.List<A>) : Bool {
   switch list {
@@ -75,8 +75,8 @@ This assertion will trap because the compiler compares the type `A` at `Any` whi
 This second implementation shows how to accept the comparison function explicitly instead:
 
 ``` motoko run
-import List "mo:base/List";
-import Nat "mo:base/Nat";
+import List "mo:core/List";
+import Nat "mo:core/Nat";
 
 func contains<A>(eqA : (A, A) -> Bool, element : A, list : List.List<A>) : Bool {
   switch list {
