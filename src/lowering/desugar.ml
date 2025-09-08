@@ -674,7 +674,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let ds =
     letD stable_funcs
       (objectE T.Object
-         (List.map (fun (i, t) -> (i, stable_func i t)) fids)
+         (List.map (fun (i, t) -> (i, undefined_stable_func i t)) fids)
          stable_func_fields)
     ::
     expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
@@ -749,7 +749,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
      },
      obj_typ))
 
-and stable_func i t =
+and undefined_stable_func i t =
   match T.normalize t with
   | T.Func(T.Local, c, tbs, ts1, ts2) ->
       let tys = T.open_binds tbs in
