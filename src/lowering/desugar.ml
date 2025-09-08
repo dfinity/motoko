@@ -590,10 +590,9 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let mem_ty = T.Obj (T.Memory, mem_fields) in
   let stable_funcs_ty = T.Obj(T.Object, stable_func_fields) in
   let stable_funcs = fresh_var "stable_funcs" (stable_funcs_ty) in
-  let get_stable_funcs = fresh_var "getStableFuncs" (T.Func(T.Local, T.Returns, [], [], [stable_funcs_ty])) in
   let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
-  let ds = List.concat (List.map (fun mk_d -> mk_d get_state get_stable_funcs) mk_dss) in
+  let ds = List.concat (List.map (fun mk_d -> mk_d get_state) mk_dss) in
   let sig_, stable_type, migration = match exp_opt with
     | None ->
       T.Single stab_fields,
@@ -675,12 +674,10 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let ds =
     letD stable_funcs
       (objectE T.Object
-         (List.map (fun (i, t) -> (i, stable_func stable_func_fields i t)) fids)
+         (List.map (fun (i, t) -> (i, stable_func i t)) fids)
          stable_func_fields)
     ::
     expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
-    ::
-    nary_funcD get_stable_funcs [] (varE stable_funcs) (* inline? *)
     ::
     varD state (optE migration)
     ::
@@ -752,7 +749,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
      },
      obj_typ))
 
-and stable_func stable_func_fields i t =
+and stable_func i t =
   match T.normalize t with
   | T.Func(T.Local, c, tbs, ts1, ts2) ->
       let tys = T.open_binds tbs in
@@ -772,10 +769,10 @@ and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
   match s, d.it with
   | (S.Flexible, _) ->
-    ([], [], fun _ _ -> [d])
+    ([], [], fun _ -> [d])
   | (S.Stable, I.VarD(i, t, e)) ->
     ([(i, T.Mut t)], [],
-     fun get_state get_stable_funcs ->
+     fun get_state ->
      let v = fresh_var i t in
      [varD (var i (T.Mut t))
        (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
@@ -788,20 +785,12 @@ and stabilize stab_opt d =
     (match T.normalize t with
      | T.Func(T.Stable f, c, tbs, ts1, ts2) when i = f->
         ([(i, t)], [(i, T.Func(T.Local, c, tbs, ts1, ts2))],
-        fun get_state get_stable_funcs ->
-        [letP p e; (* compilation of e will update stable_funcs and return a proxy *)
-(*        expD
-          { it = I.AssignE
-                   (({it = I.DotLE(callE (varE get_stable_funcs) [] (unitE ()), i);
-                      at = no_region;
-                      note = T.Mut t}),
-                    varE (var i t));
-            at = no_region;
-            note = Note.{def with typ = T.unit } }*)]
+        fun get_state ->
+        [letP p e] (* compilation of e will update stable_funcs and return a proxy *)
        )
      | _ ->
        ([(i, t)], [],
-        fun get_state get_stable_funcs ->
+        fun get_state ->
         let v = fresh_var i t in
         [letP p
           (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
