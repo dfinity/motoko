@@ -10382,9 +10382,9 @@ module WasmComponent = struct
     E.call_import env "rts" "cabi_realloc"
 
   let pack_of_prim = function
-    | (Nat8|Int8|Bool) -> Some Pack8
-    | (Nat16|Int16) -> Some Pack16
-    | (Nat32|Int32|Char|Nat64|Int64|Float) -> None
+    | Nat8 | Int8 | Bool -> Some Pack8
+    | Nat16 | Int16 -> Some Pack16
+    | Nat32 | Int32 | Char | Nat64 | Int64 | Float -> None
     | _ -> assert false
 
   let rec alignment t : int32 =
@@ -10575,15 +10575,15 @@ module WasmComponent = struct
 
   and load_prim env ptr = function
     (* canonical bool stored as 0/1 byte; Vanilla bool is 0/1 word *)
-    | Bool                  -> ptr ^^ load_int I32Type ~pack:Pack8
-    | ((Nat8|Int8) as ty)   -> ptr ^^ load_int I32Type ~pack:Pack8 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
-    | ((Nat16|Int16) as ty) -> ptr ^^ load_int I32Type ~pack:Pack16 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
-    | Char                  -> ptr ^^ load_int I32Type ^^ TaggedSmallWord.check_and_msb_adjust_codepoint env ^^ TaggedSmallWord.tag env Char
-    | (Nat32|Int32)         -> ptr ^^ load_int I32Type
-    | ((Nat64|Int64) as ty) -> ptr ^^ load_int I64Type ^^ BoxedWord64.box env ty
-    | Float                 -> ptr ^^ load_int F64Type ^^ Float.box env
-    | Text                  -> ptr ^^ E.call_import env "rts" "blob_of_cabi" ^^ Text.of_blob env
-    | Blob                  -> ptr ^^ E.call_import env "rts" "blob_of_cabi"
+    | Bool              -> ptr ^^ load_int I32Type ~pack:Pack8
+    | Nat8|Int8 as ty   -> ptr ^^ load_int I32Type ~pack:Pack8 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
+    | Nat16|Int16 as ty -> ptr ^^ load_int I32Type ~pack:Pack16 ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.tag env ty
+    | Char              -> ptr ^^ load_int I32Type ^^ TaggedSmallWord.check_and_msb_adjust_codepoint env ^^ TaggedSmallWord.tag env Char
+    | Nat32|Int32 as ty -> ptr ^^ load_int I32Type ^^ BoxedSmallWord.box env ty
+    | Nat64|Int64 as ty -> ptr ^^ load_int I64Type ^^ BoxedWord64.box env ty
+    | Float             -> ptr ^^ load_int F64Type ^^ Float.box env
+    | Text              -> ptr ^^ E.call_import env "rts" "blob_of_cabi" ^^ Text.of_blob env
+    | Blob              -> ptr ^^ E.call_import env "rts" "blob_of_cabi"
     | prim ->
       print_endline (Printf.sprintf "Unsupported type in load_prim: %s" (string_of_prim prim));
       assert false
@@ -10620,18 +10620,18 @@ module WasmComponent = struct
 
   let rec store env get_val typ get_addr =
     match normalize typ with
-    | Prim Bool                  -> store_int I32Type ~pack:Pack8 get_val get_addr
-    | Prim ((Nat8 |Int8 ) as ty) -> store_int I32Type ~pack:Pack8 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
-    | Prim ((Nat16|Int16) as ty) -> store_int I32Type ~pack:Pack16 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
-    | Prim Char                  -> store_int I32Type (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) get_addr
-    | Prim ((Nat32|Int32) as ty) -> store_int I32Type (get_val ^^ BoxedSmallWord.unbox env ty) get_addr
-    | Prim ((Nat64|Int64) as ty) -> store_int I64Type (get_val ^^ BoxedWord64.unbox env ty) get_addr
-    | Prim Float                 -> store_int F64Type (get_val ^^ Float.unbox env) get_addr
-    | Prim Text                  -> store_string env get_val get_addr
-    | Prim Blob                  -> store_blob env get_val get_addr
-    | Variant cases              -> store_variant env get_val get_addr cases
-    | Array elem_t               -> store_list env get_val elem_t get_addr
-    | Tup ts                     -> store_tuple env get_val get_addr ts
+    | Prim Bool                -> store_int I32Type ~pack:Pack8 get_val get_addr
+    | Prim (Nat8 |Int8  as ty) -> store_int I32Type ~pack:Pack8 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
+    | Prim (Nat16|Int16 as ty) -> store_int I32Type ~pack:Pack16 (get_val ^^ TaggedSmallWord.lsb_adjust ty) get_addr
+    | Prim Char                -> store_int I32Type (get_val ^^ TaggedSmallWord.lsb_adjust_codepoint env) get_addr
+    | Prim (Nat32|Int32 as ty) -> store_int I32Type (get_val ^^ BoxedSmallWord.unbox env ty) get_addr
+    | Prim (Nat64|Int64 as ty) -> store_int I64Type (get_val ^^ BoxedWord64.unbox env ty) get_addr
+    | Prim Float               -> store_int F64Type (get_val ^^ Float.unbox env) get_addr
+    | Prim Text                -> store_string env get_val get_addr
+    | Prim Blob                -> store_blob env get_val get_addr
+    | Variant cases            -> store_variant env get_val get_addr cases
+    | Array elem_t             -> store_list env get_val elem_t get_addr
+    | Tup ts                   -> store_tuple env get_val get_addr ts
     | _ ->
       print_endline (Printf.sprintf "Unsupported array element type: %s" (string_of_typ typ));
       assert false

@@ -92,6 +92,8 @@ let is_kind_def con =
   | Def _ -> true
   | _ -> false
 
+let is_unit t = is_unit (normalize t)
+
 (* TODO: record *)
 (* TODO: option *)
 (* TODO: int/nat? They require custom types because, otherwise we can plumb it via [u8] *)
@@ -119,9 +121,17 @@ let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) typ : strin
     | Prim Float -> "f64"
     | Array t -> Printf.sprintf "list<%s>" (map_motoko_type_to_wit variants_ref  t)
     | Opt t -> Printf.sprintf "option<%s>" (map_motoko_type_to_wit variants_ref  t)
-    | Tup ts -> Printf.sprintf "tuple<%s>" (String.concat ", " (List.map (map_motoko_type_to_wit variants_ref ) ts))
+    | Tup ts ->
+      assert (List.length ts > 0);
+      Printf.sprintf "tuple<%s>" (String.concat ", " (List.map (map_motoko_type_to_wit variants_ref ) ts))
     | Variant [ok; er] as typ when is_normalized_result typ ->
-      Printf.sprintf "result<%s, %s>" (map_motoko_type_to_wit variants_ref ok.typ) (map_motoko_type_to_wit variants_ref er.typ)
+      if is_unit ok.typ then
+        if is_unit er.typ then "result"
+        else Printf.sprintf "result<_, %s>" (map_motoko_type_to_wit variants_ref er.typ)
+      else if is_unit er.typ then
+        Printf.sprintf "result<%s>" (map_motoko_type_to_wit variants_ref ok.typ)
+      else
+        Printf.sprintf "result<%s, %s>" (map_motoko_type_to_wit variants_ref ok.typ) (map_motoko_type_to_wit variants_ref er.typ)
     | _ -> failwith (Printf.sprintf "map_motoko_type_to_wit: unsupported type %s" (string_of_typ typ))
 
 and map_named_type_to_wit name variants_ref typ =
@@ -154,8 +164,6 @@ let imported_components_to_wit_api (map : t) : string =
   in
   Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" (String.concat "\n" imports)
 
-let is_empty_tuple t = normalize t = Tup []
-
 let imported_components_to_wit (map : t) : string =
   let imports = StringMap.bindings map |> List.map (fun (component_name, functions) ->
     (* Initialize variant-name generator *)
@@ -164,12 +172,18 @@ let imported_components_to_wit (map : t) : string =
     (* Process each function *)
     let fn_lines = FunctionSet.elements functions |> List.map (fun { function_name; args; return_type } ->
       let args_strings = args |> List.map (fun Import_components_ir.{ arg_name; arg_type } ->
-        Printf.printf "arg_type: %s\n" (string_of_typ arg_type);
         let wit_ty = map_motoko_type_to_wit variants_ref arg_type in
         map_motoko_name_to_wit arg_name ^ ": " ^ wit_ty
       ) in
-      let ret_ty = map_motoko_type_to_wit variants_ref return_type in
-      "    " ^ function_name ^ ": func(" ^ (String.concat ", " args_strings) ^ ") -> " ^ ret_ty ^ ";"
+      let ret_ty =
+        if is_unit return_type then ""
+        else Printf.sprintf " -> %s" (map_motoko_type_to_wit variants_ref return_type)
+      in
+      Printf.sprintf
+        "    %s: func(%s)%s;"
+        function_name
+        (String.concat ", " args_strings)
+        ret_ty
     ) in
 
     (* Generate variant declarations *)
@@ -179,7 +193,7 @@ let imported_components_to_wit (map : t) : string =
         let defs = TypeMap.bindings !variants_ref |> List.map (fun (vt, name) ->
           let fs = as_variant vt in
           let case_strings = fs |> List.map (fun field ->
-            let args = if is_empty_tuple field.typ then "" else
+            let args = if is_unit field.typ then "" else
               "(" ^ map_motoko_type_to_wit variants_ref field.typ ^ ")"
             in
             map_motoko_name_to_wit field.lab ^ args
