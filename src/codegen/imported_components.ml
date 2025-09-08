@@ -51,14 +51,6 @@ let imported_components_to_list (map : t) : (string * imported_function) list =
       FunctionSet.elements set |> List.map (fun v -> (k, v))
     )
 
-let print_imported_components (map : t) =
-  StringMap.iter (fun key data ->
-    Printf.printf "%s -> [" key;
-    let elements = FunctionSet.elements data in
-    Printf.printf "%s" (String.concat ", " (List.map (fun e -> e.function_name) elements));
-    Printf.printf "]\n"
-  ) map
-
 let map_motoko_name_to_wit (motoko_name : string) : string =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
   |> String.uncapitalize_ascii
@@ -83,7 +75,6 @@ let normalize t =
   | Variant fields ->
     (* Order by their src *)
     let norm_fields = List.sort (fun a b -> Source.Region_ord.compare a.src.track_region b.src.track_region) fields in
-    (* Printf.printf "Before: %s\nAfter: %s\n" (string_of_typ t) (string_of_typ (Variant norm_fields)); *)
     Variant norm_fields
   | t -> t
 

@@ -131,7 +131,6 @@ and prim e es = function
         | VarE (_, i) -> i
         | _ -> failwith "Expected VarE for argument name" in
 
-      Printf.printf "List.length es: %d, List.length arg_types: %d\n" (List.length es) (List.length arg_types);
       assert (List.length es = List.length arg_types);
       let function_args = List.map2 (fun arg arg_type -> {arg_name=string_of_arg arg; arg_type}) es arg_types in
 

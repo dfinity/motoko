@@ -211,7 +211,6 @@ and exp' at note = function
     begin match fn_typ with
     | T.Func (T.Local, T.Returns, [], ts1, _) ->
       let return_type = note.Note.typ in
-      Printf.printf "Component prim: %s : %s\n" fn (Type.string_of_typ fn_typ);
       let arg_types, args =
         match e.it with
         | S.TupE es ->

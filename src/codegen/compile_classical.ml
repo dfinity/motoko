@@ -9024,6 +9024,7 @@ module StackRep = struct
     | Prim Float -> UnboxedFloat64
     | Obj (Actor, _) -> Vanilla
     | Func (Shared _, _, _, _, _) -> Vanilla
+    | Tup _ | Variant _ | Array _ -> Vanilla
     | p -> todo "StackRep.of_type" (Arrange_ir.typ p) Vanilla
 
   (* The env looks unused, but will be needed once we can use multi-value, to register
@@ -13938,16 +13939,6 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
     let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in
     let extra_out_param, wasm_results = WasmComponent.flatten_return_type return_type in
     let wasm_args = wasm_args @ extra_out_param in
-    (* Debug import signatures *)
-    let vt_to_s = function
-      | Wasm_exts.Types.I32Type -> "I32"
-      | Wasm_exts.Types.I64Type -> "I64"
-      | Wasm_exts.Types.F32Type -> "F32"
-      | Wasm_exts.Types.F64Type -> "F64" in
-    Printf.printf "IMPORT %s::%s args=[%s] results=[%s]\n"
-      component_name function_name
-      (String.concat ", " (List.map vt_to_s wasm_args))
-      (String.concat ", " (List.map vt_to_s wasm_results));
     E.add_func_import env component_name function_name wasm_args wasm_results
   in
 
