@@ -2204,6 +2204,16 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre then
       Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
+  (* TODO: allow shared with one scope par *)
+  | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, _, exp), T.Func (s, c, [], ts1, ts2) ->
+    let env', t2, codom = check_func_step env0.in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2) in
+    if not (sub env Source.no_region t2 codom) then
+      error env exp.at "M0095"
+        "function return type%a\ndoes not match expected return type%a"
+        display_typ_expand t2
+        display_typ_expand codom;
+    check_exp_strong env' t2 exp;
+    t
   | CallE (par_opt, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (sub env exp1.at t' t) then

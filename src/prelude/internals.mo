@@ -391,7 +391,7 @@ let @new_async = func<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @CleanCo
         #schedule (func() { @refund := r; k(t) })
       };
       case (?#error e) {
-        #schedule (func() { r(e) })
+        #schedule (func _ = r(e))
       };
     };
   };
