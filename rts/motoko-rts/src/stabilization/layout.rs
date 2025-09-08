@@ -466,6 +466,5 @@ pub unsafe fn deserialize<M: Memory>(
         StableObjectKind::Closure => {
             StableClosure::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
-        
     }
 }

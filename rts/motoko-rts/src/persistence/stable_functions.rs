@@ -7,10 +7,10 @@
 //! * an actor class,
 //! * a module imported with a unique identifier from a persistent scope,
 //! * a `persistent` function in a persistent scope,
-//! * a `persistent` class in a persistent persistent scope, 
+//! * a `persistent` class in a persistent persistent scope,
 //! * a method in a `persistent` class in a persistent scope, or,
 //! * a named object in a persistent scope.
-//! 
+//!
 //! Persistent functions are upgraded as follows:
 //! * All persistent functions that are reachable from persistent actor variables are considered alive.
 //! * Each alive persistent function must have a matching declaration in the new program version.
@@ -94,7 +94,7 @@
 //! Garbage collection is necessary to allow programs to use classes and stable functions in only
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
-//! 
+//!
 //! To avoid use-before-define errors, persistent functions cannot be called during migration.
 
 pub mod gc;
