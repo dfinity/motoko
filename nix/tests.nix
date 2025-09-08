@@ -1,4 +1,4 @@
-{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages }:
+{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages, test-runner }:
 with debugMoPackages;
 let
   # The following were previously arguments to default.nix but flakes don't accept options yet.
@@ -188,20 +188,6 @@ let
   fix_names = builtins.mapAttrs (name: deriv:
     deriv.overrideAttrs { name = "test-${name}"; }
   );
-
-  # Add test-runner test
-  test-runner = pkgs.rustPlatform-stable.buildRustPackage {
-    pname = "test-runner";
-    version = "0.1.0";
-    src = ../test-runner;
-    cargoLock = {
-      lockFile = ../test-runner/Cargo.lock;
-    };
-    buildInputs = [
-      pkgs.pocket-ic.server
-    ];
-    POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-  };
 
   coverage = testDerivation {
     # this runs all subdirectories, so let's just depend on all of test/

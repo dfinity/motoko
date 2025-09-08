@@ -3,7 +3,7 @@ Utility functions on 8-bit signed integers.
 
 Note that most operations are available as built-in operators (e.g. `1 + 1`).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Int8 "mo:core/Int8";
 ```
