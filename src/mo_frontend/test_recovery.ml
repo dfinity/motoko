@@ -353,8 +353,7 @@ actor Main {
       class <func_pat> <annot_opt> <class_body> (e.g. 'class f(x : Int) : Int = {}')
       object class <func_pat> <annot_opt> <class_body> (e.g. 'object class f(x : Int) : Int = {}')
       module class <func_pat> <annot_opt> <class_body> (e.g. 'module class f(x : Int) : Int = {}')
-      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}')
-      persistent actor class <func_pat> <annot_opt> <class_body> (e.g. 'persistent actor class f(x : Int) : Int = {}') |}]
+      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}') |}]
 
 let%expect_test "test5" =
   let s = "module {
@@ -408,5 +407,4 @@ let%expect_test "test5" =
       class <func_pat> <annot_opt> <class_body> (e.g. 'class f(x : Int) : Int = {}')
       object class <func_pat> <annot_opt> <class_body> (e.g. 'object class f(x : Int) : Int = {}')
       module class <func_pat> <annot_opt> <class_body> (e.g. 'module class f(x : Int) : Int = {}')
-      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}')
-      persistent actor class <func_pat> <annot_opt> <class_body> (e.g. 'persistent actor class f(x : Int) : Int = {}') |}]
+      actor class <func_pat> <annot_opt> <class_body> (e.g. 'actor class f(x : Int) : Int = {}') |}]
