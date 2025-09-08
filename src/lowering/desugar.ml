@@ -764,15 +764,8 @@ and stable_func stable_func_fields i t =
           (fun tb c -> {it = I.{con = c; bound = T.open_ tys tb.T.bound; sort = tb.T.sort}; at = no_region; note = ()}) tbs cs in
       let args = List.map arg_of_var vs in
       funcE ("stable_"^i) T.Local c typ_binds args tys2
-        (callE
-          (dotE
-            ({ it = I.PrimE (I.OtherPrim "get_stable_funcs", []);
-               at = Source.no_region;
-               note = Note.{ def with typ = T.Obj(T.Object,stable_func_fields) }})
-            i
-            t)
-         tys
-         (seqE (List.map varE vs)))
+        (primE (Ir.OtherPrim "trap")
+           [textE (Printf.sprintf "stable function `%s` used before defined" i)])
   | _ -> assert false
 
 and stabilize stab_opt d =
