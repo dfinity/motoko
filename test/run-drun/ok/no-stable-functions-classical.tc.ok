@@ -1,18 +1,18 @@
-no-stable-functions-classical.mo:13.40-13.52: type error [M0096], expression of type
+no-stable-functions-classical.mo:13.44-13.56: type error [M0096], expression of type
   () -> ()
 cannot produce expected type
-  stable () -> ()
-no-stable-functions-classical.mo:14.41-14.51: type error [M0096], expression of type
+  persistent () -> ()
+no-stable-functions-classical.mo:14.45-14.55: type error [M0096], expression of type
   (x : Nat) -> Text
 cannot produce expected type
-  stable Nat -> Text
+  persistent Nat -> Text
 no-stable-functions-classical.mo:25.14-25.22: type error [M0096], expression of type
   () -> ()
 cannot produce expected type
-  stable () -> ()
+  persistent () -> ()
 no-stable-functions-classical.mo:26.12-26.18: type error [M0096], expression of type
   (x : Nat) -> Text
 cannot produce expected type
-  stable Nat -> Text
+  persistent Nat -> Text
 no-stable-functions-classical.mo:13.14-13.19: type error [M0223], Persistent functions are only supported with enhanced orthogonal persistence
 no-stable-functions-classical.mo:14.14-14.17: type error [M0223], Persistent functions are only supported with enhanced orthogonal persistence
