@@ -1,6 +1,6 @@
 mixin() {
-  let msg : Text = "Hello from Mixin";
-  public query func go() : async Nat {
-    20
+  public query func go() : async Text {
+    let msg : Text = "Hello from Mixin";
+    msg
   };
 };

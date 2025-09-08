@@ -3674,8 +3674,13 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | IncludeD _ ->
-    Scope.empty
+  | IncludeD(id, _, _) ->
+    (match Seq.uncons (T.Env.to_seq env.mixins) with
+    | Some ((_name, (t, scope, decs)), _) ->
+       let ve : val_env = (env_of_scope env.msgs scope).vals in
+       Format.printf "Scope is: %a\n" display_vals ve;
+       scope
+    | None -> error env dec.at "M01239" "No Mixin found")
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3849,7 +3854,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
               (* TODO: typ is prob wrong here *)
-              Printf.printf "typ: %s\nscope: %d" (T.string_of_typ typ) (T.Env.cardinal scope.val_env)
+              Printf.printf "typ: %s\nscope: %d\n" (T.string_of_typ typ) (T.Env.cardinal scope.val_env);
               Scope.mixin lib.note.filename (typ, scope, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
