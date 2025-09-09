@@ -481,16 +481,43 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 skip_any(buf, typtbl, it, 0);
             }
             IDL_CON_func => {
-                // TODO: fix me to skip stable functions properly (i.e. nothing to skip)
-                if read_byte_tag(buf) == 0 {
-                    idl_trap_with("skip_any: skipping references");
+                // Arg types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // Ret types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // Annotations
+                let mut _a1 = false;
+                let mut _a2 = false;
+                let mut _a3 = false;
+                let mut a4 = false;
+                for _ in 0..leb128_decode(&mut tb) {
+                    match read_byte(&mut tb) {
+                        1 => _a1 = true,
+                        2 => _a2 = true,
+                        3 => _a3 = true,
+                        4 => a4 = true,
+                        _ => {}
+                    }
+                }
+
+                if a4 {
+                    // stable func: nothing to skip
                 } else {
+                    // TODO: fix me to skip stable functions properly (i.e. nothing to skip)
                     if read_byte_tag(buf) == 0 {
                         idl_trap_with("skip_any: skipping references");
                     } else {
-                        skip_blob(buf)
+                        if read_byte_tag(buf) == 0 {
+                            idl_trap_with("skip_any: skipping references");
+                        } else {
+                            skip_blob(buf)
+                        }
+                        skip_text(buf)
                     }
-                    skip_text(buf)
                 }
             }
             IDL_CON_service => {
