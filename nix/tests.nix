@@ -57,7 +57,7 @@ let
         export VIPER_SERVER=${viper-server}
         type -p moc && moc --version
         ${if dir == "run-drun" 
-          then "make -C ${dir}${pkgs.lib.optionalString (pkgs.system != "x86_64-darwin") " parallel -j3"} ${pkgs.lib.optionalString accept " accept"}"
+          then "make -C ${dir}${pkgs.lib.optionalString (pkgs.system != "x86_64-darwin") " parallel -j4"} ${pkgs.lib.optionalString accept " accept"}"
           else "make -C ${dir}${pkgs.lib.optionalString accept " accept"}"
         }
       '';
