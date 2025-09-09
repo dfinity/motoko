@@ -8,8 +8,7 @@
     // // We do not need simd but this flag enables `core::arch:wasm64`.
     // // See https://github.com/rust-lang/rust/issues/90599
     simd_wasm64,
-    stmt_expr_attributes,
-    unsafe_extern_blocks
+    stmt_expr_attributes
 )]
 #![allow(internal_features)]
 
