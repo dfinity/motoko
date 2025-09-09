@@ -42,7 +42,7 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/next-moc";
+      url = "github:dfinity/motoko-base/pull/736/head";
       flake = false;
     };
     motoko-core-src = {
@@ -50,7 +50,7 @@
       flake = false;
     };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers";
+      url = "github:kritzcreek/motoko-matchers/pull/19/head";
       flake = false;
     };
     ocaml-vlq-src = {
