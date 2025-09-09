@@ -11755,12 +11755,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Tagged.write_with_barrier env
 
-  | OtherPrim "get_stable_funcs", [] ->
-    SR.Vanilla,
-    Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
-    Tagged.load_forwarding_pointer env ^^
-    MutBox.load_field env
-
   (* Other prims, unary *)
 
   | OtherPrim "array_len", [e] ->
