@@ -481,6 +481,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 skip_any(buf, typtbl, it, 0);
             }
             IDL_CON_func => {
+                // TODO: fix me to skip stable functions properly (i.e. nothing to skip)
                 if read_byte_tag(buf) == 0 {
                     idl_trap_with("skip_any: skipping references");
                 } else {

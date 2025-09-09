@@ -1,3 +1,4 @@
+# CLASSICAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID dropping-stable-functions-bug/version0.mo ""
 upgrade $ID dropping-stable-functions-bug/version1.mo ""
