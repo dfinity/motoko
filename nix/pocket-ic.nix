@@ -15,6 +15,7 @@ pkgs: let
         "ic-vetkeys-0.1.0" = "sha256-h8Jso21fK0QTyuSa14iAYsDvrfMphvI3spJBYOLgq1c=";
         "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
         "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
+        "pocket-ic-10.0.0" = "TODO: where can I find this hash?";
       };
     };
     patchPhase = ''

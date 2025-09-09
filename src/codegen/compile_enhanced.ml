@@ -5257,22 +5257,22 @@ module IC = struct
         system_call env "env_var_count" ^^ set_len ^^
         Arr.alloc env Tagged.M get_len ^^ set_array ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          let (set_text_len, get_text_len) = new_local env "text_len" in
-          let (set_text, get_text) = new_local env "text" in
-          
+          let (set_name_len, get_name_len) = new_local env "name_len" in
+          let (set_name, get_name) = new_local env "name" in
+
           get_i ^^
-          system_call env "env_var_name_size" ^^ set_text_len ^^
+          system_call env "env_var_name_size" ^^ set_name_len ^^
 
           get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
-          Blob.alloc env Tagged.T get_text_len ^^ set_text ^^
+          Blob.alloc env Tagged.T get_name_len ^^ set_name ^^
 
           get_i ^^
-          get_text ^^ Blob.payload_ptr_unskewed env ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
           compile_unboxed_const 0L ^^
-          get_text_len ^^
+          get_name_len ^^
           system_call env "env_var_name_copy" ^^
 
-          get_text
+          get_name
         ) ^^
         get_array ^^
         Tagged.allocation_barrier env
@@ -5284,6 +5284,31 @@ module IC = struct
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
       Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
+        (* let (set_name, get_name) = new_local env "name" in
+        let (set_name_len, get_name_len) = new_local env "name_len" in
+        get_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
+        set_name_len ^^ set_name ^^
+        
+        get_name ^^ get_name_len ^^
+        system_call env "env_var_name_exists" ^^
+        Bool.from_rts_int32 ^^
+        E.if0 (let (set_value_len, get_value_len) = new_local env "value_len" in
+          let (set_value, get_value) = new_local env "value" in
+
+          get_name ^^ get_name_len ^^
+          system_call env "env_var_value_size" ^^ set_value_len ^^
+          
+          Blob.alloc env Tagged.T get_value_len ^^ set_value ^^
+          
+          get_name ^^ get_name_len ^^
+          get_value ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_const 0L ^^
+          get_value_len ^^
+          system_call env "env_var_value_copy" ^^
+          
+          Opt.inject_simple env get_value)
+        (Opt.null_lit env) *)
+
         (* TODO *)
         Opt.null_lit env
       )
