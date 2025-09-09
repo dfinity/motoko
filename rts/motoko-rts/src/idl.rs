@@ -827,31 +827,35 @@ pub(crate) unsafe fn memory_compatible(
             }
             // check annotations (that we care about)
             // TODO: more generally, we would check equality of 256-bit bit-vectors,
-            // but validity ensures each entry is 1, 2 or 3 (for now)
+            // but validity ensures each entry is 1, 2, 3 or 4 (for now)
             // c.f. https://github.com/dfinity/candid/issues/318
             let mut a11 = false;
             let mut a12 = false;
             let mut a13 = false;
+            let mut a14 = false;
             for _ in 0..leb128_decode(&mut tb1) {
                 match read_byte(&mut tb1) {
                     1 => a11 = true,
                     2 => a12 = true,
                     3 => a13 = true,
+                    4 => a14 = true,
                     _ => {}
                 }
             }
             let mut a21 = false;
             let mut a22 = false;
             let mut a23 = false;
+            let mut a24 = false;
             for _ in 0..leb128_decode(&mut tb2) {
                 match read_byte(&mut tb2) {
                     1 => a21 = true,
                     2 => a22 = true,
                     3 => a23 = true,
+                    4 => a24 = true,
                     _ => {}
                 }
             }
-            a11 == a21 && a12 == a22 && a13 == a23
+            a11 == a21 && a12 == a22 && a13 == a23 && a14 == a24
         }
         (IDL_EXT_tuple, IDL_EXT_tuple) => {
             let n1 = leb128_decode(&mut tb1);
@@ -1135,31 +1139,35 @@ pub(crate) unsafe fn sub(
                 }
                 // check annotations (that we care about)
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
-                // but validity ensures each entry is 1, 2 or 3 (for now)
+                // but validity ensures each entry is 1, 2, 3 or 4 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
                 let mut a11 = false;
                 let mut a12 = false;
                 let mut a13 = false;
+                let mut a14 = false;
                 for _ in 0..leb128_decode(&mut tb1) {
                     match read_byte(&mut tb1) {
                         1 => a11 = true,
                         2 => a12 = true,
                         3 => a13 = true,
+                        4 => a14 = true,
                         _ => {}
                     }
                 }
                 let mut a21 = false;
                 let mut a22 = false;
                 let mut a23 = false;
+                let mut a24 = false;
                 for _ in 0..leb128_decode(&mut tb2) {
                     match read_byte(&mut tb2) {
                         1 => a21 = true,
                         2 => a22 = true,
                         3 => a23 = true,
+                        4 => a24 = true,
                         _ => {}
                     }
                 }
-                if (a11 == a21) && (a12 == a22) && (a13 == a23) {
+                if (a11 == a21) && (a12 == a22) && (a13 == a23) && (a14 == a24) {
                     return true;
                 } else {
                     break 'return_false;
