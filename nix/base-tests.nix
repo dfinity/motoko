@@ -10,6 +10,6 @@ pkgs.stdenv.mkDerivation {
     moc
   ];
   checkPhase = ''
-    make MOC=moc VESSEL_PKGS="--package matchers ${pkgs.sources.motoko-matchers-src}/src --package core ${pkgs.sources.motoko-core-src}/src" -C test
+    make MOC=moc VESSEL_PKGS="--package matchers ${pkgs.sources.motoko-matchers-src}/src" -C test
   '';
 }
