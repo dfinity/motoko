@@ -5257,11 +5257,22 @@ module IC = struct
         system_call env "env_var_count" ^^ set_len ^^
         Arr.alloc env Tagged.M get_len ^^ set_array ^^
         get_len ^^ from_0_to_n env (fun get_i ->
+          let (set_text_len, get_text_len) = new_local env "text_len" in
+          let (set_text, get_text) = new_local env "text" in
+          
+          get_i ^^
+          system_call env "env_var_name_size" ^^ set_text_len ^^
+
           get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
-          Blob.of_size_copy env Tagged.T
-            (fun env -> get_i (* TODO: `get_i` in front of other args *) ^^ system_call env "env_var_name_size")
-            (fun env -> get_i (* TODO: `get_i` in front of other args *) ^^ system_call env "env_var_name_copy")
-            (fun env -> compile_unboxed_const 0L)
+          Blob.alloc env Tagged.T get_text_len ^^ set_text ^^
+
+          get_i ^^
+          get_text ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_const 0L ^^
+          get_text_len ^^
+          system_call env "env_var_name_copy" ^^
+
+          get_text
         ) ^^
         get_array ^^
         Tagged.allocation_barrier env
