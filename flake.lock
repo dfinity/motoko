@@ -163,6 +163,7 @@
       "original": {
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
+        "rev": "5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982",
         "type": "github"
       }
     },
