@@ -1,4 +1,3 @@
-
 { pkgs, moc }:
 pkgs.stdenv.mkDerivation {
   name = "base-tests";
