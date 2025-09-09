@@ -153,17 +153,16 @@
     "motoko-matchers-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1740991650,
-        "narHash": "sha256-SXw1rO/IWHS9kjySy/u6HbEHYWn7JeQkK2IVI5TLCWA=",
+        "lastModified": 1756194817,
+        "narHash": "sha256-aNFegm03eopAQzjRX+RYyu0i7wryiZEjrV2OFO2HchM=",
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
-        "rev": "5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982",
+        "rev": "82b16f88f31df33032aafc657a3abe4ef66aaf2c",
         "type": "github"
       },
       "original": {
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
-        "rev": "5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982",
         "type": "github"
       }
     },
