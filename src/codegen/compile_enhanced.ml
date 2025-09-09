@@ -517,8 +517,8 @@ module E = struct
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
 
-    (* Stable functions, mapping the function name to the Wasm table index and closure type *)
-    stable_functions: (int32 * Type.typ) NameEnv.t ref;
+    (* Stable functions, mapping the function name to the Wasm table index, closure type, migration invariance *)
+    stable_functions: (int32 * Type.typ * bool) NameEnv.t ref;
 
     (* Type descriptors for the EOP memory compatibility check, created in `conclude_module` *)
     stable_migration_descriptor: stable_migration_descriptor option ref;
@@ -718,7 +718,7 @@ module E = struct
   let make_stable_name (qualified_name: string list): string =
     String.concat "." qualified_name
 
-  let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) (closure_type: Type.typ) =
+  let add_stable_func (env : t) (qualified_name: string list) (wasm_table_index: int32) (closure_type: Type.typ) (migration_invariant: bool)=
     let name = make_stable_name qualified_name in
     if (String.contains name '$') || (String.contains name '@') then
       ()
@@ -726,7 +726,7 @@ module E = struct
       (match NameEnv.find_opt name !(env.stable_functions) with
       | Some _ -> ()
       | None ->
-        env.stable_functions := NameEnv.add name (wasm_table_index, closure_type) !(env.stable_functions))
+        env.stable_functions := NameEnv.add name (wasm_table_index, closure_type, migration_invariant) !(env.stable_functions))
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -4064,8 +4064,9 @@ module Closure = struct
     | Some stable_closure ->
       (* no captured variables in constant functions *)
       let qualified_name = stable_closure.Type.function_path in
+      let migration_invariant = stable_closure.Type.migration_invariant in
       let closure_type = make_stable_closure_type [] stable_closure in
-      E.add_stable_func env qualified_name wasm_table_index closure_type
+      E.add_stable_func env qualified_name wasm_table_index closure_type migration_invariant
     | None -> ());
     (* no captured variables in constant functions *)
     let (_, empty_hash_blob) = FieldLookupTable.build_hash_blob env [] in
@@ -8909,24 +8910,26 @@ end
 
 module StableFunctions = struct
   let sorted_stable_functions env =
-    let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type) remainder ->
+    let entries = E.NameEnv.fold (fun name (wasm_table_index, closure_type, migration_invariant) remainder ->
       let name_hash = Mo_types.Hash.hash name in
-      (name_hash, name, wasm_table_index, closure_type) :: remainder)
+      (name_hash, name, wasm_table_index, closure_type, migration_invariant) :: remainder)
       !(env.E.stable_functions) []
     in
-    List.sort (fun (hash1, _, _, _) (hash2, _, _, _) ->
+    List.sort (fun (hash1, _, _, _, _) (hash2, _, _, _, _) ->
       Int32.compare hash1 hash2) entries
 
   let create_stable_function_map (env : E.t) sorted_stable_functions =
-    List.concat_map(fun (name_hash, wasm_table_index, closure_type_index, gc_type_index) ->
-      (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, gc_type_index: i64, _empty: u64)]
+    List.concat_map(fun (name_hash, wasm_table_index, closure_type_index, gc_type_index, migration_invariant) ->
+      (* Format: [(name_hash: u64, wasm_table_index: u64, closure_type_index: i64, gc_type_index: i64, metadata: u64, reserve: u64)]
         The empty space is pre-allocated for the RTS to assign a function id when needed.
         See RTS `persistence/stable_functions.rs`. *)
+      let metadata = if migration_invariant then 1L else 0L in
       StaticBytes.[
         I64 (Int64.of_int32 name_hash);
         I64 (Int64.of_int32 wasm_table_index);
         I64 (Int64.of_int32 closure_type_index);
         I64 (Int64.of_int32 gc_type_index);
+        I64 metadata; 
         I64 0L; (* reserve for runtime system *) ]
     ) sorted_stable_functions
 
@@ -8993,7 +8996,7 @@ module StableFunctionGC = struct
       in
       let stable_closures =
         let stable_functions = StableFunctions.sorted_stable_functions env in
-        List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions 
+        List.map (fun (_, _, _, closure_type, _) -> closure_type) stable_functions 
       in
       let root_types = stable_actor.Ir.post::stable_closures in
       let map, _ = List.fold_left (collect_types true) (TM.empty, 0) root_types in
@@ -9124,7 +9127,7 @@ module NameTable = struct
 
   let name_records env =
     let functions = StableFunctions.sorted_stable_functions env in
-    List.map (fun (hash, name, _, _) -> (hash, name)) functions
+    List.map (fun (hash, name, _, _, _) -> (hash, name)) functions
 
   let register env =
     let records = name_records env in
@@ -9225,7 +9228,7 @@ module EnhancedOrthogonalPersistence = struct
       | Post -> stable_actor_type.Ir.post
       in
       (let stable_functions = StableFunctions.sorted_stable_functions env in
-      let stable_closures = List.map (fun (_, _, _, closure_type) -> closure_type) stable_functions in
+      let stable_closures = List.map (fun (_, _, _, closure_type, _) -> closure_type) stable_functions in
       let stable_types = actor_type::stable_closures in
       let candid_data, type_offsets, type_indices = Serialization.(type_desc env Persistence stable_types) in
       let actor_type_index = List.hd type_indices in
@@ -9233,9 +9236,9 @@ module EnhancedOrthogonalPersistence = struct
       let closure_type_indices = List.tl type_indices in
       let reachable_types = StableFunctionGC.reachable_types env actor_type_opt in 
       let stable_functions = List.map2 (
-        fun (name_hash, _, wasm_table_index, closure_type) closure_type_index ->
+        fun (name_hash, _, wasm_table_index, closure_type, migration_invariant) closure_type_index ->
           let gc_type_index = StableFunctionGC.get_type_index reachable_types closure_type in
-          (name_hash, wasm_table_index, closure_type_index, gc_type_index)
+          (name_hash, wasm_table_index, closure_type_index, gc_type_index, migration_invariant)
       ) stable_functions closure_type_indices in
       let stable_function_map = StableFunctions.create_stable_function_map env stable_functions in
       let descriptor = get_stable_type_descriptor env migration_side in
@@ -9991,8 +9994,9 @@ module FuncDec = struct
           compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index)
         | true, Some stable_closure ->
           let qualified_name = stable_closure.Type.function_path in
+          let migration_invariant = stable_closure.Type.migration_invariant in
           let closure_type = Closure.make_stable_closure_type captured stable_closure in
-          E.add_stable_func env qualified_name wasm_table_index closure_type;
+          E.add_stable_func env qualified_name wasm_table_index closure_type migration_invariant;
           compile_unboxed_const (Wasm.I64_convert.extend_i32_u wasm_table_index) ^^
           E.call_import env "rts" "resolve_function_literal"
         | true, None ->

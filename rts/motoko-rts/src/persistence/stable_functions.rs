@@ -95,7 +95,8 @@
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
 //! 
-//! To avoid use-before-define errors, persistent functions cannot be called during migration.
+//! To prevent use-before-define errors, persistent functions can only be called during migration, 
+//! if they do not capture variables of the actor state.
 
 pub mod gc;
 
@@ -265,6 +266,7 @@ pub struct VirtualTableEntry {
     closure_type_index: TypeIndex, // Referring to the persisted type table.
     wasm_table_index: WasmTableIndex,
     gc_type_id: u64, // Closure type ID used by the stable function GC.
+    migration_invariant: bool, // Safe to be used during migration
     marked: bool,    // set by stable function GC
 }
 
@@ -281,12 +283,15 @@ pub unsafe fn resolve_function_call(function_id: FunctionId) -> WasmTableIndex {
     if is_flexible_function_id(function_id) {
         return resolve_flexible_function_id(function_id);
     }
-    if IN_MIGRATION {
-        rts_trap_with("Persistent functions cannot be called during migration");
-    }
     debug_assert_ne!(function_id, NULL_FUNCTION_ID);
     let virtual_table = stable_function_state().get_virtual_table();
     let table_entry = virtual_table.get(resolve_stable_function_id(function_id));
+    if IN_MIGRATION && !(*table_entry).migration_invariant {
+        let name = lookup_name((*table_entry).function_name_hash);
+        let buffer = format!(300, "Persistent function {name} cannot be called during migration as it depends on the new program state");
+        let message = from_utf8(&buffer).unwrap();
+        rts_trap_with(message);
+    }
     let wasm_table_index = (*table_entry).wasm_table_index;
     debug_assert_ne!(wasm_table_index, usize::MAX);
     wasm_table_index
@@ -310,6 +315,9 @@ pub unsafe fn resolve_function_literal(wasm_table_index: WasmTableIndex) -> Func
     function_id
 }
 
+const MIGRATION_INVARIANT: u64 = 1;
+const NO_METADATA: u64 = 0;
+
 #[repr(C)]
 pub struct StableFunctionEntry {
     function_name_hash: NameHash,
@@ -318,10 +326,20 @@ pub struct StableFunctionEntry {
     closure_type_index: TypeIndex,
     // Used for the stable functions GC, type id of the closure.
     gc_type_id: u64,
+    // Metadata, such as `MIGRATION_INVARIANT`, extendible.
+    metadata: u64,
     /// Cache for runtime optimization.
     /// This entry is uninitialized by the compiler and the runtime system
     /// uses this space to remember matched function ids for faster lookup.
     cached_function_id: FunctionId,
+}
+
+impl StableFunctionEntry {
+    unsafe fn migration_invariant(self: *mut Self) -> bool {
+        let metadata = (*self).metadata;
+        assert!(metadata == NO_METADATA || metadata == MIGRATION_INVARIANT);
+        metadata == MIGRATION_INVARIANT
+    }
 }
 
 /// Sorted by hash name.
@@ -430,7 +448,7 @@ unsafe fn update_existing_functions(
         if marked {
             if stable_function_entry == null_mut() {
                 let name = lookup_name(name_hash);
-                let buffer = format!(200, "Incompatible upgrade: Stable function {name} is missing in the new program version");
+                let buffer = format!(300, "Incompatible upgrade: Stable function {name} is missing in the new program version");
                 let message = from_utf8(&buffer).unwrap();
                 rts_trap_with(message);
             }
@@ -454,11 +472,13 @@ unsafe fn update_existing_functions(
             (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
             (*virtual_table_entry).closure_type_index = (*stable_function_entry).closure_type_index;
             (*virtual_table_entry).gc_type_id = (*stable_function_entry).gc_type_id;
+            (*virtual_table_entry).migration_invariant = stable_function_entry.migration_invariant();
             (*stable_function_entry).cached_function_id = function_id as FunctionId;
         } else {
             (*virtual_table_entry).wasm_table_index = usize::MAX;
             (*virtual_table_entry).closure_type_index = isize::MAX;
             (*virtual_table_entry).gc_type_id = u64::MAX;
+            (*virtual_table_entry).migration_invariant = false;
         }
     }
 }
@@ -499,11 +519,13 @@ unsafe fn add_new_functions<M: Memory>(
             let closure_type_index = (*stable_function_entry).closure_type_index;
             let wasm_table_index = (*stable_function_entry).wasm_table_index;
             let gc_type_id = (*stable_function_entry).gc_type_id;
+            let migration_invariant = stable_function_entry.migration_invariant();
             let new_virtual_table_entry = VirtualTableEntry {
                 function_name_hash,
                 closure_type_index,
                 wasm_table_index,
                 gc_type_id,
+                migration_invariant,
                 marked: false,
             };
             debug_assert!(!is_flexible_function_id(function_id));
