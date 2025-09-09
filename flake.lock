@@ -120,16 +120,16 @@
     "motoko-base-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1755597069,
-        "narHash": "sha256-2VwsQqjhPeNyN9L2rMaocMso+xrcHECbn5q5aY4rYUE=",
+        "lastModified": 1757443704,
+        "narHash": "sha256-Ewv0XM+OPMLlCEELVF687iLM7y9OM5FQ7qGZkWrVb6k=",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "15beff102000f25a945ce1326346051c8a07b8ea",
+        "rev": "e37b819f4f76759a6cf044de4334d95b3cac15ca",
         "type": "github"
       },
       "original": {
         "owner": "dfinity",
-        "ref": "next-moc",
+        "ref": "pull/736/head",
         "repo": "motoko-base",
         "type": "github"
       }
@@ -153,15 +153,16 @@
     "motoko-matchers-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1756194817,
-        "narHash": "sha256-aNFegm03eopAQzjRX+RYyu0i7wryiZEjrV2OFO2HchM=",
+        "lastModified": 1757445764,
+        "narHash": "sha256-FBKtE1F9y5sdJ04oNbHoPrlEIexSlvvrlwaIz2Iaikw=",
         "owner": "kritzcreek",
         "repo": "motoko-matchers",
-        "rev": "82b16f88f31df33032aafc657a3abe4ef66aaf2c",
+        "rev": "9f8535ac4360009ba0615e673451ca55ba2cbe9e",
         "type": "github"
       },
       "original": {
         "owner": "kritzcreek",
+        "ref": "pull/19/head",
         "repo": "motoko-matchers",
         "type": "github"
       }
