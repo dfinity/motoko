@@ -86,6 +86,7 @@ module Make (Cfg : Config) = struct
   let obj_sort s = match s.it with
     | Type.Object -> Atom "Object"
     | Type.Actor -> Atom "Actor"
+    | Type.Mixin -> Atom "Mixin"
     | Type.Module -> Atom "Module"
     | Type.Memory -> Atom "Memory"
 

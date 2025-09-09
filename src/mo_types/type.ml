@@ -13,6 +13,7 @@ type control =
 type obj_sort =
    Object
  | Actor
+ | Mixin
  | Module
  | Memory          (* (codegen only): stable memory serialization format *)
 
@@ -116,6 +117,7 @@ let tag_obj_sort = function
   | Module -> 1
   | Actor -> 2
   | Memory -> 3
+  | Mixin -> 4
 
 let tag_control = function
   | Returns -> 0
@@ -882,7 +884,7 @@ let serializable allow_mut t =
       | Obj (s, fs) ->
         (match s with
          | Actor -> true
-         | Module -> false (* TODO(1452) make modules sharable *)
+         | Module | Mixin -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
@@ -911,7 +913,7 @@ let find_unshared t =
       | Tup ts -> List.find_map go ts
       | Obj (s, fs) ->
         (match s with
-         | Actor -> None
+         | Actor | Mixin -> None
          | Module -> Some t (* TODO(1452) make modules sharable *)
          | Object ->
            List.find_map (fun f -> go f.typ) fs
@@ -1838,6 +1840,7 @@ let string_of_obj_sort = function
   | Object -> ""
   | Module -> "module "
   | Actor -> "actor "
+  | Mixin -> "mixin "
   | Memory -> "memory "
 
 let string_of_func_sort = function

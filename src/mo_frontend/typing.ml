@@ -2525,7 +2525,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
   match shared_pat.it, obj_sort.it with
-  | T.Local, (T.Module | T.Object) -> T.Env.empty
+  | T.Local, (T.Module | T.Object | T.Mixin) -> T.Env.empty
   | T.Local, T.Actor ->
     T.Env.empty (* error instead? That's a breaking change *)
   | T.Shared (mode, pat), sort ->
@@ -2930,7 +2930,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
     T.Env.filter (fun id _ -> S.mem id private_fields) identifiers
   in
   let env =
-    if s <> T.Actor then
+    if s <> T.Actor && s <> T.Mixin then
       { env with in_actor = false }
     else
       { env with
@@ -2946,7 +2946,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s = T.Actor then begin
+    if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
@@ -3382,13 +3382,13 @@ and infer_dec env dec : T.typ =
         else ObjBlockE (exp_opt, obj_sort, (None, typ_opt), dec_fields) |> detect_lost_fields env t''
       | Some typ, T.Actor ->
          local_error env dec.at "M0193" "actor class has non-async return type"
-      | _, T.Memory -> assert false
+      | _, (T.Memory | T.Mixin) -> assert false
     end;
     T.normalize t
   | MixinD (args, dec_fields) ->
     let t_pat, ve = infer_pat_exhaustive error env args in
     let env' = adjoin_vals env ve in
-    let obj_sort : obj_sort = { it = T.Actor ; at = no_region; note = { it = true; at = no_region; note = () } }  in
+    let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
     let t' = infer_obj { env' with check_unused = false } obj_sort None dec_fields dec.at in
     Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t');
     T.normalize t'
@@ -3466,7 +3466,9 @@ and gather_block_decs env decs : Scope.t =
 and gather_dec env scope dec : Scope.t =
   match dec.it with
   | MixinD _ -> scope
-  | IncludeD(i, _, _) -> scope
+  | IncludeD(i, _, _) ->
+    (* TODO(Christoph): try to extend the scope from here *)
+    scope
   | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
@@ -3716,10 +3718,7 @@ and infer_dec_valdecs env dec : Scope.t =
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
-  | MixinD (pat, fields) ->
-    let t1, _ = infer_pat true { env with pre = true } pat in
-    let _ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    Scope.empty
+  | MixinD (_, _) -> Scope.empty
   | ClassD (_exp_opt, _shared_pat, obj_sort, id, typ_binds, pat, _, _, _) ->
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
@@ -3853,8 +3852,13 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
+              (* let collect_dec scope (dec_field : dec_field) = match dec_field.it.dec.it with
+                | _ -> scope
+                in
+              let mixin_scope = List.fold_left collect_dec Scope.empty decs in
               (* TODO: typ is prob wrong here *)
-              Printf.printf "typ: %s\nscope: %d\n" (T.string_of_typ typ) (T.Env.cardinal scope.val_env);
+              let ve = (env_of_scope env.msgs mixin_scope).vals in *)
+              (* Format.printf "typ: %s\nscope: %a\n" (T.string_of_typ typ) display_vals ve; *)
               Scope.mixin lib.note.filename (typ, scope, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"

@@ -371,7 +371,7 @@ and obj_block at s exp_opt self_id dfs obj_typ =
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
     build_actor at [] exp_opt self_id dfs obj_typ
-  | T.Memory -> assert false
+  | T.Memory | T.Mixin -> assert false
 
 and build_field {T.lab; T.typ;_} =
   { it = I.{ name = lab
