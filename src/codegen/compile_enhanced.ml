@@ -9066,7 +9066,7 @@ module StableFunctionGC = struct
         | Obj (Actor, _) -> false
         | Tup type_list ->
           List.exists (go visited) type_list
-        | Array nested | Mut nested | Opt nested ->
+        | Array nested | Mut nested | Opt nested | Weak nested ->
           go visited nested
         | _ -> assert false (* illegal stable type *)
     in
@@ -9093,7 +9093,7 @@ module StableFunctionGC = struct
           | Tup type_list ->
             let relevant_types = List.filter must_visit type_list in
             List.fold_left (collect_types false) (map, id) relevant_types
-          | Array nested | Opt nested | Mut nested ->
+          | Array nested | Opt nested | Mut nested | Weak nested ->
             if must_visit nested then
               collect_types false (map, id) nested
             else (map, id)
