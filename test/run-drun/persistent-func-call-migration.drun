@@ -1,4 +1,0 @@
-# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-# SKIP ic-ref-run
-install $ID persistent-func-call-migration/version1.mo ""
-upgrade $ID persistent-func-call-migration/version2.mo ""

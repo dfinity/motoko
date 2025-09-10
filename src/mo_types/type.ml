@@ -1519,6 +1519,7 @@ type captured_variable = {
 type stable_closure = {
   function_path: string list; (* fully qualified function name *)
   captured_variables: captured_variable Env.t; (* captured mutable variables *)
+  migration_invariant: bool; (* safe during migration, no use-before-define *)
 }
 
 (* Scopes *)
