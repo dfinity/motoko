@@ -22,18 +22,26 @@ let _ = VarArray.map(va, func x = [var x]); // [var Nat]
 let _ = VarArray.map(va, func x = (Prim.intToInt32(x), debug_show (x))); // (Int32, Text)
 let _ = VarArray.map(va, func x = func(y : Nat8) : Bool = Prim.natToNat8(x) == y); // Nat8 -> Bool
 
+// Int and Opt have no supertypes
+let _ = VarArray.map(va, func x = x : Int); // Int
+let _ = VarArray.map(va, func x = ?x : ?Int); // ?Int
+
+// Null and Nat have no subtypes
+let _ = VarArray.map(va, func x = func (_ : Nat) {}); // Nat -> ()
+let _ = VarArray.map(va, func x = func (_ : Null) {}); // Null -> ()
+
+// Mix
+let _ = VarArray.map(va, func x = func (n : Nat, _ : Null): (Int, ?Int, ?[var Nat]) = (n, ?n, ?[var n])); // (Nat, Null) -> (Int, ?Int, ?[var Nat])
+
 // Counter examples that should fail:
 func _m1() {
   let _ = VarArray.map(va, func x = x); // Nat
-};
-func _m2() {
-  let _ = VarArray.map(va, func x = x : Int); // Int
 };
 func _m3() {
   let _ = VarArray.map(va, func x = null); // Null
 };
 func _m4() {
-  let _ = VarArray.map(va, func x = ?Prim.natToNat8(x)); // ?Nat8
+  let _ = VarArray.map(va, func x = ?x); // ?Nat
 };
 func _m5() {
   let _ = VarArray.map(va, func x = [x]); // [Nat]

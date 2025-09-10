@@ -140,13 +140,14 @@ let choose_under_constrained ctx lb c ub =
   | Variance.Invariant ->
     match normalize lb, normalize ub with
     (* Ignore [Any] when choosing a bound for the solution *)
-    (* Restrict to [isolated] types only, at least for now *)
-    | t, Any when isolated t ->
+    (* When the solution is between [t] and [Any], choose [t] when there are no other choices except [Any] *)
+    (* TODO: consider suggesting a specific return type annotation with the current solution, e.g. ` : [var lb]` *)
+    | t, Any when has_no_supertypes t ->
       assert (t <> Non);
       lb
     | _ ->
       raise (Bimatch (Format.asprintf
-        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nProvide a return type annotation or an explicit type instantiation"
         (Cons.name c)
         display_constraint (lb, c, ub)
         display_rel (lb,"=/=",ub)))
