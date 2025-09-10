@@ -57,8 +57,9 @@ let transform prog =
     | Non -> Non
     | Pre -> Pre
     | Named (n , t) -> (* erased! *)
-      t_typ t 
+      t_typ t
     | Typ c -> assert false (* second class *)
+    | Weak t -> Weak (t_typ t)
 
   and t_bind tb =
     { tb with bound = t_typ tb.bound }

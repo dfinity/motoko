@@ -6,7 +6,7 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    nix-update-flake.url = "github:Mic92/nix-update";
+    nix-update-flake.url = "github:Mic92/nix-update/09aadb5d6d9e1fc57df0b61def4bdd8b43ea47a1";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -29,6 +29,10 @@
       url = "github:dfinity/ic";
       flake = false;
     };
+    pocket-ic-src = {
+      url = "github:dfinity/ic/master";
+      flake = false;
+    };
     ic-wasm-src = {
       url = "github:dfinity/ic-wasm";
       flake = false;
@@ -46,7 +50,7 @@
       flake = false;
     };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers";
+      url = "github:kritzcreek/motoko-matchers/5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982";
       flake = false;
     };
     ocaml-vlq-src = {
@@ -73,6 +77,7 @@
     , viper-server
     , candid-src
     , ic-src
+    , pocket-ic-src
     , ic-wasm-src
     , libtommath-src
     , motoko-base-src
@@ -89,6 +94,7 @@
           inherit
             candid-src
             ic-src
+            pocket-ic-src
             ic-wasm-src
             libtommath-src
             motoko-base-src
@@ -148,7 +154,60 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      tests = import ./nix/tests.nix { inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages; };
+      # Define test-runner package.
+      test-runner = pkgs.rustPlatform-stable.buildRustPackage {
+        pname = "test-runner";
+        version = "0.1.0";
+        src = ./test-runner;
+        cargoLock = {
+          lockFile = ./test-runner/Cargo.lock;
+        };
+        buildInputs = [
+          pkgs.pocket-ic.server
+        ];
+        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        
+        # Explicitly disable tests for the main package
+        doCheck = false;
+      };
+
+      # Separate derivation for running test-runner's Cargo tests in CI.
+      # TODO: Not run now, will add them later.
+      test-runner-tests = pkgs.rustPlatform-stable.buildRustPackage {
+        pname = "test-runner-tests";
+        version = "0.1.0";
+        src = ./test-runner;
+        cargoLock = {
+          lockFile = ./test-runner/Cargo.lock;
+        };
+        buildInputs = [
+          pkgs.pocket-ic.server
+          pkgs.cacert
+        ];
+        nativeBuildInputs = [
+          pkgs.pocket-ic.server
+        ];
+        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        
+        # Skip building, only run tests
+        dontBuild = true;
+        doCheck = true;
+        checkPhase = ''
+          runHook preCheck
+          export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
+          export PATH="${pkgs.pocket-ic.server}/bin:$PATH"
+          cargo test
+          runHook postCheck
+        '';
+        installPhase = ''
+          touch $out
+        '';
+      };
+
+      tests = import ./nix/tests.nix { 
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+      };
 
       filterTests = type:
         pkgs.lib.mapAttrsToList (_name: drv: drv) (pkgs.lib.filterAttrs
@@ -157,10 +216,12 @@
               matchDebug = builtins.match ".*-debug$" name;
               matchRelease = builtins.match ".*-release$" name;
               matchGC = builtins.match ".*-gc$" name;
-              # Common tests are those that do not match -debug, -release, or -gc.
+              matchPerf = builtins.match ".*(bench|perf)$" name;
+              # Common tests are those that do not match -debug, -release, -gc, or -bench, -perf.
               matchCommon = matchDebug == null &&
                 matchRelease == null &&
-                matchGC == null;
+                matchGC == null &&
+                matchPerf == null;
             in {
               debug = matchDebug != null;
               release = matchRelease != null;
@@ -193,7 +254,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs;
+        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
@@ -211,11 +272,16 @@
         release = buildableReleaseMoPackages;
         debug = buildableDebugMoPackages;
 
-        inherit nix-update tests js;
+        inherit nix-update tests js test-runner test-runner-tests;
 
-        inherit (pkgs) nix-build-uncached drun ic-wasm;
+        inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 
-        # Platform-specific release files
+        # Get pocket-ic server.
+        pocket-ic-server = pkgs.pocket-ic.server;
+
+
+
+        # Platform-specific release files.
         release-files-ubuntu-latest = import ./nix/release-files-ubuntu-latest.nix { inherit self pkgs; };
         "release-files-ubuntu-24.04-arm" = import ./nix/release-files-ubuntu-24.04-arm.nix { inherit self pkgs; };
         release-files-macos-13 = import ./nix/release-files-macos-13.nix { inherit self pkgs; };

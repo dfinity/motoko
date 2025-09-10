@@ -1,5 +1,7 @@
 # core/pure/List
-Purely-functional, singly-linked lists.
+Purely-functional, singly-linked list data structure.
+This module provides immutable lists with efficient prepend and traversal operations.
+
 A list of type `List<T>` is either `null` or an optional pair of a value of type `T` and a tail, itself of type `List<T>`.
 
 To use this library, import it using:

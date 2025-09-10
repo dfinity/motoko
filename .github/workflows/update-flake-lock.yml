@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@main
       - name: Create GitHub App Token
@@ -43,7 +43,7 @@ jobs:
             ic-wasm-src
             libtommath-src
             motoko-base-src
-            motoko-matchers-src
+            motoko-core-src
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src

@@ -52,6 +52,7 @@ and typ =
   | Non                                       (* bottom *)
   | Typ of con                                (* type (field of module) *)
   | Named of name * typ
+  | Weak of typ                               (* weak references *)
   | Pre                                       (* pre-type *)
 
 and scope = typ
@@ -138,6 +139,7 @@ val is_pair : typ -> bool
 val is_func : typ -> bool
 val is_async : typ -> bool
 val is_fut : typ -> bool
+val is_cmp : typ -> bool
 val is_mut : typ -> bool
 val is_typ : typ -> bool
 val is_con : typ -> bool
@@ -169,7 +171,7 @@ val as_pair_sub : typ -> typ * typ
 val as_func_sub : func_sort -> int -> typ -> func_sort * bind list * typ * typ
 val as_mono_func_sub : typ -> typ * typ
 val as_async_sub : async_sort -> typ -> typ -> typ * typ
-
+val as_weak_sub : typ -> typ
 
 (* Argument/result sequences *)
 
@@ -223,6 +225,9 @@ val stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool
+
+(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
+val isolated : typ -> bool
 val span : typ -> int option
 
 

@@ -158,6 +158,7 @@ module MakeState() = struct
     | Func _
     | Async _
     | Mut _
+    | Weak _
     | Pre -> assert false
     ) @@ no_region
   and field {lab; typ = t; src = {region; _}} =

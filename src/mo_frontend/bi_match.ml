@@ -138,11 +138,18 @@ let choose_under_constrained ctx lb c ub =
   | Variance.Contravariant -> ub
   | Variance.Bivariant -> lb
   | Variance.Invariant ->
-    raise (Bimatch (Format.asprintf
-      "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
-      (Cons.name c)
-      display_constraint (lb, c, ub)
-      display_rel (lb,"=/=",ub)))
+    match normalize lb, normalize ub with
+    (* Ignore [Any] when choosing a bound for the solution *)
+    (* Restrict to [isolated] types only, at least for now *)
+    | t, Any when isolated t ->
+      assert (t <> Non);
+      lb
+    | _ ->
+      raise (Bimatch (Format.asprintf
+        "implicit instantiation of type parameter %s is under-constrained with%a\nwhere%a\nso that explicit type instantiation is required"
+        (Cons.name c)
+        display_constraint (lb, c, ub)
+        display_rel (lb,"=/=",ub)))
 
 let fail_over_constrained lb c ub =
   raise (Bimatch (Format.asprintf
@@ -244,6 +251,8 @@ let bi_match_typs ctx =
     | Array t1', Array t2' ->
       bi_match_typ rel eq inst any t1' t2'
     | Opt t1', Opt t2' ->
+      bi_match_typ rel eq inst any t1' t2'
+    | Weak t1', Weak t2' ->
       bi_match_typ rel eq inst any t1' t2'
     | Prim Null, Opt t2' when rel != eq ->
       Some inst

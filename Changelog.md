@@ -1,6 +1,51 @@
 # Motoko compiler changelog
 
+## 0.16.1 (2025-08-25)
+
 * motoko (`moc`)
+  * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
+
+  * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).
+    This addresses the limitation mentioned in #5180.
+    Examples of isolated types include all primitive types except `Nat` and `Int`, such as `Bool`, `Text`, `Blob`, `Float`, `Char`, `Int32`, etc.
+    `Nat` and `Int` are not isolated because `Nat` is a subtype of `Int` (`Nat <: Int`).
+
+    For example, the following code now works without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = debug_show (x) # "!"); // [var Text]
+    ```
+
+  * `ignore` now warns when its argument has type `async*`, as it will have no effect (#5419).
+
+  * bugfix: fix rare compiler crash when using a label and identifier of the same name in the same scope (#5283, #5412).
+
+  * bugfix: `moc` now warns about parentheticals on `async*` calls, and makes sure that they get discarded (#5415).
+
+## 0.16.0 (2025-08-19)
+
+* motoko (`moc`)
+
+  * Breaking change: add new type constructor `weak T` for constructing weak references.
+
+    ```motoko
+        Prim.allocWeakRef: <T>(value : T) -> weak T
+        Prim.weakGet: <T>weak T -> ?(value : T)
+        Prim.isLive: weak Any -> Bool
+    ```
+
+    A weak reference can only be allocated from a value whose type representation is always a heap reference; `allowWeakRef` will trap on values of other types.
+    A weak reference does not count as a reference to its value and allows the collector to collect the value once no other references to it remain.
+    `weakGet` will return `null`, and `isLive` will return false once the value of the reference has been collected by the garbage collector.
+    The type constructor `weak T` is covariant.
+
+    Weak reference operations are only supported with --enhanced-orthogonal-persistence and cannot be used with the classic compiler.
+
+  * bugfix: the EOP dynamic stable compatibility check incorrectly rejected upgrades from `Null` to `?T` (#5404).
+
+  * More explanatory upgrade error messages with detailing of cause (#5391).
 
   * Improved type inference for calling generic functions (#5180).
     This means that type arguments can be omitted when calling generic functions in _most common cases_.
@@ -42,8 +87,6 @@
 ## 0.15.1 (2025-07-30)
 
 * motoko (`moc`)
-
-  * More explanatory upgrade error messages with detailing of cause (#5391).
 
   * bugfix: `persistent` imported actor classes incorrectly rejected as non-`persistent` (#5667).
 

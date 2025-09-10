@@ -62,6 +62,7 @@ and typ' =
   | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
+  | WeakT of typ                                   (* weak reference *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
