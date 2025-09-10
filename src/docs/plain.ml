@@ -78,7 +78,7 @@ let plain_of_func_sort : Buffer.t -> Syntax.func_sort -> unit =
     | Shared Query -> bprintf buf "shared query "
     | Shared Write -> bprintf buf "shared ")
 
-let plain_of_obj_sort_title : Buffer.t -> Syntax.obj_sort -> unit =
+let plain_of_obj_sort_title : Buffer.t -> 'note Syntax.sort -> unit =
  fun buf sort ->
   Buffer.add_string buf
     Mo_types.Type.(
@@ -88,7 +88,7 @@ let plain_of_obj_sort_title : Buffer.t -> Syntax.obj_sort -> unit =
       | Module -> "Module "
       | Memory -> "Memory ")
 
-let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
+let plain_of_obj_sort : Buffer.t -> 'note Syntax.sort -> unit =
  fun buf sort ->
   Buffer.add_string buf
     Mo_types.Type.(
@@ -117,6 +117,9 @@ let rec plain_of_typ : Buffer.t -> render_functions -> Syntax.typ -> unit =
       bprintf buf "%s" rf.render_close_bracket
   | Syntax.OptT typ ->
       bprintf buf "?";
+      plain_of_typ buf rf typ
+  | Syntax.WeakT typ ->
+      bprintf buf "weak";
       plain_of_typ buf rf typ
   | Syntax.VariantT typ_tags ->
       bprintf buf "{";

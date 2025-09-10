@@ -1,14 +1,14 @@
 # core/Bool
 Boolean type and operations.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Bool "mo:core/Bool";
 ```
 
 While boolean operators `_ and _` and `_ or _` are short-circuiting,
 avoiding computation of the right argument when possible, the functions
-`logand(_, _)` and `logor(_, _)` are *strict* and will always evaluate *both*
+`logicalAnd(_, _)` and `logicalOr(_, _)` are *strict* and will always evaluate *both*
 of their arguments.
 
 Example:

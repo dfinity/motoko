@@ -30,12 +30,6 @@ fi
 
 export LANG=C.UTF-8
 
-# this could be used to delay drun to make it more deterministic, but
-# it doesn't work reliably and slows down the test significantly.
-# so until DFN-1269 fixes this properly, let's just not run
-# affected tests on drun (only ic-ref-run).
-EXTRA_BATCHES=1
-
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
 # and this helps (default is 2MB)
@@ -43,6 +37,14 @@ export RUST_MIN_STACK=$((10*1024*1024))
 
 # drun creates canisters with this ID:
 ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
+
+# If it is an application subnet, we need to change the canister ID, otherwise pocket-ic will not work properly.
+# Enable this only when running test-runner.
+# For drun, we need to use the default canister ID.
+if [[ "$@" == *"--subnet-type application"* ]]
+then
+  ID=22ajg-aqaaa-aaaap-adukq-cai
+fi
 
 # encoded `{ canister_id = $ID }`
 # this is useful for `ingress aaaaa-aa start/stop_canister $PRINCIPAL`
@@ -53,7 +55,7 @@ then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,\$ID,'$ID',g; s,\$PRINCIPAL,'$PRINCIPAL',g' $1
-  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | test-runner -c "$CONFIG" $EXTRA_DRUN_ARGS /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
@@ -61,5 +63,5 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | drun -c "$CONFIG" $EXTRA_DRUN_ARGS --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | test-runner -c "$CONFIG" $EXTRA_DRUN_ARGS /dev/stdin
 fi

@@ -3,7 +3,7 @@ Utility functions on 16-bit unsigned integers.
 
 Note that most operations are available as built-in operators (e.g. `1 + 1`).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Nat16 "mo:core/Nat16";
 ```
@@ -647,6 +647,18 @@ Returns the count of trailing zero bits in `x`.
 Example:
 ```motoko include=import
 assert Nat16.bitcountTrailingZero(5) == 0;
+```
+
+## Function `explode`
+``` motoko no-repl
+func explode(x : Nat16) : (msb : Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant) and lower (least significant) byte of `x`.
+
+Example:
+```motoko include=import
+assert Nat16.explode 0xaa88 == (170, 136);
 ```
 
 ## Function `addWrap`

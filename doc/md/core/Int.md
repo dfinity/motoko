@@ -4,7 +4,7 @@ Signed integer numbers with infinite precision (also called big integers).
 Most operations on integer numbers (e.g. addition) are available as built-in operators (e.g. `-1 + 1`).
 This module provides equivalent functions and `Text` conversion.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Int "mo:core/Int";
 ```

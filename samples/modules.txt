@@ -1,25 +1,27 @@
 -- Parsing modules.mo:
 -- Checking modules.mo:
-type List<T> = ?(T, List<T>)
 type Stack = List<Int>
+type List<T> = ?(T, List<T>)
 let Collections :
   module {
     List :
       module {
         type List<T> = ?(T, List<T>);
-        cons : <T>(T, List<T>) -> List<T>;
+        cons : <T>(x : T, l : List<T>) -> List<T>;
         nil : <T>() -> List<T>
       }
   }
 let List :
   module {
     type List<T> = ?(T, List<T>);
-    cons : <T>(T, List<T>) -> List<T>;
+    cons : <T>(x : T, l : List<T>) -> List<T>;
     nil : <T>() -> List<T>
   }
 let empty : ?(Int, List<Int>)
-let push : (Int, Stack) -> Stack
+let push : (x : Int, s : Stack) -> Stack
 -- Definedness modules.mo:
+modules.mo:14.5-14.10: warning [M0194], unused identifier empty (delete or rename to wildcard `_` or `_empty`)
+modules.mo:15.6-15.10: warning [M0194], unused identifier push (delete or rename to wildcard `_` or `_push`)
 -- Interpreting modules.mo:
 nil()
   <= null

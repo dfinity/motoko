@@ -690,7 +690,6 @@ impl PartitionedHeap {
         true
     }
 
-    #[cfg(debug_assertions)]
     pub unsafe fn is_object_marked(&self, object: *mut Obj) -> bool {
         let address = object as usize;
         let partition_index = address / PARTITION_SIZE;
@@ -903,7 +902,7 @@ impl PartitionedHeap {
             // Since the partition is allocated incrementally, we need to
             // ensure that the memory is allocated up to the end of the object,
             // which will also be the end of the dynamic_size of the partition.
-            mem.grow_memory(heap_pointer + size);
+            intra_partition_memory_grow(mem, heap_pointer + size);
 
             (*allocation_partition).dynamic_size += size;
             Value::from_ptr(heap_pointer)
@@ -991,6 +990,12 @@ impl PartitionedHeap {
         None
     }
 
+    unsafe fn is_large_object_marked(&self, large_object: *mut Obj) -> bool {
+        debug_assert_eq!(large_object as usize % PARTITION_SIZE, 0);
+        let start_partition = large_object as usize / PARTITION_SIZE;
+        self.get_partition(start_partition).marked_size > 0
+    }
+
     unsafe fn occupied_partition_range(large_object: *mut Obj) -> Range<usize> {
         debug_assert_eq!(large_object as usize % PARTITION_SIZE, 0);
         let start_partition = large_object as usize / PARTITION_SIZE;
@@ -1040,22 +1045,16 @@ impl PartitionedHeap {
     // Optimization: Returns true if it has not yet been marked before.
     #[inline(never)]
     unsafe fn mark_large_object(&mut self, object: *mut Obj) -> bool {
-        let range = Self::occupied_partition_range(object);
-        if self.get_partition(range.start).marked_size > 0 {
+        if self.is_large_object_marked(object) {
             return false;
         }
+        let range = Self::occupied_partition_range(object);
         for index in range.start..range.end - 1 {
             self.mutable_partition(index).marked_size = PARTITION_SIZE;
         }
         let object_size = block_size(object as usize).to_bytes().as_usize();
         self.mutable_partition(range.end - 1).marked_size = object_size % PARTITION_SIZE;
         true
-    }
-
-    #[cfg(debug_assertions)]
-    unsafe fn is_large_object_marked(&self, object: *mut Obj) -> bool {
-        let range = Self::occupied_partition_range(object);
-        self.get_partition(range.start).marked_size > 0
     }
 }
 
@@ -1064,4 +1063,21 @@ pub(crate) unsafe fn allocate_initial_memory(heap_base: Bytes<usize>) {
     use crate::memory::ic::allocate_wasm_memory;
 
     allocate_wasm_memory(heap_base);
+}
+
+#[cfg(feature = "ic")]
+pub(crate) unsafe fn intra_partition_memory_grow<M: Memory>(_mem: &mut M, address: usize) {
+    use crate::memory::ic::allocate_wasm_memory;
+
+    // Allocate the memory without keeping the usual memory reserve.
+    // This is because the partition may have been allocated in a moment
+    // where the reserve was granted. Such a partition remains available for
+    // subsequent incremental allocations even when the reserve is reactivated.
+    allocate_wasm_memory(Bytes(address));
+}
+
+#[cfg(not(feature = "ic"))]
+pub(crate) unsafe fn intra_partition_memory_grow<M: Memory>(mem: &mut M, address: usize) {
+    // Only for test purposes
+    mem.grow_memory(address);
 }
