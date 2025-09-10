@@ -361,9 +361,10 @@ The syntax of an **import** `<imp>` is as follows:
   "mo:<package-name>/<filepath>"    Import module from package
   "ic:<canisterid>"                 Import external actor by <canisterid>
   "canister:<name>"                 Import external actor by <name>
+  "blob:file:<filepath>"            Import literal `Blob` value from <filepath>
 ```
 
-An import introduces a resource referring to a local source module, module from a package of modules, or canister imported as an actor. The contents of the resource are bound to `<pat>`.
+An import introduces a resource referring to a local source module, module from a package of modules, a canister imported as an actor, or a literal `Blob` value. The contents of the resource are bound to `<pat>`.
 
 Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
 
