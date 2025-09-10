@@ -1,8 +1,13 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Added ability to import `Blob`s from the local file system by means of `blob:file:` URI scheme (#4935).
+
 ## 0.16.1 (2025-08-25)
 
 * motoko (`moc`)
+
   * bugfix: fix compile-time exception showing `???` type when using 'improved type inference' (#5423).
 
   * Allow inference of invariant type parameters, but only when the bound/solution is an 'isolated' type (meaning it has no proper subtypes nor supertypes other than `Any`/`None`) (#5359).
