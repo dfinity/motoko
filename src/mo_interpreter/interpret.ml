@@ -458,7 +458,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | LibPath {path; _} ->
       k (find path env.libs)
     | ImportedValuePath path ->
-      let contents = find path env.libs |> V.as_blob in
+      let contents = Lib.FilePath.contents path in
       assert T.(exp.note.note_typ = Prim Blob);
       k (V.Blob contents)
     | IDLPath _ -> trap exp.at "actor import"
@@ -1151,7 +1151,6 @@ let import_lib env lib =
             if tag = "new" && V.Env.find "settings" o = V.Null
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
-  | Syntax.FileU str -> fun _ -> V.Blob str
   | _ -> assert false
 
 let interpret_lib flags scope lib : scope =

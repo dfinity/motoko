@@ -3810,7 +3810,6 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
             | ProgU _ ->
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
-            | FileU _ -> assert false
           in
           if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           let fld_src_env = Field_sources.of_mutable_tbl env.srcs in
