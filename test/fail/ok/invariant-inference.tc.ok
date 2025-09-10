@@ -6,7 +6,7 @@ because implicit instantiation of type parameter T is under-constrained with
   Nat  <:  T  <:  Any
 where
   Nat  =/=  Any
-so that explicit type instantiation is required
+Provide a return type annotation or an explicit type instantiation
 invariant-inference.mo:15.11-15.13: type error [M0050], literal of type
   Int
 does not have expected type

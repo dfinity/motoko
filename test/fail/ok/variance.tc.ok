@@ -42,4 +42,4 @@ because implicit instantiation of type parameter A is under-constrained with
   None  <:  A  <:  Any
 where
   None  =/=  Any
-so that explicit type instantiation is required
+Provide a return type annotation or an explicit type instantiation
