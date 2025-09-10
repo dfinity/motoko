@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pocket-ic = { git = "https://github.com/dfinity/ic", rev = "7f564957acac9590c69e029e2c33440141128d21" }
+pocket-ic = "9.0.2"
 ic-management-canister-types = "0.3.3"
 candid = "0.10.17"
 serde = "1.0.219"
