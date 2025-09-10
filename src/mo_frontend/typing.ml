@@ -2828,6 +2828,7 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
+  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields (Option.get !n)
   | {vis = { it = Public depr; _}; dec; _} ->
     vis_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
@@ -2871,6 +2872,15 @@ and vis_val_id src id (xs, ys) : visibility_env =
 
 (* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 
+and scope_of_object env (fields : T.field list) =
+  List.fold_left (fun acc field ->
+      match field with
+      | T.{ lab; typ = T.Typ t; _ } ->
+         Scope.{ acc with typ_env = T.Env.add lab t acc.typ_env }
+      | T.{ lab; typ = t; _ } ->
+         Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference) acc.val_env }
+    ) Scope.empty fields
+
 and object_of_scope env sort dec_fields scope at =
   let pub_typ, pub_val = pub_fields dec_fields in
   let tfs =
@@ -2880,6 +2890,8 @@ and object_of_scope env sort dec_fields scope at =
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
           T.{lab = id; typ = T.Typ c; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+        | _ when sort = T.Mixin ->
+           T.{lab = id; typ = T.Typ c; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2890,6 +2902,8 @@ and object_of_scope env sort dec_fields scope at =
         | Some src ->
           Field_sources.add_src env.srcs src.id_region;
           T.{lab = id; typ = t; src = {depr = src.depr; track_region = src.id_region; region = src.field_region}}::tfs
+        | _ when sort = T.Mixin ->
+          T.{lab = id; typ = t; src = {depr = None; track_region = at; region = at}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -2928,7 +2942,7 @@ and is_typ_dec dec : bool = match dec.it with
 
 and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   let s = obj_sort.it in
-  let private_fields =
+  let private_fields = if s = T.Mixin then S.empty else
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
     |> gather_block_decs env in
@@ -2954,7 +2968,8 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    if s = T.Actor || s = T.Mixin then begin
+    (* TODO: Mixins need a similar, but different check here *)
+    if s = T.Actor then begin
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
@@ -3314,7 +3329,7 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | IncludeD _ ->
+  | IncludeD (i, _, n) ->
     (* TODO: should check the arguments here *)
     T.unit
   | ExpD exp -> infer_exp env exp
@@ -3589,10 +3604,7 @@ and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
-     let (t, decs) = T.Env.find i.it env.mixins in
-     n := Some(decs);
-     Format.printf "Resolved include %s to %a\n" i.it display_typ t;
-     Scope.empty
+     (* TODO *) Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3691,14 +3703,13 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | IncludeD(id, _, _) ->
-     Scope.empty
-    (* (match Seq.uncons (T.Env.to_seq env.mixins) with *)
-    (* | Some ((_name, (t, scope, decs)), _) -> *)
-    (*    let ve : val_env = (env_of_scope env.msgs scope).vals in *)
-    (*    Format.printf "Scope is: %a\n" display_vals ve; *)
-    (*    scope *)
-    (* | None -> error env dec.at "M01239" "No Mixin found") *)
+  | IncludeD(i, _, n) ->
+     let (t, decs) = T.Env.find i.it env.mixins in
+     n := Some(decs);
+     Format.printf "Resolved include %s to %a\n" i.it display_typ t;
+     let (_, fields) = T.as_obj t in
+     let scope = scope_of_object env fields in
+     scope
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)

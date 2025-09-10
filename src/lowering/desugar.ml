@@ -1315,21 +1315,12 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     end
   | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
-    Printf.printf "COMPILING AT TYPE: %s\n" (T.string_of_typ u.note.S.note_typ);
-    let ty = match self_id with
-    | Some( { it="a"; _}) ->
-      (* shared query () -> async Nat *)
-      (* | Func of func_sort * control * bind list * typ list * typ list  (* function *) *)
-      let cs = T.open_binds [T.scope_bind] in
-      let func_ty = T.Func(T.Shared T.Query, T.Promises, [], [], [T.Async(T.Fut, List.hd cs, T.text)]) in
-      let t = T.obj T.Actor ["go", func_ty] in
-      (* Printf.printf "COMPILING AT TYPE: %s\n" (T.string_of_typ t); *)
-      t
-    | _ -> u.note.S.note_typ in
+    let ty = u.note.S.note_typ in
+    Printf.printf "COMPILING AT TYPE: %s\n" (T.string_of_typ ty);
     let actor_expression = build_actor u.at [] eo self_id fields ty in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
-      I.ActorU (None, ds, fs, u, t)
+       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 
