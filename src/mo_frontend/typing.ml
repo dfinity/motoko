@@ -3672,7 +3672,8 @@ and gather_dec env scope dec : Scope.t =
     new_constant_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | LetD (pat, { it = ImportE _; _ }, _) ->
-    let declarations = gather_pat env scope.Scope.val_env pat in
+    let declaration_scope = gather_pat env scope pat in
+    let declarations = declaration_scope.Scope.val_env in
     T.Env.iter (fun id _ ->
       new_constant_declaration env id
     ) declarations;
@@ -3726,8 +3727,8 @@ and gather_pat_aux env val_kind scope pat : Scope.t =
   | VarP id -> 
     shadow_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind)
-  | TupP pats -> List.fold_left (gather_pat env) ve pats
-  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
+  | TupP pats -> List.fold_left (gather_pat env) scope pats
+  | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
   | AnnotP (pat1, _) | ParP pat1 -> gather_pat env scope pat1
 
