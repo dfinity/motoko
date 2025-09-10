@@ -1303,8 +1303,6 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
-  | S.FileU str ->
-    I.LibU ([], { (unitE ()) with at = u.at })
 
 let transform_unit (u : S.comp_unit) : Ir.prog  =
   let { imports; body; _ } = u.it in
