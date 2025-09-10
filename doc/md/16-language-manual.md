@@ -364,7 +364,7 @@ The syntax of an **import** `<imp>` is as follows:
   "blob:file:<filepath>"            Import literal `Blob` value from <filepath>
 ```
 
-An import introduces a resource referring to a local source module, module from a package of modules, a canister imported as an actor, or a literal `Blob` value. The contents of the resource are bound to `<pat>`.
+An import introduces a resource referring to a local source module, module from a package of modules, a canister imported as an actor, or a literal [`Blob`](https://internetcomputer.org/docs/motoko/core/Blob.md) value. The contents of the resource are bound to `<pat>`.
 
 Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
 
