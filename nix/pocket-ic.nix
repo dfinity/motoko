@@ -46,23 +46,23 @@ pkgs: let
       # Create a patch file for pocket-ic-server to disable canister backtrace.
       echo "Creating patch file..."
       echo 'diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs' > pocket_ic_server.patch
-      echo 'index 9c32fb7d2a..453f44a4d3 100644' >> pocket_ic_server.patch
       echo '--- a/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
       echo '+++ b/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
-      echo '@@ -512,6 +512,13 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
+      echo '@@ -619,6 +619,14 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
       echo '             .embedders_config' >> pocket_ic_server.patch
       echo '             .feature_flags' >> pocket_ic_server.patch
       echo '             .rate_limiting_of_debug_prints = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+' >> pocket_ic_server.patch
       echo '+        hypervisor_config' >> pocket_ic_server.patch
       echo '+            .embedders_config' >> pocket_ic_server.patch
       echo '+            .feature_flags' >> pocket_ic_server.patch
       echo '+            .canister_backtrace = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+        hypervisor_config.environment_variables = FlagStatus::Enabled;' >> pocket_ic_server.patch
-      echo '+' >> pocket_ic_server.patch
+      echo '+        hypervisor_config' >> pocket_ic_server.patch
+      echo '+            .embedders_config' >> pocket_ic_server.patch
+      echo '+            .feature_flags' >> pocket_ic_server.patch
+      echo '+            .environment_variables = FlagStatus::Enabled;' >> pocket_ic_server.patch
       echo '         let state_machine_config = StateMachineConfig::new(subnet_config, hypervisor_config);' >> pocket_ic_server.patch
-      echo '         let t = time' >> pocket_ic_server.patch
-      echo '             .duration_since(SystemTime::UNIX_EPOCH)' >> pocket_ic_server.patch
+      echo '         StateMachineBuilder::new()' >> pocket_ic_server.patch
+      echo '             .with_runtime(runtime)' >> pocket_ic_server.patch
 
       echo "Applying patch..."
       patch -p1 < pocket_ic_server.patch
