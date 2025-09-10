@@ -1266,8 +1266,7 @@ let transform_import (i : S.import) : import_declaration =
   let t = i.note in
   assert (t <> T.Pre);
   match t with
-  (* TODO: An imported Actor type signifies a Mixin. Hack!? *)
-  | T.Obj(T.Actor, _) -> []
+  | T.Obj(T.Mixin, _) -> []
   | _ ->
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))

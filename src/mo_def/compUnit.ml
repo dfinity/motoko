@@ -123,7 +123,7 @@ let decs_of_lib (cu : comp_unit) =
        at = cub.at;
        note = cub.note;}];
   | MixinU (pat, fields) ->
-    [{ it = MixinD (pat, fields); at = no_region; note = empty_typ_note }]
+    [{ it = MixinD (pat, fields); at = no_region; note = cub.note }]
   | ProgU _
   | ActorU _ ->
     assert false

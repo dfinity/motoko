@@ -2057,7 +2057,7 @@ and pp_typ_pre vs ppf t =
           (pp_typ' vs) t1
           (pp_typ_pre vs) t2
     else fprintf ppf "@[<2>async%s@ %a@]" (string_of_async_sort s) (pp_typ_pre vs) t2
-  | Obj ((Module | Actor | Memory) as os, fs) ->
+  | Obj ((Module | Actor | Mixin | Memory) as os, fs) ->
     pp_typ_obj vs ppf (os, fs)
   | t ->
     pp_typ_un vs ppf t

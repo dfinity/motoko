@@ -21,7 +21,6 @@ type avl = Available | Unavailable
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
 type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
-type mixin_env = (T.typ * Scope.scope * dec_field list) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
@@ -43,7 +42,7 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
-    mixins : mixin_env;
+    mixins : Scope.mixin_env;
     labs : lab_env;
     rets : ret_env;
     async : C.async_cap;
@@ -66,10 +65,10 @@ type env =
 let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
+    mixins = scope.Scope.mixin_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
-    mixins = scope.Scope.mixin_env;
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.NullCap;
@@ -320,6 +319,7 @@ let adjoin env scope =
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
+    mixins = T.Env.adjoin env.mixins scope.Scope.mixin_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
@@ -425,6 +425,14 @@ let check_closed env id k at =
 
 (* Imports *)
 
+let is_mixin_import env = function
+  | ImportE (_, ri) ->
+     (match !ri with
+     | LibPath {path; _} ->
+        T.Env.find_opt path env.mixins
+     | _ -> None)
+  | _ -> None
+
 let check_import env at f ri =
   let full_path =
     match !ri with
@@ -439,7 +447,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (t, _, _) -> t
+    | Some (t, _) -> t
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -3467,7 +3475,9 @@ and gather_dec env scope dec : Scope.t =
   match dec.it with
   | MixinD _ -> scope
   | IncludeD(i, _, _) ->
-    (* TODO(Christoph): try to extend the scope from here *)
+     (* TODO(Christoph): try to extend the scope from here
+        ANSWER: I tried to, but imports aren't added to the env here yet
+      *)
     scope
   | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3578,12 +3588,11 @@ and infer_block_typdecs env decs : Scope.t =
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
-  | IncludeD (_, _, n) ->
-    (match Seq.uncons (T.Env.to_seq env.mixins) with
-    | Some ((_name, (t, scope, decs)), _) ->
-      n := Some(decs);
-      scope
-    | None -> error env dec.at "M01239" "No Mixin found")
+  | IncludeD (i, _, n) ->
+     let (t, decs) = T.Env.find i.it env.mixins in
+     n := Some(decs);
+     Format.printf "Resolved include %s to %a\n" i.it display_typ t;
+     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3603,6 +3612,11 @@ and infer_dec_typdecs env dec : Scope.t =
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
+     begin match is_mixin_import env exp.it with
+     | Some (t, decs) ->
+        Format.printf "Adding mixin %s at %a\n" id.it display_typ t;
+        Scope.mixin id.it (t, decs)
+     | None ->
     (match infer_val_path env exp with
      | None -> Scope.empty
      | Some t ->
@@ -3611,6 +3625,7 @@ and infer_dec_typdecs env dec : Scope.t =
        | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
        | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
+           end
   | LetD (pat, exp, _) ->
        begin match infer_val_path env exp with
        | Some t ->
@@ -3677,12 +3692,13 @@ and is_import d =
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | IncludeD(id, _, _) ->
-    (match Seq.uncons (T.Env.to_seq env.mixins) with
-    | Some ((_name, (t, scope, decs)), _) ->
-       let ve : val_env = (env_of_scope env.msgs scope).vals in
-       Format.printf "Scope is: %a\n" display_vals ve;
-       scope
-    | None -> error env dec.at "M01239" "No Mixin found")
+     Scope.empty
+    (* (match Seq.uncons (T.Env.to_seq env.mixins) with *)
+    (* | Some ((_name, (t, scope, decs)), _) -> *)
+    (*    let ve : val_env = (env_of_scope env.msgs scope).vals in *)
+    (*    Format.printf "Scope is: %a\n" display_vals ve; *)
+    (*    scope *)
+    (* | None -> error env dec.at "M01239" "No Mixin found") *)
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3703,12 +3719,12 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
-    let t = infer_exp {env with pre = true; check_unused = false} exp in
-    let ve' = match fail with
-      | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
-      | Some _ -> check_pat env t pat
-    in
-    Scope.{empty with val_env = ve'}
+     let t = infer_exp {env with pre = true; check_unused = false} exp in
+     let ve' = match fail with
+       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
+       | Some _ -> check_pat env t pat
+     in
+     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
@@ -3859,7 +3875,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               (* TODO: typ is prob wrong here *)
               let ve = (env_of_scope env.msgs mixin_scope).vals in *)
               (* Format.printf "typ: %s\nscope: %a\n" (T.string_of_typ typ) display_vals ve; *)
-              Scope.mixin lib.note.filename (typ, scope, decs)
+              Scope.mixin lib.note.filename (typ, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->
