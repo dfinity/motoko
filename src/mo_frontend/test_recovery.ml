@@ -231,7 +231,7 @@ let%expect_test "test3" =
                   (VarP (ID bar))
                   (FuncE
                     ???
-                    Local Stable
+                    Local
                     bar
                     (ParP (AnnotP (VarP (ID y)) (PathT (IdH (ID Int)))))
                     (PathT (IdH (ID Int)))
