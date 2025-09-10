@@ -7,10 +7,10 @@
 //! * an actor class,
 //! * a module imported with a unique identifier from a persistent scope,
 //! * a `persistent` function in a persistent scope,
-//! * a `persistent` class in a persistent persistent scope, 
+//! * a `persistent` class in a persistent persistent scope,
 //! * a method in a `persistent` class in a persistent scope, or,
 //! * a named object in a persistent scope.
-//! 
+//!
 //! Persistent functions are upgraded as follows:
 //! * All persistent functions that are reachable from persistent actor variables are considered alive.
 //! * Each alive persistent function must have a matching declaration in the new program version.
@@ -94,8 +94,8 @@
 //! Garbage collection is necessary to allow programs to use classes and stable functions in only
 //! flexible contexts or not even using imported classes or stable functions. Moreover, it allows
 //! programs to drop stable functions and classes, if they are no longer used for persistence.
-//! 
-//! To prevent use-before-define errors, persistent functions can only be called during migration, 
+//!
+//! To prevent use-before-define errors, persistent functions can only be called during migration,
 //! if they do not capture variables of the actor state.
 
 pub mod gc;
@@ -265,9 +265,9 @@ pub struct VirtualTableEntry {
     function_name_hash: NameHash,
     closure_type_index: TypeIndex, // Referring to the persisted type table.
     wasm_table_index: WasmTableIndex,
-    gc_type_id: u64, // Closure type ID used by the stable function GC.
+    gc_type_id: u64,           // Closure type ID used by the stable function GC.
     migration_invariant: bool, // Safe to be used during migration
-    marked: bool,    // set by stable function GC
+    marked: bool,              // set by stable function GC
 }
 
 static mut IN_MIGRATION: bool = false;
@@ -472,7 +472,8 @@ unsafe fn update_existing_functions(
             (*virtual_table_entry).wasm_table_index = (*stable_function_entry).wasm_table_index;
             (*virtual_table_entry).closure_type_index = (*stable_function_entry).closure_type_index;
             (*virtual_table_entry).gc_type_id = (*stable_function_entry).gc_type_id;
-            (*virtual_table_entry).migration_invariant = stable_function_entry.migration_invariant();
+            (*virtual_table_entry).migration_invariant =
+                stable_function_entry.migration_invariant();
             (*stable_function_entry).cached_function_id = function_id as FunctionId;
         } else {
             (*virtual_table_entry).wasm_table_index = usize::MAX;
