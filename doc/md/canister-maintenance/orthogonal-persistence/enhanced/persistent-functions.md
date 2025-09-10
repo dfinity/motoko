@@ -78,7 +78,9 @@ This restriction does not apply to immutable variables (`let`) and actor variabl
 
 Generic type parameters of persistent functions and persistent classes are bounded to stable types.
 
-To avoid use-before-define errors, persistent functions cannot be called during migration.
+To prevent use-before-define errors, persistent functions can only be called during migration, if they do not capture variables of the actor state. The following persistent functions can directly or indirectly be called during migration:
+* All functions/methods in imported modules.
+* All named constant-bound functions (`func f()`) in the actor.
 
 ## Persistent Function Types
 

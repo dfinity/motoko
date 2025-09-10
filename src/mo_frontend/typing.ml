@@ -18,9 +18,11 @@ module S = Set.Make(String)
    FUTURE: mark unavailable, non-shared variables *)
 type avl = Available | Unavailable
 type level = Top | Nested
+type compilation_unit = Program | Library
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
+
 type val_env  = (T.typ * Source.region * Scope.val_kind * avl * level) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
@@ -43,7 +45,8 @@ type parameter_context = {
 }
 
 type env =
-  { level: level;
+  { compilation_unit: compilation_unit;
+    level: level;
     vals : val_env;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
@@ -68,12 +71,14 @@ type env =
     captured: S.t ref;
     generic_variable_count: int ref;
     parameters: parameter_context ref;
+    constant_declarations: S.t ref;
     errors_only : bool;
     srcs : Field_sources.t;
   }
 
-let env_of_scope ?(viper_mode=false) msgs scope named_scope =
-  { level = Top;
+let env_of_scope ?(viper_mode=false) msgs scope named_scope compilation_unit =
+  { compilation_unit;
+    level = Top;
     vals = available scope.Scope.val_env Top;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
@@ -102,6 +107,7 @@ let env_of_scope ?(viper_mode=false) msgs scope named_scope =
       count = 0;
       positions = T.Env.empty
     };
+    constant_declarations = ref S.empty;
     srcs = Field_sources.of_immutable_map scope.Scope.fld_src_env;
   }
 
@@ -340,14 +346,23 @@ let collect_captured_variables env =
   ) (S.elements !(env.captured)) in
   T.Env.from_list captured
 
+let migration_invariant env =
+  if env.compilation_unit = Library then
+    true
+  else
+    let is_stateless id = S.mem id !(env.constant_declarations) in
+    S.for_all is_stateless !(env.captured)
+    
 let stable_function_closure env named_scope =
   match named_scope with
   | None -> None
   | Some function_path ->
     let captured_variables = collect_captured_variables env in
+    let migration_invariant = migration_invariant env in
     Some T.{
       function_path;
       captured_variables;
+      migration_invariant;
     }
 
 let enter_named_scope env name =
@@ -388,6 +403,19 @@ let shadow_parameter env id =
   let parameters = !(env.parameters) in
   let positions = T.Env.remove id parameters.positions in
   env.parameters := { parameters with positions }
+
+let shadow_constant_declaration env id =
+  let functions = !(env.constant_declarations) in
+  env.constant_declarations := S.remove id functions
+
+let shadow_declaration env id =
+  shadow_parameter env id;
+  shadow_constant_declaration env id
+
+let new_constant_declaration env id =
+  shadow_declaration env id;
+  let functions = !(env.constant_declarations) in
+  env.constant_declarations := S.add id functions
 
 (* Value environments *)
 
@@ -3617,7 +3645,7 @@ and gather_dec env scope dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_, ({ it = Type.Actor; _} as obj_sort), _, dec_fields); at; _ }) ; _  }); _ }),
        _
     ) ->
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     let named_scope = match env.named_scope with
     | Some prefix -> Some (prefix @ [id.it])
     | None -> None
@@ -3638,9 +3666,21 @@ and gather_dec env scope dec : Scope.t =
 
       fld_src_env = scope.fld_src_env;
     }
-  | LetD (pat, _, _) -> gather_pat env scope pat
-  | VarD (id, _) -> 
-    shadow_parameter env id.it;
+  | LetD (
+      {it = VarP id; _}, 
+      {it = FuncE (name, { it = T.Local T.Stable; _ }, _, _, _, _, _, _); _}, _) ->
+    new_constant_declaration env id.it;
+    Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
+  | LetD (pat, { it = ImportE _; _ }, _) ->
+    let declarations = gather_pat env scope.Scope.val_env pat in
+    T.Env.iter (fun id _ ->
+      new_constant_declaration env id
+    ) declarations;
+    Scope.adjoin_val_env scope declarations
+  | LetD (pat, _, _) ->
+    gather_pat env scope pat
+  | VarD (id, _) ->
+    shadow_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _, _) ->
     let open Scope in
@@ -3684,10 +3724,10 @@ and gather_pat_aux env val_kind scope pat : Scope.t =
   match pat.it with
   | WildP | LitP _ | SignP _ -> scope
   | VarP id -> 
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id val_kind)
-  | TupP pats -> List.fold_left (gather_pat env) scope pats
-  | ObjP pfs -> List.fold_left (gather_pat_field env) scope pfs
+  | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
   | AnnotP (pat1, _) | ParP pat1 -> gather_pat env scope pat1
 
@@ -3833,7 +3873,7 @@ and infer_dec_valdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, _, { it = ObjBlockE (_exp_opt, ({ it = Type.Actor; _} as obj_sort), (obj_id, _), dec_fields); at; _ }) ; _ }); _ }),
         _
     ) ->
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     let named_scope = match env.named_scope, obj_sort.it, obj_id with
     | Some prefix, _, Some name -> Some (prefix @ [name.it])
     | Some prefix, T.Module, None -> Some (prefix @ [id.it])
@@ -3857,18 +3897,18 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     let t = infer_exp {env with pre = true} exp in
     Scope.{empty with val_env = singleton id (T.Mut t)}
   | TypD (id, _, _) ->
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     let c = Option.get id.note in
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
   | ClassD (_exp_opt, shared_pat, obj_sort, id, typ_binds, pat, _, _, _, _) ->
-    shadow_parameter env id.it;
+    shadow_declaration env id.it;
     if obj_sort.it = T.Actor then begin
       error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
@@ -3910,7 +3950,7 @@ let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope ~viper_mode msgs scope (Some []) in
+          let env0 = env_of_scope ~viper_mode msgs scope (Some []) Program in
           let env = {
              env0 with async = async_cap;
           } in
@@ -3935,7 +3975,7 @@ let check_actors ?(viper_mode=false) ?(check_actors=false) scope progs : unit Di
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
-        let env = env_of_scope ~viper_mode msgs scope (Some []) in
+        let env = env_of_scope ~viper_mode msgs scope (Some []) Program in
         let report ds =
           match ds with
             [] -> ()
@@ -3964,7 +4004,7 @@ let check_lib named_scope scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = { (env_of_scope msgs scope named_scope) with errors_only = (pkg_opt <> None) } in
+          let env = { (env_of_scope msgs scope named_scope Library) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false Top in
@@ -4018,7 +4058,7 @@ let check_stab_sig scope sig_ : T.stab_sig  Diag.result =
     (fun msgs ->
       recover_opt
         (fun (decs, sfs) ->
-          let env = env_of_scope msgs scope (Some []) in
+          let env = env_of_scope msgs scope (Some []) Program in
           let scope = infer_block_decs env decs sig_.at in
           let env1 = adjoin env scope in
           let check_fields sfs =

@@ -72,7 +72,7 @@ impl NameTable {
     }
 
     unsafe fn text_section_read(self: *mut Self, offset: usize, length: usize) -> String {
-        debug_assert!(offset + length < self.text_section_length());
+        debug_assert!(offset + length <= self.text_section_length());
         let section = self.text_section_start();
         let slice = from_raw_parts(section.add(offset), length);
         from_utf8(slice).unwrap().to_string()
