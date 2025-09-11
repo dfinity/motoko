@@ -447,7 +447,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (_, t, _) -> t
+    | Some (_, _, t) -> t
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -1086,7 +1086,7 @@ and is_explicit_dec d =
   | MixinD (p, dfs) ->
     is_explicit_pat p &&
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
-  | IncludeD (_, es, _) -> List.for_all is_explicit_exp es
+  | IncludeD (_, e, _) -> is_explicit_exp e
 
 
 (* Literals *)
@@ -3332,16 +3332,12 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | IncludeD (i, args, n) -> begin
-    use_identifier env i.it;
-    match T.Env.find_opt i.it env.mixins with
-    | None -> assert false
-    | Some (pat, _, _) ->
-      let arg_tys = T.as_seq pat.note in
-      if List.length args <> List.length arg_tys then
-        assert false
-      else
-        List.iter2 (check_exp env) arg_tys args
+  | IncludeD (i, arg, n) ->
+    if not env.pre then begin
+      use_identifier env i.it;
+      match T.Env.find_opt i.it env.mixins with
+      | None -> assert false
+      | Some (pat, _, _) -> check_exp env pat.note arg
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
@@ -3500,13 +3496,6 @@ and gather_block_decs env decs : Scope.t =
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
-  | MixinD _ -> scope
-  | IncludeD(i, _, _) ->
-     (* TODO(Christoph): try to extend the scope from here
-        ANSWER: I tried to, but imports aren't added to the env here yet
-      *)
-    scope
-  | ExpD _ -> scope
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3566,6 +3555,7 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
+  | MixinD _ | IncludeD _ | ExpD _ -> scope
 
 and gather_pat env (scope : Scope.t) pat : Scope.t =
    gather_pat_aux env Scope.Declaration scope pat
@@ -3616,7 +3606,7 @@ and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
-      let (pat, t, decs) = T.Env.find i.it env.mixins in
+      let (pat, decs, t) = T.Env.find i.it env.mixins in
       n := Some({ pat; decs });
       (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
       let (_, fields) = T.as_obj t in
@@ -3889,7 +3879,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
-              Scope.mixin lib.note.filename (pat, typ, decs)
+              Scope.mixin lib.note.filename (pat, decs, typ)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->

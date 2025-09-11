@@ -576,7 +576,7 @@ and export_runtime_information self_id =
 
 and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
   | S.TypD _ -> []
-  | S.IncludeD(_, args, note) -> List.map (fun _ -> None) args @ List.concat_map build_stabs (Option.get !note).decs
+  | S.IncludeD(_, arg, note) -> None :: List.concat_map build_stabs (Option.get !note).decs
   | _ -> [df.it.S.stab]
 
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
@@ -957,10 +957,9 @@ and dec' d =
   | S.TypD _ -> []
   | S.MixinD _ -> assert false
   | S.IncludeD(_, args, note) ->
-    let { pat; decs } = Option.get !note in
-    (* TODO: Fix the positions on the generated lets here *)
-    let binders = List.map2 (fun (id, ty) arg -> (letD (var id.it ty) (exp arg)).it) (as_tuple_of_vars pat) args in
-    binders @ List.concat_map dec' (List.map (fun df -> df.it.S.dec) decs)
+    let { pat = p; decs } = Option.get !note in
+    (* TODO: Fix the positions on the generated let here *)
+    (letP (pat p) (exp args)).it :: List.concat_map dec' (List.map (fun df -> df.it.S.dec) decs)
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in

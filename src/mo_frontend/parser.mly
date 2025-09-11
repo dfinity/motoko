@@ -932,7 +932,7 @@ dec_nonvar :
      let dfs = List.map (share_dec_field (Stable @@ no_region)) dfs in
      MixinD(p, dfs) @? at $sloc
   }
-  | INCLUDE x=id LPAR exps=seplist(exp(ob), COMMA) RPAR { IncludeD(x, exps, ref None) @? at $sloc }
+  | INCLUDE x=id e=exp(ob) { IncludeD(x, e, ref None) @? at $sloc }
 
 obj_or_class_dec :
   | ds=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
