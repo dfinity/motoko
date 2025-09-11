@@ -447,7 +447,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (t, _) -> t
+    | Some (_, t, _) -> t
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -3332,8 +3332,15 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | IncludeD (i, _, n) ->
-    (* TODO: should check the arguments here *)
+  | IncludeD (i, args, n) -> begin
+    match T.Env.find_opt i.it env.mixins with
+    | None -> assert false
+    | Some (arg_tys, _, _) ->
+      if List.length args <> List.length arg_tys then
+        assert false
+      else
+        List.iter2 (check_exp env) arg_tys args
+    end;
     T.unit
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, None) ->
@@ -3628,9 +3635,9 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
-     | Some (t, decs) ->
+     | Some (args, t, decs) ->
         (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
-        Scope.mixin id.it (t, decs)
+        Scope.mixin id.it (args, t, decs)
      | None ->
     (match infer_val_path env exp with
      | None -> Scope.empty
@@ -3707,7 +3714,7 @@ and is_import d =
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | IncludeD(i, _, n) ->
-     let (t, decs) = T.Env.find i.it env.mixins in
+     let (_, t, decs) = T.Env.find i.it env.mixins in
      n := Some(decs);
      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
      let (_, fields) = T.as_obj t in
@@ -3881,7 +3888,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
-              Scope.mixin lib.note.filename (typ, decs)
+              Scope.mixin lib.note.filename (T.as_seq pat.note, typ, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->

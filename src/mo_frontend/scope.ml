@@ -15,7 +15,7 @@ type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
 type fld_src_env = Field_sources.srcs_map
 
-type mixin_env = (T.typ * S.dec_field list) T.Env.t
+type mixin_env = (T.typ list * T.typ * S.dec_field list) T.Env.t
 and obj_env = scope T.Env.t  (* internal object scopes *)
 and scope =
   { val_env : val_env;
