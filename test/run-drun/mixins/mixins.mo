@@ -1,8 +1,11 @@
 import MyMixin "MyMixin";
 
 persistent actor {
-  public query func actorFunc() : async Text {
-    "Actor";
-  };
   include MyMixin();
+
+  let myMsg = msg;
+  public query func actorFunc() : async Text {
+    "Hello from the actor"
+  };
+
 };
