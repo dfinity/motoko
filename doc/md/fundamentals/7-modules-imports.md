@@ -190,8 +190,15 @@ persistent actor CountToTen {
 The `import` syntax can also be used with the `blob:file:` URI scheme to import raw `Blob` values:
 
 ```motoko no-repl
-import index "blob:file:./keys/id_ed25519.pub";
+import pub = "blob:file:./keys/id_ed25519.pub";
+
+actor {
+    func checkSig(key : Blob, cyphertext : Text) { ... };
+
+    public func verify(cyphertext : Text) : async () {
+        checkSig(pub, cyphertext);
+    };
 };
 ```
 
-This also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
+This usecase also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
