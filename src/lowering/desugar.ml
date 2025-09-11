@@ -958,8 +958,12 @@ and dec' d =
   | S.MixinD _ -> assert false
   | S.IncludeD(_, args, note) ->
     let { pat = p; decs } = Option.get !note in
+    let renamed_pat, rho = Rename.pat Rename.Renaming.empty (pat p) in
+
     (* TODO: Fix the positions on the generated let here *)
-    (letP (pat p) (exp args)).it :: List.concat_map dec' (List.map (fun df -> df.it.S.dec) decs)
+    let ir_decs = List.concat_map dec (List.map (fun df -> df.it.S.dec) decs) in
+    let renamed_decs, _  = Subst_var.decs rho ir_decs in
+    (letP renamed_pat (exp args)).it :: List.map (fun d -> d.it) renamed_decs
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
