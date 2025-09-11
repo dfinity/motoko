@@ -42,7 +42,7 @@
       flake = false;
     };
     motoko-base-src = {
-      url = "github:dfinity/motoko-base/pull/736/head";
+      url = "github:dfinity/motoko-base/next-moc";
       flake = false;
     };
     motoko-core-src = {
