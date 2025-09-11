@@ -25,10 +25,7 @@ val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
 
-type qualified_name = string list
-type identified_imports = (qualified_name * Syntax.lib_path) list
-
-val chase_imports : identified_imports -> parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
+val chase_imports : string -> parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
   (Syntax.lib list * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option

@@ -165,7 +165,27 @@ let in_base base f =
   then f
   else Filename.concat base f
 
-let resolve_import_string msgs base actor_idl_path aliases packages imported (f, ri_ref, at)  =
+let remove_prefix name prefix =
+  assert (String.starts_with ~prefix name);
+  let offset = String.length prefix in
+  String.sub name offset ((String.length name) - offset)
+
+let get_package_prefix name = Printf.sprintf "mo:%s" name
+
+let get_qualified_name packages base path =
+  let full_path = Lib.FilePath.normalise (Filename.concat base path) in
+  let search = M.filter (fun _ package_path ->
+    String.starts_with ~prefix:package_path full_path
+  ) packages in
+  match M.choose_opt search with
+  | Some (package_name, package_path) ->
+    let relative = remove_prefix full_path package_path in
+    let package_prefix = get_package_prefix package_name in
+    Some (package_prefix ^ relative)
+  | None ->
+    Some path
+
+let resolve_import_string msgs root base actor_idl_path aliases packages imported (f, ri_ref, at)  =
   let resolve_ic bytes = match actor_idl_path with
     | None -> err_actor_import_without_idl_path msgs at
     | Some actor_base ->
@@ -174,14 +194,18 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
   in
   match Url.parse f with
   | Ok (Url.Relative path) ->
+    let qualified_name = get_qualified_name packages base path in
+    Printf.printf "RELATIVE URL %s %s %s\n" path base (match qualified_name with Some s -> s | None -> "(none)");
     (* TODO support importing local .did file *)
     add_lib_import msgs imported ri_ref at
-      { path = in_base base path; package = None }
+      { path = in_base base path; package = None; qualified_name }
   | Ok (Url.Package (pkg,path)) ->
     begin match M.find_opt pkg packages with
     | Some pkg_path ->
+      let qualified_name = get_qualified_name packages base path in
+      Printf.printf "PACKAGE URL %s %s %s\n" path pkg (match qualified_name with Some s -> s | None -> "(none)");
       add_lib_import msgs imported ri_ref at
-        { path = in_base pkg_path path; package = Some pkg }
+        { path = in_base pkg_path path; package = Some pkg; qualified_name }
     | None -> err_package_not_defined msgs at pkg
     end
   | Ok (Url.Ic bytes) ->
@@ -286,7 +310,8 @@ let package_imports base packages =
       acc
     else
       let files = list_files url in
-      List.map (fun path -> LibPath {package = Some pname; path = path}) files::acc)
+      let qualified_name = Some (get_package_prefix pname) in
+      List.map (fun path -> LibPath {package = Some pname; path = path; qualified_name}) files::acc)
     packages []
   in
     List.concat imports
@@ -299,8 +324,9 @@ let resolve_flags : flags -> resolved_flags Diag.result
   Diag.return { packages; aliases; actor_idl_path }
 
 let resolve
-  : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
-  = fun flags p base ->
+  : filepath -> flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+  = fun root flags p base ->
+    Printf.printf "RESOLVE %s\n" base;
   let open Diag.Syntax in
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
   Diag.with_message_store (fun msgs ->
@@ -314,7 +340,7 @@ let resolve
              (* consider only the explicitly imported package libraries *)
              RIM.empty)
     in
-    List.iter (resolve_import_string msgs base actor_idl_path aliases packages imported)(prog_imports p);
+    List.iter (resolve_import_string msgs root base actor_idl_path aliases packages imported)(prog_imports p);
     Some (List.map (fun (rim, at) -> rim @@ at) (RIM.bindings !imported))
   )
 
