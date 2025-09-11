@@ -857,11 +857,11 @@ impl Closure {
         (*self).size
     }
 
-    #[enhanced_orthogonal_persistence]
-    pub(crate) unsafe fn funid(self: *mut Self) -> usize {
-        (*self).funid
+    #[allow(unused)]
+    pub(crate) unsafe fn get(self: *mut Self, index: usize) -> Value {
+        debug_assert!(index < self.size());
+        *self.payload_addr().add(index)
     }
-
 }
 
 #[repr(C)] // See the note at the beginning of this module

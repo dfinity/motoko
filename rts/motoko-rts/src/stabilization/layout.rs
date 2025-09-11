@@ -31,16 +31,16 @@ use crate::{
     types::{
         base_array_tag, size_of, Tag, Value, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
         TAG_ARRAY_SLICE_MIN, TAG_ARRAY_T, TAG_BIGINT, TAG_BITS64_F, TAG_BITS64_S, TAG_BITS64_U,
-        TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT,
-        TAG_REGION, TAG_SOME, TAG_VARIANT, TAG_CLOSURE, TRUE_VALUE,
+        TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CLOSURE, TAG_CONCAT, TAG_MUTBOX,
+        TAG_OBJECT, TAG_REGION, TAG_SOME, TAG_VARIANT, TRUE_VALUE,
     },
 };
 
 use self::{
     stable_array::StableArray, stable_bigint::StableBigInt, stable_bits64::StableBits64,
-    stable_blob::StableBlob, stable_concat::StableConcat, stable_mutbox::StableMutBox,
-    stable_object::StableObject, stable_region::StableRegion, stable_some::StableSome,
-    stable_variant::StableVariant, stable_closure::StableClosure
+    stable_blob::StableBlob, stable_closure::StableClosure, stable_concat::StableConcat,
+    stable_mutbox::StableMutBox, stable_object::StableObject, stable_region::StableRegion,
+    stable_some::StableSome, stable_variant::StableVariant,
 };
 
 use super::{
@@ -55,13 +55,13 @@ mod stable_array;
 mod stable_bigint;
 mod stable_bits64;
 mod stable_blob;
+mod stable_closure;
 mod stable_concat;
 mod stable_mutbox;
 mod stable_object;
 mod stable_region;
 mod stable_some;
 mod stable_variant;
-mod stable_closure;
 
 /// Different kinds of objects used in the stable format.
 #[repr(u64)]
@@ -453,6 +453,5 @@ pub unsafe fn deserialize<M: Memory>(
         StableObjectKind::Closure => {
             StableClosure::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
-
     }
 }
