@@ -2221,9 +2221,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       else if typs <> [] then begin
         (* Warn when instantiation is redundant *)
         assert env.pre;
-        match Diag.with_message_store (fun msgs ->
-          let env_without_errors = { env with msgs = msgs } in
-          Some (infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
+        match Diag.with_message_store (recover_opt (fun msgs ->
+          let env_without_errors = { env with msgs } in
+          infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
         with
         | Error _ -> ()
         | Ok ((ts', _, _), msgs) ->
