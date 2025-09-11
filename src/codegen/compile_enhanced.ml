@@ -5308,7 +5308,7 @@ module IC = struct
           get_name ^^ Blob.payload_ptr_unskewed env ^^
           get_name_len ^^
           get_value ^^ Blob.payload_ptr_unskewed env ^^
-          compile_unboxed_const 0L ^^
+          compile_unboxed_zero ^^
           get_value_len ^^
           system_call env "env_var_value_copy" ^^
           

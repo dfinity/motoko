@@ -72,7 +72,6 @@ persistent actor Self {
 
 };
 
-//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
