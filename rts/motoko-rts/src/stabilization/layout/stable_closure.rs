@@ -1,49 +1,57 @@
 use crate::{
     stabilization::serialization::stable_memory_stream::StableMemoryStream,
-    types::{Value, Variant, TAG_VARIANT},
+    types::{Value, Closure, TAG_CLOSURE},
 };
 
 use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
-pub struct StableVariant {
+pub struct StableClosure {
+    funid: u64,
     size: u64,
-    field: StableValue,
+    hash: StableValue,
 }
 
-impl StaticScanner<StableValue> for StableVariant {
+impl StaticScanner<StableValue> for StableClosure {
     fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
         &mut self,
         context: &mut C,
         translate: &F,
     ) -> bool {
-        self.field = translate(context, self.field);
+        self.hash = translate(context, self.hash);
         true
     }
 }
 
-impl Serializer<Variant> for StableVariant {
+impl Serializer<Closure> for StableClosure {
     unsafe fn serialize_static_part(
         _stable_memory: &mut StableMemoryStream,
-        main_object: *mut Variant,
+        main_object: *mut Closure,
     ) -> Self {
-        StableVariant {
-            size: (*main_object).tag as u64,
-            field: StableValue::serialize((*main_object).field),
+        debug_assert_eq!(main_object.funid(), usize::MAX);
+        debug_assert_eq!(main_object.size(), 1);
+        StableClosure {
+	    funid: (*main_object).funid as u64,
+            size: (*main_object).size as u64,
+            hash: StableValue::serialize(*(main_object.payload_addr())),
         }
     }
 
     unsafe fn deserialize_static_part(
         &self,
-        target_variant: *mut Variant,
+        target_closure: *mut Closure,
         object_kind: StableObjectKind,
     ) {
-        debug_assert_eq!(object_kind, StableObjectKind::Variant);
-        (*target_variant).header.tag = TAG_VARIANT;
-        (*target_variant)
+        debug_assert_eq!(object_kind, StableObjectKind::Closure);
+        debug_assert_eq!(self.funid, u64::MAX);
+        debug_assert_eq!(self.size, 1);
+        (*target_closure).header.tag = TAG_CLOSURE;
+        (*target_closure)
             .header
-            .init_forward(Value::from_ptr(target_variant as usize));
-        (*target_variant).tag = self.tag as usize;
-        (*target_variant).field = self.field.deserialize();
+            .init_forward(Value::from_ptr(target_closure as usize));
+        (*target_closure).funid = self.funid as usize;
+        (*target_closure).size = self.size as usize;
+	let address = target_closure.payload_addr();
+        *address = self.hash.deserialize();
     }
 }

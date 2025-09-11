@@ -450,6 +450,14 @@ impl Value {
         self.forward().get_ptr() as *mut BigInt
     }
 
+    /// Get the pointer as `Closure` using forwarding. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Closure`.
+    pub unsafe fn as_closure(self) -> *mut Closure {
+        debug_assert_eq!(self.tag(), TAG_CLOSURE);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Closure
+    }
+
     pub fn as_tiny(self) -> isize {
         debug_assert!(self.is_scalar());
         self.0 as isize >> 1
@@ -841,13 +849,19 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
+    pub(crate) unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.offset(1) as *mut Value // skip closure header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> usize {
         (*self).size
     }
+
+    #[enhanced_orthogonal_persistence]
+    pub(crate) unsafe fn funid(self: *mut Self) -> usize {
+        (*self).funid
+    }
+
 }
 
 #[repr(C)] // See the note at the beginning of this module
