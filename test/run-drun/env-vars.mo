@@ -46,11 +46,12 @@ persistent actor Self {
         value = "value";
       },
     ]);
-    var names = Prim.envVarNames();
-    Prim.debugPrint(debug_show names);
-    assert names == ["TEST_ENV_VAR_NAME", "key"];
+    Prim.debugPrint(debug_show Prim.envVarNames());
+    assert Prim.envVarNames() == ["TEST_ENV_VAR_NAME", "key"];
     assert Prim.envVar("TEST_ENV_VAR_NAME") == ?"TEST_ENV_VAR_VALUE";
+    assert Prim.envVar("key") == ?"value";
     assert Prim.envVar("OTHER_ENV_VAR_NAME") == null;
+    assert Prim.envVar("") == null;
   };
 
 };
