@@ -194,4 +194,4 @@ import index "blob:file:./keys/id_ed25519.pub";
 };
 ```
 
-This also caters for the import of externally built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
+This also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
