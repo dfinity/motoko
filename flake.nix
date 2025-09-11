@@ -50,7 +50,7 @@
       flake = false;
     };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers/pull/19/head";
+      url = "github:kritzcreek/motoko-matchers";
       flake = false;
     };
     ocaml-vlq-src = {
