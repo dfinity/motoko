@@ -1317,6 +1317,7 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "unwrap_closure_field" [I64Type] [I64Type];
     E.add_func_import env "rts" "save_name_table" [I64Type] [];
     E.add_func_import env "rts" "set_in_migration" [I32Type] [];
     E.add_func_import env "rts" "skip_persistent_function_gc" [] [];
@@ -9145,15 +9146,16 @@ module StableFunctionGC = struct
               get_object ^^ Tagged.load_tag env ^^
               compile_eq_const (Tagged.int_of_tag Tagged.Closure) ^^
               E.if1 I64Type (
-                get_object ^^ Closure.captured_address env field.lab
+                get_object ^^ Closure.load_captured env field.lab ^^
+                E.call_import env "rts" "unwrap_closure_field"
               )
               (
                 get_object ^^ Tagged.load_tag env ^^
                 compile_eq_const (Tagged.int_of_tag Tagged.Object) ^^
                 E.else_trap_with env "Stable function GC: Invalid object tag" ^^
-                get_object ^^ Object.idx env typ field.lab
+                get_object ^^ Object.idx env typ field.lab ^^
+                Heap.load_field 0L (* dereference field *)
               ) ^^
-              Heap.load_field 0L ^^ (* dereference field *)
               visit_field field.typ
               ) relevant_fields
           | Tup type_list ->
