@@ -659,17 +659,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-management-canister-types"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b5a939a84adbc30769d47e5de72c7b9f3713284e3ac87df4eb24795677a8df8"
-dependencies = [
- "candid",
- "serde",
- "serde_bytes",
-]
-
-[[package]]
 name = "ic-transport-types"
 version = "0.40.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1088,7 +1077,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pocket-ic"
 version = "10.0.0"
-source = "git+https://github.com/dfinity/ic?rev=f371fd9#f371fd9f57b8a02ce78c2ce61a36b88960f23604"
+source = "git+https://github.com/dfinity/ic?branch=master#861616d46ded00091fecbfe01f441b38b56b483c"
 dependencies = [
  "backoff",
  "base64 0.13.1",
@@ -1096,7 +1085,7 @@ dependencies = [
  "flate2",
  "hex",
  "ic-certification",
- "ic-management-canister-types 0.3.3",
+ "ic-management-canister-types",
  "ic-transport-types",
  "reqwest",
  "schemars",
@@ -1447,9 +1436,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.4"
+version = "0.103.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a17884ae0c1b773f1ccd2bd4a8c72f16da897310a98b0e84bf349ad5ead92fc"
+checksum = "b5a37813727b78798e53c2bec3f5e8fe12a6d6f8389bf9ca7802add4c9905ad8"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -1795,7 +1784,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "hex",
- "ic-management-canister-types 0.4.1",
+ "ic-management-canister-types",
  "pocket-ic",
  "serde",
  "wasmparser",

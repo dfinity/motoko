@@ -4893,7 +4893,7 @@ module IC = struct
     E.add_func_import env "ic0" "env_var_name_size" [i] [i];
     E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
     E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
-    E.add_func_import env "ic0" "env_var_value_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_value_size" [i; i] [i];
     E.add_func_import env "ic0" "env_var_value_copy" (is 5) [];
     E.add_func_import env "ic0" "time" [] [I64Type];
     if !Flags.global_timer then
@@ -5255,7 +5255,7 @@ module IC = struct
         let (set_len, get_len) = new_local env "len" in
         let (set_array, get_array) = new_local env "array" in
         system_call env "env_var_count" ^^ set_len ^^
-        Arr.alloc env Tagged.M get_len ^^ set_array ^^
+        Arr.alloc env Tagged.I get_len ^^ set_array ^^
         get_len ^^ from_0_to_n env (fun get_i ->
           let (set_name_len, get_name_len) = new_local env "name_len" in
           let (set_name, get_name) = new_local env "name" in
@@ -5263,12 +5263,15 @@ module IC = struct
           get_i ^^
           system_call env "env_var_name_size" ^^ set_name_len ^^
 
-          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
           Blob.alloc env Tagged.T get_name_len ^^ set_name ^^
+
+          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
+          get_name ^^
+          store_ptr ^^
 
           get_i ^^
           get_name ^^ Blob.payload_ptr_unskewed env ^^
-          compile_unboxed_const 0L ^^
+          compile_unboxed_zero ^^
           get_name_len ^^
           system_call env "env_var_name_copy" ^^
 
@@ -5284,33 +5287,33 @@ module IC = struct
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
       Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
-        (* let (set_name, get_name) = new_local env "name" in
         let (set_name_len, get_name_len) = new_local env "name_len" in
-        get_name ^^ Text.to_blob env ^^ Blob.as_ptr_len env ^^
-        set_name_len ^^ set_name ^^
-        
-        get_name ^^ get_name_len ^^
+
+        get_name ^^ Blob.len env ^^ set_name_len ^^
+
+        get_name ^^ Blob.payload_ptr_unskewed env ^^
+        get_name_len ^^
         system_call env "env_var_name_exists" ^^
         Bool.from_rts_int32 ^^
-        E.if0 (let (set_value_len, get_value_len) = new_local env "value_len" in
+        E.if1 I64Type (
+          let (set_value_len, get_value_len) = new_local env "value_len" in
           let (set_value, get_value) = new_local env "value" in
 
-          get_name ^^ get_name_len ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
           system_call env "env_var_value_size" ^^ set_value_len ^^
           
           Blob.alloc env Tagged.T get_value_len ^^ set_value ^^
           
-          get_name ^^ get_name_len ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
           get_value ^^ Blob.payload_ptr_unskewed env ^^
           compile_unboxed_const 0L ^^
           get_value_len ^^
           system_call env "env_var_value_copy" ^^
           
           Opt.inject_simple env get_value)
-        (Opt.null_lit env) *)
-
-        (* TODO *)
-        Opt.null_lit env
+        (Opt.null_lit env)
       )
     | _ ->
       E.trap_with env "cannot get environment variable when running locally"

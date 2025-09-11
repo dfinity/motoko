@@ -162,7 +162,7 @@
         cargoLock = {
           lockFile = ./test-runner/Cargo.lock;
           outputHashes = {
-            "pocket-ic-10.0.0" = "sha256-yHTNQxpZsbo9st+6IksfbBvMrstywVjYMCU3gapG68s=";
+            "pocket-ic-10.0.0" = "sha256-yOjLoRCMsi29tEK8M1XNC8AaU1ixkHE3B5sdGSr6u6s=";
           };
         };
         buildInputs = [
