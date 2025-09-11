@@ -514,6 +514,8 @@ module E = struct
        created in `conclude_module`. *)
     global_type_descriptor : global_type_descriptor option ref;
 
+    name_table_segment : int32 ref;
+
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
 
@@ -555,6 +557,7 @@ module E = struct
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
+    name_table_segment = ref 0l;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
     stable_migration_descriptor = ref None;
@@ -9206,7 +9209,23 @@ module StableFunctionGC = struct
 end (* StableFunctionGC *)
 
 module NameTable = struct
-  let build_table (records: (int32 * string) list) : string =
+  let register_delayed_globals env =
+    E.add_global64_delayed env "__name_table_length" Immutable
+
+  let get_table_length env =
+    G.i (GlobalGet (nr (E.get_global env "__name_table_length")))
+
+  let reserve_table_segment env =
+    env.E.name_table_segment := E.add_data_segment env ""
+
+  let get_table_segment env = !(E.(env.name_table_segment))
+
+  let name_records env =
+    let functions = StableFunctions.sorted_stable_functions env in
+    List.map (fun (hash, name, _, _, _) -> (hash, name)) functions
+
+  let create_name_table env set_segment_length =
+    let records = name_records env in
     let append_text section text =
       let offset = String.length section in
       let length = String.length text in
@@ -9235,16 +9254,11 @@ module NameTable = struct
       Bytes hash_section;
       Bytes text_section
     ] in
-    StaticBytes.as_bytes table
+    let binary_length = E.replace_data_segment env (get_table_segment env) table in
+    set_segment_length binary_length
 
-  let name_records env =
-    let functions = StableFunctions.sorted_stable_functions env in
-    List.map (fun (hash, name, _, _, _) -> (hash, name)) functions
-
-  let register env =
-    let records = name_records env in
-    let payload = build_table records in
-    Blob.lit env Tagged.B payload ^^   
+  let save_name_table env =
+    Blob.load_data_segment env Tagged.B (get_table_segment env) (get_table_length env) ^^
     E.call_import env "rts" "save_name_table"
 
 end (* NameTable *)
@@ -10841,7 +10855,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
-    NameTable.register env ^^
+    NameTable.save_name_table env ^^
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
@@ -14173,7 +14187,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals start_fi_o =
+and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals set_name_table_length start_fi_o =
 
   RTS_Exports.system_exports env;
   EnhancedOrthogonalPersistence.system_export env actor_type;
@@ -14188,6 +14202,8 @@ and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serializat
 
   (* Segments for EOP memory compatibility check *)
   EnhancedOrthogonalPersistence.create_migration_descriptor env actor_type set_eop_globals;
+
+  NameTable.create_name_table env set_name_table_length;
 
   (* declare before building GC *)
 
@@ -14310,6 +14326,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_eop_globals = EnhancedOrthogonalPersistence.register_delayed_globals env in
   EnhancedOrthogonalPersistence.reserve_type_table_segments env;
 
+  let set_name_table_length = NameTable.register_delayed_globals env in
+  NameTable.reserve_table_segment env;
+
   IC.system_imports env;
   RTS.system_imports env;
 
@@ -14330,5 +14349,5 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   | _ -> None
   in
 
-  conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o
+  conclude_module env actor_type set_serialization_globals set_eop_globals set_name_table_length start_fi_o
 
