@@ -3333,6 +3333,7 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | IncludeD (i, args, n) -> begin
+    use_identifier env i.it;
     match T.Env.find_opt i.it env.mixins with
     | None -> assert false
     | Some (pat, _, _) ->
@@ -3615,7 +3616,11 @@ and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
-     (* TODO *) Scope.empty
+      let (pat, t, decs) = T.Env.find i.it env.mixins in
+      n := Some({ pat; decs });
+      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
+      let (_, fields) = T.as_obj t in
+      scope_of_object env fields
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
@@ -3714,12 +3719,7 @@ and is_import d =
 
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
-  | IncludeD(i, _, n) ->
-     let (pat, t, decs) = T.Env.find i.it env.mixins in
-     n := Some({ pat; decs });
-     (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
-     let (_, fields) = T.as_obj t in
-     scope_of_object env fields
+  | IncludeD(i, _, n) -> Scope.empty
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
