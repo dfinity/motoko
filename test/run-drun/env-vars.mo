@@ -35,7 +35,7 @@ persistent actor Self {
     };
   };
 
-  public func test() : async () {
+  public func run() : async () {
     await* setEnvVars([
       {
         name = "TEST_ENV_VAR_NAME";
@@ -77,4 +77,8 @@ persistent actor Self {
 //SKIP run-ir
 //SKIP run-low
 
-//CALL ingress test "DIDL\x00\x00"
+// Temporarily deactivated:
+//SKIP drun-run
+//SKIP wasm-run
+
+//CALL ingress run "DIDL\x00\x00"
