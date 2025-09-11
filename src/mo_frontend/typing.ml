@@ -3708,8 +3708,7 @@ and infer_dec_valdecs env dec : Scope.t =
      n := Some(decs);
      Format.printf "Resolved include %s to %a\n" i.it display_typ t;
      let (_, fields) = T.as_obj t in
-     let scope = scope_of_object env fields in
-     scope
+     scope_of_object env fields
   | ExpD _ ->
     Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
@@ -3843,7 +3842,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, scope = infer_block env (imp_ds @ ds) lib.at false in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {empty_typ_note with note_typ = typ};
           let imp_scope = match cub.it with
@@ -3879,13 +3878,6 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
-              (* let collect_dec scope (dec_field : dec_field) = match dec_field.it.dec.it with
-                | _ -> scope
-                in
-              let mixin_scope = List.fold_left collect_dec Scope.empty decs in
-              (* TODO: typ is prob wrong here *)
-              let ve = (env_of_scope env.msgs mixin_scope).vals in *)
-              (* Format.printf "typ: %s\nscope: %a\n" (T.string_of_typ typ) display_vals ve; *)
               Scope.mixin lib.note.filename (typ, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
