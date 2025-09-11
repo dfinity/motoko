@@ -1316,7 +1316,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
     let ty = u.note.S.note_typ in
-    Printf.printf "COMPILING AT TYPE: %s\n" (T.string_of_typ ty);
+    (* Printf.printf "COMPILING AT TYPE: %s\n" (T.string_of_typ ty); *)
     let actor_expression = build_actor u.at [] eo self_id fields ty in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->

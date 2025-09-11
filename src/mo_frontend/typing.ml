@@ -2823,12 +2823,15 @@ and nonpub_field dec_field xs : visibility_env =
     vis_dec T.{depr = None; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
 
+and pub_fields' dec_fields xs : visibility_env =
+  List.fold_right pub_field dec_fields xs
+
 and pub_fields dec_fields : visibility_env =
-  List.fold_right pub_field dec_fields T.Env.(empty, empty)
+  pub_fields' dec_fields T.Env.(empty, empty)
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields (Option.get !n)
+  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields' (Option.get !n) xs
   | {vis = { it = Public depr; _}; dec; _} ->
     vis_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
@@ -3413,7 +3416,7 @@ and infer_dec env dec : T.typ =
     let env' = adjoin_vals env ve in
     let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
     let t' = infer_obj { env' with check_unused = false } obj_sort None dec_fields dec.at in
-    Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t');
+    (* Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t'); *)
     T.normalize t'
   | TypD _ ->
     T.unit
@@ -3626,7 +3629,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
      | Some (t, decs) ->
-        Format.printf "Adding mixin %s at %a\n" id.it display_typ t;
+        (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
         Scope.mixin id.it (t, decs)
      | None ->
     (match infer_val_path env exp with
@@ -3706,7 +3709,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | IncludeD(i, _, n) ->
      let (t, decs) = T.Env.find i.it env.mixins in
      n := Some(decs);
-     Format.printf "Resolved include %s to %a\n" i.it display_typ t;
+     (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
      let (_, fields) = T.as_obj t in
      scope_of_object env fields
   | ExpD _ ->
