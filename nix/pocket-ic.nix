@@ -7,13 +7,13 @@ pkgs: let
     cargoLock = {
       lockFile = "${pkgs.sources.pocket-ic-src}/Cargo.lock";
       outputHashes = {
+        "bitcoin-0.32.5-doge.0" = "sha256-DK+TKcY2c5sNI5q+DDddJ07UUOBBqiMAZ5sMV+fHoYA=";
         "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
         "cloudflare-0.12.0" = "sha256-67kQWJFRXZXHx+qwlyLa9NLF09b/4iRWxTLzCniCHZE=";
         "ic-bn-lib-0.1.0" = "sha256-6ABcruF7vuvTQkhGWdxUcSdO+qgOHKY1MhQRADHtJYw=";
         "ic-gateway-0.2.0" = "sha256-ksiSqBLmnAIAtqvzuHIsyi2FrXs5rwo00n+xto97ctI=";
         "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
         "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
-        "bitcoin-0.32.5-doge.0" = "sha256-DK+TKcY2c5sNI5q+DDddJ07UUOBBqiMAZ5sMV+fHoYA=";
       };
     };
     patchPhase = ''
