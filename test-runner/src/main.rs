@@ -1,8 +1,10 @@
 use candid::{CandidType, Principal};
 use hex::decode;
 use ic_management_canister_types::CanisterSettings;
+use pocket_ic::common::rest::IcpConfig;
+use pocket_ic::common::rest::IcpConfigFlag;
 use pocket_ic::common::rest::RawEffectivePrincipal;
-use pocket_ic::{call_candid_as, PocketIc, PocketIcBuilder, RejectResponse};
+use pocket_ic::{PocketIc, PocketIcBuilder, RejectResponse, call_candid_as};
 use serde::Serialize;
 use std::io::Read;
 use std::path::PathBuf;
@@ -285,7 +287,9 @@ impl TestCommand {
                 format!("Failed to create canister: {:?}", e),
             ));
         } else {
-            println!("ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101");
+            println!(
+                "ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101"
+            );
         }
         Ok(())
     }
@@ -645,12 +649,18 @@ impl TestRunner {
     }
 
     pub fn run(&self) -> std::io::Result<()> {
+        let ic_config = IcpConfig {
+            canister_backtrace: Some(IcpConfigFlag::Disabled),
+            beta_features: Some(IcpConfigFlag::Enabled),
+            ..Default::default()
+        };
         let mut server = match self.subnet_type {
             SubnetType::Application => PocketIcBuilder::new().with_application_subnet(),
             SubnetType::System => PocketIcBuilder::new()
                 .with_system_subnet()
                 .with_nns_subnet(),
         }
+        .with_icp_config(ic_config)
         .build();
 
         // Get the first canister id found in the commands.

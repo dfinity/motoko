@@ -72,13 +72,9 @@ persistent actor Self {
 
 };
 
-//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-
-// Temporarily deactivated:
-//SKIP drun-run
 //SKIP wasm-run
 
 //CALL ingress run "DIDL\x00\x00"
