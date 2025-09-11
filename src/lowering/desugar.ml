@@ -574,21 +574,9 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and includes ds = match ds with
-  | [] -> ([], [])
-  | { it = { dec = { it = IncludeD(_, _, note); _ }; stab; vis }; _}::ds' ->
-    (* TODO: Handle args *)
-    let included = Option.get (!note) in
-    let es = List.filter (fun ef -> is_not_typ_mixinD ef.it.S.dec) included in
-    let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-    let stabs = List.map (fun ef -> ef.it.S.stab) es in
-    let (ds', stabs') = includes ds' in
-    (ds @ ds', stabs @ stabs')
-  | _::ds' -> includes ds'
-
 and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
   | S.TypD _ -> []
-  | S.IncludeD(_, _, note) -> List.concat_map build_stabs (Option.get !note)
+  | S.IncludeD(_, args, note) -> List.map (fun _ -> None) args @ List.concat_map build_stabs (Option.get !note).decs
   | _ -> [df.it.S.stab]
 
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
@@ -939,6 +927,13 @@ and block force_unit ds =
 and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
 and is_not_typ_mixinD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> false | _ -> true
 
+and as_tuple_of_vars pat =
+  let ids = match pat.it with
+  | TupP ps -> List.map (fun p -> match p.it with | VarP id | AnnotP ({ it=VarP id; _}, _) -> id | _ -> assert false) ps
+  | _ -> Wasm.Sexpr.print 80 (Arrange.pat pat); assert false in
+  let tys = T.as_seq pat.note in
+  List.map2 (fun a b -> a, b) ids tys
+
 and decs ds = List.concat_map dec ds
 
 and dec d = List.map (fun ir_dec -> { it = ir_dec; at = d.at; note = () }) (dec' d)
@@ -961,7 +956,11 @@ and dec' d =
   | S.VarD (i, e) -> [I.VarD (i.it, e.note.S.note_typ, exp e)]
   | S.TypD _ -> []
   | S.MixinD _ -> assert false
-  | S.IncludeD(_, _, note) -> List.concat_map dec' (List.map (fun df -> df.it.S.dec) (Option.get !note))
+  | S.IncludeD(_, args, note) ->
+    let { pat; decs } = Option.get !note in
+    (* TODO: Fix the positions on the generated lets here *)
+    let binders = List.map2 (fun (id, ty) arg -> (letD (var id.it ty) (exp arg)).it) (as_tuple_of_vars pat) args in
+    binders @ List.concat_map dec' (List.map (fun df -> df.it.S.dec) decs)
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in

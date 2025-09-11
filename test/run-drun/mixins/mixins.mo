@@ -1,7 +1,7 @@
 import MyMixin "MyMixin";
 
 persistent actor {
-  include MyMixin("MyPrefix ");
+  include MyMixin("MyPrefix ", " MySuffix");
 
   let myMsg = msg;
   public query func actorFunc() : async Text {

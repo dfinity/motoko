@@ -2831,7 +2831,7 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields' (Option.get !n) xs
+  | {dec = { it=IncludeD(_, _, n); _ }; _} when Option.is_some !n -> pub_fields' (Option.get !n).decs xs
   | {vis = { it = Public depr; _}; dec; _} ->
     vis_dec T.{depr = depr; track_region = no_region; region = dec_field.at} dec xs
   | _ -> xs
@@ -3335,7 +3335,8 @@ and infer_dec env dec : T.typ =
   | IncludeD (i, args, n) -> begin
     match T.Env.find_opt i.it env.mixins with
     | None -> assert false
-    | Some (arg_tys, _, _) ->
+    | Some (pat, _, _) ->
+      let arg_tys = T.as_seq pat.note in
       if List.length args <> List.length arg_tys then
         assert false
       else
@@ -3714,8 +3715,8 @@ and is_import d =
 and infer_dec_valdecs env dec : Scope.t =
   match dec.it with
   | IncludeD(i, _, n) ->
-     let (_, t, decs) = T.Env.find i.it env.mixins in
-     n := Some(decs);
+     let (pat, t, decs) = T.Env.find i.it env.mixins in
+     n := Some({ pat; decs });
      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
      let (_, fields) = T.as_obj t in
      scope_of_object env fields
@@ -3888,7 +3889,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
-              Scope.mixin lib.note.filename (T.as_seq pat.note, typ, decs)
+              Scope.mixin lib.note.filename (pat, typ, decs)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->

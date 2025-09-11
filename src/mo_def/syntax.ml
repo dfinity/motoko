@@ -240,7 +240,8 @@ and dec' =
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
   | MixinD of pat * dec_field list             (* mixin *)
   | IncludeD of id * exp list * include_note (* mixin include *)
-and include_note = dec_field list option ref
+and include_note' = { pat : pat; decs : dec_field list }
+and include_note = include_note' option ref
 
 (* Program (pre unit detection) *)
 
