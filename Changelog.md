@@ -1,5 +1,27 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow suppression of migration warnings `M0206` and `M0207` using named field types (#5466):
+
+    For example:
+
+    ```motoko
+    (with migration = func (_ : {f : ()}) : {} = {}) // warn on dropped field `f`
+    actor a { };
+    ```
+    issues the warning `M0206` that field `f` is being dropped during migration.
+
+    The same code, naming the type of field `f` with `nowarn`, silences the warning:
+
+    ```motoko
+    (with migration = func (_ : {f : (nowarn: ())}) : {} = {}) // no-warning, named type for `f`
+    actor a { };
+    ```
+
+    Any name, not just `nowarn`, will suppress the warning.
+
+
 ## 0.16.1 (2025-08-25)
 
 * motoko (`moc`)

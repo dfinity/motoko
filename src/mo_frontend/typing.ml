@@ -3139,6 +3139,11 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
      rng_tfs;
    (* Warn about any field in domain, not in range, and declared stable in actor *)
    (* This may indicate unintentional data loss. *)
+   let is_named typ = T.(match typ with
+        | Mut (Named _)
+        | Named _ -> true
+        | _ -> false)
+   in
    List.iter (fun T.{lab;typ;src} ->
      match typ with
      | T.Typ c -> ()
@@ -3148,20 +3153,22 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
        | None ->
          if List.mem lab stab_ids then
            (* re-initialized *)
-           warn env focus "M0206"
-             "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
-             lab
-             display_typ_expand typ
-             "The declaration in the actor will be reinitialized, discarding its consumed value."
-             "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function."
-         else
-           (* dropped *)
-           warn env focus "M0207"
-             "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
-             lab
-             display_typ_expand typ
-             "This field will be removed from the actor, discarding its consumed value."
-             "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function."
+           (if (not (is_named typ)) then
+             warn env focus "M0206"
+               "migration expression consumes field `%s` of type%a\nbut does not produce it, yet the field is declared in the actor.\n%s\n%s"
+               lab
+               display_typ_expand typ
+               "The declaration in the actor will be reinitialized, discarding its consumed value."
+               "If reinitialization is unintended, and you want to preserve the consumed value, either remove this field from the parameter of the migration function or add it to the result of the migration function. To suppress this warning, use a named type for the field.")
+        else
+           (if (not (is_named typ)) then
+             (* dropped *)
+             warn env focus "M0207"
+               "migration expression consumes field `%s` of type%a\nbut does not produce it. The field is not declared in the actor.\n%s\n%s"
+               lab
+               display_typ_expand typ
+               "This field will be removed from the actor, discarding its consumed value."
+               "If this removal is unintended, declare the field in the actor and either remove the field from the parameter of the migration function or add it to the result of the migration function. To suppress this warning, use a named type for the field.")
      )
      dom_tfs;
    (* Warn the user about unrecognised attributes. *)

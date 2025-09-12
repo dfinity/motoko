@@ -50,3 +50,4 @@ module k {
 (with migration = func ({}) : {}{{}};) // error, unexpected object
 object l {
 };
+
