@@ -98,14 +98,14 @@ actor Bad3 {
   stable func inc(i : Int, j : Int) : Order {
      if (i < j) #less else if (i == j) #equal else #greater
   };
-  type Inc = stable cmp (Int, Int) -> Order;
+  type Inc = stable inc (Int, Int) -> Order;
 
   stable func dec(i : Int, j : Int) : Order {
      if (i < j) #less else if (i == j) #equal else #greater
   };
   type Dec = stable dec (Int, Int) -> Order;
 
-  stable let s1 = Set.empty<Int, Inc>();
+  stable let s1 = Set.empty<Int, Inc>(inc);
 
   stable let s_ok = Set.add<Int, Inc>(s1, 1); // accept, same comparison
 
