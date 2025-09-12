@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * Added a warning for redundant type instantiations in generic function calls (#5468).
+
   * Added primitives to access canister environment variables (#5443):
 
     ```motoko
