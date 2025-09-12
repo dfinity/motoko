@@ -304,6 +304,11 @@ let is_shared_sort sort =
   | Shared _ -> true
   | Local | Stable _ -> false
 
+let is_stable_sort sort =
+  match sort with
+  | Stable _ -> true
+  | _ -> false
+
 (* Constructors *)
 
 let set_kind c k =
@@ -1357,6 +1362,17 @@ module M = Map.Make (OrdPair)
 
 exception Mismatch
 
+let rel_func_sort rel lubs glbs s1 s2 =
+  if s1 = s2 then Some s1
+  else match (s1, s2) with
+  | Stable id1, Stable id2 ->
+    assert (id1 <> id2);
+    if rel == lubs then Some Local else None
+  | (Stable _ as s), Local
+  | Local, (Stable _ as s) ->
+    if rel == lubs then Some Local else Some s
+  | _ -> None
+
 let rec combine rel lubs glbs t1 t2 =
   assert (rel == lubs || rel == glbs);
   if t1 == t2 then t1 else
@@ -1396,15 +1412,19 @@ let rec combine rel lubs glbs t1 t2 =
       (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
       with Mismatch -> assert (rel == glbs); Non)
     | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) when
-        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
+        rel_func_sort rel lubs glbs s1 s2 <> None && c1 = c2
+        && eq_binds bs1 bs2 &&
         List.(length ts11 = length ts21 && length ts12 = length ts22) ->
       let ts = open_binds bs1 in
       let cs = List.map (fun t -> fst (as_con t)) ts in
       let opened = List.map (open_ ts) in
       let closed = List.map (close cs) in
+      let s = match rel_func_sort rel lubs glbs s1 s2 with
+        | Some s -> s
+        | _ -> assert false (* see call to rel_func_sort above *) in
       let rel' = if rel == lubs then glbs else lubs in
       Func (
-        s1, c1, bs1,
+        s, c1, bs1,
         closed (List.map2 (combine rel' lubs glbs) (opened ts11) (opened ts21)),
         closed (List.map2 (combine rel lubs glbs) (opened ts12) (opened ts22))
       )
