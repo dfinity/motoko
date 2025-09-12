@@ -4,7 +4,6 @@ import A "stable-function-scopes/module1";
 import B "stable-function-scopes/module1";
 
 actor {
-    // Functions and objects in A and B are not stable.
     stable let f0 = A.TestClass().testFunc;
     f0();
 
