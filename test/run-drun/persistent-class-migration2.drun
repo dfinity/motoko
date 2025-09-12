@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID persistent-class-migration2/version1.mo ""
+upgrade $ID persistent-class-migration2/version2.mo ""

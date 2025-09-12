@@ -2,16 +2,18 @@ use crate::{
     memory::Memory,
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
-        layout::{stable_blob::StableBlob, StableObjectKind},
+        layout::StableObjectKind,
         serialization::{
             stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
             SerializationContext,
         },
     },
-    types::{size_of, FwdPtr, Object, Tag, Value, Words, TAG_FWD_PTR, TAG_OBJECT},
+    types::{size_of, Object, Value, Words, TAG_OBJECT},
 };
 
-use super::{Serializer, StableTag, StableToSpace, StableValue, StaticScanner};
+use super::{
+    stable_hash_blob::size_by_hash_blob, Serializer, StableToSpace, StableValue, StaticScanner,
+};
 
 #[repr(C)]
 pub struct StableObject {
@@ -114,32 +116,13 @@ impl Serializer<Object> for StableObject {
     }
 }
 
-#[repr(C)]
-struct HashBlob {
-    tag: StableTag,
-    header: StableBlob,
-}
-
-/// Resolve object size during serialization.
+/// Resolve object size (number of fields) during serialization.
 /// This requires a look up in the hash blob, which may however already have been
 /// serialized to stable memory.
 fn get_object_size(stable_memory: &StableMemoryStream, main_object: *mut Object) -> usize {
     // Do not call tag as it resolves the forwarding pointer.
     unsafe {
         let main_hash_blob = (*main_object).hash_blob;
-        let main_tag = *(main_hash_blob.get_ptr() as *const Tag);
-        if main_tag == TAG_FWD_PTR {
-            // The Hash blob has already been moved to stable memory.
-            let target_location = (*(main_hash_blob.get_ptr() as *mut FwdPtr)).fwd;
-            let stable_offset = target_location.get_ptr() as u64;
-            let stable_hash_blob = stable_memory.read_preceding::<HashBlob>(stable_offset);
-            assert!(stable_hash_blob.tag.decode() == StableObjectKind::BlobBytes);
-            let hash_blob_length = stable_hash_blob.header.byte_length() as usize;
-            let hash_entry_length = size_of::<u64>().to_bytes().as_usize();
-            debug_assert_eq!(hash_blob_length % hash_entry_length, 0);
-            hash_blob_length / hash_entry_length
-        } else {
-            main_object.size()
-        }
+        size_by_hash_blob(stable_memory, main_hash_blob)
     }
 }

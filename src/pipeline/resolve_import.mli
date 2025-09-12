@@ -12,6 +12,8 @@ type actor_aliases = string Flags.M.t
 
 type resolved_imports = Syntax.resolved_import Source.phrase list
 
+val identified_imports : Syntax.prog -> (string * Syntax.lib_path) list
+
 val collect_imports : Syntax.prog -> string -> ((string * string option) list) Diag.result
 
 type flags = {
@@ -32,7 +34,7 @@ type resolved_flags = {
 
 val resolve_flags : flags -> resolved_flags Diag.result
 
-val resolve : flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
+val resolve : filepath -> flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
 
 (* Exported for tests *)
 val append_mo_extension : (filepath -> bool) -> filepath -> filepath

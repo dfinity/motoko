@@ -7,9 +7,10 @@ type name = string
 type control = Returns | Promises | Replies
 type obj_sort = Object | Actor | Module | Memory
 type async_sort = Fut | Cmp
+type stable_sort = Flexible | Stable
 type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local of stable_sort | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -64,9 +65,12 @@ and src = {depr : string option; track_region : Source.region; region : Source.r
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
+(* Position of generic type parameter for stable functions/classes, by considering nested generic declarations.
+   This is used for checking compatibility of stable closures if they refer to values of generic type parameters. *)
+and generic_position = int option
 and kind =
   | Def of bind list * typ
-  | Abs of bind list * typ
+  | Abs of bind list * typ * generic_position
 
 val empty_src : src
 
@@ -222,6 +226,7 @@ val is_shared_func : typ -> bool
 val is_local_async_func : typ -> bool
 
 val stable : typ -> bool
+val old_stable : typ -> bool
 
 val inhabited : typ -> bool
 val singleton : typ -> bool
@@ -292,6 +297,18 @@ val open_binds : bind list -> typ list
 
 module Env : Env.S with type key = string
 
+(* Stable function support *)
+
+type captured_variable = {
+  stable_name: string; (* positional id for parameters, named id for locals *)
+  variable_type: typ;
+}
+
+type stable_closure = {
+  function_path: string list; (* fully qualified function name *)
+  captured_variables: captured_variable Env.t; (* captured mutable variables *)
+  migration_invariant: bool;
+}
 
 (* Scope bindings *)
 
@@ -332,6 +349,7 @@ val motoko_async_helper_fld : field
 val motoko_stable_var_info_fld : field
 val motoko_gc_trigger_fld : field
 val motoko_runtime_information_fld : field
+val motoko_force_upgrade_fld : field
 
 val cycles_fld : field
 val timeout_fld : field

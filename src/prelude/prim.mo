@@ -296,11 +296,11 @@ func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Array utilities
 
-func Array_init<T>(len : Nat, x : T) : [var T] {
+let Array_init = func<T>(len : Nat, x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T]) <T>(len, x);
 };
 
-func Array_tabulate<T>(len : Nat, gen : Nat -> T) : [T] {
+let Array_tabulate = func<T>(len : Nat, gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T]) <T>(len, gen);
 };
 

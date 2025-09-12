@@ -212,6 +212,7 @@ sig
   val relative_to : string -> string -> string option
 
   val make_absolute : string -> string -> string
+  val make_relative : string -> string -> string
 
   (**
    * Checks whether one path is nested below another.

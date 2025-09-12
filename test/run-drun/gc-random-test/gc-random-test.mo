@@ -6,7 +6,7 @@ import HashSet "hash-set";
 import Stack "stack";
 
 module {
-    public class GCRandomTest() {
+    public persistent class GCRandomTest() {
         let seed = 4711;
         let random = Random.Random(seed);
         let types = Types.allocationTypes();

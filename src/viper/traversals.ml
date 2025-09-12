@@ -53,7 +53,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | IfE (exp1, exp2, exp3) -> { exp with it = IfE(over_exp v exp1, over_exp v exp2, over_exp v exp3) }
   | TryE (exp1, cases, exp2) -> { exp with it = TryE (over_exp v exp1, List.map (over_case v) cases, Option.map (over_exp v) exp2) }
   | SwitchE (exp1, cases) -> { exp with it = SwitchE (over_exp v exp1, List.map (over_case v) cases) }
-  | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, exp1) -> { exp with it = FuncE (name, sort_pat, typ_binds, over_pat v pat, Option.map (over_typ v) typ_opt, sugar, over_exp v exp1) }
+  | FuncE (name, sort_pat, typ_binds, pat, typ_opt, sugar, closure, exp1) -> { exp with it = FuncE (name, sort_pat, typ_binds, over_pat v pat, Option.map (over_typ v) typ_opt, sugar, closure, over_exp v exp1) }
   | IgnoreE exp1 -> { exp with it = IgnoreE (over_exp v exp1)})
 
 and over_typ (v : visitor) (t : typ) : typ = v.visit_typ t
@@ -76,7 +76,7 @@ and over_dec (v : visitor) (d : dec) : dec =
   | ExpD e -> { d with it = ExpD (over_exp v e)}
   | VarD (x, e) -> { d with it = VarD (x, over_exp v e)}
   | LetD (p, e, fail) -> { d with it = LetD (over_pat v p, over_exp v e, Option.map (over_exp v) fail)}
-  | ClassD (eo, sp, s, cid, tbs, p, t_o, id, dfs) -> { d with it = ClassD (Option.map (over_exp v) eo, sp, s, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, id, List.map (over_dec_field v) dfs)})
+  | ClassD (eo, sp, s, cid, tbs, p, t_o, id, dfs, context) -> { d with it = ClassD (Option.map (over_exp v) eo, sp, s, cid, tbs, over_pat v p, Option.map (over_typ v) t_o, id, List.map (over_dec_field v) dfs, context)})
 
 and over_dec_field (v : visitor) (df : dec_field) : dec_field =
   { df with it = { df.it with dec = over_dec v df.it.dec } }

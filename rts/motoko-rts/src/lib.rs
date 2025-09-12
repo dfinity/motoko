@@ -25,6 +25,8 @@ mod print;
 #[cfg(debug_assertions)]
 pub mod debug;
 
+#[enhanced_orthogonal_persistence]
+pub mod algorithms;
 mod barriers;
 pub mod bigint;
 pub mod bitrel;

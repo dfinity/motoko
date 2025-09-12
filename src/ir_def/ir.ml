@@ -53,6 +53,9 @@ and pat_field' = {name : Type.lab; pat : pat}
 (* Like id, but with a type attached *)
 type arg = (string, Type.typ) Source.annotated_phrase
 
+(* Used for stable functions. *)
+type qualified_name = string list
+
 (* Expressions *)
 
 type exp = exp' phrase
@@ -71,7 +74,7 @@ and exp' =
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
-      string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
+      string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * Type.stable_closure option * exp
   | SelfCallE of Type.typ list * exp * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)
@@ -185,6 +188,8 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
+  | BeginMigration
+  | EndMigration
 
 (* Declarations *)
 
@@ -335,3 +340,5 @@ let map_prim t_typ t_lab p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
+  | BeginMigration
+  | EndMigration -> p

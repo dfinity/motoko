@@ -103,7 +103,7 @@ let denotable t =
   not (is_mut t' || is_typ t')
 
 let bound c = match Cons.kind c with
-  | Abs ([], t) -> t
+  | Abs ([], t, _) -> t
   | _ -> assert false
 
 let as_con_var t = match as_con t with
@@ -222,7 +222,7 @@ let bi_match_typs ctx =
         assert (ts1 = []);
         assert (ts2 = []);
         Some inst
-      | Abs (tbs, t), _ when rel != eq ->
+      | Abs (tbs, t, _), _ when rel != eq ->
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )
@@ -230,7 +230,7 @@ let bi_match_typs ctx =
       (match Cons.kind con1, t2 with
       | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
         bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | Abs (tbs, t), _ when rel != eq ->
+      | Abs (tbs, t, _), _ when rel != eq ->
         bi_match_typ rel eq inst any (open_ ts1 t) t2
       | _ -> None
       )

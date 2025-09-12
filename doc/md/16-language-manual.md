@@ -587,7 +587,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   [ var? <typ> ]                                Array
   Null                                          Null type
   ? <typ>                                       Option
-  <shared>? <typ-params>? <typ> -> <typ>        Function
+  <shared|persistent>? <typ-params>? <typ> -> <typ> Function
   async <typ>                                   Future
   async* <typ>                                  Delayed, asynchronous computation
   ( ((<id> :)? <typ>),* )                       Tuple
@@ -1173,6 +1173,8 @@ A type `T` is **stable** if it is:
 -   A shared function type, or
 
 -   An `actor` type.
+
+-   With enhanced orthogonal persistence: [persistent functions](../canister-maintenance/orthogonal-persistence/enhanced/persistent-functions.md), persistent objects, and persistent classes.
 
 This definition implies that every shared type is a stable type. The converse does not hold: there are types that are stable but not share, notably types with mutable components.
 
@@ -2281,7 +2283,9 @@ Now, a caller can handle these errors using enclosing `try ... catch ...` expres
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
 
--   `<shared-pat>?` is of the form `shared <query>? <pat>` if and only if `<shared>?` is `shared <query>?` (the `<query>` modifiers must agree, i.e. are either both absent, both `query`, or both `composite query`).
+-   `<shared-pat>?` is of the form `shared <query>? persistent? <pat>` if and only if `<shared>?` is `shared <query>?` (the `<query>` modifiers must agree, i.e. are either both absent, both `query`, or both `composite query`).
+
+- `persistent` serves for declating persistent functions or persistent classes.
 
 -   All the types in `T0, …​, Tn` and `U2` are well-formed and well-constrained.
 

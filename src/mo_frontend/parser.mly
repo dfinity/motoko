@@ -50,7 +50,7 @@ let ensure_async_typ t_opt =
 
 let funcT (sort, tbs, t1, t2) =
   match sort.it, t2.it with
-  | Type.Local, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
+  | Type.Local _, AsyncT _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | Type.Shared _, _ -> FuncT (sort, ensure_scope_bind "" tbs, t1, t2)
   | _ -> FuncT(sort, tbs, t1, t2)
 
@@ -118,13 +118,13 @@ let is_sugared_func_or_module dec = match dec.it with
   | _ -> false
 
 
-let func_exp f s tbs p t_opt is_sugar e =
+let func_exp f s tbs p t_opt is_sugar closure e =
   match s.it, t_opt, e with
-  | Type.Local, Some {it = AsyncT _; _}, {it = AsyncE _; _}
+  | Type.Local _, Some {it = AsyncT _; _}, {it = AsyncE _; _}
   | Type.Shared _, _, _ ->
-    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, e)
+    FuncE(f, s, ensure_scope_bind "" tbs, p, t_opt, is_sugar, closure, e)
   | _ ->
-    FuncE(f, s, tbs, p, t_opt, is_sugar, e)
+    FuncE(f, s, tbs, p, t_opt, is_sugar, closure, e)
 
 let desugar_func_body sp x t_opt (is_sugar, e) =
   if not is_sugar then
@@ -139,7 +139,7 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
 
 let share_typ t =
   match t.it with
-  | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
+  | FuncT ({it = Type.Local _; _} as s, tbs, t1, t2) ->
     { t with it = funcT ({s with it = Type.Shared Type.Write}, tbs, t1, t2)}
   | _ -> t
 
@@ -151,11 +151,11 @@ let share_typfield (tf : typ_field) = { tf with it = share_typfield' tf.it }
 
 let share_exp e =
   match e.it with
-  | FuncE (x, ({it = Type.Local; _} as sp), tbs, p,
-    ((None | Some { it = TupT []; _ }) as t_opt), true, e) ->
-    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true (ignore_asyncE (scope_bind x e.at) e) @? e.at
-  | FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
-    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s e @? e.at
+  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p,
+    ((None | Some { it = TupT []; _ }) as t_opt), true, closure, e) ->
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt true closure (ignore_asyncE (scope_bind x e.at) e) @? e.at
+  | FuncE (x, ({it = Type.Local _; _} as sp), tbs, p, t_opt, s, closure, e) ->
+    func_exp x {sp with it = Type.Shared (Type.Write, WildP @! sp.at)} tbs p t_opt s closure e @? e.at
   | _ -> e
 
 let share_dec d =
@@ -173,10 +173,33 @@ let share_stab default_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
+let persistent_methods dec_fields =
+  let add_persistent sp =
+    match sp.it with
+    | Type.Local Type.Flexible -> { sp with it = Type.Local Type.Stable }
+    | _ -> sp
+  in
+  let update_field field =
+    let update_dec dec =
+      match dec.it with
+      | LetD ({ it = VarP _; _ } as var_pat, exp, exp_opt) ->
+          let updated_exp = 
+            match exp.it with
+            | FuncE (name, sp, tbl, pat, typ_opt, sugar, fun_context, body) ->
+                { exp with it = FuncE (name, add_persistent sp, tbl, pat, typ_opt, sugar, fun_context, body) }
+            | _ -> exp
+          in
+          { dec with it = LetD (var_pat, updated_exp, exp_opt) }
+      | _ -> dec
+    in
+    { field with it = { field.it with dec = update_dec field.it.dec } }
+  in
+  List.map update_field dec_fields
+
 let ensure_system_cap (df : dec_field) =
   match df.it.dec.it with
-    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
-      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, closure, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, closure, e) }, other) in
       { df with it = { df.it with dec = { df.it.dec with it } } }
     | _ -> df
 
@@ -211,7 +234,7 @@ let share_dec_field default_stab (df : dec_field) =
 and objblock eo s id ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
-    | Public _, ClassD (_, _, _, id, _, _, _, _, _) when is_anon_id id ->
+    | Public _, ClassD (_, _, _, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
   ObjBlockE(eo, s, (id, ty), dec_fields)
@@ -387,25 +410,32 @@ seplist1(X, SEP) :
   | MODULE { (false @@ no_region, Type.Module @@ at $sloc) }
 
 %inline obj_sort_opt :
-  | os=obj_sort { os }
-  | (* empty *) {
-      ((!Flags.actors = Flags.DefaultPersistentActors) @@ no_region, Type.Object @@ no_region)
-    }
+  | OBJECT { Type.Object @@ at $sloc }
+  | ACTOR { Type.Actor @@ at $sloc }
+  | MODULE { Type.Module @@ at $sloc }
+  | (* empty *) { Type.Object @@ no_region }
 
 %inline query:
   | QUERY { Type.Query }
   | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
-  | (* empty *) { Type.Local @@ no_region }
+  | (* empty *) { Type.Local Type.Flexible @@ no_region }
+  | PERSISTENT { Type.Local Type.Stable @@ at $sloc }
   | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
   | q=query { Type.Shared q @@ at $sloc }
 
-%inline shared_pat_opt :
-  | (* empty *) { Type.Local @@ no_region }
+%inline shared_function_pat_opt :
+  | (* empty *) { Type.Local Type.Flexible @@ no_region }
+  | PERSISTENT { Type.Local Type.Stable @@ no_region }
   | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
   | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
+%inline shared_class_pat_opt :
+  | (* empty *) { Type.Local Type.Flexible @@ no_region }
+  | PERSISTENT { Type.Local Type.Stable @@ no_region }
+  | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
+  | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
 (* Paths *)
 
@@ -509,7 +539,7 @@ typ_field :
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
   | x=id tps=typ_params_opt t1=typ_nullary COLON t2=typ
-    { let t = funcT(Type.Local @@ no_region, tps, t1, t2)
+    { let t = funcT(Type.Local Type.Flexible @@ no_region, tps, t1, t2)
               @! span x.at t2.at in
       ValF (x, t, Const @@ no_region) @@ at $sloc }
 
@@ -918,15 +948,17 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | sp=shared_pat_opt FUNC
+  | sp=shared_function_pat_opt FUNC
       xf_tps_p=func_pat t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
          These should be defined using RHS syntax EQ e to avoid the implicit AsyncE introduction
          around bodies declared as blocks *)
       let xf, tps, p = xf_tps_p in
       let named, x = xf "func" $sloc in
+      (if not named && sp.it = Type.Local Type.Stable then
+        syntax_error sp.at "M0226" "a persistent function cannot be anonymous, please provide a name");
       let is_sugar, e = desugar_func_body sp x t fb in
-      let_or_exp named x (func_exp x.it sp tps p t is_sugar e) (at $sloc) }
+      let_or_exp named x (func_exp x.it sp tps p t is_sugar (ref None) e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
 
 obj_or_class_dec :
@@ -937,36 +969,47 @@ obj_or_class_dec :
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
+      let id = if named then Some x else None in
       let e =
         if s.it = Type.Actor then
           let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
-          let id = if named then Some x else None in
           AwaitE
             (Type.AwaitFut false,
              AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock eo { s with note = persistent } id t (List.map (share_dec_field default_stab) efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock eo { s with note = persistent } None t efs @? at $sloc
+        else objblock eo { s with note = persistent } id t efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
-  | sp=shared_pat_opt ds=obj_sort_opt CLASS
+  | sp=shared_class_pat_opt s=obj_sort_opt CLASS
       xf_tps_p=func_pat t=annot_opt  cb=class_body
     { fun eo ->
-      let (persistent, s) = ds in
+      let persistent = 
+        sp.it = Type.Local Type.Stable || 
+        s.it = Type.Actor && (!Flags.actors = Flags.DefaultPersistentActors)
+      in
       let xf, tps, p = xf_tps_p in
-      let (_, id) = xf "class" $sloc in
+      let (named, id) = xf "class" $sloc in
+      (if not named && sp.it = Type.Local Type.Stable then
+        syntax_error sp.at "M0226" "a persistent class cannot be anonymous, please provide a name");
       let cid = id.it @= id.at in
       let x, dfs = cb in
       let dfs', tps', t' =
        if s.it = Type.Actor then
-          let default_stab = (if persistent.it then Stable else Flexible) @@ no_region in
+          let default_stab = (if persistent then Stable else Flexible) @@ no_region in
           (List.map (share_dec_field default_stab) dfs,
            ensure_scope_bind "" tps,
            (* Not declared async: insert AsyncT but deprecate in typing *)
            ensure_async_typ t)
         else (dfs, tps, t)
       in
-      ClassD(eo, sp, {s with note = persistent}, cid, tps', p, t', x, dfs') @? at $sloc }
+      let dfs'' =
+        if s.it = Type.Object && sp.it = Type.Local Type.Stable then
+          persistent_methods dfs'
+        else dfs'
+      in
+      ClassD(eo, sp, {s with note = (persistent @@ sp.at)}, cid, tps', p, t', x, dfs'', ref None) @? at $sloc }
+
 
 dec :
   | d=dec_var

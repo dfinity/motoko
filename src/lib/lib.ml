@@ -671,6 +671,26 @@ struct
     then path
     else normalise (Filename.concat base path)
 
+  let concat_path_components path_components = 
+    match path_components with
+    | [] -> ""
+    | first :: remainder -> 
+      StdList.fold_left (fun prefix current -> prefix ^ "/" ^ current) first remainder
+
+  let make_relative base path =
+    let split_path path = 
+      String.split path '/' |> StdList.filter ((<>) "") in
+    let rec remove_common_prefix base_parts full_parts =
+      match base_parts, full_parts with
+      | base::base_remainder, full::full_remainder when base = full ->
+        remove_common_prefix base_remainder full_remainder
+      | _ -> base_parts, full_parts in
+    let base_parts = split_path base in
+    let full_parts = split_path path in
+    let remaining_base, remaining_full = remove_common_prefix base_parts full_parts in
+    let ups = StdList.map (fun _ -> "..") remaining_base in
+    concat_path_components (ups @ remaining_full)
+
   let is_subpath base path =
     if Filename.is_relative base || Filename.is_relative path
     then assert false

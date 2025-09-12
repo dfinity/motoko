@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 // test realistic f-bound polymorphism using a contrived implementation of type classes
 // NB: it's contrived, because we don't need the dictionary *type* parameters
 
