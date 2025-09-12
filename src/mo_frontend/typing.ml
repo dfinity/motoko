@@ -2388,9 +2388,7 @@ and try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt =
     infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
   with
   | Error _ -> None
-  | Ok ((ts', _, _), msgs) ->
-    assert (msgs = []);
-    Some ts'
+  | Ok ((ts', _, _), _) -> Some ts'
 
 and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
