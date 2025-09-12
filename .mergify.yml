@@ -4,7 +4,7 @@ queue_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=verify-common-gc
-      - status-success=verify-main-tests (ubuntu-latest)
+      - status-success=verify-main-tests (ubuntu-24-large)
       - status-success=verify-main-tests (macos-latest)
       - base=master
       - label=automerge-squash
@@ -12,7 +12,7 @@ queue_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=verify-common-gc
-      - status-success=verify-main-tests (ubuntu-latest)
+      - status-success=verify-main-tests (ubuntu-24-large)
       - status-success=verify-main-tests (macos-latest)
       - base=master
       - label=automerge-squash
@@ -28,7 +28,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=verify-common-gc
-      - status-success=verify-main-tests (ubuntu-latest)
+      - status-success=verify-main-tests (ubuntu-24-large)
       - status-success=verify-main-tests (macos-latest)
       - base=master
       - label=automerge-squash
@@ -38,7 +38,7 @@ pull_request_rules:
   - name: Automatically closing successful trials
     conditions:
       - status-success=verify-common-gc
-      - status-success=verify-main-tests (ubuntu-latest)
+      - status-success=verify-main-tests (ubuntu-24-large)
       - status-success=verify-main-tests (macos-latest)
       - base=master
       - label=autoclose
