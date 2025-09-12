@@ -149,11 +149,13 @@ let choose_under_constrained ctx error_msg lb c ub =
       assert (t <> Non);
       lb
     | _ ->
-      error_msg := Format.asprintf
-        "cannot solve invariant type parameter %s, no principal solution with%a\nwhere%a\nAdd a return type annotation or an explicit type instantiation."
-        (Cons.name c)
-        display_constraint (lb, c, ub)
-        display_rel (lb,"=/=",ub);
+      if !error_msg = "" then
+        (* Report only the first error *)
+        error_msg := Format.asprintf
+          "cannot solve invariant type parameter %s, no principal solution with%a\nwhere%a\nAdd a return type annotation or an explicit type instantiation."
+          (Cons.name c)
+          display_constraint (lb, c, ub)
+          display_rel (lb,"=/=",ub);
       lb
 
 let fail_over_constrained lb c ub =
@@ -353,6 +355,21 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   let all_cons = cons_typs [t] in
   ConSet.disjoint ctx.var_set all_cons
 
+(** Raises when [error_msg] is non-empty, optionally with a suggested return type annotation. *)
+let maybe_raise_underconstrained ctx env error_msg =
+  if error_msg = "" then () else
+  let error_msg =
+    match ctx.typ_opt with
+    | None -> error_msg
+    | Some ret_typ ->
+      let ret_typ = subst env ret_typ in
+      if is_closed ctx ret_typ then
+        Format.asprintf "%s\nSuggested return type annotation : %a" error_msg display_typ ret_typ
+      else
+        error_msg
+  in
+  raise (Bimatch error_msg)
+
 (** Solves the given constraints [ts1, ts2] in the given context [ctx].
     Unused type variables can be deferred to the next round.
     [deferred_typs] are types to appear in the constraints of the next round. Used to determine which type variables to defer.
@@ -397,19 +414,7 @@ let solve ctx (ts1, ts2) must_solve =
       else
         fail_over_constrained lb c ub)
     in
-    if !error_msg <> "" then begin
-      let error_msg = 
-        match ctx.typ_opt with
-        | None -> !error_msg
-        | Some ret_typ ->
-          let ret_typ = subst env ret_typ in
-          if is_closed ctx ret_typ then
-            Format.asprintf "%s\nSuggested return type annotation : %a" !error_msg display_typ ret_typ
-          else
-            !error_msg
-      in
-      raise (Bimatch error_msg)
-    end;
+    maybe_raise_underconstrained ctx env !error_msg;
     if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
     let remaining = if ConSet.is_empty var_set then empty_ctx else {
