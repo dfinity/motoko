@@ -2221,7 +2221,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         (* Warn when instantiation is redundant *)
         try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt
         |> Option.iter (fun ts' ->
-          if List.for_all2 (T.eq ?src_fields:None) ts ts' then
+          if List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts' then
             warn env inst.at "M0223" "redundant type instantiation");
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
