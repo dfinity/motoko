@@ -361,9 +361,10 @@ The syntax of an **import** `<imp>` is as follows:
   "mo:<package-name>/<filepath>"    Import module from package
   "ic:<canisterid>"                 Import external actor by <canisterid>
   "canister:<name>"                 Import external actor by <name>
+  "blob:file:<filepath>"            Import literal `Blob` value from <filepath>
 ```
 
-An import introduces a resource referring to a local source module, module from a package of modules, or canister imported as an actor. The contents of the resource are bound to `<pat>`.
+An import introduces a resource referring to a local source module, module from a package of modules, a canister imported as an actor, or a literal [`Blob`](#type-blob) value. The contents of the resource are bound to `<pat>`.
 
 Though typically a simple identifier, `<id>`, `<pat>` can also be any composite pattern binding selective components of the resource.
 
@@ -1332,17 +1333,20 @@ A change in interface may break any existing clients of `a`. The current state o
 
 An import `import <pat> =? <url>` declares a pattern `<pat>` bound to the contents of the text literal `<url>`.
 
-`<url>` is a text literal that designates some resource: a local library specified with a relative path, a named module from a named package, or an external canister, referenced either by numeric canister id or by a named alias, and imported as a Motoko actor.
+`<url>` is a text literal that designates some resource: a local library specified with a relative path (imported as source), a named module from a named package (imported as source), an external canister, referenced either by numeric canister id or by a named alias (imported as a Motoko actor), or a binary file (imported as a blob).
 
 In detail, if `<url>` is of the form:
 
--   `"<filepath>"` then `<pat>` is bound to the library module defined in file `<filepath>.mo`. `<filepath>` is interpreted relative to the absolute location of the enclosing file. Note the `.mo` extension is implicit and should not be included in `<url>`. For example, `import U "lib/Util"` defines `U` to reference the module in local file `./lib/Util`.
+-   `"<filepath>"` then `<pat>` is bound to the library module defined in file `<filepath>.mo`. `<filepath>` is interpreted relative to the absolute location of the enclosing file. Note the `.mo` extension is implicit and should not be included in `<url>`. For example, `import U "lib/Util"` defines `U` to reference the module in local file `./lib/Util.mo`.
 
 -   `"mo:<package-name>/<path>"` then `<pat>` is bound to the library module defined in file `<package-path>/<path>.mo` in directory `<package-path>` referenced by package alias `<package-name>`. The mapping from `<package-name>` to `<package-path>` is determined by a compiler command-line argument `--package <package-name> <package-path>`. For example, `import L "mo:core/List"` defines `L` to reference the `List` library in package alias `core`.
 
 -   `"ic:<canisterid>"` then `<pat>` is bound to a Motoko actor whose Motoko type is determined by the canister’s IDL interface. The IDL interface of canister `<canisterid>` must be found in file `<actorpath>/<canisterid>.did`. The compiler assumes that `<actorpath>` is specified by command line argument `--actor-idl <actorpath>` and that file `<actorpath>/<canisterid>.did` exists. For example, `import C "ic:lg264-qjkae"` defines `C` to reference the actor with canister id `lg264-qjkae` and IDL file `lg264-qjkae.did`.
 
 -   `"canister:<name>"` is a symbolic reference to canister alias `<name>`. The compiler assumes that the mapping of `<name>` to `<canisterid>` is specified by command line argument `--actor-alias <name> ic:<canisterid>`. If so, `"canister:<name>"` is equivalent to `"ic:<cansterid>"` (see above). For example, `import C "canister:counter"` defines `C` to reference the actor otherwise known as `counter`.
+
+-   `"blob:file:<filepath>"` then `<pat>` is bound to a blob containing the contents of the file `<filepath>`. `<filepath>` is interpreted relative to the absolute location of the enclosing file. For example, `import image "blob:file:/assets/image.jpg"` defines `image` as the blob with bytes from local file `./assets/image.jpg`. Unlike library imports, `<filepath>` should include the
+file's extension, if any.
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 

@@ -718,6 +718,8 @@ struct
           ic, [message]
       end
     else ic, []
+
+    let contents file = In_channel.with_open_bin file In_channel.input_all
 end
 
 

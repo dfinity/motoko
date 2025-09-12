@@ -120,7 +120,7 @@ let err_prim_pkg msgs =
        "M0013"
        "package" "the \"prim\" package is built-in, and cannot be mapped to a directory")
 
-let append_extension : (string -> bool) -> string -> string =
+let append_mo_extension : (string -> bool) -> string -> string =
   fun file_exists f ->
   let file_path = f ^ ".mo" in
   let lib_path = Filename.concat f "lib.mo" in
@@ -131,15 +131,14 @@ let append_extension : (string -> bool) -> string -> string =
   else
     lib_path
 
-let resolve_lib_import at full_path : (string, Diag.message) result =
-  let full_path = append_extension Sys.file_exists full_path in
-  let full_path = Lib.FilePath.normalise full_path in
+let resolve_lib_import at full_path append_extension : (string, Diag.message) result =
+  let full_path = append_extension Sys.file_exists full_path |> Lib.FilePath.normalise in
   if Sys.file_exists full_path
   then Ok full_path
   else Error (err_file_does_not_exist' at full_path)
 
 let add_lib_import msgs imported ri_ref at lib_path =
-  match resolve_lib_import at lib_path.path with
+  match resolve_lib_import at lib_path.path append_mo_extension with
   | Ok full_path -> begin
       let ri = LibPath {lib_path with path = full_path} in
       ri_ref := ri;
@@ -155,6 +154,17 @@ let add_idl_import msgs imported ri_ref at full_path bytes =
     imported := RIM.add (IDLPath (full_path, bytes)) at !imported
   end else
     err_file_does_not_exist msgs at full_path
+
+let add_value_import msgs imported ri_ref at path =
+  let add_no_extension _file_exists f = f in
+  match resolve_lib_import at path add_no_extension with
+  | Ok full_path -> begin
+      let ri = ImportedValuePath full_path in
+      ri_ref := ri;
+      imported := RIM.add ri at !imported
+    end
+  | Error err ->
+     Diag.add_msg msgs err
 
 let add_prim_import imported ri_ref at =
   ri_ref := PrimPath;
@@ -220,6 +230,8 @@ let resolve_import_string msgs root base actor_idl_path aliases packages importe
     | Some bytes -> resolve_ic bytes
     | None -> err_alias_not_defined msgs at alias
     end
+  | Ok (Url.FileValue path) ->
+    add_value_import msgs imported ri_ref at path
   | Ok Url.Prim ->
     add_prim_import imported ri_ref at
   | Error msg ->
@@ -354,7 +366,7 @@ let collect_imports (p:prog) base : ((url * url option) list) Diag.result =
         List.map (fun (f, _, at) ->
             match Url.parse f with
             | Ok (Url.Relative path) -> begin
-               match resolve_lib_import at (in_base base path) with
+               match resolve_lib_import at (in_base base path) append_mo_extension with
                | Ok full_path ->
                   (f, Some full_path)
                | Error err ->

@@ -185,3 +185,20 @@ persistent actor CountToTen {
 
 `Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
 
+## Importing `Blob` values
+
+The `import` syntax can also be used with the `blob:file:` URI scheme to import raw `Blob` values:
+
+```motoko no-repl
+import pub = "blob:file:./keys/id_ed25519.pub";
+
+actor {
+    func checkSig(key : Blob, cyphertext : Text) { ... };
+
+    public func verify(cyphertext : Text) : async () {
+        checkSig(pub, cyphertext);
+    };
+};
+```
+
+This use case also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.

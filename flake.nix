@@ -6,7 +6,7 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    nix-update-flake.url = "github:Mic92/nix-update";
+    nix-update-flake.url = "github:Mic92/nix-update/09aadb5d6d9e1fc57df0b61def4bdd8b43ea47a1";
     nix-update-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -50,7 +50,7 @@
       flake = false;
     };
     motoko-matchers-src = {
-      url = "github:kritzcreek/motoko-matchers";
+      url = "github:kritzcreek/motoko-matchers/5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982";
       flake = false;
     };
     ocaml-vlq-src = {
@@ -260,9 +260,11 @@
 
       common-constituents = rec {
         samples = import ./nix/samples.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-#        base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
-#        base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
-#        report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
+        # TODO: Re-enable base tests once we recalibrate them so they
+        # don't OOM anymore.
+        # base-tests = import ./nix/base-tests.nix { inherit pkgs; inherit (debugMoPackages) moc; };
+        base-doc = import ./nix/base-doc.nix { inherit pkgs; inherit (debugMoPackages) mo-doc; };
+        report-site = import ./nix/report-site.nix { inherit pkgs base-doc docs; inherit (tests) coverage; };
 
         inherit rts base-src core-src docs shell;
       };
