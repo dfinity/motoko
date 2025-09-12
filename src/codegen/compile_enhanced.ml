@@ -514,6 +514,8 @@ module E = struct
        created in `conclude_module`. *)
     global_type_descriptor : global_type_descriptor option ref;
 
+    name_table_segment : int32 ref;
+
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
 
@@ -555,6 +557,7 @@ module E = struct
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
+    name_table_segment = ref 0l;
     constant_functions = ref 0l;
     stable_functions = ref NameEnv.empty;
     stable_migration_descriptor = ref None;
@@ -1317,10 +1320,13 @@ module RTS = struct
     E.add_func_import env "rts" "resolve_function_call" [I64Type] [I64Type];
     E.add_func_import env "rts" "resolve_function_literal" [I64Type] [I64Type];
     E.add_func_import env "rts" "stable_functions_gc_visit" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "unwrap_closure_field" [I64Type] [I64Type];
     E.add_func_import env "rts" "save_name_table" [I64Type] [];
     E.add_func_import env "rts" "set_in_migration" [I32Type] [];
     E.add_func_import env "rts" "skip_persistent_function_gc" [] [];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
+    E.add_func_import env "rts" "alloc_weak_ref" [I64Type] [I64Type];
+    E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1334,7 +1340,8 @@ module GC = struct
 
   let register_globals env =
     E.add_global64 env "__mutator_instructions" Mutable 0L;
-    E.add_global64 env "__collector_instructions" Mutable 0L
+    E.add_global64 env "__collector_instructions" Mutable 0L;
+    E.add_global64 env "__lifetime_instructions" Mutable 0L
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1345,6 +1352,11 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_lifetime_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__lifetime_instructions")))
+  let set_lifetime_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__lifetime_instructions")))
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1362,10 +1374,22 @@ module GC = struct
       set_collector_instructions env
     | _ -> G.nop
 
+  let record_lifetime_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      get_mutator_instructions env ^^
+      get_lifetime_instructions env ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      get_collector_instructions env ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      set_lifetime_instructions env
+    | _ -> G.nop
+
   let collect_garbage env =
     record_mutator_instructions env ^^
     E.collect_garbage env false ^^
-    record_collector_instructions env
+    record_collector_instructions env ^^
+    record_lifetime_instructions env
 
 end (* GC *)
 
@@ -1967,6 +1991,7 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | Region
+    | WeakRef
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
@@ -1999,7 +2024,8 @@ module Tagged = struct
     | Region -> 39L
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
-    | ArraySliceMinimum -> 44L
+    | WeakRef -> 45L
+    | ArraySliceMinimum -> 46L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -2210,6 +2236,7 @@ module MutBox = struct
 end
 
 
+
 module Opt = struct
   (* The Option type. Optional values are represented as
 
@@ -2297,6 +2324,63 @@ module Opt = struct
     )
 
 end (* Opt *)
+
+
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ field │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
+  let try_inject env e =
+    e ^^
+    Func.share_code1 Func.Never env "weak_try_inject" ("x", I64Type) [I64Type] (fun env get_x ->
+      get_x ^^ Opt.is_null env ^^ E.then_trap_with env "weak reference of null" ^^
+      get_x ^^ BitTagged.if_tagged_scalar env [I64Type]
+       ( E.trap_with env "weak reference of non-reference"
+         (* FUTURE: improve message by decoding scalar tag *)) (* scalar, trap *)
+       ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+          E.if_ env [I64Type]
+            ( E.trap_with env "weak reference of `true`" ) (* true literal, scalar *)
+            ( get_x ^^ Opt.is_some env ^^
+              E.if_ env [I64Type]
+                ( get_x ^^ Tagged.branch_default env [I64Type]
+                  ( get_x ) (* default tag, no wrapping *)
+                  [ (Tagged.Some, Opt.alloc_some env get_x);
+                    (Tagged.BigInt, E.trap_with env "weak reference of Int");
+                    (Tagged.Bits64 Tagged.U, E.trap_with env "weak reference of Nat64");
+                    (Tagged.Bits64 Tagged.S, E.trap_with env "weak reference of Int64");
+                    (Tagged.Bits64 Tagged.F, E.trap_with env "weak reference of Float") ]
+                )
+               ( Opt.alloc_some env get_x ) (* ?ⁿnull for n > 0 *)
+            )
+        )
+    )
+
+
+end
+
 
 module Variant = struct
   (* The Variant type. We store the variant tag in a first word; we can later
@@ -2592,7 +2676,7 @@ module TaggedSmallWord = struct
     )
 
   let vanilla_lit ty v =
-    Int64.(shift_left (of_int v) (to_int (shift_of_type ty)))
+    Int64.(shift_left v (to_int (shift_of_type ty)))
     |> Int64.logor (tag_of_type ty)
 
   (* Wrapping implementation for multiplication and exponentiation. *)
@@ -6814,8 +6898,10 @@ module Serialization = struct
 
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
-  let idl_type_variable = -131l
-  let idl_type_parameter = -132l
+  let idl_weak     = -131l (* UNUSED FOR NOW, might need eventually *)
+  let idl_type_variable = -132l
+  let idl_type_parameter = -133l
+  
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -6847,6 +6933,7 @@ module Serialization = struct
             List.iter (fun b -> go b.bound) tbs;
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Weak t -> go t
           | Mut t -> go t
           | Var _ -> ()
           | Con (con, ts) -> ()
@@ -6995,6 +7082,8 @@ module Serialization = struct
           add_sleb128 idl_type_parameter;
           add_leb128 index
         | _ -> assert false)
+      | Weak t ->
+        add_sleb128 idl_weak; add_idx t
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -7095,7 +7184,12 @@ module Serialization = struct
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
+        (* For now, trap on WeakRef *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        E.then_trap_with env "object_size/Mut: Unexpected tag WeakRef" ^^
         (* Sanity check *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
@@ -7192,7 +7286,10 @@ module Serialization = struct
           inc_data_size (compile_unboxed_const 12L) ^^ (* |id| + |page_count| = 8 + 4 *)
           get_x ^^ Region.vec_pages env ^^ size env blob)
       | Mut t ->
-        size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+      | Weak t ->
+         E.trap_with env "buffer_size: Weak" ^^
+         size_alias (fun () -> get_x ^^ WeakRef.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       (* Check 32-bit overflow of buffer_size *)
@@ -7250,6 +7347,8 @@ module Serialization = struct
           (* This is a reference *)
           write_byte env get_data_buf (compile_unboxed_const 1L) ^^
           (* Sanity Checks *)
+          get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+          E.then_trap_with env "unvisited mutable data in serialize_go (WeakRef)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
@@ -7365,6 +7464,11 @@ module Serialization = struct
       | Mut t ->
         write_alias (fun () ->
           get_x ^^ MutBox.load_field env ^^ write env t
+          )
+      | Weak t ->
+        E.trap_with env "serialize_go: Weak" ^^
+        write_alias (fun () ->
+          get_x ^^ WeakRef.load_field env ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
@@ -8166,6 +8270,16 @@ module Serialization = struct
           get_result ^^
           get_arg_typ ^^ go env t ^^
           MutBox.store_field env
+          )
+      | Weak t ->
+        E.trap_with env "deserialize_go: Weak" ^^
+        read_alias env (Weak t) (fun get_arg_typ on_alloc ->
+          let (set_result, get_result) = new_local env "result" in
+          WeakRef.alloc env ^^ set_result ^^
+          on_alloc get_result ^^
+          get_result ^^
+          get_arg_typ ^^ go env t ^^
+          WeakRef.store_field env
         )
       | Non ->
         skip get_idltyp ^^
@@ -8959,7 +9073,7 @@ module StableFunctionGC = struct
         | Obj (Actor, _) -> false
         | Tup type_list ->
           List.exists (go visited) type_list
-        | Array nested | Mut nested | Opt nested ->
+        | Array nested | Mut nested | Opt nested | Weak nested ->
           go visited nested
         | _ -> assert false (* illegal stable type *)
     in
@@ -8986,7 +9100,7 @@ module StableFunctionGC = struct
           | Tup type_list ->
             let relevant_types = List.filter must_visit type_list in
             List.fold_left (collect_types false) (map, id) relevant_types
-          | Array nested | Opt nested | Mut nested ->
+          | Array nested | Opt nested | Mut nested | Weak nested ->
             if must_visit nested then
               collect_types false (map, id) nested
             else (map, id)
@@ -9035,15 +9149,16 @@ module StableFunctionGC = struct
               get_object ^^ Tagged.load_tag env ^^
               compile_eq_const (Tagged.int_of_tag Tagged.Closure) ^^
               E.if1 I64Type (
-                get_object ^^ Closure.captured_address env field.lab
+                get_object ^^ Closure.load_captured env field.lab ^^
+                E.call_import env "rts" "unwrap_closure_field"
               )
               (
                 get_object ^^ Tagged.load_tag env ^^
                 compile_eq_const (Tagged.int_of_tag Tagged.Object) ^^
                 E.else_trap_with env "Stable function GC: Invalid object tag" ^^
-                get_object ^^ Object.idx env typ field.lab
+                get_object ^^ Object.idx env typ field.lab ^^
+                Heap.load_field 0L (* dereference field *)
               ) ^^
-              Heap.load_field 0L ^^ (* dereference field *)
               visit_field field.typ
               ) relevant_fields
           | Tup type_list ->
@@ -9094,7 +9209,23 @@ module StableFunctionGC = struct
 end (* StableFunctionGC *)
 
 module NameTable = struct
-  let build_table (records: (int32 * string) list) : string =
+  let register_delayed_globals env =
+    E.add_global64_delayed env "__name_table_length" Immutable
+
+  let get_table_length env =
+    G.i (GlobalGet (nr (E.get_global env "__name_table_length")))
+
+  let reserve_table_segment env =
+    env.E.name_table_segment := E.add_data_segment env ""
+
+  let get_table_segment env = !(E.(env.name_table_segment))
+
+  let name_records env =
+    let functions = StableFunctions.sorted_stable_functions env in
+    List.map (fun (hash, name, _, _, _) -> (hash, name)) functions
+
+  let create_name_table env set_segment_length =
+    let records = name_records env in
     let append_text section text =
       let offset = String.length section in
       let length = String.length text in
@@ -9123,16 +9254,11 @@ module NameTable = struct
       Bytes hash_section;
       Bytes text_section
     ] in
-    StaticBytes.as_bytes table
+    let binary_length = E.replace_data_segment env (get_table_segment env) table in
+    set_segment_length binary_length
 
-  let name_records env =
-    let functions = StableFunctions.sorted_stable_functions env in
-    List.map (fun (hash, name, _, _, _) -> (hash, name)) functions
-
-  let register env =
-    let records = name_records env in
-    let payload = build_table records in
-    Blob.lit env Tagged.B payload ^^   
+  let save_name_table env =
+    Blob.load_data_segment env Tagged.B (get_table_segment env) (get_table_length env) ^^
     E.call_import env "rts" "save_name_table"
 
 end (* NameTable *)
@@ -10385,8 +10511,8 @@ module FuncDec = struct
              since the stabilization can also be run before the upgrade. *)
           Lifecycle.during_explicit_upgrade env ^^
           E.if1 I64Type
-            (compile_unboxed_const (Int64.of_int Flags.(!stabilization_instruction_limit.update_call)))
-            (compile_unboxed_const (Int64.of_int Flags.(!stabilization_instruction_limit.upgrade)))
+            (compile_unboxed_const (Flags.(!stabilization_instruction_limit.update_call)))
+            (compile_unboxed_const (Flags.(!stabilization_instruction_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
@@ -10398,8 +10524,8 @@ module FuncDec = struct
         Func.of_body env [] [I64Type] (fun env ->
           Lifecycle.during_explicit_upgrade env ^^
           E.if1 I64Type
-            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.update_call)))
-            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.upgrade)))
+            (compile_unboxed_const (Flags.(!stable_memory_access_limit.update_call)))
+            (compile_unboxed_const (Flags.(!stable_memory_access_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
@@ -10729,7 +10855,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
-    NameTable.register env ^^
+    NameTable.save_name_table env ^^
     use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
@@ -11129,19 +11255,20 @@ let nat64_to_int64 n =
   then sub_big_int n (power_int_positive_int 2 64)
   else n
 
+
 let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt (Numerics.Nat.to_big_int n)
-  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Numerics.Int_8.to_int n))
-  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
-  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
-  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
-  | Int32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int32 (Numerics.Int_32.to_int n))
-  | Nat32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat32 (Numerics.Nat32.to_int n))
+  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Numerics.Int_8.to_int64 n))
+  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int64 n))
+  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int64 n))
+  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int64 n))
+  | Int32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int32 (Numerics.Int_32.to_int64 n))
+  | Nat32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat32 (Numerics.Nat32.to_int64 n))
   | Int64Lit n    -> Const.Word64 (Type.Int64, (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n)))
   | Nat64Lit n    -> Const.Word64 (Type.Nat64, (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n))))
-  | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char c)
+  | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char (Int64.of_int c))
   | NullLit       -> Const.Null
   | TextLit t     -> Const.Text t
   | BlobLit t     -> Const.Blob t
@@ -12359,8 +12486,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "Float->Text", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 6) ^^
-    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 0) ^^
+    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 6L) ^^
+    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 0L) ^^
     E.call_import env "rts" "float_fmt"
 
   | OtherPrim "fmtFloat->Text", [f; prec; mode] ->
@@ -12475,6 +12602,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_lifetime_instructions", [] ->
+    SR.Vanilla,
+    GC.get_lifetime_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_upgrade_instructions", [] ->
     SR.Vanilla,
     UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
@@ -12491,6 +12622,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
     Persistence.in_upgrade env
+
+  | OtherPrim "alloc_weak_ref", [target] ->
+    SR.Vanilla,
+    WeakRef.try_inject env (compile_exp_vanilla env ae target) ^^
+    E.call_import env "rts" "alloc_weak_ref"
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    WeakRef.load_field env
+
+  | OtherPrim "weak_ref_is_live", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    E.call_import env "rts" "weak_ref_is_live" ^^
+    Bool.from_rts_int32
 
   (* Regions *)
 
@@ -14040,7 +14187,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals start_fi_o =
+and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serialization_globals set_eop_globals set_name_table_length start_fi_o =
 
   RTS_Exports.system_exports env;
   EnhancedOrthogonalPersistence.system_export env actor_type;
@@ -14055,6 +14202,8 @@ and conclude_module env (actor_type : Ir.stable_actor_typ option) set_serializat
 
   (* Segments for EOP memory compatibility check *)
   EnhancedOrthogonalPersistence.create_migration_descriptor env actor_type set_eop_globals;
+
+  NameTable.create_name_table env set_name_table_length;
 
   (* declare before building GC *)
 
@@ -14177,6 +14326,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_eop_globals = EnhancedOrthogonalPersistence.register_delayed_globals env in
   EnhancedOrthogonalPersistence.reserve_type_table_segments env;
 
+  let set_name_table_length = NameTable.register_delayed_globals env in
+  NameTable.reserve_table_segment env;
+
   IC.system_imports env;
   RTS.system_imports env;
 
@@ -14197,5 +14349,5 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   | _ -> None
   in
 
-  conclude_module env actor_type set_serialization_globals set_eop_globals start_fi_o
+  conclude_module env actor_type set_serialization_globals set_eop_globals set_name_table_length start_fi_o
 

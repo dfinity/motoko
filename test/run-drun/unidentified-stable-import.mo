@@ -1,5 +1,4 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-//No identifier for imported module -> cannot be used for stable functions/objects
 import { TestClass; TestObject } "stable-function-scopes/module1";
 
 actor {

@@ -11,11 +11,12 @@ use core::str::from_utf8;
 use motoko_rts_macros::ic_mem_fn;
 use stable_functions::{register_stable_functions, StableFunctionState};
 
+use crate::gc::incremental::mark_stack::MarkStack;
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
     gc::incremental::{partitioned_heap::allocate_initial_memory, State},
-    memory::Memory,
+    memory::{alloc_blob, Memory},
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
@@ -60,6 +61,9 @@ struct PersistentMetadata {
     incremental_gc_state: State,
     /// Upgrade performance statistics: Total number of instructions consumed by the last upgrade.
     upgrade_instructions: u64,
+    /// A Value representing a pointer to a MarkStack object
+    /// used to collect weak references during the GC marking phase.
+    weak_ref_registry: Value,
     /// Support for stable local functions.
     stable_function_state: StableFunctionState,
     /// Reference to `name_resolution::NameTable`.
@@ -118,6 +122,7 @@ impl PersistentMetadata {
         (*self).stable_type = TypeDescriptor::default();
         (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
+        (*self).weak_ref_registry = NULL_POINTER;
         (*self).stable_function_state = StableFunctionState::default();
         (*self).name_table = NULL_POINTER;
     }
@@ -131,6 +136,12 @@ pub unsafe fn initialize_memory<M: Memory>() {
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
+        // Explicit migration from a version of the RTS without weak reference support.
+        if (*metadata).weak_ref_registry.get_raw() == 0 {
+            // This is the first upgrade from a version of the RTS without weak reference
+            // support. We need to initialize the weak reference registry to NULL_POINTER.
+            (*metadata).weak_ref_registry = NULL_POINTER;
+        }
     } else {
         metadata.initialize::<M>();
     }
@@ -360,4 +371,58 @@ pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
     const BUFFER_SIZE: usize = 512;
     assert!(size_of::<PersistentMetadata>().to_bytes().as_usize() + BUFFER_SIZE < METADATA_RESERVE);
     METADATA_ADDRESS + METADATA_RESERVE - BUFFER_SIZE
+}
+
+/// Accessor method for the weak reference registry.
+pub(crate) unsafe fn get_weak_ref_registry<M: Memory>(mem: &mut M) -> &'static mut MarkStack {
+    debug_assert!((*PersistentMetadata::get()).weak_ref_registry.get_raw() != 0);
+
+    // Lazy initialization of the weak reference registry.
+    if is_weak_ref_registry_null() {
+        // This can be run during an increment from a version of the RTS without weak reference
+        // support. In this case, the weak reference registry is NULL_POINTER (see the initial migration
+        // in function `initialize_memory`).
+        // We need to properly initialize it so that it can be used if needed.
+        // Also certain assertions in the weak reference code rely on an existing
+        // weak reference registry on which we can call is_empty().
+        initialize_weak_ref_registry(mem);
+    }
+
+    let metadata = PersistentMetadata::get();
+    let registry_value = (*metadata).weak_ref_registry;
+    let markstack_ptr = registry_value.get_ptr() as *mut MarkStack;
+    &mut *markstack_ptr
+}
+
+/// Initialize the weak reference registry in persistent metadata.
+unsafe fn initialize_weak_ref_registry<M: Memory>(mem: &mut M) {
+    debug_assert!((*PersistentMetadata::get()).weak_ref_registry == NULL_POINTER);
+    // Allocate a pointer to a MarkStack object explicitly on the heap, through a blob.
+    // No barrier needed, the lifetime of the whole weak reference registry
+    // is just during the GC marking phase. After this it can be garbage collected.
+    // Every GC phase will reinitialize the weak reference registry.
+    let markstack_blob = alloc_blob(mem, TAG_BLOB_B, Bytes(size_of::<MarkStack>()));
+    let markstack_ptr = markstack_blob.as_blob_mut() as *mut MarkStack;
+    // Initialize the MarkStack object inside this pointer.
+    *markstack_ptr = MarkStack::new(mem);
+
+    let metadata = PersistentMetadata::get();
+    // Barrier is not needed here, as object is transitional and
+    // thus marking of previous weak ref object is not needed.
+    (*metadata).weak_ref_registry = Value::from_ptr(markstack_ptr as usize);
+}
+
+/// Clear the weak reference registry in persistent metadata.
+/// This is done only after the marking phase is finished.
+pub(crate) unsafe fn clear_weak_ref_registry() {
+    let metadata = PersistentMetadata::get();
+    (*metadata).weak_ref_registry = NULL_POINTER;
+}
+
+/// Check if the weak reference registry is NULL_POINTER.
+unsafe fn is_weak_ref_registry_null() -> bool {
+    let metadata = PersistentMetadata::get();
+    // Barrier is not needed here, as object is transitional and
+    // thus marking of previous weak ref object is not needed.
+    (*metadata).weak_ref_registry == NULL_POINTER
 }

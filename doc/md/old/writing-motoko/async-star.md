@@ -130,7 +130,7 @@ For another example, suppose we define a
 clap function with the side-effect of printing "clap".
 
 ``` motoko no-repl
-import Debug "mo:base/Debug"
+import Debug "mo:core/Debug"
 func clap() { Debug.print("clap") }
 ```
 

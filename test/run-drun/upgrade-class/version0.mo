@@ -1,4 +1,5 @@
-import Test "test-class0";
+import Test "test-class";
+import Prim "mo:prim";
 
 persistent actor {
   var instance = Test.TestClass();

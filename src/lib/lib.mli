@@ -27,6 +27,7 @@ sig
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
   val split_at : int -> 'a list -> ('a list * 'a list)
+  val mapi2 : (int -> 'a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
@@ -211,6 +212,7 @@ sig
   val relative_to : string -> string -> string option
 
   val make_absolute : string -> string -> string
+  val make_relative : string -> string -> string
 
   (**
    * Checks whether one path is nested below another.

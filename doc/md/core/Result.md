@@ -5,7 +5,7 @@ The Result type is used for returning and propagating errors. It has two variant
 `#ok(Ok)`, representing success and containing a value, and `#err(Err)`, representing
 error and containing an error value.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Result "mo:core/Result";
 ```

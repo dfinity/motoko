@@ -59,7 +59,8 @@ A persistent function is a function that is declared `persistent` and occurs in 
 A persistent scope is:
 * the main actor,
 * an actor class,
-* a module imported with a unique identifier from a persistent scope,
+* an imported module,
+* a nested module in a persistent scope,
 * a `persistent` function in a persistent scope,
 * a `persistent` class in a persistent persistent scope, 
 * a method in a `persistent` class in a persistent scope, or,
@@ -93,7 +94,7 @@ Persistent functions are upgraded as follows:
 * For matching functions, the function type of the new version must be compatible to the previous version (super-type).
 * For matching functions, the closure type in the new version must be compatible with the previous version, see below.
 
-All other functions, such as e.g. functions that are not declared `persistent`, functions in a unnamed objects, functions in a non-persistent class, functions in a lambda, or functions imported from a module without a unique import identifier, are transient functions.
+All other functions, such as e.g. functions that are not declared `persistent`, functions in a unnamed objects, functions in a non-persistent class, or functions in a lambda are transient functions.
 
 ## Persistent Closures
 
