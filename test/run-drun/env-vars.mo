@@ -46,7 +46,7 @@ persistent actor Self {
         value = "value";
       },
     ]);
-    Prim.debugPrint(debug_show Prim.envVarNames());
+    Prim.debugPrint(debug_show Prim.envVarNames<system>());
     assert Prim.envVarNames() == ["TEST_ENV_VAR_NAME", "key"];
     assert Prim.envVar("TEST_ENV_VAR_NAME") == ?"Test environment variable value";
     assert Prim.envVar("key") == ?"value";

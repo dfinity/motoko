@@ -112,11 +112,11 @@ func isLive(weak_ref : weak Any) : Bool {
   (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
 };
 
-func envVarNames() : [Text] {
+func envVarNames<system>() : [Text] {
   (prim "env_var_names" : () -> [Text])();
 };
 
-func envVar(name : Text) : ?Text {
+func envVar<system>(name : Text) : ?Text {
   (prim "env_var" : Text -> ?Text)(name);
 };
 
