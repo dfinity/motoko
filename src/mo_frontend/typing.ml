@@ -12,7 +12,7 @@ module C = Async_cap
 
 module S = Set.Make(String)
 
-(* Contexts  *)
+(* Contexts *)
 
 (* availability, used to mark actor constructors as unavailable in compiled code
    FUTURE: mark unavailable, non-shared variables *)
@@ -167,9 +167,7 @@ let display_typs fmt typs =
     let tfs = T.Env.fold (fun x c acc ->
       if Syntax.(is_privileged x || is_scope x) ||
         T.(match Cons.kind c with
-          | Def ([], Prim _)
-          | Def ([], Any)
-          | Def ([], Non) -> string_of_con c = x
+          | Def ([], (Prim _ | Any | Non)) -> string_of_con c = x
           | _ -> false)
       then acc
       else T.{lab = x; src = empty_src; typ = T.Typ c}::acc)
@@ -423,13 +421,12 @@ let check_closed env id k at =
 (* Imports *)
 
 let check_import env at f ri =
-  let full_path =
-    match !ri with
+  let full_path = match !ri with
     | Unresolved -> error env at "M0020" "unresolved import %s" f
-    | LibPath {path=fp; _} -> fp
+    | LibPath {path = fp; _}
+    | ImportedValuePath fp
     | IDLPath (fp, _) -> fp
-    | PrimPath -> "@prim"
-  in
+    | PrimPath -> "@prim" in
   match T.Env.find_opt full_path env.libs with
   | Some T.Pre ->
     error env at "M0021" "cannot infer type of forward import %s" f
@@ -2087,7 +2084,9 @@ and check_exp' env0 t exp : T.typ =
     t'
   | TagE (id, exp1), T.Variant fs when List.exists (fun T.{lab; _} -> lab = id.it) fs ->
     let {T.typ; _} = List.find (fun T.{lab; typ;_} -> lab = id.it) fs in
-    check_exp env typ exp1 ;
+    check_exp env typ exp1;
+    t
+  | ImportE _, t ->
     t
   | e, _ ->
     let t' = infer_exp env0 exp in
@@ -2476,7 +2475,7 @@ and infer_pat' name_types env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 (T.lub ~src_fields:env.srcs)) ve1 ve2*)
   | AnnotP ({it = VarP id; _} as pat1, typ) when name_types ->
     let t = check_typ env typ in
-    T.Named (id.it, t),  check_pat env t pat1
+    T.Named (id.it, t), check_pat env t pat1
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
@@ -2671,12 +2670,12 @@ and check_pats env ts pats ve at : Scope.val_env =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-        let ve1 = check_pat env t pat in
-        let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-        go ts' pats' ve'
+      let ve1 = check_pat env t pat in
+      let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
+      go ts' pats' ve'
     | _, _ ->
-        error env at "M0118" "tuple pattern has %i components but expected type has %i"
-          pats_len ts_len
+      error env at "M0118" "tuple pattern has %i components but expected type has %i"
+        pats_len ts_len
   in
   go ts pats ve
 
@@ -3296,7 +3295,7 @@ and infer_dec env dec : T.typ =
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
-    (if env.in_prog && (CompUnit.is_actor_def exp || CompUnit.is_module_def exp) then
+    (if env.in_prog && CompUnit.(is_actor_def exp || is_module_def exp) then
       match pat.it with
       | VarP id -> use_identifier env id.it
       | _ -> ());
@@ -3769,7 +3768,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = { (env_of_scope msgs scope) with errors_only = (pkg_opt <> None) } in
+          let env = { (env_of_scope msgs scope) with errors_only = pkg_opt <> None } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
@@ -3778,9 +3777,9 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let imp_typ = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin
-                let r = Source.({
+                let r = Source.{
                   left = { no_pos with file = lib.note.filename };
-                  right = { no_pos with file = lib.note.filename }})
+                  right = { no_pos with file = lib.note.filename }}
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
