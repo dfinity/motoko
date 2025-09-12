@@ -110,6 +110,8 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     debugPrintNat : (x : Nat) -> ();
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
+    envVar : <system>(name : Text) -> ?Text;
+    envVarNames : <system>() -> [Text];
     error : (message : Text) -> Error;
     errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;
