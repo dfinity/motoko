@@ -223,7 +223,9 @@ module Make (Cfg : Config) = struct
 
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-  and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+  and pat_field pf = source pf.at (match pf.it with
+    | ValPF(id, p) -> "ValPF" $$ [Atom id.it; pat p]
+    | TypPF(id) -> "TypPF" $$ [Atom id.it])
 
   (* conditionally include parenthetical to avoid breaking lsp *)
   and parenthetical eo sexps =
@@ -235,14 +237,14 @@ module Make (Cfg : Config) = struct
 
   and shared_pat sp = match sp.it with
     | Type.Local Type.Flexible -> Atom "Local"
-    | Type.Local Type.Stable -> Atom "Local Stable"
+    | Type.Local Type.Stable -> Atom "Local Persistent"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
     | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
     | Type.Local Type.Flexible -> Atom "Local"
-    | Type.Local Type.Stable -> Atom "Local Stable"
+    | Type.Local Type.Stable -> Atom "Local Persistent"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
     | Type.Shared Type.Composite -> Atom "Composite"
@@ -305,7 +307,8 @@ module Make (Cfg : Config) = struct
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
-  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
+  | WeakT t -> "WeakT" $$ [typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e]

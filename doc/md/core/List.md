@@ -1,6 +1,6 @@
 # core/List
-A mutable list data structure with efficient random access and dynamic resizing.
-Provides O(1) access time and O(sqrt(n)) memory overhead.
+A mutable growable array data structure with efficient random access and dynamic resizing.
+`List` provides O(1) access time and O(sqrt(n)) memory overhead. In contrast, `pure/List` is a purely functional linked list.
 Can be declared `stable` for orthogonal persistence.
 
 This implementation is adapted with permission from the `vector` Mops package created by Research AG.
@@ -283,9 +283,9 @@ Amortized Runtime: `O(1)`, Worst Case Runtime: `O(sqrt(n))`
 
 Amortized Space: `O(1)`, Worst Case Space: `O(sqrt(n))`
 
-## Function `get`
+## Function `at`
 ``` motoko no-repl
-func get<T>(list : List<T>, index : Nat) : T
+func at<T>(list : List<T>, index : Nat) : T
 ```
 
 Returns the element at index `index`. Indexing is zero-based.
@@ -296,14 +296,14 @@ Example:
 let list = List.empty<Nat>();
 List.add(list, 10);
 List.add(list, 11);
-assert List.get(list, 0) == 10;
+assert List.at(list, 0) == 10;
 ```
 
 Runtime: `O(1)`
 
-## Function `getOpt`
+## Function `get`
 ``` motoko no-repl
-func getOpt<T>(list : List<T>, index : Nat) : ?T
+func get<T>(list : List<T>, index : Nat) : ?T
 ```
 
 Returns the element at index `index` as an option.
@@ -314,8 +314,8 @@ Example:
 let list = List.empty<Nat>();
 List.add(list, 10);
 List.add(list, 11);
-assert List.getOpt(list, 0) == ?10;
-assert List.getOpt(list, 2) == null;
+assert List.get(list, 0) == ?10;
+assert List.get(list, 2) == null;
 ```
 
 Runtime: `O(1)`
@@ -479,6 +479,33 @@ assert List.findLastIndex<Nat>(list, func(i) { i > 5 }) == null;
 Runtime: `O(size)`
 
 *Runtime and space assumes that `predicate` runs in `O(1)` time and space.
+
+## Function `binarySearch`
+``` motoko no-repl
+func binarySearch<T>(list : List<T>, compare : (T, T) -> Order.Order, element : T) : {#found : Nat; #insertionIndex : Nat}
+```
+
+Performs binary search on a sorted list to find the index of the `element`.
+Returns `#found(index)` if the element is found, or `#insertionIndex(index)` with the index
+where the element would be inserted according to the ordering if not found.
+
+If there are multiple equal elements, no guarantee is made about which index is returned.
+The list must be sorted in ascending order according to the `compare` function.
+
+Example:
+```motoko include=import
+import Nat "mo:core/Nat";
+
+let list = List.fromArray<Nat>([1, 3, 5, 7, 9, 11]);
+assert List.binarySearch<Nat>(list, Nat.compare, 5) == #found(2);
+assert List.binarySearch<Nat>(list, Nat.compare, 6) == #insertionIndex(3);
+```
+
+Runtime: `O(log(size))`
+
+Space: `O(1)`
+
+*Runtime and space assumes that `compare` runs in `O(1)` time and space.
 
 ## Function `all`
 ``` motoko no-repl
@@ -808,7 +835,7 @@ Space: `O(1)`
 func last<T>(list : List<T>) : ?T
 ```
 
-Returns the last element of `list`. Traps if `list` is empty.
+Returns the last element of `list`, or `null` if the list is empty.
 
 Example:
 ```motoko include=import

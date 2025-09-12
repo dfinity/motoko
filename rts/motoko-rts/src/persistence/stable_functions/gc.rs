@@ -7,7 +7,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     memory::Memory,
     persistence::stable_functions::is_flexible_function_id,
-    types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_OBJECT, TAG_SOME},
+    types::{Value, NULL_POINTER, TAG_CLOSURE, TAG_MUTBOX, TAG_OBJECT, TAG_SOME},
 };
 
 use super::{resolve_stable_function_id, FunctionId, PersistentVirtualTable, VirtualTableEntry};
@@ -134,5 +134,15 @@ unsafe fn stable_functions_gc_visit<M: Memory>(mem: &mut M, object: Value, type_
     if object != NULL_POINTER && !state.visited_set.contains(item) {
         state.visited_set.insert(mem, item);
         state.mark_stack.push(mem, StackEntry { object, type_id });
+    }
+}
+
+#[no_mangle]
+unsafe fn unwrap_closure_field(value: Value) -> Value {
+    if value != NULL_POINTER && value.tag() == TAG_MUTBOX {
+        let mutbox = value.as_mutbox();
+        (*mutbox).field
+    } else {
+        value
     }
 }

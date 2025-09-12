@@ -1,6 +1,8 @@
-import Test "test-class1";
+import Test "test-class";
+import Prim "mo:prim";
 
-actor {
-  stable var instance = Test.TestClass();
+persistent actor {
+  var instance = Test.TestClass();
   instance.print();
+  Prim.debugPrint("Version 1");
 };

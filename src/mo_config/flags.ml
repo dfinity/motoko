@@ -7,8 +7,8 @@ type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 type gc_strategy = Default | MarkCompact | Copying | Generational | Incremental
 
 type instruction_limits = {
-  upgrade: int;
-  update_call: int;
+  upgrade: Int64.t;
+  update_call: Int64.t;
 }
 
 type actors = LegacyActors | RequirePersistentActors | DefaultPersistentActors
@@ -62,14 +62,14 @@ let enhanced_orthogonal_persistence = ref true
 let explicit_enhanced_orthogonal_persistence = ref false
 let share_code = ref false
 let stabilization_instruction_limit_default = {
-  upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)
-  update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
+  upgrade = 180_000_000_000L; (* 200 billion limit with 10% reserve *)
+  update_call = 18_000_000_000L; (* 20 billion limit with 10% reserve *)
 }
 let stabilization_instruction_limit = ref stabilization_instruction_limit_default
 let stable_memory_access_limit_default =
-  let gigabyte = 1024 * 1024 * 1024 in {
-  upgrade = 6 * gigabyte; (* 8 GB limit with 2 GB reserves *)
-  update_call = 1 * gigabyte; (* 2 GB limit with 1 GB reserve *)
+  let gigabyte = Int64.of_int (1024 * 1024 * 1024) in {
+  upgrade = Int64.mul 6L gigabyte; (* 8 GB limit with 2 GB reserves *)
+  update_call = Int64.mul 1L gigabyte; (* 2 GB limit with 1 GB reserve *)
 }
 let stable_memory_access_limit = ref stable_memory_access_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)

@@ -21,15 +21,15 @@
 import A "diamond-imports/module1";
 import B "diamond-imports/module2";
 
-actor {
-    stable let f0 = A.testFunc;
+persistent actor {
+    let f0 = A.testFunc;
     f0();
-    stable let f1 = A.getShared();
+    let f1 = A.getShared();
     f1();
 
-    stable let f2 = B.testFunc;
+    let f2 = B.testFunc;
     f2();
-    stable let f3 = A.getShared();
+    let f3 = A.getShared();
     f3();
 };
 

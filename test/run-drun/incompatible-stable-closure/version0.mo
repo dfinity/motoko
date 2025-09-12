@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
-actor {
-    class TestClass1() {
+persistent actor {
+    persistent class TestClass1() {
         var value = "HELLO!";
 
         public func testFunction() {
@@ -10,6 +10,6 @@ actor {
         }
     };
 
-    stable let f = TestClass1().testFunction;
+    let f = TestClass1().testFunction;
     f();
 }

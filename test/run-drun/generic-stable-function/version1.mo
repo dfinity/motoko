@@ -1,10 +1,10 @@
 import Prim "mo:prim";
 
-actor {
+persistent actor {
     Prim.debugPrint("Version 1");
 
-    func outer<T>(x : T, op : stable T -> ()) : stable () -> () {
-        func inner() {
+    persistent func outer<T>(x : T, op : persistent T -> ()) : persistent () -> () {
+        persistent func inner() {
             op(x);
         };
         return inner;
@@ -12,19 +12,19 @@ actor {
 
     transient var global = "";
 
-    stable func setBool(x : Bool) {
+    persistent func setBool(x : Bool) {
         Prim.debugPrint("Calling setBool");
     };
 
     // create function reference to retain
     let _ignore = setBool;
 
-    func setText(x : Text) {
+    persistent func setText(x : Text) {
         Prim.debugPrint("Writing text");
         global := x;
     };
 
-    stable let stableFunction = outer<Text>("Hello", setText);
+    let stableFunction = outer<Text>("Hello", setText);
 
     Prim.debugPrint("Before: " # debug_show (global));
     stableFunction(); // stays with old `X = Bool` and calls the old `setBool`.

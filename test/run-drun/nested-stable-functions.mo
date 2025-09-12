@@ -1,19 +1,19 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 import Prim "mo:prim";
 
-actor {
-    stable var version = 0;
+persistent actor {
+    var version = 0;
     version += 1;
 
-    func empty() {
+    persistent func empty() {
     };
 
-    stable var y = empty;
+    var y = empty;
 
-    func outer() {
+    persistent func outer() {
         var local = 0;
 
-        func inner() {
+        persistent func inner() {
             Prim.debugPrint("STABLE INNER FUNCTION " # debug_show(local) # " " # debug_show(version));
             local += 1;
         };

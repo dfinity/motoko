@@ -117,7 +117,7 @@ let decs_of_lib (cu : comp_unit) =
   | ModuleU (id_opt, fields) ->
     obj_decs Type.Module cub.at cub.note id_opt fields
   | ActorClassU (persistence, eo, csp, i, tbs, p, t, i', efs) ->
-    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = false @@ no_region}, i, tbs, p, t, i', efs, ref None);
+    [{ it = ClassD (eo, csp, { it = Type.Actor; at = no_region; note = persistence }, i, tbs, p, t, i', efs, ref None);
        at = cub.at;
        note = cub.note;}];
   | ProgU _

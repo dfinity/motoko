@@ -238,7 +238,7 @@ Space: `O(1)`.
 
 ## Function `equal`
 ``` motoko no-repl
-func equal<K, V>(map1 : Map<K, V>, map2 : Map<K, V>, compareKeys : (K, K) -> Types.Order, equalValues : (V, V) -> Bool) : Bool
+func equal<K, V>(map1 : Map<K, V>, map2 : Map<K, V>, compareKey : (K, K) -> Types.Order, equalValue : (V, V) -> Bool) : Bool
 ```
 
 Test whether two imperative maps have equal entries.

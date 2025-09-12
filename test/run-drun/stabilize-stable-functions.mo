@@ -3,23 +3,23 @@
 //MOC-FLAG --stabilization-instruction-limit=10000
 import Prim "mo:prim";
 
-actor {
-  func initialPrint() {
+persistent actor {
+  persistent func initialPrint() {
     Prim.debugPrint("Initial function");
   };
 
-  func initialMap(x : Nat) : Text {
+  persistent func initialMap(x : Nat) : Text {
     "initial " # debug_show (x);
   };
 
-  stable var print : stable () -> () = initialPrint;
-  stable var map : stable Nat -> Text = initialMap;
+  var print : persistent () -> () = initialPrint;
+  var map : persistent Nat -> Text = initialMap;
 
-  func newPrint() {
+  persistent func newPrint() {
     Prim.debugPrint("New function");
   };
 
-  func newMap(x : Nat) : Text {
+  persistent func newMap(x : Nat) : Text {
     "new " # debug_show (x);
   };
 

@@ -1,4 +1,17 @@
 # core/Types
+Common types used throughout the core package.
+
+Example usage:
+
+```motoko name=import
+import { type Result; type Iter } "mo:core/Types";
+
+// Result for error handling
+let result : Result<Int, Text> = #ok(42);
+
+// Iterator for sequences
+let iter : Iter<Nat> = { next = func() { ?1 } };
+```
 
 ## Type `Blob`
 ``` motoko no-repl

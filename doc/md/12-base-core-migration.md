@@ -28,13 +28,17 @@ If you are migrating an existing project, you can keep the `base` import and gra
 
 ### Important considerations
 
+:::warning Version requirements
+The `core` package depends on new language features, so make sure to update to the latest dfx (0.28+) or Motoko compiler (0.15+) before migrating.
+:::
+
 When updating to the `core` package:
 
-- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks.
+- All data structures can now be stored in stable memory without the need for pre-upgrade/post-upgrade hooks, provided those data structures are instantiated at stable type arguments.
 - `range()` functions in the `core` library are now exclusive rather than inclusive! Keep this in mind when replacing `Iter.range()` with `Nat.range()`.
 - Functions previously named `vals()` are renamed to `values()`. This also applies to fields. For example, `array.vals()` can be replaced with `array.values()`.
 - Hash-based data structures are no longer included in the standard library. It is encouraged to use ordered maps and sets for improved security.
-In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
+- In some cases, it won't be possible to fully migrate to `core` due to removal of some features in `base`. In these cases, you can continue using both packages side-by-side or search for [Mops packages](https://mops.one/) built by the community.
 
 For details on function signatures, please refer to the official [documentation](https://internetcomputer.org/docs/motoko/core/).
 
@@ -61,17 +65,17 @@ The following modules are **new** in the `core` package:
 
 ### 2. Renamed modules
 
-| Base module | Core module | Notes |
-|-------------|-------------|-------|
-| `ExperimentalCycles` | `Cycles` | Stabilized module for cycle management |
-| `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface |
-| `Deque` | `pure/Queue` | Enhanced double-ended queue becomes mutable queue |
-| `List` | `pure/List` | Original immutable list moved to `pure/` namespace |
-| `OrderedMap` | `pure/Map` | Ordered map moved to `pure/` namespace |
-| `OrderedSet` | `pure/Set` | Ordered set moved to `pure/` namespace |
+| Base package                   | Core package       | Notes                                               |
+| ------------------------------ | ------------------ | --------------------------------------------------- |
+| `ExperimentalCycles`           | `Cycles`           | Stabilized module for cycle management              |
+| `ExperimentalInternetComputer` | `InternetComputer` | Stabilized low-level ICP interface                  |
+| `Deque`                        | `pure/Queue`       | Enhanced double-ended queue becomes immutable queue |
+| `List`                         | `pure/List`        | Original immutable list moved to `pure/` namespace  |
+| `OrderedMap`                   | `pure/Map`         | Ordered map moved to `pure/` namespace              |
+| `OrderedSet`                   | `pure/Set`         | Ordered set moved to `pure/` namespace              |
 
 :::info
-The last three entries represent the migration of immutable data structures to the `pure/` namespace. The `core` package introduces a clear separation between mutable data structures (root namespace) and purely functional data structures (`pure/` namespace).
+The `pure/` namespace contains immutable (purely functional) data structures where operations return new values rather than modifying in place. The namespace makes it clear which data structures are mutable and which are immutable.
 :::
 
 ### 3. Removed modules
@@ -83,12 +87,12 @@ The following modules have been **removed** in the core package:
 - `ExperimentalStableMemory` - Deprecated
 - `Hash` - Vulnerable to hash collision attacks
 - `HashMap` - Use `Map` or `pure/Map`
-- `Heap`
+- `Heap` - Use `Map` or `Set` instead
 - `IterType` - Merged into `Types` module
-- `None`
+- `None` - Use `switch x {}` in place of `None.impossible(x)`
 - `Prelude` - Merged into `Debug` and `Runtime`
-- `RBTree`
-- `Trie`
+- `RBTree` - Use `Map` instead
+- `Trie` - Use `Map` instead
 - `TrieMap` - Use `Map` or `pure/Map` instead
 - `TrieSet` - Use `Set` or `pure/Set` instead
 
@@ -98,21 +102,21 @@ Modules like `Random`, `Region`, `Time`, `Timer`, and `Stack` still exist in cor
 
 ## Data structure improvements
 
-The core package introduces a fundamental reorganization of data structures with a clear separation between mutable and immutable (purely functional) APIs. All data structures are now usable in stable memory.
+The `core` package brings significant changes to data structures, making a clear separation between mutable and immutable (purely functional) APIs. All data structures can now be stored directly in stable memory.
 
-| Structure | Module | Description |
-|-----------|--------|-------------|
-| **List** | `List` | Mutable list |
-| **Map** | `Map` | Mutable map |
-| **Queue** | `Queue` | Mutable queue (evolved from `mo:base/Deque`) |
-| **Set** | `Set` | Mutable set |
-| **Array** | `Array` | Immutable array |
-| **VarArray** | `VarArray` | Mutable array |
-| **List** | `pure/List` | Immutable list (originally `mo:base/List`) |
-| **Map** | `pure/Map` | Immutable map (originally `mo:base/OrderedMap`) |
-| **Set** | `pure/Set` | Immutable set (originally `mo:base/OrderedSet`) |
-| **Queue** | `pure/Queue` | Immutable queue |
-| **RealTimeQueue** | `pure/RealTimeQueue` | Real-time queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
+| Data Structure         | Description                                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **List**               | Mutable list (originally [`mo:vector`](https://mops.one/vector))                                                                                            |
+| **Map**                | Mutable map (originally [`mo:stableheapbtreemap`](https://mops.one/stableheapbtreemap))                                                                     |
+| **Queue**              | Mutable queue
+| **Set**                | Mutable set                                                                                                                                                 |
+| **Array**              | Immutable array                                                                                                                                             |
+| **VarArray**           | Mutable array                                                                                                                                               |
+| **pure/List**          | Immutable list (originally `mo:base/List`)                                                                                                                  |
+| **pure/Map**           | Immutable map (originally `mo:base/OrderedMap`)                                                                                                             |
+| **pure/Set**           | Immutable set (originally `mo:base/OrderedSet`)                                                                                                             |
+| **pure/Queue**         | Immutable queue  (orginally `mo:base/Deque`)                                                                                                                                              |
+| **pure/RealTimeQueue** | Immutable queue with [constant-time operations](https://drops.dagstuhl.de/storage/00lipics/lipics-vol268-itp2023/LIPIcs.ITP.2023.29/LIPIcs.ITP.2023.29.pdf) |
 
 ## Interface changes by module
 
@@ -142,6 +146,12 @@ The core package introduces a fundamental reorganization of data structures with
 - `isEmpty()` - Check if array is empty
 - `join()` - Join arrays from iterator
 - `toText()` - Convert array to text representation
+
+#### Parameter order changes
+- `indexOf(element, array, equal)` → `indexOf(array, equal, element)`
+- `lastIndexOf(element, array, equal)` → `lastIndexOf(array, equal, element)`
+- `nextIndexOf(element, array, fromInclusive, equal)` → `nextIndexOf(array, equal, element, fromInclusive)`
+- `prevIndexOf(element, array, fromExclusive, equal)` → `prevIndexOf(array, equal, element, fromExclusive)`
 
 #### Removed functions
 - `take()` - Use `sliceToArray()` instead
@@ -229,6 +239,9 @@ Helper functions have been added, such as `allValues()`, for each finite type in
 - `rangeByInclusive()` - Inclusive range with step
 - `rangeInclusive()` - Inclusive range
 - `toNat()` - Convert Int to Nat (safe conversion)
+
+#### Modified functions
+- `fromText()` - Now returns `null` instead of `?0` for the inputs "+" and "-"
 
 #### Removed functions
 - `hash()`
@@ -343,6 +356,50 @@ persistent actor {
 
 ## Data structure migration examples
 
+This section provides detailed migration examples showing how to convert common data structures from the `base` package to the `core` package. Each example demonstrates:
+
+1. **Original implementation** using the `base` package with pre/post-upgrade hooks
+2. **Updated implementation** using the `core` package with automatic stable memory support
+3. **Migration pattern** using the new `with migration` syntax for seamless data structure conversion
+
+:::tip
+The new migration pattern allows you to automatically convert existing stable data from `base` package structures to `core` package structures during canister upgrades. The migration function runs once during the first upgrade and the converted data becomes the new stable state.
+:::
+
+### Understanding the migration pattern
+
+The `with migration` syntax follows this structure:
+
+```motoko
+(
+  with migration = func(
+    state : {
+      // Original state types
+    }
+  ) : {
+    // New state types
+  } = {
+    // Conversion logic
+  }
+)
+persistent actorApp {
+  // New stable declarations
+};
+```
+
+It's also possible to use a function defined in an imported module:
+
+```motoko
+import { migrate } "Migration";
+
+(with migration = migrate)
+persistent actorApp {
+  // New stable declarations
+};
+```
+
+This pattern ensures that existing stable data is preserved and converted to the new format during canister upgrades.
+
 ### `Buffer`
 
 #### Original (`base`)
@@ -350,7 +407,7 @@ persistent actor {
 ```motoko
 import Buffer "mo:base/Buffer";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var items : [Item] = [];
@@ -390,7 +447,7 @@ import List "mo:core/List";
     list = List.fromArray(state.items);
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let list = List.empty<Item>();
@@ -412,7 +469,7 @@ actor App {
 ```motoko
 import Deque "mo:base/Deque";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var deque = Deque.empty<Item>();
@@ -485,7 +542,7 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   stable var mapEntries : [(Text, Nat)] = [];
   let map = HashMap.fromIter<Text, Nat>(mapEntries.vals(), 10, Text.equal, Text.hash);
 
@@ -529,7 +586,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(state.mapEntries.vals(), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -555,7 +612,7 @@ import OrderedMap "mo:base/OrderedMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   let textMap = OrderedMap.Make<Text>(Text.compare);
   stable var map = textMap.empty<Nat>();
 
@@ -597,7 +654,7 @@ import Iter "mo:core/Iter";
     { map };
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -623,7 +680,7 @@ import OrderedSet "mo:base/OrderedSet";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   type Item = Text;
 
   let textSet = OrderedSet.Make<Item>(Text.compare);
@@ -667,7 +724,7 @@ import Iter "mo:core/Iter";
     { set };
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let set = Set.empty<Item>();
@@ -695,7 +752,7 @@ import Trie "mo:base/Trie";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   type Key = Text;
   type Value = Nat;
 
@@ -738,7 +795,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(Trie.iter(state.trie), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -764,7 +821,7 @@ import TrieMap "mo:base/TrieMap";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 
-actor {
+persistent actor{
   stable var mapEntries : [(Text, Nat)] = [];
   let map = TrieMap.fromEntries<Text, Nat>(mapEntries.vals(), Text.equal, Text.hash);
 
@@ -808,7 +865,7 @@ import Iter "mo:core/Iter";
     map = Map.fromIter(state.mapEntries.values(), Text.compare);
   }
 )
-actor {
+persistent actor{
   stable let map = Map.empty<Text, Nat>();
 
   public func update(key : Text, value : Nat) : async () {
@@ -833,7 +890,7 @@ actor {
 import TrieSet "mo:base/TrieSet";
 import Text "mo:base/Text";
 
-actor {
+persistent actor{
   type Item = Text;
 
   stable var set : TrieSet.Set<Item> = TrieSet.empty<Item>();
@@ -873,7 +930,7 @@ import TrieSet "mo:base/TrieSet";
     set = Set.fromIter(TrieSet.toArray(state.set).vals(), Text.compare);
   }
 )
-actor App {
+persistent actorApp {
   public type Item = Text; // `public` for migration
 
   stable let set = Set.empty<Item>();
@@ -891,3 +948,23 @@ actor App {
   };
 };
 ```
+
+## Troubleshooting
+
+### Version compatibility errors
+
+If you encounter errors like `field Array_tabulateVar does not exist in module`, this indicates a version mismatch between your Motoko compiler and the `core` package. 
+
+**Solution:**
+2. Ensure you're using the latest Motoko compiler version
+3. Update the `core` package to the latest version in your `mops.toml`
+4. Clean and rebuild your project: `dfx stop && dfx start --clean`
+
+### Migration issues
+
+If you experience issues with the migration pattern:
+1. Ensure your project structure follows the new `with migration` syntax exactly
+2. Verify that all types referenced in the migration function are accessible (marked as `public` if needed)
+3. Test the migration incrementally by converting one data structure at a time
+
+For additional help, visit the ICP [developer forum](https://forum.dfinity.org/c/developers) or [Discord community](https://discord.com/invite/e8Xr8A5pX3).

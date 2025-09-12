@@ -4,7 +4,7 @@ import Buffer "buffer";
 module {
     public type Iter<T> = { next : () -> ?T };
 
-    public class HashSet<T>(equal : stable (T, T) -> Bool, hash : stable T -> Nat) {
+    public persistent class HashSet<T>(equal : persistent (T, T) -> Bool, hash : persistent T -> Nat) {
         let initialSize = 1024;
         let occupationThresholdPercentage = 85;
         let growthFactor = 2;

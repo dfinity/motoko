@@ -3,7 +3,7 @@ import Prim "mo:prim";
 
 persistent actor {
     // a stable type
-    class Box<T>(v : T) {
+    persistent class Box<T>(v : T) {
         var value = v;
         public func get() : T = v;
         public func put(v : T) = value := v
@@ -11,8 +11,8 @@ persistent actor {
 
     // a flexible type
     type Super = <T>(v : T) ->
-    { put : stable T -> ();
-      get : stable ()-> T
+    { put : persistent T -> ();
+      get : persistent ()-> T
     };
 
     // rejected due generic type parameter invariance

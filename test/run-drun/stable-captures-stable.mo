@@ -1,35 +1,35 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 import Prim "mo:prim";
 
-actor {
-    class TestClass() {
+persistent actor {
+    persistent class TestClass() {
         func otherMethod() {
             Prim.debugPrint("STABLE METHOD");
         };
 
-        var other1 : stable () -> () = otherMethod;
+        var other1 : persistent () -> () = otherMethod;
 
         public func stableMethod() {
             other1(); // OK, because method declaration is immutable
         };
     };
 
-    stable let instance = TestClass();
+    let instance = TestClass();
     instance.stableMethod();
 
-    func empty() {
+    persistent func empty() {
     };
 
-    stable var function = empty;
+    var function = empty;
 
-    func outer() {
-        func otherFunction() {
+    persistent func outer() {
+        persistent func otherFunction() {
             Prim.debugPrint("STABLE INNER");
         };
 
-        var other2 : stable () -> () = otherFunction;
+        var other2 : persistent () -> () = otherFunction;
 
-        func inner2() {
+        persistent func inner2() {
             other2(); // OK, because method declaration is immutable
         };
 

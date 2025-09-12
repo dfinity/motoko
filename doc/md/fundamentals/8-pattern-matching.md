@@ -104,7 +104,7 @@ The last case uses the wildcard pattern `_`, which matches anything but doesn’
 Option patterns allow destructuring of `?T` values, matching either `null` or `?someValue`.
 
 ```motoko no-repl
-import Nat "mo:base/Nat";
+import Nat "mo:core/Nat";
 
 func getValue(opt : ?Nat) : Text {
     switch opt {
@@ -124,7 +124,7 @@ type Person = { name : Text; age : Nat };
 
 func describePerson(person : Person) : Text {
     switch (person) {
-        case ({ name; age }) { name # " is " # Nat.toText(age) # " years old." };
+        case ({ name = fullName; age }) { fullName # " is " # Nat.toText(age) # " years old." };
     };
 };
 ```

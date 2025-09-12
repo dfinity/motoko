@@ -17,18 +17,31 @@
     'persistent'? 'actor'
     'module'
 
+<obj_sort_opt> ::= 
+    'object'
+    'actor'
+    'module'
+    <empty>
+
 <query> ::= 
     'query'
     'composite' 'query'
 
 <func_sort_opt> ::= 
     <empty>
-    'stable'
+    'persistent'
     'shared' <query>?
     <query>
 
-<shared_pat_opt> ::= 
+<shared_function_pat_opt> ::= 
     <empty>
+    'persistent'
+    'shared' <query>? <pat_plain>?
+    <query> <pat_plain>?
+
+<shared_class_pat_opt> ::= 
+    <empty>
+    'persistent'
     'shared' <query>? <pat_plain>?
     <query> <pat_plain>?
 
@@ -49,6 +62,7 @@
 <typ_un> ::= 
     <typ_nullary>
     '?' <typ_un>
+    'weak' <typ_un>
 
 <typ_pre> ::= 
     <typ_un>
@@ -308,6 +322,7 @@
 <pat_field> ::= 
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
+    'type' <id>
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>
@@ -318,12 +333,12 @@
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <shared_pat_opt> 'func' <func_pat> (':' <typ>)? <func_body>
+    <shared_function_pat_opt> 'func' <func_pat> (':' <typ>)? <func_body>
     <parenthetical>? <obj_or_class_dec>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> <obj_sort>? 'class' <func_pat> (':' <typ>)? <class_body>
+    <shared_class_pat_opt> <obj_sort_opt> 'class' <func_pat> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>

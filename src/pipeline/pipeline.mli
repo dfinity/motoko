@@ -25,10 +25,7 @@ val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
 val initial_stat_env : Scope.scope
 
-type qualified_name = string list
-type identified_imports = (qualified_name * Syntax.lib_path) list
-
-val chase_imports : identified_imports -> parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
+val chase_imports : string -> parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
   (Syntax.lib list * Scope.scope) Diag.result
 
 val run_files           : string list -> unit option
@@ -56,7 +53,8 @@ type load_result_cached =
   Diag.result
 
 val load_progs_cached
-  :  ?viper_mode:bool
+  :  
+  ?viper_mode:bool
   -> ?check_actors:bool
   -> parse_fn
   -> string list

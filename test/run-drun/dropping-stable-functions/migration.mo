@@ -1,11 +1,11 @@
 module {
     type OldActor = {
-        required: stable () -> ();
-        optional: stable () -> ();
+        required: persistent () -> ();
+        optional: persistent () -> ();
     };
 
     type NewActor = {
-        retained: stable () -> ();
+        retained: persistent () -> ();
     };
 
     public func run(old: OldActor): NewActor {

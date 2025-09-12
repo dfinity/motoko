@@ -1,7 +1,7 @@
 import Prim "mo:prim";
 
 module {
-  public class TestClass() {
+  public persistent class TestClass() {
     public func testFunc() {
       Prim.debugPrint("MODULE1 CLASS FUNC");
     };
@@ -11,15 +11,15 @@ module {
   };
 
   public object TestObject {
-    public func testFunc() {
+    public persistent func testFunc() {
       Prim.debugPrint("MODULE1 OBJECT FUNC");
     };
-    public func testFuncExtra2() {
+    public persistent func testFuncExtra2() {
       Prim.debugPrint("MODULE1 OBJECT FUNC EXTRA2");
     };
   };
 
-  public func testFunc() {
+  public persistent func testFunc() {
     Prim.debugPrint("MODULE1 ACTOR FUNC");
   };
 };

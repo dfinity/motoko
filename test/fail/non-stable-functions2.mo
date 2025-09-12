@@ -1,36 +1,36 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-actor {
-  func testFunc() {};
+persistent actor {
+  persistent func testFunc() {};
 
-  stable var f = testFunc;
+  var f = testFunc;
 
-  let outer = func() { // flexible function
-    func inner1() {}; // flexible function
+  func outer() { // transient function
+    persistent func inner1() {}; // persistent function in transient scope
     f := inner1; // invalid
   };
   
-  func outer2() { // stable function
-    func inner2() {}; // stable function
+  persistent func outer2() { // persistent function
+    persistent func inner2() {}; // persistent function
     f := inner2; // valid
   };
   
-  func outer3() { //stable function
-    let inner3 = func () {}; // flexible function
+  persistent func outer3() { // persistent function
+    func inner3() {}; // transient function
     f := inner3; // invalid
   };
 
-  let outer4 = func() { // flexible function
-    func middle4() { // flexible function
-      func inner4() {}; // flexible function
+  func outer4() { // transient function
+    persistent func middle4() { // persistent function in transient scope
+      persistent func inner4() {}; // persistent function in transient scope
       f := inner4; // invalid;
       f := middle4; // invalid;
       f := outer4; // invalid
     };
   };
   
-  func outer5() { // stable function
-    func middle5() { // stable function
-      let inner5 = func () {}; // flexible function
+  persistent func outer5() { // persistent function
+    persistent func middle5() { // persistent function
+      func inner5() {}; // transient function
       f := inner5; // invalid;
       f := middle5; // valid;
       f := outer5; // valid

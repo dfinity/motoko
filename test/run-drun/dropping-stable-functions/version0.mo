@@ -1,11 +1,11 @@
 import Prim "mo:prim";
 
 persistent actor {
-    func requiredFunction() {
+    persistent func requiredFunction() {
         Prim.debugPrint("REQUIRED FUNCTION VERSION 0");
     };
 
-    func optionalFunction() {
+    persistent func optionalFunction() {
         Prim.debugPrint("OPTIONAL FUNCTION VERSION 0");
     };
 

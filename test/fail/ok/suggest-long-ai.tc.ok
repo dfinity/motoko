@@ -40,6 +40,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
         type Text = Text
       };
     abs : (x : Int) -> Nat;
+    allocWeakRef : <T>(obj : T) -> weak T;
     arccos : (f : Float) -> Float;
     arcsin : (f : Float) -> Float;
     arctan : (f : Float) -> Float;
@@ -59,7 +60,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     btstNat64 : (w : Nat64, amount : Nat64) -> Bool;
     btstNat8 : (w : Nat8, amount : Nat8) -> Bool;
     call_raw : (p : Principal, m : Text, a : Blob) -> async Blob;
-    cancelTimer : stable (id : Nat) -> ();
+    cancelTimer : (id : Nat) -> ();
     canisterSubnet : () -> Principal;
     canisterVersion : () -> Nat64;
     charIsAlphabetic : (c : Char) -> Bool;
@@ -135,7 +136,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     floatToFormattedText : (f : Float, prec : Nat8, mode : Nat8) -> Text;
     floatToInt : (f : Float) -> Int;
     floatToInt64 : (f : Float) -> Int64;
-    floatToText : stable (x : Float) -> Text;
+    floatToText : (x : Float) -> Text;
     floatTrunc : (f : Float) -> Float;
     forall : <T>(f : T -> Bool) -> Bool;
     getCandidLimits :
@@ -143,19 +144,19 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     getCertificate : () -> ?Blob;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
-    int16ToInt : stable (n : Int16) -> Int;
+    int16ToInt : (n : Int16) -> Int;
     int16ToInt32 : (n : Int16) -> Int32;
     int16ToInt8 : (n : Int16) -> Int8;
     int16ToNat16 : (n : Int16) -> Nat16;
-    int32ToInt : stable (n : Int32) -> Int;
+    int32ToInt : (n : Int32) -> Int;
     int32ToInt16 : (n : Int32) -> Int16;
     int32ToInt64 : (n : Int32) -> Int64;
     int32ToNat32 : (n : Int32) -> Nat32;
     int64ToFloat : (n : Int64) -> Float;
-    int64ToInt : stable (n : Int64) -> Int;
+    int64ToInt : (n : Int64) -> Int;
     int64ToInt32 : (n : Int64) -> Int32;
     int64ToNat64 : (n : Int64) -> Nat64;
-    int8ToInt : stable (n : Int8) -> Int;
+    int8ToInt : (n : Int8) -> Int;
     int8ToInt16 : (n : Int8) -> Int16;
     int8ToNat8 : (n : Int8) -> Nat8;
     intToFloat : (n : Int) -> Float;
@@ -172,22 +173,23 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     intToNat64Wrap : (n : Int) -> Nat64;
     intToNat8Wrap : (n : Int) -> Nat8;
     isController : (p : Principal) -> Bool;
+    isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
-    nat16ToNat : stable (n : Nat16) -> Nat;
+    nat16ToNat : (n : Nat16) -> Nat;
     nat16ToNat32 : (n : Nat16) -> Nat32;
     nat16ToNat8 : (n : Nat16) -> Nat8;
     nat32ToChar : (w : Nat32) -> Char;
     nat32ToInt32 : (n : Nat32) -> Int32;
-    nat32ToNat : stable (n : Nat32) -> Nat;
+    nat32ToNat : (n : Nat32) -> Nat;
     nat32ToNat16 : (n : Nat32) -> Nat16;
     nat32ToNat64 : (n : Nat32) -> Nat64;
     nat64ToInt64 : (n : Nat64) -> Int64;
-    nat64ToNat : stable (n : Nat64) -> Nat;
+    nat64ToNat : (n : Nat64) -> Nat;
     nat64ToNat32 : (n : Nat64) -> Nat32;
     nat8ToInt8 : (n : Nat8) -> Int8;
-    nat8ToNat : stable (n : Nat8) -> Nat;
+    nat8ToNat : (n : Nat8) -> Nat;
     nat8ToNat16 : (n : Nat8) -> Nat16;
     natToNat16 : (n : Nat) -> Nat16;
     natToNat32 : (n : Nat) -> Nat32;
@@ -234,6 +236,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
     rts_heap_size : () -> Nat;
+    rts_lifetime_instructions : () -> Nat;
     rts_logical_stable_memory_size : () -> Nat;
     rts_max_live_size : () -> Nat;
     rts_max_stack_size : () -> Nat;
@@ -248,8 +251,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
       <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
     setCertifiedData : (data : Blob) -> ();
     setTimer :
-      stable <system>(delayNanos : Nat64, recurring : Bool,
-                      job : () -> async ()) ->
+      <system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) ->
         (id : Nat);
     shiftLeft : (x : Nat, shift : Nat32) -> Nat;
     shiftRight : (x : Nat, shift : Nat32) -> Nat;
@@ -282,6 +284,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     textLowercase : (t : Text) -> Text;
     textUppercase : (t : Text) -> Text;
     time : () -> Nat64;
-    trap : (x : Text) -> None
+    trap : (x : Text) -> None;
+    weakGet : <T>(w : weak T) -> ?T
   }
 The field stableM is not available. Try something else?

@@ -15,7 +15,7 @@ module Make (Cfg : Config) = struct
 
   let func_sort = function
     | Local Flexible -> "Local"
-    | Local Stable -> "Local Stable"
+    | Local Stable -> "Local Persistent"
     | Shared Write -> "Shared"
     | Shared Query -> "Shared Query"
     | Shared Composite -> "Shared Composite"
@@ -94,7 +94,8 @@ module Make (Cfg : Config) = struct
     | Non                    -> Atom "Non"
     | Pre                    -> Atom "Pre"
     | Typ c                  -> "Typ" $$ [con c]
-    | Named (n, t)            -> "Name" $$ [Atom n; typ t]
+    | Named (n, t)           -> "Name" $$ [Atom n; typ t]
+    | Weak t                 -> "Weak" $$ [ typ t]
 
   and typ_bind (tb : Type.bind) =
     tb.var $$ [typ tb.bound]

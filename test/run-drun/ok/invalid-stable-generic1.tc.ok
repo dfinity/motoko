@@ -1,10 +1,10 @@
-invalid-stable-generic1.mo:11.23-11.55: type error [M0223], Type argument
+invalid-stable-generic1.mo:11.16-11.48: type error [M0225], Type argument
   () -> ()
 has to be of a stable type to match the type parameter 
-invalid-stable-generic1.mo:11.28-11.36: type error [M0046], type argument
+invalid-stable-generic1.mo:11.21-11.29: type error [M0046], type argument
   () -> ()
 does not match parameter bound
   Nat
-invalid-stable-generic1.mo:11.23-11.55: type error [M0223], Type argument
+invalid-stable-generic1.mo:11.16-11.48: type error [M0225], Type argument
   () -> ()
 has to be of a stable type to match the type parameter 

@@ -2,11 +2,11 @@
 import Prim "mo:prim";
 
 persistent actor {
-    type Equality<T> = stable (first : T, second : T) -> Bool;
-    type Hash<T> = stable (value : T) -> Nat;
+    type Equality<T> = persistent (first : T, second : T) -> Bool;
+    type Hash<T> = persistent (value : T) -> Nat;
 
     // a stable type
-    class SimpleHashMap<K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) {
+    persistent class SimpleHashMap<K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) {
         private let table = Prim.Array_init<?(K, V)>(capacity, null);
 
         public func put(key : K, value : V) {
@@ -38,18 +38,18 @@ persistent actor {
         };
     };
 
-    func natEqual(first : Nat, second : Nat) : Bool {
+    persistent func natEqual(first : Nat, second : Nat) : Bool {
         first == second;
     };
 
-    func natHash(number : Nat) : Nat {
+    persistent func natHash(number : Nat) : Nat {
         number;
     };
 
     // a flexible type
     type Super = <K, V>(capacity : Nat, equal : Equality<K>, hash : Hash<K>) ->
-    { put : stable (K, V) -> ();
-      get : stable K -> ?V
+    { put : persistent (K, V) -> ();
+      get : persistent K -> ?V
     };
 
     // Not allowed, incompatible type parameter stability

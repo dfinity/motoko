@@ -1,9 +1,9 @@
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 import Prim "mo:prim";
 
-actor {
-    class TestClass() {
-        let flexibleMethod = func() {
+persistent actor {
+    persistent class TestClass() {
+        var flexibleMethod = func() {
             Prim.debugPrint("FLEXIBLE METHOD");
         };
 
@@ -12,20 +12,20 @@ actor {
         };
     };
 
-    stable let instance = TestClass();
+    let instance = TestClass();
     instance.stableMethod();
 
-    func empty() {
+    persistent func empty() {
     };
 
-    stable var function = empty;
+    var function = empty;
 
-    func outer() {
-        let innerFlexible = func() {
+    persistent func outer() {
+        func innerFlexible() {
             Prim.debugPrint("FLEXIBLE INNER");
         };
 
-        func inner() {
+        persistent func inner() {
             innerFlexible(); // ERROR
         };
 

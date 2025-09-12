@@ -95,7 +95,7 @@ Local function that have an `async` or `async*` return type are asynchronous and
 They are useful for defining asynchronous logic used in the implementation of public `shared` functions.
 
 ```motoko no-repl
-import Time "mo:base/Time";
+import Time "mo:core/Time";
 import Logger "canister:Logger";
 
 persistent actor {
@@ -111,12 +111,12 @@ persistent actor {
 A more efficient variation is to use `async*` and `await*` , which avoids the overhead of using ordinary `await` just to call a local function:
 
 ```motoko no-repl
-import Time "mo:base/Time"
+import Time "mo:core/Time"
 import Logger "canister:Logger";
 
 persistent actor {
   private func log(msg : Text) : async* () {
-    Logger.log(Time.now() + msg); // sends a message
+    await Logger.log(Time.now() + msg); // sends a message
   };
 
   public shared func doStuff() : async () {

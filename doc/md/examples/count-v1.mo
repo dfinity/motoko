@@ -1,4 +1,4 @@
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 persistent actor Counter_v1 {
   var state : Nat = 0; // implicitly `stable`

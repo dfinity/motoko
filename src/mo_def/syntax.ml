@@ -12,7 +12,12 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 (* Resolved imports (filled in separately after parsing) *)
 
-type lib_path = {package : string option; path : string}
+type lib_path = {
+  package : string option; 
+  path : string;
+  qualified_name : string;
+}
+
 type resolved_import =
   | Unresolved
   | LibPath of lib_path
@@ -61,6 +66,7 @@ and typ' =
   | OrT of typ * typ                               (* union *)
   | ParT of typ                                    (* parentheses, used to control function arity only *)
   | NamedT of id * typ                             (* parenthesized single element named "tuple" *)
+  | WeakT of typ                                   (* weak reference *)
 
 and scope = typ
 and typ_field = typ_field' Source.phrase
@@ -120,8 +126,17 @@ and pat' =
 *)
 
 and pat_field = pat_field' Source.phrase
-and pat_field' = {id : id; pat : pat}
+and pat_field' =
+  | ValPF of id * pat
+  | TypPF of typ_id
 
+let pf_id pf = match pf.Source.it with
+  | ValPF(id, _) -> id
+  | TypPF(id) -> Source.{ it = id.it; at = id.at; note = () }
+
+let pf_pattern pf = match pf.Source.it with
+  | ValPF(_, pat) -> Some pat
+  | TypPF(_) -> None
 
 (* Expressions *)
 
