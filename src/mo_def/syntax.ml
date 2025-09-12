@@ -12,7 +12,12 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 (* Resolved imports (filled in separately after parsing) *)
 
-type lib_path = {package : string option; path : string}
+type lib_path = {
+  package : string option; 
+  path : string;
+  qualified_name : string;
+}
+
 type resolved_import =
   | Unresolved
   | LibPath of lib_path
