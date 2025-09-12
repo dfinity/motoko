@@ -1,5 +1,6 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: Test class version 0
+debug.print: Test class print
 ingress Completed: Reply: 0x4449444c0000
-debug.print: Test class version 1
+debug.print: Test class print
+debug.print: Version 1
 ingress Completed: Reply: 0x4449444c0000
