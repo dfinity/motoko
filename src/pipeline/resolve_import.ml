@@ -172,8 +172,8 @@ let remove_prefix name prefix =
 
 let get_package_prefix name = Printf.sprintf "mo:%s" name
 
-let get_qualified_name packages base path =
-  let full_path = Lib.FilePath.normalise (Filename.concat base path) in
+let get_qualified_name packages root base relative =
+  let full_path = Lib.FilePath.make_absolute base relative in
   let search = M.filter (fun _ package_path ->
     String.starts_with ~prefix:package_path full_path
   ) packages in
@@ -181,9 +181,13 @@ let get_qualified_name packages base path =
   | Some (package_name, package_path) ->
     let relative = remove_prefix full_path package_path in
     let package_prefix = get_package_prefix package_name in
-    Some (package_prefix ^ relative)
+    package_prefix ^ relative
+  | None when root = full_path ->
+    Printf.printf "MAIN %s\n" relative;
+    ""
   | None ->
-    Some path
+    let root_dir = Filename.dirname root in
+    Lib.FilePath.make_relative root_dir full_path
 
 let resolve_import_string msgs root base actor_idl_path aliases packages imported (f, ri_ref, at)  =
   let resolve_ic bytes = match actor_idl_path with
@@ -193,19 +197,17 @@ let resolve_import_string msgs root base actor_idl_path aliases packages importe
       add_idl_import msgs imported ri_ref at full_path bytes
   in
   match Url.parse f with
-  | Ok (Url.Relative path) ->
-    let qualified_name = get_qualified_name packages base path in
-    Printf.printf "RELATIVE URL %s %s %s\n" path base (match qualified_name with Some s -> s | None -> "(none)");
+  | Ok (Url.Relative relative) ->
+    let qualified_name = get_qualified_name packages root base relative in
     (* TODO support importing local .did file *)
     add_lib_import msgs imported ri_ref at
-      { path = in_base base path; package = None; qualified_name }
-  | Ok (Url.Package (pkg,path)) ->
+      { path = in_base base relative; package = None; qualified_name }
+  | Ok (Url.Package (pkg, relative)) ->
     begin match M.find_opt pkg packages with
     | Some pkg_path ->
-      let qualified_name = get_qualified_name packages base path in
-      Printf.printf "PACKAGE URL %s %s %s\n" path pkg (match qualified_name with Some s -> s | None -> "(none)");
+      let qualified_name = Printf.sprintf "mo:%s/%s" pkg relative in
       add_lib_import msgs imported ri_ref at
-        { path = in_base pkg_path path; package = Some pkg; qualified_name }
+        { path = in_base pkg_path relative; package = Some pkg; qualified_name }
     | None -> err_package_not_defined msgs at pkg
     end
   | Ok (Url.Ic bytes) ->
@@ -310,7 +312,7 @@ let package_imports base packages =
       acc
     else
       let files = list_files url in
-      let qualified_name = Some (get_package_prefix pname) in
+      let qualified_name = get_package_prefix pname in
       List.map (fun path -> LibPath {package = Some pname; path = path; qualified_name}) files::acc)
     packages []
   in
@@ -326,7 +328,6 @@ let resolve_flags : flags -> resolved_flags Diag.result
 let resolve
   : filepath -> flags -> Syntax.prog -> filepath -> resolved_imports Diag.result
   = fun root flags p base ->
-    Printf.printf "RESOLVE %s\n" base;
   let open Diag.Syntax in
   let* { packages; aliases; actor_idl_path } = resolve_flags flags in
   Diag.with_message_store (fun msgs ->

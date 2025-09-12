@@ -15,7 +15,7 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 type lib_path = {
   package : string option; 
   path : string;
-  qualified_name : string option;
+  qualified_name : string;
 }
 
 type resolved_import =

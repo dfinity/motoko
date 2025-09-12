@@ -149,13 +149,13 @@ let resolve_flags () =
     include_all_libs = !Flags.ai_errors;
   }
 
-let resolve_prog (prog, base) : resolve_result =
+let resolve_prog root (prog, base) : resolve_result =
   Diag.map
     (fun libs -> (prog, libs))
-    (ResolveImport.resolve base (resolve_flags ()) prog base)
+    (ResolveImport.resolve root (resolve_flags ()) prog base)
 
-let resolve_progs =
-  Diag.traverse resolve_prog
+let resolve_progs root =
+  Diag.traverse (resolve_prog root)
 
 
 (* Printing dependency information *)
@@ -468,11 +468,7 @@ let chase_imports_cached root parsefn senv0 imports scopes_map
         let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
         let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let qualified_name = 
-          match qualified_name with
-          | Some name -> Some [name]
-          | None -> None
-        in
+        let qualified_name = Some [qualified_name] in
         let* sscope = check_lib qualified_name !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
@@ -516,13 +512,27 @@ let chase_imports root parsefn senv0 imports : (Syntax.lib list * Scope.scope) D
   let* libs, senv, _cache = chase_imports_cached root parsefn senv0 imports cache in
   Diag.return (libs, senv)
 
+let get_root_path files =
+  let split_path path = String.split_on_char '/' path in
+  let rec common_prefix paths =
+    if List.exists (function [] -> true | _ -> false) paths then []
+    else
+      let heads = List.map List.hd paths in
+      let tails = List.map List.tl paths in
+      if List.for_all (String.equal (List.hd heads)) heads
+      then List.hd heads :: common_prefix tails
+      else []
+  in
+  let split_paths = List.map split_path files in
+  String.concat "/" (common_prefix split_paths)
+
 let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache : load_result_cached =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
-  let* rs = resolve_progs parsed in
+  let root = get_root_path files in
+  let* rs = resolve_progs root parsed in
   let progs = List.map fst rs in
   let libs = List.concat_map snd rs in
-  let root = "" in (* TODO: Check *)
   let* libs, senv, scope_cache =
     chase_imports_cached root parsefn senv libs scope_cache
   in
@@ -549,11 +559,10 @@ let load_progs ?viper_mode ?check_actors parsefn files senv : load_result =
   let progs = List.map (fun (prog, _immediate_imports, _sscope) -> prog) rs in
   Diag.return (libs, progs, senv)
 
-let load_decl parse_one senv : load_decl_result =
+let load_decl root parse_one senv : load_decl_result =
   let open Diag.Syntax in
   let* parsed = parse_one in
-  let* prog, libs = resolve_prog parsed in
-  let root = "" in (* TODO: Check *)
+  let* prog, libs = resolve_prog root parsed in
   let* libs, senv' = chase_imports root parse_file senv libs in
   let* t, sscope = infer_prog senv' (Some "<toplevel>") (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
@@ -694,7 +703,7 @@ let output_scope (senv, _) t v sscope dscope =
   if v <> Value.unit then print_val senv t v
 
 let run_stdin lexer (senv, denv) : env option =
-  match Diag.flush_messages (load_decl (parse_lexer lexer) senv) with
+  match Diag.flush_messages (load_decl "" (parse_lexer lexer) senv) with
   | None ->
     if !Flags.verbose then printf "\n";
     None
@@ -721,8 +730,9 @@ let run_stdin lexer (senv, denv) : env option =
 let run_stdin_from_file files file : Value.value option =
   let open Lib.Option.Syntax in
   let* (senv, denv) = interpret_files initial_env files in
+  let root = get_root_path files in
   let* (libs, prog, senv', t, sscope) =
-    Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
+    Diag.flush_messages (load_decl root (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
   print_val senv t v;

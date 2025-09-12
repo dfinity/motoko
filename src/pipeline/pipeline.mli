@@ -53,7 +53,8 @@ type load_result_cached =
   Diag.result
 
 val load_progs_cached
-  :  ?viper_mode:bool
+  :  
+  ?viper_mode:bool
   -> ?check_actors:bool
   -> parse_fn
   -> string list
