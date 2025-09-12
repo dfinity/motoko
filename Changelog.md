@@ -2,6 +2,13 @@
 
 * motoko (`moc`)
 
+  * Added primitives to access canister environment variables (#5443):
+
+    ```motoko
+    Prim.envVarNames : () -> [Text]
+    Prim.envVar : (name : Text) -> ?Text
+    ```
+
   * Added ability to import `Blob`s from the local file system by means of the `blob:file:` URI scheme (#4935).
 
 ## 0.16.1 (2025-08-25)
