@@ -2,71 +2,87 @@ lambdas-invariant.mo:38.11-38.39: type error [M0098], cannot implicitly instanti
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   Nat  <:  U  <:  Any
 where
   Nat  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var Nat]
 lambdas-invariant.mo:41.11-41.42: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   Null  <:  U  <:  Any
 where
   Null  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var Null]
 lambdas-invariant.mo:44.11-44.40: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   ?Nat  <:  U  <:  Any
 where
   ?Nat  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var ?Nat]
 lambdas-invariant.mo:47.11-47.41: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   [Nat]  <:  U  <:  Any
 where
   [Nat]  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var [Nat]]
 lambdas-invariant.mo:50.11-50.43: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   {x : Nat}  <:  U  <:  Any
 where
   {x : Nat}  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var {x : Nat}]
 lambdas-invariant.mo:53.11-53.43: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   {#c : Nat}  <:  U  <:  Any
 where
   {#c : Nat}  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var {#c : Nat}]
 lambdas-invariant.mo:66.11-66.39: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   Er  <:  U  <:  Any
 where
   Er  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var Er]
 lambdas-invariant.mo:70.11-70.39: type error [M0098], cannot implicitly instantiate function of type
   <T, U>([var T], T -> U) -> [var U]
 to argument of type
   ([var Nat], Nat -> U)
-because implicit instantiation of type parameter U is under-constrained with
+because cannot solve invariant type parameter U, no principal solution with
   Er  <:  U  <:  Any
 where
   Er  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  [var Er]

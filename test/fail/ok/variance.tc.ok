@@ -38,8 +38,10 @@ variance.mo:84.15-84.20: type error [M0098], cannot implicitly instantiate funct
   <A>() -> Inv<A>
 to argument of type
   ()
-because implicit instantiation of type parameter A is under-constrained with
+because cannot solve invariant type parameter A, no principal solution with
   None  <:  A  <:  Any
 where
   None  =/=  Any
-Provide a return type annotation or an explicit type instantiation
+Add a return type annotation or an explicit type instantiation.
+Suggested return type annotation : 
+  Inv<None>
