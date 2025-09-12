@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+* simple stable functions...
+
+
 * motoko (`moc`)
 
   * Breaking change: the `persistent` keyword is now required on actors and actor classes (#5320, #5298).
