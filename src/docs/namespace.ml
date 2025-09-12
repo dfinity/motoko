@@ -27,7 +27,7 @@ let from_module =
     List.fold_left
       (fun acc exp_field ->
         match exp_field.it.Syntax.dec.it with
-        | Syntax.ExpD _ -> acc
+        | Syntax.ExpD _ | Syntax.MixinD _ | Syntax.IncludeD _ -> acc
         | Syntax.LetD
             ( { it = Syntax.VarP id; _ },
               { it = Syntax.ObjBlockE (_, _, _, decs); _ },
