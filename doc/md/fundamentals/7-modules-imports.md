@@ -201,4 +201,4 @@ actor {
 };
 ```
 
-This usecase also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
+This use case also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.
