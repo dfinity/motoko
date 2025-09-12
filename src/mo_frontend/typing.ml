@@ -2218,20 +2218,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2
-      else if typs <> [] then begin
+      else if typs <> [] then
         (* Warn when instantiation is redundant *)
-        assert env.pre;
-        match Diag.with_message_store (recover_opt (fun msgs ->
-          let env_without_errors = { env with msgs } in
-          infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
-        with
-        | Error _ -> ()
-        | Ok ((ts', _, _), msgs) ->
-          assert (msgs = []);
+        try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt
+        |> Option.iter (fun ts' ->
           if List.for_all2 (T.eq ?src_fields:None) ts ts' then
-            warn env inst.at "M0223" "redundant type instantiation"
-      end
-      ;
+            warn env inst.at "M0223" "redundant type instantiation");
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt
@@ -2389,6 +2381,17 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt =
         | Some t ->
           Format.asprintf "\nto produce result of type%a" display_typ t)
       msg
+
+and try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt =
+  assert env.pre;
+  match Diag.with_message_store (recover_opt (fun msgs ->
+    let env_without_errors = { env with msgs } in
+    infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
+  with
+  | Error _ -> None
+  | Ok ((ts', _, _), msgs) ->
+    assert (msgs = []);
+    Some ts'
 
 and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
