@@ -4,10 +4,6 @@ simple_stable_funcs_inference.mo:87.39-87.42: type error [M0096], expression of 
   (i : Int, j : Int) -> Order
 cannot produce expected type
   stable cmp(Int, Int) -> Order
-simple_stable_funcs_inference.mo:104.38-104.40: type error [M0096], expression of type
-  ()
-cannot produce expected type
-  stable cmp(Int, Int) -> Order
 simple_stable_funcs_inference.mo:108.41-108.43: type error [M0096], expression of type
   (Inc, ?(Int, List<Int>))
 cannot produce expected type
