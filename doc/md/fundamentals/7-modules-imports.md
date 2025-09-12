@@ -4,32 +4,32 @@ sidebar_position: 7
 
 # Modules and imports
 
-Motoko minimizes built-in types and operations, relying on a base package of modules to provide essential functionality. This modular approach keeps the language simple.
+Motoko minimizes built-in types and operations, relying on a core package of modules to provide essential functionality. This modular approach keeps the language simple.
 
 The examples in this section show how to use the `module` and `import` keywords in different scenarios.
 
 :::caution
 
-The base package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
+The core package is actively maintained and updates may introduce breaking changes. Developers should review the latest Motoko migration guide when updating dependencies.
 
 :::
 
-## Importing from the base package
+## Importing from the core package
 
-The Motoko base package includes common utilities for working with data structures, debugging, and other functionality. To import from the base package, use the `import` keyword, followed by the `mo:base/<name>` module path.
+The Motoko core package includes common utilities for working with data structures, debugging, and other functionality. To import from the core package, use the `import` keyword, followed by the `mo:core/<name>` module path.
 
 ```motoko no-repl
-import Debug "mo:base/Debug";
+import Debug "mo:core/Debug";
 
 Debug.print("Hello, world!");
 ```
 
 The `mo:` prefix identifies a Motoko module. The declaration does not include the `.mo` file extension.
 
-You can also selectively import and rename a subset of named values from a module by using the object pattern syntax:
+You can also selectively import and rename a subset of named values and types from a module by using the object pattern syntax:
 
 ``` motoko
-import { map; find; foldLeft = fold } = "mo:base/Array";
+import { type List; get; foldLeft = fold } "mo:core/List";
 ```
 
 ## Importing from another file
@@ -103,9 +103,9 @@ import Vec "mo:vector";
 While the imported module name usually matches the file name, custom names can be used to avoid conflicts or simplify references.
 
 ```motoko no-repl
-import List "mo:base/List";
-import L "mo:base/List";
-import PureList "mo:base/pure/List";
+import List "mo:core/List";
+import L "mo:core/List";
+import PureList "mo:core/pure/List";
 ```
 
 ## Importing from another canister
@@ -169,8 +169,8 @@ It can be imported into another file:
 
 ```motoko no-repl
 import Counters "Counters";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
+import Debug "mo:core/Debug";
+import Nat "mo:core/Nat";
 
 persistent actor CountToTen {
   public func countToTen() : async () {
@@ -185,3 +185,20 @@ persistent actor CountToTen {
 
 `Counters.Counter(1)` installs a new counter on the network. Installation is [asynchronous](https://internetcomputer.org/docs/motoko/fundamentals/actors-async#async--await), so the result is awaited.  If the actor class is not named, it will result in a bad import error because actor class imports cannot be anonymous.
 
+## Importing `Blob` values
+
+The `import` syntax can also be used with the `blob:file:` URI scheme to import raw `Blob` values:
+
+```motoko no-repl
+import pub = "blob:file:./keys/id_ed25519.pub";
+
+actor {
+    func checkSig(key : Blob, cyphertext : Text) { ... };
+
+    public func verify(cyphertext : Text) : async () {
+        checkSig(pub, cyphertext);
+    };
+};
+```
+
+This use case also caters for the import of externally-built Wasm `Blob`s for low-level installation and upgrade by means of the management canister.

@@ -457,6 +457,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     | Unresolved -> assert false
     | LibPath {path; _} ->
       k (find path env.libs)
+    | ImportedValuePath path ->
+      let contents = Lib.FilePath.contents path in
+      assert T.(exp.note.note_typ = Prim Blob);
+      k (V.Blob contents)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -824,8 +828,12 @@ and declare_pat_fields pfs ve : val_env =
   match pfs with
   | [] -> ve
   | pf::pfs' ->
-    let ve' = declare_pat pf.it.pat in
-    declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     match pf_pattern pf with
+     | Some pat ->
+        let ve' = declare_pat pat in
+        declare_pat_fields pfs' (V.Env.adjoin ve ve')
+     | None ->
+        declare_pat_fields pfs' ve
 
 and declare_defined_id id v =
   V.Env.singleton id.it (Lib.Promise.make_fulfilled v)
@@ -914,9 +922,11 @@ and match_pats pats vs ve : val_env option =
 and match_pat_fields pfs vs ve : val_env option =
   match pfs with
   | [] -> Some ve
-  | pf::pfs' ->
-    let v = V.Env.find pf.it.id.it vs in
-    begin match match_pat pf.it.pat v with
+  | { it = TypPF(_); _ }::pfs' ->
+     match_pat_fields pfs' vs ve
+  | { it = ValPF(id, p); _ }::pfs' ->
+    let v = V.Env.find id.it vs in
+    begin match match_pat p v with
     | Some ve' -> match_pat_fields pfs' vs (V.Env.adjoin ve ve')
     | None -> None
     end
@@ -1124,7 +1134,7 @@ let interpret_prog flags scope p : (V.value * scope) option =
 (* Libraries *)
 
 (* Import a module unchanged, and a class constructor as an asynchronous function.
-   The conversion will be unnecessary once we declare classes as asynchronous. *)
+   The conversion will be unnecessary once we declare classes as asynchronous. FIXME: is this correct? *)
 let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
@@ -1143,7 +1153,6 @@ let import_lib env lib =
             then k v
             else trap cub.at "actor class configuration unsupported in interpreter")))) ])
   | _ -> assert false
-
 
 let interpret_lib flags scope lib : scope =
   let env = env_of_scope flags state scope in

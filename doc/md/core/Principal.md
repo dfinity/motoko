@@ -22,7 +22,7 @@ persistent actor {
 
 Then, you can use this module to work with the `Principal`.
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Principal "mo:core/Principal";
 ```
@@ -42,7 +42,7 @@ Get the `Principal` identifier of an actor.
 
 Example:
 ```motoko include=import no-repl
-actor MyCanister {
+persistent actor MyCanister {
   func getPrincipal() : Principal {
     let principal = Principal.fromActor(MyCanister);
   }
@@ -57,7 +57,7 @@ func toLedgerAccount(principal : Principal, subAccount : ?Blob) : Blob
 Compute the Ledger account identifier of a principal. Optionally specify a sub-account.
 
 Example:
-```motoko include=import
+```motoko include=import no-validate
 let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
 let subAccount : Blob = "\4A\8D\3F\2B\6E\01\C8\7D\9E\03\B4\56\7C\F8\9A\01\D2\34\56\78\9A\BC\DE\F0\12\34\56\78\9A\BC\DE\F0";
 let account = Principal.toLedgerAccount(principal, ?subAccount);

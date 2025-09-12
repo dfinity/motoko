@@ -12,6 +12,7 @@ struct
 
   let display pp ppf x =
     Format.fprintf ppf "@\n@[<v 2>  %a@]" pp x
+
 end
 
 module Fun =
@@ -360,6 +361,10 @@ struct
     then (take n xs, drop n xs)
     else (xs, [])
 
+  let mapi2 f xs ys =
+    let _, acc = List.fold_left2 (fun (i, acc) x y -> (1 + i, f i x y :: acc)) (0, []) xs ys in
+    List.rev acc
+
   let hd_opt = function
     | x :: _ -> Some x
     | _ -> None
@@ -693,6 +698,8 @@ struct
           ic, [message]
       end
     else ic, []
+
+    let contents file = In_channel.with_open_bin file In_channel.input_all
 end
 
 

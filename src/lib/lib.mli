@@ -27,6 +27,7 @@ sig
   val take : int -> 'a list -> 'a list (* raises Failure *)
   val drop : int -> 'a list -> 'a list (* raises Failure *)
   val split_at : int -> 'a list -> ('a list * 'a list)
+  val mapi2 : (int -> 'a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 
   val hd_opt : 'a list -> 'a option
   val last : 'a list -> 'a (* raises Failure *)
@@ -236,4 +237,10 @@ sig
    * "warning, file Array.mo has been located with a name of different case"
    *)
   val open_in : string -> (in_channel * string list)
+
+
+  (**
+   * Reads all bytes from the indicated file
+   *)
+  val contents : string -> string
 end

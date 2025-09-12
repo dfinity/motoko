@@ -12,7 +12,7 @@ func g(x : ()) {};
 
 //let unused = 1;
 let _ok = 1;
-let hmm = _ok; // should we warn about the use of a silenced identifier? OCaml doens't actually, so perhaps not
+let hmm = _ok; // should we warn about the use of a silenced identifier? OCaml doesn't actually, so perhaps not
 
 do { func f() { g() ; }; //both f and g are only used recursively accept or reject?
      func g() { f() };

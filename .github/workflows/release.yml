@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Extract changelog
       # Skip this step for draft releases. Leave the release body empty.
       if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -51,7 +51,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: cachix/install-nix-action@v31
     - uses: cachix/cachix-action@v16
       with:
@@ -80,7 +80,7 @@ jobs:
     needs: [prepare, changelog, build]
     steps:
     - name: Download all release artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         path: release-assets
         pattern: release-files-*

@@ -40,6 +40,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
         type Text = Text
       };
     abs : (x : Int) -> Nat;
+    allocWeakRef : <T>(obj : T) -> weak T;
     arccos : (f : Float) -> Float;
     arcsin : (f : Float) -> Float;
     arctan : (f : Float) -> Float;
@@ -108,6 +109,8 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     debugPrintNat : (x : Nat) -> ();
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
+    envVar : <system>(name : Text) -> ?Text;
+    envVarNames : <system>() -> [Text];
     error : (message : Text) -> Error;
     errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;
@@ -171,6 +174,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     intToNat64Wrap : (n : Int) -> Nat64;
     intToNat8Wrap : (n : Int) -> Nat8;
     isController : (p : Principal) -> Bool;
+    isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
@@ -233,6 +237,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
     rts_heap_size : () -> Nat;
+    rts_lifetime_instructions : () -> Nat;
     rts_logical_stable_memory_size : () -> Nat;
     rts_max_live_size : () -> Nat;
     rts_max_stack_size : () -> Nat;
@@ -277,5 +282,6 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     textLowercase : (t : Text) -> Text;
     textUppercase : (t : Text) -> Text;
     time : () -> Nat64;
-    trap : (x : Text) -> None
+    trap : (x : Text) -> None;
+    weakGet : <T>(w : weak T) -> ?T
   }
