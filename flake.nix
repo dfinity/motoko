@@ -161,6 +161,9 @@
         src = ./test-runner;
         cargoLock = {
           lockFile = ./test-runner/Cargo.lock;
+          outputHashes = {
+            "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
+          };
         };
         buildInputs = [
           pkgs.pocket-ic.server
