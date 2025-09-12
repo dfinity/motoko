@@ -42,7 +42,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-large-24, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, ubuntu-24.04-arm, macos-latest ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
