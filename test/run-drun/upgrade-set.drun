@@ -1,4 +1,3 @@
-# CLASSICAL-PERSISTENCE-ONLY
 install $ID upgrade-set/version0.mo ""
 upgrade $ID upgrade-set/version1.mo ""
 upgrade $ID upgrade-set/version2.mo ""

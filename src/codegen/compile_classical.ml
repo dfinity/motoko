@@ -2444,69 +2444,6 @@ module Variant = struct
 end (* Variant *)
 
 
-module Closure = struct
-  (* In this module, we deal with closures, i.e. functions that capture parts
-     of their environment.
-
-     The structure of a closure is:
-
-       ┌──────┬─────┬───────┬──────┬──────────────┐
-       │ obj header │ funid │ size │ captured ... │
-       └──────┴─────┴───────┴──────┴──────────────┘
-
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
-     The forwarding pointer is only reserved if compiled for the incremental GC.
-
-  *)
-  let header_size env = Int32.add (Tagged.header_size env) 2l
-
-  let funptr_field = Tagged.header_size
-  let len_field env = Int32.add 1l (Tagged.header_size env)
-
-  let load_data env i =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (Int32.add (header_size env) i)
-
-  let store_data env i =
-    (if !Flags.gc_strategy = Flags.Incremental then
-       let set_closure_data, get_closure_data = new_local env "closure_data" in
-       set_closure_data ^^
-       Tagged.load_forwarding_pointer env ^^
-       get_closure_data
-     else
-       G.nop) ^^
-    Tagged.store_field env (Int32.add (header_size env) i)
-
-  let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env
-
-  (* Expect on the stack
-     * the function closure (using prepare_closure_call)
-     * and arguments (n-ary!)
-     * the function closure again!
-  *)
-  let call_closure env n_args n_res =
-    (* Calculate the wasm type for a given calling convention.
-       An extra first argument for the closure! *)
-    let ty = E.func_type env (FuncType (
-      I32Type :: Lib.List.make n_args I32Type,
-      FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
-    (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (funptr_field env) ^^
-    (* All done: Call! *)
-    let table_index = 0l in
-    G.i (CallIndirect (nr table_index, nr ty)) ^^
-    FakeMultiVal.load env (Lib.List.make n_res I32Type)
-
-  let static_closure env fi : int32 =
-    Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
-      I32 (E.add_fun_ptr env fi);
-      I32 0l
-    ]
-
-end (* Closure *)
-
 
 module BoxedWord64 = struct
   (* We store large word64s, nat64s and int64s in immutable boxed 64bit heap objects.
@@ -4175,6 +4112,119 @@ module Object = struct
 
 end (* Object *)
 
+module Closure = struct
+  (* In this module, we deal with closures, i.e. functions that capture parts
+     of their environment.
+
+     The structure of a closure is:
+
+       ┌──────┬─────┬───────┬──────┬──────────────┐
+       │ obj header │ funid │ size │ captured ... │
+       └──────┴─────┴───────┴──────┴──────────────┘
+
+     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
+
+  *)
+  let header_size env = Int32.add (Tagged.header_size env) 2l
+
+  let funptr_field = Tagged.header_size
+  let len_field env = Int32.add 1l (Tagged.header_size env)
+  let stable_hash_field env = Int32.add 2l (Tagged.header_size env)
+
+  let load_data env i =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env (Int32.add (header_size env) i)
+
+  let store_data env i =
+    (if !Flags.gc_strategy = Flags.Incremental then
+       let set_closure_data, get_closure_data = new_local env "closure_data" in
+       set_closure_data ^^
+       Tagged.load_forwarding_pointer env ^^
+       get_closure_data
+     else
+       G.nop) ^^
+      Tagged.store_field env (Int32.add (header_size env) i)
+
+
+  let prepare_closure_call env =
+    let (set_closure, get_closure) = new_local env "closure" in
+    Tagged.load_forwarding_pointer env ^^
+    set_closure ^^
+    get_closure ^^
+    Tagged.load_field env (funptr_field env) ^^
+    compile_eq_const (-1l) ^^
+    G.if1 I32Type
+    begin
+       compile_unboxed_const (E.get_stable_funcs env) ^^
+       (* static: Tagged.load_forwarding_pointer env not needed*)
+       MutBox.load_field env ^^
+       get_closure ^^
+       Tagged.load_field env (stable_hash_field env) ^^
+       BoxedSmallWord.unbox env Type.Nat32 ^^
+       Object.idx_hash env 0 true (*indirect*) ^^ (* FIX ME:this would be faster with Obj.idx and full obj type *)
+       load_ptr ^^
+       Tagged.load_forwarding_pointer env
+    end
+    begin
+      get_closure
+    end
+
+  (* Expect on the stack
+     * the function closure (using prepare_closure_call)
+     * and arguments (n-ary!)
+     * the function closure again!
+  *)
+  let call_closure env n_args n_res =
+    (* Calculate the wasm type for a given calling convention.
+       An extra first argument for the closure! *)
+    let ty = E.func_type env (FuncType (
+      I32Type :: Lib.List.make n_args I32Type,
+      FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
+    (* get the table index *)
+    (* was:  Tagged.load_forwarding_pointer env ^^ *)
+    prepare_closure_call env ^^ (* optimize me - we are indirecting twice! *)
+    Tagged.load_field env (funptr_field env) ^^
+    (* All done: Call! *)
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
+    FakeMultiVal.load env (Lib.List.make n_res I32Type)
+
+  let static_closure env fi : int32 =
+    Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
+      I32 (E.add_fun_ptr env fi);
+      I32 0l
+    ]
+
+  let stable_func env lab =
+    (* Allocate a heap object for the closure with single lab field *)
+    let set_clos, get_clos = new_local env ("stable_closure_"^lab) in
+    let len = 1l in
+    Tagged.alloc env (Int32.add (header_size env) len) Tagged.Closure ^^
+    set_clos ^^
+
+    (* Store -1 function pointer *)
+    get_clos ^^
+    compile_unboxed_const (-1l) ^^
+    Tagged.store_field env (funptr_field env) ^^
+
+    (* Store the length *)
+    get_clos ^^
+    compile_unboxed_const len ^^
+    Tagged.store_field env (len_field env) ^^
+
+    (* Store the hash as tagged Nat32 *)
+    get_clos ^^
+    compile_unboxed_const (E.hash env lab) ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
+    Tagged.store_field env (stable_hash_field env) ^^
+
+    get_clos ^^
+    Tagged.allocation_barrier env
+
+end (* Closure *)
+
+
 module Blob = struct
   (* The layout of a blob object is
 
@@ -5196,7 +5246,7 @@ module IC = struct
     )
 
   (* For debugging *)
-  let _compile_static_print env s =
+  let compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "trap"
@@ -6992,7 +7042,7 @@ module MakeSerialization (Strm : Stream) = struct
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
-             add_leb128 1; add_u8 3; (* composite *)
+            add_leb128 1; add_u8 3; (* composite *)
           | Stable id, _ -> (* todo: encode id? *)
             assert (tbs = []);
             add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)
@@ -7184,7 +7234,7 @@ module MakeSerialization (Strm : Stream) = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func (Type.Stable id, c, tbs, ts1 , ts2) ->
-         G.nop
+        G.nop
       | Func _ ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
@@ -8084,11 +8134,23 @@ module MakeSerialization (Strm : Stream) = struct
             ( skip get_arg_typ ^^
               coercion_failed "IDL error: unexpected variant tag" )
           )
-      | Func (Type.Stable id, c, tbs, ts1, ts2) ->
-          compile_unboxed_const (E.get_stable_funcs env) ^^
-          MutBox.load_field env ^^
-          Object.load_idx env Type.(obj Object [(id, Mut t)]) id
-         (* TODO: if we knew the full object type, load_idx would be faster *)
+      | Func (Type.Stable lab, c, tbs, ts1, ts2) ->
+        (* See Note [Candid subtype checks] *)
+        get_rel_buf_opt ^^
+        G.if1 I32Type
+          begin
+            get_rel_buf_opt ^^
+            get_typtbl ^^
+            get_typtbl_end ^^
+            get_typtbl_size ^^
+            get_idltyp ^^
+            idl_sub env t
+          end
+          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
+        G.if1 I32Type
+          (Closure.stable_func env lab)
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible function type")
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
@@ -11046,7 +11108,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
-      | _, (Type.Local | Type.Stable _) ->
+      | _, (Type.Local | Type.Stable _) -> (* TBR: - optimize stable call to lookup? *)
          let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
@@ -11522,11 +11584,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_unboxed_const (E.get_stable_funcs env) ^^
     compile_exp_vanilla env ae e ^^
     MutBox.store_field env
-
-  | OtherPrim "get_stable_funcs", [] ->
-    SR.Vanilla,
-    compile_unboxed_const (E.get_stable_funcs env) ^^
-    MutBox.load_field env
 
   (* Other prims, unary *)
 
@@ -12595,6 +12652,43 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
+  | FuncE (x, Type.Stable lab, control, typ_binds, args, res_tys, e) ->
+    let obj_typ = Type.(obj Object [(lab, Mut exp.note.Note.typ)]) in (* FIX ME: other fields and func sort *)
+    SR.Vanilla,
+    (* Load stable_funcs record *)
+    compile_unboxed_const (E.get_stable_funcs env) ^^
+    (* static: Tagged.load_forwarding_pointer env not needed *)
+    MutBox.load_field env ^^
+    Tagged.load_forwarding_pointer env ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    let (set_ptr, get_ptr) = new_local env "ptr" in
+    Object.idx env obj_typ lab ^^ (* idx would be faster with full obj_typ *)
+    set_ptr ^^
+    get_ptr ^^
+    (match !Flags.gc_strategy with (* c.f. Var.set_val *)
+     | Flags.Incremental ->
+       compile_add_const ptr_unskew
+     | _ -> G.nop) ^^
+    (* Compile the implementation as a `Local` function *)
+    compile_exp_vanilla env ae
+      { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
+        at = exp.at;
+        note = exp.note; (* FIX ME: sort *)
+      } ^^
+      (* Write to stable func record field *)
+     (match !Flags.gc_strategy with (* c.f. Var.set_val *)
+     | Flags.Incremental ->
+       Tagged.write_with_barrier env
+     | Flags.Generational ->
+       store_ptr ^^
+       get_ptr ^^
+       Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
+       compile_add_const ptr_unskew ^^
+       E.call_import env "rts" "post_write_barrier"
+     | _ ->
+       store_ptr) ^^
+    (* Allocate the proxy *)
+    Closure.stable_func env lab
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
@@ -13201,8 +13295,7 @@ and export_actor_field env  ae (f : Ir.field) =
 and main_actor as_opt mod_env ds fs up =
   let build_stable_actor = up.stable_record in
   Func.define_built_in mod_env "init" [] [] (fun env ->
-    let stable_funcs_ptr = MutBox.static env in
-    E.set_stable_funcs env stable_funcs_ptr;
+
     let ae0 = VarEnv.empty_ae in
 
     let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
@@ -13411,6 +13504,9 @@ and conclude_module env set_serialization_globals start_fi_o =
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
+
+  let stable_funcs_ptr = MutBox.static env in
+  E.set_stable_funcs env stable_funcs_ptr;
 
   IC.register_globals env;
   Stack.register_globals env;

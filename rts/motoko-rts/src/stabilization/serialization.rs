@@ -101,7 +101,10 @@ impl Serialization {
     }
 
     fn has_non_stable_type(old_field: Value) -> bool {
-        unsafe { old_field.tag() == TAG_CLOSURE }
+        unsafe {
+            old_field.tag() == TAG_CLOSURE && (*old_field.as_closure()).funid != usize::MAX
+            /* -1 */
+        }
     }
 
     pub fn pending_array_scanning(&self) -> bool {
