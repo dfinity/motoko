@@ -1,14 +1,123 @@
+qr/array.mo:135.29-135.32: warning [M0223], redundant type instantiation
+qr/array.mo:158.29-158.32: warning [M0223], redundant type instantiation
 qr/option.mo:52.8-52.11: warning [M0194], unused identifier map (delete or rename to wildcard `_` or `_map`)
+qr/list.mo:198.30-198.33: warning [M0223], redundant type instantiation
+qr/list.mo:201.30-201.33: warning [M0223], redundant type instantiation
+qr/list.mo:482.27-482.30: warning [M0223], redundant type instantiation
+qr/list.mo:513.23-513.26: warning [M0223], redundant type instantiation
+qr/list.mo:516.25-516.28: warning [M0223], redundant type instantiation
 qr/list.mo:124.21-124.22: warning [M0194], unused identifier t (delete or rename to wildcard `_` or `_t`)
 qr/list.mo:281.18-281.19: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)
+qr/nat.mo:38.25-38.31: warning [M0223], redundant type instantiation
+qr/nat.mo:39.25-39.31: warning [M0223], redundant type instantiation
+qr/nat.mo:46.26-46.44: warning [M0223], redundant type instantiation
+qr/util.mo:23.21-23.27: warning [M0223], redundant type instantiation
+qr/util.mo:28.21-28.27: warning [M0223], redundant type instantiation
+qr/galois.mo:214.31-214.37: warning [M0223], redundant type instantiation
+qr/galois.mo:219.31-219.37: warning [M0223], redundant type instantiation
+qr/block.mo:35.23-35.66: warning [M0223], redundant type instantiation
+qr/block.mo:39.34-39.40: warning [M0223], redundant type instantiation
+qr/block.mo:40.34-40.40: warning [M0223], redundant type instantiation
+qr/block.mo:71.38-71.50: warning [M0223], redundant type instantiation
+qr/block.mo:92.28-92.34: warning [M0223], redundant type instantiation
+qr/block.mo:102.35-102.41: warning [M0223], redundant type instantiation
+qr/block.mo:107.30-107.36: warning [M0223], redundant type instantiation
+qr/block.mo:121.33-121.39: warning [M0223], redundant type instantiation
+qr/block.mo:122.27-122.45: warning [M0223], redundant type instantiation
+qr/block.mo:128.29-128.47: warning [M0223], redundant type instantiation
 qr/iter.mo:36.8-36.14: warning [M0194], unused identifier length (delete or rename to wildcard `_` or `_length`)
 qr/assocList.mo:105.25-105.27: warning [M0194], unused identifier v2 (delete or rename to wildcard `_` or `_v2`)
 qr/assocList.mo:179.25-179.27: warning [M0194], unused identifier v2 (delete or rename to wildcard `_` or `_v2`)
+qr/trie.mo:141.30-141.42: warning [M0223], redundant type instantiation
+qr/trie.mo:172.27-172.32: warning [M0223], redundant type instantiation
+qr/trie.mo:172.48-172.53: warning [M0223], redundant type instantiation
+qr/trie.mo:239.19-239.24: warning [M0223], redundant type instantiation
+qr/trie.mo:239.35-239.40: warning [M0223], redundant type instantiation
+qr/trie.mo:272.26-272.38: warning [M0223], redundant type instantiation
+qr/trie.mo:277.26-277.38: warning [M0223], redundant type instantiation
+qr/trie.mo:282.35-282.40: warning [M0223], redundant type instantiation
+qr/trie.mo:312.41-312.46: warning [M0223], redundant type instantiation
+qr/trie.mo:340.22-340.25: warning [M0223], redundant type instantiation
+qr/trie.mo:346.45-346.55: warning [M0223], redundant type instantiation
+qr/trie.mo:363.32-363.42: warning [M0223], redundant type instantiation
+qr/trie.mo:389.22-389.25: warning [M0223], redundant type instantiation
+qr/trie.mo:468.23-468.26: warning [M0223], redundant type instantiation
+qr/trie.mo:490.45-490.50: warning [M0223], redundant type instantiation
+qr/trie.mo:494.45-494.50: warning [M0223], redundant type instantiation
+qr/trie.mo:515.23-515.26: warning [M0223], redundant type instantiation
+qr/trie.mo:537.45-537.50: warning [M0223], redundant type instantiation
+qr/trie.mo:541.45-541.50: warning [M0223], redundant type instantiation
+qr/trie.mo:564.23-564.26: warning [M0223], redundant type instantiation
+qr/trie.mo:585.45-585.50: warning [M0223], redundant type instantiation
+qr/trie.mo:589.45-589.50: warning [M0223], redundant type instantiation
+qr/trie.mo:632.23-632.26: warning [M0223], redundant type instantiation
+qr/trie.mo:673.43-673.48: warning [M0223], redundant type instantiation
+qr/trie.mo:677.43-677.48: warning [M0223], redundant type instantiation
+qr/trie.mo:712.23-712.26: warning [M0223], redundant type instantiation
+qr/trie.mo:730.43-730.48: warning [M0223], redundant type instantiation
+qr/trie.mo:734.43-734.48: warning [M0223], redundant type instantiation
+qr/trie.mo:872.27-872.32: warning [M0223], redundant type instantiation
+qr/trie.mo:872.48-872.53: warning [M0223], redundant type instantiation
+qr/trie.mo:946.43-946.48: warning [M0223], redundant type instantiation
+qr/trie.mo:983.25-983.28: warning [M0223], redundant type instantiation
+qr/trie.mo:986.38-986.56: warning [M0223], redundant type instantiation
+qr/trie.mo:1002.25-1002.30: warning [M0223], redundant type instantiation
+qr/trie.mo:1096.36-1096.41: warning [M0223], redundant type instantiation
+qr/trie.mo:1138.23-1138.26: warning [M0223], redundant type instantiation
+qr/trie.mo:1141.34-1141.46: warning [M0223], redundant type instantiation
+qr/trie.mo:1282.27-1282.32: warning [M0223], redundant type instantiation
+qr/trie.mo:1295.29-1295.34: warning [M0223], redundant type instantiation
+qr/trie.mo:1314.21-1314.36: warning [M0223], redundant type instantiation
+qr/trie.mo:1316.27-1316.33: warning [M0223], redundant type instantiation
+qr/trie.mo:1317.27-1317.33: warning [M0223], redundant type instantiation
+qr/trie.mo:1319.36-1319.51: warning [M0223], redundant type instantiation
+qr/trie.mo:1337.22-1337.42: warning [M0223], redundant type instantiation
+qr/trie.mo:1340.18-1340.33: warning [M0223], redundant type instantiation
+qr/trie.mo:1346.29-1346.44: warning [M0223], redundant type instantiation
+qr/trie.mo:1348.32-1348.38: warning [M0223], redundant type instantiation
+qr/trie.mo:1349.35-1349.41: warning [M0223], redundant type instantiation
+qr/trie.mo:1351.18-1351.33: warning [M0223], redundant type instantiation
+qr/trie.mo:1354.36-1354.56: warning [M0223], redundant type instantiation
+qr/trie.mo:1346.29-1346.44: warning [M0223], redundant type instantiation
+qr/trie.mo:1348.32-1348.38: warning [M0223], redundant type instantiation
+qr/trie.mo:1349.35-1349.41: warning [M0223], redundant type instantiation
+qr/trie.mo:1379.27-1379.32: warning [M0223], redundant type instantiation
+qr/trie.mo:1403.44-1403.50: warning [M0223], redundant type instantiation
+qr/trie.mo:1404.43-1404.58: warning [M0223], redundant type instantiation
+qr/trie.mo:1429.46-1429.55: warning [M0223], redundant type instantiation
+qr/trie.mo:1430.43-1430.63: warning [M0223], redundant type instantiation
 qr/trie.mo:515.9-515.15: warning [M0194], unused identifier key_eq (delete or rename to wildcard `_` or `_key_eq`)
 qr/trie.mo:893.7-893.12: warning [M0194], unused identifier k3_eq (delete or rename to wildcard `_` or `_k3_eq`)
 qr/trie.mo:1447.61-1447.66: warning [M0194], unused identifier k1_eq (delete or rename to wildcard `_` or `_k1_eq`)
+qr/alphanumeric.mo:29.28-29.34: warning [M0223], redundant type instantiation
+qr/alphanumeric.mo:42.41-42.59: warning [M0223], redundant type instantiation
+qr/alphanumeric.mo:36.31-36.37: warning [M0223], redundant type instantiation
+qr/alphanumeric.mo:37.34-37.40: warning [M0223], redundant type instantiation
+qr/alphanumeric.mo:87.32-87.43: warning [M0223], redundant type instantiation
 qr/eight-bit.mo:17.22-17.29: warning [M0194], unused identifier version (delete or rename to wildcard `_` or `_version`)
 qr/eight-bit.mo:17.41-17.45: warning [M0194], unused identifier text (delete or rename to wildcard `_` or `_text`)
 qr/kanji.mo:17.22-17.29: warning [M0194], unused identifier version (delete or rename to wildcard `_` or `_version`)
 qr/kanji.mo:17.41-17.45: warning [M0194], unused identifier text (delete or rename to wildcard `_` or `_text`)
+qr/numeric.mo:27.28-27.34: warning [M0223], redundant type instantiation
+qr/numeric.mo:33.29-33.35: warning [M0223], redundant type instantiation
+qr/numeric.mo:34.32-34.38: warning [M0223], redundant type instantiation
+qr/numeric.mo:40.31-40.37: warning [M0223], redundant type instantiation
+qr/numeric.mo:61.29-61.35: warning [M0223], redundant type instantiation
+qr/numeric.mo:69.26-69.38: warning [M0223], redundant type instantiation
+qr/format.mo:20.28-20.34: warning [M0223], redundant type instantiation
+qr/symbol.mo:158.32-158.38: warning [M0223], redundant type instantiation
+qr/symbol.mo:175.32-175.38: warning [M0223], redundant type instantiation
+qr/symbol.mo:193.33-193.39: warning [M0223], redundant type instantiation
+qr/symbol.mo:219.29-219.35: warning [M0223], redundant type instantiation
+qr/symbol.mo:270.29-270.35: warning [M0223], redundant type instantiation
+qr/symbol.mo:283.31-283.36: warning [M0223], redundant type instantiation
+qr/symbol.mo:308.29-308.35: warning [M0223], redundant type instantiation
+qr/symbol.mo:321.36-321.48: warning [M0223], redundant type instantiation
+qr/symbol.mo:385.25-385.30: warning [M0223], redundant type instantiation
+qr/symbol.mo:389.24-389.29: warning [M0223], redundant type instantiation
+qr/symbol.mo:414.29-414.41: warning [M0223], redundant type instantiation
+qr/mask.mo:27.31-27.51: warning [M0223], redundant type instantiation
+qr/mask.mo:32.25-32.57: warning [M0223], redundant type instantiation
+qr/mask.mo:40.28-40.58: warning [M0223], redundant type instantiation
+qr/mask.mo:52.30-52.60: warning [M0223], redundant type instantiation
 qr/mask.mo:23.5-23.10: warning [M0194], unused identifier level (delete or rename to wildcard `_` or `_level`)
