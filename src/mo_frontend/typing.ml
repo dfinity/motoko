@@ -1111,16 +1111,20 @@ let infer_lit env lit at : T.prim =
   | TextLit _ -> T.Text
   | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
-    lit := NatLit (check_nat env at s); (* default *)
+    if not env.pre then
+      lit := NatLit (check_nat env at s); (* default *)
     T.Nat
   | PreLit (s, T.Int) ->
-    lit := IntLit (check_int env at s); (* default *)
+    if not env.pre then
+      lit := IntLit (check_int env at s); (* default *)
     T.Int
   | PreLit (s, T.Float) ->
-    lit := FloatLit (check_float env at s); (* default *)
+    if not env.pre then
+      lit := FloatLit (check_float env at s); (* default *)
     T.Float
   | PreLit (s, T.Text) ->
-    lit := TextLit (check_text env at s); (* default *)
+    if not env.pre then
+      lit := TextLit (check_text env at s); (* default *)
     T.Text
   | PreLit _ ->
     assert false
@@ -2217,12 +2221,8 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2
-      else if typs <> [] then
-        (* Warn when instantiation is redundant *)
-        try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt
-        |> Option.iter (fun ts' ->
-          if List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts' then
-            warn env inst.at "M0223" "redundant type instantiation");
+      else if typs <> [] && is_redundant_call_instantiation ts env t1 tbs t_arg t_ret exp2 at t_expect_opt then
+        warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt
@@ -2381,14 +2381,16 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt =
           Format.asprintf "\nto produce result of type%a" display_typ t)
       msg
 
-and try_infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt =
+and is_redundant_call_instantiation ts env t1 tbs t_arg t_ret exp2 at t_expect_opt =
   assert env.pre;
   match Diag.with_message_store (recover_opt (fun msgs ->
     let env_without_errors = { env with msgs } in
-    infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt))
+    let ts', _, _ = infer_call_instantiation env_without_errors t1 tbs t_arg t_ret exp2 at t_expect_opt in
+    List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts'
+    ))
   with
-  | Error _ -> None
-  | Ok ((ts', _, _), _) -> Some ts'
+  | Error _ -> false
+  | Ok (b, _) -> b
 
 and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
