@@ -1,0 +1,2 @@
+free-callbacks.mo:10.28-10.32: warning [M0223], redundant type instantiation
+free-callbacks.mo:15.28-15.32: warning [M0223], redundant type instantiation
