@@ -5,9 +5,11 @@
   * Added primitives to access canister environment variables (#5443):
 
     ```motoko
-    Prim.envVarNames : () -> [Text]
-    Prim.envVar : (name : Text) -> ?Text
+    Prim.envVarNames : <system>() -> [Text]
+    Prim.envVar : <system>(name : Text) -> ?Text
     ```
+
+    These require `system` capability to prevent supply-chain attacks.
 
   * Added ability to import `Blob`s from the local file system by means of the `blob:file:` URI scheme (#4935).
 
