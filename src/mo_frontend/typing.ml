@@ -3141,7 +3141,7 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    (* This may indicate unintentional data loss. *)
    let is_named typ = T.(match typ with
         | Mut (Named _)
-        | Named (_, _) -> true
+        | Named _ -> true
         | _ -> false)
    in
    List.iter (fun T.{lab;typ;src} ->
