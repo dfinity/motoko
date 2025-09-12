@@ -527,8 +527,10 @@ let get_root_path files =
       then List.hd heads :: common_prefix tails
       else []
   in
-  let split_paths = List.map split_path files in
-  String.concat "/" (common_prefix split_paths)
+  if files = [] then ""
+  else
+    let split_paths = List.map split_path files in
+    String.concat "/" (common_prefix split_paths)
 
 let load_progs_cached ?viper_mode ?check_actors parsefn files senv scope_cache : load_result_cached =
   let open Diag.Syntax in
