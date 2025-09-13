@@ -1,0 +1,6 @@
+lambdas-core.mo:453.17-453.28: warning [M0223], redundant type instantiation
+lambdas-core.mo:457.23-457.34: warning [M0223], redundant type instantiation
+lambdas-core.mo:479.22-479.33: warning [M0223], redundant type instantiation
+lambdas-core.mo:482.28-482.39: warning [M0223], redundant type instantiation
+lambdas-core.mo:499.17-499.34: warning [M0223], redundant type instantiation
+lambdas-core.mo:512.22-512.39: warning [M0223], redundant type instantiation

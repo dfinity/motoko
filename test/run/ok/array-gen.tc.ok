@@ -1,0 +1,2 @@
+array-gen.mo:13.28-13.33: warning [M0223], redundant type instantiation
+array-gen.mo:48.37-48.42: warning [M0223], redundant type instantiation
