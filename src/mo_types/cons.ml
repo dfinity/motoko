@@ -32,13 +32,7 @@ let stamps : stamps ref = ref {stamps = Stamps.empty; scope = None}
 let session ?scope f =
   let original = !stamps in
   stamps := {!stamps with scope};
-  try let result = f () in
-       stamps := original;
-       result
-  with e -> begin
-     stamps := original;
-     raise e
-  end
+  Fun.protect ~finally:(fun _ -> stamps := original) f
 
 let fresh_stamp name =
   let scope = !stamps.scope in
