@@ -682,14 +682,14 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
         (primE (I.ICStableRead mem_ty) [])
   in
   let ds =
+    varD state (optE migration)
+    ::
     letD stable_funcs
       (objectE T.Object
          (List.map (fun (i, t) -> (i, undefined_stable_func i t)) fids)
          stable_func_fields)
     ::
     expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
-    ::
-    varD state (optE migration)
     ::
     nary_funcD get_state []
       (let v = fresh_var "v" mem_ty in

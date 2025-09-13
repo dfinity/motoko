@@ -4212,8 +4212,13 @@ module Closure = struct
     E.if1 I64Type
     begin
        Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
+       let (set_static_funcs, get_static_funcs) = new_local env "static_funcs" in
        Tagged.load_forwarding_pointer env ^^
        MutBox.load_field env ^^
+       set_static_funcs ^^
+       get_static_funcs ^^
+       E.else_trap_with env "stable function applied in migration" ^^
+       get_static_funcs ^^
        get_closure ^^
        Tagged.load_field env stable_hash_field ^^
        BitTagged.untag __LINE__ env Type.Nat32 ^^

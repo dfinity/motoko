@@ -4175,8 +4175,13 @@ module Closure = struct
     G.if1 I32Type
     begin
        compile_unboxed_const (E.get_stable_funcs env) ^^
+       let (set_static_funcs, get_static_funcs) = new_local env "static_funcs" in
        (* static: Tagged.load_forwarding_pointer env not needed*)
        MutBox.load_field env ^^
+       set_static_funcs ^^
+       get_static_funcs ^^
+       E.else_trap_with env "stable function applied in migration" ^^
+       get_static_funcs ^^
        get_closure ^^
        Tagged.load_field env (stable_hash_field env) ^^
        BoxedSmallWord.unbox env Type.Nat32 ^^
