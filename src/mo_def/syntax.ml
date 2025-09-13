@@ -154,6 +154,7 @@ type inst = ((bool * typ list) option, Type.typ list) Source.annotated_phrase (*
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 
+
 type sugar = bool (* Is the source of a function body a block `<block>`,
                      subject to further desugaring during parse,
                      or the invariant form `= <exp>`.
@@ -183,7 +184,7 @@ and exp' =
   | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
-  | DotE of exp * id                           (* object projection *)
+  | DotE of exp * id * dot_exp_note            (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
@@ -228,6 +229,7 @@ and exp_field' = {mut : mut; id : id; exp : exp}
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+and dot_exp_note = exp option ref
 
 (* Declarations *)
 
