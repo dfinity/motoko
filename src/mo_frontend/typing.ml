@@ -3608,6 +3608,7 @@ and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
+      (* TODO: find_opt and report error if not found *)
       let (pat, decs, t) = T.Env.find i.it env.mixins in
       n := Some({ pat; decs });
       (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
