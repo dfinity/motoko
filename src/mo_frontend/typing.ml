@@ -42,6 +42,10 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
+    (* NOTE: This is a bit of a hack, as the map here is going to end
+       up holding entries with file paths _and_ imported names.
+       Might be cleaner to split it up into two maps.
+     *)
     mixins : Scope.mixin_env;
     labs : lab_env;
     rets : ret_env;
