@@ -1,0 +1,7 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stable-weirdness/version0.mo ""
+#fails
+#upgrade $ID stable-weirdness/version1.mo ""
+#works
+upgrade $ID stable-weirdness/version2.mo ""
