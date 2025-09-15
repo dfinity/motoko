@@ -1,0 +1,5 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stable-unsoundness/version0.mo ""
+upgrade $ID stable-unsoundness/version1.mo ""
+upgrade $ID stable-unsoundness/version2.mo ""

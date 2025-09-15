@@ -2409,6 +2409,16 @@ let rec match_stab_sig sig1 sig2 =
   let pre_tfs2 = pre sig2 in
   match_stab_fields post_tfs1 pre_tfs2
 
+and match_stab_field tf1 tf2 =
+  assert (tf1.lab = tf2.lab);
+  match normalize tf1.typ with
+  | Func (Stable lab, _, _, _, _) when tf1.lab = lab ->
+    (* this is a definition so can only evolve to a subtype *)
+    sub tf2.typ tf1.typ
+  | _ ->
+    (* other fields can evolve to stable supertypes *)
+    stable_sub (as_immut tf1.typ) (as_immut tf2.typ)
+
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
@@ -2421,7 +2431,7 @@ and match_stab_fields tfs1 tfs2 =
   | tf1::tfs1', (required, tf2)::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+       match_stab_field tf1 tf2 &&
        match_stab_fields tfs1' tfs2'
      | -1 ->
        (* no dropped fields *)
