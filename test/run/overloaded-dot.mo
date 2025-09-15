@@ -23,6 +23,7 @@ module VarArrayExt {
   public func map<A, B>(_self : [var A], _f : A -> B): [var B] {
     [var]
   };
+  public func append<T>(self : [var T], _elem : T) : [var T] { self };
 };
 
 module MyArrayExt {
@@ -69,6 +70,11 @@ module Main {
     // Trying to call `.sum()` on a `[Nat]` would however cause an error however
     // as `[Nat] <: [Int]`
     assert xs.sum() == -42;
+  };
+
+  public func tupleIssue() {
+    let xs : [var (Nat, Text)] = [var];
+    assert xs.append((3, "hello")).size() == 0
   };
 };
 
