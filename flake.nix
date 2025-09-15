@@ -46,7 +46,7 @@
       flake = false;
     };
     motoko-core-src = {
-      url = "github:dfinity/motoko-core";
+      url = "github:dfinity/motoko-core/luc/oo-data-structures";
       flake = false;
     };
     motoko-matchers-src = {
