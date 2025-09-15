@@ -2308,7 +2308,8 @@ and check_func_step in_actor env (shared_pat, pat, typ_opt, exp) (s, c, ts1, ts2
   if sort <> s then
     (match sort, s with
       | T.Local T.Stable, T.Local T.Flexible -> () (* okay *)
-      | T.Local _, T.Local _ -> assert false (* caught by sub-type check *)
+      | T.Local _, T.Local _ ->
+        error env exp.at "M0220" "this function should be declared `persistent`"
       | _, _ ->
         error env exp.at "M0094"
           "%sshared function does not match expected %sshared function type"

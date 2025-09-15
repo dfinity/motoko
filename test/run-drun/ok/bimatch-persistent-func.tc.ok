@@ -1,0 +1,5 @@
+bimatch-persistent-func.mo:4.5-4.6: type error [M0096], expression of type
+  () -> T
+cannot produce expected type
+  persistent () -> T
+bimatch-persistent-func.mo:6.47-6.49: type error [M0220], this function should be declared `persistent`
