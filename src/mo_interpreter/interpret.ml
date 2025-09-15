@@ -612,10 +612,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         (* TODO Extract this to a nicer place *)
         let exp1, exp2 = match exp1.it with
           | DotE (e1, _, overload_note) when !overload_note |> Option.is_some ->
+            let arity = match (Option.get !overload_note).note.note_typ with
+              | T.Func(_, _, _, args, _) -> List.length args
+              | _ -> assert false in
              let xtended_args = match exp2 with
                | { it = TupE []; at; note = { note_eff; note_typ = T.Tup [] } } ->
                   { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
-               | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } ->
+               | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
                   { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
                | { it = _; at; note = { note_eff; note_typ = t } } ->
                   { it = TupE ([e1; exp2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; exp2.note.note_typ]) } }
