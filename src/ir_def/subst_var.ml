@@ -1,25 +1,14 @@
 open Source
 open Ir
 
-module Binder = Rename.Binder
-module Renaming = Rename.Renaming
-
 (* One traversal for each syntactic category, named by that category *)
-
-let fresh_id id = Construct.fresh_id id ()
-
 let id rho i =
-  match Renaming.find_opt (Binder.Id i) rho with
+  match Rename.Renaming.find_opt (Rename.Binder.Id i) rho with
   | Some i1 -> i1
   | None -> i
 
-let id_bind rho i = Renaming.remove (Binder.Id i) rho
-
-let rec ids_bind rho = function
-  | [] -> rho
-  | i::is' ->
-    let rho' = id_bind rho i in
-    ids_bind rho' is'
+let id_bind rho i = Rename.Renaming.remove (Rename.Binder.Id i) rho
+let ids_bind = List.fold_left id_bind
 
 let arg_bind rho a = id_bind rho a.it
 
@@ -57,9 +46,9 @@ and exp' rho = function
                            DeclareE (i, t, exp rho' e)
   | DefineE (i, m, e)   -> DefineE (id rho i, m, exp rho e)
   | FuncE (x, s, c, tp, p, ts, e) ->
-     let p', rho' = args rho p in
+     let rho' = args rho p in
      let e' = exp rho' e in
-     FuncE (x, s, c, tp, p', ts, e')
+     FuncE (x, s, c, tp, p, ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
   | TryE (e, cs, cl)    -> TryE (exp rho e, cases rho cs, Option.map (fun (v, t) -> id rho v, t) cl)
   | SelfCallE (ts, e1, e2, e3, e4) ->
@@ -76,12 +65,7 @@ and exps rho es  = List.map (exp rho) es
 and fields rho fs =
   List.map (fun f -> { f with it = { f.it with var = id rho f.it.var } }) fs
 
-and args rho as_ =
-  match as_ with
-  | [] -> ([],rho)
-  | a::as_ ->
-     let rho' = arg_bind rho a in
-     args rho' as_
+and args = List.fold_left arg_bind
 
 and pat rho p = pat' rho p.it
 
@@ -100,12 +84,8 @@ and pat' rho = function
       List.compare String.compare is1 is2 = 0
     end;
     ids_bind rho is1
-and pats rho ps  =
-  match ps with
-  | [] -> rho
-  | p::ps ->
-    let rho' = pat rho p in
-    pats rho' ps
+
+and pats rho ps  = List.fold_left pat rho ps
 
 and case rho (c : case) =
   {c with it = case' rho c.it}
@@ -155,14 +135,12 @@ let comp_unit rho cu = match cu with
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
   | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; low_memory; stable_record; stable_type }, t) ->
-    let as_opt', rho' = match as_opt with
-      | None -> None, rho
-      | Some as_ ->
-        let as_', rho' = args rho as_ in
-        Some as_', rho'
+    let rho' = match as_opt with
+      | None -> rho
+      | Some as_ -> args rho as_
     in
     let ds', rho'' = decs rho' ds in
-    ActorU (as_opt', ds', fields rho'' fs,
+    ActorU (as_opt, ds', fields rho'' fs,
       { meta;
         preupgrade = exp rho'' preupgrade;
         postupgrade = exp rho'' postupgrade;
