@@ -36,6 +36,9 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
+(* suppress documentation *)
+let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
+
 let argspec = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -150,19 +153,19 @@ let argspec = [
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC (only available with classical persistence)";
+  " use generational GC (only available with legacy/classical persistence)";
 
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC (default with enhanced orthogonal persistence)";
+  " use incremental GC (default, works with both enhanced orthogonal persistence and legacy/classical persistence)";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC (only available with classical persistence)";
+  " use compacting GC (only available with legacy/classical persistence)";
 
   "--copying-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default and only available with classical persistence)";
+  " use copying GC (only available with legacy/classical persistence)";
 
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
@@ -194,20 +197,46 @@ let argspec = [
 
   (* persistence *)
   "--enhanced-orthogonal-persistence",
-  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
-  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true;
+                      Flags.explicit_enhanced_orthogonal_persistence := true),
+  " use enhanced orthogonal persistence (default): Scalable and fast upgrades using a persistent 64-bit main memory. Also, enable upgrade from classical to enhanced orthogonal persistence";
+
+  (* persistence *)
+  "--legacy-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := false),
+  " use legacy (classical) persistence. This also enables the usage of --copying-gc, --compacting-gc, and --generational-gc. Deprecated in favor of the new enhanced orthogonal persistence, which is default. Legacy persistence will be removed in the future.";
+
+  "-unguarded-enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
+  _UNDOCUMENTED_ "  (internal testing only)";
+
+  (* default stability *)
+  "--default-persistent-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.DefaultPersistentActors),
+  _UNDOCUMENTED_
+   " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
+
+  "--require-persistent-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.RequirePersistentActors),
+  _UNDOCUMENTED_
+    " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
+
+  "--legacy-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.LegacyActors),
+  _UNDOCUMENTED_
+    " in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
 
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
-    upgrade = limit; 
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   "--stable-memory-access-limit",
   Arg.Int (fun limit -> Flags.(stable_memory_access_limit := {
-    upgrade = limit; 
-    update_call = limit;
+    upgrade = Int64.of_int limit;
+    update_call = Int64.of_int limit;
   })),
   "<n>  set stable memory access limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 

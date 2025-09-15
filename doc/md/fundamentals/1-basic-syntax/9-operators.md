@@ -132,7 +132,7 @@ Bounded integers **trap** on overflow, but **wrapping versions** allow overflow 
 
 | Operator | Description | Example |
 |----------|------------|------------|
-| `#`      | Concatenates two [`Text`](https://internetcomputer.org/docs/motoko/base/Text) values | `a # b` |
+| `#`      | Concatenates two [`Text`](https://internetcomputer.org/docs/motoko/core/Text) values | `a # b` |
 
 ## Assignment operators
 
@@ -145,9 +145,9 @@ Assignment operators modify variables in place. Both mutable variables declared 
 | `-=`     | Subtract and assign | `a -= b` |
 | `*=`     | Multiply and assign | `a *= b` |
 | `/=`     | Divide and assign | `a /= b` |
-| `#=`     | Concatenate and assign (for [`Text`](https://internetcomputer.org/docs/motoko/base/Text)) | `a #= b` |
+| `#=`     | Concatenate and assign (for [`Text`](https://internetcomputer.org/docs/motoko/core/Text)) | `a #= b` |
 
-For example:  
+For example:
 
 ```motoko no-repl
 var done = false; done := true;
@@ -191,4 +191,3 @@ func increment(n : Int) : Int { n + 1 };
 let result = 5 |> double(_) |> increment(_); // (5 * 2) + 1 = 11
 ```
 
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

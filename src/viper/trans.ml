@@ -232,7 +232,7 @@ let rec unit reqs (u : M.comp_unit) : prog Diag.result =
 and unit' reqs (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
-  | M.ActorU(eo_, id_opt, decs) ->
+  | M.ActorU(_persistence, eo_, id_opt, decs) ->
     (* TODO eo *)
     let ctxt = {
       self = None;
@@ -769,7 +769,7 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     [cond], p_scope, (ds, stmts)
   | M.ObjP pat_fields ->
     let e_scrut = exp ctxt scrut in
-    let p_scope = List.map (fun M.{ it = { id = _; pat }; _ } -> unwrap_var_pat pat) pat_fields in
+    let p_scope = List.filter_map (fun pf -> Option.map unwrap_var_pat (M.pf_pattern pf)) pat_fields in
     let ds = List.map (fun (x, t) -> !!(x, tr_typ ctxt t)) p_scope in
     let fld_assign_stmt lval fld_name =
       let rhs = !!(FldAcc (e_scrut, id fld_name)) in
@@ -777,10 +777,10 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     in
     let stmts =
       List.map2
-        (fun M.{ it = { id = fld_name; pat = _ }; _ } (x, _) ->
+        (fun fld_name (x, _) ->
           let fld_name = get_record_field ctxt (T.normalize p.note) fld_name in
           fld_assign_stmt (LValueUninitVar x) fld_name)
-        pat_fields p_scope
+        (List.map M.pf_id pat_fields) p_scope
     in
     [], p_scope, (ds, stmts)
   | M.WildP -> [], [], ([], [])

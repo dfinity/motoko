@@ -234,7 +234,6 @@ let lib_of_prog f prog : Syntax.lib  =
   let lib = CompUnit.comp_unit_of_prog true prog in
   { lib with Source.note = { lib.Source.note with Syntax.filename = f } }
 
-
 (* Prelude and internals *)
 
 let builtin_error phase what (msgs : Diag.messages) =
@@ -376,17 +375,18 @@ type load_decl_result =
   (Syntax.lib list * Syntax.prog * Scope.scope * Type.typ * Scope.scope) Diag.result
 
 let resolved_import_name ri =
-  match ri.Source.it with
-  | Syntax.Unresolved -> "/* unresolved */"
-  | Syntax.LibPath { Syntax.package = _; path }
-  | Syntax.IDLPath (path, _) -> path
-  | Syntax.PrimPath -> "@prim"
+  Syntax.(match ri.Source.it with
+  | Unresolved -> "/* unresolved */"
+  | LibPath { package = _; path }
+  | IDLPath (path, _)
+  | ImportedValuePath path -> path
+  | PrimPath -> "@prim")
 
 let chase_imports_cached parsefn senv0 imports scopes_map
     : (Syntax.lib list * Scope.scope * scope_cache) Diag.result
   =
   (*
-  This function loads and type-checkes the files given in `imports`,
+  This function loads and type-checks the files given in `imports`,
   including any further dependencies.
 
   The resulting `Syntax.libraries` list is in dependency order. To achieve this,
@@ -453,6 +453,10 @@ let chase_imports_cached parsefn senv0 imports scopes_map
         pending := remove it !pending;
         Diag.return ()
       end
+    | Syntax.ImportedValuePath full_path ->
+      let sscope = Scope.lib full_path Type.blob in
+      senv := Scope.adjoin !senv sscope;
+      Diag.return ()
     | Syntax.IDLPath (f, _) ->
       (* TODO: [Idllib.Pipeline.check_file] will perform a similar pipeline,
          going recursively through imports of the IDL path to parse and
@@ -805,7 +809,7 @@ let adjust_flags () =
       | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
       | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
       (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
-      Flags.rtti := true
+      Flags.rtti := true;
     end
   else
     begin
@@ -814,7 +818,7 @@ let adjust_flags () =
       (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
         invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence");
       (if !Flags.stable_memory_access_limit <> Flags.stable_memory_access_limit_default then
-        invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
+         invalid_flag "--stable-memory-access-limit is only supported with --enhanced-orthogonal-persistence")
     end
 
 (* This transforms the flat list of libs (some of which are classes)

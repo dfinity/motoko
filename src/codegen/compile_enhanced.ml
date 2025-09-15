@@ -19,18 +19,11 @@ open Wasm_exts.Ast
 open Wasm_exts.Types
 open Source
 
-(* Re-shadow Source.(@@), to get Stdlib.(@@) *)
-let (@@) = Stdlib.(@@)
-
-module G = InstrList
-let (^^) = G.(^^) (* is this how we import a single operator from a module that we otherwise use qualified? *)
+open Compile_common
 
 (* WebAssembly pages are 64kb. *)
 let page_size = Int64.of_int (64 * 1024)
 let page_size_bits = 16
-
-(* Our code depends on OCaml int having at least 32 bits *)
-let _ = assert (Sys.int_size >= 32)
 
 (* Scalar Tagging Scheme *)
 
@@ -165,17 +158,6 @@ See documentation of module BitTagged for more detail.
 let ptr_skew = -1L
 
 let ptr_unskew = 1L
-
-(* Generating function names for functions parametrized by prim types *)
-let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
-
-(* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = Wasm.Source.{ it = x; at = no_region }
-
-let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
-
-exception CodegenError of string
-let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
 module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
@@ -425,52 +407,17 @@ The fields fall into the following categories:
     Example: Name and type of locals.
 
 **)
-
-(* Before we can define the environment, we need some auxillary types *)
-
-module Table : sig
-  type 'a t
-  val empty : 'a t
-  val add : 'a t -> 'a -> int * 'a t
-  val length : 'a t -> int
-  val to_list : 'a t -> 'a list
-  val from_list : 'a list ->'a t
-end = struct
-  type 'a t = int * 'a list
-  let empty = (0, [])
-  let add (l, es) e = (l, (l + 1, e :: es))
-  let length (l, es) = l
-  let to_list (l, es) = List.rev es
-  let from_list es = (List.length es, List.rev es)
-end
-
 module E = struct
-
-  (* Utilities, internal to E *)
-  let reg (ref : 'a Table.t ref) (x : 'a) : int32 =
-      let i, t = Table.add !ref x in
-      ref := t;
-      Wasm.I32.of_int_u i
-
-  let reserve_promise (ref : 'a Lib.Promise.t Table.t ref) _s : (int32 * ('a -> unit)) =
-    let p = Lib.Promise.make () in (* For debugging with named promises, use s here *)
-    let (i, t) = Table.add !ref p in
-    let i32 = Wasm.I32.of_int_u i in
-    ref := t;
-    (i32, Lib.Promise.fulfill p)
-
+  include Compile_common.E
 
   (* The environment type *)
-  module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
   module FeatureSet = Set.Make(String)
   module ConstEnv = Env.Make(Const)
 
   module FunEnv = Env.Make(Int32)
-  type local_names = (int32 * string) list (* For the debug section: Names of locals *)
-  type func_with_names = func * local_names
-  type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
+  
   type type_descriptor = {
     candid_data_segment : int32;
     type_offsets_segment : int32;
@@ -505,16 +452,12 @@ module E = struct
     (* Immutable *)
 
     (* Mutable *)
-    func_types : func_type Table.t ref;
-    func_imports : import Table.t ref;
-    other_imports : import Table.t ref;
+    imports : Imports.t;
     exports : export Table.t ref;
-    funcs : (func * string * local_names) Lib.Promise.t Table.t ref;
     func_ptrs : int32 FunEnv.t ref;
     end_of_table : int32 ref;
     globals : (global Lib.Promise.t * string) Table.t ref;
     global_names : int32 NameEnv.t ref;
-    named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     data_segments : string Table.t ref; (* Passive data segments *)
@@ -561,16 +504,12 @@ module E = struct
     mode;
     rts;
     trap_with;
-    func_types = ref Table.empty;
-    func_imports = ref Table.empty;
-    other_imports = ref Table.empty;
+    imports = Imports.empty ();
     exports = ref Table.empty;
-    funcs = ref Table.empty;
     func_ptrs = ref FunEnv.empty;
     end_of_table = ref 0l;
     globals = ref Table.empty;
     global_names = ref NameEnv.empty;
-    named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     data_segments = ref Table.empty;
@@ -626,9 +565,6 @@ module E = struct
   let get_locals (env : t) = Table.to_list !(env.locals)
   let get_local_names (env : t) : (int32 * string) list = Table.to_list !(env.local_names)
 
-  let _add_other_import (env : t) m =
-    ignore (reg env.other_imports m)
-
   let add_export (env : t) e =
     ignore (reg env.exports e)
 
@@ -668,17 +604,9 @@ module E = struct
   let get_globals (env : t) =
     List.map (fun (g,n) -> Lib.Promise.value g) (Table.to_list !(env.globals))
 
-  let reserve_fun (env : t) name =
-    let (j, fill) = reserve_promise env.funcs name in
-    let n = Int32.of_int (Table.length !(env.func_imports)) in
-    let fi = Int32.add j n in
-    let fill_ (f, local_names) = fill (f, name, local_names) in
-    (fi, fill_)
+  let reserve_fun (env : t) = Imports.reserve_fun env.imports
 
-  let add_fun (env : t) name (f, local_names) =
-    let (fi, fill) = reserve_fun env name in
-    fill (f, local_names);
-    fi
+  let add_fun (env : t) = Imports.add_fun env.imports
 
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
@@ -704,51 +632,20 @@ module E = struct
 
   let get_return_arity (env : t) = env.return_arity
 
-  let get_func_imports (env : t) = Table.to_list !(env.func_imports)
-  let get_other_imports (env : t) = Table.to_list !(env.other_imports)
   let get_exports (env : t) = Table.to_list !(env.exports)
-  let get_funcs (env : t) = List.map Lib.Promise.value (Table.to_list !(env.funcs))
+  let get_funcs (env : t) = Imports.get_funcs env.imports
 
-  let func_type (env : t) ty =
-    let rec go i = function
-      | [] ->
-         let (i, t) = Table.add !(env.func_types) ty in
-         env.func_types := t;
-         Int32.of_int i
-      | ty'::tys when ty = ty' -> Int32.of_int i
-      | _ :: tys -> go (i+1) tys
-       in
-    go 0 (Table.to_list !(env.func_types))
+  let func_type (env : t) = Imports.func_type env.imports
 
-  let get_types (env : t) = Table.to_list !(env.func_types)
+  let get_types (env : t) = Imports.get_types env.imports
 
-  let add_func_import (env : t) modname funcname arg_tys ret_tys =
-    if Table.length !(env.funcs) <> 0 then
-      raise (CodegenError "Add all imports before all functions!");
+  let add_func_import (env : t) = Imports.add_func_import env.imports
 
-    let i = {
-      module_name = Lib.Utf8.decode modname;
-      item_name = Lib.Utf8.decode funcname;
-      idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
-    } in
-    let fi = reg env.func_imports (nr i) in
-    let name = modname ^ "." ^ funcname in
-    assert (not (NameEnv.mem name !(env.named_imports)));
-    env.named_imports := NameEnv.add name fi !(env.named_imports)
+  let call_import (env : t) = Imports.call_import env.imports
 
-  let call_import (env : t) modname funcname =
-    let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> G.i (Call (nr fi))
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+  let reuse_import (env : t) = Imports.reuse_import env.imports
 
-  let reuse_import (env : t) modname funcname =
-    let name = modname ^ "." ^ funcname in
-    match NameEnv.find_opt name !(env.named_imports) with
-      | Some fi -> fi
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
+  let finalize_func_imports (env : t) = Imports.finalize_func_imports env.imports
 
   let get_rts (env : t) = env.rts
 
@@ -1373,6 +1270,8 @@ module RTS = struct
     E.add_func_import env "rts" "graph_destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_graph_destabilized_actor" [] [I64Type];
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
+    E.add_func_import env "rts" "alloc_weak_ref" [I64Type] [I64Type];
+    E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
     ()
 
 end (* RTS *)
@@ -1386,7 +1285,8 @@ module GC = struct
 
   let register_globals env =
     E.add_global64 env "__mutator_instructions" Mutable 0L;
-    E.add_global64 env "__collector_instructions" Mutable 0L
+    E.add_global64 env "__collector_instructions" Mutable 0L;
+    E.add_global64 env "__lifetime_instructions" Mutable 0L
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1397,6 +1297,11 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_lifetime_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__lifetime_instructions")))
+  let set_lifetime_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__lifetime_instructions")))
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1414,10 +1319,22 @@ module GC = struct
       set_collector_instructions env
     | _ -> G.nop
 
+  let record_lifetime_instructions env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode)  ->
+      get_mutator_instructions env ^^
+      get_lifetime_instructions env ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      get_collector_instructions env ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      set_lifetime_instructions env
+    | _ -> G.nop
+
   let collect_garbage env =
     record_mutator_instructions env ^^
     E.collect_garbage env false ^^
-    record_collector_instructions env
+    record_collector_instructions env ^^
+    record_lifetime_instructions env
 
 end (* GC *)
 
@@ -2019,6 +1936,7 @@ module Tagged = struct
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | Region
+    | WeakRef
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
@@ -2051,7 +1969,8 @@ module Tagged = struct
     | Region -> 39L
     | OneWordFiller -> 41L
     | FreeSpace -> 43L
-    | ArraySliceMinimum -> 44L
+    | WeakRef -> 45L
+    | ArraySliceMinimum -> 46L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -2262,11 +2181,12 @@ module MutBox = struct
 end
 
 
+
 module Opt = struct
   (* The Option type. Optional values are represented as
 
     1. The null literal being the sentinel null pointer value, see above.
-       
+
     2. ┌──────┬─────────┐
        │ some │ payload │
        └──────┴─────────┘
@@ -2349,6 +2269,63 @@ module Opt = struct
     )
 
 end (* Opt *)
+
+
+module WeakRef = struct
+  (*
+      Weak references
+
+       ┌──────┬─────┬─────────┐
+       │ obj header │ field │
+       └──────┴─────┴─────────┘
+
+     The object header includes the obj tag (Weak) and the forwarding pointer.
+  *)
+
+  let field = Tagged.header_size
+
+  let alloc env =
+    Tagged.obj env Tagged.WeakRef [ compile_unboxed_zero ]
+
+  let load_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env field
+
+  let store_field env =
+    let (set_weak_value, get_weak_value) = new_local env "weak_value" in
+    set_weak_value ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_weak_value ^^
+    Tagged.store_field env field
+
+  let try_inject env e =
+    e ^^
+    Func.share_code1 Func.Never env "weak_try_inject" ("x", I64Type) [I64Type] (fun env get_x ->
+      get_x ^^ Opt.is_null env ^^ E.then_trap_with env "weak reference of null" ^^
+      get_x ^^ BitTagged.if_tagged_scalar env [I64Type]
+       ( E.trap_with env "weak reference of non-reference"
+         (* FUTURE: improve message by decoding scalar tag *)) (* scalar, trap *)
+       ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+          E.if_ env [I64Type]
+            ( E.trap_with env "weak reference of `true`" ) (* true literal, scalar *)
+            ( get_x ^^ Opt.is_some env ^^
+              E.if_ env [I64Type]
+                ( get_x ^^ Tagged.branch_default env [I64Type]
+                  ( get_x ) (* default tag, no wrapping *)
+                  [ (Tagged.Some, Opt.alloc_some env get_x);
+                    (Tagged.BigInt, E.trap_with env "weak reference of Int");
+                    (Tagged.Bits64 Tagged.U, E.trap_with env "weak reference of Nat64");
+                    (Tagged.Bits64 Tagged.S, E.trap_with env "weak reference of Int64");
+                    (Tagged.Bits64 Tagged.F, E.trap_with env "weak reference of Float") ]
+                )
+               ( Opt.alloc_some env get_x ) (* ?ⁿnull for n > 0 *)
+            )
+        )
+    )
+
+
+end
+
 
 module Variant = struct
   (* The Variant type. We store the variant tag in a first word; we can later
@@ -2706,7 +2683,7 @@ module TaggedSmallWord = struct
     )
 
   let vanilla_lit ty v =
-    Int64.(shift_left (of_int v) (to_int (shift_of_type ty)))
+    Int64.(shift_left v (to_int (shift_of_type ty)))
     |> Int64.logor (tag_of_type ty)
 
   (* Wrapping implementation for multiplication and exponentiation. *)
@@ -4912,6 +4889,12 @@ module IC = struct
     E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
     E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+    E.add_func_import env "ic0" "env_var_count" [] [i];
+    E.add_func_import env "ic0" "env_var_name_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
+    E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
+    E.add_func_import env "ic0" "env_var_value_size" [i; i] [i];
+    E.add_func_import env "ic0" "env_var_value_copy" (is 5) [];
     E.add_func_import env "ic0" "time" [] [I64Type];
     if !Flags.global_timer then
       E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
@@ -5264,6 +5247,76 @@ module IC = struct
       system_call env "time"
     | _ ->
       E.trap_with env "cannot get system time when running locally"
+
+  let env_var_names env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "env_var_names" [i] (fun env ->
+        let (set_len, get_len) = new_local env "len" in
+        let (set_array, get_array) = new_local env "array" in
+        system_call env "env_var_count" ^^ set_len ^^
+        Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          let (set_name_len, get_name_len) = new_local env "name_len" in
+          let (set_name, get_name) = new_local env "name" in
+
+          get_i ^^
+          system_call env "env_var_name_size" ^^ set_name_len ^^
+
+          Blob.alloc env Tagged.T get_name_len ^^ set_name ^^
+
+          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
+          get_name ^^
+          store_ptr ^^
+
+          get_i ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_name_len ^^
+          system_call env "env_var_name_copy" ^^
+
+          get_name
+        ) ^^
+        get_array ^^
+        Tagged.allocation_barrier env
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable names when running locally"
+
+  let env_var env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
+        let (set_name_len, get_name_len) = new_local env "name_len" in
+
+        get_name ^^ Blob.len env ^^ set_name_len ^^
+
+        get_name ^^ Blob.payload_ptr_unskewed env ^^
+        get_name_len ^^
+        system_call env "env_var_name_exists" ^^
+        Bool.from_rts_int32 ^^
+        E.if1 I64Type (
+          let (set_value_len, get_value_len) = new_local env "value_len" in
+          let (set_value, get_value) = new_local env "value" in
+
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          system_call env "env_var_value_size" ^^ set_value_len ^^
+          
+          Blob.alloc env Tagged.T get_value_len ^^ set_value ^^
+          
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          get_value ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_value_len ^^
+          system_call env "env_var_value_copy" ^^
+          
+          Opt.inject_simple env get_value)
+        (Opt.null_lit env)
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable when running locally"
 
   let caller env =
     match E.mode env with
@@ -6814,9 +6867,11 @@ module Serialization = struct
   let idl_func      = -22l
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
-  
+
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
+  let idl_weak     = -131l (* UNUSED FOR NOW, might need eventually *)
+
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -6847,6 +6902,7 @@ module Serialization = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Weak t -> go t
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
@@ -6966,7 +7022,9 @@ module Serialization = struct
           add_idx f.typ
         ) fs
       | Mut t ->
-        add_sleb128 idl_alias; add_idx t
+         add_sleb128 idl_alias; add_idx t
+      | Weak t ->
+         add_sleb128 idl_weak; add_idx t
       | _ -> assert false in
 
     Buffer.add_string buf "DIDL";
@@ -7067,7 +7125,12 @@ module Serialization = struct
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
+        (* For now, trap on WeakRef *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        E.then_trap_with env "object_size/Mut: Unexpected tag WeakRef" ^^
         (* Sanity check *)
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
@@ -7164,7 +7227,10 @@ module Serialization = struct
           inc_data_size (compile_unboxed_const 12L) ^^ (* |id| + |page_count| = 8 + 4 *)
           get_x ^^ Region.vec_pages env ^^ size env blob)
       | Mut t ->
-        size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+      | Weak t ->
+         E.trap_with env "buffer_size: Weak" ^^
+         size_alias (fun () -> get_x ^^ WeakRef.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       (* Check 32-bit overflow of buffer_size *)
@@ -7222,6 +7288,8 @@ module Serialization = struct
           (* This is a reference *)
           write_byte env get_data_buf (compile_unboxed_const 1L) ^^
           (* Sanity Checks *)
+          get_tag ^^ compile_eq_const Tagged.(int_of_tag WeakRef) ^^
+          E.then_trap_with env "unvisited mutable data in serialize_go (WeakRef)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
@@ -7337,6 +7405,11 @@ module Serialization = struct
       | Mut t ->
         write_alias (fun () ->
           get_x ^^ MutBox.load_field env ^^ write env t
+          )
+      | Weak t ->
+        E.trap_with env "serialize_go: Weak" ^^
+        write_alias (fun () ->
+          get_x ^^ WeakRef.load_field env ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
@@ -8138,6 +8211,16 @@ module Serialization = struct
           get_result ^^
           get_arg_typ ^^ go env t ^^
           MutBox.store_field env
+          )
+      | Weak t ->
+        E.trap_with env "deserialize_go: Weak" ^^
+        read_alias env (Weak t) (fun get_arg_typ on_alloc ->
+          let (set_result, get_result) = new_local env "result" in
+          WeakRef.alloc env ^^ set_result ^^
+          on_alloc get_result ^^
+          get_result ^^
+          get_arg_typ ^^ go env t ^^
+          WeakRef.store_field env
         )
       | Non ->
         skip get_idltyp ^^
@@ -9967,8 +10050,8 @@ module FuncDec = struct
              since the stabilization can also be run before the upgrade. *)
           Lifecycle.during_explicit_upgrade env ^^
           E.if1 I64Type
-            (compile_unboxed_const (Int64.of_int Flags.(!stabilization_instruction_limit.update_call)))
-            (compile_unboxed_const (Int64.of_int Flags.(!stabilization_instruction_limit.upgrade)))
+            (compile_unboxed_const (Flags.(!stabilization_instruction_limit.update_call)))
+            (compile_unboxed_const (Flags.(!stabilization_instruction_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
@@ -9980,8 +10063,8 @@ module FuncDec = struct
         Func.of_body env [] [I64Type] (fun env ->
           Lifecycle.during_explicit_upgrade env ^^
           E.if1 I64Type
-            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.update_call)))
-            (compile_unboxed_const (Int64.of_int Flags.(!stable_memory_access_limit.upgrade)))
+            (compile_unboxed_const (Flags.(!stable_memory_access_limit.update_call)))
+            (compile_unboxed_const (Flags.(!stable_memory_access_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
@@ -10323,6 +10406,9 @@ module Persistence = struct
           begin
             use_candid_destabilization env ^^
             E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
+            if not (!Flags.explicit_enhanced_orthogonal_persistence) then
+              E.trap_with env "Detected implicit upgrade from classical orthogonal persistence to enhanced orthogonal persistence. Recompile with explicit flag --enhanced-orthogonal-persistence and redeploy to enable this irreversible migration."
+            else G.nop ^^
             OldStabilization.load env actor_type (NewStableMemory.upgrade_version_from_candid env) ^^
             EnhancedOrthogonalPersistence.initialize env actor_type
           end
@@ -10692,19 +10778,20 @@ let nat64_to_int64 n =
   then sub_big_int n (power_int_positive_int 2 64)
   else n
 
+
 let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt (Numerics.Nat.to_big_int n)
-  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Numerics.Int_8.to_int n))
-  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
-  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
-  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
-  | Int32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int32 (Numerics.Int_32.to_int n))
-  | Nat32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat32 (Numerics.Nat32.to_int n))
+  | Int8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int8 (Numerics.Int_8.to_int64 n))
+  | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int64 n))
+  | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int64 n))
+  | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int64 n))
+  | Int32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int32 (Numerics.Int_32.to_int64 n))
+  | Nat32Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat32 (Numerics.Nat32.to_int64 n))
   | Int64Lit n    -> Const.Word64 (Type.Int64, (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n)))
   | Nat64Lit n    -> Const.Word64 (Type.Nat64, (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n))))
-  | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char c)
+  | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char (Int64.of_int c))
   | NullLit       -> Const.Null
   | TextLit t     -> Const.Text t
   | BlobLit t     -> Const.Blob t
@@ -11922,8 +12009,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "Float->Text", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
-    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 6) ^^
-    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 0) ^^
+    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 6L) ^^
+    compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Nat8 0L) ^^
     E.call_import env "rts" "float_fmt"
 
   | OtherPrim "fmtFloat->Text", [f; prec; mode] ->
@@ -12038,6 +12125,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_lifetime_instructions", [] ->
+    SR.Vanilla,
+    GC.get_lifetime_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_upgrade_instructions", [] ->
     SR.Vanilla,
     UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
@@ -12054,6 +12145,31 @@ and compile_prim_invocation (env : E.t) ae p es at =
     assert (!Flags.enhanced_orthogonal_persistence);
     SR.Vanilla,
     Persistence.in_upgrade env
+
+  | OtherPrim "alloc_weak_ref", [target] ->
+    SR.Vanilla,
+    WeakRef.try_inject env (compile_exp_vanilla env ae target) ^^
+    E.call_import env "rts" "alloc_weak_ref"
+
+  | OtherPrim "weak_get", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    WeakRef.load_field env
+
+  | OtherPrim "weak_ref_is_live", [weak_ref] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae weak_ref ^^
+    E.call_import env "rts" "weak_ref_is_live" ^^
+    Bool.from_rts_int32
+
+  | OtherPrim "env_var_names", [] ->
+    SR.Vanilla,
+    IC.env_var_names env
+
+  | OtherPrim "env_var", [name] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae name ^^
+    IC.env_var env
 
   (* Regions *)
 
@@ -13632,11 +13748,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   IC.default_exports env;
 
-  let func_imports = E.get_func_imports env in
-  let ni = List.length func_imports in
-  let ni' = Int32.of_int ni in
-
-  let other_imports = E.get_other_imports env in
+  let func_imports, ni, remapping = E.finalize_func_imports env in
 
   let initial_memory_pages = Int64.(add (div dynamic_heap_start page_size) 1L) in
   let memories = E.get_memories env initial_memory_pages in
@@ -13656,7 +13768,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let table_sz = E.get_end_of_table env in
 
-  let module_ = {
+  let module_ = rename_funcs remapping {
       types = List.map nr (E.get_types env);
       funcs = List.map (fun (f,_,_) -> f) funcs;
       tables = [ nr { ttype = TableType ({min = table_sz; max = Some table_sz}, FuncRefType) } ];
@@ -13664,7 +13776,7 @@ and conclude_module env set_serialization_globals start_fi_o =
       start = Some (nr rts_start_fi);
       globals = E.get_globals env;
       memories;
-      imports = func_imports @ other_imports;
+      imports = func_imports;
       exports = E.get_exports env;
       datas
     } in
@@ -13673,10 +13785,10 @@ and conclude_module env set_serialization_globals start_fi_o =
     let open Wasm_exts.CustomModule in
     { module_;
       dylink0 = [];
-      name = { empty_name_section with function_names =
-                 List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
-               locals_names =
-                 List.mapi (fun i (f,_,ln) -> Int32.(add ni' (of_int i), ln)) funcs; };
+      name = { empty_name_section with
+        function_names = List.mapi (fun i (f,n,_) -> Int32.(add ni (of_int i), n)) funcs;
+        locals_names = List.mapi (fun i (f,_,ln) -> Int32.(add ni (of_int i), ln)) funcs;
+      };
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);

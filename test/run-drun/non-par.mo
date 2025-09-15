@@ -1,4 +1,4 @@
-import { call_raw; debugPrint; principalOfActor; errorMessage; errorCode } = "mo:⛔";
+import { call_raw; debugPrint; principalOfActor; replyDeadline; errorMessage; errorCode } = "mo:⛔";
 import Cycles = "cycles/cycles";
 // This is a copy of `par.mo`, but with legacy `Cycles.add`. It should output equivalent results.
 
@@ -20,7 +20,7 @@ actor A {
 
 
     public func oneshot() {
-        debugPrint ("oneshot deadline set: " # debug_show true); // faking
+        debugPrint ("oneshot deadline set: " # debug_show (0 != replyDeadline()));
         debugPrint ("oneshot cycles: " # debug_show(Cycles.available()));
     };
 

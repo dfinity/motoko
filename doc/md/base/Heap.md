@@ -1,4 +1,4 @@
-# Heap
+# base/Heap
 Class `Heap<X>` provides a priority queue of elements of type `X`.
 
 The class wraps a purely-functional implementation based on a leftist heap.

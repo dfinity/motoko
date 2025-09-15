@@ -48,14 +48,22 @@ The argument to `shared` is just a pattern. You can rewrite the above to use pat
 
 Simple actor declarations do not let you access their installer. If you need access to the installer of an actor, rewrite the actor declaration as a zero-argument actor class instead.
 
-<!---- needs an example --->
+```motoko no-repl
+shared(msg) actor class InstallerAware() {
+  let installer = msg.caller; // This is the principal of the installer
+
+  public func whoInstalled() : async Principal {
+    installer
+  };
+}
+```
 
 :::
 
 
 ## Recording principals
 
-Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](https://internetcomputer.org/docs/motoko/base/Principal.md) base library.
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../core/Principal) core module.
 
 The data type of `Principal` in Motoko supports equality, ordering, and hashing. `Principal`s both sharable and stable, meaning you can compare them for equality directly.
 
@@ -64,4 +72,4 @@ Below is an example of how you can record a function's caller `Principal`s in a 
 ``` motoko file=../examples/RecordPrincipals.mo
 ```
 
-<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
+

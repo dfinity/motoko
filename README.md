@@ -13,7 +13,7 @@ A safe, simple, actor-based programming language for building [Internet Computer
 * [Language manual](doc/md/reference/language-manual.md)
 * [Concrete syntax](doc/md/examples/grammar.txt)
 * [Documentation sources](doc/md/)
-* [Base library documentation](doc/md/base/index.md)
+* [Base package documentation](doc/md/base/index.md)
 * [_Motoko-san_: a prototypical deductive verifier](src/viper/README.md)
 
 ## Introduction
@@ -46,7 +46,8 @@ A safe, simple, actor-based programming language for building [Internet Computer
 
 ## Related Repositories
 
-* [Base library](https://github.com/dfinity/motoko-base)
+* Next-Gen [Core package](https://github.com/dfinity/motoko-core)
+* Legacy [Base package](https://github.com/dfinity/motoko-base)
 * [Vessel package manager](https://github.com/dfinity/vessel)
 * [Example projects](https://github.com/dfinity/examples/tree/master/motoko)
 * [ICP Ninja, online authoring of canisters](https://icp.ninja)

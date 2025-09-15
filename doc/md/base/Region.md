@@ -1,4 +1,4 @@
-# Region
+# base/Region
 Byte-level access to isolated, (virtual) stable memory _regions_.
 
 This is a moderately lightweight abstraction over IC _stable memory_ and supports persisting

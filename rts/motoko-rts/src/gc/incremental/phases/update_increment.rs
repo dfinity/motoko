@@ -124,6 +124,7 @@ impl<'a> UpdateIncrement<'a> {
                     length
                 },
             );
+
             if object.tag() < TAG_ARRAY_SLICE_MIN || self.time.is_over() {
                 return;
             }

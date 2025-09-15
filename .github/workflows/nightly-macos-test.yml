@@ -8,7 +8,7 @@ jobs:
   common-tests:
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run Common Tests
         uses: ./.github/actions/test-blueprint
@@ -21,7 +21,7 @@ jobs:
   gc-tests:
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run GC Tests
         uses: ./.github/actions/test-blueprint
@@ -37,7 +37,7 @@ jobs:
         build_type: [release, debug]
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run Tests
         uses: ./.github/actions/test-blueprint
@@ -47,8 +47,49 @@ jobs:
           test-name: macos-13-${{ matrix.build_type }}-tests
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+  motoko-core-tests:
+    needs: systems-go-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get `motoko` Repo
+        uses: actions/checkout@v5
+      - name: Populate `moc`
+        uses: ./.github/actions/test-blueprint
+        with:
+          os: ubuntu-latest
+          test-target: moc
+          test-name: fetch-moc
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build `moc`
+        run: |
+          nix build .#moc --print-out-paths
+      - name: Save the `test-blueprint` action
+        # This is needed by the "Post Populate `moc`" step (cleanup)
+        # but since the checkout of `motoko-core` destroys the `pwd` contents
+        # we have to keep it elsewhere and restore later.
+        run: cp -r ./.github/actions/test-blueprint ..
+      - name: Get `motoko-core` Repo
+        uses: actions/checkout@v5
+        with:
+          repository: dfinity/motoko-core
+          fetch-depth: "0"
+      - name: Restore the `test-blueprint` action
+        run:  mv ../test-blueprint ./.github/actions
+      - name: Set up `mops`
+        uses: dfinity/motoko-core/.github/actions/setup@main
+      - name: Set up `mops` cache
+        run: |
+          npx ic-mops --version
+          npx ${DFX_MOC_PATH} --version
+      - name: Fixup `mops` cache
+        run: |
+          ln -sf /nix/store/*-moc/bin/moc $(cat .mops/moc-*)
+          npx ${DFX_MOC_PATH} --version
+      - name: Run `motoko-core` Tests
+        run: npm test
+
   create-issue:
-    needs: [common-tests, gc-tests, systems-go-tests]
+    needs: [common-tests, gc-tests, systems-go-tests, motoko-core-tests]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest # No need to run on macOS-13, the ubuntu runner should be cheaper to run.
     steps:

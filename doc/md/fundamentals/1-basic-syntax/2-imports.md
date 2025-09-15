@@ -9,23 +9,23 @@ In Motoko, related code modules are organized into packages. Modules can be impo
 
 Imports should be placed at the top of the source file. They enable code reuse from external libraries or modules, helping to improve maintainability and organization. You can import from:
 
-**1. Standard modules provided by the base library.**
+**1. Standard modules provided by the core package.**
 
 ```motoko no-repl
-import Text "mo:base/Text";
-import Nat "mo:base/Nat";
-import Math "mo:base/Float";
+import Text "mo:core/Text";
+import Nat "mo:core/Nat";
+import Math "mo:core/Float";
 ```
 
-The package `base` is Motoko's standard library.
-This imports the `Text`, `Nat` and `Float` modules from package `base` under the local names `Text`, `Nat` and `Math`.
+The package `core` is Motoko's standard library.
+This imports the `Text`, `Nat` and `Float` modules from package `core` under the local names `Text`, `Nat` and `Math`.
 
 While not required, it's considered good practice to import a module using its package-defined name. This helps with consistency and readability across codebases.
 
 **2. Packages installed via a package manager (such as Mops).**
 
 ```motoko no-repl
-import Iter "mo:base/itertools";
+import Iter "mo:itertools";
 ```
 
 The module `Iter` is imported from a third-party package `itertools`.
@@ -39,9 +39,13 @@ import Utils "Utils";
 **You can also import specific functions from a module:**
 
 ```motoko no-repl
-import { compare } "mo:base/Nat";
+import { compare } "mo:core/Nat";
+```
+
+**You can also import specific types from a module:**
+
+```motoko no-repl
+import { type Result; mapOk } "mo:core/Result";
 ```
 
 Learn more about [modules and imports](https://internetcomputer.org/docs/motoko/fundamentals/basic-syntax/imports).
-
-<img src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiZGZpbml0eVwvYWNjb3VudHNcLzAxXC80MDAwMzA0XC9wcm9qZWN0c1wvNFwvYXNzZXRzXC8zOFwvMTc2XC9jZGYwZTJlOTEyNDFlYzAzZTQ1YTVhZTc4OGQ0ZDk0MS0xNjA1MjIyMzU4LnBuZyJ9:dfinity:9Q2_9PEsbPqdJNAQ08DAwqOenwIo7A8_tCN4PSSWkAM?width=2400" alt="Logo" width="150" height="150" />

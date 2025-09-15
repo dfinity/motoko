@@ -1,4 +1,4 @@
-# Int8
+# base/Int8
 Provides utility functions on 8-bit signed integers.
 
 :::info Function form for higher-order use
