@@ -34,9 +34,9 @@ jobs:
             echo "Error: inputs.version (draft suffix) is empty"
             exit 1
           fi
-          # Allow only letters and hyphens
-          if ! printf '%s' "${SUFFIX}" | grep -Eq '^[A-Za-z-]+$'; then
-            echo "Error: inputs.version must contain only letters and hyphens (e.g., experimental-stable-functions)"
+          # Allow only letters, digits, and hyphens
+          if ! printf '%s' "${SUFFIX}" | grep -Eq '^[A-Za-z0-9-]+$'; then
+            echo "Error: inputs.version must contain only letters, digits, and hyphens (e.g., experimental-foo-2)"
             exit 1
           fi
 
