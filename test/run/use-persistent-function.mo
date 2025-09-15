@@ -1,5 +1,3 @@
-import Prim "mo:⛔";
-
 type Order = { #less; #equal; #greater };
 
 module Array {
