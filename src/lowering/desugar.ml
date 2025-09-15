@@ -924,16 +924,6 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
-and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
-and is_not_typ_mixinD d = match d.it with | S.TypD _ -> false | S.IncludeD _ -> false | _ -> true
-
-and as_tuple_of_vars pat =
-  let ids = match pat.it with
-  | TupP ps -> List.map (fun p -> match p.it with | VarP id | AnnotP ({ it=VarP id; _}, _) -> id | _ -> assert false) ps
-  | _ -> Wasm.Sexpr.print 80 (Arrange.pat pat); assert false in
-  let tys = T.as_seq pat.note in
-  List.map2 (fun a b -> a, b) ids tys
-
 and decs ds = List.concat_map dec ds
 
 and dec d = List.map (fun ir_dec -> { it = ir_dec; at = d.at; note = () }) (dec' d)
@@ -962,7 +952,7 @@ and dec' d =
 
     (* TODO: Fix the positions on the generated let here *)
     let ir_decs = List.concat_map dec (List.map (fun df -> df.it.S.dec) decs) in
-    let renamed_decs, _  = Subst_var.decs rho ir_decs in
+    let renamed_decs, _ = Subst_var.decs rho ir_decs in
     (letP renamed_pat (exp args)).it :: List.map (fun d -> d.it) renamed_decs
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in

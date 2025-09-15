@@ -2877,8 +2877,6 @@ and vis_val_id src id (xs, ys) : visibility_env =
 
 (* Object/Scope transformations *)
 
-(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
-
 and scope_of_object env (fields : T.field list) =
   List.fold_left (fun acc field ->
       match field with
@@ -2888,6 +2886,7 @@ and scope_of_object env (fields : T.field list) =
          Scope.{ acc with val_env = T.Env.add lab (t, Source.no_region, Scope.FieldReference) acc.val_env }
     ) Scope.empty fields
 
+(* TODO: remove by merging conenv and valenv or by separating typ_fields *)
 and object_of_scope env sort dec_fields scope at =
   let pub_typ, pub_val = pub_fields dec_fields in
   let tfs =
