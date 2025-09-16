@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.16.2 (2025-09-12)
+
 * motoko (`moc`)
 
   * Added a warning for redundant type instantiations in generic function calls (#5468).
