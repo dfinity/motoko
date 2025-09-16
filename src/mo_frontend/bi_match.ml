@@ -261,7 +261,7 @@ let bi_match_typs ctx =
     | Tup ts1, Tup ts2 ->
       bi_match_list bi_match_typ rel eq inst any ts1 ts2
     | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-      if rel_sort s1 s2 tbs1 && c1 = c2 then
+      if rel_func_sort ~eq:(rel == eq) s1 s2 tbs1 && c1 = c2 then
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right

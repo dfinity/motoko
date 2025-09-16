@@ -1223,7 +1223,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    (rel_sort s1 s2 tbs1 || incompatible_func_sorts d t1 t2) &&
+    (rel_func_sort ~eq:(rel == eq) s1 s2 tbs1 || incompatible_func_sorts d t1 t2) &&
     (c1 = c2 || incompatible_bounds d t1 t2) &&
     (match rel_binds d eq eq tbs1 tbs2 with
      | Some ts ->
@@ -1238,7 +1238,10 @@ let rec rel_typ d rel eq t1 t2 =
   | _, _ -> incompatible_types d t1 t2
   end
 
-and rel_sort s1 s2 tbs1 =
+and rel_func_sort ~eq s1 s2 tbs1 =
+  if eq then s1 = s2 else sub_func_sort s1 s2 tbs1
+
+and sub_func_sort s1 s2 tbs1 =
   match s1, s2 with
   | Local Stable, Local Flexible -> 
     not (List.exists (fun b -> b.sort = Type) tbs1)
@@ -1593,7 +1596,7 @@ let rec combine rel lubs glbs t1 t2 =
       (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
       with Mismatch -> assert (rel == glbs); Non)
     | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) ->
-      begin match combine_sort rel lubs glbs s1 s2 bs1 bs2 with
+      begin match combine_func_sort rel lubs glbs s1 s2 bs1 bs2 with
       | Some s when c1 = c2 && eq_binds bs1 bs2 &&
           List.(length ts11 = length ts21 && length ts12 = length ts22) ->
         let ts = open_binds bs1 in
@@ -1650,11 +1653,11 @@ let rec combine rel lubs glbs t1 t2 =
     | _, _ ->
       if rel == lubs then Any else Non
 
-and combine_sort rel lubs glbs s1 s2 bs1 bs2 =
+and combine_func_sort rel lubs glbs s1 s2 bs1 bs2 =
   if s1 = s2 then Some s1 else
   if rel == glbs then None else
   let s = Local Flexible in
-  if rel_sort s1 s bs1 && rel_sort s2 s bs2 then Some s
+  if sub_func_sort s1 s bs1 && sub_func_sort s2 s bs2 then Some s
   else None
 
 and cons_if b x xs = if b then x::xs else xs
