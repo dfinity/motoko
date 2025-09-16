@@ -1,0 +1,1 @@
+persistent-func-type-argument-and-return.mo:6.40-6.42: type error [M0220], this function should be declared `persistent`
