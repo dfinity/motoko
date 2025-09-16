@@ -590,7 +590,7 @@ and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it wit
   | _ -> [df.it.S.stab]
 
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
-  (* let candid = build_candid ts obj_typ in *)
+  let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let stabs = List.concat_map build_stabs es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
@@ -706,8 +706,7 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       with_self n.it obj_typ ds
     | None -> ds in
   let meta =
-    I.{ candid = { args = ""; service = ""};
-        sig_ = T.string_of_stab_sig sig_} in
+    I.{ candid; sig_ = T.string_of_stab_sig sig_} in
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) mem_fields) in
     blockE
