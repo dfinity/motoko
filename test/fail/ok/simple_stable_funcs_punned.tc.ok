@@ -1,0 +1,8 @@
+simple_stable_funcs_punned.mo:80.14-80.16: type error [M0131], variable s1 is declared stable but has non-stable type
+  ((Int, Int) -> Order, ?(Int, List<Int>))
+simple_stable_funcs_punned.mo:91.14-91.16: type error [M0131], variable s1 is declared stable but has non-stable type
+  ((Int, Int) -> Order, ?(Int, List<Int>))
+simple_stable_funcs_punned.mo:110.41-110.43: type error [M0096], expression of type
+  (inc, ?(Int, List<Int>))
+cannot produce expected type
+  (dec, ?(Int, List<Int>))

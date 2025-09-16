@@ -3464,6 +3464,24 @@ and gather_dec env scope dec : Scope.t =
       obj_env = obj_env;
       fld_src_env = scope.fld_src_env;
     }
+  (* pun types of stable functions *)
+  | LetD (
+      {it = VarP id; _},
+      {it = FuncE (_, { it = T.Stable _; _ }, typ_binds, pat, typ_opt, _sugar, _); at; _},
+      None
+) ->
+    if T.Env.mem id.it scope.Scope.typ_env then
+      error_duplicate env "type " id;
+    let pre_k = T.Abs ([], T.Pre) in
+    let c = Cons.fresh id.it pre_k in
+    Scope.{
+      val_env = scope.val_env;
+      typ_env = T.Env.add id.it c scope.typ_env;
+      con_env = T.ConSet.disjoint_add c scope.con_env;
+      lib_env = scope.lib_env;
+      obj_env = scope.obj_env;
+      fld_src_env = scope.fld_src_env;
+    }
   | LetD (pat, _, _) -> gather_pat env scope pat
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
@@ -3564,6 +3582,30 @@ and infer_dec_typdecs env dec : Scope.t =
       con_env = obj_scope.con_env;
       val_env = singleton id (object_of_scope env obj_sort.it dec_fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
+    }
+  (* pun types of stable functions *)
+  | LetD (
+      {it = VarP id; _},
+      {it = FuncE (_, { it = T.Stable _; _ }, typ_binds, pat, typ_opt, _sugar, _); at; _},
+      None
+) ->
+    let env = { env with pre = true } in
+    let c = T.Env.find id.it env.typs in
+    let typ = match typ_opt with
+      | Some typ -> typ
+      | None -> {it = TupT []; at = no_region; note = T.Pre}
+    in
+    let cs, tbs, te, ce = check_typ_binds env typ_binds in
+    let ts2 = as_domT typ in
+    let t1, ve = infer_pat_exhaustive warn env pat in
+    let env' = adjoin_typs (adjoin_vals {env with pre = true} ve) te ce in
+    let ts2 = List.map (check_typ_item env') ts2 in
+    let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let func_type  = T.Func (T.Stable id.it, T.Returns, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2) in
+    let k = T.Def ([], func_type) in
+    Scope.{ empty with
+      typ_env = T.Env.singleton id.it c;
+      con_env = infer_id_typdecs env dec.at { id with note = None} c k;
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
