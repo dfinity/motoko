@@ -706,7 +706,8 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
       with_self n.it obj_typ ds
     | None -> ds in
   let meta =
-    I.{ candid; sig_ = T.string_of_stab_sig sig_} in
+    I.{ candid = candid;
+        sig_ = T.string_of_stab_sig sig_} in
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) mem_fields) in
     blockE
@@ -986,7 +987,7 @@ and dec' d =
         T.promote (T.open_ inst rng)
       | _ -> assert false
     in
-    let varPat = {it = I.VarP id'.it; at = d.at; note = fun_typ } in
+    let varPat = {it = I.VarP id'.it; at = at; note = fun_typ } in
     let args, eo, wrap, control, _n_res = to_args n.S.note_typ op exp_opt p in
     let body = if s.it = T.Actor
       then
