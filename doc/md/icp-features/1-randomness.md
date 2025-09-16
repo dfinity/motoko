@@ -10,14 +10,14 @@ The network provides a **verifiable random function (VRF)** through the [managem
 
 The VRF generates 256-bit random `Blob`s in each execution round. A canister can request one of these random `Blob`s via the management canister's `raw_rand` method.
 
-<!--PRNG to be mentioned here when the new base library is published? -->
+<!--PRNG to be mentioned here when the new core package is published? -->
 
 Motoko provides multiple options for incorporating randomness into your code, each suited for different scenarios. The right method for your application depends on its security, performance, and reproducibility requirements.
 
 | Method              | Functionality     | Security level      | Example use cases        | Key features |
 |--------------------|-------------------|---------------------|------------------|--------------|
 | `raw_rand` function    | Returns 32 bytes of cryptographic randomness from ICP’s VRF.   | Strong cryptographic guarantees, ensures unpredictability.  | Secure key generation, fairness-compliant applications, unpredictable randomness. | Directly retrieves randomness from the network’s consensus layer, 32-byte (256-bit) `Blob`s, asynchronous, returns fresh entropy each call. |
-| [`Random` module](https://internetcomputer.org/docs/motoko/base/Random)   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
+| [`Random` module](https://internetcomputer.org/docs/motoko/core/Random)   | High-level wrapper for `raw_rand`, providing finite random pools.      | Uses `raw_rand`, but requires careful handling to avoid entropy reuse.  | Random number generation, shuffling, simulations. | Simplifies number generation, includes finite entropy pools, requires fresh `raw_rand` calls when exhausted. |
 | [`fuzz` package](https://mops.one/fuzz)     | Pseudo-random generator that can be seeded with time, `Blob`s, or custom functions. | Security depends on the seed. | Fuzz testing, procedural generation, simulations, dynamic randomness. | Default seed is `Time.now` (low security), can be initialized with `raw_rand` for high security, supports custom generators. |
 | [`idempotency-keys` package](https://mops.one/idempotency-keys)  | Generates UUID v4 from a 16-byte random seed. | Security depends on the provided entropy.   | Unique transaction IDs, idempotency, database keys.   | Produces RFC4122-compliant UUIDs, requires secure entropy source, simple API `UUID.generateV4(seed)`. |
 
@@ -45,20 +45,22 @@ persistent actor {
 
 ## `Random`
 
-The [`Random` module](https://internetcomputer.org/docs/motoko/base/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
+The [`Random` module](https://internetcomputer.org/docs/motoko/core/Random) provides an interface that wraps the `raw_rand` function. Since `raw_rand` returns raw bytes, the `Random` module simplifies working with this entropy by offering structured methods for consuming randomness efficiently. The module includes `Random.blob()` for fetching fresh 32-byte entropy and `Random.Finite`, which provides a finite source of randomness that can be used until exhausted. When entropy runs out, a new random `Blob` must be fetched asynchronously.
 
 Below is an example demonstrating how to generate a random boolean using `Random.Finite`.
 
 ```motoko no-repl
-import Random "mo:base/Random";
+import Random "mo:core/Random";
 
 persistent actor {
-  public func randomBoolean() : async ?Bool {
-    let entropy = await Random.blob();
-    let finite = Random.Finite(entropy);
-    // Consumes 1 byte of entropy
-    finite.coin();
-  };
+  transient let random = Random.crypto();
+
+  public func main() : async () {
+    let coin = await* random.bool(); // true or false
+    let byte = await* random.nat8(); // 0 to 255
+    let number = await* random.nat64(); // 0 to 2^64
+    let numberInRange = await* random.natRange(0, 10); // 0 to 9
+  }
 }
 ```
 
@@ -73,11 +75,11 @@ The following example demonstrates initialization with the default seed and gene
 ```motoko no-repl
 import Fuzz "mo:fuzz";
 
-  let fuzz = Fuzz.Fuzz();
+let fuzz = Fuzz.Fuzz();
 
-  public shared query func randomNat() : async Nat {
-    fuzz.nat.random();
-  };
+public shared query func randomNat() : async Nat {
+  fuzz.nat.random();
+};
 ```
 
 ## `idempotency-keys`
@@ -90,7 +92,7 @@ The following example demonstrates generating a UUID v4 using `idempotency-keys`
 
 ```motoko no-repl
 import UUID "mo:idempotency-keys/UUID";
-import Random "mo:base/Random";
+import Random "mo:core/Random";
 
 persistent actor {
   public func generateUUID() : async Text {
@@ -103,6 +105,6 @@ persistent actor {
 ## Resources
 
 - [`raw_rand`](https://internetcomputer.org/docs/references/ic-interface-spec#ic-raw_rand)
-- [`Random`](https://internetcomputer.org/docs/motoko/base/Random)
+- [`Random`](https://internetcomputer.org/docs/motoko/core/Random)
 - [`fuzz`](https://mops.one/fuzz)
 - [`idempotency-keys`](https://mops.one/idempotency-keys)

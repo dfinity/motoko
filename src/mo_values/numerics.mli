@@ -22,6 +22,10 @@ sig
   val compare : t -> t -> int
   val to_int : t -> int
   val of_int : int -> t
+  val to_int32 : t -> Int32.t
+  val of_int32 : Int32.t -> t
+  val to_int64 : t -> Int64.t
+  val of_int64 : Int64.t -> t
   val to_big_int : t -> Big_int.big_int
   val of_big_int : Big_int.big_int -> t
   val of_string : string -> t

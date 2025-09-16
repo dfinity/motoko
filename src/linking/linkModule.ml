@@ -112,13 +112,9 @@ exception LinkError of string
 exception TooLargeDataSegments of string
 
 
-(* tail-recursive map *)
-(* TODO: can be replaced by [@tail_mod_cons] map (OCaml 0.4.14)/List.map once we upgrade OCaml *)
-let safe_map f l = List.rev (List.rev_map f l)
+let safe_map = Lib.List.safe_map
 
 type imports = (int32 * name) list
-
-let phrase f x = { x with it = f x.it }
 
 let map_module f (em : extended_module) = { em with module_ = f em.module_ }
 let map_name_section f (em : extended_module) = { em with name = f em.name }
@@ -351,41 +347,6 @@ let calculate_renaming n_imports1 n_things1 n_imports2 resolved12 resolved21 : (
 
 
 (* AST traversals *)
-
-let rename_funcs rn : module_' -> module_' = fun m ->
-  let var' = rn in
-  let var = phrase var' in
-
-  let rec instr' = function
-    | Call v -> Call (var v)
-    | Block (ty, is) -> Block (ty, instrs is)
-    | Loop (ty, is) -> Loop (ty, instrs is)
-    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-    | i -> i
-  and instr i = phrase instr' i
-  and instrs is = safe_map instr is in
-
-  let func' f = { f with body = instrs f.body } in
-  let func = phrase func' in
-  let funcs = safe_map func in
-
-  let edesc' = function
-    | FuncExport v -> FuncExport (var v)
-    | e -> e in
-  let edesc = phrase edesc' in
-  let export' e = { e with edesc = edesc e.edesc } in
-  let export = phrase export' in
-  let exports = safe_map export in
-
-  let segment' f s = { s with init  = f s.init } in
-  let segment f = phrase (segment' f) in
-
-  { m with
-    funcs = funcs m.funcs;
-    exports = exports m.exports;
-    start = Option.map var m.start;
-    elems = safe_map (segment (safe_map var)) m.elems;
-  }
 
 let rename_globals rn : module_' -> module_' = fun m ->
   let var' = rn in

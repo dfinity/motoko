@@ -11,6 +11,7 @@
     // // See https://github.com/rust-lang/rust/issues/90599
     simd_wasm64,
     arbitrary_self_types_pointers,
+    stmt_expr_attributes
 )]
 #![allow(internal_features)]
 

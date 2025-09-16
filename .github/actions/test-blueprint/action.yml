@@ -35,7 +35,7 @@ runs:
   using: "composite"
   steps:
     - name: Free Disk Space (Ubuntu)
-      if: startsWith(inputs.os, 'ubuntu-')
+      if: inputs.os == 'ubuntu-latest' || inputs.os == 'ubuntu-24.04-arm'
       uses: jlumbroso/free-disk-space@main
       with:
         swap-storage: false

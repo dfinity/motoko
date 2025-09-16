@@ -7,6 +7,7 @@ sig
   exception Clash of key
 
   val dom : 'a t -> Dom.t
+  val restrict : Dom.t -> 'a t -> 'a t
   val keys : 'a t -> key list
   val from_list : (key * 'a) list -> 'a t
   val from_list2 : key list -> 'a list -> 'a t
@@ -25,6 +26,9 @@ struct
   exception Clash of key
 
   let dom env = List.fold_left (fun s (x, _) -> Dom.add x s) Dom.empty (bindings env)
+  let restrict dom env = Dom.fold (fun k acc -> match find_opt k env with
+    | Some v -> add k v acc
+    | None -> acc) dom empty
   let keys env = List.map fst (bindings env)
   let from_list kxs = List.fold_left (fun env (k, x) -> add k x env) empty kxs
   let from_list2 ks xs = List.fold_left2 (fun env k x -> add k x env) empty ks xs

@@ -2,6 +2,10 @@ open Mo_types
 
 open Type
 
+module Pretty = Type.MakePretty(Type.ElideStampsAndHashes)
+
+let migration_link = "https://internetcomputer.org/docs/motoko/fundamentals/actors/compatibility#explicit-migration-using-a-migration-function"
+
 (* Signature matching *)
 
 let cat = "Compatibility"
@@ -10,43 +14,50 @@ let cat = "Compatibility"
    c.f. (simpler) Types.match_sig.
 *)
 
-let display_typ = Lib.Format.display Type.pp_typ
+let display_typ = Lib.Format.display Pretty.pp_typ
 
-let display_typ_expand = Lib.Format.display Type.pp_typ_expand
+let display_typ_expand = Lib.Format.display Pretty.pp_typ_expand
 
 let error_discard s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\n cannot be implicitly discarded. This may cause data loss. Use an explicit migration function."
+      (Format.asprintf "the stable variable `%s` of the previous version cannot be implicitly discarded. The variable can only be dropped by an explicit migration function, please see %s"
         tf.lab
-        display_typ tf.typ))
+        migration_link))
 
-let error_sub s tf1 tf2 =
+let error_sub s tf1 tf2 explanation =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0170" cat
-      (Format.asprintf "stable variable %s of previous type%a\ncannot be consumed at new type%a without data loss. Use an explicit migration function."
+      (Format.asprintf "the new type of stable variable `%s` is not compatible with the previous version.\n The previous type%a\n is not a subtype of%a\n because: %s.\n Write an explicit migration function, please see %s."
         tf1.lab
         display_typ_expand tf1.typ
-        display_typ_expand tf2.typ))
+        display_typ_expand tf2.typ
+        (Pretty.string_of_explanation explanation)
+        migration_link
+))
+
+let error_stable_sub s tf1 tf2 explanation =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0216" cat
+      (Format.asprintf "the new type of stable variable `%s` implicitly drops data of the previous version. \n The previous type%a\n is not a stable subtype of%a because: %s.\n The data can only be dropped by an explicit migration function, please see %s."
+        tf1.lab
+        display_typ_expand tf1.typ
+        display_typ_expand tf2.typ
+        (Pretty.string_of_explanation explanation)
+        migration_link))
 
 let error_required s tf =
   Diag.add_msg s
     (Diag.error_message Source.no_region "M0169" cat
-      (Format.asprintf "stable variable %s of previous type%a\n is required but not provided."
+      (Format.asprintf "the previous program version does not contain the stable variable %s. The migration function cannot require this variable as input, please see %s."
         tf.lab
-        display_typ tf.typ))
+        migration_link))
 
 
-(* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
+(*
    - Mutability of stable fields can be changed because they are never aliased.
-   - Stable fields can be dropped, however, with a warning of potential data loss.
-     For this, we give up the transitivity property of upgrades.
-
-   Upgrade transitivity means that an upgrade from a program A to B and then from B to C
-   should have the same effect as directly upgrading from A to C. If B discards a field
-   and C re-adds it, this transitivity is no longer maintained. However, rigorous upgrade
-   transitivity was also not guaranteed before, since B may contain initialization logic
-   or pre-/post-upgrade hooks that alter the stable data.
+   - Stable fields cannot be dropped.
+   - Lossy promotion to any or dropping record fields is rejected (stricter than subtyping to prevent data loss).
 *)
 let match_stab_sig sig1 sig2 : unit Diag.result =
   let tfs1 = post sig1 in
@@ -55,9 +66,9 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
-         List.iter (fun (required, tf) ->
-           if required then error_required s tf) tfs2;
-         Some () (* new fields ok *)
+        List.iter (fun (required, tf) ->
+          if required then error_required s tf) tfs2;
+        Some () (* new fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropped field rejected, recurse on tfs1' *)
         error_discard s tf1;
@@ -65,8 +76,15 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
       | tf1::tfs1', (is_required, tf2)::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-            if not (Type.stable_sub (as_immut tf1.typ) (as_immut tf2.typ)) then
-              error_sub s tf1 tf2;
+            let context = [StableVariable tf2.lab] in
+            begin
+              match Type.sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
+              | Incompatible explanation -> error_sub s tf1 tf2 explanation
+              | Compatible ->
+                match Type.stable_sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
+                | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
+                | Compatible -> ()
+            end;
             go tfs1' tfs2'
          | -1 ->
            (* dropped field rejected, recurse on tfs1' *)

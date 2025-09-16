@@ -151,5 +151,6 @@ s/DO/\'do\'/g
 s/OR/\'or\'/g
 s/AND/\'and\'/g
 s/WITH/\'with\'/g
+s/WEAK/\'weak\'/g
 /'return'$/d
 s/'return' <exp>/'return' <exp>?/
