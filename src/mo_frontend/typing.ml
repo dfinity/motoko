@@ -1697,10 +1697,10 @@ and infer_exp'' env exp : T.typ =
     | _ -> ()
     end;
     let sort, ve = check_shared_pat env shared_pat in
-    let sort = match sort, !Mo_config.Flags.enhanced_orthogonal_persistence with
+    (* let sort = match sort, !Mo_config.Flags.enhanced_orthogonal_persistence with
     | T.Local T.Stable, false -> T.Local T.Flexible (* named local functions are flexible in classical mode *)
     | _ -> sort
-    in
+    in *)
     let is_async = match typ_opt with
       | Some { it = AsyncT _; _ } -> true
       | _ -> false
@@ -1769,7 +1769,7 @@ and infer_exp'' env exp : T.typ =
       end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
-    let sort = if is_flexible && sort = T.Local T.Stable then T.Local T.Flexible else sort in
+    (* let sort = if is_flexible && sort = T.Local T.Stable then T.Local T.Flexible else sort in *)
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (par_opt, exp1, inst, exp2) ->
     let t = infer_call env exp1 inst exp2 exp.at None in
