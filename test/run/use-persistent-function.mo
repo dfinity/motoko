@@ -2,8 +2,8 @@ type Order = { #less; #equal; #greater };
 
 module Array {
   public func sort<T>(array : [T], compare : (T, T) -> Order) : [T] {
-    if (compare(array[0], array[1]) == #less) {
-      [array[0], array[1]];
+    if (compare(array[0], array[1]) == #greater) {
+      [array[1], array[0]];
     } else {
       array;
     };
