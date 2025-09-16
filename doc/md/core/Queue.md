@@ -375,6 +375,53 @@ Runtime: O(n)
 Space: O(n)
 `n` denotes the number of elements stored in the queue.
 
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<T>(array : [T]) : Queue<T>
+```
+
+Creates a new queue from an array.
+Elements appear in the same order as in the array.
+
+Example:
+```motoko
+import Queue "mo:core/Queue";
+
+persistent actor {
+  let queue = Queue.fromArray<Text>(["A", "B", "C"]);
+  assert Queue.size(queue) == 3;
+  assert Queue.peekFront(queue) == ?"A";
+}
+```
+
+Runtime: O(n)
+Space: O(n)
+`n` denotes the number of elements stored in the array.
+
+## Function `toArray`
+``` motoko no-repl
+func toArray<T>(queue : Queue<T>) : [T]
+```
+
+Creates a new immutable array containing all elements from the queue.
+Elements appear in the same order as in the queue (front to back).
+
+Example:
+```motoko
+import Queue "mo:core/Queue";
+import Array "mo:core/Array";
+
+persistent actor {
+  let queue = Queue.fromArray<Text>(["A", "B", "C"]);
+  let array = Queue.toArray(queue);
+  assert array == ["A", "B", "C"];
+}
+```
+
+Runtime: O(n)
+Space: O(n)
+`n` denotes the number of elements stored in the queue.
+
 ## Function `values`
 ``` motoko no-repl
 func values<T>(queue : Queue<T>) : Iter.Iter<T>
@@ -582,7 +629,7 @@ Space: O(n)
 
 ## Function `compare`
 ``` motoko no-repl
-func compare<T>(queue1 : Queue<T>, queue2 : Queue<T>, compareItem : (T, T) -> Order.Order) : Order.Order
+func compare<T>(queue1 : Queue<T>, queue2 : Queue<T>, compare : (T, T) -> Order.Order) : Order.Order
 ```
 
 Compares two queues using the provided comparison function.

@@ -82,7 +82,7 @@ let html_of_func_sort : Syntax.func_sort -> t =
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 
-let html_of_obj_sort : Syntax.obj_sort -> t =
+let html_of_obj_sort : 'note Syntax.sort -> t =
  fun sort ->
   Mo_types.Type.(
     match sort.Source.it with
@@ -108,6 +108,7 @@ let rec html_of_type : env -> Syntax.typ -> t =
   | Syntax.NamedT (id, t) ->
       string "(" ++ html_of_typ_item env (Some id, t) ++ string ")"
   | Syntax.OptT typ -> string "?" ++ html_of_type env typ
+  | Syntax.WeakT typ -> string "weak" ++ html_of_type env typ
   | Syntax.TupT typ_list ->
       string "("
       ++ join_with (string ", ") (List.map (html_of_typ_item env) typ_list)

@@ -319,6 +319,50 @@ Runtime: O(size)
 
 Space: O(size)
 
+## Function `fromArray`
+``` motoko no-repl
+func fromArray<T>(array : [T]) : Queue<T>
+```
+
+Create a queue from an array.
+Elements appear in the same order as in the array.
+
+Example:
+```motoko include=import
+persistent actor {
+  let queue = Queue.fromArray<Text>(["A", "B", "C"]);
+  assert Queue.size(queue) == 3;
+  assert Queue.peekFront(queue) == ?"A";
+}
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
+## Function `toArray`
+``` motoko no-repl
+func toArray<T>(queue : Queue<T>) : [T]
+```
+
+Create an immutable array from a queue.
+Elements appear in the same order as in the queue (front to back).
+
+Example:
+```motoko include=import
+import Array "mo:core/Array";
+
+persistent actor {
+  let queue = Queue.fromArray<Text>(["A", "B", "C"]);
+  let array = Queue.toArray(queue);
+  assert array == ["A", "B", "C"];
+}
+```
+
+Runtime: O(size)
+
+Space: O(size)
+
 ## Function `values`
 ``` motoko no-repl
 func values<T>(queue : Queue<T>) : Iter.Iter<T>

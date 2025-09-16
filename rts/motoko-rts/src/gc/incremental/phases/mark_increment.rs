@@ -15,6 +15,9 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
+#[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+use crate::persistence::{clear_weak_ref_registry, get_weak_ref_registry};
+
 /// Use a long-term representation by relying on C layout.
 #[repr(C)]
 pub struct MarkState {
@@ -35,20 +38,30 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         state.partitioned_heap.start_collection(mem, time);
         debug_assert!(state.mark_state.is_none());
         let mark_stack = MarkStack::new(mem);
+
         state.mark_state = StableOption::Some(MarkState {
             mark_stack,
             complete: false,
         });
     }
 
-    pub unsafe fn complete_phase(state: &mut State) {
-        debug_assert!(Self::mark_completed(state));
+    pub unsafe fn complete_phase(mem: &mut M, state: &mut State) {
+        debug_assert!(Self::mark_completed(mem, state));
         state.mark_state = StableOption::None;
+        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+        {
+            // The weak reference registry must be empty at the end of the marking phase.
+            debug_assert!(get_weak_ref_registry(mem).is_empty());
+            // Clear weak_ref_registry in persistent metadata for the next GC run.
+            clear_weak_ref_registry();
+        }
     }
 
-    pub unsafe fn mark_completed(state: &State) -> bool {
+    pub unsafe fn mark_completed(_mem: &mut M, state: &State) -> bool {
         let mark_state = state.mark_state.as_ref().unwrap();
         debug_assert!(!mark_state.complete || mark_state.mark_stack.is_empty());
+        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+        debug_assert!(!mark_state.complete || get_weak_ref_registry(_mem).is_empty());
         mark_state.complete
     }
 
@@ -111,16 +124,40 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
+
         let object = value.as_obj();
         if self.heap.mark_object(object) {
             // A write barrier after a completed mark phase must see the object as already marked.
             debug_assert!(!*self.complete);
             debug_assert!(is_object_tag(object.tag()));
             self.mark_stack.push(self.mem, value);
+
+            #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+            {
+                use crate::types::is_weak_ref_tag;
+                let tag = value.as_obj().tag();
+                if is_weak_ref_tag(tag) {
+                    // Collecting the weak references here ensures that
+                    // no weak reference is collected twice.
+                    // That is because the mark_object() primitive above
+                    // ensures that we do not mark the same object twice.
+                    get_weak_ref_registry(self.mem).push(self.mem, value);
+                }
+            }
         }
     }
 
     unsafe fn mark_fields(&mut self, object: *mut Obj) {
+        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+        {
+            use crate::types::is_weak_ref_tag;
+            if is_weak_ref_tag(object.tag()) {
+                // Don't visit the field (i.e., the target of the weak reference)
+                // because we don't want to mark the target as live through the weak reference.
+                return;
+            }
+        }
+
         visit_pointer_fields(
             self,
             object,
@@ -144,6 +181,26 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     unsafe fn complete_marking(&mut self) {
         debug_assert!(!*self.complete);
         *self.complete = true;
+
+        #[cfg(all(feature = "ic", feature = "enhanced_orthogonal_persistence"))]
+        {
+            // Process all weak references collected during marking.
+            // If the target object is not marked, clear the weak reference.
+            loop {
+                let weak_ref_value = get_weak_ref_registry(self.mem).pop();
+                if weak_ref_value == STACK_EMPTY {
+                    break;
+                }
+                let weak_ref_obj = weak_ref_value.get_ptr() as *mut crate::types::WeakRef;
+                let target = (*weak_ref_obj).field;
+                if target.is_non_null_ptr() {
+                    let target_obj = target.as_obj();
+                    if !self.heap.is_object_marked(target_obj) {
+                        (*weak_ref_obj).field = NULL_POINTER;
+                    }
+                }
+            }
+        }
 
         #[cfg(debug_assertions)]
         self.mark_stack.assert_unmarked(self.heap);

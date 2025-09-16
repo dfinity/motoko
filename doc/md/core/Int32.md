@@ -3,7 +3,7 @@ Utility functions on 32-bit signed integers.
 
 Note that most operations are available as built-in operators (e.g. `1 + 1`).
 
-Import from the core library to use this module.
+Import from the core package to use this module.
 ```motoko name=import
 import Int32 "mo:core/Int32";
 ```
@@ -742,6 +742,19 @@ Returns the count of trailing zero bits in `x`.
 Example:
 ```motoko include=import
 assert Int32.bitcountTrailingZero(0x0201_0000) == +16;
+```
+
+## Function `explode`
+``` motoko no-repl
+func explode(x : Int32) : (msb : Nat8, Nat8, Nat8, lsb : Nat8)
+```
+
+Returns the upper (i.e. most significant), lower (least significant)
+and in-between bytes of `x`.
+
+Example:
+```motoko include=import
+assert Int32.explode 0x66885511 == (102, 136, 85, 17);
 ```
 
 ## Function `addWrap`

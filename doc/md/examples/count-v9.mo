@@ -1,6 +1,6 @@
-import Debug "mo:base/Debug";
-import Float "mo:base/Float";
-import Time "mo:base/Time";
+import Runtime "mo:core/Runtime";
+import Float "mo:core/Float";
+import Time "mo:core/Time";
 import {migration} "Migration";
 
 (with migration) // use the imported migration function
@@ -22,7 +22,7 @@ persistent actor
   };
 
   public query func read() : async Int {
-    Debug.trap("No longer supported: Use `readFloat`");
+    Runtime.trap("No longer supported: Use `readFloat`");
   };
 
   public query func readFloat() : async Float {

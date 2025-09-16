@@ -48,6 +48,7 @@
 <typ_un> ::= 
     <typ_nullary>
     '?' <typ_un>
+    'weak' <typ_un>
 
 <typ_pre> ::= 
     <typ_un>
@@ -307,6 +308,7 @@
 <pat_field> ::= 
     <id> (':' <typ>)?
     <id> (':' <typ>)? '=' <pat>
+    'type' <id>
 
 <func_pat> ::= 
     <id>? <typ_params_opt> <pat_plain>

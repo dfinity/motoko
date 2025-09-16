@@ -83,6 +83,13 @@ module Make (Cfg : Config) = struct
   let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
 
+  let obj_sort s = match s.it with
+    | Type.Object -> Atom "Object"
+    | Type.Actor -> Atom "Actor"
+    | Type.Module -> Atom "Module"
+    | Type.Memory -> Atom "Memory"
+
+
   (* TODO: For the language server, we occasionally need not only the resulting
      [typ] of a node but also its [Arrange_type.typ] (which motivated these
      changes). Arranging the type for every node would be expensive; there
@@ -216,7 +223,9 @@ module Make (Cfg : Config) = struct
 
   and catch c = "catch" $$ [pat c.it.pat; exp c.it.exp]
 
-  and pat_field pf = source pf.at (pf.it.id.it $$ [pat pf.it.pat])
+  and pat_field pf = source pf.at (match pf.it with
+    | ValPF(id, p) -> "ValPF" $$ [Atom id.it; pat p]
+    | TypPF(id) -> "TypPF" $$ [Atom id.it])
 
   (* conditionally include parenthetical to avoid breaking lsp *)
   and parenthetical eo sexps =
@@ -225,11 +234,6 @@ module Make (Cfg : Config) = struct
       sexps
     else sexps
 
-  and obj_sort s = match s.it with
-    | Type.Object -> Atom "Object"
-    | Type.Actor -> Atom "Actor"
-    | Type.Module -> Atom "Module"
-    | Type.Memory -> Atom "Memory"
 
   and shared_pat sp = match sp.it with
     | Type.Local -> Atom "Local"
@@ -301,7 +305,8 @@ module Make (Cfg : Config) = struct
   | AndT (t1, t2) -> "AndT" $$ [typ t1; typ t2]
   | OrT (t1, t2) -> "OrT" $$ [typ t1; typ t2]
   | ParT t -> "ParT" $$ [typ t]
-  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
+  | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]
+  | WeakT t -> "WeakT" $$ [typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
     | ExpD e -> "ExpD" $$ [exp e]

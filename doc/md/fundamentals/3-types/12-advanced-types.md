@@ -58,7 +58,7 @@ intBox.open();
 
 ## Recursive types
 
-Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The base package utilizes recursive types to define linked lists.
+Recursive types allow a type to refer to itself, enabling the creation of nested structures while maintaining type safety. The core package utilizes recursive types to define linked lists.
 
 ```motoko no-repl
 type List = ?(Nat, List);
@@ -180,7 +180,7 @@ let ghost = { name = "Motoko"; age = 30 };
 printName(ghost);  // Allowed since 'ghost' has a 'name' field.
 ```
 
-In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/base/Text). Extra fields are permitted, but the `name` field is mandatory.
+In the example above, `T <: { name : Text }` requires that any type used for `T` must be a subtype of the [record](https://internetcomputer.org/docs/motoko/fundamentals/types/records) `{ name : Text }`, that is, it must have at least a `name` field of type [`Text`](https://internetcomputer.org/docs/motoko/core/Text). Extra fields are permitted, but the `name` field is mandatory.
 
 Type bounds are not limited to records.
 In general, the notation `T <: A` in a parameter declaration mandates that any type provided for type parameter `T` must be a subtype of the specified type `A`.
@@ -193,7 +193,7 @@ func max<T <: Int>(x : T, y : T) : T {
 max<Int>(-5, -10);  // returns -5  : Int
 ```
 
-Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/base/Int), ensuring that arithmetic operations are valid.
+Here, `T <: Int` constrains `T` to be a subtype of [`Int`](https://internetcomputer.org/docs/motoko/core/Int), ensuring that arithmetic operations are valid.
 
 But the function can also be used to return the maximum of two `Nat`s and still produce a `Nat` (not an `Int`).
 
@@ -201,3 +201,84 @@ But the function can also be used to return the maximum of two `Nat`s and still 
 max<Nat>(5, 10); // returns 10 : Nat
 ```
 
+## Actor reference expression
+
+
+The *actor reference* expression `actor <exp>` compute a reference to an actor from a text argument `<exp>`, the textual encoding of a canister id. The expression is typically combined with an (actor) type annotation,  `actor <exp> : <typ>`  that declares the expected type of the actor reference. The argument  can either be a text literal, identifier, or, when enclosed in parentheses, a more complicated expression that computes a textual id.
+
+A simple example of using actor references is to access the management canister with textual address `"aaaaa-aa"`. Amongst other things, it has a method `raw_rand` for generating cryptographically random bytes as a `Blob`.
+
+```motoko
+persistent actor Coin {
+  public func flip() : async Bool {
+    let managementCanister = actor "aaaaa-aa" : actor { raw_rand : () -> async Blob };
+    let entropy = await managementCanister.raw_rand();
+    (entropy[0] & 1) == 1;
+  }; 
+}
+```
+
+A variation computes the textual canister identifier from a given principal. A call to `flipWith(p)` will succeed is called with `Principal.fromBlob("aaaaa-aa")`, but may fail with another argument, if the canister does not exist or does not have a `raw_rand` function:
+
+```motoko
+import Principal "mo:core/Principal";
+
+persistent actor Coin {
+  public func flipWith(principal : Principal) : async Bool {
+    let canister = actor (Principal.toText(principal)) : actor { raw_rand : () -> async Blob };
+    let entropy = await canister.raw_rand();
+    (entropy[0] & 1) == 1;
+  }; 
+} 
+```
+
+:::warn
+
+There is currently no way to verify the actual type of the actor is compatible with the declared type. The validity of the actor reference and any type incompatibility will be detected later, on interaction with the actor.
+For this reason, you should only use actor references sparingly. It's typically safer to use explicitly imported canisters with their given actor types and avoid using `Text` or `Principal` to represent canisters in your methods (just use actor types instead).
+
+For example, a safer variant of `flipWith` is:
+
+```motoko no-repl
+persistent actor Coin {
+   public func flipWith(canister : actor { raw_rand : () -> async Blob }) : async Bool { 
+       let entropy = await canister.raw_rand();
+       (entropy[0] & 1) == 1;
+  }; 
+} 
+```
+
+This `flipWith` takes a strongly-typed actor, not a weakly-typed `Principal`.
+
+
+Actor type annotations offer flexibility when working with external canisters, but there’s no guarantee that the function signatures will match at runtime. If the signatures don’t align, the calls will fail.
+
+As another example of using actor reference expressions, we present a simple `Publisher` actor that tracks sets of subscribers by their `Principal` and uses an actor reference expression access the `notify` of each subscriber when a message is `published`:
+
+<!-- TODO: improve or remove sample (e.g. use a set of subscribers and oneway notify that returns `()` not `async ()` -->
+
+```motoko no-repl
+import Array "mo:core/Array";
+import Principal "mo:core/Principal";
+
+actor Publisher {
+    stable var subscribers : [Principal] = [];
+
+    public shared func subscribe(subscriber : Principal) : async () {
+        if (Array.find<Principal>(subscribers, func(s) { s == subscriber }) == null) {
+            let newSubscribers = Array.tabulate<Principal>(
+                subscribers.size() + 1,
+                func(i) { if (i < subscribers.size()) subscribers[i] else subscriber }
+            );
+            subscribers := newSubscribers;
+        };
+    };
+
+    public shared func publish(message : Text) : async () {
+        for (sub in subscribers.vals()) {
+            let subActor = actor(Principal.toText(sub)) : actor { notify : (Text) -> async () };
+            await subActor.notify(message);
+        };
+    };
+};
+```
