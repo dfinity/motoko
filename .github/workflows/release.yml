@@ -6,12 +6,12 @@ on:
       - "*"
   workflow_dispatch:
     # To test this workflow: Go to Actions -> release -> Run workflow
-    # Or using the CLI: gh workflow run release --ref <branch> -f version=test-draft-release
+    # Or using the CLI: gh workflow run release --ref <branch> -f version_suffix=test-draft-release
     # This creates a draft release tagged with the specified version
     # Remember to delete the draft release after testing!
     inputs:
-      version:
-        description: "Version for draft release (default: test-draft-release)"
+      version_suffix:
+        description: "Suffix for draft release tag (e.g., experimental-foo-2)"
         required: false
         default: test-draft-release
         type: string
@@ -19,24 +19,22 @@ on:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ inputs.version || github.ref_name }}
     steps:
       - name: Prepare release
-        run: echo "Preparing release for version ${{ inputs.version || github.ref_name }}"
+        run: echo "Preparing release ref=${{ github.ref_name }} suffix=${{ inputs.version_suffix }}"
 
       - name: Validate draft suffix (workflow_dispatch only)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           set -eu
-          SUFFIX="${{ inputs.version }}"
+          SUFFIX="${{ inputs.version_suffix }}"
           if [ -z "${SUFFIX:-}" ]; then
-            echo "Error: inputs.version (draft suffix) is empty"
+            echo "Error: inputs.version_suffix (draft suffix) is empty"
             exit 1
           fi
           # Allow only letters, digits, and hyphens
           if ! printf '%s' "${SUFFIX}" | grep -Eq '^[A-Za-z0-9-]+$'; then
-            echo "Error: inputs.version must contain only letters, digits, and hyphens (e.g., experimental-foo-2)"
+            echo "Error: inputs.version_suffix must contain only letters, digits, and hyphens (e.g., experimental-foo-2)"
             exit 1
           fi
 
@@ -52,7 +50,7 @@ jobs:
         id: read_changelog
         uses: ./.github/actions/extract-changelog
         with:
-          version: ${{ needs.prepare.outputs.version }}
+          version: ${{ github.ref_name }}
     outputs:
       release_body: ${{ steps.read_changelog.outputs.release_body }}
 
@@ -62,7 +60,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-13, ubuntu-24.04-arm, macos-latest]
     concurrency:
-      group: release-build-${{ matrix.os }}-${{ needs.prepare.outputs.version }}
+      group: release-build-${{ matrix.os }}-${{ github.ref_name }}
       cancel-in-progress: true
     runs-on: ${{ matrix.os }}
     steps:
@@ -102,9 +100,10 @@ jobs:
           merge-multiple: true
 
       - name: Rewrite artifact filenames with draft suffix
+        id: rewrite_draft_assets
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
-          DRAFT_SUFFIX: ${{ inputs.version }}
+          DRAFT_SUFFIX: ${{ inputs.version_suffix }}
         run: |
           set -eu
           echo "Applying draft suffix: ${DRAFT_SUFFIX}"
@@ -128,6 +127,8 @@ jobs:
             [ -e "$f" ] || continue
             mv "$f" "${f%.tar.gz}-${DRAFT_SUFFIX}.tar.gz"
           done
+          # Expose computed draft tag as a step output
+          echo "tag=${version}-${DRAFT_SUFFIX}" >> "$GITHUB_OUTPUT"
 
       - name: List downloaded files
         run: |
@@ -138,7 +139,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ needs.prepare.outputs.version }}
+          tag: ${{ github.event_name == 'workflow_dispatch' && steps.rewrite_draft_assets.outputs.tag || github.ref_name }}
           file: release-assets/*
           file_glob: true
           body: ${{ needs.changelog.outputs.release_body || 'Draft release created for testing purposes' }}
