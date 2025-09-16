@@ -613,7 +613,7 @@ let fill_item_import module_name item_name new_base uses_memory64 (m : module_')
     in go 0 m.imports in
 
     let new_base_value = if uses_memory64 then
-      Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base)(* FIXME: use int -> int64 *)
+      Wasm_exts.Values.I64 (Int64.of_int32 new_base)
     else
       Wasm_exts.Values.I32 new_base
     in
