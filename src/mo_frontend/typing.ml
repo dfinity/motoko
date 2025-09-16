@@ -448,7 +448,7 @@ let check_import env at f ri =
   | Some t -> t
   | None ->
     match T.Env.find_opt full_path env.mixins with
-    | Some (_, _, t) -> t
+    | Some (_, _, _, t) -> t
     | None -> error env at "M0022" "imported file %s not loaded" full_path
 
 
@@ -3339,7 +3339,7 @@ and infer_dec env dec : T.typ =
       use_identifier env i.it;
       match T.Env.find_opt i.it env.mixins with
       | None -> assert false
-      | Some (pat, _, _) -> check_exp env pat.note arg
+      | Some (_, pat, _, _) -> check_exp env pat.note arg
     end;
     T.unit
   | ExpD exp -> infer_exp env exp
@@ -3609,8 +3609,8 @@ and infer_dec_typdecs env dec : Scope.t =
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
       (* TODO: find_opt and report error if not found *)
-      let (pat, decs, t) = T.Env.find i.it env.mixins in
-      n := Some({ pat; decs });
+      let (imports, pat, decs, t) = T.Env.find i.it env.mixins in
+      n := Some({ imports; pat; decs });
       (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
       let (_, fields) = T.as_obj t in
       scope_of_object env fields
@@ -3634,9 +3634,9 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <valpath> *)
   | LetD ({it = VarP id; _}, exp, _) ->
      begin match is_mixin_import env exp.it with
-     | Some (args, t, decs) ->
+     | Some (imports, args, t, decs) ->
         (* Format.printf "Adding mixin %s at %a\n" id.it display_typ t; *)
-        Scope.mixin id.it (args, t, decs)
+        Scope.mixin id.it (imports, args, t, decs)
      | None ->
     (match infer_val_path env exp with
      | None -> Scope.empty
@@ -3882,7 +3882,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               ]) in
               Scope.lib lib.note.filename typ
             | MixinU (pat, decs) ->
-              Scope.mixin lib.note.filename (pat, decs, typ)
+              Scope.mixin lib.note.filename (imports, pat, decs, typ)
             | ActorU _ ->
               error env cub.at "M0144" "bad import: expected a module or actor class but found an actor"
             | ProgU _ ->

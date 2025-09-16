@@ -576,7 +576,17 @@ and export_runtime_information self_id =
 
 and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
   | S.TypD _ -> []
-  | S.IncludeD(_, arg, note) -> None :: List.concat_map build_stabs (Option.get !note).decs
+  | S.IncludeD(_, arg, note) ->
+    (* TODO: This is ugly. It would be a lot nicer if we didn't have to split
+       the desugaring and stability declarations *)
+    let flex = Some (S.Flexible @@ no_region) in
+    let { imports; decs; _ } = Option.get !note in
+    let import_stabs = List.map (fun _ -> flex) imports in
+    (* Transient stability for binding the mixin parameters *)
+    flex ::
+    (* Transient stability for binding the mixin imports *)
+    import_stabs @
+    List.concat_map build_stabs decs
   | _ -> [df.it.S.stab]
 
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
@@ -947,13 +957,16 @@ and dec' d =
   | S.TypD _ -> []
   | S.MixinD _ -> assert false
   | S.IncludeD(_, args, note) ->
-    let { pat = p; decs } = Option.get !note in
-    let renamed_pat, rho = Rename.pat Rename.Renaming.empty (pat p) in
+    let { imports = is; pat = p; decs } = Option.get !note in
+    let ir_imports = List.concat_map transform_import is in
+    let renamed_imports, rho = Rename.decs Rename.Renaming.empty ir_imports in
+    let renamed_pat, rho = Rename.pat rho (pat p) in
 
     (* TODO: Fix the positions on the generated let here *)
     let ir_decs = List.concat_map dec (List.map (fun df -> df.it.S.dec) decs) in
     let renamed_decs, _ = Subst_var.decs rho ir_decs in
-    (letP renamed_pat (exp args)).it :: List.map (fun d -> d.it) renamed_decs
+    List.map (fun d -> d.it) renamed_imports @ (letP renamed_pat (exp args)).it :: List.map (fun d -> d.it) renamed_decs
+
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
@@ -1169,6 +1182,27 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
   in
   args, eo, wrap_under_async, control, res_tys
 
+and transform_import (i : S.import) : Ir.dec list =
+  let (p, f, ri) = i.it in
+  let t = i.note in
+  assert (t <> T.Pre);
+  match t with
+  | T.Obj(T.Mixin, _) -> []
+  | _ ->
+  let rhs = match !ri with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath {path = fp; _} ->
+      varE (var (id_of_full_path fp) t)
+    | S.PrimPath ->
+      varE (var (id_of_full_path "@prim") t)
+    | S.IDLPath (fp, canister_id) ->
+      primE (I.ActorOfIdBlob t) [blobE canister_id]
+    | S.ImportedValuePath path ->
+       let contents = Lib.FilePath.contents path in
+       assert T.(t = Prim Blob);
+       blobE contents
+  in [ letP (pat p) rhs ]
+
 type import_declaration = Ir.dec list
 
 let actor_class_mod_exp id class_typ default system =
@@ -1255,27 +1289,6 @@ let inject_decs extra_ds u =
 
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
-
-let transform_import (i : S.import) : import_declaration =
-  let (p, f, ri) = i.it in
-  let t = i.note in
-  assert (t <> T.Pre);
-  match t with
-  | T.Obj(T.Mixin, _) -> []
-  | _ ->
-  let rhs = match !ri with
-    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath {path = fp; _} ->
-      varE (var (id_of_full_path fp) t)
-    | S.PrimPath ->
-      varE (var (id_of_full_path "@prim") t)
-    | S.IDLPath (fp, canister_id) ->
-      primE (I.ActorOfIdBlob t) [blobE canister_id]
-    | S.ImportedValuePath path ->
-       let contents = Lib.FilePath.contents path in
-       assert T.(t = Prim Blob);
-       blobE contents
-  in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with

@@ -8,7 +8,7 @@ type con_env = ConSet.t
 type fld_src_env = Mo_types.Field_sources.srcs_map
 
 (* TODO: make this a record *)
-type mixin_env = (Mo_def.Syntax.pat * Mo_def.Syntax.dec_field list * typ) Env.t
+type mixin_env = (Mo_def.Syntax.import list * Mo_def.Syntax.pat * Mo_def.Syntax.dec_field list * typ) Env.t
 and obj_env = scope Env.t  (* internal object scopes *)
 and scope =
   { val_env : val_env;
@@ -26,4 +26,4 @@ val adjoin : scope -> scope -> scope
 
 val adjoin_val_env : scope -> val_env -> scope
 val lib : string -> typ -> scope
-val mixin : string -> Mo_def.Syntax.pat * Mo_def.Syntax.dec_field list * typ -> scope
+val mixin : string -> Mo_def.Syntax.import list * Mo_def.Syntax.pat * Mo_def.Syntax.dec_field list * typ -> scope
