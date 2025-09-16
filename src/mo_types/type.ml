@@ -1593,15 +1593,17 @@ let rec combine rel lubs glbs t1 t2 =
       (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
       with Mismatch -> assert (rel == glbs); Non)
     | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) when
-        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
+        combine_sort rel lubs glbs s1 s2 bs1 bs2 <> None &&
+        c1 = c2 && eq_binds bs1 bs2 &&
         List.(length ts11 = length ts21 && length ts12 = length ts22) ->
       let ts = open_binds bs1 in
       let cs = List.map (fun t -> fst (as_con t)) ts in
       let opened = List.map (open_ ts) in
       let closed = List.map (close cs) in
       let rel' = if rel == lubs then glbs else lubs in
+      let s = Option.get (combine_sort rel lubs glbs s1 s2 bs1 bs2) in
       Func (
-        s1, c1, bs1,
+        s, c1, bs1,
         closed (List.map2 (combine rel' lubs glbs) (opened ts11) (opened ts21)),
         closed (List.map2 (combine rel lubs glbs) (opened ts12) (opened ts22))
       )
@@ -1646,6 +1648,17 @@ let rec combine rel lubs glbs t1 t2 =
       combine rel lubs glbs t t'
     | _, _ ->
       if rel == lubs then Any else Non
+
+and combine_sort rel lubs glbs s1 s2 bs1 bs2=
+  if s1 = s2 then Some s1 else
+  let both s = 
+    if rel_sort s1 s bs1 && rel_sort s2 s bs2 then Some s
+   else None
+  in
+  if rel == lubs then
+    both (Local Flexible)
+  else
+    both (Local Stable)
 
 and cons_if b x xs = if b then x::xs else xs
 

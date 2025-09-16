@@ -276,6 +276,7 @@ val eq_kind : ?src_fields : Field_sources.t -> kind -> kind -> bool
 val sub : ?src_fields : Field_sources.t -> typ -> typ -> bool
 val sub_explained : ?src_fields : Field_sources.t -> context -> typ -> typ -> compatibility
 val compatible : typ -> typ -> bool
+val rel_sort : func_sort -> func_sort -> bind list -> bool
 
 exception PreEncountered
 val lub : ?src_fields : Field_sources.t -> typ -> typ -> typ
