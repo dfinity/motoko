@@ -1258,7 +1258,7 @@ let inject_decs extra_ds u =
   | ActorU (None, ds, fs, up, t) ->
     Ir.ActorU (None, extra_ds @ ds, fs, up, t)
   | ActorU (Some _, _, _, _, _) ->
-    let u'= Rename.comp_unit Rename.Renaming.empty u in
+    let u' = Rename.comp_unit Rename.Renaming.empty u in
     match u' with
     | ActorU (as_opt, ds, fs, up, t) ->
       Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
@@ -1268,10 +1268,10 @@ let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
 let transform_import (i : S.import) : import_declaration =
-  let (p, f, ir) = i.it in
+  let (p, f, ri) = i.it in
   let t = i.note in
   assert (t <> T.Pre);
-  let rhs = match !ir with
+  let rhs = match !ri with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
     | S.LibPath {path = fp; _} ->
       varE (var (id_of_full_path fp) t)
@@ -1279,6 +1279,10 @@ let transform_import (i : S.import) : import_declaration =
       varE (var (id_of_full_path "@prim") t)
     | S.IDLPath (fp, canister_id) ->
       primE (I.ActorOfIdBlob t) [blobE canister_id]
+    | S.ImportedValuePath path ->
+       let contents = Lib.FilePath.contents path in
+       assert T.(t = Prim Blob);
+       blobE contents
   in [ letP (pat p) rhs ]
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
@@ -1338,13 +1342,11 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
    import_compiled_class (above) for compilation.
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
-  let { imports; body; _ } = u.it in
+  let { body; _ } = u.it in
   let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
-  let imports' = List.concat_map transform_import imports in
-  let body' = transform_unit_body body in
-  let prog = inject_decs imports' body' in
+  let prog, _ = transform_unit u in
   match prog with
   | I.LibU (ds, e) ->
     let exp = blockE ds e in
