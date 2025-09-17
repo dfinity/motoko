@@ -168,8 +168,7 @@ let share_stab default_stab stab_opt dec =
   | None ->
     (match dec.it with
      | VarD _
-     | LetD _ ->
-	Some default_stab
+     | LetD _ -> Some default_stab
      | _ -> None)
   | _ -> stab_opt
 
@@ -202,6 +201,7 @@ let share_dec_field default_stab (df : dec_field) =
              (match df.it.dec.it with
              | ExpD _
              | TypD _
+             | MixinD _
              | ClassD _ -> None
              | _ -> Some default_stab)
           | some -> some}
