@@ -1292,7 +1292,8 @@ let link_declarations imports (cu, flavor) =
 
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
-  | S.MixinU _ -> assert false
+  | S.MixinU _ ->
+    raise (Invalid_argument "Desugar: Cannot transform mixin compilation unit")
   | S.ProgU ds -> I.ProgU (decs ds)
   | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {
