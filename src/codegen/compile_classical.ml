@@ -13988,17 +13988,12 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   in
 
   let _prog_text = (Import_components_ir.prog_fun add_import prog) in
-  (*Wasm.Sexpr.print 80 _prog_text;*)
 
-  (* Print the imported components as WIT *)
-
+  (* Generate the imported components as WIT file *)
   let wit_file_content = (imported_components_to_wit !imported_components) in
-  Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wit_file_content));
 
-  (* Print the imported components as WAC *)
-
+  (* Generate the WAC file to compose the components*)
   let wac_file_content = (imported_components_to_wac !imported_components) in
-  Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom (wac_file_content));
 
 
   (* Register the imports *)
