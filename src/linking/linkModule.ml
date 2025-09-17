@@ -894,8 +894,8 @@ let replace_got_imports (lib_memory_base : int32) (table_size : int32) (imports:
     got_func_imports
   in
   let offset_global global_type offset = Wasm_exts.Types.(match global_type with
-    | GlobalType (I32Type, _) -> mk_i64_global (Int32.(add table_size (of_int offset)) |> Int64.of_int32)
-    (*| GlobalType (I32Type, _) -> mk_i32_global (Int32.add table_size (Int32.of_int offset))*)
+    | GlobalType (I32Type, _) when uses_memory64 m -> mk_i64_global (Int32.(add table_size (of_int offset)) |> Int64.of_int32)
+    | GlobalType (I32Type, _) -> mk_i32_global (Int32.add table_size (Int32.of_int offset))
     | GlobalType (I64Type, _) -> mk_i64_global Int64.(add (of_int32 table_size) (of_int offset))
     | _ -> raise (LinkError "GOT.func global type is not supported"))
   in
