@@ -11,10 +11,8 @@ actor Ok {
      if (i < j) #less else if (i == j) #equal else #greater
   };
 
-  type Cmp = stable cmp (Int, Int) -> Set.Order; // singleton stable func type
-
-  stable var s1 : Set.Set<Int, Cmp> = Prim.trap("oops");
-  s1 := Set.add(s1, ver);
+  stable var s1 : Set.Set<Int, cmp> = Prim.trap("oops");
+  s1 := s1.add(ver);
 
 
 };

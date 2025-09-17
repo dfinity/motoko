@@ -7,6 +7,7 @@ module Set {
 
   public type List<T> = ?(T, List<T>);
   public type Set<T, C <: Cmp<T>> = (C, ?(T, List<T>));
+  public type Self<T, C <: Cmp<T>> = Set<T, C>;
 
   public func empty<T, C <: Cmp<T>>(c: C) : Set<T, C> = (c, null);
 
@@ -45,5 +46,3 @@ module Set {
     mem(l);
   };
 };
-
-
