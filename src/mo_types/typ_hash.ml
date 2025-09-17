@@ -125,7 +125,7 @@ let rec go = function
     List.iter (fun bind -> assert (bind.sort = Scope)) tbs;
     ( ( TwoSeq (List.length ts1),
         "F" ^
-        (match s with Local -> "" | Shared Query -> "q" | Shared Write -> "s" | Shared Composite -> "C") ^
+        (match s with Local -> "" | Shared Query -> "q" | Shared Write -> "s" | Shared Composite -> "C" | Stable id -> "S("^id^")") ^
         (match c with Returns -> "" | Promises -> "p" | Replies -> "r")
       )
     , ts1 @ ts2

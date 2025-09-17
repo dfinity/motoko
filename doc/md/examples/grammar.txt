@@ -23,6 +23,7 @@
 
 <func_sort_opt> ::= 
     <empty>
+    'stable' <id>
     'shared' <query>?
     <query>
 

@@ -163,6 +163,20 @@ let share_dec d =
   | LetD (p, e, f) -> LetD (p, share_exp e, f) @? d.at
   | _ -> d
 
+
+let stab_exp stab e =
+  match stab, e.it with
+  | Some {it = Stable;_}, FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
+     func_exp x {sp with it = Type.Stable x (*!*)} tbs p t_opt s e @? e.at
+  | Some {it = Flexible;_}, FuncE (x, ({it = Type.Local; _} as sp), tbs, p, t_opt, s, e) ->
+     func_exp x {sp with it = Type.Local} tbs p t_opt s e @? e.at
+  | _ -> e
+
+let stab_dec stab d =
+  match d.it with
+  | LetD (p, e, f) -> LetD (p, stab_exp stab e, f) @? d.at
+  | _ -> d
+
 let share_stab default_stab stab_opt dec =
   match stab_opt with
   | None ->
@@ -188,8 +202,10 @@ let share_dec_field default_stab (df : dec_field) =
       stab = share_stab (Flexible @@ df.it.dec.at) df.it.stab df.it.dec}}
   | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
-    {df with it =
-       {df.it with stab =
+   {df with it =
+      {df.it with
+       dec = stab_dec df.it.stab df.it.dec;
+       stab =
           match df.it.stab with
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
@@ -398,6 +414,7 @@ seplist1(X, SEP) :
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
+  | STABLE id=id { Type.Stable id.it @@ no_region }
   | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
   | q=query { Type.Shared q @@ at $sloc }
 

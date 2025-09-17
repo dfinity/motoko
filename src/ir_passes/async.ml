@@ -386,7 +386,7 @@ let transform prog =
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       begin
         match s with
-        | Local ->
+        | Local | Stable _ ->
           FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
         | Shared s' ->
           begin

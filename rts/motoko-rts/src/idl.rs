@@ -251,8 +251,14 @@ unsafe fn parse_idl_header<M: Memory>(
             // Annotations
             for _ in 0..leb128_decode(buf) {
                 let a = read_byte(buf);
-                if !(1 <= a && a <= 3) {
-                    idl_trap_with("func annotation not within 1..3");
+                if extended {
+                    if !(1 <= a && a <= 4) {
+                        idl_trap_with("func annotation not within 1..4");
+                    }
+                } else {
+                    if !(1 <= a && a <= 3) {
+                        idl_trap_with("func annotation not within 1..3");
+                    }
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -477,15 +483,43 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 skip_any(buf, typtbl, it, 0);
             }
             IDL_CON_func => {
-                if read_byte_tag(buf) == 0 {
-                    idl_trap_with("skip_any: skipping references");
+                // Arg types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // Ret types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // Annotations
+                let mut _a1 = false;
+                let mut _a2 = false;
+                let mut _a3 = false;
+                let mut a4 = false;
+                for _ in 0..leb128_decode(&mut tb) {
+                    match read_byte(&mut tb) {
+                        1 => _a1 = true,
+                        2 => _a2 = true,
+                        3 => _a3 = true,
+                        4 => a4 = true,
+                        _ => {}
+                    }
+                }
+
+                if a4 {
+                    // stable func: nothing to skip
                 } else {
+                    // TODO: fix me to skip stable functions properly (i.e. nothing to skip)
                     if read_byte_tag(buf) == 0 {
                         idl_trap_with("skip_any: skipping references");
                     } else {
-                        skip_blob(buf)
+                        if read_byte_tag(buf) == 0 {
+                            idl_trap_with("skip_any: skipping references");
+                        } else {
+                            skip_blob(buf)
+                        }
+                        skip_text(buf)
                     }
-                    skip_text(buf)
                 }
             }
             IDL_CON_service => {
@@ -801,31 +835,35 @@ pub(crate) unsafe fn memory_compatible(
             }
             // check annotations (that we care about)
             // TODO: more generally, we would check equality of 256-bit bit-vectors,
-            // but validity ensures each entry is 1, 2 or 3 (for now)
+            // but validity ensures each entry is 1, 2, 3 or 4 (for now)
             // c.f. https://github.com/dfinity/candid/issues/318
             let mut a11 = false;
             let mut a12 = false;
             let mut a13 = false;
+            let mut a14 = false;
             for _ in 0..leb128_decode(&mut tb1) {
                 match read_byte(&mut tb1) {
                     1 => a11 = true,
                     2 => a12 = true,
                     3 => a13 = true,
+                    4 => a14 = true,
                     _ => {}
                 }
             }
             let mut a21 = false;
             let mut a22 = false;
             let mut a23 = false;
+            let mut a24 = false;
             for _ in 0..leb128_decode(&mut tb2) {
                 match read_byte(&mut tb2) {
                     1 => a21 = true,
                     2 => a22 = true,
                     3 => a23 = true,
+                    4 => a24 = true,
                     _ => {}
                 }
             }
-            a11 == a21 && a12 == a22 && a13 == a23
+            a11 == a21 && a12 == a22 && a13 == a23 && a14 == a24
         }
         (IDL_EXT_tuple, IDL_EXT_tuple) => {
             let n1 = leb128_decode(&mut tb1);
@@ -1109,31 +1147,35 @@ pub(crate) unsafe fn sub(
                 }
                 // check annotations (that we care about)
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
-                // but validity ensures each entry is 1, 2 or 3 (for now)
+                // but validity ensures each entry is 1, 2, 3 or 4 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
                 let mut a11 = false;
                 let mut a12 = false;
                 let mut a13 = false;
+                let mut a14 = false;
                 for _ in 0..leb128_decode(&mut tb1) {
                     match read_byte(&mut tb1) {
                         1 => a11 = true,
                         2 => a12 = true,
                         3 => a13 = true,
+                        4 => a14 = true,
                         _ => {}
                     }
                 }
                 let mut a21 = false;
                 let mut a22 = false;
                 let mut a23 = false;
+                let mut a24 = false;
                 for _ in 0..leb128_decode(&mut tb2) {
                     match read_byte(&mut tb2) {
                         1 => a21 = true,
                         2 => a22 = true,
                         3 => a23 = true,
+                        4 => a24 = true,
                         _ => {}
                     }
                 }
-                if (a11 == a21) && (a12 == a22) && (a13 == a23) {
+                if (a11 == a21) && (a12 == a22) && (a13 == a23) && (a14 == a24) {
                     return true;
                 } else {
                     break 'return_false;

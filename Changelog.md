@@ -1,5 +1,6 @@
 # Motoko compiler changelog
 
+* simple stable functions...
 ## 0.16.2 (2025-09-12)
 
 * motoko (`moc`)
@@ -558,11 +559,11 @@
 
   * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics (#4635).
 
-    Exposing a privileged system-level query function `__motoko_runtime_information()` 
-    that reports the current runtime statistics of the canister, such as the heap size, 
+    Exposing a privileged system-level query function `__motoko_runtime_information()`
+    that reports the current runtime statistics of the canister, such as the heap size,
     the total number of allocated objects, the total amount of reclaimed memory and more.
-    This is useful because several statistics of the reported information cannot be 
-    inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
+    This is useful because several statistics of the reported information cannot be
+    inspected on the IC replica dashboard as they are internal to the Motoko runtime system.
     This query is only authorized to the canister controllers and self-calls of the canister.
 
     ``` Motoko
@@ -602,8 +603,8 @@
 
     _Note_: `finally`-expressions that are in scope will be executed even if an execution
     path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
-    allows programmers to implement cleanups even in the presence of traps. For trapping 
-    execution paths prior to any `await`, the replica-provided state roll-back mechanism 
+    allows programmers to implement cleanups even in the presence of traps. For trapping
+    execution paths prior to any `await`, the replica-provided state roll-back mechanism
     ensures that no cleanup is required.
 
     The relevant security best practices are accessible at
@@ -705,7 +706,7 @@
     - _Monitor the heap size_: Monitor the memory and heap size (`Prim.rts_memory_size()` and `Prim.rts_heap_size()`) of the application in production.
     - _Limit the heap size_: Implement a custom limit in the application to keep the heap size and data volume below the scalability limit that has been determined during testing, in particular for the upgrade mechanism.
     - _Avoid large allocations per message_: Avoid large allocations of 100 MB or more per message, but rather distribute larger allocations across multiple messages. Large allocations per message extend the duration of the GC increment. Moreover, memory pressure may occur because the GC has a higher reclamation latency than a classical stop-the-world collector.
-    - _Consider a backup query function_: Depending on the application case, it can be beneficial to offer an privileged _query_ function to extract the critical canister state in several chunks. The runtime system maintains an extra memory reserve for query functions. Of course, such a function has to be implemented with a check that restricts it to authorized callers only. It is also important to test this function well. 
+    - _Consider a backup query function_: Depending on the application case, it can be beneficial to offer an privileged _query_ function to extract the critical canister state in several chunks. The runtime system maintains an extra memory reserve for query functions. Of course, such a function has to be implemented with a check that restricts it to authorized callers only. It is also important to test this function well.
     - _Last resort if memory would be full_: Assuming the memory is full with objects that have shortly become garbage before the memory space has been exhausted, the canister owner or controllers can call the system-level function `__motoko_gc_trigger()` multiple times to run extra GC increments and complete a GC run, for collecting the latest garbage in a full heap. Up to 100 calls of this function may be needed to complete a GC run in a 4GB memory space. The GC keeps an specific memory reserve to be able to perform its work even if the application has exhausted the memory. Usually, this functionality is not needed in practice but is only useful in such exceptional cases.
 
   * Allow type annotations on free-standing `object`/`module`/`actor` blocks, in order to perform a conformity check with an interface type (#4324).
