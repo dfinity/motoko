@@ -3338,7 +3338,7 @@ and infer_dec env dec : T.typ =
     if not env.pre then begin
       use_identifier env i.it;
       match T.Env.find_opt i.it env.mixins with
-      | None -> assert false
+      | None -> error env i.at "M0251" "unknown mixin %s" i.it
       | Some (_, pat, _, _) -> check_exp env pat.note arg
     end;
     T.unit
@@ -3608,12 +3608,14 @@ and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) ->
-      (* TODO: find_opt and report error if not found *)
-      let (imports, pat, decs, t) = T.Env.find i.it env.mixins in
-      n := Some({ imports; pat; decs });
-      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
-      let (_, fields) = T.as_obj t in
-      scope_of_object env fields
+      begin match T.Env.find_opt i.it env.mixins with
+      | None -> error env i.at "M0251" "unknown mixin %s" i.it
+      | Some(imports, pat, decs, t) ->
+        n := Some({ imports; pat; decs });
+        (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
+        let (_, fields) = T.as_obj t in
+        scope_of_object env fields
+      end
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},

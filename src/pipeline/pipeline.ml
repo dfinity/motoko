@@ -918,6 +918,6 @@ let interpret_ir_progs libs progs =
   Diag.return (interpret_prog flags prog_ir)
 
 let interpret_ir_files files =
-  Option.bind
-    (Diag.flush_messages (load_progs parse_file files initial_stat_env))
-    (fun (libs, progs, senv) -> Diag.flush_messages (interpret_ir_progs libs progs))
+  Diag.flush_messages (Diag.bind
+    (load_progs parse_file files initial_stat_env)
+    (fun (libs, progs, _) -> interpret_ir_progs libs progs))

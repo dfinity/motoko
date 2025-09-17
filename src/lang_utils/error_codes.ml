@@ -228,4 +228,5 @@ let error_codes : (string * string option) list =
     "M0222", None; (* Ignored `async*` *)
     (* TODO: Adjust before merging *)
     "M0250", None; (* A mixin cannot be used as an entry point *)
+    "M0251", None; (* Unknown mixin inclusion *)
   ]
