@@ -21,7 +21,9 @@ let pp_constraint ppf (lb, c, ub) =
     pp_typ ub
 
 let display_constraint = Lib.Format.display pp_constraint
+let display_constraints f = List.iter (display_constraint f)
 let display_rel = Lib.Format.display pp_rel
+let display_rels f = List.iter (display_rel f)
 let display_typ = Lib.Format.display pp_typ
 
 (* Bi-Matching *)
@@ -136,7 +138,27 @@ let fail_open_bound c bd =
     "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
     c (Lib.Format.display pp_typ) bd))
 
-let choose_under_constrained ctx error_msg lb c ub =
+module ErrorUnderconstrained : sig
+  type t
+  val empty : unit -> t
+  val add : t -> typ -> con -> typ -> unit
+  val to_string : t -> string
+end = struct
+  type t = (typ * con * typ) list ref
+  let empty () = ref []
+  let add t lb c ub = t := (lb, c, ub) :: !t
+  let to_string t = 
+    let parts = List.rev !t in
+    if parts = [] then "" else
+    Format.asprintf
+      "cannot solve invariant type parameter%s %s, no principal solution with%a\nwhere%a"
+      (if List.length parts > 1 then "s" else "")
+      (String.concat ", " (List.map (fun (_, c, _) -> Cons.name c) parts))
+      display_constraints parts
+      display_rels (List.map (fun (lb, _, ub) -> (lb,"=/=",ub)) parts)
+end
+
+let choose_under_constrained ctx er lb c ub =
   match ConEnv.find c ctx.variances with
   | Variance.Covariant -> lb
   | Variance.Contravariant -> ub
@@ -153,13 +175,7 @@ let choose_under_constrained ctx error_msg lb c ub =
       ub
     (* Error otherwise, but pick an arbitrary bound for error reporting *)
     | t, _ ->
-      if !error_msg = "" then
-        (* Report only the first error *)
-        error_msg := Format.asprintf
-          "cannot solve invariant type parameter %s, no principal solution with%a\nwhere%a\nAdd a return type annotation or an explicit type instantiation."
-          (Cons.name c)
-          display_constraint (lb, c, ub)
-          display_rel (lb,"=/=",ub);
+      ErrorUnderconstrained.add er lb c ub;
       if t = Non then ub else lb
 
 let fail_over_constrained lb c ub =
@@ -360,7 +376,8 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   ConSet.disjoint ctx.var_set all_cons
 
 (** Raises when [error_msg] is non-empty, optionally with a suggested return type annotation. *)
-let maybe_raise_underconstrained ctx env error_msg =
+let maybe_raise_underconstrained ctx env er =
+  let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then () else
   let error_msg =
     match ctx.ret_typ with
@@ -368,7 +385,7 @@ let maybe_raise_underconstrained ctx env error_msg =
     | Some ret_typ ->
       let ret_typ = subst env ret_typ in
       if is_closed ctx ret_typ then
-        Format.asprintf "%s\nSuggested return type annotation : %a" error_msg display_typ ret_typ
+        Format.asprintf "%s\nAdd a return type annotation or an explicit type instantiation\nSuggested return type annotation : %a" error_msg display_typ ret_typ
       else
         error_msg
   in
@@ -403,7 +420,7 @@ let solve ctx (ts1, ts2) must_solve =
   | Some (l, u) ->
     if debug then Debug.print_solved_bounds l u;
     let unsolved = ref ConSet.empty in
-    let error_msg = ref "" in
+    let er = ErrorUnderconstrained.empty () in
     let env = l |> ConEnv.mapi (fun c lb ->
       let ub = ConEnv.find c u in
       if eq lb ub then
@@ -414,11 +431,11 @@ let solve ctx (ts1, ts2) must_solve =
           unsolved := ConSet.add c !unsolved;
           (ConEnv.find c ctx.var_env).t
         end else
-          choose_under_constrained ctx error_msg lb c ub
+          choose_under_constrained ctx er lb c ub
       else
         fail_over_constrained lb c ub)
     in
-    maybe_raise_underconstrained ctx env !error_msg;
+    maybe_raise_underconstrained ctx env er;
     if debug then Debug.print_partial_solution env unsolved;
     let var_set = !unsolved in
     let remaining = if ConSet.is_empty var_set then empty_ctx else {

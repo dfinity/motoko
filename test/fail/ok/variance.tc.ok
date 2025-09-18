@@ -42,6 +42,6 @@ because cannot solve invariant type parameter A, no principal solution with
   None  <:  A  <:  Any
 where
   None  =/=  Any
-Add a return type annotation or an explicit type instantiation.
+Add a return type annotation or an explicit type instantiation
 Suggested return type annotation : 
   Inv<Any>

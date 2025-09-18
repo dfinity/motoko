@@ -5,6 +5,7 @@ func c<T>(_ : T) : C<T> = func _ = ();
 
 module VarArray {
   public func map<T, U>(_ : [var T], _ : (T) -> U) : [var U] = [var];
+  public func map2<T, U1, U2>(_ : [var T], _ : (T) -> (U1, U2)) : [var (U1, U2)] = [var];
   public func mapC<T, U>(_ : [var T], _ : (T) -> C<U>) : [var U] = [var];
 };
 
@@ -79,6 +80,10 @@ func tvBoundedToIsolated<Er <: Text>(t : Er) {
 
 func tvBoundedToNat<Er <: Nat>(t : Er) {
   let _ = VarArray.map(va, func _ = t); // Er, should fail
+};
+
+func reportBothInvariantErrors() {
+  let _ = VarArray.map2(va, func x = (x, null)); // (Nat, Null)
 };
 
 //SKIP comp
