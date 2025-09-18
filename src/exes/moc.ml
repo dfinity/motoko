@@ -39,19 +39,17 @@ let valid_metadata_names =
 (* suppress documentation *)
 let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
 
-let validate_warning_code code =
-  (* TODO: separate warning and error codes *)
-  (* TODO: implement `-warn-help  Show description of warning numbers`, hint that on wrong error code *)
+let validate_message_code code =
   code <> "" &&
   List.exists (fun (c, _) -> String.equal c code) Error_codes.error_codes
 
 let modify_disabled_warning_codes op s =
   let codes = String.split_on_char ',' s in
   codes |> List.iter (fun code ->
-    if validate_warning_code code then
+    if validate_message_code code then
       Flags.disabled_warning_codes := op code !Flags.disabled_warning_codes
     else begin
-      eprintf "moc: invalid warning code: %s" code; exit 1
+      eprintf "moc: invalid message code: %s" code; exit 1
     end)
 
 let argspec = [
