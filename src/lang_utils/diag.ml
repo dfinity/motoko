@@ -52,8 +52,10 @@ let rec fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result = fun f acc
   | x :: xs -> bind (f acc x) (fun y -> fold f y xs)
 
 type msg_store = messages ref
-let add_msg s m = s := m :: !s
-let add_msgs s ms = s := List.rev ms @ !s
+let add_msg s m = 
+  if m.sev = Warning && Flags.is_warning_disabled m.code then () else
+  s := m :: !s
+let add_msgs s ms = List.iter (add_msg s) (List.rev ms)
 let get_msgs s = List.rev !s
 
 let has_errors : messages -> bool =
