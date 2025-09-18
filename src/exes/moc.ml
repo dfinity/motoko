@@ -39,6 +39,21 @@ let valid_metadata_names =
 (* suppress documentation *)
 let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
 
+let validate_warning_code code =
+  (* TODO: separate warning and error codes *)
+  (* TODO: implement `-warn-help  Show description of warning numbers`, hint that on wrong error code *)
+  code <> "" &&
+  List.exists (fun (c, _) -> String.equal c code) Error_codes.error_codes
+
+let modify_disabled_warning_codes op s =
+  let codes = String.split_on_char ',' s in
+  codes |> List.iter (fun code ->
+    if validate_warning_code code then
+      Flags.disabled_warning_codes := op code !Flags.disabled_warning_codes
+    else begin
+      eprintf "moc: invalid warning code: %s" code; exit 1
+    end)
+
 let argspec = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -67,6 +82,10 @@ let argspec = [
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
   "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
+  "-A", Arg.String (modify_disabled_warning_codes Flags.S.add),
+    "<codes>  disable (allow) comma-separated warning codes, e.g. -A M0194,M0223";
+  "-W", Arg.String (modify_disabled_warning_codes Flags.S.remove),
+    "<codes>  enable (warn) comma-separated warning codes, e.g. -W M0223";
   ]
 
   @ Args.error_args

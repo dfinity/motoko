@@ -1,6 +1,7 @@
 (* common flags for the moc compiler *)
 
 module M = Map.Make(String)
+module S = Set.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
@@ -75,3 +76,8 @@ let stable_memory_access_limit = ref stable_memory_access_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
+let default_disabled_warning_codes = S.empty
+  |> S.add "M0223"
+let disabled_warning_codes : S.t ref = ref default_disabled_warning_codes
+
+let is_warning_disabled code = S.mem code !disabled_warning_codes
