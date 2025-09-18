@@ -268,7 +268,6 @@ pretty.mo:89.4-89.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-pretty.mo:94.14-94.25: warning [M0223], redundant type instantiation
 pretty.mo:95.4-95.6: type error [M0096], expression of type
   ({#B} -> {#A}) -> {#A} -> {#B}
 cannot produce expected type
