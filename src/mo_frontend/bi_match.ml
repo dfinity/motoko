@@ -47,7 +47,7 @@ type ctx = {
   (* Variances for type variables *)
   variances : Variance.t ConEnv.t;
   (* Optional return type *)
-  typ_opt : typ option;
+  ret_typ : typ option;
   (* Optional subtyping constraints to verify the solution in the last round *)
   to_verify : typ list * typ list;
 }
@@ -58,7 +58,7 @@ let empty_ctx = {
   var_list = [];
   bounds = (ConEnv.empty, ConEnv.empty);
   variances = ConEnv.empty;
-  typ_opt = None;
+  ret_typ = None;
   to_verify = ([], []);
 }
 
@@ -359,7 +359,7 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
 let maybe_raise_underconstrained ctx env error_msg =
   if error_msg = "" then () else
   let error_msg =
-    match ctx.typ_opt with
+    match ctx.ret_typ with
     | None -> error_msg
     | Some ret_typ ->
       let ret_typ = subst env ret_typ in
@@ -426,7 +426,7 @@ let solve ctx (ts1, ts2) must_solve =
         ConEnv.restrict var_set l,
         ConEnv.restrict var_set u);
       variances = ConEnv.restrict var_set ctx.variances;
-      typ_opt = ctx.typ_opt;
+      ret_typ = ctx.ret_typ;
       to_verify = if defer_verify then (List.map (subst env) ts1, List.map (subst env) ts2) else ([], [])
     } in
     let verify_now = if defer_verify then ctx.to_verify else
@@ -456,7 +456,7 @@ let solve ctx (ts1, ts2) must_solve =
           Format.asprintf "%a" display_rel (t1, "<:", t2))
           tts))))
 
-let bi_match_subs scope_opt tbs typ_opt =
+let bi_match_subs scope_opt tbs ret_typ =
   (* Create a fresh constructor for each type parameter.
    * These constructors are used as type variables.
    *)
@@ -496,11 +496,11 @@ let bi_match_subs scope_opt tbs typ_opt =
   (* Compute the variances using the optional return type.
    * Only necessary when the return type is not part of the sub-typing constraints.
    *)
-  let typ_opt = Option.map (open_ ts) typ_opt in
+  let ret_typ = Option.map (open_ ts) ret_typ in
   let variances = Variance.variances var_set
-    (Option.value ~default:Any typ_opt)
+    (Option.value ~default:Any ret_typ)
   in
-  let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; typ_opt; to_verify = ([], [])} in
+  let ctx = { var_set; var_env; var_list = cs; bounds = (l, u); variances; ret_typ; to_verify = ([], [])} in
 
   fun subs must_solve ->
     let must_solve = List.map (open_ ts) must_solve in
