@@ -3337,6 +3337,8 @@ and infer_dec env dec : T.typ =
   | IncludeD (i, arg, n) ->
     if not env.pre then begin
       use_identifier env i.it;
+      if not env.in_actor then
+        error env dec.at "M0252" "mixins can only be included in an actor context";
       match T.Env.find_opt i.it env.mixins with
       | None -> error env i.at "M0251" "unknown mixin %s" i.it
       | Some (_, pat, _, _) -> check_exp env pat.note arg
