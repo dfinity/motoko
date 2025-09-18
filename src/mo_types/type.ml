@@ -1488,7 +1488,9 @@ let rec has_no_subtypes_or_supertypes m co = function
   | Con (c, ts) as t ->
     (match Cons.kind c with
     | Abs (_, bound) ->
-      (* Type parameters are isolated (no subtypes nor supertypes) when unbounded. *)
+      (* Type parameters have no proper subtypes *)
+      m = NoSubtypes ||
+      (* And no proper supertypes when unbounded. *)
       bound = Any
     | Def (tbs, def) ->
       let s = fst co in
