@@ -229,4 +229,5 @@ let error_codes : (string * string option) list =
     (* TODO: Adjust before merging *)
     "M0250", None; (* A mixin cannot be used as an entry point *)
     "M0251", None; (* Unknown mixin inclusion *)
+    "M0252", None; (* Non-actor include *)
   ]
