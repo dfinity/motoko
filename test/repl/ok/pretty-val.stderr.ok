@@ -1,6 +1,2 @@
-stdin:3.30-3.36: warning [M0223], redundant type instantiation
-stdin:4.30-4.36: warning [M0223], redundant type instantiation
-stdin:6.34-6.39: warning [M0223], redundant type instantiation
-stdin:7.34-7.39: warning [M0223], redundant type instantiation
 stdin:72.30-72.43: warning [M0215], field `hidden` is provided but not expected in record of type
   {a : Nat}

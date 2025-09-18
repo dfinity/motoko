@@ -1,3 +1,4 @@
+//MOC-FLAG -W M0223
 // Empty instantiations, no warning
 func empty<>(x : Int): Int = x;
 assert empty<>(1) == 1;

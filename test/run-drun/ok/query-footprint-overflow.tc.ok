@@ -1,3 +1,1 @@
-query-footprint-overflow.mo:5.28-5.34: warning [M0223], redundant type instantiation
-query-footprint-overflow.mo:5.28-5.34: warning [M0223], redundant type instantiation
 query-footprint-overflow.mo:22.16-22.20: warning [M0194], unused identifier expl (delete or rename to wildcard `_` or `_expl`)
