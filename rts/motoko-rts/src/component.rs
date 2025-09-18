@@ -3,8 +3,7 @@
 use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
-    types::{Bytes, TAG_BLOB_B, Value}
-    ,
+    types::{Bytes, Value, TAG_BLOB_B},
 };
 use alloc as alloc_crate;
 use core::convert::TryInto;
