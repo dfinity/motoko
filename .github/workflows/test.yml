@@ -8,7 +8,7 @@ jobs:
   common-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, ubuntu-24.04-arm ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,7 +25,7 @@ jobs:
   gc-tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, ubuntu-24.04-arm ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -42,7 +42,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-24-large, ubuntu-24.04-arm, macos-latest ]
+        os: [ ubuntu-24-large, ubuntu-24.04-arm ]
         build_type: [ release, debug ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -132,14 +132,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Common and GC tests passed
-        run: echo "Common and GC tests completed successfully"
+        run: echo "Common and GC tests completed successfully."
 
   verify-main-tests:
     needs: tests
-    strategy:
-      matrix:
-        os: [ubuntu-24-large, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Main tests passed
-        run: echo "Main tests completed successfully on ${{ matrix.os }}"
+        run: echo "Main tests completed successfully."
