@@ -6935,9 +6935,10 @@ module Serialization = struct
   (* only used for memory compatibility checks *)
   let idl_tuple     = -130l
   let idl_weak     = -131l (* UNUSED FOR NOW, might need eventually *)
-  let idl_stable_func  = -132l
-  let idl_local_func  = -133l
-  let idl_type_variable = -134l
+  let idl_type_variable = -132l
+  let idl_stable_func  = -133l
+  let idl_local_func  = -134l
+
 
   (* TODO: use record *)
   let type_desc env mode ts :
