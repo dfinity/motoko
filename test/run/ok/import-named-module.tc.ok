@@ -1,3 +1,1 @@
-import-named-module.mo:3.16-3.21: warning [M0223], redundant type instantiation
-import-named-module.mo:4.15-4.25: warning [M0223], redundant type instantiation
 import-named-module.mo:4.5-4.7: warning [M0194], unused identifier ts (delete or rename to wildcard `_` or `_ts`)
