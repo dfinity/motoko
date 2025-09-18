@@ -508,7 +508,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 let generic_param_count = leb128_decode(&mut tb);
                 // Bounds
                 for _ in 0..generic_param_count {
-                    let bind_sort = read_byte(buf);
+                    let bind_sort = read_byte(&mut tb);
                     assert_eq!(bind_sort, 0); // TODO: Support scope bind
                     sleb128_decode(&mut tb);
                 }
