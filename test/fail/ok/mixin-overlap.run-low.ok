@@ -1,0 +1,2 @@
+Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
+mixin-overlap.mo:5.15-5.24: IR type error [M0000], duplicate binding for increment in block
