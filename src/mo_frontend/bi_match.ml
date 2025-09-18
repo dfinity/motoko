@@ -151,7 +151,8 @@ let choose_under_constrained ctx error_msg lb c ub =
     | Non, t when has_no_subtypes t ->
       assert (t <> Any);
       ub
-    | _ ->
+    (* Error otherwise, but pick an arbitrary bound for error reporting *)
+    | t, _ ->
       if !error_msg = "" then
         (* Report only the first error *)
         error_msg := Format.asprintf
@@ -159,7 +160,7 @@ let choose_under_constrained ctx error_msg lb c ub =
           (Cons.name c)
           display_constraint (lb, c, ub)
           display_rel (lb,"=/=",ub);
-      lb
+      if t = Non then ub else lb
 
 let fail_over_constrained lb c ub =
   raise (Bimatch (Format.asprintf

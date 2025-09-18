@@ -1,14 +1,17 @@
 import Prim "mo:prim";
 
+type C<T> = T -> ();
+func c<T>(_ : T) : C<T> = func _ = ();
+
 module VarArray {
   public func map<T, U>(_ : [var T], _ : (T) -> U) : [var U] = [var];
+  public func mapC<T, U>(_ : [var T], _ : (T) -> C<U>) : [var U] = [var];
 };
 
 let va = [var 1, 2, 3];
 
-// Test that we can solve invariant U when the bound is an 'isolated' type, e.g.
-// Trying to solve:  Bool  <:  U  <:  Any
-// Should pick U = Bool, because Bool has no proper supertypes/subtypes (except Any and Non)
+// Tests like: Trying to solve:  Bool  <:  U  <:  Any
+// Should pick U = Bool, because Bool has no proper supertypes (except Any)
 let _ = VarArray.map(va, func x = x % 2 == 0); // Bool
 let _ = VarArray.map(va, func x = Prim.natToNat8(x) + 1); // NatX
 let _ = VarArray.map(va, func x = Prim.nat64ToInt64(Prim.natToNat64(x)) - 1); // IntX
@@ -22,16 +25,24 @@ let _ = VarArray.map(va, func x = [var x]); // [var Nat]
 let _ = VarArray.map(va, func x = (Prim.intToInt32(x), debug_show (x))); // (Int32, Text)
 let _ = VarArray.map(va, func x = func(y : Nat8) : Bool = Prim.natToNat8(x) == y); // Nat8 -> Bool
 
+// Tests like: Trying to solve:  Non  <:  U  <:  Nat
+// Should pick U = Non, because Nat has no proper subtypes (except Non)
+let _ = VarArray.mapC(va, func x = c<Bool>(x % 2 == 0)); // Bool -> ()
+let _ = VarArray.mapC(va, func x = c<Nat>(x)); // Nat -> ()
+func _cInt() {
+  let _ = VarArray.mapC(va, func x = c<Int>(x)); // Int -> ()
+};
+
 // Int and Opt have no supertypes
 let _ = VarArray.map(va, func x = x : Int); // Int
 let _ = VarArray.map(va, func x = ?x : ?Int); // ?Int
 
 // Null and Nat have no subtypes
-let _ = VarArray.map(va, func x = func (_ : Nat) {}); // Nat -> ()
-let _ = VarArray.map(va, func x = func (_ : Null) {}); // Null -> ()
+let _ = VarArray.map(va, func x = func(_ : Nat) {}); // Nat -> ()
+let _ = VarArray.map(va, func x = func(_ : Null) {}); // Null -> ()
 
 // Mix
-let _ = VarArray.map(va, func x = func (n : Nat, _ : Null): (Int, ?Int, ?[var Nat]) = (n, ?n, ?[var n])); // (Nat, Null) -> (Int, ?Int, ?[var Nat])
+let _ = VarArray.map(va, func x = func(n : Nat, _ : Null) : (Int, ?Int, ?[var Nat]) = (n, ?n, ?[var n])); // (Nat, Null) -> (Int, ?Int, ?[var Nat])
 
 // Counter examples that should fail:
 func _m1() {
