@@ -3522,7 +3522,13 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
-  | LetD (pat, _, _) -> gather_pat env scope pat
+  | LetD (pat, exp, _) -> (match is_mixin_import env exp.it with
+    | None -> gather_pat env scope pat
+    | Some (imports, args, t, decs) ->
+      match pat.it with
+      | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
+      | _ -> (* TODO Error *) assert false
+  )
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
     let open Scope in
@@ -3559,7 +3565,25 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
-  | MixinD _ | IncludeD _ | ExpD _ -> scope
+  | IncludeD(i, _, n) -> begin
+    match T.Env.find_opt i.it env.mixins with
+    | None -> error env i.at "M0251" "unknown mixin %s" i.it
+    | Some(imports, pat, decs, t) ->
+      let open Scope in
+      n := Some({ imports; pat; decs });
+      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
+      let (_, fields) = T.as_obj t in
+      let add_field acc = function
+        | T.{ lab; typ = T.Typ t; _ } ->
+          if T.Env.mem lab acc.typ_env then error_duplicate env "type " { it = lab; at = i.at; note = () };
+          { acc with typ_env = T.Env.add lab t acc.typ_env }
+        | T.{ lab; typ = t; _ } ->
+          if T.Env.mem lab acc.val_env then error_duplicate env "" { it = lab; at = i.at; note = () };
+          { acc with val_env = T.Env.add lab (t, Source.no_region, Scope.Declaration) acc.val_env }
+      in
+      List.fold_left add_field scope fields
+    end
+  | MixinD _  | ExpD _ -> scope
 
 and gather_pat env (scope : Scope.t) pat : Scope.t =
    gather_pat_aux env Scope.Declaration scope pat
@@ -3608,16 +3632,7 @@ and infer_block_typdecs env decs : Scope.t =
 
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
-  | MixinD _ -> Scope.empty
-  | IncludeD (i, _, n) ->
-      begin match T.Env.find_opt i.it env.mixins with
-      | None -> error env i.at "M0251" "unknown mixin %s" i.it
-      | Some(imports, pat, decs, t) ->
-        n := Some({ imports; pat; decs });
-        (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
-        let (_, fields) = T.as_obj t in
-        scope_of_object env fields
-      end
+  | MixinD _ | IncludeD _ -> Scope.empty
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
