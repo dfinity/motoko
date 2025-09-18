@@ -7008,6 +7008,13 @@ module MakeSerialization (Strm : Stream) = struct
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
 
+  (* only used for memory compatibility checks *)
+  let _idl_tuple     = -130l
+  let _idl_weak     = -131l
+  let idl_stable_func  = -132l
+  let idl_local_func  = -133l
+  let idl_type_variable = -134l
+
   (* TODO: use record *)
   let type_desc env ts :
      string * int list * int32 list  (* type_desc, (relative offsets), indices of ts *)
@@ -7037,6 +7044,7 @@ module MakeSerialization (Strm : Stream) = struct
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
           | Mut t -> go t
+          | Var _ -> ()
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
             assert false
@@ -7090,6 +7098,20 @@ module MakeSerialization (Strm : Stream) = struct
       | Some i -> Int32.neg i
       | None -> TM.find (normalize t) idx in
 
+    let add_generic_types env type_bounds =
+      let open Type in
+      let add_type_bound generic =
+        match generic.sort with
+        | Type ->
+          add_u8 0; (* type bound *)
+          add_idx generic.bound
+        | Scope ->
+          assert false (* TODO: Stable functions: Support scope bounds *)
+      in
+      add_leb128 (List.length type_bounds);
+      List.iter add_type_bound type_bounds
+    in
+
     let rec add_typ t =
       match t with
       | Non -> assert false
@@ -7126,8 +7148,16 @@ module MakeSerialization (Strm : Stream) = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s || Type.is_stable_sort s);
-        add_sleb128 idl_func;
+        (match s with
+         | Stable lab ->
+           add_sleb128 idl_stable_func;
+           add_leb128_32 (Lib.Uint32.of_int32 (Mo_types.Hash.hash lab)); (* clean me *)
+           add_generic_types env tbs
+         | Local ->
+           add_sleb128 idl_local_func;
+           add_generic_types env tbs
+         | _ ->
+           add_sleb128 idl_func);
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
         add_leb128 (List.length ts2);
@@ -7141,10 +7171,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
-          | Stable id, _ -> (* todo: encode id? *)
-            assert (tbs = []);
-            add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)
-          | _ -> assert false
+          | Stable _, _
+          | Local, _ -> () (* no annotations at all *)
         end
       | Obj (Actor, fs) ->
         add_sleb128 idl_service;
