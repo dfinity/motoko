@@ -148,6 +148,9 @@ let choose_under_constrained ctx error_msg lb c ub =
     | t, Any when has_no_supertypes t ->
       assert (t <> Non);
       lb
+    | Non, t when has_no_subtypes t ->
+      assert (t <> Any);
+      ub
     | _ ->
       if !error_msg = "" then
         (* Report only the first error *)
