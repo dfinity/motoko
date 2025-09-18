@@ -3,11 +3,11 @@
     "candid-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1756934685,
-        "narHash": "sha256-N6PQHFrcteQs53c3TOG+eJJbtBsCmSr9qv7u2ht9Bv8=",
+        "lastModified": 1758026892,
+        "narHash": "sha256-XeHOOdV0oEHtlJ8DSoTVBoHqjMABE671H2CFmiR2F5w=",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "1ddf879f368f765145223c08bbe2c8c8f4782dcc",
+        "rev": "0152b45673fc1c0214e293f3dcf71aa590261750",
         "type": "github"
       },
       "original": {
@@ -87,11 +87,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1754580726,
-        "narHash": "sha256-uHmlVhRLycd4X29OwwpzQJS3jR/ZqfINY/i+sJgR++0=",
+        "lastModified": 1758138974,
+        "narHash": "sha256-jwS0wH467fg4mlun9AUvxWvMmmjri5rKR/L9Lh6/R5g=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "f2011bb84fe821188c1395fa2e5729b6811d3886",
+        "rev": "cd9aa50bedeb16ad1449931fa4beca15ebf362e4",
         "type": "github"
       },
       "original": {
