@@ -841,7 +841,7 @@ pub(crate) unsafe fn memory_compatible(
         }
         (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
         (_, IDL_PRIM_reserved) => false, // information lost
-        (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance, // TODO is this a bug? Allows Int <: Nat?
+        (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => variance != TypeVariance::Invariance,
         (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
         (IDL_EXT_weak, IDL_EXT_weak) => {
             let t11 = sleb128_decode(&mut tb1);
