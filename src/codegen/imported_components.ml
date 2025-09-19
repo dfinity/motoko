@@ -75,10 +75,6 @@ let is_kind_def con =
 
 let is_unit t = is_unit (normalize t)
 
-(* TODO: record *)
-(* TODO: option *)
-(* TODO: int/nat? They require custom types because, otherwise we can plumb it via [u8] *)
-(* TODO: custom rust types? *)
 let rec map_motoko_type_to_wit variants_ref typ =
   match typ with
   | Named (_, t) -> map_motoko_type_to_wit variants_ref t
