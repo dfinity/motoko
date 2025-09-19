@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs-unstable-for-wac.url = "github:NixOS/nixpkgs/09a1a8eee6dccb593bfc1f312512a83ddf48fc12";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -49,6 +50,10 @@
       url = "github:dfinity/motoko-core";
       flake = false;
     };
+    motoko-hex-src = {
+      url = "github:f0i/hex/c087fd2df9fbf4c9e9671c719715fa483c8d4c08";
+      flake = false;
+    };
     motoko-matchers-src = {
       url = "github:kritzcreek/motoko-matchers/5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982";
       flake = false;
@@ -70,6 +75,7 @@
   outputs =
     { self
     , nixpkgs
+    , nixpkgs-unstable-for-wac
     , flake-utils
     , nix-update-flake
     , rust-overlay
@@ -82,6 +88,7 @@
     , libtommath-src
     , motoko-base-src
     , motoko-core-src
+    , motoko-hex-src
     , motoko-matchers-src
     , ocaml-vlq-src
     , wasm-spec-src
@@ -99,12 +106,16 @@
             libtommath-src
             motoko-base-src
             motoko-core-src
+            motoko-hex-src
             motoko-matchers-src
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src;
         };
       };
+
+      # The pkgs just for wac-cli
+      unstablePkgsForWac = import nixpkgs-unstable-for-wac { inherit nixpkgs-unstable-for-wac system; };
 
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
@@ -243,6 +254,11 @@
         paths = [ "${pkgs.sources.motoko-core-src}/src" ];
       };
 
+      hex-src = pkgs.symlinkJoin {
+        name = "hex-src";
+        paths = [ "${pkgs.sources.motoko-hex-src}/src" ];
+      };
+
       js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
       docs = import ./nix/docs.nix { inherit pkgs js base-src core-src; };
@@ -257,7 +273,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
+        inherit pkgs unstablePkgsForWac nix-update base-src core-src hex-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
