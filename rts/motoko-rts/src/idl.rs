@@ -299,10 +299,10 @@ unsafe fn parse_idl_header<M: Memory>(
             }
             // Generic parameters
             for _ in 0..leb128_decode(buf) {
-               let bind_sort = read_byte(buf);
-               assert_eq!(bind_sort, 0); // TODO: Support scope bind
-               let t = sleb128_decode(buf);
-               check_typearg(mode, t, n_types);
+                let bind_sort = read_byte(buf);
+                assert_eq!(bind_sort, 0); // TODO: Support scope bind
+                let t = sleb128_decode(buf);
+                check_typearg(mode, t, n_types);
             }
             // Arg types
             for _ in 0..leb128_decode(buf) {
@@ -668,6 +668,39 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
     t = sleb128_decode(&mut tb);
 
     return t == IDL_CON_opt;
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn is_stable_func(typtbl: *mut *mut u8, end: *mut u8, t: i32, lab: u32) -> bool {
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t) {
+        return false;
+    }
+
+    let mut tb = Buf {
+        ptr: *typtbl.add(t as usize),
+        end: end,
+    };
+
+    if sleb128_decode(&mut tb) != IDL_CON_opt {
+        return false;
+    };
+
+    let t1 = sleb128_decode(&mut tb);
+
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t1) {
+        return false;
+    }
+
+    let mut tb1 = Buf {
+        ptr: *typtbl.add(t1 as usize),
+        end: end,
+    };
+
+    if sleb128_decode(&mut tb1) != IDL_EXT_stable_func {
+        return false;
+    };
+
+    return leb128_decode(&mut tb1) == lab;
 }
 
 #[enhanced_orthogonal_persistence]
@@ -1048,9 +1081,27 @@ pub(crate) unsafe fn memory_compatible(
                         return true;
                     };
                 }
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
-                    return false;
+
+                if is_stable_func(typtbl1, end1, t11, tag1) {
+                    if !memory_compatible(
+                        rel,
+                        variance.invert(),
+                        typtbl2,
+                        typtbl1,
+                        end2,
+                        end1,
+                        t21,
+                        t11,
+                        false,
+                    ) {
+                        return false;
+                    }
+                } else {
+                    if !memory_compatible(
+                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    ) {
+                        return false;
+                    }
                 }
             }
             return n1 == 0; // false if any remaining fields discarded
