@@ -1,10 +1,14 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Added an optional warning for redundant type instantiations in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
 ## 0.16.2 (2025-09-12)
 
 * motoko (`moc`)
-
-  * Added a warning for redundant type instantiations in generic function calls (#5468).
 
   * Added primitives to access canister environment variables (#5443):
 
