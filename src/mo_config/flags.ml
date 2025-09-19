@@ -81,3 +81,4 @@ let default_disabled_warning_codes = S.empty
 let disabled_warning_codes : S.t ref = ref default_disabled_warning_codes
 
 let is_warning_disabled code = S.mem code !disabled_warning_codes
+let is_warning_enabled code = not (is_warning_disabled code)
