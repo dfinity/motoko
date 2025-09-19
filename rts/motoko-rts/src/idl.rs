@@ -293,7 +293,7 @@ unsafe fn parse_idl_header<M: Memory>(
             }
         } else if extended && ty == IDL_EXT_type_variable {
             let _tag = leb128_decode(buf); // TODO: check in bounds
-        } else if extended && ty == IDL_EXT_stable_func || ty == IDL_EXT_local_func {
+        } else if extended && (ty == IDL_EXT_stable_func || ty == IDL_EXT_local_func) {
             if ty == IDL_EXT_stable_func {
                 let _lab = leb128_decode(buf);
             }
