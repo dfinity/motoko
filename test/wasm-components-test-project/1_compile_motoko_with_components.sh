@@ -16,5 +16,5 @@ cd $ROOT_DIR || exit
 mkdir -p target
 echo --- Compiling Motoko that imports components... &&
 echo "    component packages: $MOC_COMPONENT_PACKAGES" &&
-MOC_UNLOCK_PRIM=true ../../bin/moc $MO_SRC_DIR/Main.mo -wasi-system-api -wasm-components --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm &&
+MOC_UNLOCK_PRIM=true moc $MO_SRC_DIR/Main.mo -wasi-system-api -wasm-components --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm &&
 echo --- Compiling done, output written to target/motoko.wasm
