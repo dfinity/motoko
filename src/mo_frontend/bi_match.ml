@@ -375,7 +375,7 @@ let is_closed ctx t = if is_ctx_empty ctx then true else
   let all_cons = cons_typs [t] in
   ConSet.disjoint ctx.var_set all_cons
 
-(** Raises when [error_msg] is non-empty, optionally with a suggested return type annotation. *)
+(** Raises when [er] is non-empty, optionally with a suggested return type annotation. *)
 let maybe_raise_underconstrained ctx env er =
   let error_msg = ErrorUnderconstrained.to_string er in
   if error_msg = "" then () else
