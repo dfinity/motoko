@@ -7870,7 +7870,7 @@ module Serialization = struct
         with_composite_typ idl_stable_func (fun get_typ_buf ->
           ReadBuf.read_leb128 env get_typ_buf ^^
           compile_eq_const (E.hash env lab) ^^
-          G.if1 I32Type
+          E.if1 I64Type
             f
             begin
               skip get_idltyp ^^
