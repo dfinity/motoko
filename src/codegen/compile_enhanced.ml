@@ -7033,7 +7033,8 @@ module Serialization = struct
           add_u8 0; (* type bound *)
           add_idx generic.bound
         | Scope ->
-          assert false (* TODO: Stable functions: Support scope bounds *)
+          add_u8 1; (* scope bound *)
+          add_idx generic.bound
       in
       add_leb128 (List.length type_bounds);
       List.iter add_type_bound type_bounds

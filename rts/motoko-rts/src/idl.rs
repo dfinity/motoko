@@ -291,16 +291,18 @@ unsafe fn parse_idl_header<M: Memory>(
                 let t = sleb128_decode(buf);
                 check_typearg(mode, t, n_types);
             }
-        } else if ty == IDL_EXT_type_variable {
+        } else if extended && ty == IDL_EXT_type_variable {
             let _tag = leb128_decode(buf); // TODO: check in bounds
-        } else if ty == IDL_EXT_stable_func || ty == IDL_EXT_local_func {
+        } else if extended && ty == IDL_EXT_stable_func || ty == IDL_EXT_local_func {
             if ty == IDL_EXT_stable_func {
                 let _lab = leb128_decode(buf);
             }
             // Generic parameters
             for _ in 0..leb128_decode(buf) {
                 let bind_sort = read_byte(buf);
-                assert_eq!(bind_sort, 0); // TODO: Support scope bind
+                if bind_sort > 1 {
+                    idl_trap_with("invalid type parameter sort");
+                }
                 let t = sleb128_decode(buf);
                 check_typearg(mode, t, n_types);
             }
@@ -887,8 +889,9 @@ pub(crate) unsafe fn memory_compatible(
             for _ in 0..type_bounds_length1 {
                 let bind_sort1 = read_byte(&mut tb1);
                 let bind_sort2 = read_byte(&mut tb2);
-                assert_eq!(bind_sort1, 0); // TODO: Support scope bind
-                assert_eq!(bind_sort2, 0); // TODO: Support scope bind
+                if bind_sort1 != bind_sort2 {
+                    return false;
+                }
                 let bound1 = sleb128_decode(&mut tb1);
                 let bound2 = sleb128_decode(&mut tb2);
                 if !memory_compatible(
