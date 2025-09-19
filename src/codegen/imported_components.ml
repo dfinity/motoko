@@ -4,7 +4,11 @@ open Ir_def
 open Mo_types
 open Mo_types.Type
 
-type imported_function = { function_name : string; args : Import_components_ir.arg_data list; return_type : typ }
+type imported_function = {
+  function_name : string;
+  args : Import_components_ir.arg_data list;
+  return_type : typ
+}
 
 (* This module manages the imported components in a map where each key is a component name
    and the value is a set of function names that are imported from that component. *)
@@ -22,36 +26,22 @@ end
 
 module FunctionSet = Set.Make(ImportedFunctionOrd)
 module StringMap = Map.Make(String)
+module TypeMap = Map.Make(Ord)
 
 type t = FunctionSet.t StringMap.t
 
-module TypeMap = Map.Make(Ord)
+let empty = StringMap.empty
 
-type variant_def = { name : string; fields : field list }
-
-let empty : t = StringMap.empty
-
-let add_imported_component ~(component_name : string) ~(imported_function : imported_function) (map : t) : t =
+let add_imported_component ~component_name ~imported_function map =
   let existing_set =
     match StringMap.find_opt component_name map with
     | Some set -> set
-    | None -> FunctionSet.empty in
-  (* Printf.printf "Adding %s with type %s -> %s\n" imported_function.function_name
-    (String.concat ", " (List.map (fun arg -> string_of_typ arg.Import_components_ir.arg_type) imported_function.args))
-    (string_of_typ imported_function.return_type); *)
+    | None -> FunctionSet.empty
+  in
   let updated_set = FunctionSet.add imported_function existing_set in
   StringMap.add component_name updated_set map
 
-let imported_components_of_list (entries : (string * imported_function) list) : t =
-  List.fold_left (fun acc (k, v) -> add_imported_component ~component_name:k ~imported_function:v acc) empty entries
-
-let imported_components_to_list (map : t) : (string * imported_function) list =
-  StringMap.bindings map
-  |> List.concat_map (fun (k, set) ->
-      FunctionSet.elements set |> List.map (fun v -> (k, v))
-    )
-
-let map_motoko_name_to_wit (motoko_name : string) : string =
+let map_motoko_name_to_wit motoko_name =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
   |> String.uncapitalize_ascii
 
@@ -89,7 +79,7 @@ let is_unit t = is_unit (normalize t)
 (* TODO: option *)
 (* TODO: int/nat? They require custom types because, otherwise we can plumb it via [u8] *)
 (* TODO: custom rust types? *)
-let rec map_motoko_type_to_wit (variants_ref : string TypeMap.t ref) typ : string =
+let rec map_motoko_type_to_wit variants_ref typ =
   match typ with
   | Named (_, t) -> map_motoko_type_to_wit variants_ref t
   | Con (con, _) as t when is_kind_def con ->
@@ -140,7 +130,7 @@ and map_named_type_to_wit name variants_ref typ =
   | _ -> map_motoko_type_to_wit variants_ref typ
 
 (* Experimental API version, unused for now *)
-let imported_components_to_wit_api (map : t) : string =
+let imported_components_to_wit_api map =
   (* Emit a minimal aggregator world that imports each component's exported
      `api` interface by package path. This avoids regenerating variants and
      functions. The generated WIT is intended to be used within a WIT package
@@ -157,7 +147,7 @@ let imported_components_to_wit_api (map : t) : string =
   in
   Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" (String.concat "\n" imports)
 
-let imported_components_to_wit (map : t) : string =
+let imported_components_to_wit map =
   let imports = StringMap.bindings map |> List.map (fun (component_name, functions) ->
     (* Initialize variant-name generator *)
     let variants_ref : string TypeMap.t ref = ref TypeMap.empty in
@@ -199,7 +189,7 @@ let imported_components_to_wit (map : t) : string =
   ) in
   Printf.sprintf "package motoko:component;\n\nworld motoko {\n%s\n}\n" (String.concat "\n" imports)
 
-let imported_components_to_wac (map : t) : string =
+let imported_components_to_wac map =
   let imported_components =
     StringMap.bindings map
     |> List.map (fun (component_name, _functions) -> "let " ^ component_name ^ " = new component:" ^ component_name ^ " {};")
