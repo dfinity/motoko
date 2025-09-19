@@ -1,11 +1,13 @@
 import Prim "mo:prim";
-
+// ok upgrade from version 0
 persistent actor {
-    stable func f() : {a: Int; b: Int} {
-        {a = 1; b = 1};
+    // redefinition at same type
+    stable func f() : Int {
+        1
     };
 
-    stable let g : stable f () -> {a:Int; b: Int} = Prim.trap "unreachable";
-    assert g().a == 1;
+    stable let g : stable f () -> Int = // retained from version 0
+      Prim.trap "unreachable";
+    assert g() == 1;
     Prim.debugPrint "version1";
 }
