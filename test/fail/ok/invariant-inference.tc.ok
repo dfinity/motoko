@@ -6,7 +6,7 @@ because cannot solve invariant type parameter T, no principal solution with
   Nat  <:  T  <:  Any
 where
   Nat  =/=  Any
-Add a return type annotation or an explicit type instantiation.
+Add a return type annotation or an explicit type instantiation
 Suggested return type annotation : 
   [var Nat]
 invariant-inference.mo:15.11-15.13: type error [M0050], literal of type
