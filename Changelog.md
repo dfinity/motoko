@@ -4,6 +4,49 @@
 
   * Improved solving and error messages for invariant type parameters. Suggested return type annotations are now included in the error message when there is no principal solution (#5464).
 
+    Invariant type parameters with bounds like `Int  <:  U  <:  Any` (when the upper bound is `Any`) can now be solved by choosing the lower bound (`Int` here) when it has no proper supertypes other than `Any`.
+    This means that when choosing between **exactly two** solutions: the lower bound and `Any` as the upper bound, the lower bound is chosen as the solution for the invariant type parameter (`U` here).
+    Symmetrically, with bounds like `Non  <:  U  <:  Nat` (when the lower bound is `Non`), the upper bound (`Nat` here) is chosen when it has no proper subtypes other than `Non`.
+
+    For example, the following code now compiles without explicit type arguments:
+
+    ```motoko
+    import VarArray "mo:core/VarArray";
+    let varAr = [var 1, 2, 3];
+    let result = VarArray.map(varAr, func x = x : Int);
+    ```
+
+    Why does it compile? Because the body of `func x = x : Int` has type `Int`, which implies that `Int  <:  U  <:  Any`.
+    Since `Int` has no proper supertypes other than `Any`, it can be chosen as the solution for the invariant type parameter `U`.
+    This implies that the output of the `VarArray.map` call has type `[var Int]`.
+
+    However, note that if the body of the func was of type `Nat`, it would not compile, because `Nat` has a proper subtype `Int` (`Nat <: Int`).
+    The error message would say:
+
+    ```
+    ... cannot solve invariant type parameter U, no principal solution with
+      Nat  <:  U  <:  Any
+    where
+      Nat  =/=  Any
+    Add a return type annotation or an explicit type instantiation
+    Suggested return type annotation : 
+      [var Nat]
+    ```
+
+    The suggested return type annotation can be used to fix the code like this:
+
+    ```motoko
+    let result : [var Nat] = VarArray.map(varAr, func x = x);
+    ```
+
+    Or directly after the call:
+
+    ```motoko
+    VarArray.map(varAr, func x = x) : [var Nat]
+    ```
+
+    Note that the type annotation suggests only one possible solution. In the example above, the alternative is `[var Int]`.
+
 ## 0.16.2 (2025-09-12)
 
 * motoko (`moc`)
