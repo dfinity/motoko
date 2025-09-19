@@ -112,6 +112,14 @@ func isLive(weak_ref : weak Any) : Bool {
   (prim "weak_ref_is_live" : weak Any -> Bool)(weak_ref);
 };
 
+func envVarNames<system>() : [Text] {
+  (prim "env_var_names" : () -> [Text])();
+};
+
+func envVar<system>(name : Text) : ?Text {
+  (prim "env_var" : Text -> ?Text)(name);
+};
+
 // Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
@@ -293,11 +301,6 @@ func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> 
 
 func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
-
-// Wasm Component Model functions
-
-/// @deprecated M0200
-func componentCall(value : Blob) : Blob = (prim "wit:component:call" : Blob -> Blob) value;
 
 // Array utilities
 

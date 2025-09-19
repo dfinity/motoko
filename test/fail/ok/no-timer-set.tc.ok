@@ -109,6 +109,8 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     debugPrintNat : (x : Nat) -> ();
     decodeUtf8 : (b : Blob) -> ?Text;
     encodeUtf8 : (t : Text) -> Blob;
+    envVar : <system>(name : Text) -> ?Text;
+    envVarNames : <system>() -> [Text];
     error : (message : Text) -> Error;
     errorCode : (e : Error) -> ErrorCode;
     errorMessage : (e : Error) -> Text;

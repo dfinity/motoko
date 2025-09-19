@@ -242,4 +242,10 @@ sig
    * "warning, file Array.mo has been located with a name of different case"
    *)
   val open_in : string -> (in_channel * string list)
+
+
+  (**
+   * Reads all bytes from the indicated file
+   *)
+  val contents : string -> string
 end

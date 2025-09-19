@@ -1,5 +1,7 @@
 //! Implements Motoko runtime system
 
+// See: https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html
+#![allow(static_mut_refs)]
 #![no_std]
 #![feature(
     arbitrary_self_types,
