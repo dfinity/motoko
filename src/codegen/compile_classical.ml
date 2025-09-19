@@ -7892,6 +7892,7 @@ module MakeSerialization (Strm : Stream) = struct
         )
       ) in
 
+
       let with_blob_typ env f =
         with_composite_typ idl_vec (fun get_typ_buf ->
           ReadBuf.read_sleb128 env get_typ_buf ^^
@@ -7901,6 +7902,19 @@ module MakeSerialization (Strm : Stream) = struct
             begin
               skip get_idltyp ^^
               coercion_failed "IDL error: blob not a vector of nat8"
+            end
+        )
+      in
+
+      let with_stable_func_typ env lab f =
+        with_composite_typ idl_stable_func (fun get_typ_buf ->
+          ReadBuf.read_leb128 env get_typ_buf ^^
+          compile_eq_const (E.hash env lab) ^^
+          G.if1 I32Type
+            f
+            begin
+              skip get_idltyp ^^
+              coercion_failed "IDL error: stable func has wrong label"
             end
         )
       in
@@ -8263,22 +8277,8 @@ module MakeSerialization (Strm : Stream) = struct
               coercion_failed "IDL error: unexpected variant tag" )
           )
       | Func (Type.Stable lab, c, tbs, ts1, ts2) ->
-        (* See Note [Candid subtype checks] *)
-        get_rel_buf_opt ^^
-        G.if1 I32Type
-          begin
-            get_rel_buf_opt ^^
-            get_typtbl ^^
-            get_typtbl_end ^^
-            get_typtbl_size ^^
-            get_idltyp ^^
-            idl_sub env t
-          end
-          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
-        G.if1 I32Type
-          (Closure.stable_func env lab)
-          (skip get_idltyp ^^
-           coercion_failed "IDL error: incompatible function type")
+        (* no subtype test - we rely on static upgrade check *)
+        (with_stable_func_typ env lab (Closure.stable_func env lab))
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^

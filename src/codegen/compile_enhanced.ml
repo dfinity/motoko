@@ -7866,6 +7866,19 @@ module Serialization = struct
         )
       in
 
+      let with_stable_func_typ env lab f =
+        with_composite_typ idl_stable_func (fun get_typ_buf ->
+          ReadBuf.read_leb128 env get_typ_buf ^^
+          compile_eq_const (E.hash env lab) ^^
+          G.if1 I32Type
+            f
+            begin
+              skip get_idltyp ^^
+              coercion_failed "IDL error: stable func has wrong label"
+            end
+        )
+      in
+
       let store_word32 =
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}) in
@@ -8266,18 +8279,8 @@ module Serialization = struct
               coercion_failed "IDL error: unexpected variant tag" )
           )
       | Func (Type.Stable lab, c, tbs, ts1, ts2) ->
-        (* See Note [Candid subtype checks] *)
-        get_rel_buf_opt ^^
-        E.if1 I64Type
-          begin
-            get_idltyp ^^
-            idl_sub env t
-          end
-          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
-        E.if1 I64Type
-          (Closure.stable_func env lab)
-          (skip get_idltyp ^^
-           coercion_failed "IDL error: incompatible function type")
+        (* no subtype test - we rely on static upgrade check *)
+        (with_stable_func_typ env lab (Closure.stable_func env lab))
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
