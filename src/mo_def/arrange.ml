@@ -119,7 +119,7 @@ module Make (Cfg : Config) = struct
                                                 ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp ~arrange_typ:true e; id x]
+    | DotE (e, x, ol)     -> "DotE"      $$ [exp ~arrange_typ:true e; match !ol with None -> id x | Some e -> exp e]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -240,12 +240,14 @@ module Make (Cfg : Config) = struct
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
     | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
+    | Type.Stable id -> "Stable" $$ [Atom id]
 
   and func_sort s = match s.it with
     | Type.Local -> Atom "Local"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
     | Type.Shared Type.Composite -> Atom "Composite"
+    | Type.Stable id -> "Stable" $$ [Atom id]
 
   and mut m = match m.it with
     | Const -> Atom "Const"

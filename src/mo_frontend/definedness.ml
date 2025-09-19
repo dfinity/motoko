@@ -123,7 +123,7 @@ let rec exp msgs e : f = match e.it with
   | UnE (_, _, e)
   | ShowE (_, e)
   | FromCandidE e
-  | DotE (e, _)
+  | DotE (e, _, _)
   | ProjE (e, _)
   | NotE e
   | OldE e
@@ -168,7 +168,7 @@ and pat_fields msgs pfs =
 
 and shared_pat msgs shared_pat =
   match shared_pat.it with
-  | Type.Local ->
+  | Type.Local | Type.Stable _ ->
     (M.empty, S.empty)
   | Type.Shared (_, p1) ->
     pat msgs p1

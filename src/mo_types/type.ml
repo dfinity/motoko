@@ -19,7 +19,7 @@ type obj_sort =
 type async_sort = Fut | Cmp
 type await_sort = AwaitFut of bool | AwaitCmp
 type shared_sort = Query | Write | Composite
-type 'a shared = Local | Shared of 'a
+type 'a shared = Local |  Shared of 'a | Stable of var
 type func_sort = shared_sort shared
 type eff = Triv | Await
 
@@ -110,6 +110,7 @@ let tag_func_sort = function
   | Shared Write -> 1
   | Shared Query -> 2
   | Shared Composite -> 3
+  | Stable id -> 4
 
 let tag_obj_sort = function
   | Object -> 0
@@ -300,7 +301,15 @@ end
 
 (* Function sorts *)
 
-let is_shared_sort sort = sort <> Local
+let is_shared_sort sort =
+  match sort with
+  | Shared _ -> true
+  | Local | Stable _ -> false
+
+let is_stable_sort sort =
+  match sort with
+  | Stable _ -> true
+  | _ -> false
 
 (* Constructors *)
 
@@ -885,6 +894,7 @@ let serializable allow_mut t =
          | Module -> false (* TODO(1452) make modules sharable *)
          | Object | Memory -> List.for_all (fun f -> go f.typ) fs)
       | Variant fs -> List.for_all (fun f -> go f.typ) fs
+      | Func (Stable m, c, tbs, ts1, ts2) -> allow_mut
       | Func (s, c, tbs, ts1, ts2) -> is_shared_sort s
       | Named (n, t) -> go t
     end
@@ -1212,7 +1222,7 @@ let rec rel_typ d rel eq t1 t2 =
   | Tup ts1, Tup ts2 ->
     rel_list "tuple arguments" d rel_typ rel eq ts1 ts2
   | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-    (s1 = s2 || incompatible_func_sorts d t1 t2) &&
+    (rel_func_sorts rel eq s1 s2 || incompatible_func_sorts d t1 t2) &&
     (c1 = c2 || incompatible_bounds d t1 t2) &&
     (match rel_binds d eq eq tbs1 tbs2 with
      | Some ts ->
@@ -1226,6 +1236,12 @@ let rec rel_typ d rel eq t1 t2 =
     rel_typ d rel eq t12 t22
   | _, _ -> incompatible_types d t1 t2
   end
+
+and rel_func_sorts rel eq s1 s2 =
+  if rel == eq then s1 = s2 else
+  match s1, s2 with
+  | Stable _, Local -> true
+  | _ -> s1 = s2
 
 and rel_fields t2 d rel eq tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
@@ -1532,6 +1548,17 @@ module M = Map.Make (OrdPair)
 
 exception Mismatch
 
+let rel_func_sort rel lubs glbs s1 s2 =
+  if s1 = s2 then Some s1
+  else match (s1, s2) with
+  | Stable id1, Stable id2 ->
+    assert (id1 <> id2);
+    if rel == lubs then Some Local else None
+  | (Stable _ as s), Local
+  | Local, (Stable _ as s) ->
+    if rel == lubs then Some Local else Some s
+  | _ -> None
+
 let rec combine rel lubs glbs t1 t2 =
   assert (rel == lubs || rel == glbs);
   if t1 == t2 then t1 else
@@ -1573,15 +1600,19 @@ let rec combine rel lubs glbs t1 t2 =
       (try Obj (s1, combine_fields rel lubs glbs tf1 tf2)
       with Mismatch -> assert (rel == glbs); Non)
     | Func (s1, c1, bs1, ts11, ts12), Func (s2, c2, bs2, ts21, ts22) when
-        s1 = s2 && c1 = c2 && eq_binds bs1 bs2 &&
+        rel_func_sort rel lubs glbs s1 s2 <> None && c1 = c2
+        && eq_binds bs1 bs2 &&
         List.(length ts11 = length ts21 && length ts12 = length ts22) ->
       let ts = open_binds bs1 in
       let cs = List.map (fun t -> fst (as_con t)) ts in
       let opened = List.map (open_ ts) in
       let closed = List.map (close cs) in
+      let s = match rel_func_sort rel lubs glbs s1 s2 with
+        | Some s -> s
+        | _ -> assert false (* see call to rel_func_sort above *) in
       let rel' = if rel == lubs then glbs else lubs in
       Func (
-        s1, c1, bs1,
+        s, c1, bs1,
         closed (List.map2 (combine rel' lubs glbs) (opened ts11) (opened ts21)),
         closed (List.map2 (combine rel lubs glbs) (opened ts12) (opened ts22))
       )
@@ -1845,7 +1876,7 @@ let string_of_func_sort = function
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
   | Shared Composite -> "shared composite query " (* TBR *)
-
+  | Stable id -> "stable " ^ id
 (* PrettyPrinter configurations *)
 
 module type PrettyConfig = sig
@@ -2378,6 +2409,16 @@ let rec match_stab_sig sig1 sig2 =
   let pre_tfs2 = pre sig2 in
   match_stab_fields post_tfs1 pre_tfs2
 
+and match_stab_field tf1 tf2 =
+  assert (tf1.lab = tf2.lab);
+  match normalize tf1.typ with
+  | Func (Stable lab, _, _, _, _) when tf1.lab = lab ->
+    (* this is a definition so can only evolve to a subtype *)
+    sub tf2.typ tf1.typ
+  | _ ->
+    (* other fields can evolve to stable supertypes *)
+    stable_sub (as_immut tf1.typ) (as_immut tf2.typ)
+
 and match_stab_fields tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
   match tfs1, tfs2 with
@@ -2390,7 +2431,7 @@ and match_stab_fields tfs1 tfs2 =
   | tf1::tfs1', (required, tf2)::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       stable_sub (as_immut tf1.typ) (as_immut tf2.typ) &&
+       match_stab_field tf1 tf2 &&
        match_stab_fields tfs1' tfs2'
      | -1 ->
        (* no dropped fields *)

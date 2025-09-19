@@ -1,0 +1,10 @@
+simple_stable_funcs_inference.mo:75.14-75.16: type error [M0131], variable s1 is declared stable but has non-stable type
+  ((i : Int, j : Int) -> Order, ?(None, List<None>))
+simple_stable_funcs_inference.mo:87.39-87.42: type error [M0096], expression of type
+  (i : Int, j : Int) -> Order
+cannot produce expected type
+  stable cmp(Int, Int) -> Order
+simple_stable_funcs_inference.mo:108.41-108.43: type error [M0096], expression of type
+  (Inc, ?(Int, List<Int>))
+cannot produce expected type
+  (Dec, ?(Int, List<Int>))

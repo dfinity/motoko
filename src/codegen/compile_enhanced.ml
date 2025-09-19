@@ -465,6 +465,8 @@ module E = struct
     constant_pool : shared_value ConstEnv.t ref;
     object_pool : object_pool;
 
+    stable_funcs : int64 option ref; (* a well-known object pool index *)
+
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
@@ -515,6 +517,7 @@ module E = struct
     data_segments = ref Table.empty;
     constant_pool = ref ConstEnv.empty;
     object_pool = { objects = ref Table.empty; frozen = ref false };
+    stable_funcs = ref None;
     typtbl_typs = ref Table.empty;
     (* Metadata *)
     args = ref None;
@@ -758,6 +761,14 @@ module E = struct
 
   let iterate_object_pool (env : t) f =
     G.concat_mapi f (List.map (fun (l, a) -> a) (Table.to_list !(env.object_pool.objects)))
+
+  let set_stable_funcs (env : t) idx =
+    env.stable_funcs := Some idx
+
+  let get_stable_funcs line (env : t)  =
+    match !(env.stable_funcs) with
+    | None -> failwith ("get_stable_func failed at line" ^ string_of_int line)
+    | Some ptr -> ptr
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -2362,67 +2373,6 @@ module Variant = struct
     compile_eq_const (hash_variant_label env l)
 
 end (* Variant *)
-
-
-module Closure = struct
-  (* In this module, we deal with closures, i.e. functions that capture parts
-     of their environment.
-
-     The structure of a closure is:
-
-       ┌──────┬─────┬───────┬──────┬──────────────┐
-       │ obj header │ funid │ size │ captured ... │
-       └──────┴─────┴───────┴──────┴──────────────┘
-
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
-  *)
-  let header_size = Int64.add Tagged.header_size 2L
-
-  let funptr_field = Tagged.header_size
-  let len_field = Int64.add 1L Tagged.header_size
-
-  let load_data env i =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (Int64.add header_size i)
-
-  let store_data env i =
-    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
-    set_closure_data ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_closure_data ^^
-    Tagged.store_field env (Int64.add header_size i)
-
-  let prepare_closure_call env =
-    Tagged.load_forwarding_pointer env
-
-  (* Expect on the stack
-     * the function closure (using prepare_closure_call)
-     * and arguments (n-ary!)
-     * the function closure again!
-  *)
-  let call_closure env n_args n_res =
-    (* Calculate the wasm type for a given calling convention.
-       An extra first argument for the closure! *)
-    let ty = E.func_type env (FuncType (
-      I64Type :: Lib.List.make n_args I64Type,
-      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
-    (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env funptr_field ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    (* All done: Call! *)
-    let table_index = 0l in
-    G.i (CallIndirect (nr table_index, nr ty)) ^^
-    FakeMultiVal.load env (Lib.List.make n_res I64Type)
-
-  let constant env get_fi =
-    let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
-    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
-      compile_unboxed_const fi;
-      compile_unboxed_const 0L
-    ])
-
-end (* Closure *)
 
 
 module BoxedWord64 = struct
@@ -4221,6 +4171,120 @@ module Object = struct
     load_ptr
  
 end (* Object *) 
+
+module Closure = struct
+  (* In this module, we deal with closures, i.e. functions that capture parts
+     of their environment.
+
+     The structure of a closure is:
+
+       ┌──────┬─────┬───────┬──────┬──────────────┐
+       │ obj header │ funid │ size │ captured ... │
+       └──────┴─────┴───────┴──────┴──────────────┘
+
+     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+  *)
+  let header_size = Int64.add Tagged.header_size 2L
+
+  let funptr_field = Tagged.header_size
+  let len_field = Int64.add 1L Tagged.header_size
+  let stable_hash_field = Int64.add 2L Tagged.header_size
+
+  let load_data env i =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env (Int64.add header_size i)
+
+  let store_data env i =
+    let (set_closure_data, get_closure_data) = new_local env "closure_data" in
+    set_closure_data ^^
+    Tagged.load_forwarding_pointer env ^^
+    get_closure_data ^^
+    Tagged.store_field env (Int64.add header_size i)
+
+
+  let prepare_closure_call env =
+    let (set_closure, get_closure) = new_local env "closure" in
+    Tagged.load_forwarding_pointer env ^^
+    set_closure ^^
+    get_closure ^^
+    Tagged.load_field env funptr_field ^^
+    compile_eq_const (-1L) ^^
+    E.if1 I64Type
+    begin
+       Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
+       let (set_static_funcs, get_static_funcs) = new_local env "static_funcs" in
+       Tagged.load_forwarding_pointer env ^^
+       MutBox.load_field env ^^
+       set_static_funcs ^^
+       get_static_funcs ^^
+       E.else_trap_with env "stable function applied in migration" ^^
+       get_static_funcs ^^
+       get_closure ^^
+       Tagged.load_field env stable_hash_field ^^
+       BitTagged.untag __LINE__ env Type.Nat32 ^^
+       Object.idx_hash env 0 true(*=indirect*) ^^
+       load_ptr ^^
+       Tagged.load_forwarding_pointer env
+    end
+    begin
+      get_closure
+    end
+
+  (* Expect on the stack
+     * the function closure (using prepare_closure_call)
+     * and arguments (n-ary!)
+     * the function closure again!
+  *)
+  let call_closure env n_args n_res =
+    (* Calculate the wasm type for a given calling convention.
+       An extra first argument for the closure! *)
+    let ty = E.func_type env (FuncType (
+      I64Type :: Lib.List.make n_args I64Type,
+      FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
+    (* get the table index *)
+    (* was:  Tagged.load_forwarding_pointer env ^^ *)
+    prepare_closure_call env ^^ (* optimize me - we are indirecting twice! *)
+    Tagged.load_field env funptr_field ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    (* All done: Call! *)
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
+    FakeMultiVal.load env (Lib.List.make n_res I64Type)
+
+  let constant env get_fi =
+    let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
+    Tagged.shared_object __LINE__ env (fun env -> Tagged.obj env Tagged.Closure [
+      compile_unboxed_const fi;
+      compile_unboxed_const 0L
+    ])
+
+  let stable_func env lab =
+    (* Allocate a heap object for the closure with single lab field *)
+    let set_clos, get_clos = new_local env ("stable_closure_"^lab) in
+    let len = 1L in
+    Tagged.alloc env (Int64.add header_size len) Tagged.Closure ^^
+    set_clos ^^
+
+    (* Store -1 function pointer *)
+    get_clos ^^
+    compile_unboxed_const (-1L) ^^
+    Tagged.store_field env funptr_field ^^
+
+    (* Store the length *)
+    get_clos ^^
+    compile_unboxed_const len ^^
+    Tagged.store_field env len_field ^^
+
+    (* Store the hash as tagged Nat32 *)
+    get_clos ^^
+    compile_unboxed_const (E.hash env lab) ^^
+    BitTagged.tag env Type.Nat32 ^^
+    Tagged.store_field env stable_hash_field ^^
+
+    get_clos ^^
+    Tagged.allocation_barrier env
+
+end (* Closure *)
 
 module Region = struct
   (*
@@ -6996,7 +7060,7 @@ module Serialization = struct
           add_idx f.typ
         ) (sort_by_hash vs)
       | Func (s, c, tbs, ts1, ts2) ->
-        assert (Type.is_shared_sort s);
+        assert (Type.is_shared_sort s || Type.is_stable_sort s);
         add_sleb128 idl_func;
         add_leb128 (List.length ts1);
         List.iter add_idx ts1;
@@ -7011,6 +7075,9 @@ module Serialization = struct
             add_leb128 1; add_u8 1; (* query *)
           | Shared Composite, _ ->
             add_leb128 1; add_u8 3; (* composite *)
+          | Stable id, _ -> (* todo: encode id? *)
+            assert (tbs = []);
+            add_leb128 1; add_u8 4; (* stable *) (*TODO: generics, cf stable-functions PR*)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -7213,6 +7280,8 @@ module Serialization = struct
           )
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
+      | Func (Type.Stable id, c, tbs, ts1 , ts2) ->
+        G.nop
       | Func _ ->
         inc_data_size (compile_unboxed_const 1L) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0L ^^ size env (Obj (Actor, [])) ^^
@@ -8167,7 +8236,20 @@ module Serialization = struct
             ( sort_by_hash vs )
             ( skip get_arg_typ ^^
               coercion_failed "IDL error: unexpected variant tag" )
-        )
+          )
+      | Func (Type.Stable lab, c, tbs, ts1, ts2) ->
+        (* See Note [Candid subtype checks] *)
+        get_rel_buf_opt ^^
+        E.if1 I64Type
+          begin
+            get_idltyp ^^
+            idl_sub env t
+          end
+          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
+        E.if1 I64Type
+          (Closure.stable_func env lab)
+          (skip get_idltyp ^^
+           coercion_failed "IDL error: incompatible function type")
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
@@ -11456,7 +11538,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            raise (Invalid_argument "call_as_prim was true?")
          end
       | SR.Const Const.Fun (_, mk_fi, _), _ ->
-         assert (sort = Type.Local);
+         assert (sort = Type.Local); (* TBR - allow Type.stable _?*)
          StackRep.of_arity return_arity,
 
          code1 ^^
@@ -11464,7 +11546,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I64Type)
-      | _, Type.Local ->
+      | _, (Type.Local | Type.Stable _) -> (* TBR: - optimize stable call to lookup? *)
          let (set_clos, get_clos) = new_local env "clos" in
 
          StackRep.of_arity return_arity,
@@ -11852,6 +11934,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableSize t, [e] ->
     SR.UnboxedWord64 Type.Nat64,
     E.trap_with env "Deprecated with enhanced orthogonal persistence"
+
+
+  (* stable function record *)
+
+  | OtherPrim "set_stable_funcs", [e] ->
+    SR.unit,
+    Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
+    Tagged.load_forwarding_pointer env ^^
+    compile_add_const ptr_unskew ^^
+    compile_add_const (Int64.mul MutBox.field Heap.word_size) ^^
+    compile_exp_vanilla env ae e ^^
+    Tagged.write_with_barrier env
 
   (* Other prims, unary *)
 
@@ -12975,6 +13069,26 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     pre_code ^^
     compile_exp_as env ae sr e ^^
     code
+  | FuncE (x, Type.Stable lab, control, typ_binds, args, res_tys, e) ->
+    let obj_typ = Type.(obj Object [(lab, Mut exp.note.Note.typ)]) in (* Fix me *)
+    SR.Vanilla,
+    (* Load stable_funcs record *)
+    Heap.get_static_variable env (E.get_stable_funcs __LINE__ env) ^^
+    Tagged.load_forwarding_pointer env ^^
+    MutBox.load_field env ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env obj_typ lab ^^
+    compile_add_const ptr_unskew ^^
+    (* Compile the implementation as a `Local` function *)
+    compile_exp_vanilla env ae
+      { it = FuncE (x, Type.Local (*!*), control, typ_binds, args, res_tys, e);
+        at = exp.at;
+        note = exp.note; (* FIX sort *)
+      } ^^
+    (* Write to stable func record *)
+    Tagged.write_with_barrier env ^^
+    (* Allocate the proxy *)
+    Closure.stable_func env lab
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
     let captured = Freevars.captured exp in
     let return_tys = match control with
@@ -13583,6 +13697,7 @@ and export_actor_field env  ae (f : Ir.field) =
 and main_actor as_opt mod_env ds fs up =
   let stable_actor_type = up.stable_type in
   let build_stable_actor = up.stable_record in
+
   IncrementalGraphStabilization.define_methods mod_env stable_actor_type;
 
   (* Export metadata *)
@@ -13815,6 +13930,9 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   assert !Flags.rtti; (* Use precise tagging for graph copy. *)
   assert (!Flags.gc_strategy = Flags.Incremental); (* Define heap layout with the incremental GC. *)
   let env = E.mk_global mode rts IC.trap_with in
+
+  let stable_funcs_idx = MutBox.add_global_mutbox env in
+  E.set_stable_funcs env stable_funcs_idx;
 
   IC.register_globals env;
   Stack.register_globals env;

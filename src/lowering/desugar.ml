@@ -96,13 +96,13 @@ and exp' at note = function
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
-  | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
+  | S.DotE (e, x, _) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
-  | S.DotE (e, x) when T.is_prim T.Blob e.note.S.note_typ ->
-    (blob_dotE  x.it (exp e)).it
-  | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
-    (text_dotE  x.it (exp e)).it
-  | S.DotE (e, x) ->
+  | S.DotE (e, x, _) when T.is_prim T.Blob e.note.S.note_typ ->
+    (blob_dotE x.it (exp e)).it
+  | S.DotE (e, x, _) when T.is_prim T.Text e.note.S.note_typ ->
+    (text_dotE x.it (exp e)).it
+  | S.DotE (e, x, _) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
     | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
     | _ -> I.PrimE (I.DotPrim x.it, [exp e])
@@ -116,6 +116,7 @@ and exp' at note = function
   | S.FuncE (name, sp, tbs, p, _t_opt, _, e) ->
     let s, po = match sp.it with
       | T.Local -> (T.Local, None)
+      | T.Stable id -> (T.Stable id, None)
       | T.Shared (ss, {it = S.WildP; _} ) -> (* don't bother with ctxt pat *)
         (T.Shared ss, None)
       | T.Shared (ss, sp) -> (T.Shared ss, Some sp) in
@@ -203,15 +204,29 @@ and exp' at note = function
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   (* Optimizing array.size() *)
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.is_array e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "array_len", [exp e1])
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.(is_prim Text) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "text_len", [exp e1])
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
+  (* Contextual dot call *)
+  | S.CallE (None, {it=S.DotE(e1, id, n);_}, inst, e2) when Option.is_some !n ->
+     let arity = match (Option.get !n).note.note_typ with
+       | T.Func(_, _, _, args, _) -> List.length args
+       | _ -> assert false in
+     let args = match e2 with
+       | { it = TupE []; at; note = { note_eff; note_typ = T.Tup [] } } ->
+         { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
+       | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
+          { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
+       | { it = _; at; note = { note_eff; note_typ = t } } ->
+          { it = TupE ([e1; e2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
+     in
+    I.(PrimE (CallPrim inst.note, [exp (Option.get !n); exp args]))
   (* Normal call *)
   | S.CallE (None, e1, inst, e2) ->
     I.(PrimE (CallPrim inst.note, [exp e1; exp e2]))
@@ -246,7 +261,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, {it=S.CallE (None, {it=S.DotE (arr, proj); _}, _, e1); _}, e2)
+  | S.ForE (p, {it=S.CallE (None, {it=S.DotE (arr, proj, _); _}, _, e1); _}, e2)
       when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "values" || proj.it = "keys")
     -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
@@ -312,7 +327,7 @@ and lexp e =
 
 and lexp' = function
   | S.VarE i -> I.VarLE i.it
-  | S.DotE (e, x) -> I.DotLE (exp e, x.it)
+  | S.DotE (e, x, _) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 
@@ -580,9 +595,14 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
   let stabs = List.map (fun ef -> ef.it.S.stab) es in
-  let pairs = List.map2 stabilize stabs ds in
-  let idss = List.map fst pairs in
+  let ids_fids_mk_ds_s = List.map2 stabilize stabs ds in
+  let fidss = List.map (fun (ids, fids, dss) -> fids) ids_fids_mk_ds_s in
+  let idss = List.map (fun (ids, fids, dss) -> ids) ids_fids_mk_ds_s in
+  let fids = List.concat fidss in
   let ids = List.concat idss in
+  let stable_func_fields = List.sort T.compare_field
+    (List.map (fun (i, t) -> T.{lab = i; typ = T.Mut t; src = empty_src}) fids)
+  in
   let stab_fields = List.sort T.compare_field
     (List.map (fun (i, t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
@@ -590,11 +610,13 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
     List.map
       (fun tf -> {tf with T.typ = T.Opt (T.as_immut tf.T.typ) } )
       stab_fields in
-  let mk_ds = List.map snd pairs in
+  let mk_dss = List.map (fun (ids, fids, mk_ds) -> mk_ds) ids_fids_mk_ds_s in
   let mem_ty = T.Obj (T.Memory, mem_fields) in
+  let stable_funcs_ty = T.Obj(T.Object, stable_func_fields) in
+  let stable_funcs = fresh_var "stable_funcs" (stable_funcs_ty) in
   let state = fresh_var "state" (T.Mut (T.Opt mem_ty)) in
   let get_state = fresh_var "getState" (T.Func(T.Local, T.Returns, [], [], [mem_ty])) in
-  let ds = List.map (fun mk_d -> mk_d get_state) mk_ds in
+  let ds = List.concat (List.map (fun mk_d -> mk_d get_state) mk_dss) in
   let sig_, stable_type, migration = match exp_opt with
     | None ->
       T.Single stab_fields,
@@ -676,6 +698,13 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let ds =
     varD state (optE migration)
     ::
+    letD stable_funcs
+      (objectE T.Object
+         (List.map (fun (i, t) -> (i, undefined_stable_func i t)) fids)
+         stable_func_fields)
+    ::
+    expD (primE (Ir.OtherPrim "set_stable_funcs") [varE stable_funcs])
+    ::
     nary_funcD get_state []
       (let v = fresh_var "v" mem_ty in
        switch_optE (immuteE (varE state))
@@ -744,31 +773,55 @@ and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
      },
      obj_typ))
 
+and undefined_stable_func i t =
+  match T.normalize t with
+  | T.Func(T.Local, c, tbs, ts1, ts2) ->
+      let tys = T.open_binds tbs in
+      let cs = List.map (function (T.Con(c, [])) -> c | _ -> assert false) tys in
+      let tys1 = List.map (T.open_ tys) ts1 in
+      let tys2 = List.map (T.open_ tys) ts2 in
+      let vs = fresh_vars "param" tys1 in
+      let typ_binds = List.map2
+          (fun tb c -> {it = I.{con = c; bound = T.open_ tys tb.T.bound; sort = tb.T.sort}; at = no_region; note = ()}) tbs cs in
+      let args = List.map arg_of_var vs in
+      funcE ("stable_"^i) T.Local c typ_binds args tys2
+        (primE (Ir.OtherPrim "trap")
+           [textE (Printf.sprintf "stable function `%s` used before defined" i)])
+  | _ -> assert false
+
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
   match s, d.it with
   | (S.Flexible, _) ->
-    ([], fun _ -> d)
+    ([], [], fun _ -> [d])
   | (S.Stable, I.VarD(i, t, e)) ->
-    ([(i, T.Mut t)],
+    ([(i, T.Mut t)], [],
      fun get_state ->
      let v = fresh_var i t in
-     varD (var i (T.Mut t))
+     [varD (var i (T.Mut t))
        (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
          e
          (varP v) (varE v)
-         t))
+         t)])
   | (S.Stable, I.RefD _) -> assert false (* RefD cannot come from user code *)
   | (S.Stable, I.LetD({it = I.VarP i; _} as p, e)) ->
     let t = p.note in
-    ([(i, t)],
-     fun get_state ->
-     let v = fresh_var i t in
-     letP p
-       (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
-         e
-         (varP v) (varE v)
-         t))
+    (match T.normalize t with
+     | T.Func(T.Stable f, c, tbs, ts1, ts2) when i = f->
+        ([(i, t)], [(i, T.Func(T.Local, c, tbs, ts1, ts2))],
+        fun get_state ->
+        [letP p e] (* compilation of e will update stable_funcs and return a proxy *)
+       )
+     | _ ->
+       ([(i, t)], [],
+        fun get_state ->
+        let v = fresh_var i t in
+        [letP p
+          (switch_optE (dotE (callE (varE get_state) [] (unitE ())) i (T.Opt t))
+            e
+            (varP v) (varE v)
+            t)]
+       ))
   | (S.Stable, I.LetD _) ->
     assert false
 
@@ -946,6 +999,7 @@ and dec' at n = function
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
+      | T.Stable id -> None
       | T.Shared (_, p) -> Some p in
     let inst = List.map
                  (fun tb ->
@@ -1272,6 +1326,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     let fun_typ = u.note.S.note_typ in
     let op = match sp.it with
       | T.Local -> None
+      | T.Stable id -> None
       | T.Shared (_, p) -> Some p in
     let args, eo, wrap, control, _n_res = to_args fun_typ op exp_opt p in
     let (ts, obj_typ) =
