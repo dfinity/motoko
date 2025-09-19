@@ -1,3 +1,4 @@
+//MOC-FLAG -W M0223
 func check<T>(t1 : T, t2 : T) : [T] = [t1, t2]; // used to check type equality
 func check3<T>(t1 : T, t2 : T, t3 : T) : [T] = [t1, t2, t3]; // used to check type equality
 
