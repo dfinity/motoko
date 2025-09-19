@@ -1,10 +1,12 @@
 # Motoko compiler changelog
 
-## 0.16.2 (2025-09-12)
-
 * motoko (`moc`)
 
   * Improved solving and error messages for invariant type parameters. Suggested return type annotations are now included in the error message when there is no principal solution (#5464).
+
+## 0.16.2 (2025-09-12)
+
+* motoko (`moc`)
 
   * Added primitives to access canister environment variables (#5443):
 
