@@ -1,3 +1,2 @@
 --- Compiling Motoko that imports components...
-    component packages:  --package ic_sig_verifier /Users/bartosz.przydatek/GitHub/motoko/test/wasm-components-test-project/lib/mops/component/ic_sig_verifier@0.0.1 --package meet_and_greet /Users/bartosz.przydatek/GitHub/motoko/test/wasm-components-test-project/lib/mops/component/meet_and_greet@0.0.1 --package zstd /Users/bartosz.przydatek/GitHub/motoko/test/wasm-components-test-project/lib/mops/component/zstd@0.0.1
 --- Compiling done, output written to target/motoko.wasm
