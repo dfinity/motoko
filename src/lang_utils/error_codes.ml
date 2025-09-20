@@ -226,4 +226,8 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0222", None; (* Ignored `async*` *)
+    (* TODO: Adjust before merging *)
+    "M0250", None; (* A mixin cannot be used as an entry point *)
+    "M0251", None; (* Unknown mixin inclusion *)
+    "M0252", None; (* Non-actor include *)
   ]
