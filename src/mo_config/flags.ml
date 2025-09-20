@@ -89,3 +89,5 @@ let get_warning_level (code : string) : lint_level =
   match M.find_opt code !warning_levels with
   | None -> Warn
   | Some level -> level
+
+let is_warning_disabled code = get_warning_level code = Allow

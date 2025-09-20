@@ -53,13 +53,8 @@ let rec fold : ('a -> 'b -> 'a result) -> 'a -> 'b list -> 'a result = fun f acc
 
 type msg_store = messages ref
 let add_msg s m = 
-  if m.sev = Warning then
-    match Flags.get_warning_level m.code with
-    | Flags.Allow -> ()
-    | Flags.Warn -> s := m :: !s
-    | Flags.Error -> s := {m with sev = Error} :: !s
-  else
-    s := m :: !s
+  if m.sev = Warning && Flags.is_warning_disabled m.code then () else
+  s := m :: !s
 let add_msgs s ms = List.iter (add_msg s) (List.rev ms)
 let get_msgs s = List.rev !s
 
@@ -82,7 +77,15 @@ let string_of_message msg =
   else "" in
   Printf.sprintf "%s: %s%s, %s\n%s" (Source.string_of_region msg.at) label code msg.text src
 
+let is_warning_as_error msg =
+  msg.sev = Warning && Flags.get_warning_level msg.code = Flags.Error
+
 let print_message msg =
+  let msg =
+    if is_warning_as_error msg
+    then {msg with sev = Error}
+    else msg
+  in
   if msg.sev <> Error && not !Flags.print_warnings
   then ()
   else Printf.eprintf "%s%!" (string_of_message msg)
@@ -105,7 +108,8 @@ let flush_messages : 'a result -> 'a option = function
     None
   | Ok (x, msgs) ->
     print_messages msgs;
-    if !Flags.warnings_are_errors && msgs <> []
+    if (!Flags.warnings_are_errors && msgs <> [])
+      || List.exists is_warning_as_error msgs
     then None
     else Some x
 
