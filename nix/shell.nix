@@ -1,7 +1,9 @@
 { pkgs
+, unstablePkgsForWac
 , nix-update
 , base-src
 , core-src
+, hex-src
 , llvmEnv
 , esm
 , viper-server
@@ -53,6 +55,8 @@ pkgs.mkShell {
         pkgs.pocket-ic.server
         pkgs.gh # GitHub CLI
         test-runner
+        pkgs.wasm-tools # for working with Wasm-components
+        unstablePkgsForWac.wac-cli # for combining Wasm-components
       ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.Security
     ));
 
@@ -88,6 +92,7 @@ pkgs.mkShell {
   LOCALE_ARCHIVE = pkgs.lib.optionalString pkgs.stdenv.isLinux "${pkgs.glibcLocales}/lib/locale/locale-archive";
   MOTOKO_BASE = base-src;
   MOTOKO_CORE = core-src;
+  MOTOKO_HEX = hex-src;
   CANDID_TESTS = "${pkgs.sources.candid-src}/test";
   VIPER_SERVER = "${viper-server}";
 
