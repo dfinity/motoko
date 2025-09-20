@@ -554,6 +554,14 @@ struct
   end
 end
 
+module Debug =
+struct
+  let eprint_prefixed_callstack ?(prefix = "DBG: ") ?(depth = 50) () =
+    Printexc.raw_backtrace_to_string (Printexc.get_callstack depth)
+    |> Stdlib.String.split_on_char '\n'
+    |> Stdlib.List.iter (fun line -> if line <> "" then Printf.eprintf "%s%s\n%!" prefix line)
+end
+
 module Promise =
 struct
   type 'a t = 'a option ref
