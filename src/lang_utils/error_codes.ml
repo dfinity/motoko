@@ -220,10 +220,53 @@ let error_codes : (string * string option) list =
     "M0214", None; (* Expected type of field in parenthetical note differs from inferred *)
     "M0215", None; (* Field is lost in record used at supertype *)
     "M0216", None; (* Stable variable must stable subtype *)
-    "M0217", None; (* Redundant `persistent` *)
-    "M0218", None; (* Redundant `stable` *)
+    
     "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0222", None; (* Ignored `async*` *)
   ]
+(* TODO: move the lint level + map to here from Flags *)
+(* TODO: Remove warning codes from errors above, no duplication! *)
+(* TODO: Check if all warnings are accounted for below *)
+(* TODO: Make sure the warnings that are used as errors have their default lint level in the config in Flags *)
+let warning_codes = [
+  "M0005", None, "Case mismatch between import and filename";
+  "M0061", None, "Comparing abstract type to itself at supertype";
+  "M0062", None, "Comparing incompatible type at common supertype";
+  "M0074", None, "Array elements have inconsistent types";
+  "M0081", None, "If branches have inconsistent types";
+  "M0089", None, "Redundant ignore";
+  "M0101", None, "Switch with inconsistent branch types";
+  "M0128", None, "Function with system function name but wrong visibility";
+  "M0135", None, "Actor class has non-async return type";
+  "M0142", None, "An imported library should be a module or named actor class";
+  "M0145", None, "Pattern does not cover value";
+  "M0146", None, "Pattern is never matched";
+  "M0154", None, "Deprecation annotation";
+  "M0155", None, "Inferred type Nat for subtraction";
+  "M0166", None, "Type intersection results in abstract type";
+  "M0167", None, "Type union results in bottom type";
+  "M0190", None, "Types inconsistent for alternative pattern variables, losing information";
+  "M0191", None, "Code requires Wasm features ... to execute";
+  "M0194", None, "Unused identifier warning";
+  "M0195", None, "warn that `system` capability is implicitly supplied";
+  "M0198", None, "Unused field pattern warning";
+  "M0199", None, "Deprecate experimental stable memory";
+  "M0206", None, "Migration consumes, but does not produce, a declared field";
+  "M0207", None, "Migration consumes, but does not produce, an un-declared field";
+  "M0210", None, "Parenthetical note must be applied to a message send";
+  "M0211", None, "Parenthetical note has no attributes";
+  "M0212", None, "Unrecognised attribute in parenthetical note";
+  "M0215", None, "Field is lost in record used at supertype";
+  "M0217", None, "Redundant `persistent`";
+  "M0218", None, "Redundant `stable`";
+  "M0222", None, "Ignored `async*`";
+]
+
+let try_find_explanation code =
+  match List.find_opt (fun (c, _) -> String.equal c code) error_codes with
+  | None ->
+    List.find_opt (fun (c, _, _) -> String.equal c code) warning_codes
+    |> Option.map (fun (c, e, _ ) -> (c, e))
+  | o -> o
