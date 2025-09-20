@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+* simple stable functions...
+
+
 * motoko (`moc`)
 
   * Added `-A` and `-W` flags to disable and enable warnings given their message codes (#5496).

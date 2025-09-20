@@ -603,7 +603,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let v' =
       match shared_pat.it with
       | T.Shared _ -> make_message env name exp.note.note_typ v
-      | T.Local -> v
+      | T.Local | T.Stable _ -> v
     in k v'
   | CallE (par, exp1, typs, exp2) ->
     interpret_par env par
@@ -941,6 +941,7 @@ and match_shared_pat env shared_pat c =
        trap pat.at "context value %s does not match context pattern" (string_of_val env v)
      | Some ve1 ->
        ve1)
+  | T.Stable _, _-> V.Env.empty
 
 (* Objects *)
 
