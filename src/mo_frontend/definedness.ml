@@ -123,7 +123,7 @@ let rec exp msgs e : f = match e.it with
   | UnE (_, _, e)
   | ShowE (_, e)
   | FromCandidE e
-  | DotE (e, _)
+  | DotE (e, _, _)
   | ProjE (e, _)
   | NotE e
   | OldE e
