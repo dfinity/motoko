@@ -1,7 +1,7 @@
 //MOC-FLAG --stable-types
 import Prim "mo:prim";
 
-// Compatible upgrade
+// Incompatible upgrade
 actor {
   type Variant = {
     #two : { key : Nat; var name : Text };
