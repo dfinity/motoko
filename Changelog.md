@@ -9,6 +9,10 @@
     Multiple warnings can be disabled or enabled by comma-separating the message codes, e.g. `-A M0217,M0218`.
     Both flags can be used multiple times.
 
+  * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
+
+  * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
 ## 0.16.2 (2025-09-12)
 
 * motoko (`moc`)
