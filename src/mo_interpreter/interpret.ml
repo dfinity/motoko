@@ -1029,9 +1029,15 @@ and interpret_dec env dec (k : V.value V.cont) =
     )
   | TypD _ ->
     k V.unit
-  | MixinD _ | IncludeD _ ->
-    (* TODO *)
-    k V.unit
+  | MixinD _ -> k V.unit
+  | IncludeD (_, _arg, _note) ->
+     (* TODO
+        - evaluate arg and bind it against note.pat
+        - define note.imports from mixin as local lets
+        - declare/eval note.decs
+        - Do we need to recreate the renaming pass?
+      *)
+     k V.unit
   | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
