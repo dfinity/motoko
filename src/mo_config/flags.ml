@@ -80,12 +80,12 @@ let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: 
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
 
-let warning_levels : lint_level M.t ref = ref M.empty
+let warning_levels = ref M.empty
 
-let set_warning_level (code : string) (level : lint_level) : unit =
+let set_warning_level code level =
   warning_levels := M.add code level !warning_levels
 
-let get_warning_level (code : string) : lint_level =
+let get_warning_level code =
   match M.find_opt code !warning_levels with
   | None -> Warn
   | Some level -> level

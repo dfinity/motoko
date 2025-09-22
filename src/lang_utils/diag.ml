@@ -83,7 +83,7 @@ let is_warning_as_error msg =
 let print_message msg =
   let msg =
     if is_warning_as_error msg
-    then {msg with sev = Error}
+    then { msg with sev = Error }
     else msg
   in
   if msg.sev <> Error && not !Flags.print_warnings

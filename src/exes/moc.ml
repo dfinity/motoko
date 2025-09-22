@@ -47,7 +47,7 @@ let modify_warning_levels level s =
   let codes = String.split_on_char ',' s in
   codes |> List.iter (fun code ->
     if validate_warning_code code then
-      Mo_config.Flags.set_warning_level code level
+      Flags.set_warning_level code level
     else begin
       eprintf "moc: invalid warning code: %s. Run 'moc --warn-help' to see available warning codes." code; exit 1
     end)
