@@ -169,8 +169,8 @@
         name = "wasm-components";
         src = ./test/wasm-components-test-project;
         buildInputs = [ debugMoPackages.moc unstablePkgsForWac.wac-cli ];
-        MOTOKO_CORE = ${self.shell.MOTOKO_CORE};
-        MOTOKO_HEX = ${self.shell.MOTOKO_HEX};
+        MOTOKO_CORE = shell.MOTOKO_CORE;
+        MOTOKO_HEX = shell.MOTOKO_HEX;
       };
 
       # Define test-runner package.
@@ -228,7 +228,7 @@
       };
 
       tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner wasm-components-tests; 
       };
 
       filterTests = type:
