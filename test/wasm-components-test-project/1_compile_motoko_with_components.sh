@@ -21,7 +21,5 @@ cd $ROOT_DIR || exit
 # Create target directory if it doesn't exist
 mkdir -p target
 echo --- Compiling Motoko that imports components... &&
-echo "    moc packages: $MOC_PACKAGES" &&
-echo "    component packages: $MOC_COMPONENT_PACKAGES" &&
 MOC_UNLOCK_PRIM=true moc $MO_SRC_DIR/Main.mo -wasi-system-api -wasm-components --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm &&
 echo --- Compiling done, output written to target/motoko.wasm
