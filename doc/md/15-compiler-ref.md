@@ -45,6 +45,8 @@ You can use the following options with the `moc` command.
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
 | `-A <codes>`                              | Disable (Allow) comma-separated warning codes, e.g. `-A M0194,M0223`                                                                                  |
 | `-W <codes>`                              | Enable (Warn) comma-separated warning codes, e.g. `-W M0223`                                                                                          |
+| `-E <codes>`                              | Treat as error comma-separated warning codes, e.g. `-E M0217`                                                                                         |
+| `--warn-help`                             | Show available warning codes, current lint level, and descriptions                                                                                    |
 | `--incremental-gc`                        | Use incremental GC (default, works with both enhanced orthogonal persistence and legacy/classical persistence).                                       |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
