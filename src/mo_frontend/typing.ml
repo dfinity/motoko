@@ -1281,13 +1281,13 @@ and combine_pat_srcs env t pat : unit =
   | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
   | ParP pat1 -> combine_pat_srcs env t pat1
 
-type overload_candidate =
+type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
     module_ty : T.typ;
   }
 
-let find_overloaded_dot env id t =
+let contextual_dot env id t =
   let is_module (n, (t, _, _, _)) = match t with
     | T.Obj (T.Module, fs) -> Some (n, (t, fs))
     | _ -> None in
@@ -1323,8 +1323,8 @@ let find_overloaded_dot env id t =
   | [oc] -> Some oc
   | [] -> None
   | ocs ->
-     let overloads = List.map (fun oc -> oc.module_name) ocs in
-     error env id.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" id.it (String.concat ", " overloads)
+     let candidates = List.map (fun oc -> oc.module_name) ocs in
+     error env id.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" id.it (String.concat ", " candidates)
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -1846,8 +1846,7 @@ and infer_bin_exp env exp1 exp2 =
 
 (* Returns `Ok` when finding an object with a matching field or
    `Error` with the type of the receiver as well as the error message
-   to report. This is used to delay the reporting when trying to
-   resolve an overloaded-dot *)
+   to report. This is used to delay the reporting for contextual dot resulution *)
 and try_infer_dot_exp env at exp id =
   let t1 = infer_exp_promote env exp in
   let fields =
@@ -2256,27 +2255,27 @@ and detect_lost_fields env t = function
 
 and infer_callee env exp =
   match exp.it with
-  | DotE(exp1, id, ol) -> begin
+  | DotE(exp1, id, note) -> begin
     match try_infer_dot_exp env exp.at exp1 id with
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, e) ->
-      match find_overloaded_dot env id t1 with
+      match contextual_dot env id t1 with
       | None ->
         Diag.add_msg env.msgs e;
         raise Recover
-      | Some oc ->
+      | Some { module_name; module_ty; func_ty } ->
          if not env.pre then
-         use_identifier env oc.module_name;
-         ol := Some {
+         use_identifier env module_name;
+         note := Some {
            it = DotE({
-               it = VarE { it = oc.module_name; at = no_region; note = Const };
+               it = VarE { it = module_name; at = no_region; note = Const };
                at = id.at;
-               note = { note_eff = T.Triv; note_typ = oc.module_ty }
+               note = { note_eff = T.Triv; note_typ = module_ty }
              }, id, ref None);
            at = id.at;
-           note = { note_eff = T.Triv; note_typ = oc.func_ty }
+           note = { note_eff = T.Triv; note_typ = func_ty }
          };
-         oc.func_ty, Some (exp1, t1)
+         func_ty, Some (exp1, t1)
      end
   | _ ->
      infer_exp_promote env exp, None
@@ -2284,7 +2283,7 @@ and infer_callee env exp =
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
-  let (t1, overloaded_dot) = infer_callee env exp1 in
+  let (t1, ctx_dot) = infer_callee env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
@@ -2296,7 +2295,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t_arg, extra_subtype_problems = match overloaded_dot with
+  let t_arg, extra_subtype_problems = match ctx_dot with
     | None -> t_arg, []
     | Some(e, t) -> begin
       match T.normalize t_arg with

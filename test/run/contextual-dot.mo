@@ -1,4 +1,4 @@
-import ArrayExt "overloaded-dot/ArrayExt";
+import ArrayExt "contextual-dot/ArrayExt";
 
 let Vec2 = module {
   public type Self = { x : Nat; y : Nat };
