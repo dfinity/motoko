@@ -5,6 +5,11 @@ open Mo_config
 module Js = Js_of_ocaml.Js
 module Sys_js = Js_of_ocaml.Sys_js
 
+(** Extra flags from the [moc] CLI *)
+let moc_args = Mo_args.inclusion_args
+  @ Mo_args.warning_args
+  @ Mo_args.error_args
+
 let position_of_pos pos =
   object%js
     (* The LSP spec requires zero-based positions *)
@@ -21,7 +26,7 @@ let range_of_region at =
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
     val source = Js.string msg.at.left.file
-    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info) -> 2
+    val severity = if Diag.is_treated_as_error msg then 1 else 2
     val range = range_of_region msg.at
     val code = Js.string msg.code
     val category = Js.string msg.cat
@@ -62,6 +67,16 @@ let js_check source =
     js_result
       (Pipeline.check_files ~enable_recovery:true [Js.to_string source])
       (fun _ -> Js.null))
+
+let parse_extra_flags (tokens : string array) =
+  let argv = Array.append [|"mocjs"|] tokens in
+  let current = ref 0 in
+  let usage = "moc extra flags" in
+  Arg.parse_argv ~current argv moc_args (fun _ -> ()) usage 
+
+let js_set_extra_flags (flags : Js.js_string Js.t Js.js_array Js.t) =
+  let tokens = flags |> Js.to_array |> Array.map Js.to_string in
+  parse_extra_flags tokens
 
 let js_set_run_step_limit limit =
   Mo_interpreter.Interpret.step_limit := limit
