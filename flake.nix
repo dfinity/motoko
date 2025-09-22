@@ -165,6 +165,14 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
+      wasm-components-tests = pkgs.stdenv.mkDerivation {
+        name = "wasm-components";
+        src = ./test/wasm-components-test-project;
+        buildInputs = [ debugMoPackages.moc unstablePkgsForWac.wac-cli ];
+        MOTOKO_CORE = ${self.shell.MOTOKO_CORE};
+        MOTOKO_HEX = ${self.shell.MOTOKO_HEX};
+      };
+
       # Define test-runner package.
       test-runner = pkgs.rustPlatform-stable.buildRustPackage {
         pname = "test-runner";

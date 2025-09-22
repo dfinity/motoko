@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/lib/set_env.sh"
 
+if [ -z "$MOTOKO_CORE" ]
+then
+  echo "MOTOKO_CORE not set. Are you running this in a nix-shell?"
+  exit 1
+fi
+
 ROOT_DIR=$(dirname "$(realpath $0)")
 MO_SRC_DIR="src/motoko"
 MOC_PACKAGES="--package core $MOTOKO_CORE --package hex $MOTOKO_HEX"
