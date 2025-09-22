@@ -230,4 +230,5 @@ let error_codes : (string * string option) list =
     "M0250", None; (* A mixin cannot be used as an entry point *)
     "M0251", None; (* Unknown mixin inclusion *)
     "M0252", None; (* Non-actor include *)
+    "M0253", None; (* Only top-level mixins *)
   ]

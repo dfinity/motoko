@@ -3421,6 +3421,8 @@ and infer_dec env dec : T.typ =
     end;
     T.normalize t
   | MixinD (args, dec_fields) ->
+    if not env.in_prog then
+      error env dec.at "M0253" "mixins may only be declared at the top-level";
     let t_pat, ve = infer_pat_exhaustive error env args in
     let env' = adjoin_vals env ve in
     let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
