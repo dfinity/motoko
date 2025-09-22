@@ -2,6 +2,10 @@
 
 * motoko (`moc`)
 
+  * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
   * Added `-A` and `-W` flags to disable and enable warnings given their message codes (#5496).
 
     For example, to disable the warning for redundant `stable` keyword, use `-A M0217`.

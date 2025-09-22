@@ -80,7 +80,10 @@ let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: 
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
 
-let warning_levels = ref M.empty
+let default_warning_levels = M.empty
+  |> M.add "M0223" Allow
+
+let warning_levels = ref default_warning_levels
 
 let set_warning_level code level =
   warning_levels := M.add code level !warning_levels
@@ -91,3 +94,4 @@ let get_warning_level code =
   | Some level -> level
 
 let is_warning_disabled code = get_warning_level code = Allow
+let is_warning_enabled code = not (is_warning_disabled code)
