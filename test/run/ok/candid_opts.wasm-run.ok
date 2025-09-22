@@ -1,0 +1,10 @@
+{o1 = {x = ?5}; o2 = {x = null}}
+assertion failed at candid_opts.mo:9.1-9.19
+Error: failed to run main module `_out/candid_opts.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: error while executing at wasm backtrace:
+         0: init
+         1: _start
+    2: wasm trap: unreachable
