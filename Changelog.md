@@ -9,6 +9,10 @@
     Multiple warnings can be disabled or enabled by comma-separating the message codes, e.g. `-A M0217,M0218`.
     Both flags can be used multiple times.
 
+  * Added an optional warning for redundant type instantiations in generic function calls (#5468).
+    Note that this warning is off by default.
+    It can be enabled with the `-W M0223` flag.
+
 ## 0.16.2 (2025-09-12)
 
 * motoko (`moc`)

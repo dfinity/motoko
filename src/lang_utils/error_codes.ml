@@ -226,4 +226,5 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0222", None; (* Ignored `async*` *)
+    "M0223", None; (* Redundant type instantiation *)
   ]
