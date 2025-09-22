@@ -1,5 +1,7 @@
 import Prim "mo:prim";
 
+actor {
+
 let ?o1 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ?Nat32});
 let ?o2 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ??Nat32});
 let ?o3 = from_candid(to_candid({x = (5 : Nat32)})) :?({x : ???Nat32});
@@ -262,6 +264,8 @@ do {
   assert o2.x == ?null;
   assert o3.x == ??null;
 };
+
+}
 
 //SKIP run
 //SKIP run-ir
