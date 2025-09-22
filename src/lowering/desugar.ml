@@ -1359,13 +1359,11 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
    import_compiled_class (above) for compilation.
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
-  let { imports; body; _ } = u.it in
+  let { body; _ } = u.it in
   let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);
-  let imports' = List.concat_map transform_import imports in
-  let body' = transform_unit_body body in
-  let prog = inject_decs imports' body' in
+  let prog, _ = transform_unit u in
   match prog with
   | I.LibU (ds, e) ->
     let exp = blockE ds e in
