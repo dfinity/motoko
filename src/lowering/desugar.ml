@@ -214,18 +214,9 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Contextual dot call *)
   | S.CallE (None, {it=S.DotE(e1, id, n);_}, inst, e2) when Option.is_some !n ->
-     let arity = match (Option.get !n).note.note_typ with
-       | T.Func(_, _, _, args, _) -> List.length args
-       | _ -> assert false in
-     let args = match e2 with
-       | { it = TupE []; at; note = { note_eff; note_typ = T.Tup [] } } ->
-         { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
-       | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
-          { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
-       | { it = _; at; note = { note_eff; note_typ = t } } ->
-          { it = TupE ([e1; e2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
-     in
-    I.(PrimE (CallPrim inst.note, [exp (Option.get !n); exp args]))
+     let func_exp = Option.get !n in
+     let args = S.contextual_dot_args e1 e2 func_exp in
+     I.(PrimE (CallPrim inst.note, [exp func_exp; exp args]))
   (* Normal call *)
   | S.CallE (None, e1, inst, e2) ->
     I.(PrimE (CallPrim inst.note, [exp e1; exp e2]))

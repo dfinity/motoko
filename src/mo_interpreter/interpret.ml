@@ -609,22 +609,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
-        (* TODO Extract this to a nicer place *)
         let exp1, exp2 = match exp1.it with
-          | DotE (e1, _, overload_note) when !overload_note |> Option.is_some ->
-            let arity = match (Option.get !overload_note).note.note_typ with
-              | T.Func(_, _, _, args, _) -> List.length args
-              | _ -> assert false in
-             let xtended_args = match exp2 with
-               | { it = TupE []; at; note = { note_eff; note_typ = T.Tup [] } } ->
-                  { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
-               | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
-                  { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
-               | { it = _; at; note = { note_eff; note_typ = t } } ->
-                  { it = TupE ([e1; exp2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; exp2.note.note_typ]) } }
-             in
-           !overload_note |> Option.get, xtended_args
-        | _ -> exp1, exp2 in
+          (* Contextual dot call *)
+          | DotE (exp1, _, n) when Option.is_some !n ->
+             let func_exp = Option.get !n in
+             let args = contextual_dot_args exp1 exp2 func_exp in
+             func_exp, args
+          | _ -> exp1, exp2 in
         interpret_exp env exp1 (fun v1 ->
          let v1 = begin match v1 with
                   | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
