@@ -68,13 +68,13 @@ let js_check source =
       (Pipeline.check_files ~enable_recovery:true [Js.to_string source])
       (fun _ -> Js.null))
 
-let parse_extra_flags (tokens : string array) =
+let parse_extra_flags tokens =
   let argv = Array.append [|"mocjs"|] tokens in
   let current = ref 0 in
   let usage = "moc extra flags" in
   Arg.parse_argv ~current argv moc_args (fun _ -> ()) usage 
 
-let js_set_extra_flags (flags : Js.js_string Js.t Js.js_array Js.t) =
+let js_set_extra_flags flags =
   let tokens = flags |> Js.to_array |> Array.map Js.to_string in
   parse_extra_flags tokens
 
