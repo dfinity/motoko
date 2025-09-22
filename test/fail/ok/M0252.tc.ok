@@ -1,2 +1,2 @@
-M0252.mo:5.5-5.20: type error [M0252], mixins can only be included in an actor context
-M0252.mo:8.3-8.18: type error [M0252], mixins can only be included in an actor context
+M0252.mo:5.5-5.22: type error [M0252], mixins can only be included in an actor context
+M0252.mo:8.3-8.20: type error [M0252], mixins can only be included in an actor context
