@@ -196,10 +196,10 @@ and dec msgs d = match d.it with
      delayify (
       group msgs (add_self (Some i')  s (dec_fields msgs dfs)) /// pat msgs p /// shared_pat msgs csp
     )
-  | MixinD (_)
-  | IncludeD (_, _, _) ->
-    (* TODO *)
-    (M.empty, S.empty)
+  | MixinD (p, ds) ->
+     (group msgs (dec_fields msgs ds) /// pat msgs p, S.empty)
+  | IncludeD (_, e, _) ->
+     (exp msgs e, S.empty)
 
 (* The self binding, if any, is treated as defined at the very beginning or end of the group,
    depending on sort and shadowing  *)
