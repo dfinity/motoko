@@ -29,5 +29,6 @@ M0215 (W) Field is lost in record used at supertype
 M0217 (W) Redundant `persistent`
 M0218 (A) Redundant `stable`
 M0222 (A) Ignored `async*`
+M0223 (A) Redundant type instantiation
 
 Legend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)
