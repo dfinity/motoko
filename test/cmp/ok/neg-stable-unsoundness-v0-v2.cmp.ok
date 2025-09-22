@@ -1,0 +1,9 @@
+(unknown location): Compatibility error [M0170], the new type of stable function `f` is not compatible with the previous version.
+ The new type
+  stable f() -> {b : Int}
+ is not a subtype of the previous type 
+  stable f() -> {a : Int; b : Int}
+ because: Unsupported additional field `a` in type 
+  {a : Int; b : Int}
+ of f.
+FALSE

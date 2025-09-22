@@ -27,7 +27,7 @@ impl Serializer<Closure> for StableClosure {
         _stable_memory: &mut StableMemoryStream,
         main_object: *mut Closure,
     ) -> Self {
-        debug_assert!(!(*main_object).funid == usize::MAX);
+        debug_assert!((*main_object).funid == usize::MAX);
         StableClosure {
             function_id: (*main_object).funid as u64,
             size: main_object.size() as u64,

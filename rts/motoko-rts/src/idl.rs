@@ -68,6 +68,9 @@ const IDL_EXT_blob: i32 = -129;
 const IDL_EXT_tuple: i32 = -130;
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_weak: i32 = -131;
+const IDL_EXT_type_variable: i32 = -132;
+const IDL_EXT_stable_func: i32 = -133;
+const IDL_EXT_local_func: i32 = -134;
 
 unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     let value = crate::leb128::leb128_decode(buf);
@@ -249,16 +252,11 @@ unsafe fn parse_idl_header<M: Memory>(
                 check_typearg(mode, t, n_types);
             }
             // Annotations
-            for _ in 0..leb128_decode(buf) {
+            let count = leb128_decode(buf);
+            for _ in 0..count {
                 let a = read_byte(buf);
-                if extended {
-                    if !(1 <= a && a <= 4) {
-                        idl_trap_with("func annotation not within 1..4");
-                    }
-                } else {
-                    if !(1 <= a && a <= 3) {
-                        idl_trap_with("func annotation not within 1..3");
-                    }
+                if !(1 <= a && a <= 3) {
+                    idl_trap_with("func annotation not within 1..3");
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -290,6 +288,31 @@ unsafe fn parse_idl_header<M: Memory>(
                 last_p = p;
 
                 // Type
+                let t = sleb128_decode(buf);
+                check_typearg(mode, t, n_types);
+            }
+        } else if extended && ty == IDL_EXT_type_variable {
+            let _tag = leb128_decode(buf); // TODO: check in bounds
+        } else if extended && (ty == IDL_EXT_stable_func || ty == IDL_EXT_local_func) {
+            if ty == IDL_EXT_stable_func {
+                let _lab = leb128_decode(buf);
+            }
+            // Generic parameters
+            for _ in 0..leb128_decode(buf) {
+                let bind_sort = read_byte(buf);
+                if bind_sort > 1 {
+                    idl_trap_with("invalid type parameter sort");
+                }
+                let t = sleb128_decode(buf);
+                check_typearg(mode, t, n_types);
+            }
+            // Arg types
+            for _ in 0..leb128_decode(buf) {
+                let t = sleb128_decode(buf);
+                check_typearg(mode, t, n_types);
+            }
+            // Ret types
+            for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
                 check_typearg(mode, t, n_types);
             }
@@ -482,6 +505,25 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 let it = sleb128_decode(&mut tb);
                 skip_any(buf, typtbl, it, 0);
             }
+            IDL_EXT_stable_func => {
+                let _lab = leb128_decode(&mut tb);
+                let generic_param_count = leb128_decode(&mut tb);
+                // Bounds
+                for _ in 0..generic_param_count {
+                    let bind_sort = read_byte(&mut tb);
+                    assert_eq!(bind_sort, 0); // TODO: Support scope bind
+                    sleb128_decode(&mut tb);
+                }
+                // Arg types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // Ret types
+                for _ in 0..leb128_decode(&mut tb) {
+                    sleb128_decode(&mut tb);
+                }
+                // stable func: nothing to skip
+            }
             IDL_CON_func => {
                 // Arg types
                 for _ in 0..leb128_decode(&mut tb) {
@@ -495,31 +537,24 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 let mut _a1 = false;
                 let mut _a2 = false;
                 let mut _a3 = false;
-                let mut a4 = false;
-                for _ in 0..leb128_decode(&mut tb) {
+                let count = leb128_decode(&mut tb);
+                for _ in 0..count {
                     match read_byte(&mut tb) {
                         1 => _a1 = true,
                         2 => _a2 = true,
                         3 => _a3 = true,
-                        4 => a4 = true,
                         _ => {}
                     }
                 }
-
-                if a4 {
-                    // stable func: nothing to skip
+                if read_byte_tag(buf) == 0 {
+                    idl_trap_with("skip_any: skipping references");
                 } else {
-                    // TODO: fix me to skip stable functions properly (i.e. nothing to skip)
                     if read_byte_tag(buf) == 0 {
                         idl_trap_with("skip_any: skipping references");
                     } else {
-                        if read_byte_tag(buf) == 0 {
-                            idl_trap_with("skip_any: skipping references");
-                        } else {
-                            skip_blob(buf)
-                        }
-                        skip_text(buf)
+                        skip_blob(buf)
                     }
+                    skip_text(buf)
                 }
             }
             IDL_CON_service => {
@@ -635,6 +670,39 @@ unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bo
     t = sleb128_decode(&mut tb);
 
     return t == IDL_CON_opt;
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn is_stable_func(typtbl: *mut *mut u8, end: *mut u8, t: i32, lab: u32) -> bool {
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t) {
+        return false;
+    }
+
+    let mut tb = Buf {
+        ptr: *typtbl.add(t as usize),
+        end: end,
+    };
+
+    if sleb128_decode(&mut tb) != IDL_CON_opt {
+        return false;
+    };
+
+    let t1 = sleb128_decode(&mut tb);
+
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t1) {
+        return false;
+    }
+
+    let mut tb1 = Buf {
+        ptr: *typtbl.add(t1 as usize),
+        end: end,
+    };
+
+    if sleb128_decode(&mut tb1) != IDL_EXT_stable_func {
+        return false;
+    };
+
+    return leb128_decode(&mut tb1) == lab;
 }
 
 #[enhanced_orthogonal_persistence]
@@ -794,6 +862,92 @@ pub(crate) unsafe fn memory_compatible(
             let t21 = sleb128_decode(&mut tb2);
             memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
         }
+        (IDL_EXT_stable_func, IDL_EXT_stable_func)
+        | (IDL_EXT_stable_func, IDL_EXT_local_func)
+        | (IDL_EXT_local_func, IDL_EXT_local_func) => {
+            // compare sorts
+            if u1 == IDL_EXT_stable_func {
+                let lab1 = leb128_decode(&mut tb1);
+                if u2 == IDL_EXT_stable_func {
+                    let lab2 = leb128_decode(&mut tb2);
+                    if lab1 != lab2 {
+                        return false;
+                    }
+                } else {
+                    debug_assert!(u2 == IDL_EXT_local_func);
+                    if variance == TypeVariance::Invariance {
+                        return false;
+                    }
+                }
+            }
+            // compare bounds
+            let type_bounds_length1 = leb128_decode(&mut tb1);
+            let type_bounds_length2 = leb128_decode(&mut tb2);
+            if type_bounds_length1 != type_bounds_length2 {
+                return false;
+            }
+            for _ in 0..type_bounds_length1 {
+                let bind_sort1 = read_byte(&mut tb1);
+                let bind_sort2 = read_byte(&mut tb2);
+                if bind_sort1 != bind_sort2 {
+                    return false;
+                }
+                let bound1 = sleb128_decode(&mut tb1);
+                let bound2 = sleb128_decode(&mut tb2);
+                if !memory_compatible(
+                    rel,
+                    TypeVariance::Invariance,
+                    typtbl1,
+                    typtbl2,
+                    end1,
+                    end2,
+                    bound1,
+                    bound2,
+                    false,
+                ) {
+                    return false;
+                }
+            }
+            // contra in domain
+            let in1 = leb128_decode(&mut tb1);
+            let in2 = leb128_decode(&mut tb2);
+            if in1 != in2 {
+                return false;
+            }
+            for _ in 0..in1 {
+                let t11 = sleb128_decode(&mut tb1);
+                let t21 = sleb128_decode(&mut tb2);
+                // NB: invert p and args!
+                if !memory_compatible(
+                    rel,
+                    variance.invert(),
+                    typtbl2,
+                    typtbl1,
+                    end2,
+                    end1,
+                    t21,
+                    t11,
+                    false,
+                ) {
+                    return false;
+                }
+            }
+            // co in range
+            let out1 = leb128_decode(&mut tb1);
+            let out2 = leb128_decode(&mut tb2);
+            if out1 != out2 {
+                return false;
+            }
+            for _ in 0..out2 {
+                let t21 = sleb128_decode(&mut tb2);
+                let t11 = sleb128_decode(&mut tb1);
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            true
+        }
         (IDL_CON_func, IDL_CON_func) => {
             // contra in domain
             let in1 = leb128_decode(&mut tb1);
@@ -833,37 +987,29 @@ pub(crate) unsafe fn memory_compatible(
                     return false;
                 }
             }
-            // check annotations (that we care about)
-            // TODO: more generally, we would check equality of 256-bit bit-vectors,
-            // but validity ensures each entry is 1, 2, 3 or 4 (for now)
-            // c.f. https://github.com/dfinity/candid/issues/318
-            let mut a11 = false;
-            let mut a12 = false;
-            let mut a13 = false;
-            let mut a14 = false;
-            for _ in 0..leb128_decode(&mut tb1) {
-                match read_byte(&mut tb1) {
-                    1 => a11 = true,
-                    2 => a12 = true,
-                    3 => a13 = true,
-                    4 => a14 = true,
-                    _ => {}
-                }
+
+            let annotation_count1 = leb128_decode(&mut tb1);
+            let annotation_count2 = leb128_decode(&mut tb2);
+            if annotation_count1 != annotation_count2 {
+                return false;
             }
-            let mut a21 = false;
-            let mut a22 = false;
-            let mut a23 = false;
-            let mut a24 = false;
-            for _ in 0..leb128_decode(&mut tb2) {
-                match read_byte(&mut tb2) {
-                    1 => a21 = true,
-                    2 => a22 = true,
-                    3 => a23 = true,
-                    4 => a24 = true,
-                    _ => {}
-                }
+            if annotation_count1 == 0 && annotation_count1 == 0 {
+                return true;
             }
-            a11 == a21 && a12 == a22 && a13 == a23 && a14 == a24
+            // There is at most one annotation per function in our persistent type table.
+            assert_eq!(annotation_count1, 1);
+            assert_eq!(annotation_count2, 1);
+
+            let annotation1 = read_byte(&mut tb1);
+
+            let annotation2 = read_byte(&mut tb2);
+
+            return annotation1 == annotation2;
+        }
+        (IDL_EXT_type_variable, IDL_EXT_type_variable) => {
+            let index1 = leb128_decode(&mut tb1);
+            let index2 = leb128_decode(&mut tb2);
+            index1 == index2
         }
         (IDL_EXT_tuple, IDL_EXT_tuple) => {
             let n1 = leb128_decode(&mut tb1);
@@ -943,9 +1089,27 @@ pub(crate) unsafe fn memory_compatible(
                         return true;
                     };
                 }
-                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
-                {
-                    return false;
+
+                if is_stable_func(typtbl1, end1, t11, tag1) {
+                    if !memory_compatible(
+                        rel,
+                        variance.invert(),
+                        typtbl2,
+                        typtbl1,
+                        end2,
+                        end1,
+                        t21,
+                        t11,
+                        false,
+                    ) {
+                        return false;
+                    }
+                } else {
+                    if !memory_compatible(
+                        rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false,
+                    ) {
+                        return false;
+                    }
                 }
             }
             return n1 == 0; // false if any remaining fields discarded
@@ -1147,35 +1311,31 @@ pub(crate) unsafe fn sub(
                 }
                 // check annotations (that we care about)
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
-                // but validity ensures each entry is 1, 2, 3 or 4 (for now)
+                // but validity ensures each entry is 1, 2, or 3 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
                 let mut a11 = false;
                 let mut a12 = false;
                 let mut a13 = false;
-                let mut a14 = false;
                 for _ in 0..leb128_decode(&mut tb1) {
                     match read_byte(&mut tb1) {
                         1 => a11 = true,
                         2 => a12 = true,
                         3 => a13 = true,
-                        4 => a14 = true,
                         _ => {}
                     }
                 }
                 let mut a21 = false;
                 let mut a22 = false;
                 let mut a23 = false;
-                let mut a24 = false;
                 for _ in 0..leb128_decode(&mut tb2) {
                     match read_byte(&mut tb2) {
                         1 => a21 = true,
                         2 => a22 = true,
                         3 => a23 = true,
-                        4 => a24 = true,
                         _ => {}
                     }
                 }
-                if (a11 == a21) && (a12 == a22) && (a13 == a23) && (a14 == a24) {
+                if (a11 == a21) && (a12 == a22) && (a13 == a23) {
                     return true;
                 } else {
                     break 'return_false;

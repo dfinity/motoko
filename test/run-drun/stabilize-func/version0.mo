@@ -1,3 +1,4 @@
+//MOC-FLAG --stable-types
 import Prim "mo:prim";
 
 actor {

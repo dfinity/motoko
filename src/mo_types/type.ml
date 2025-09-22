@@ -162,8 +162,9 @@ let compare_obj_sort s1 s2 =
   if d > 0 then 1 else if d < 0 then -1 else 0
 
 let compare_func_sort s1 s2 =
-  let d = tag_func_sort s1 - tag_func_sort s2 in
-  if d > 0 then 1 else if d < 0 then -1 else 0
+  match (s1, s2) with
+  | Stable l1, Stable l2 -> String.compare l1 l2
+  | _, _ -> Int.compare (tag_func_sort s1) (tag_func_sort s2)
 
 let compare_bind_sort s1 s2 =
   match s1, s2 with
