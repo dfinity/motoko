@@ -198,7 +198,7 @@ let
     src = ../test;
     buildInputs =
       builtins.attrValues coverage_bins ++
-      [ pkgs.ocamlPackages.bisect_ppx ] ++
+      [ pkgs.ocamlPackages.bisect_ppx pkgs.wasm-tools unstablePkgsForWac.wac-cli] ++
       testDerivationDeps ++
       ldTestDeps;
 
