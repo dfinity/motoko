@@ -165,14 +165,6 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
-      wasm-components-tests = pkgs.stdenv.mkDerivation {
-        name = "wasm-components";
-        src = ./test/wasm-components-test-project;
-        buildInputs = [ debugMoPackages.moc unstablePkgsForWac.wac-cli ];
-        MOTOKO_CORE = shell.MOTOKO_CORE;
-        MOTOKO_HEX = shell.MOTOKO_HEX;
-      };
-
       # Common cargo lock configuration for test-runner packages.
       test-runner-cargo-lock = {
         lockFile = ./test-runner/Cargo.lock;
@@ -198,7 +190,7 @@
       };
 
       tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner wasm-components-tests; 
+        inherit pkgs llvmEnv esm viper-server core-src hex-src commonBuildInputs debugMoPackages test-runner; 
       };
 
       filterTests = type:

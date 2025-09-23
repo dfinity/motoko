@@ -1,4 +1,4 @@
-{ pkgs, llvmEnv, esm, viper-server, commonBuildInputs, debugMoPackages, test-runner, wasm-components-tests}:
+{ pkgs, llvmEnv, esm, viper-server, core-src, hex-src, commonBuildInputs, debugMoPackages, test-runner}:
 with debugMoPackages;
 let
   # The following were previously arguments to default.nix but flakes don't accept options yet.
@@ -53,8 +53,10 @@ let
       checkPhase = ''
         patchShebangs .
         ${llvmEnv}
-        export ESM=${esm}
-        export VIPER_SERVER=${viper-server}
+        export ESM="${esm}"
+        export VIPER_SERVER="${viper-server}"
+        export MOTOKO_CORE="${core-src}"
+        export MOTOKO_HEX="${hex-src}"
         type -p moc && moc --version
         ${if dir == "run-drun" 
           then "make -C ${dir}${pkgs.lib.optionalString (pkgs.system != "x86_64-darwin") " parallel -j4"} ${pkgs.lib.optionalString accept " accept"}"
@@ -231,7 +233,7 @@ fix_names
     drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
-    wasm-components-test-project = test_subdir "wasm-components-test-project" [ moc wasm-components-tests ];
+    wasm-components-test-project = test_subdir "wasm-components-test-project" [ moc ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
     ld-eop = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
     idl = test_subdir "idl" [ didc ];
