@@ -1287,10 +1287,8 @@ type ctx_dot_candidate =
     module_ty : T.typ;
   }
 
-let contextual_dot env id t =
-  let is_module (n, (t, _, _, _)) = match t with
-    | T.Obj (T.Module, fs) -> Some (n, (t, fs))
-    | _ -> None in
+let contextual_dot env name receiver_ty =
+  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
     try
       let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
@@ -1298,16 +1296,19 @@ let contextual_dot env id t =
       true
     with _ ->
       false in
-  let has_self tf = match tf with
+  let is_module (n, (t, _, _, _)) = match t with
+    | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+    | _ -> None in
+  let has_matching_self tf = match tf with
     | T.{ lab = "Self"; typ = T.Typ con; _ } ->
        (match Cons.kind con with
-       | T.Def(tbs, t') -> permissive_sub t (tbs, t')
+       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t')
        | _ -> false)
     | _ -> false in
-  let has_self_type (_, (_, fs)) = List.exists has_self fs in
+  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
   let is_matching_func = function
-    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = id.it ->
-      if permissive_sub t (tbs, first_arg) then Some typ else None
+    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
+      if permissive_sub receiver_ty (tbs, first_arg) then Some typ else None
     | _ -> None in
   let find_candidate (module_name, (module_ty, fs)) =
     List.find_map is_matching_func fs |>
@@ -1315,16 +1316,15 @@ let contextual_dot env id t =
   let eligible_funcs =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
-      Seq.filter has_self_type |>
+      Seq.filter has_matching_self_type |>
       Seq.filter_map find_candidate |>
       List.of_seq in
-  (* List.iter (fun oc -> print_endline (oc.module_name ^ "." ^ name ^ " : " ^ T.string_of_typ oc.func_ty)) eligible_funcs; *)
   match eligible_funcs with
   | [oc] -> Some oc
   | [] -> None
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
-     error env id.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" id.it (String.concat ", " candidates)
+     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
