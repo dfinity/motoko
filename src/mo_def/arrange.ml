@@ -58,27 +58,10 @@ module Make (Cfg : Config) = struct
   | Mo_types.Type.Triv -> Atom "Triv"
   | Mo_types.Type.Await -> Atom "Await"
 
-  let annot_arrange_typ t it =
-    if Cfg.include_types
-    then
-      match Cfg.include_type_rep with
-      | Without_type_rep -> ":" $$ [it; typ t]
-      | With_type_rep srcs_tbl ->
-        let module Arrange_type = Arrange_type.Make (struct
-          let srcs_tbl = srcs_tbl
-        end) in
-        ":" $$ [it; typ t; Arrange_type.typ t]
-    else it
-
   let annot_typ t it =
     if Cfg.include_types
     then ":" $$ [it; typ t]
     else it
-
-  let annot ?arrange_typ note =
-    if Option.value ~default:false arrange_typ
-    then annot_arrange_typ note.note_typ
-    else annot_typ note.note_typ
 
   let id i = source i.at ("ID" $$ [Atom i.it])
   let tag i = Atom ("#" ^ i.it)
@@ -89,14 +72,7 @@ module Make (Cfg : Config) = struct
     | Type.Module -> Atom "Module"
     | Type.Memory -> Atom "Memory"
 
-
-  (* TODO: For the language server, we occasionally need not only the resulting
-     [typ] of a node but also its [Arrange_type.typ] (which motivated these
-     changes). Arranging the type for every node would be expensive; there
-     would be considerable duplication as there is no sharing mechanism
-     currently. As a compromise, we annotate only the nodes that currently
-     matter for the language server, i.e. the left expression of a [DotE] node. *)
-  let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
+  let rec exp e = source e.at (annot_typ e.note.note_typ (match e.it with
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]
@@ -119,7 +95,7 @@ module Make (Cfg : Config) = struct
                                                 ] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
-    | DotE (e, x)         -> "DotE"      $$ [exp ~arrange_typ:true e; id x]
+    | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
     | AssignE (e1, e2)    -> "AssignE"   $$ [exp e1; exp e2]
     | ArrayE (m, es)      -> "ArrayE"    $$ [mut m] @ exps es
     | IdxE (e1, e2)       -> "IdxE"      $$ [exp e1; exp e2]
@@ -179,7 +155,7 @@ module Make (Cfg : Config) = struct
     | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
-  and exps es = List.map (exp ?arrange_typ:None) es
+  and exps es = List.map exp es
 
   and inst inst = match inst.it with
     | None -> []
