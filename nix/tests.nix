@@ -233,7 +233,7 @@ fix_names
     drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc test-runner pkgs.pocket-ic.server pkgs.cacert ];
     fail = test_subdir "fail" [ moc ];
     repl = test_subdir "repl" [ moc ];
-    wasm-components-test-project = test_subdir "wasm-components-test-project" [ moc ];
+    wasm-components-test-project = test_subdir "wasm-components-test-project" [ moc pkgs.wasm-tools ];
     ld = test_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
     ld-eop = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
     idl = test_subdir "idl" [ didc ];
