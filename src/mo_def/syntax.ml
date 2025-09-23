@@ -375,12 +375,12 @@ let contextual_dot_args e1 e2 dot_note =
   let module T = Mo_types.Type in
   let arity = match dot_note.note.note_typ with
     | T.Func(_, _, _, args, _) -> List.length args
-    | _ -> assert false in
+    | _ -> raise (Invalid_argument "non-function type in contextual dot note") in
   let args = match e2 with
-    | { it = TupE []; at; note = { note_eff; note_typ = T.Tup [] } } ->
-      { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
+    | { it = TupE []; at; note = { note_eff;_ } } ->
+       { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
     | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
        { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
-    | { it = _; at; note = { note_eff; note_typ = t } } ->
+    | { at; note = { note_eff; _ }; _ } ->
        { it = TupE ([e1; e2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
   in args

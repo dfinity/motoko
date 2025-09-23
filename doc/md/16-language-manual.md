@@ -2171,6 +2171,32 @@ the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects
 
 :::
 
+
+### Contextual dot resolution
+
+When applying an object projection `x.f(a)` where `x` is not an object type with a field `f` the context is searched for a module with an exported type
+"Self" where `Self` can be instantiated so `x <: Self` holds.
+
+```
+x : t </: { f : _ }
+M : module { type Self<self_bounds> = t_m; f : <func_bounds>(a_1...a_n) -> t_res }
+
+t <: exists. instantiate(self_bounds, t_m)
+t <: exists. instantiate(func_bounds, a_1)
+
+extend_args(x, args, arity) : (exp, exp, int) -> exp
+extend_args(x, y, 2) = (x, y);
+extend_args(x, (), _) = x;
+extend_args(x, (y1, y2, y3, ... yn), _) = (x, y1, y2, y3, ..., yn);
+
+typing: x.f(args) : t_res
+
+evaluation: M.f(extend_args(x, args, arity(M.f)))
+```
+
+
+
+
 ### Assignment
 
 The assignment `<exp1> := <exp2>` has type `()` provided:
