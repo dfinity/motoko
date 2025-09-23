@@ -65,6 +65,8 @@ let
       '';
     } // pkgs.lib.optionalAttrs accept {
       installPhase = pkgs.lib.optionalString accept ''
+        export MOTOKO_CORE="${core-src}"
+        export MOTOKO_HEX="${hex-src}"
         mkdir -p $out/share
         cp -v ${dir}/ok/*.ok $out/share
       '';
@@ -204,6 +206,8 @@ let
       patchShebangs .
       ${llvmEnv}
       export ESM=${esm}
+      export MOTOKO_CORE="${core-src}"
+      export MOTOKO_HEX="${hex-src}"
       export SOURCE_PATHS="${
         builtins.concatStringsSep " " (map (d: "${d}/src") (builtins.attrValues coverage_bins))
       }"
@@ -212,6 +216,8 @@ let
     '';
     installPhase = ''
       mv coverage $out;
+      export MOTOKO_CORE="${core-src}"
+      export MOTOKO_HEX="${hex-src}"
       mkdir -p $out/nix-support
       echo "report coverage $out index.html" >> $out/nix-support/hydra-build-products
     '';

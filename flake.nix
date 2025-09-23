@@ -199,7 +199,7 @@
             let
               matchDebug = builtins.match ".*-debug$" name;
               matchRelease = builtins.match ".*-release$" name;
-              matchGC = builtins.match ".*-gc$" name;
+              matchGC = builtins.match ".*compo.*" name;
               matchPerf = builtins.match ".*(bench|perf)$" name;
               # Common tests are those that do not match -debug, -release, -gc, or -bench, -perf.
               matchCommon = matchDebug == null &&
