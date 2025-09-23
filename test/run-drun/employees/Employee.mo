@@ -1,5 +1,7 @@
 module {
-  public persistent class Employee(id : Nat, name : Text) {
+  public persistent class Employee(id_ : Nat, name_ : Text) {
+    public let id = id_;
+    public let name = name_;
     var manager : ?Employee = null;
 
     public func setManager(newManager : Employee) {

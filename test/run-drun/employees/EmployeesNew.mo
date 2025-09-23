@@ -14,9 +14,17 @@ module {
       e
     };
 
+    public func addExisting(employee : Employee.Employee) {
+      employees.put(employee.id, employee)
+    };
+
     public func get(id : Nat) : Employee.Employee {
       let ?e = employees.get(id) else Prim.trap("Unknown employee");
       e
+    };
+
+    public func entries() : [(Nat, Employee.Employee)] {
+      employees.entries()
     };
 
   };

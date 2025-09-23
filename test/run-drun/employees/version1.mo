@@ -1,6 +1,8 @@
 import Prim "mo:prim";
 import Employees "EmployeesNew";
+import Migration "migration";
 
+(with migration = Migration.run)
 persistent actor a {
   let employees = do {
     let es = Employees.Employees();
