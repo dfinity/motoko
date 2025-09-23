@@ -190,7 +190,7 @@
       };
 
       tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server core-src hex-src commonBuildInputs debugMoPackages test-runner; 
+        inherit pkgs unstablePkgsForWac llvmEnv esm viper-server core-src hex-src commonBuildInputs debugMoPackages test-runner; 
       };
 
       filterTests = type:
