@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin master
-          if git merge-base --is-ancestor "${GITHUB_SHA}" "origin/kamil/avoid-release-on-tag-not-master"; then
+          if git merge-base --is-ancestor "${GITHUB_SHA}" "origin/master"; then
             echo "Tag commit ${GITHUB_SHA} is reachable from master."
           else
             echo "Error: Tag commit ${GITHUB_SHA} is not on master. Aborting workflow."
