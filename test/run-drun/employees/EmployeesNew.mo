@@ -4,7 +4,7 @@ import Employee "EmployeeNew";
 
 module {
   public persistent class Employees() {
-    var currentId = 0;
+    public var currentId = 0;
     let employees = HashMap.SimpleHashMap<Nat, Employee.Employee>(10, HashMap.natEqual, HashMap.natHash);
 
     public func add(name : Text) : Employee.Employee {
