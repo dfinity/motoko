@@ -1,9 +1,8 @@
 import Prim "mo:prim";
-import Set "Set";
-import {type Order; set} "Set";
+import _StableSet "StableSet";
+import {type Order; type StableSet; StableSet } "StableSet";
 
 persistent actor {
-
 
   var version = 0;
   version += 1;
@@ -15,7 +14,7 @@ persistent actor {
      if (i < j) #less else if (i == j) #equal else #greater
   };
 
-  var s = set<Int, inc>(inc);
+  var s = StableSet<Int, inc>(inc);
   s.add(version);
 
   do {

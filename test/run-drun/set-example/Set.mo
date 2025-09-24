@@ -3,24 +3,17 @@ module Set = {
 
   public type List<T> = ?(T, List<T>);
 
-  public type Cmp<T> = (T, T) -> Order;
+  public type Set<T> = ?(T, List<T>);
 
-  public type Set<T, C <: Cmp<T>> = {
-     cmp : C;
-     var list : ?(T, List<T>)
-  };
+  public func empty<T>() : Set<T> = null;
 
-  public type Self<T, C <: Cmp<T>> = Set<T, C>;
-
-  public func set<T, C <: Cmp<T>>(cmp : C) : Set<T, C> =
-    { cmp; var list = null };
-
-  public func add<T>(set : Set<T, Cmp<T>>, v : T) {
+  public func add<T>(s : Set<T>, cmp : (T,T) -> Order, v : T)
+  : Set<T> {
     func add(l  : List<T>) : List<T> {
       switch l {
 	case null { ?(v, null) };
 	case (?(w, r)) {
-	  switch (set.cmp(v, w)) {
+	  switch (cmp(v, w)) {
 	    case (#less) { ?(v, l) };
 	    case (#equal) {l };
 	    case (#greater) { ?(w, add(r)) };
@@ -28,16 +21,16 @@ module Set = {
 	};
       };
     };
-    set.list := add(set.list);
+    add(s);
   };
 
-  public func mem<T>(set : Set<T, Cmp<T>>, v : T)
+  public func mem<T>(s : Set<T>, cmp : (T, T) -> Order,  v : T)
   : Bool {
     func mem(l : List<T>) : Bool {
       switch l {
 	case null { false };
 	case (?(w, r)) {
-	  switch (set.cmp(v, w)) {
+	  switch (cmp(v, w)) {
 	    case (#less) { false };
 	    case (#equal) { true };
 	    case (#greater) { mem(r) };
@@ -45,7 +38,7 @@ module Set = {
 	};
       };
     };
-    mem(set.list);
+    mem(s);
   };
   // ...
 };
