@@ -3,6 +3,7 @@ import {
     decodeUtf8;
     trap;
 } "mo:prim";
+import Prim "mo:prim";
 
 import Blob "mo:core/Blob";
 import Text "mo:core/Text";
@@ -296,7 +297,8 @@ do {
     test("Prim Text", meet_and_greet.prim_text("Hello; emoji: ☃❄🌨; FooBär☃"), "Hello; emoji: ☃❄🌨; FooBär☃!");
     test("Vec U16", meet_and_greet.vec_u16([1, 2, 3]), "vec_u16: 1, 2, 3");
     test("Vec Text", meet_and_greet.vec_text(["Hello", "World"]), "vec_string: Hello, World");
-    test("Vec U8", meet_and_greet.vec_u8([1, 2, 3, 4]), "vec_u8: 1, 2, 3, 4");
+    test("Vec I8", meet_and_greet.vec_i8([1, 2, 3, 4]), "vec_i8: 1, 2, 3, 4");
+    test("Vec U8 As Blob", meet_and_greet.vec_u8_as_blob(Prim.arrayToBlob([1, 2, 3, 4])), "vec_u8_as_blob: 1, 2, 3, 4");
     test("Vec U32", meet_and_greet.vec_u32([10, 20, 30]), "vec_u32: 10, 20, 30");
     test("Vec I32", meet_and_greet.vec_i32([-1, -2, 3]), "vec_i32: -1, -2, 3");
     test("Vec I64", meet_and_greet.vec_i64([-1, -2, 3]), "vec_i64: -1, -2, 3"); // TODO
@@ -307,7 +309,8 @@ do {
 
     test("To Vec Bool", debug_show meet_and_greet.to_vec_bool(1, true), "[true, false, true, false]");
     test("To Vec Char", debug_show meet_and_greet.to_vec_char(128, 'a'), "['@', 'a']");
-    test("To Vec U8", debug_show meet_and_greet.to_vec_u8(2, 'a'), "[1, 97]");
+    test("To Vec I8", debug_show meet_and_greet.to_vec_i8(2, 'a'), "[+1, +97]");
+    test("To Vec U8 As Blob", debug_show Prim.blobToArray(meet_and_greet.to_vec_u8_as_blob(2, 'a')), "[1, 97]");
     test("To Vec I16", debug_show meet_and_greet.to_vec_i16(4, 1), "[+2, 0]");
     test("To Vec U32", debug_show meet_and_greet.to_vec_u32(8, 4), "[4, 2]");
     test("To Vec I64", debug_show meet_and_greet.to_vec_i64(4, 1), "[+2, 0]");
