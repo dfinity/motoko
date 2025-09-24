@@ -36,11 +36,9 @@ let valid_metadata_names =
      "motoko:stable-types";
      "motoko:compiler"]
 
-(* suppress documentation *)
-let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
-
-let argspec = [
-  "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
+let argspec = 
+  Args.ai_errors_args
+  @ [
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
   "-g", Arg.Set Flags.debug_info, " generate source-level debug information";
   "-r", Arg.Unit (set_mode Run), " interpret programs";
@@ -221,24 +219,12 @@ let argspec = [
 
   "-unguarded-enhanced-orthogonal-persistence",
   Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true; Flags.explicit_enhanced_orthogonal_persistence := false),
-  _UNDOCUMENTED_ "  (internal testing only)";
+  Args._UNDOCUMENTED_ "  (internal testing only)";
+  ]
 
-  (* default stability *)
-  "--default-persistent-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.DefaultPersistentActors),
-  _UNDOCUMENTED_
-   " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
+  @ Args.persistent_actors_args
 
-  "--require-persistent-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.RequirePersistentActors),
-  _UNDOCUMENTED_
-    " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
-
-  "--legacy-actors",
-  Arg.Unit (fun () -> Flags.actors := Flags.LegacyActors),
-  _UNDOCUMENTED_
-    " in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
-
+  @ [
   "--stabilization-instruction-limit",
   Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = Int64.of_int limit;
