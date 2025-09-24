@@ -1,6 +1,5 @@
 # Motoko compiler changelog
 
-
 * motoko (`moc`):
   * Support persistent functions, persistent objects, and persistent classes with enhanced orthogonal persistence.
   
