@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs-unstable-for-wac.url = "github:NixOS/nixpkgs/09a1a8eee6dccb593bfc1f312512a83ddf48fc12";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -49,6 +50,10 @@
       url = "github:dfinity/motoko-core";
       flake = false;
     };
+    motoko-hex-src = {
+      url = "github:f0i/hex/c087fd2df9fbf4c9e9671c719715fa483c8d4c08";
+      flake = false;
+    };
     motoko-matchers-src = {
       url = "github:kritzcreek/motoko-matchers/5ba5f52bd9a5649dedf5e2a1ccd55d98ed7ff982";
       flake = false;
@@ -70,6 +75,7 @@
   outputs =
     { self
     , nixpkgs
+    , nixpkgs-unstable-for-wac
     , flake-utils
     , nix-update-flake
     , rust-overlay
@@ -82,6 +88,7 @@
     , libtommath-src
     , motoko-base-src
     , motoko-core-src
+    , motoko-hex-src
     , motoko-matchers-src
     , ocaml-vlq-src
     , wasm-spec-src
@@ -99,12 +106,16 @@
             libtommath-src
             motoko-base-src
             motoko-core-src
+            motoko-hex-src
             motoko-matchers-src
             ocaml-vlq-src
             wasm-spec-src
             ocaml-recovery-parser-src;
         };
       };
+
+      # The pkgs just for wac-cli
+      unstablePkgsForWac = import nixpkgs-unstable-for-wac { inherit nixpkgs-unstable-for-wac system; };
 
       llvmEnv = ''
         # When compiling to wasm, we want to have more control over the flags,
@@ -154,62 +165,32 @@
       buildableReleaseMoPackages = buildableMoPackages releaseMoPackages;
       buildableDebugMoPackages = buildableMoPackages debugMoPackages;
 
+      # Common cargo lock configuration for test-runner packages.
+      test-runner-cargo-lock = {
+        lockFile = ./test-runner/Cargo.lock;
+        outputHashes = {
+          "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
+        };
+      };
+
       # Define test-runner package.
       test-runner = pkgs.rustPlatform-stable.buildRustPackage {
         pname = "test-runner";
         version = "0.1.0";
         src = ./test-runner;
-        cargoLock = {
-          lockFile = ./test-runner/Cargo.lock;
-          outputHashes = {
-            "pocket-ic-10.0.0" = "sha256-Y71hDHsqxcDlUzKBP9fd9HyO1L51kqwTbIyTrGMRftk=";
-          };
-        };
+        cargoLock = test-runner-cargo-lock;
         buildInputs = [
-          pkgs.pocket-ic.server
-        ];
-        POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
-        
-        # Explicitly disable tests for the main package
-        doCheck = false;
-      };
-
-      # Separate derivation for running test-runner's Cargo tests in CI.
-      # TODO: Not run now, will add them later.
-      test-runner-tests = pkgs.rustPlatform-stable.buildRustPackage {
-        pname = "test-runner-tests";
-        version = "0.1.0";
-        src = ./test-runner;
-        cargoLock = {
-          lockFile = ./test-runner/Cargo.lock;
-        };
-        buildInputs = [
-          pkgs.pocket-ic.server
-          pkgs.cacert
-        ];
-        nativeBuildInputs = [
           pkgs.pocket-ic.server
         ];
         POCKET_IC_BIN = "${pkgs.pocket-ic.server}/bin/pocket-ic-server";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         
-        # Skip building, only run tests
-        dontBuild = true;
+        # Enable tests when building the package.
         doCheck = true;
-        checkPhase = ''
-          runHook preCheck
-          export POCKET_IC_BIN="${pkgs.pocket-ic.server}/bin/pocket-ic-server"
-          export PATH="${pkgs.pocket-ic.server}/bin:$PATH"
-          cargo test
-          runHook postCheck
-        '';
-        installPhase = ''
-          touch $out
-        '';
       };
 
       tests = import ./nix/tests.nix { 
-        inherit pkgs llvmEnv esm viper-server commonBuildInputs debugMoPackages test-runner; 
+        inherit pkgs unstablePkgsForWac llvmEnv esm viper-server core-src hex-src commonBuildInputs debugMoPackages test-runner; 
       };
 
       filterTests = type:
@@ -218,7 +199,7 @@
             let
               matchDebug = builtins.match ".*-debug$" name;
               matchRelease = builtins.match ".*-release$" name;
-              matchGC = builtins.match ".*-gc$" name;
+              matchGC = builtins.match ".*compo.*" name;
               matchPerf = builtins.match ".*(bench|perf)$" name;
               # Common tests are those that do not match -debug, -release, -gc, or -bench, -perf.
               matchCommon = matchDebug == null &&
@@ -243,6 +224,11 @@
         paths = [ "${pkgs.sources.motoko-core-src}/src" ];
       };
 
+      hex-src = pkgs.symlinkJoin {
+        name = "hex-src";
+        paths = [ "${pkgs.sources.motoko-hex-src}/src" ];
+      };
+
       js = import ./nix/moc.js.nix { inherit pkgs commonBuildInputs rts; };
 
       docs = import ./nix/docs.nix { inherit pkgs js base-src core-src; };
@@ -257,7 +243,7 @@
       nix-update = nix-update-flake.packages.${system}.default;
 
       shell = import ./nix/shell.nix {
-        inherit pkgs nix-update base-src core-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
+        inherit pkgs unstablePkgsForWac nix-update base-src core-src hex-src llvmEnv esm viper-server commonBuildInputs rts js debugMoPackages docs test-runner;
         inherit (checks) check-rts-formatting;
       };
 
@@ -277,7 +263,7 @@
         release = buildableReleaseMoPackages;
         debug = buildableDebugMoPackages;
 
-        inherit nix-update tests js test-runner test-runner-tests;
+        inherit nix-update tests js test-runner;
 
         inherit (pkgs) nix-build-uncached ic-wasm pocket-ic;
 
