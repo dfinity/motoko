@@ -49,7 +49,8 @@
 ✅ Prim Text Hello; emoji: ☃❄🌨; FooBär☃!
 ✅ Vec U16 vec_u16: 1, 2, 3
 ✅ Vec Text vec_string: Hello, World
-✅ Vec U8 vec_u8: 1, 2, 3, 4
+✅ Vec I8 vec_i8: 1, 2, 3, 4
+✅ Vec U8 As Blob vec_u8_as_blob: 1, 2, 3, 4
 ✅ Vec U32 vec_u32: 10, 20, 30
 ✅ Vec I32 vec_i32: -1, -2, 3
 ✅ Vec I64 vec_i64: -1, -2, 3
@@ -59,7 +60,8 @@
 ✅ Vec F64 vec_f64: 1.25, -2.5, 3
 ✅ To Vec Bool [true, false, true, false]
 ✅ To Vec Char ['@', 'a']
-✅ To Vec U8 [1, 97]
+✅ To Vec I8 [+1, +97]
+✅ To Vec U8 As Blob [1, 97]
 ✅ To Vec I16 [+2, 0]
 ✅ To Vec U32 [4, 2]
 ✅ To Vec I64 [+2, 0]

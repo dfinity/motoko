@@ -30,7 +30,8 @@ world meet-and-greet {
 
     vec-u16: func(a: list<u16>) -> string;
     vec-string: func(a: list<string>) -> string;
-    vec-u8: func(a: list<u8>) -> string;
+    vec-i8: func(a: list<s8>) -> string;
+    vec-u8-as-blob: func(a: list<u8>) -> string;
     vec-u32: func(a: list<u32>) -> string;
     vec-i32: func(a: list<s32>) -> string;
     vec-i64: func(a: list<s64>) -> string;
@@ -41,7 +42,8 @@ world meet-and-greet {
 
     to-vec-bool: func(i: s32, b: bool) -> list<bool>;
     to-vec-char: func(u: u8, c: char) -> list<char>;
-    to-vec-u8: func(u: u16, c: char) -> list<u8>;
+    to-vec-i8: func(u: u16, c: char) -> list<s8>;
+    to-vec-u8-as-blob: func(u: u16, c: char) -> list<u8>;
     to-vec-i16: func(u: u16, i: s16) -> list<s16>;
     to-vec-u32: func(u: u16, i: u32) -> list<u32>;
     to-vec-i64: func(u: u16, i: s64) -> list<s64>;

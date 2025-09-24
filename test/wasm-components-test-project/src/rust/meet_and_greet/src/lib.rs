@@ -9,10 +9,6 @@ export!(MeetAndGreet);
 use crate::exports::api::Guest;
 use crate::exports::api::C;
 use crate::exports::api::V1;
-// Alternative experimental API version
-// use crate::exports::component::meet_and_greet::api::Guest;
-// use crate::exports::component::meet_and_greet::api::V1;
-// use crate::exports::component::meet_and_greet::api::C;
 
 impl Guest for MeetAndGreet {
     // Basic greeting functionality.
@@ -102,9 +98,18 @@ impl Guest for MeetAndGreet {
                 .join(", ")
         )
     }
-    fn vec_u8(a: Vec<u8>) -> String {
+    fn vec_i8(a: Vec<i8>) -> String {
         format!(
-            "vec_u8: {}",
+            "vec_i8: {}",
+            a.iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+    fn vec_u8_as_blob(a: Vec<u8>) -> String {
+        format!(
+            "vec_u8_as_blob: {}",
             a.iter()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
@@ -183,7 +188,13 @@ impl Guest for MeetAndGreet {
         v.push(c);
         v
     }
-    fn to_vec_u8(u: u16, c: char) -> Vec<u8> {
+    fn to_vec_i8(u: u16, c: char) -> Vec<i8> {
+        let mut v = Vec::new();
+        v.push((u / 2u16) as i8);
+        v.push(c as i8);
+        v
+    }
+    fn to_vec_u8_as_blob(u: u16, c: char) -> Vec<u8> {
         let mut v = Vec::new();
         v.push((u / 2u16) as u8);
         v.push(c as u8);

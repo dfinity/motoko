@@ -10395,11 +10395,6 @@ module WasmComponent = struct
   let (let*) f k = f k
   let seq2 (a, b) = a ^^ b
 
-  let is_result cases = 
-    match cases with
-    | [{ lab = "err"; typ = t1; src = _ }; { lab = "ok"; typ = t2; src = _ }] -> true
-    | _ -> false
-
   let normalize typ = Imported_components.normalize typ
 
   let discriminant_prim cases =
@@ -10558,7 +10553,15 @@ module WasmComponent = struct
     offset := Int32.add off (elem_size t);
     off
 
-  module OutParam = struct
+  module OutParam : sig
+    type t
+    val word_size : int32 -> int32
+    val words_to_allocate : typ -> int32
+    val alloc : E.t -> typ -> (t -> G.t) -> G.t
+    val get : t -> G.t
+  end = struct
+    type t = G.t option
+
     let word_size byte_size =
       let open Int32 in
       div (add byte_size (sub Heap.word_size 1l)) Heap.word_size
@@ -11517,11 +11520,6 @@ let compile_relop env t op =
 
 let compile_load_field env typ name =
   Object.load_idx env typ name
-
-let starts_with ~prefix s =
-  let prefix_len = String.length prefix in
-  String.length s >= prefix_len &&
-  String.sub s 0 prefix_len = prefix
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
    Produces
@@ -14061,8 +14059,8 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Add imports to the environment *)
   let add_import component_name function_name arg_types return_type = 
     imported_components := add_imported_component 
-      ~component_name:component_name 
-      ~imported_function:{ function_name = function_name; args = arg_types; return_type = return_type; }
+      ~component_name 
+      ~imported_function:{ function_name; args = arg_types; return_type }
       !imported_components;
 
     let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in

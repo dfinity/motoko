@@ -20,7 +20,8 @@ module meet_and_greet {
 
     public func vec_u16(a : [Nat16]) : Text = ((prim "component:meet-and-greet:vec-u16") : [Nat16] -> Text)(a);
     public func vec_text(a : [Text]) : Text = ((prim "component:meet-and-greet:vec-string") : [Text] -> Text)(a);
-    public func vec_u8(a : [Nat8]) : Text = ((prim "component:meet-and-greet:vec-u8") : [Nat8] -> Text)(a);
+    public func vec_i8(a : [Int8]) : Text = ((prim "component:meet-and-greet:vec-i8") : [Int8] -> Text)(a);
+    public func vec_u8_as_blob(a : Blob) : Text = ((prim "component:meet-and-greet:vec-u8-as-blob") : Blob -> Text)(a);
     public func vec_u32(a : [Nat32]) : Text = ((prim "component:meet-and-greet:vec-u32") : [Nat32] -> Text)(a);
     public func vec_i32(a : [Int32]) : Text = ((prim "component:meet-and-greet:vec-i32") : [Int32] -> Text)(a);
     public func vec_i64(a : [Int64]) : Text = ((prim "component:meet-and-greet:vec-i64") : [Int64] -> Text)(a);
@@ -31,7 +32,8 @@ module meet_and_greet {
 
     public func to_vec_bool(i : Int32, b : Bool) : [Bool] = ((prim "component:meet-and-greet:to-vec-bool") : (Int32, Bool) -> [Bool])(i, b);
     public func to_vec_char(u : Nat8, c : Char) : [Char] = ((prim "component:meet-and-greet:to-vec-char") : (Nat8, Char) -> [Char])(u, c);
-    public func to_vec_u8(u : Nat16, c : Char) : [Nat8] = ((prim "component:meet-and-greet:to-vec-u8") : (Nat16, Char) -> [Nat8])(u, c);
+    public func to_vec_i8(u : Nat16, c : Char) : [Int8] = ((prim "component:meet-and-greet:to-vec-i8") : (Nat16, Char) -> [Int8])(u, c);
+    public func to_vec_u8_as_blob(u : Nat16, c : Char) : Blob = ((prim "component:meet-and-greet:to-vec-u8-as-blob") : (Nat16, Char) -> Blob)(u, c);
     public func to_vec_i16(u : Nat16, i : Int16) : [Int16] = ((prim "component:meet-and-greet:to-vec-i16") : (Nat16, Int16) -> [Int16])(u, i);
     public func to_vec_u32(u : Nat16, i : Nat32) : [Nat32] = ((prim "component:meet-and-greet:to-vec-u32") : (Nat16, Nat32) -> [Nat32])(u, i);
     public func to_vec_i64(u : Nat16, i : Int64) : [Int64] = ((prim "component:meet-and-greet:to-vec-i64") : (Nat16, Int64) -> [Int64])(u, i);
