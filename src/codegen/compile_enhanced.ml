@@ -496,6 +496,7 @@ module E = struct
 
     (* Counter for deriving a unique id per constant function. *)
     constant_functions : int32 ref;
+    dedup : (unit -> int32) option ref;
   }
 
 
@@ -530,6 +531,7 @@ module E = struct
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
     constant_functions = ref 0l;
+    dedup = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -799,6 +801,15 @@ module E = struct
     | Flags.WASIMode | Flags.WasmMode when !(env.requires_stable_memory) ->
       [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
     | _ -> []
+
+  let get_dedup (env : t) =
+    match !(env.dedup) with
+    | Some mk_fi -> mk_fi()
+    | _ -> assert false
+
+  let set_dedup (env : t) mk_fi =
+    env.dedup := Some mk_fi
+
 end
 
 
@@ -9524,6 +9535,8 @@ module Internals = struct
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
+  let dedup env = G.i (Call (nr (E.get_dedup env)))
+
 end
 
 (* This comes late because it also deals with messages *)
@@ -13607,8 +13620,14 @@ and main_actor as_opt mod_env ds fs up =
 
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
-      Freevars.(captured_vars (system up))
+        Freevars.(captured_vars (system up))
     in
+    let _ = match VarEnv.lookup_var ae2 "@add_cycles" (* CHANGE ME *) with
+    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
+      E.set_dedup env mk_fi
+    | _ -> assert false
+    in
+    let _fi = E.get_dedup env in
 
     (* Export the public functions *)
     List.iter (export_actor_field env ae2) fs;
