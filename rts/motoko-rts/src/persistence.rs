@@ -33,10 +33,7 @@ const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
-// Versions
-// 1: Initial EOP version, without stable functions and stable closures.
-// 2: Support of stable functions and closures.
-const VERSION: usize = 2;
+const VERSION: usize = 1;
 /// The `Value` representation in the default-initialized Wasm memory.
 /// The GC ignores this value since it is a scalar representation.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -94,9 +91,9 @@ impl PersistentMetadata {
                 || (*self).fingerprint == ['\0'; 32]
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
-                    && (*self).stable_function_state.is_default()
-                    && (*self).name_table == DEFAULT_VALUE
         );
+        // Even if in initialized, stable_function_state and name_table are zero
+        // if migrating from old non-stable function EOP to latest EOP.
         initialized
     }
 
@@ -126,6 +123,24 @@ impl PersistentMetadata {
         (*self).stable_function_state = StableFunctionState::default();
         (*self).name_table = NULL_POINTER;
     }
+
+    // Initialize stable function support when upgrading from old EOP
+    unsafe fn upgrade_to_latest_eop(self: *mut Self) {
+        debug_assert!(self.is_initialized());
+        // Explicit migration from a version of the RTS without weak reference support.
+        if (*self).weak_ref_registry.get_raw() == 0 {
+            // This is the first upgrade from a version of the RTS without weak reference
+            // support. We need to initialize the weak reference registry to NULL_POINTER.
+            (*self).weak_ref_registry = NULL_POINTER;
+        }
+        // Explicit migration from a version of the RTS without non-stable function support.
+        if !(*self).stable_function_state.is_initialized() {
+            (*self).stable_function_state = StableFunctionState::default();
+        }
+        if (*self).name_table.get_raw() == 0 {
+            (*self).name_table = NULL_POINTER;
+        }
+    }
 }
 
 /// Initialize fresh persistent memory after the canister installation or reuse
@@ -136,12 +151,7 @@ pub unsafe fn initialize_memory<M: Memory>() {
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
-        // Explicit migration from a version of the RTS without weak reference support.
-        if (*metadata).weak_ref_registry.get_raw() == 0 {
-            // This is the first upgrade from a version of the RTS without weak reference
-            // support. We need to initialize the weak reference registry to NULL_POINTER.
-            (*metadata).weak_ref_registry = NULL_POINTER;
-        }
+        metadata.upgrade_to_latest_eop();
     } else {
         metadata.initialize::<M>();
     }

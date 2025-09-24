@@ -1,0 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID migrate-to-stable-functions1/old.wasm ""
+upgrade $ID migrate-to-stable-functions1/new.mo ""
+ingress $ID __motoko_gc_trigger "DIDL\x00\x00"
