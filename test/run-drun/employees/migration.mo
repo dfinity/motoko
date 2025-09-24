@@ -1,28 +1,12 @@
 import Employee "EmployeeNew";
 import Employees "EmployeesNew";
+import OldEmployees "Employees";
 import Prim "mo:prim";
 
 module {
 
-  type OldEmployee = {
-    id : Nat;
-    name : Text;
-    setManager : (newManager : OldEmployee) -> ();
-    getManager : () -> ?OldEmployee;
-    toText : () -> Text;
-  };
-
-  type NewEmployee = Employee.Employee;
-
-  type OldEmployees = {
-    add : persistent (name : Text) -> OldEmployee;
-    addExisting : persistent (employee : OldEmployee) -> ();
-    get : persistent (id : Nat) -> OldEmployee;
-    entries : persistent () -> [(Nat, OldEmployee)];
-  };
-
   type OldActor = {
-    employees : OldEmployees;
+    employees : OldEmployees.Employees;
   };
 
   type NewActor = {
@@ -30,6 +14,9 @@ module {
   };
 
   public func run(old : OldActor) : NewActor {
+    // Bug: Required to make upgrade work
+    let oldFake = OldEmployees.Employees();
+
     let newEmployees = Employees.Employees();
     for ((_, oldEmployee) in old.employees.entries().values()) {
       let e = Employee.Employee(oldEmployee.id, oldEmployee.name);
