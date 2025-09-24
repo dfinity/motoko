@@ -12,7 +12,8 @@ runs:
       shell: bash
       run: |
         export VERSION="${{ inputs.version }}"
-        perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
+        # perl -0777 -ne '/^# Motoko compiler changelog\n\n## (??{quotemeta($ENV{VERSION})}) \(\d\d\d\d-\d\d-\d\d\)\n\n(.*?)^##/sm or die "Changelog does not look right for this version\n" ; print $1' Changelog.md > changelog-extract.md
+        print $1' Changelog.md > changelog-extract.md
         cat changelog-extract.md
         # need to mangle to use with $GITHUB_OUTPUT,
         # see https://github.com/svenstaro/upload-release-action/blob/master/README.md
