@@ -1,0 +1,4 @@
+install $ID set-example/actor.mo ""
+upgrade $ID set-example/actor.mo ""
+upgrade $ID set-example/actor.mo ""
+upgrade $ID set-example/actor.mo ""
