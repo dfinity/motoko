@@ -177,7 +177,7 @@ impl StableFunctionState {
     }
 
     pub fn is_initialized(&self) -> bool {
-        self.virtual_table.get_raw() == 0
+        self.virtual_table.get_raw() != 0
     }
 
     pub fn is_default(&self) -> bool {
