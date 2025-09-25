@@ -11,7 +11,7 @@ module {
     table : [var ?(K, V)];
     hashFn : H;
   };
-  public type Self<K, V, H <: HashFn<K>> = HashMap<K, V, H>;
+  public type Self<K, V> = HashMap<K, V, HashFn<K>>;
 
   public func empty<K, V, H <: HashFn<K>>(capacity : Nat, hashFn : H) : HashMap<K, V, H> {
     {
@@ -22,7 +22,7 @@ module {
     }
   };
 
-  public func put<K, V>(map : HashMap<K, V, HashFn<K>>, key : K, value : V) {
+  public func put<K, V>(map : Self<K, V>, key : K, value : V) {
     let (hash, equal) = map.hashFn;
     let index = hash(key) % map.capacity;
     switch (map.table[index]) {
@@ -40,7 +40,7 @@ module {
     };
   };
 
-  public func get<K, V>(map : HashMap<K, V, HashFn<K>>, key : K) : ?V {
+  public func get<K, V>(map : Self<K, V>, key : K) : ?V {
     let (hash, equal) = map.hashFn;
     let index = hash(key) % map.capacity;
     switch (map.table[index]) {
@@ -55,7 +55,7 @@ module {
     };
   };
 
-  public func entries<K, V>(map : HashMap<K, V, HashFn<K>>) : [(K, V)] {
+  public func entries<K, V>(map : Self<K, V>) : [(K, V)] {
     let iter = map.table.values();
     Prim.Array_tabulate<(K, V)>(map.size, func(_) {
       label l loop {
