@@ -4,7 +4,7 @@ source "$(dirname "$0")/set_env.sh"
 ROOT_DIR=$(dirname "$(realpath $0)")/..
 export RUST_DIR=$ROOT_DIR/src/rust
 export COMPONENT_DIR=$ROOT_DIR/$MOPS_DIR/component
-echo "NOTE: This script may fail when run in Motoko's development nix-shell."
+echo "NOTE: This script may fail when run in Motoko's development nix-shell, which uses an old version of cargo/rustc."
 echo "      If this happens, run it in a separate shell with your regular Rust development setup."
 
 build_rust_component() {
