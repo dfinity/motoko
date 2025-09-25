@@ -2174,28 +2174,28 @@ the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects
 
 ### Contextual dot resolution
 
-When applying an object projection `x.f(a)` where `x` is not an object type with a field `f` the context is searched for a module with an exported type
-"Self" where `Self` can be instantiated so `x <: Self` holds.
+When applying an object projection `x.f(a)` where `x` is not an object type with a field `f` the context is searched for a module with a matching type `Self` and checked and evaluated as follows:
+
+The expression `<exp1>.<id> <exp2>` has type `t_res` provided the following holds:
 
 ```
 x : t </: { f : _ }
-M : module { type Self<self_bounds> = t_m; f : <func_bounds>(a_1...a_n) -> t_res }
+M : module { type Self<S> = t_self; <id> : <T>(targ_1...targ_n) -> t_res }
 
-t <: exists. instantiate(self_bounds, t_m)
-t <: exists. instantiate(func_bounds, a_1)
+t <: exists. S such that Self<S>
+t <: exists. T such that inst(T, targ_1)
 
+and M is unique
+```
+
+It then evaluates as `M.<id>(extend_args(<exp1>, <exp2>, arity(M.<id>)))` where `extend_args` is:
+
+```
 extend_args(x, args, arity) : (exp, exp, int) -> exp
 extend_args(x, y, 2) = (x, y);
 extend_args(x, (), _) = x;
 extend_args(x, (y1, y2, y3, ... yn), _) = (x, y1, y2, y3, ..., yn);
-
-typing: x.f(args) : t_res
-
-evaluation: M.f(extend_args(x, args, arity(M.f)))
 ```
-
-
-
 
 ### Assignment
 
