@@ -39,6 +39,19 @@ let valid_metadata_names =
 (* suppress documentation *)
 let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
 
+let validate_warning_code code =
+  code <> "" &&
+  List.exists (fun (c, _, _) -> String.equal c code) Error_codes.warning_codes
+
+let modify_warning_levels level s =
+  let codes = String.split_on_char ',' s in
+  codes |> List.iter (fun code ->
+    if validate_warning_code code then
+      Flags.set_warning_level code level
+    else begin
+      eprintf "moc: invalid warning code: %s. Run 'moc --warn-help' to see available warning codes." code; exit 1
+    end)
+
 let argspec = [
   "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
   "-c", Arg.Unit (set_mode Compile), " compile programs to WebAssembly";
@@ -67,6 +80,26 @@ let argspec = [
   "-p", Arg.Set_int Flags.print_depth, "<n>  set print depth";
   "--hide-warnings", Arg.Clear Flags.print_warnings, " hide warnings";
   "-Werror", Arg.Set Flags.warnings_are_errors, " treat warnings as errors";
+  "-A", Arg.String (modify_warning_levels Flags.Allow),
+    "<codes>  disable (allow) comma-separated warning codes, e.g. -A M0194,M0217";
+  "-W", Arg.String (modify_warning_levels Flags.Warn),
+    "<codes>  enable (warn) comma-separated warning codes, e.g. -W M0223";
+  "-E", Arg.String (modify_warning_levels Flags.Error),
+    "<codes>  treat as error comma-separated warning codes, e.g. -E M0217";
+  "--warn-help",
+    Arg.Unit (fun () ->
+      let string_of_level = function
+        | Flags.Allow -> "A"
+        | Flags.Warn -> "W"
+        | Flags.Error -> "E"
+      in
+      List.iter (fun (code, _, desc) ->
+        let lvl = Flags.get_warning_level code in
+        printf "%s (%s) %s\n" code (string_of_level lvl) desc
+      ) Error_codes.warning_codes;
+      printf "\nLegend: A - allowed (warning disabled); W - warn (warning enabled); E - error (treated as error)\n";
+      exit 0),
+    " show available warning codes, current lint level, and descriptions";
   ]
 
   @ Args.error_args
@@ -340,7 +373,7 @@ let process_files files : unit =
          exit 1)
     end
   | Explain ->
-     match List.find_opt (fun (c, _) -> String.equal c !explain_code) Error_codes.error_codes with
+     match Error_codes.try_find_explanation !explain_code with
      | Some (_, Some(explanation)) ->
         printf "%s" explanation
      | Some (_, None) ->
