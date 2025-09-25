@@ -1287,6 +1287,12 @@ type ctx_dot_candidate =
     module_ty : T.typ;
   }
 
+(** Searches for contextual resolutions for [name] on a given
+    [receiver_ty]. Returns [Ok(candidate)] when a single resolution is
+    found, [Error(file_paths)] when no resolution was found, but a
+    matching module could be imported, and reports an ambiguity error
+    when finding multiple resolutions.
+ *)
 let contextual_dot env name receiver_ty =
   (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
   let permissive_sub t1 (tbs, t2) =
@@ -1320,8 +1326,18 @@ let contextual_dot env name receiver_ty =
       Seq.filter_map find_candidate |>
       List.of_seq in
   match eligible_funcs with
-  | [oc] -> Some oc
-  | [] -> None
+  | [oc] -> Ok oc
+  | [] ->
+     let lib_candidates =
+       T.Env.to_seq env.libs |>
+         Seq.filter_map (fun (n, t) ->
+             match t with
+             | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+             | _ -> None) |>
+         Seq.filter has_matching_self_type |>
+         Seq.filter_map find_candidate |>
+         List.of_seq in
+     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
@@ -2260,10 +2276,13 @@ and infer_callee env exp =
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, e) ->
       match contextual_dot env id t1 with
-      | None ->
-        Diag.add_msg env.msgs e;
-        raise Recover
-      | Some { module_name; module_ty; func_ty } ->
+      | Error [] ->
+         let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
+         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error suggestions ->
+         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
+         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Ok { module_name; module_ty; func_ty } ->
          if not env.pre then
          use_identifier env module_name;
          note := Some {
