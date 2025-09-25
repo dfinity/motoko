@@ -1,0 +1,6 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID employees/version0.mo ""
+ingress $ID display "DIDL\x00\x00"
+upgrade $ID employees/version1.mo ""
+ingress $ID display "DIDL\x00\x00"
