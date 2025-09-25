@@ -12324,7 +12324,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     E.call_import env "rts" "log"
 
   | ComponentPrim (_, component_name, function_name, arg_types, return_type), es ->
-    assert !Flags.wasm_components;
+    if not !Flags.wasm_components then
+        begin
+          Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom ("Wasm components support not enabled, use -wasm-components"));
+          exit 0
+        end;
     StackRep.of_type return_type,
     let open WasmComponent in
     assert (List.length es = List.length arg_types);
