@@ -11,18 +11,18 @@ module StableSet {
   };
 
   // enable dot notation
-  public type Self<T, C <: Cmp<T>> = StableSet<T, C>;
+  public type Self<T> = StableSet<T, Cmp<T>>;
 
   public func add<T>(s : StableSet<T, Cmp<T>>, v : T) {
     s.set := Set.add(s.set, s.cmp, v)
   };
 
-  public func mem<T>(s : StableSet<T, Cmp<T>>, v : T) : Bool {
+  public func mem<T>(s : Self<T>, v : T) : Bool {
     Set.mem(s.set, s.cmp, v : T)
   };
 
   public func map<T, U, D <: Cmp<U>>(
-    s : StableSet<T, Cmp<T>>,
+    s : Self<T>,
     cmp : D,
     f : T -> U) :
     StableSet<U, D> {
