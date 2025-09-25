@@ -700,12 +700,6 @@ func @cancelTimer(id : Nat) {
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
-// A hash array of Lists.
-// On colisions, a new List element is added.
-func @Array_tabulateVar<T>(len : Nat, gen : Nat -> T) : [var T] {
-  (prim "Array.tabulateVar" : <T>(Nat, Nat -> T) -> [var T]) <T>(len, gen);
-};
-let @HASH_ARRAY_SIZE = 16_384;
 // WeakRef type.
 type @WeakRef = {
   ref : weak Blob;
@@ -716,10 +710,17 @@ type @List = {
   value : ?@WeakRef;
   hashValue : Nat32;
 };
-let @hash_array = @Array_tabulateVar<@List>(@HASH_ARRAY_SIZE, func(i : Nat) : @List = { next = null; value = null; hashValue = 0 });
+var @dedup_hash_counter : Nat = 0;
+var @hash_array : [var @List] = [var];
 
 // Function that deduplicates a blob.
 func @dedup2(b : Blob) : Blob {
+  // A hash array of Lists.
+  // On colisions, a new List element is added.
+  func Array_tabulateVar<T>(len : Nat, gen : Nat -> T) : [var T] {
+    (prim "Array.tabulateVar" : <T>(Nat, Nat -> T) -> [var T]) <T>(len, gen);
+  };
+  let HASH_ARRAY_SIZE = 16_384;
   // Debug print. Will be removed.
   func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
   // Simple hash function.
@@ -759,14 +760,14 @@ func @dedup2(b : Blob) : Blob {
   };
   func addToHashArray(b : Blob) {
     let hashValue = hashBlob(b);
-    let index = @nat32ToNat(hashValue) % @HASH_ARRAY_SIZE;
+    let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
     let list = @hash_array[index];
     let weakRef = { ref = allocWeakRef(b) };
     @hash_array[index] := addToList(list, hashValue, weakRef);
   };
   func getFromHashArray(b : Blob) : ?@WeakRef {
     let hashValue = hashBlob(b);
-    let index = @nat32ToNat(hashValue) % @HASH_ARRAY_SIZE;
+    let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
     let list = @hash_array[index];
     getFromList(list, hashValue);
   };
@@ -776,9 +777,16 @@ func @dedup2(b : Blob) : Blob {
   // Check if the blob has magic bytes.
   // We only deduplicate blobs which have the first 5 bytes (!caf!).
   // Otherwise, we return the original blob so that the system works as usual.
+  if (b.size() < 5) {
+    return b;
+  };
   if (b[0] != 0x21 or b[1] != 0x63 or b[2] != 0x61 or b[3] != 0x66 or b[4] != 0x21) {
     //debugPrint("The blob doesn't have magic bytes so we return the original.");
     return b;
+  };
+
+  if (@dedup_hash_counter == 0) {
+    @hash_array := Array_tabulateVar<@List>(HASH_ARRAY_SIZE, func(i : Nat) : @List = { next = null; value = null; hashValue = 0 });
   };
 
   // Get the WeakRef from the hash table.
@@ -803,8 +811,10 @@ func @dedup2(b : Blob) : Blob {
     case null {
       //debugPrint("It wasn't in the hash so we put it in and return the original.");
       addToHashArray(b);
+      @dedup_hash_counter += 1;
       b;
     };
   };
+  //debugPrint("Dedup hash counter: " # debug_show (@dedup_hash_counter));
   result;
 };

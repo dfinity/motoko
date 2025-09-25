@@ -7,6 +7,7 @@ persistent actor {
   };
 
   public func test2() : async () {
+    let blob0 : Blob = "a";
     let blob1 : Blob = "!caf!hello";
     let blob2 : Blob = "!caf!world";
     let blob3 : Blob = "acaf!hello";
@@ -21,6 +22,7 @@ persistent actor {
       await test(blob1);
       await test(blob2);
       await test(blob3);
+      await test(blob0);
       counter -= 1;
     };
   };
