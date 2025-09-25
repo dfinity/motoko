@@ -443,27 +443,11 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64
 
   let const = phrase instrs in
 
-  (* For 64-bit, convert the constant expression of the table segment offset to 32-bit. *)
-  let const_instr_to_32' = function
-    | Const _ as correct -> correct
-    (*| Const { it = (Wasm_exts.Values.I64 number); at } -> Const ((Wasm_exts.Values.I32 (Int64.to_int32 number)) @@ at)
-    | Const { it = (Wasm_exts.Values.I32 number); at } as correct -> correct*)
-    | GlobalGet _ as gg -> gg
-    | _ -> assert false
-  in
-  let const_instr_to_32 i = phrase const_instr_to_32' i in
-  let convert_const_to_32' = safe_map const_instr_to_32 in
-  let convert_const_to_32 = phrase convert_const_to_32' in
-  let table_const offset = 
-    let expr = const offset in
-    if uses_memory64 then convert_const_to_32 expr else expr
-  in
-
   let global' g = { g with value = const g.value } in
   let global = phrase global' in
   let globals = safe_map global in
 
-  let table_segment' (s : var list segment') = { s with offset = table_const s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = safe_map table_segment in
 
@@ -602,10 +586,18 @@ let set_table_size new_size : module_' -> module_' = fun m ->
         { ttype = HugeTableType ({min = new_size; max = Some new_size}, ty) }
       ) t ]
     }
+  | [t] when uses_memory64 m ->
+    { m with
+      tables = [ phrase (fun t ->
+        let [@warning "-8"] TableType (_, ty) = t.ttype in
+        let new_size = Int64.of_int32 new_size in
+        { ttype = HugeTableType ({min = new_size; max = Some new_size}, ty) }
+      ) t ]
+    }
   | [t] ->
     { m with
       tables = [ phrase (fun t ->
-        let [@warning "-8"]TableType (_, ty) = t.ttype in
+        let [@warning "-8"] TableType (_, ty) = t.ttype in
         { ttype = TableType ({min = new_size; max = Some new_size}, ty) }
       ) t ]
     }
