@@ -2182,10 +2182,10 @@ The expression `<exp1>.<id> <exp2>` has type `t_res` provided the following hold
 x : t </: { f : _ }
 M : module { type Self<S> = t_self; <id> : <T>(targ_1...targ_n) -> t_res }
 
-t <: exists. S such that Self<S>
-t <: exists. T such that inst(T, targ_1)
+exists. S such that t <: Self<S>
+exists. T such that t <: instantiate(T, targ_1)
 
-and M is unique
+and M is the only match in the context
 ```
 
 It then evaluates as `M.<id>(extend_args(<exp1>, <exp2>, arity(M.<id>)))` where `extend_args` is:
