@@ -13,7 +13,7 @@ module StableSet {
   // enable dot notation
   public type Self<T> = StableSet<T, Cmp<T>>;
 
-  public func add<T>(s : StableSet<T, Cmp<T>>, v : T) {
+  public func add<T>(s : Self<T>, v : T) {
     s.set := Set.add(s.set, s.cmp, v)
   };
 
