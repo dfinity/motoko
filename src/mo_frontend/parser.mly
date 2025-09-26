@@ -646,7 +646,7 @@ exp_post(B) :
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(None, e1, inst, e2) @? at $sloc }
+    { CallE(None, e1, inst, ref e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -658,7 +658,7 @@ exp_un(B) :
   | e=exp_post(B)
     { e }
   | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(par, e1, inst, e2) @? at $sloc }
+    { CallE(par, e1, inst, ref e2) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)

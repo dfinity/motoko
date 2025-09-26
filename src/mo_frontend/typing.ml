@@ -2196,7 +2196,8 @@ and detect_lost_fields env t = function
       (T.Env.keys pub_types)
   | _ -> ()
 
-and infer_call env exp1 inst exp2 at t_expect_opt =
+and infer_call env exp1 inst ref_exp2 at t_expect_opt =
+  let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
