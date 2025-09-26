@@ -15,13 +15,18 @@ module M {
 
 };
 
-func f1(n : Nat, m : Nat, c : (implicit: (Nat, Nat) -> Order)) {
+func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
   ignore c(n, m);
 };
 
 func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
   ignore c(n, m);
 };
+
+func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
+  ignore c(n, m);
+};
+
 
 f1(0, 1, M.c1); //accept
 f2(0, 1, M.c1); //accept
@@ -35,3 +40,5 @@ f2(0, 1); //accept
 f2("0", "1"); // accept
 
 f2(true, true); // reject
+
+f3(1, 1); // reject
