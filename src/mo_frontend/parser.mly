@@ -68,9 +68,9 @@ let assign_op lhs rhs_f at =
   let ds, lhs', rhs' =
     match lhs.it with
     | VarE x -> [], lhs, dup_var x
-    | DotE (e1, x) ->
+    | DotE (e1, x, n) ->
       let ds, ex11, ex12 = name_exp e1 in
-      ds, DotE (ex11, x) @? lhs.at, DotE (ex12, x.it @@ x.at) @? lhs.at
+      ds, DotE (ex11, x, n) @? lhs.at, DotE (ex12, x.it @@ x.at, n) @? lhs.at
     | IdxE (e1, e2) ->
       let ds1, ex11, ex12 = name_exp e1 in
       let ds2, ex21, ex22 = name_exp e2 in
@@ -644,15 +644,15 @@ exp_post(B) :
   | e=exp_post(B) s=DOT_NUM
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
-    { DotE(e, x) @? at $sloc }
+    { DotE(e, x, ref None) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
     { CallE(None, e1, inst, ref e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
     { DotE(
-        DotE(e1, "system" @@ at ($startpos($1),$endpos($1))) @? at $sloc,
-        x) @? at $sloc }
+        DotE(e1, "system" @@ at ($startpos($1),$endpos($1)), ref None) @? at $sloc,
+        x, ref None) @? at $sloc }
 
 exp_un(B) :
   | e=exp_post(B)
