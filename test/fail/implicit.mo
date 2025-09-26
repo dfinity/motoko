@@ -24,7 +24,6 @@ func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
 };
 
 func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
-  ignore c(n, m);
 };
 
 

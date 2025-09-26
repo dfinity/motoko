@@ -1,9 +1,8 @@
-implicit.mo:27.10-27.11: type error [M0057], unbound variable c
-implicit.mo:34.4-34.7: type error [M0050], literal of type
+implicit.mo:33.4-33.7: type error [M0050], literal of type
   Text
 does not have expected type
   Nat
-implicit.mo:42.3-42.15: type error [M0XXX], Cannot determine implicit argument `c`. 
+implicit.mo:41.3-41.15: type error [M0XXX], Cannot determine implicit argument `c`. 
 Hint: If you're trying to use an implicit argument you need to import the corresponding module.
-implicit.mo:44.3-44.9: type error [M0XXX], Cannot determine implicit argument `2`. 
+implicit.mo:43.3-43.9: type error [M0XXX], Cannot determine implicit argument `2`. 
 Hint: If you're trying to use an implicit argument you need to import the corresponding module.
