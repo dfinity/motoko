@@ -3,10 +3,14 @@ type Order = {#less;#greater;#equal};
 
 module M {
 
-  public func compare(n : Nat, m: Nat) : Order {
+  public func c1(n : Nat, m: Nat) : Order {
     if (n < m) #less
     else if (n == m) #greater
     else #equal;
+  };
+
+  public func c2(n : Text, m: Text) : Order {
+     #equal;
   };
 
 };
@@ -19,11 +23,15 @@ func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
   ignore c(n, m);
 };
 
-f1(0, 1, M.compare);
-f2(0, 1, M.compare);
+f1(0, 1, M.c1); //accept
+f2(0, 1, M.c1); //accept
 
-f1(0, 1);
-f2(0, 1);
+f1("0", "1", M.c2); // reject
+f2("0", "1", M.c2); // accept
 
+f1(0, 1); //accept
+f2(0, 1); //accept
 
-f2(true, true);
+f2("0", "1"); // accept
+
+f2(true, true); // reject

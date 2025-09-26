@@ -1,2 +1,6 @@
-implicit.mo:29.3-29.15: type error [M0XXX], Cannot determine implicit argument `c`. 
+implicit.mo:29.4-29.7: type error [M0050], literal of type
+  Text
+does not have expected type
+  Nat
+implicit.mo:37.3-37.15: type error [M0XXX], Cannot determine implicit argument `c`. 
 Hint: If you're trying to use an implicit argument you need to import the corresponding module.
