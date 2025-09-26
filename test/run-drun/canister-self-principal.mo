@@ -3,7 +3,7 @@ import Prim "mo:prim";
 persistent actor {
 
   public func test() : async () {
-    let myPrincipal = Prim.getSelfPrincipal();
+    let myPrincipal = Prim.getSelfPrincipal<system>();
     Prim.debugPrint(debug_show myPrincipal);
   };
 };
