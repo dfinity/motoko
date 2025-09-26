@@ -195,7 +195,6 @@ let error_codes : (string * string option) list =
     "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
-    "M0222", None; (* Ignored `async*` *)
     "M0224", None; (* Overlapping dot resolution *)
     (* TODO: Adjust before merging *)
     "M0250", None; (* A mixin cannot be used as an entry point *)
