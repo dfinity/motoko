@@ -2493,6 +2493,13 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
           | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
           | _ -> normalized_target :: !must_solve);
         target_type
+      (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
+      | HoleE _, normalized_target ->
+        (* Cannot infer unannotated func, defer it *)
+        deferred := (exp, target_type) :: !deferred;
+        must_solve := (* Inputs of deferred functions must be solved first *)
+        normalized_target :: !must_solve;
+        target_type
       (* Future work: more cases to defer? *)
       | _ ->
         (* Infer and add a subtype problem for bi_match *)
