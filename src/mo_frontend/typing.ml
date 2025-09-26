@@ -3647,7 +3647,10 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.val_env then
       error_duplicate env "" id;
-    let scope' = gather_block_decs env decs in
+    (* NOTE: This is a bit ugly. We need to extend the environment
+       with any mixin imports we've found so far, so Include's in the
+       actor body can be resolved *)
+    let scope' = gather_block_decs { env with mixins = T.Env.adjoin scope.mixin_env env.mixins } decs in
     let ve' = add_id scope.val_env id (object_of_scope env obj_sort.it dec_fields scope' at) in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';

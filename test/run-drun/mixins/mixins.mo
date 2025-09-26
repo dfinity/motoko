@@ -1,6 +1,6 @@
 import MyMixin "MyMixin";
 
-persistent actor {
+persistent actor MixinActor {
   include MyMixin("MyPrefix ", " MySuffix");
 
   let _x : MixinTy = 10;
