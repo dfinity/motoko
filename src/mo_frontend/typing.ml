@@ -3626,7 +3626,6 @@ and infer_val_path env exp : T.typ option =
     Some (check_typ {env with pre = true} typ)
   | _ -> None
 
-
 (* Pass 1: collect:
    * type identifiers and their arity,
    * object identifiers and their fields (if known) (recursively)
@@ -3702,13 +3701,11 @@ and gather_dec env scope dec : Scope.t =
       mixin_env = scope.mixin_env;
       fld_src_env = scope.fld_src_env;
     }
-  | IncludeD(i, _, n) -> begin
+  | IncludeD(i, _, _) -> begin
     match T.Env.find_opt i.it env.mixins with
     | None -> error env i.at "M0251" "unknown mixin %s" i.it
     | Some(imports, pat, decs, t) ->
       let open Scope in
-      n := Some({ imports; pat; decs });
-      (* Format.printf "Resolved include %s to %a\n" i.it display_typ t; *)
       let (_, fields) = T.as_obj t in
       let add_field acc = function
         | T.{ lab; typ = T.Typ t; _ } ->
@@ -3769,7 +3766,15 @@ and infer_block_typdecs env decs : Scope.t =
 
 and infer_dec_typdecs env dec : Scope.t =
   match dec.it with
-  | MixinD _ | IncludeD _ -> Scope.empty
+  | MixinD _ -> Scope.empty
+  | IncludeD (i, _, n) -> begin
+    match T.Env.find_opt i.it env.mixins with
+    | None -> error env i.at "M0251" "unknown mixin %s" i.it
+    | Some(imports, pat, decs, t) ->
+      n := Some({ imports; pat; decs });
+      let (_, fields) = T.as_obj t in
+      scope_of_object env fields
+    end
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
