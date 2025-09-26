@@ -26,4 +26,4 @@ f1(0, 1);
 f2(0, 1);
 
 
-//f2(true, true);
+f2(true, true);

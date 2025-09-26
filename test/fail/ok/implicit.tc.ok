@@ -1,0 +1,2 @@
+implicit.mo:29.3-29.15: type error [M0XXX], Cannot determine implicit argument `c`. 
+Hint: If you're trying to use an implicit argument you need to import the corresponding module.

@@ -2072,6 +2072,7 @@ and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
   | HoleE e, t ->
+    let desc = match !e.it with PrimE name -> name | _ -> "" in
     (match hole env exp.at t with
     | Ok {path; _} ->
       e := path;
@@ -2079,10 +2080,10 @@ and check_exp' env0 t exp : T.typ =
       t
     | Error [] ->
       let sug = "\nHint: If you're trying to use an implicit argument you need to import the corresponding module." in
-      error env exp.at "M0XXX" "Cannot determine implicit argument. %s" sug
+      error env exp.at "M0XXX" "Cannot determine implicit argument `%s`. %s" desc sug
     | Error suggestions ->
       let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-      error env exp.at "M0XXX" "Cannot determine implicit argument. %s" sug)
+      error env exp.at "M0XXX" "Cannot determine implicit argument `%s`. %s" desc sug)
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
@@ -2378,20 +2379,23 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 
-and insert_holes ts es =
-  let rec go ts es =
+and insert_holes at ts es =
+  let rec go n ts es =
     match (ts, es) with
-    | (T.Named ("implicit", t)) :: ts1, es
-    | (T.Named (_, (T.Named ("implicit", t)))) :: ts1, es ->
-       {it = HoleE (ref {it = PrimE ""; at = Source.no_region; note=empty_typ_note });
-        at = Source.no_region;
-        note = empty_typ_note } :: go ts1 es
-    | (t :: ts1, e::es1) ->  e :: go ts1 es1
+    | (T.Named ("implicit", t)) :: ts1, es ->
+       {it = HoleE (ref {it = PrimE (Int.to_string n); at; note=empty_typ_note });
+        at;
+        note = empty_typ_note } :: go (n+1) ts1 es
+    | (T.Named (arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
+       {it = HoleE (ref {it = PrimE arg_name; at; note=empty_typ_note });
+        at;
+        note = empty_typ_note } :: go (n+1) ts1 es
+    | (t :: ts1, e::es1) ->  e :: go (n+1) ts1 es1
     | _, [] ->  []
     | [], es -> es
   in
   if List.length es < List.length ts
-  then go ts es
+  then go 0 ts es
   else es
 
 and infer_call env exp1 inst ref_exp2 at t_expect_opt =
@@ -2422,9 +2426,9 @@ and infer_call env exp1 inst ref_exp2 at t_expect_opt =
     match exp2.it with
     | TupE es ->
       let ts = T.as_seq t_arg in
-      let es' = insert_holes ts es in
-      if ((List.length es') > List.length es) then
-        Printf.printf "adding holes %i" ((List.length es') - List.length es);
+      let es' = insert_holes exp2.at ts es in
+(*      if ((List.length es') > List.length es) then
+        Printf.printf "adding holes %i" ((List.length es') - List.length es); *)
       { exp2 with it = TupE es'}
     | _ -> exp2
   in
@@ -2533,7 +2537,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   in
 
   (* Incorporate the return type into the subtyping constraints *)
-  let ret_typ_opt, subs = 
+  let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
     | Some expected_ret -> None, (t_ret, expected_ret) :: subs
@@ -2580,8 +2584,10 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
             let actual_t = infer_exp env' body in
             subs := (actual_t, body_typ) :: !subs;
         end
-      | HoleE exp, typ ->
-        check_exp env typ !exp
+      | HoleE _, typ ->
+        (* Check that all type variables in the type are fixed, fail otherwise *)
+        Bi_match.fail_when_types_are_not_closed remaining [typ];
+        check_exp env typ exp
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
         subs := (infer_exp env exp, typ) :: !subs
@@ -2590,11 +2596,14 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
 
     if not env.pre then begin
       (* Fix the manually decomposed terms as if they were inferred *)
-      let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
+     let fix substitute = List.iter (fun (e, t) ->
+         match e.it with
+         | HoleE _ -> ()
+         | _ -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
       fix (T.open_ ts) to_fix;
       fix (T.open_ ts) deferred;
     end;
-(*   
+(*
     if not env.pre then
       info env at "inferred instantiation <%s>"
         (String.concat ", " (List.map T.string_of_typ ts));
