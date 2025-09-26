@@ -10389,6 +10389,11 @@ module Cost = struct
       )
 end
 
+(*
+  Functions related to Canonical ABI, used to convert between the values and
+  functions of components in the Component Model and Motoko's representation,
+  cf. https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md
+*)
 module WasmComponent = struct
   open Mo_types.Type
 
