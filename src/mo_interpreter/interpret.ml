@@ -539,9 +539,9 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exps env exp_bases [] (fun objs -> fields (merges (strip objs)))
   | TagE (i, exp1) ->
     interpret_exp env exp1 (fun v1 -> k (V.Variant (i.it, v1)))
-  | DotE (exp1, id) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
+  | DotE (exp1, id, _) when T.(sub exp1.note.note_typ (Obj (Actor, []))) ->
     interpret_exp env exp1 (fun v1 -> k V.(Tup [v1; Text id.it]))
-  | DotE (exp1, id) ->
+  | DotE (exp1, id, _) ->
     interpret_exp env exp1 (fun v1 ->
       match v1 with
       | V.Obj fs ->
@@ -609,18 +609,25 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
+        let exp1, exp2 = match exp1.it with
+          (* Contextual dot call *)
+          | DotE (exp1, _, n) when Option.is_some !n ->
+             let func_exp = Option.get !n in
+             let args = contextual_dot_args exp1 exp2 func_exp in
+             func_exp, args
+          | _ -> exp1, exp2 in
         interpret_exp env exp1 (fun v1 ->
-            let v1 = begin match v1 with
-                     | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
-                     | _ -> v1
-                     end in
-            interpret_exp env exp2 (fun v2 ->
-                let call_conv, f = V.as_func v1 in
-                check_call_conv exp1 call_conv;
-                check_call_conv_arg env exp v2 call_conv;
-                last_region := exp.at; (* in case the following throws *)
-                let c = context env in
-                f c v2 k)))
+         let v1 = begin match v1 with
+                  | V.(Tup [Blob aid; Text id]) -> lookup_actor env exp1.at aid id
+                  | _ -> v1
+                  end in
+         interpret_exp env exp2 (fun v2 ->
+             let call_conv, f = V.as_func v1 in
+             check_call_conv exp1 call_conv;
+             check_call_conv_arg env exp v2 call_conv;
+             last_region := exp.at; (* in case the following throws *)
+             let c = context env in
+             f c v2 k)))
   | BlockE decs ->
     let k' =
       if T.is_unit exp.note.note_typ (* TODO: peeking at types violates erasure semantics, revisit! *)

@@ -1055,7 +1055,7 @@ let rec is_explicit_exp e =
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
-  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (_, e1, _, _)
+  | ProjE (e1, _) | DotE (e1, _, _) | BangE e1 | IdxE (e1, _) | CallE (_, e1, _, _)
   | LabelE (_, _, e1) | AsyncE (_, _, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
@@ -1133,16 +1133,20 @@ let infer_lit env lit at : T.prim =
   | TextLit _ -> T.Text
   | BlobLit _ -> T.Blob
   | PreLit (s, T.Nat) ->
-    lit := NatLit (check_nat env at s); (* default *)
+    if not env.pre then
+      lit := NatLit (check_nat env at s); (* default *)
     T.Nat
   | PreLit (s, T.Int) ->
-    lit := IntLit (check_int env at s); (* default *)
+    if not env.pre then
+      lit := IntLit (check_int env at s); (* default *)
     T.Int
   | PreLit (s, T.Float) ->
-    lit := FloatLit (check_float env at s); (* default *)
+    if not env.pre then
+      lit := FloatLit (check_float env at s); (* default *)
     T.Float
   | PreLit (s, T.Text) ->
-    lit := TextLit (check_text env at s); (* default *)
+    if not env.pre then
+      lit := TextLit (check_text env at s); (* default *)
     T.Text
   | PreLit _ ->
     assert false
@@ -1298,6 +1302,67 @@ and combine_pat_srcs env t pat : unit =
     combine_pat_srcs env t pat2;
   | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
   | ParP pat1 -> combine_pat_srcs env t pat1
+
+type ctx_dot_candidate =
+  { module_name : T.lab;
+    func_ty : T.typ;
+    module_ty : T.typ;
+  }
+
+(** Searches for contextual resolutions for [name] on a given
+    [receiver_ty]. Returns [Ok(candidate)] when a single resolution is
+    found, [Error(file_paths)] when no resolution was found, but a
+    matching module could be imported, and reports an ambiguity error
+    when finding multiple resolutions.
+ *)
+let contextual_dot env name receiver_ty =
+  (* Does an instantiation for [tbs] exist that makes [t1] <: [t2]? *)
+  let permissive_sub t1 (tbs, t2) =
+    try
+      let (s, c) = Bi_match.bi_match_subs None tbs None [t1, t2] [] in
+      ignore (Bi_match.finalize s c []);
+      true
+    with _ ->
+      false in
+  let is_module (n, (t, _, _, _)) = match t with
+    | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+    | _ -> None in
+  let has_matching_self tf = match tf with
+    | T.{ lab = "Self"; typ = T.Typ con; _ } ->
+       (match Cons.kind con with
+       | T.Def(tbs, t') -> permissive_sub receiver_ty (tbs, t')
+       | _ -> false)
+    | _ -> false in
+  let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
+  let is_matching_func = function
+    | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
+      if permissive_sub receiver_ty (tbs, first_arg) then Some typ else None
+    | _ -> None in
+  let find_candidate (module_name, (module_ty, fs)) =
+    List.find_map is_matching_func fs |>
+      Option.map (fun func_ty -> { module_name; func_ty; module_ty }) in
+  let eligible_funcs =
+    T.Env.to_seq env.vals |>
+      Seq.filter_map is_module |>
+      Seq.filter has_matching_self_type |>
+      Seq.filter_map find_candidate |>
+      List.of_seq in
+  match eligible_funcs with
+  | [oc] -> Ok oc
+  | [] ->
+     let lib_candidates =
+       T.Env.to_seq env.libs |>
+         Seq.filter_map (fun (n, t) ->
+             match t with
+             | T.Obj (T.Module, fs) -> Some (n, (t, fs))
+             | _ -> None) |>
+         Seq.filter has_matching_self_type |>
+         Seq.filter_map find_candidate |>
+         List.of_seq in
+     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
+  | ocs ->
+     let candidates = List.map (fun oc -> oc.module_name) ocs in
+     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
 
 let rec infer_exp env exp : T.typ =
   infer_exp' T.as_immut env exp
@@ -1495,37 +1560,12 @@ and infer_exp'' env exp : T.typ =
     t
   | ObjE (exp_bases, exp_fields) ->
     infer_check_bases_fields env [] exp.at exp_bases exp_fields
-  | DotE (exp1, id) ->
-    let t1 = infer_exp_promote env exp1 in
-    let s, tfs =
-      try T.as_obj_sub [id.it] t1 with Invalid_argument _ ->
-      try array_obj (T.as_array_sub t1) with Invalid_argument _ ->
-      try blob_obj (T.as_prim_sub T.Blob t1) with Invalid_argument _ ->
-      try text_obj (T.as_prim_sub T.Text t1) with Invalid_argument _ ->
-        error env exp1.at "M0070"
-          "expected object type, but expression produces type%a"
-          display_typ_expand t1
-    in
-    (match T.lookup_val_field id.it tfs with
-    | T.Pre ->
-      error env exp.at "M0071"
-        "cannot infer type of forward field reference %s"
-        id.it
-    | t ->
-      if not env.pre then
-        check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
-      t
-    | exception Invalid_argument _ ->
-      error env id.at "M0072"
-        "field %s does not exist in %a%s"
-        id.it
-        display_obj (s, tfs)
-        (Suggest.suggest_id "field" id.it
-          (List.filter_map
-             (function
-               { T.typ=T.Typ _;_} -> None
-             | {T.lab;_} -> Some lab) tfs))
-    )
+  | DotE (exp1, id, _) ->
+    (match try_infer_dot_exp env exp.at exp1 id with
+    | Ok t -> t
+    | Error (_, e) ->
+      Diag.add_msg env.msgs e;
+      raise Recover)
   | AssignE (exp1, exp2) ->
     if not env.pre then begin
       let t1 = infer_exp_mut env exp1 in
@@ -1841,6 +1881,43 @@ and infer_bin_exp env exp1 exp2 =
     let t1 = T.normalize (infer_exp env exp1) in
     let t2 = T.normalize (infer_exp env exp2) in
     t1, t2
+
+(* Returns `Ok` when finding an object with a matching field or
+   `Error` with the type of the receiver as well as the error message
+   to report. This is used to delay the reporting for contextual dot resulution *)
+and try_infer_dot_exp env at exp id =
+  let t1 = infer_exp_promote env exp in
+  let fields =
+    try Ok(T.as_obj_sub [id.it] t1) with Invalid_argument _ ->
+    try Ok(array_obj (T.as_array_sub t1)) with Invalid_argument _ ->
+    try Ok(blob_obj (T.as_prim_sub T.Blob t1)) with Invalid_argument _ ->
+    try Ok(text_obj (T.as_prim_sub T.Text t1)) with Invalid_argument _ ->
+      Error(t1, type_error exp.at "M0070" (Format.asprintf
+              "expected object type, but expression produces type%a"
+              display_typ_expand t1))
+  in
+  match fields with
+  | Error e -> Error e
+  | Ok((s, tfs)) -> begin
+    match T.lookup_val_field id.it tfs with
+    | T.Pre ->
+      error env at "M0071"
+        "cannot infer type of forward field reference %s"
+        id.it
+    | t ->
+      if not env.pre then
+        check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
+      Ok(t)
+    | exception Invalid_argument _ ->
+      Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
+          id.it
+          display_obj (s, tfs)
+          (Suggest.suggest_id "field" id.it
+             (List.filter_map
+                (function
+                   { T.typ=T.Typ _;_} -> None
+                 | {T.lab;_} -> Some lab) tfs))))
+    end
 
 and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in
@@ -2214,9 +2291,40 @@ and detect_lost_fields env t = function
       (T.Env.keys pub_types)
   | _ -> ()
 
+and infer_callee env exp =
+  match exp.it with
+  | DotE(exp1, id, note) -> begin
+    match try_infer_dot_exp env exp.at exp1 id with
+    | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
+    | Error (t1, e) ->
+      match contextual_dot env id t1 with
+      | Error [] ->
+         let sug = "\nHint: If you're trying to use a contextual call you need to import the corresponding module." in
+         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Error suggestions ->
+         let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
+         Diag.add_msg env.msgs Diag.{ e with text = e.text ^ sug }; raise Recover
+      | Ok { module_name; module_ty; func_ty } ->
+         if not env.pre then
+         use_identifier env module_name;
+         note := Some {
+           it = DotE({
+               it = VarE { it = module_name; at = no_region; note = Const };
+               at = id.at;
+               note = { note_eff = T.Triv; note_typ = module_ty }
+             }, id, ref None);
+           at = id.at;
+           note = { note_eff = T.Triv; note_typ = func_ty }
+         };
+         func_ty, Some (exp1, t1)
+     end
+  | _ ->
+     infer_exp_promote env exp, None
+
+
 and infer_call env exp1 inst exp2 at t_expect_opt =
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
-  let t1 = infer_exp_promote env exp1 in
+  let (t1, ctx_dot) = infer_callee env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
@@ -2228,6 +2336,15 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
+  let t_arg, extra_subtype_problems = match ctx_dot with
+    | None -> t_arg, []
+    | Some(e, t) -> begin
+      match T.normalize t_arg with
+      | T.Tup([t'; t2]) -> t2, [(t, t')]
+      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
+      | t' -> T.unit, [(t, t')]
+    end
+  in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2238,139 +2355,14 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       let ts = check_inst_bounds env sort tbs typs t_ret at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
-      if not env.pre then check_exp_strong env t_arg' exp2;
+      if not env.pre then check_exp_strong env t_arg' exp2
+      else if typs <> [] && Flags.is_warning_enabled "M0223" &&
+        is_redundant_instantiation ts env (fun env' ->
+          infer_call_instantiation env' t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+            warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      (*
-        Partial Argument Inference:
-        We need to infer the type of the argument and find the best instantiation for the call expression.
-        However, some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
-        Idea:
-        - Decompose the argument into sub-expressions and defer inference for those that would fail.
-        - Find a partial instantiation first using the inferred sub-expressions.
-        - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
-       *)
-      let infer_subargs_for_bimatch_or_defer env exp target_type =
-        let subs, deferred, to_fix, must_solve = ref [], ref [], ref [], ref [] in
-        let rec decompose exp target_type =
-          match exp.it, T.normalize target_type with
-          | TupE exps, T.Tup ts when List.length exps = List.length ts ->
-            let ts' = List.map2 decompose exps ts in
-            let target_type' = T.Tup ts' in
-            (* exp.note needs to be fixed later after the substitution *)
-            to_fix := (exp, target_type') :: !to_fix;
-            target_type'
-          (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
-          | FuncE (_, _, _, pat, _, _, _), normalized_target when not (is_explicit_pat pat) ->
-            (* Cannot infer unannotated func, defer it *)
-            deferred := (exp, target_type) :: !deferred;
-            must_solve := (* Inputs of deferred functions must be solved first *)
-              (match normalized_target with
-              | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
-              | _ -> normalized_target :: !must_solve);
-            target_type
-          (* Future work: more cases to defer? *)
-          | _ ->
-            (* Infer and add a subtype problem for bi_match *)
-            let t = infer_exp env exp in
-            subs := (t, target_type) :: !subs;
-            t
-        in
-        let t2 = decompose exp target_type in
-        t2, !subs, !deferred, !to_fix, !must_solve
-      in
-
-      (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
-      let t2, subs, deferred, to_fix, must_solve = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
-
-      if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
-
-      (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
-      let err_ts = ref None in
-      let err_subst t =
-        let ts = match !err_ts with
-          | None -> T.open_binds tbs
-          | Some ts -> ts
-        in
-        T.open_ ts t
-      in
-
-      (* Incorporate the return type into the subtyping constraints *)
-      let ret_typ_opt, subs =
-        match t_expect_opt with
-        | None -> Some t_ret, subs
-        | Some expected_ret -> None, (t_ret, expected_ret) :: subs
-      in
-
-      try
-        (* i.e. exists minimal ts .
-                t2 <: open_ ts t_arg /\
-                t_expect_opt == Some t -> open ts_ t_ret <: t *)
-        let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
-
-        (* A partial solution for a better error message in case of an error *)
-        err_ts := Some ts;
-
-        (* Prepare subtyping constraints for the 2nd round *)
-        let subs = ref [] in
-        deferred |> List.iter (fun (exp, typ) ->
-          (* Substitute fixed type variables *)
-          let typ = T.open_ ts typ in
-          match exp.it, T.normalize typ with
-          | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
-            (* Check that all type variables in the function input type are fixed, fail otherwise *)
-            Bi_match.fail_when_types_are_not_closed remaining ts1;
-            (* Check the function input type and prepare for inferring the body *)
-            let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
-            (* [codom] comes from [ts2] which might contain unsolved type variables. *)
-            let closed = Bi_match.is_closed remaining codom in
-            if not env.pre && (closed || body_typ <> codom) then begin
-              (* Closed [codom] implies closed [body_typ].
-               * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
-               *)
-              assert (Bi_match.is_closed remaining body_typ);
-              (* Since [body_typ] is closed, no need to infer *)
-              check_exp env' body_typ body;
-            end;
-
-            (* When [codom] is open, we need to solve it *)
-            if not closed then
-              if body_typ <> codom then
-                (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
-                subs := (body_typ, codom) :: !subs
-              else begin
-                (* We just have open [codom], we need to infer the body *)
-                let actual_t = infer_exp env' body in
-                subs := (actual_t, body_typ) :: !subs;
-              end
-          | _ ->
-            (* Future work: Inferring will fail, we could report an explicit error instead *)
-            subs := (infer_exp env exp, typ) :: !subs
-        );
-        let ts, subst_env = Bi_match.finalize ts remaining !subs in
-
-        if not env.pre then begin
-          (* Fix the manually decomposed terms as if they were inferred *)
-          let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
-          fix (T.open_ ts) to_fix;
-          fix (T.open_ ts) deferred;
-        end;
-(*
-        if not env.pre then
-          info env at "inferred instantiation <%s>"
-            (String.concat ", " (List.map T.string_of_typ ts));
-*)
-        ts, T.open_ ts t_arg, T.open_ ts t_ret
-      with Bi_match.Bimatch msg ->
-        error env at "M0098"
-          "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
-          display_typ t1
-          display_typ (err_subst t2)
-          (match t_expect_opt with
-           | None -> ""
-           | Some t ->
-             Format.asprintf "\nto produce result of type%a" display_typ t)
-          msg
+      infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2393,6 +2385,149 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
+
+and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
+  (*
+  Partial Argument Inference:
+  We need to infer the type of the argument and find the best instantiation for the call expression.
+  However, some expressions cannot be inferred, e.g. unannotated lambdas like `func x = x + 1`.
+  Idea:
+  - Decompose the argument into sub-expressions and defer inference for those that would fail.
+  - Find a partial instantiation first using the inferred sub-expressions.
+  - Substitute and proceed with the remaining sub-expressions to get the full instantiation.
+  *)
+  let infer_subargs_for_bimatch_or_defer env exp target_type =
+    let subs, deferred, to_fix, must_solve = ref extra_subtype_problems, ref [], ref [], ref [] in
+    let rec decompose exp target_type =
+      match exp.it, T.normalize target_type with
+      | TupE exps, T.Tup ts when List.length exps = List.length ts ->
+        let ts' = List.map2 decompose exps ts in
+        let target_type' = T.Tup ts' in
+        (* exp.note needs to be fixed later after the substitution *)
+        to_fix := (exp, target_type') :: !to_fix;
+        target_type'
+      (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
+      | FuncE (_, _, _, pat, _, _, _), normalized_target when not (is_explicit_pat pat) ->
+        (* Cannot infer unannotated func, defer it *)
+        deferred := (exp, target_type) :: !deferred;
+        must_solve := (* Inputs of deferred functions must be solved first *)
+          (match normalized_target with
+          | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
+          | _ -> normalized_target :: !must_solve);
+        target_type
+      (* Future work: more cases to defer? *)
+      | _ ->
+        (* Infer and add a subtype problem for bi_match *)
+        let t = infer_exp env exp in
+        subs := (t, target_type) :: !subs;
+        t
+    in
+    let t2 = decompose exp target_type in
+    t2, !subs, !deferred, !to_fix, !must_solve
+  in
+
+  (* Infer the argument as much as possible, defer sub-expressions that cannot be inferred *)
+  let t2, subs, deferred, to_fix, must_solve = infer_subargs_for_bimatch_or_defer env exp2 t_arg in
+
+  if Bi_match.debug then debug_print_infer_defer_split exp2 t_arg t2 subs deferred;
+
+  (* In case of an early error, we need to replace Type.Var with Type.Con for a better error message *)
+  let err_ts = ref None in
+  let err_subst t =
+    let ts = match !err_ts with
+      | None -> T.open_binds tbs
+      | Some ts -> ts
+    in
+    T.open_ ts t
+  in
+
+  (* Incorporate the return type into the subtyping constraints *)
+  let ret_typ_opt, subs = 
+    match t_expect_opt with
+    | None -> Some t_ret, subs
+    | Some expected_ret -> None, (t_ret, expected_ret) :: subs
+  in
+
+  try
+    (* i.e. exists minimal ts .
+            t2 <: open_ ts t_arg /\
+            t_expect_opt == Some t -> open ts_ t_ret <: t *)
+    let (ts, remaining) = Bi_match.bi_match_subs (scope_of_env env) tbs ret_typ_opt subs must_solve in
+
+    (* A partial solution for a better error message in case of an error *)
+    err_ts := Some ts;
+
+    (* Prepare subtyping constraints for the 2nd round *)
+    let subs = ref [] in
+    deferred |> List.iter (fun (exp, typ) ->
+      (* Substitute fixed type variables *)
+      let typ = T.open_ ts typ in
+      match exp.it, T.normalize typ with
+      | FuncE (_, shared_pat, [], pat, typ_opt, _, body), T.Func (s, c, [], ts1, ts2) ->
+        (* Check that all type variables in the function input type are fixed, fail otherwise *)
+        Bi_match.fail_when_types_are_not_closed remaining ts1;
+        (* Check the function input type and prepare for inferring the body *)
+        let env', body_typ, codom = check_func_step false env (shared_pat, pat, typ_opt, body) (s, c, ts1, ts2) in
+        (* [codom] comes from [ts2] which might contain unsolved type variables. *)
+        let closed = Bi_match.is_closed remaining codom in
+        if not env.pre && (closed || body_typ <> codom) then begin
+          (* Closed [codom] implies closed [body_typ].
+            * [body_typ] is closed when it comes from [typ_opt] (which is when it is different from [codom])
+            *)
+          assert (Bi_match.is_closed remaining body_typ);
+          (* Since [body_typ] is closed, no need to infer *)
+          check_exp env' body_typ body;
+        end;
+
+        (* When [codom] is open, we need to solve it *)
+        if not closed then
+          if body_typ <> codom then
+            (* [body_typ] is closed, body is already checked above, we just need to solve the subtype problem *)
+            subs := (body_typ, codom) :: !subs
+          else begin
+            (* We just have open [codom], we need to infer the body *)
+            let actual_t = infer_exp env' body in
+            subs := (actual_t, body_typ) :: !subs;
+          end
+      | _ ->
+        (* Future work: Inferring will fail, we could report an explicit error instead *)
+        subs := (infer_exp env exp, typ) :: !subs
+    );
+    let ts, subst_env = Bi_match.finalize ts remaining !subs in
+
+    if not env.pre then begin
+      (* Fix the manually decomposed terms as if they were inferred *)
+      let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
+      fix (T.open_ ts) to_fix;
+      fix (T.open_ ts) deferred;
+    end;
+(*   
+    if not env.pre then
+      info env at "inferred instantiation <%s>"
+        (String.concat ", " (List.map T.string_of_typ ts));
+  *)
+    ts, T.open_ ts t_arg, T.open_ ts t_ret
+  with Bi_match.Bimatch msg ->
+    error env at "M0098"
+      "cannot implicitly instantiate function of type%a\nto argument of type%a%s\nbecause %s"
+      display_typ t1
+      display_typ (err_subst t2)
+      (match t_expect_opt with
+        | None -> ""
+        | Some t ->
+          Format.asprintf "\nto produce result of type%a" display_typ t)
+      msg
+
+and is_redundant_instantiation ts env infer_instantiation =
+  assert env.pre;
+  match Diag.with_message_store (recover_opt (fun msgs ->
+    let env_without_errors = { env with msgs } in
+    let ts', _, _ = infer_instantiation env_without_errors in
+    List.length ts = List.length ts' && List.for_all2 (T.eq ?src_fields:None) ts ts'
+    ))
+  with
+  | Error _ -> false
+  | Ok (b, _) -> b
 
 and debug_print_infer_defer_split exp2 t_arg t2 subs deferred =
   print_endline (Printf.sprintf "exp2 : %s" (Source.read_region_with_markers exp2.at |> Option.value ~default:""));
@@ -3477,7 +3612,7 @@ and infer_val_path env exp : T.typ option =
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
      | Some (t, _, _, _) -> Some t
      | _ -> None)
-  | DotE (path, id) ->
+  | DotE (path, id, _) ->
     (match infer_val_path env path with
      | None -> None
      | Some t ->
