@@ -165,6 +165,7 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
 
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
+  | HoleE of exp ref
   | PrimE of string                            (* primitive *)
   | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)

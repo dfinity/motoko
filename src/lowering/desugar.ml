@@ -55,6 +55,7 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
+  | S.HoleE e -> (exp !e).it
   | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
@@ -224,7 +225,7 @@ and exp' at note = function
   (* Contextual dot call *)
   | S.CallE (None, {it=S.DotE(e1, id, n);_}, inst, e2) when Option.is_some !n ->
      let func_exp = Option.get !n in
-     let args = S.contextual_dot_args e1 e2 func_exp in
+     let args = S.contextual_dot_args e1 !e2 func_exp in
      I.(PrimE (CallPrim inst.note, [exp func_exp; exp args]))
   (* Normal call *)
   | S.CallE (None, e1, inst, e2) ->

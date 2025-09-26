@@ -962,7 +962,7 @@ and exp ctxt e =
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
       !!(CallE (tup_con_name n, List.map (exp ctxt) es))
-  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, arg)
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}, _); _ }, _inst, arg)
      when match !arg with
           | { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ } ->
             Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
@@ -992,7 +992,7 @@ and exp ctxt e =
       | _ -> assert false)
       | _ -> unsupported e.at (Arrange.exp e)
     end
-  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}, _); _ }, _, _)
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim) -> !!(FldE "$Res")
   | _ ->
      unsupported e.at (Arrange.exp e)

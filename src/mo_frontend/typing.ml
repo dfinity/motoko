@@ -1025,6 +1025,7 @@ and is_explicit_pat_field pf =
 
 let rec is_explicit_exp e =
   match e.it with
+  | HoleE _ -> false (* tbr *)
   | PrimE _ | ActorUrlE _
   | TagE _
   | BreakE _ | RetE _ | ThrowE _ ->
@@ -1281,6 +1282,70 @@ and combine_pat_srcs env t pat : unit =
   | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
   | ParP pat1 -> combine_pat_srcs env t pat1
 
+
+type hole_candidate =
+  { path: exp;
+    desc: string;
+  }
+
+(** Searches for contextual resolutions for [name] on a given
+    [receiver_ty]. Returns [Ok(candidate)] when a single resolution is
+    found, [Error(file_paths)] when no resolution was found, but a
+    matching module could be imported, and reports an ambiguity error
+    when finding multiple resolutions.
+ *)
+let hole env name typ0 =
+  let is_module (n, (t, _, _, _)) = match t with
+    | T.Obj (T.Module, fs) -> Some (n, fs)
+    | _ -> None in
+
+  let has_matching_typ = function
+    | T.{ lab; typ = Typ c; _ } -> None
+    | T.{ lab; typ = Mut t; _ } -> None
+    | T.{ lab; typ; _ } when lab = name.it ->
+      if T.sub typ typ0 then Some (lab, typ) else None
+    | _ -> None in
+
+  let find_candidate (module_name, fs) =
+    List.find_map has_matching_typ fs |>
+      Option.map (fun (lab, typ)->
+          let path =
+            { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
+                           at = Source.no_region;
+                           note = empty_typ_note
+                         },
+                         { it = lab; at = no_region; note = () },
+                         ref None);
+              at = Source.no_region;
+              note = empty_typ_note; }
+          in
+          { path;
+            desc = module_name^"."^ lab})
+  in
+  let eligible_vals =
+    T.Env.to_seq env.vals |>
+      Seq.filter_map is_module |>
+      (*      Seq.filter_map has_matching_typ |> *)
+      Seq.filter_map find_candidate |>
+      List.of_seq in
+
+  match eligible_vals with
+  | [oc] -> Ok oc
+  | [] ->
+     let lib_candidates =
+       T.Env.to_seq env.libs |>
+         Seq.filter_map (fun (n, t) ->
+             match t with
+             | T.Obj (T.Module, fs) -> Some (n, fs)
+             | _ -> None) |>
+         Seq.filter_map find_candidate |>
+         List.of_seq in
+     Error (List.map (fun candidate -> candidate.desc) lib_candidates)
+  | ocs ->
+     let candidates = List.map (fun oc -> oc.desc) ocs in
+     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+
+
 type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
@@ -1377,6 +1442,8 @@ and infer_exp'' env exp : T.typ =
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
+  | HoleE _ ->
+    error env exp.at "M0054" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -2299,8 +2366,22 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 
+and insert_holes ts es =
+  let rec go ts es =
+    match (ts, es) with
+    | (T.Named ("implicit", t)) :: ts1, _ ->
+       {it = HoleE (ref {it = PrimE ""; at = Source.no_region; note=empty_typ_note });
+        at = Source.no_region;
+        note = empty_typ_note } :: go ts1 es
+    | (t :: ts1, e::es1) ->  e :: go ts1 es1
+    | _,_ -> assert false
+  in
+  if List.length es < List.length ts
+  then go ts es
+  else es
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
+  let exp2 = !exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
   let sort, tbs, t_arg, t_ret =
@@ -2322,6 +2403,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
       | t' -> T.unit, [(t, t')]
     end
+  in
+  let exp2 =
+    match exp2.it with
+    | TupE es ->
+      let ts = T.as_seq t_arg in
+      { exp2 with it = TupE (insert_holes ts es)}
+    | _ -> exp2
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with

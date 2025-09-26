@@ -49,6 +49,7 @@ let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
+  | HoleE _ -> T.Triv (* TBR *)
   | CallE (_, exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
     T.Await
   | CallE (Some par, exp1, _, exp2) ->
