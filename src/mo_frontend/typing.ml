@@ -1294,7 +1294,7 @@ type hole_candidate =
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
-let hole env name typ0 =
+let hole env at typ0 =
   let is_module (n, (t, _, _, _)) = match t with
     | T.Obj (T.Module, fs) -> Some (n, fs)
     | _ -> None in
@@ -1302,9 +1302,9 @@ let hole env name typ0 =
   let has_matching_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
-    | T.{ lab; typ; _ } when lab = name.it ->
+    | T.{ lab; typ; _ } (* when lab = name.it *)->
       if T.sub typ typ0 then Some (lab, typ) else None
-    | _ -> None in
+  (*    | _ -> None *) in
 
   let find_candidate (module_name, fs) =
     List.find_map has_matching_typ fs |>
@@ -1343,7 +1343,7 @@ let hole env name typ0 =
      Error (List.map (fun candidate -> candidate.desc) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
+     error env at "M0224" "overlapping resolution for hole in scope from these modules: %s" (String.concat ", " candidates)
 
 
 type ctx_dot_candidate =
@@ -1442,7 +1442,7 @@ and infer_exp'' env exp : T.typ =
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
-  | HoleE _ ->
+  | HoleE e ->
     error env exp.at "M0054" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
@@ -2071,6 +2071,18 @@ and check_exp env t exp =
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
+  | HoleE e, t ->
+    (match hole env exp.at t with
+    | Ok {path; _} ->
+      e := path;
+      check_exp env t path;
+      t
+    | Error [] ->
+      let sug = "\nHint: If you're trying to use an implicit argument you need to import the corresponding module." in
+      error env exp.at "M0XXX" "Cannot determine implicit argument. %s" sug
+    | Error suggestions ->
+      let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
+      error env exp.at "M0XXX" "Cannot determine implicit argument. %s" sug)
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
