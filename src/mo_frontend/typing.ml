@@ -2381,19 +2381,21 @@ and infer_callee env exp =
 and insert_holes ts es =
   let rec go ts es =
     match (ts, es) with
-    | (T.Named ("implicit", t)) :: ts1, _ ->
+    | (T.Named ("implicit", t)) :: ts1, es
+    | (T.Named (_, (T.Named ("implicit", t)))) :: ts1, es ->
        {it = HoleE (ref {it = PrimE ""; at = Source.no_region; note=empty_typ_note });
         at = Source.no_region;
         note = empty_typ_note } :: go ts1 es
     | (t :: ts1, e::es1) ->  e :: go ts1 es1
-    | _,_ -> assert false
+    | _, [] ->  []
+    | [], es -> es
   in
   if List.length es < List.length ts
   then go ts es
   else es
 
-and infer_call env exp1 inst exp2 at t_expect_opt =
-  let exp2 = !exp2 in
+and infer_call env exp1 inst ref_exp2 at t_expect_opt =
+  let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
   let sort, tbs, t_arg, t_ret =
@@ -2420,9 +2422,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     match exp2.it with
     | TupE es ->
       let ts = T.as_seq t_arg in
-      { exp2 with it = TupE (insert_holes ts es)}
+      let es' = insert_holes ts es in
+      if ((List.length es') > List.length es) then
+        Printf.printf "adding holes %i" ((List.length es') - List.length es);
+      { exp2 with it = TupE es'}
     | _ -> exp2
   in
+  ref_exp2 := exp2;
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2573,7 +2579,9 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
             (* We just have open [codom], we need to infer the body *)
             let actual_t = infer_exp env' body in
             subs := (actual_t, body_typ) :: !subs;
-          end
+        end
+      | HoleE exp, typ ->
+        check_exp env typ !exp
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
         subs := (infer_exp env exp, typ) :: !subs
