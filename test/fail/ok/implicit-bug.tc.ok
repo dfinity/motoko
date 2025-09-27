@@ -1,9 +1,0 @@
-implicit-bug.mo:19.3-19.17: type error [M0098], cannot implicitly instantiate function of type
-  <K, V>(self : Self<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
-    ()
-to argument of type
-  Nat
-because no instantiation of K, V makes
-  Nat  <:  (compare : (implicit : (K, K) -> Order), key : K)
-and
-  [(Nat, Text)]  <:  (self : Self<K, V>)

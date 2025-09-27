@@ -2440,7 +2440,7 @@ and insert_holes at ts es =
        {it = HoleE (Named arg_name, ref {it = PrimE "hole"; at; note=empty_typ_note });
         at;
         note = empty_typ_note } :: go (n+1) ts1 es
-    | (t :: ts1, e::es1) ->  e :: go (n+1) ts1 es1
+    | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
     | _, [] ->  []
     | [], es -> es
   in
@@ -2473,14 +2473,18 @@ and infer_call env exp1 inst ref_exp2 at t_expect_opt =
     end
   in
   let exp2 =
-    match exp2.it with
-    | TupE es ->
-      let ts = T.as_seq t_arg in
-      let es' = insert_holes exp2.at ts es in
-(*      if ((List.length es') > List.length es) then
-        Printf.printf "adding holes %i" ((List.length es') - List.length es); *)
-      { exp2 with it = TupE es'}
-    | _ -> exp2
+    let es = match exp2.it with
+      | TupE es -> es
+      | _ -> [exp2] in
+    (* Must not use T.as_seq here, as T.normalize will clear the
+       `implicit` Name in case of a single implicit argument *)
+    let ts = match t_arg with
+      | T.Tup ts -> ts
+      | t -> [t] in
+    let e' = match insert_holes exp2.at ts es with
+      | [e] -> e.it
+      | es -> TupE es in
+    { exp2 with it = e'}
   in
   ref_exp2 := exp2;
   let ts, t_arg', t_ret' =
