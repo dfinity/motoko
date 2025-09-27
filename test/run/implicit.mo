@@ -32,6 +32,7 @@ func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
 };
 
 
+
 f1(0, 1, M.c); //accept
 f2(0, 1, M.c); //accept
 
@@ -43,6 +44,17 @@ f2(0, 1); //accept
 
 f2("0", "1"); // accept
 
+do {
+
+  func c(n : Text, m: Text) : Order {
+     Prim.debugPrint (debug_show (#c3(n,m)));
+     #equal;
+  };
+
+  f2("0", "1"); // accept (resolve to local c)
+};
+
 //f2(true, true); // reject
 
 //f3(1, 1); // reject
+

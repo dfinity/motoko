@@ -1295,27 +1295,33 @@ type hole_candidate =
     when finding multiple resolutions.
  *)
 let resolve_hole env at hole_sort typ =
-  let has_matching_label lab =
+  let is_matching_lab lab =
     match hole_sort with
     | Named lab1 -> lab = lab1
     | Anon _ -> true
   in
-  let is_module (n, (t, _, _, _)) = match t with
+
+  let is_module (n, (t, _, _, _)) = match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, fs)
     | _ -> None
   in
-  let has_matching_typ = function
+
+  let is_matching_typ typ1 =
+    T.sub typ1 typ
+  in
+
+  let has_matching_field_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
     | T.{ lab = lab1; typ = typ1; _ } ->
-       if has_matching_label lab1 &&
-          T.sub typ1 typ
+       if is_matching_lab lab1 &&
+          is_matching_typ typ1
        then Some (lab1, typ1)
        else None
   in
 
   let find_candidate (module_name, fs) =
-    List.find_map has_matching_typ fs |>
+    List.find_map has_matching_field_typ fs |>
       Option.map (fun (lab, typ)->
           let path =
             { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
@@ -1330,13 +1336,47 @@ let resolve_hole env at hole_sort typ =
           { path;
             desc = module_name^"."^ lab})
   in
-  let eligible_vals =
+
+  let find_candidate_val = function
+    (id, (t, _, _, _)) ->
+    if is_matching_lab id &&
+       is_matching_typ t
+    then
+      let path = { it =
+                   VarE {it = id; at = no_region; note = Const};
+                   at = Source.no_region;
+                   note = empty_typ_note }
+      in
+      Some { path; desc = id}
+    else None
+  in
+
+  let eligible_env_vals =
+    let vals =
+      match hole_sort with
+      | Named id ->
+        (* narrow env to search *)
+        (match T.Env.find_opt id env.vals with
+         | Some info -> T.Env.singleton id info
+         | None -> T.Env.empty)
+      | Anon _ ->
+         env.vals (* search entire env *)
+    in
+    T.Env.to_seq vals |>
+      Seq.filter_map find_candidate_val |>
+      List.of_seq
+  in
+  let eligible_module_vals () =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
-      (*      Seq.filter_map has_matching_typ |> *)
       Seq.filter_map find_candidate |>
-      List.of_seq in
-
+      List.of_seq
+  in
+  let eligible_vals =
+    match eligible_env_vals with
+    | [oc] -> [oc] (* first look in local env, otherwise consider module entries *)
+    | occs -> occs @ eligible_module_vals ()
+  in
   match eligible_vals with
   | [oc] -> Ok oc
   | [] ->
@@ -1351,7 +1391,7 @@ let resolve_hole env at hole_sort typ =
      Error (List.map (fun candidate -> candidate.desc) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0224" "overlapping resolution for hole in scope from these modules: %s" (String.concat ", " candidates)
+     error env at "M0224" "overlapping resolution for hole in scope from these values: %s" (String.concat ", " candidates)
 
 
 type ctx_dot_candidate =
@@ -1375,7 +1415,7 @@ let contextual_dot env name receiver_ty =
       true
     with _ ->
       false in
-  let is_module (n, (t, _, _, _)) = match t with
+  let is_module (n, (t, _, _, _)) = match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, (t, fs))
     | _ -> None in
   let has_matching_self tf = match tf with
