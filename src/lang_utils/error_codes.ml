@@ -196,6 +196,8 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0224", None; (* Overlapping dot resolution *)
+    "M0225", None; (* Cannot infer type of implicit argument *)
+    "M0226", None; (* Ambiguous implicit argument *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

@@ -443,6 +443,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
+  | HoleE (_, e) -> interpret_exp_mut env (!e) k
   | PrimE s ->
     k (V.Func (CC.call_conv_of_typ exp.note.note_typ,
        Prim.prim { Prim.trap = trap exp.at "%s" } s
@@ -606,6 +607,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Local -> v
     in k v'
   | CallE (par, exp1, typs, exp2) ->
+    let exp2 = !exp2 in
     interpret_par env par
       (fun v ->
         ignore (V.as_obj v);
