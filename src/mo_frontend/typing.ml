@@ -1286,7 +1286,28 @@ and combine_pat_srcs env t pat : unit =
 type hole_candidate =
   { path: exp;
     desc: string;
+    typ : T.typ;
   }
+
+let disambiguate_resolutions (candidates : hole_candidate list) =
+  let add_candidate (frontiers : hole_candidate list) (c : hole_candidate) =
+    let rec go (fs : hole_candidate list) = match fs with
+      | [] -> [c]
+      | f::fs' ->
+         if T.sub c.typ f.typ then
+           if T.eq c.typ f.typ then
+             f :: go fs'
+           else
+             fs
+         else if T.sub f.typ c.typ then
+           go fs'
+         else f :: go fs'
+    in
+    go frontiers
+  in
+  match List.fold_left add_candidate [] candidates with
+  | [dom] -> Some dom
+  | _ -> None
 
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
@@ -1328,8 +1349,7 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          { path;
-            desc = module_name^"."^ lab})
+          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
   in
   let find_candidate_val = function
     (id, (t, _, _, _)) ->
@@ -1341,7 +1361,7 @@ let resolve_hole env at hole_sort typ =
                    at = Source.no_region;
                    note = empty_typ_note }
       in
-      Some { path; desc = id}
+      Some { path; desc = id; typ = t }
     else None
   in
   let eligible_env_vals =
@@ -1382,11 +1402,15 @@ let resolve_hole env at hole_sort typ =
          Seq.filter_map find_candidate |>
          List.of_seq in
      Error (List.map (fun candidate -> candidate.desc) lib_candidates)
-  | ocs ->
+  | ocs -> begin
+     match disambiguate_resolutions ocs with
+     | Some oc -> Ok oc
+     | None ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
      error env at "M0226" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
        display_typ typ
        (String.concat ", " candidates)
+     end
 
 type ctx_dot_candidate =
   { module_name : T.lab;
@@ -2440,7 +2464,7 @@ and insert_holes at ts es =
        {it = HoleE (Named arg_name, ref {it = PrimE "hole"; at; note=empty_typ_note });
         at;
         note = empty_typ_note } :: go (n+1) ts1 es
-    | (t :: ts1, e::es1) ->  e :: go (n+1) ts1 es1
+    | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
     | _, [] ->  []
     | [], es -> es
   in
@@ -2473,14 +2497,18 @@ and infer_call env exp1 inst ref_exp2 at t_expect_opt =
     end
   in
   let exp2 =
-    match exp2.it with
-    | TupE es ->
-      let ts = T.as_seq t_arg in
-      let es' = insert_holes exp2.at ts es in
-(*      if ((List.length es') > List.length es) then
-        Printf.printf "adding holes %i" ((List.length es') - List.length es); *)
-      { exp2 with it = TupE es'}
-    | _ -> exp2
+    let es = match exp2.it with
+      | TupE es -> es
+      | _ -> [exp2] in
+    (* Must not use T.as_seq here, as T.normalize will clear the
+       `implicit` Name in case of a single implicit argument *)
+    let ts = match t_arg with
+      | T.Tup ts -> ts
+      | t -> [t] in
+    let e' = match insert_holes exp2.at ts es with
+      | [e] -> e.it
+      | es -> TupE es in
+    { exp2 with it = e'}
   in
   ref_exp2 := exp2;
   let ts, t_arg', t_ret' =
@@ -2635,9 +2663,11 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
             subs := (actual_t, body_typ) :: !subs;
         end
       | HoleE _, typ ->
-        (* Check that all type variables in the type are fixed, fail otherwise *)
-        Bi_match.fail_when_types_are_not_closed remaining [typ];
-        check_exp env typ exp
+         if not env.pre then begin
+           (* Check that all type variables in the type are fixed, fail otherwise *)
+           Bi_match.fail_when_types_are_not_closed remaining [typ];
+           check_exp env typ exp
+         end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
         subs := (infer_exp env exp, typ) :: !subs

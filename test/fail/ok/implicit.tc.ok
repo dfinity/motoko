@@ -14,3 +14,6 @@ Hint: If you're trying to use an implicit argument you need to have a matching d
 implicit.mo:71.3-71.9: type error [M0226], ambiguous implicit argument of type
   (Nat, Nat) -> Order.
 The available candidates are: M.ambiguous, N.ambiguous
+implicit.mo:88.27-88.29: type error [M0226], ambiguous implicit argument of type
+  {x : Nat}.
+The available candidates are: XY.zero, XZ.zero
