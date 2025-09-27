@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+* simple stable functions...
+
+
 * motoko (`moc`)
 
   * Contextual dot notation (#5458):

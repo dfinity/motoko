@@ -54,6 +54,16 @@ let error_required s tf =
         migration_link))
 
 
+let error_stable_func s tf1 tf2 explanation =
+  Diag.add_msg s
+    (Diag.error_message Source.no_region "M0170" cat (* TODO: new error code *)
+      (Format.asprintf "the new type of stable function `%s` is not compatible with the previous version.\n The new type%a\n is not a subtype of the previous type %a\n because: %s."
+        tf1.lab
+        display_typ_expand tf2.typ
+        display_typ_expand tf1.typ
+        (Pretty.string_of_explanation explanation)
+))
+
 (*
    - Mutability of stable fields can be changed because they are never aliased.
    - Stable fields cannot be dropped.
@@ -64,6 +74,27 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
   let tfs2 = pre sig2 in
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
+    let match_stab_field tf1 tf2 =
+      assert (tf1.lab = tf2.lab);
+      let context = [StableVariable tf2.lab] in
+      match normalize tf1.typ with
+      | Func (Stable lab, _, _, _, _) when tf1.lab = lab ->
+        begin
+        (* this is a definition so can only evolve to a subtype *)
+         match Type.sub_explained context tf2.typ tf1.typ with
+         | Incompatible explanation -> error_stable_func s tf1 tf2 explanation
+         | Compatible -> ()
+        end
+      | _ ->
+         begin
+           match Type.sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
+           | Incompatible explanation -> error_sub s tf1 tf2 explanation
+           | Compatible ->
+              match Type.stable_sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
+              | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
+              | Compatible -> ()
+         end;
+    in
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
       | [], _ ->
         List.iter (fun (required, tf) ->
@@ -76,15 +107,7 @@ let match_stab_sig sig1 sig2 : unit Diag.result =
       | tf1::tfs1', (is_required, tf2)::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
-            let context = [StableVariable tf2.lab] in
-            begin
-              match Type.sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
-              | Incompatible explanation -> error_sub s tf1 tf2 explanation
-              | Compatible ->
-                match Type.stable_sub_explained context (as_immut tf1.typ) (as_immut tf2.typ) with
-                | Incompatible explanation -> error_stable_sub s tf1 tf2 explanation
-                | Compatible -> ()
-            end;
+            match_stab_field tf1 tf2;
             go tfs1' tfs2'
          | -1 ->
            (* dropped field rejected, recurse on tfs1' *)

@@ -1,0 +1,3 @@
+install $ID upgrade-func/version0.mo ""
+upgrade $ID upgrade-func/version1.mo ""
+upgrade $ID upgrade-func/version2.mo ""

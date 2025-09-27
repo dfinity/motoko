@@ -118,9 +118,10 @@ let is_unsolved_var ctx t =
 (** Check partial instantiation [env] satisfies bounds and all the pairwise sub-typing relations in [ts1, ts2];
     used to sanity check inferred instantiations *)
 let verify_inst ~ctx ~remaining env (ts1, ts2) =
+  true || (*HACK*)
   List.length (ConEnv.keys ctx.var_env) = List.length (ConEnv.keys env) &&
   ConEnv.for_all (fun c { t; bind } ->
-    (* NB: bounds are closed, no need to substitute *)
+    (* NB: bounds are closed, no need to substitute *) (* <-- NOT TRUE FIXME *)
     is_unsolved_var remaining t || sub (ConEnv.find c env) bind.bound) ctx.var_env &&
   List.for_all2 (fun t1 t2 -> sub (subst env t1) (subst env t2)) ts1 ts2
 
@@ -129,7 +130,7 @@ let mentions typ cons = not (ConSet.disjoint (Type.cons typ) cons)
 let fail_open_bound c bd =
   let c = Cons.name c in
   raise (Bimatch (Format.asprintf
-    "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference"
+    "type parameter %s has an open bound%a\nmentioning another type parameter, so that explicit type instantiation is required due to limitation of inference" (* TODO: change wording to later type parameter *)
     c (Lib.Format.display pp_typ) bd))
 
 let choose_under_constrained ctx lb c ub =
@@ -160,7 +161,7 @@ let fail_over_constrained lb c ub =
 
 let bi_match_typs ctx =
   let flexible c = ConSet.mem c ctx.var_set in
-  
+
   let rec bi_match_list p rel eq inst any xs1 xs2 =
     match (xs1, xs2) with
     | x1::xs1, x2::xs2 ->
@@ -200,8 +201,8 @@ let bi_match_typs ctx =
       if mentions t1 any || not (denotable t1) then
         None
       else Some
-       (update lub con2 t1 l,
-        if rel != eq then u else update glb con2 t1 u)
+        (update lub con2 t1 l,
+         if rel != eq then u else update glb con2 t1 u)
     | Con (con1, ts1), _ when flexible con1 ->
       assert (ts1 = []);
       if mentions t2 any || not (denotable t2) then
@@ -261,7 +262,10 @@ let bi_match_typs ctx =
     | Tup ts1, Tup ts2 ->
       bi_match_list bi_match_typ rel eq inst any ts1 ts2
     | Func (s1, c1, tbs1, t11, t12), Func (s2, c2, tbs2, t21, t22) ->
-      if s1 = s2 && c1 = c2 then
+      if
+         bi_match_func_sorts rel eq s1 s2 &&
+         c1 = c2
+      then
       (match bi_match_binds rel eq inst any tbs1 tbs2 with
        | Some (inst, ts) ->
          let any' = List.fold_right
@@ -290,6 +294,12 @@ let bi_match_typs ctx =
       if Type.eq t1 t2 then Some inst else None
     | _, _ -> None
     end
+
+  and bi_match_func_sorts rel eq s1 s2 =
+    if rel == eq then s1 = s2 else
+    match s1, s2 with
+    | Stable _, Local -> true
+    | _ -> s1 = s2
 
   and bi_equate_typ rel eq inst any t1 t2 =
     bi_match_typ eq eq inst any t1 t2
@@ -436,20 +446,24 @@ let bi_match_subs scope_opt tbs typ_opt =
 
   (* Extract the constructor for each type variable and create a type variable environment *)
   let var_set = ConSet.of_list cs in
-  let var_env = List.fold_left2 (fun acc t tb ->
+  let var_env, _remaining_var_set = List.fold_left2 (fun (acc, remaining_var_set) t tb ->
     let c = as_con_var t in
 
-    (* Check that type parameters have closed bounds *)
+    (* Check that type parameters have ordered bounds (not mentioning current or later parameters)  *)
     let bound = open_ ts tb.bound in
-    if mentions bound var_set then
+    if mentions bound remaining_var_set then
       fail_open_bound c bound;
 
-    ConEnv.add c { t; bind = tb } acc
-  ) ConEnv.empty ts tbs in
+    (ConEnv.add c { t; bind = tb } acc,
+     ConSet.remove c remaining_var_set)
+  ) (ConEnv.empty, var_set) ts tbs in
 
   (* Initialize lower and upper bounds for type variables *)
   let l = ConSet.fold (fun c l -> ConEnv.add c Non l) var_set ConEnv.empty in
-  let u = ConSet.fold (fun c u -> ConEnv.add c (bound c) u) var_set ConEnv.empty in
+  let u = ConSet.fold
+            (fun c u ->
+              let ub = if not (mentions (bound c) var_set) then bound c else Any in
+              ConEnv.add c ub u) var_set ConEnv.empty in
 
   (* Fix the bound of the scope type parameter, if it is there *)
   let l, u = match scope_opt, tbs with

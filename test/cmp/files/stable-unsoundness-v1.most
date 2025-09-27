@@ -1,0 +1,5 @@
+// Version: 1.0.0
+actor {
+  stable f : stable f() -> {a : Int; b : Int};
+  stable g : stable f() -> {a : Int; b : Int}
+};
