@@ -12,3 +12,8 @@ implicit.mo:43.3-43.9: type error [M0XXX], Cannot determine implicit argument 'd
   Nat -> Order
 
 Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.
+implicit.mo:49.3-49.9: type error [M0XXX], Cannot determine implicit argument 'd' of type
+
+  (Nat, Nat) -> Order
+
+Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.

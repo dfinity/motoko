@@ -41,3 +41,14 @@ f2("0", "1"); // accept
 f2(true, true); // reject
 
 f3(1, 1); // reject
+
+func f4(n : Nat, m : Nat, d : (implicit : (Nat, Nat) -> Order)) {
+};
+
+
+f4(1, 1); // reject
+
+// retype f4 with as f4 with different implicit name
+let f5 : (Nat, Nat, (c : (implicit : (Nat, Nat) -> Order))) -> () = f4;
+
+f5(1, 1); // accept
