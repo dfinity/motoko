@@ -1,6 +1,9 @@
 (* This module contains some argument parsing that is common between
 multiple executables *)
 
+(** suppress documentation *)
+let _UNDOCUMENTED_ doc = "" (* TODO: enable with developer env var? *)
+
 let string_map flag r desc =
   let key_ref = ref "DEADBEEF" in
   flag,
@@ -36,3 +39,25 @@ let inclusion_args = [
     "<file>  read additional NUL separated command line arguments from \n\
     \      <file>"
   ]
+
+let ai_errors_args = [
+  "--ai-errors", Arg.Set Flags.ai_errors, " emit AI tailored errors";
+]
+
+let persistent_actors_args = [
+  (* default stability *)
+  "--default-persistent-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.DefaultPersistentActors),
+  _UNDOCUMENTED_
+    " declare every actor (class) as implicitly `persistent`, defaulting actor fields to `stable` (default is --require-persistent-actors). The `persistent` keyword is now optional and redundant.";
+
+  "--require-persistent-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.RequirePersistentActors),
+  _UNDOCUMENTED_
+    " requires all actors to be declared persistent, defaulting actor fields to `transient` (default). Emit diagnostics to help migrate from non-persistent to `persistent` actors.";
+
+  "--legacy-actors",
+  Arg.Unit (fun () -> Flags.actors := Flags.LegacyActors),
+  _UNDOCUMENTED_
+    " in non-`persistent` actors, silently default actor fields to `transient` (legacy behaviour)";
+]
