@@ -2,17 +2,17 @@
 type Order = {#less;#greater;#equal};
 
 module M {
-
-  public func c1(n : Nat, m: Nat) : Order {
+  public func c(n : Nat, m: Nat) : Order {
     if (n < m) #less
     else if (n == m) #greater
     else #equal;
   };
+};
 
-  public func c2(n : Text, m: Text) : Order {
+module N {
+  public func c(n : Text, m: Text) : Order {
      #equal;
   };
-
 };
 
 func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
@@ -23,15 +23,15 @@ func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
   ignore c(n, m);
 };
 
-func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
+func f3(n : Nat, m : Nat, d : (implicit : Nat -> Order)) {
 };
 
 
-f1(0, 1, M.c1); //accept
-f2(0, 1, M.c1); //accept
+f1(0, 1, M.c); //accept
+f2(0, 1, M.c); //accept
 
-f1("0", "1", M.c2); // reject
-f2("0", "1", M.c2); // accept
+f1("0", "1", M.c); // reject
+f2("0", "1", N.c); // accept
 
 f1(0, 1); //accept
 f2(0, 1); //accept

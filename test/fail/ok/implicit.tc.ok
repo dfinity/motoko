@@ -2,7 +2,13 @@ implicit.mo:33.4-33.7: type error [M0050], literal of type
   Text
 does not have expected type
   Nat
-implicit.mo:41.3-41.15: type error [M0XXX], Cannot determine implicit argument `c`. 
-Hint: If you're trying to use an implicit argument you need to import the corresponding module.
-implicit.mo:43.3-43.9: type error [M0XXX], Cannot determine implicit argument `2`. 
-Hint: If you're trying to use an implicit argument you need to import the corresponding module.
+implicit.mo:41.3-41.15: type error [M0XXX], Cannot determine implicit argument 'c' of type
+
+  (Bool, Bool) -> Order
+
+Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.
+implicit.mo:43.3-43.9: type error [M0XXX], Cannot determine implicit argument 'd' of type
+
+  Nat -> Order
+
+Hint: If you're trying to use an implicit argument you need to have a matching declaration in scope.

@@ -164,8 +164,9 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
                      public functions as oneway, shared functions *)
 
 type exp = (exp', typ_note) Source.annotated_phrase
+and hole_sort = Named of string | Anon of int
 and exp' =
-  | HoleE of exp ref
+  | HoleE of hole_sort * exp ref
   | PrimE of string                            (* primitive *)
   | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)

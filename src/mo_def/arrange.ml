@@ -97,7 +97,7 @@ module Make (Cfg : Config) = struct
      currently. As a compromise, we annotate only the nodes that currently
      matter for the language server, i.e. the left expression of a [DotE] node. *)
   let rec exp ?(arrange_typ = false) e = source e.at (annot ~arrange_typ e.note (match e.it with
-    | HoleE e -> "HoleE" $$ [exp !e]
+    | HoleE (_, e) -> "HoleE" $$ [exp !e]
     | VarE x              -> "VarE"      $$ [id x]
     | LitE l              -> "LitE"      $$ [lit !l]
     | ActorUrlE e         -> "ActorUrlE" $$ [exp e]

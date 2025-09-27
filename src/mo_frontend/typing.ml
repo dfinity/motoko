@@ -1288,23 +1288,31 @@ type hole_candidate =
     desc: string;
   }
 
-(** Searches for contextual resolutions for [name] on a given
-    [receiver_ty]. Returns [Ok(candidate)] when a single resolution is
+(** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
+    Returns [Ok(candidate)] when a single resolution is
     found, [Error(file_paths)] when no resolution was found, but a
     matching module could be imported, and reports an ambiguity error
     when finding multiple resolutions.
  *)
-let hole env at typ0 =
+let resolve_hole env at hole_sort typ =
+  let has_matching_label lab =
+    match hole_sort with
+    | Named lab1 -> lab = lab1
+    | Anon _ -> true
+  in
   let is_module (n, (t, _, _, _)) = match t with
     | T.Obj (T.Module, fs) -> Some (n, fs)
-    | _ -> None in
-
+    | _ -> None
+  in
   let has_matching_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
-    | T.{ lab; typ; _ } (* when lab = name.it *)->
-      if T.sub typ typ0 then Some (lab, typ) else None
-  (*    | _ -> None *) in
+    | T.{ lab = lab1; typ = typ1; _ } ->
+       if has_matching_label lab1 &&
+          T.sub typ1 typ
+       then Some (lab1, typ1)
+       else None
+  in
 
   let find_candidate (module_name, fs) =
     List.find_map has_matching_typ fs |>
@@ -1442,7 +1450,7 @@ and infer_exp'' env exp : T.typ =
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
-  | HoleE e ->
+  | HoleE (_, e) ->
     error env exp.at "M0054" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
@@ -2071,19 +2079,29 @@ and check_exp env t exp =
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
-  | HoleE e, t ->
-    let desc = match !e.it with PrimE name -> name | _ -> "" in
-    (match hole env exp.at t with
+  | HoleE (s, e), t ->
+    let desc = function
+      | Named id -> "'"^id^"'"
+      | Anon idx -> "at position " ^ (Int.to_string idx)
+    in
+    begin match resolve_hole env exp.at s t with
     | Ok {path; _} ->
       e := path;
       check_exp env t path;
       t
     | Error [] ->
-      let sug = "\nHint: If you're trying to use an implicit argument you need to import the corresponding module." in
-      error env exp.at "M0XXX" "Cannot determine implicit argument `%s`. %s" desc sug
+      let sug = "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope." in
+      error env exp.at "M0XXX" "Cannot determine implicit argument %s of type\n%a\n%s"
+        (desc s)
+        display_typ t
+        sug
     | Error suggestions ->
       let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-      error env exp.at "M0XXX" "Cannot determine implicit argument `%s`. %s" desc sug)
+      error env exp.at "M0XXX" "Cannot determine implicit argument %s of type\n%a\n%s"
+        (desc s)
+        display_typ t
+        sug
+    end
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
@@ -2383,11 +2401,11 @@ and insert_holes at ts es =
   let rec go n ts es =
     match (ts, es) with
     | (T.Named ("implicit", t)) :: ts1, es ->
-       {it = HoleE (ref {it = PrimE (Int.to_string n); at; note=empty_typ_note });
+       {it = HoleE (Anon n, ref {it = PrimE "hole"; at; note=empty_typ_note });
         at;
         note = empty_typ_note } :: go (n+1) ts1 es
     | (T.Named (arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
-       {it = HoleE (ref {it = PrimE arg_name; at; note=empty_typ_note });
+       {it = HoleE (Named arg_name, ref {it = PrimE "hole"; at; note=empty_typ_note });
         at;
         note = empty_typ_note } :: go (n+1) ts1 es
     | (t :: ts1, e::es1) ->  e :: go (n+1) ts1 es1
