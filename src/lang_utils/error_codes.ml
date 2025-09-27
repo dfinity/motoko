@@ -196,6 +196,11 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0224", None; (* Overlapping dot resolution *)
+    (* TODO: Adjust before merging *)
+    "M0250", None; (* A mixin cannot be used as an entry point *)
+    "M0251", None; (* Unknown mixin inclusion *)
+    "M0252", None; (* Non-actor include *)
+    "M0253", None; (* Only top-level mixins *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

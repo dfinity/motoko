@@ -1,6 +1,7 @@
 open Mo_def
 open Mo_config
 open Mo_types
+open Mo_frontend
 
 module ResolveImport = Resolve_import
 
