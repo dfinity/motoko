@@ -1300,16 +1300,12 @@ let resolve_hole env at hole_sort typ =
     | Named lab1 -> lab = lab1
     | Anon _ -> true
   in
-
   let is_module (n, (t, _, _, _)) = match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, fs)
     | _ -> None
   in
-
-  let is_matching_typ typ1 =
-    T.sub typ1 typ
+  let is_matching_typ typ1 = T.sub typ1 typ
   in
-
   let has_matching_field_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
@@ -1319,7 +1315,6 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1)
        else None
   in
-
   let find_candidate (module_name, fs) =
     List.find_map has_matching_field_typ fs |>
       Option.map (fun (lab, typ)->
@@ -1336,7 +1331,6 @@ let resolve_hole env at hole_sort typ =
           { path;
             desc = module_name^"."^ lab})
   in
-
   let find_candidate_val = function
     (id, (t, _, _, _)) ->
     if is_matching_lab id &&
@@ -1350,7 +1344,6 @@ let resolve_hole env at hole_sort typ =
       Some { path; desc = id}
     else None
   in
-
   let eligible_env_vals =
     let vals =
       match hole_sort with
@@ -1391,8 +1384,9 @@ let resolve_hole env at hole_sort typ =
      Error (List.map (fun candidate -> candidate.desc) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0224" "overlapping resolution for hole in scope from these values: %s" (String.concat ", " candidates)
-
+     error env at "M0226" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
+       display_typ typ
+       (String.concat ", " candidates)
 
 type ctx_dot_candidate =
   { module_name : T.lab;
@@ -1491,7 +1485,7 @@ and infer_exp'' env exp : T.typ =
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
   | HoleE (_, e) ->
-    error env exp.at "M0054" "cannot infer type of implicit argument"
+    error env exp.at "M0225" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -2129,15 +2123,13 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error [] ->
-      let sug = "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope." in
-      error env exp.at "M0XXX" "Cannot determine implicit argument %s of type\n%a\n%s"
-        (desc s)
-        display_typ t
-        sug
     | Error suggestions ->
-      let sug = Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions) in
-      error env exp.at "M0XXX" "Cannot determine implicit argument %s of type\n%a\n%s"
+      let sug =
+         if suggestions = [] then
+         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
+         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)
+      in
+      error env exp.at "M0225" "Cannot determine implicit argument %s of type%a%s"
         (desc s)
         display_typ t
         sug

@@ -7,11 +7,24 @@ module M {
     else if (n == m) #greater
     else #equal;
   };
+
+  public func ambiguous(n : Nat, m: Nat) : Order {
+    if (n < m) #less
+    else if (n == m) #greater
+    else #equal;
+  };
+
 };
 
 module N {
   public func c(n : Text, m: Text) : Order {
      #equal;
+  };
+
+  public func ambiguous(n : Nat, m: Nat) : Order {
+    if (n < m) #less
+    else if (n == m) #greater
+    else #equal;
   };
 };
 
@@ -42,9 +55,8 @@ f2(true, true); // reject
 
 f3(1, 1); // reject
 
-func f4(n : Nat, m : Nat, d : (implicit : (Nat, Nat) -> Order)) {
+func f4(n : Nat, m : Nat, bogus : (implicit : (Nat, Nat) -> Order)) {
 };
-
 
 f4(1, 1); // reject
 
@@ -52,3 +64,8 @@ f4(1, 1); // reject
 let f5 : (Nat, Nat, (c : (implicit : (Nat, Nat) -> Order))) -> () = f4;
 
 f5(1, 1); // accept
+
+func f6(n : Nat, m : Nat, ambiguous : (implicit : (Nat, Nat) -> Order)) {
+};
+
+f6(1, 1); // reject
