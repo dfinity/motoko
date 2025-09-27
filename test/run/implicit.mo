@@ -20,15 +20,15 @@ module N {
 
 };
 
-func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
+func f1(n : Nat, m : Nat, c : implicit (Nat, Nat) -> Order) {
   ignore c(n, m);
 };
 
-func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
+func f2<T>(n : T, m : T, c : implicit  (T, T) -> Order) {
   ignore c(n, m);
 };
 
-func f3(n : Nat, m : Nat, _ : (implicit : Nat -> Order)) {
+func f3(n : Nat, m : Nat, _ : implicit Nat -> Order) {
 };
 
 

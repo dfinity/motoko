@@ -82,6 +82,7 @@ let is_motoko_keyword = function
   | "ignore"
   | "in"
   | "import"
+  | "implicit"
   | "module"
   | "not"
   | "null"
