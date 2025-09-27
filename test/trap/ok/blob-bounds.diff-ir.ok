@@ -1,6 +1,6 @@
 --- blob-bounds.run
 +++ blob-bounds.run-ir
-@@ -1,77 +1 @@
+@@ -1,80 +1 @@
 -blob-bounds.mo:1.17-1.18: internal error, Invalid_argument("index out of bounds")
 -
 -Last environment:
@@ -17,10 +17,13 @@
 -@cleanup = <func>
 -@create_actor_helper = <func>
 -@cycles = 0
+-@dedup2 = <func>
+-@dedup_hash_counter = 0
 -@digits_dec = <func>
 -@digits_hex = <func>
 -@equal_array = <func>
 -@getSystemRefund = <func>
+-@hash_array = []
 -@ic00 = ""
 -@immut_array_get = <func>
 -@immut_array_keys = <func>
