@@ -91,7 +91,7 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 actor and assert async async* await await? await* break case catch class
 composite continue debug debug_show do else false flexible finally for
-from_candid func if ignore import in module not null persistent object or label
+from_candid func if ignore import implicit in module not null persistent object or label
 let loop private public query return shared stable switch system throw
 to_candid true transient try type var weak while with
 ```

@@ -28,15 +28,15 @@ module N {
   };
 };
 
-func f1(n : Nat, m : Nat, c : (implicit : (Nat, Nat) -> Order)) {
+func f1(n : Nat, m : Nat, c : implicit (Nat, Nat) -> Order) {
   ignore c(n, m);
 };
 
-func f2<T>(n : T, m : T, c : (implicit : (T, T) -> Order)) {
+func f2<T>(n : T, m : T, c : implicit (T, T) -> Order) {
   ignore c(n, m);
 };
 
-func f3(n : Nat, m : Nat, d : (implicit : Nat -> Order)) {
+func f3(n : Nat, m : Nat, d : implicit Nat -> Order) {
 };
 
 
@@ -55,17 +55,17 @@ f2(true, true); // reject
 
 f3(1, 1); // reject
 
-func f4(n : Nat, m : Nat, bogus : (implicit : (Nat, Nat) -> Order)) {
+func f4(n : Nat, m : Nat, bogus : implicit (Nat, Nat) -> Order) {
 };
 
 f4(1, 1); // reject
 
 // retype f4 with as f4 with different implicit name
-let f5 : (Nat, Nat, (c : (implicit : (Nat, Nat) -> Order))) -> () = f4;
+let f5 : (Nat, Nat, c : implicit (Nat, Nat) -> Order) -> () = f4;
 
 f5(1, 1); // accept
 
-func f6(n : Nat, m : Nat, ambiguous : (implicit : (Nat, Nat) -> Order)) {
+func f6(n : Nat, m : Nat, ambiguous : implicit (Nat, Nat) -> Order) {
 };
 
 f6(1, 1); // reject

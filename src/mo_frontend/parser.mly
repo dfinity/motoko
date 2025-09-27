@@ -223,7 +223,7 @@ and objblock eo s id ty dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR AWAITQUEST ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
+%token IF IGNORE IN IMPLICIT ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -365,6 +365,9 @@ seplist1(X, SEP) :
 %inline id :
   | id=ID { id @@ at $sloc }
 
+%inline implicit :
+  | IMPLICIT { "implicit" @@ at $sloc }
+
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -451,7 +454,6 @@ typ_un :
   | WEAK t=typ_un
     { WeakT(t) @! at $sloc }
 
-
 typ_pre :
   | t=typ_un
     { t }
@@ -475,6 +477,8 @@ typ_nobin :
 typ :
   | t=typ_nobin
     { t }
+  | i=implicit t = typ_nobin
+    { NamedT(i, t) @! at $sloc }
   | t1=typ AND t2=typ
     { AndT(t1, t2) @! at $sloc }
   | t1=typ OR t2=typ
