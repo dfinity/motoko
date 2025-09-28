@@ -69,3 +69,20 @@ func f6(n : Nat, m : Nat, ambiguous : (implicit : (Nat, Nat) -> Order)) {
 };
 
 f6(1, 1); // reject
+
+
+module XY {
+  public type XY = { x : Nat; y : Nat };
+  public let zero : XY = { x = 0; y = 0 };
+};
+
+module XZ {
+  public type XZ = { x : Nat; z : Nat };
+  public let zero : XZ = { x = 0; z = 0 };
+};
+
+func mkZero<T>(zero : (implicit : T)) : T {
+  zero
+};
+
+ignore mkZero<{ x : Nat }>();
