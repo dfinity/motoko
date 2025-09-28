@@ -7,6 +7,9 @@
     X
     X SEP <list(X, SEP)>
 
+<id_wild> ::= 
+    '_'
+
 <typ_obj_sort> ::= 
     'object'
     'actor'
@@ -67,6 +70,7 @@
 
 <typ_item> ::= 
     <id> ':' <typ>
+    <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 
