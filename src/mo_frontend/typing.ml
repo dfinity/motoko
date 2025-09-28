@@ -2663,9 +2663,11 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
             subs := (actual_t, body_typ) :: !subs;
         end
       | HoleE _, typ ->
-        (* Check that all type variables in the type are fixed, fail otherwise *)
-         Bi_match.fail_when_types_are_not_closed remaining [typ];
-         if not env.pre then check_exp env typ exp
+         if not env.pre then begin
+           (* Check that all type variables in the type are fixed, fail otherwise *)
+           Bi_match.fail_when_types_are_not_closed remaining [typ];
+           check_exp env typ exp
+         end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
         subs := (infer_exp env exp, typ) :: !subs
