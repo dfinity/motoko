@@ -81,7 +81,7 @@ module XZ {
   public let zero : XZ = { x = 0; z = 0 };
 };
 
-func mkZero<T>(zero : (implicit : T)) : T {
+func mkZero<T>(zero : implicit T) : T {
   zero
 };
 

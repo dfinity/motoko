@@ -58,13 +58,13 @@ do {
 
 //f3(1, 1); // reject
 
-func unary<T>(c : (implicit : (T, T) -> Order), t : T) {
+func unary<T>(c : implicit (T, T) -> Order, t : T) {
   ignore c(t, t)
 };
 
 unary(10);
 
-func nullary<T>(c : (implicit : (T, T) -> Order)) {
+func nullary<T>(c : implicit (T, T) -> Order) {
   ignore c;
 };
 nullary<Nat>();
@@ -83,7 +83,7 @@ module Int {
   };
 };
 
-func isEq<T>(x : T, y : T, eq : (implicit : (T, T) -> Bool)) : Bool {
+func isEq<T>(x : T, y : T, eq : implicit (T, T) -> Bool) : Bool {
   eq(x, y)
 };
 
