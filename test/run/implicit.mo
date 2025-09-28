@@ -68,3 +68,23 @@ func nullary<T>(c : (implicit : (T, T) -> Order)) {
   ignore c;
 };
 nullary<Nat>();
+
+module Nat {
+  public func eq(x : Nat, y : Nat) : Bool {
+    Prim.debugPrint("nat eq");
+    x == y
+  };
+};
+
+module Int {
+  public func eq(x : Int, y : Int) : Bool {
+    Prim.debugPrint("int eq");
+    x == y
+  };
+};
+
+func isEq<T>(x : T, y : T, eq : (implicit : (T, T) -> Bool)) : Bool {
+  eq(x, y)
+};
+
+assert isEq<Nat>(3, 3);
