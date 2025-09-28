@@ -10,6 +10,9 @@
 <implicit> ::= 
     'implicit'
 
+<id_wild> ::= 
+    '_'
+
 <typ_obj_sort> ::= 
     'object'
     'actor'
@@ -70,8 +73,8 @@
     <typ> 'or' <typ>
 
 <typ_item> ::= 
-    <implicit> <typ>
     <id> ':' <typ>
+    <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 

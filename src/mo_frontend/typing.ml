@@ -2454,16 +2454,24 @@ and infer_callee env exp =
      infer_exp_promote env exp, None
 
 and insert_holes at ts es =
+  let mk_hole pos hole_id =
+    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+    {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
+      at;
+      note = empty_typ_note }
+  in
   let rec go n ts es =
     match (ts, es) with
+    | (T.Named ("implicit", T.Named (arg_name, t))) :: ts1, es ->
+      (mk_hole n arg_name) :: go (n + 1) ts1 es
     | (T.Named ("implicit", t)) :: ts1, es ->
-       {it = HoleE (Anon n, ref {it = PrimE "hole"; at; note=empty_typ_note });
-        at;
-        note = empty_typ_note } :: go (n+1) ts1 es
-    | (T.Named (arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
-       {it = HoleE (Named arg_name, ref {it = PrimE "hole"; at; note=empty_typ_note });
-        at;
-        note = empty_typ_note } :: go (n+1) ts1 es
+      (mk_hole n "_") :: go (n + 1) ts1 es
+    | (T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t))))) :: ts1, es ->
+      (* override inferred arg_name *)
+      (mk_hole n arg_name) :: go (n + 1) ts1 es
+    | (T.Named (inf_arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
+      (* non-overriden, use inferred arg_name *)
+      (mk_hole n inf_arg_name) :: go (n + 1) ts1 es
     | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
     | _, [] ->  []
     | [], es -> es

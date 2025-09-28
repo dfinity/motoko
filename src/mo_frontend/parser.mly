@@ -368,6 +368,9 @@ seplist1(X, SEP) :
 %inline implicit :
   | IMPLICIT { "implicit" @@ at $sloc }
 
+%inline id_wild :
+  | UNDERSCORE { "_" @@ at $sloc }
+
 %inline typ_id :
   | id=ID { id @= at $sloc }
 
@@ -486,6 +489,7 @@ typ :
 
 typ_item :
   | i=id COLON t=typ { Some i, t }
+  | i=id_wild COLON t=typ { Some i, t }
   | t=typ { None, t }
 
 typ_args :
