@@ -1286,7 +1286,28 @@ and combine_pat_srcs env t pat : unit =
 type hole_candidate =
   { path: exp;
     desc: string;
+    typ : T.typ;
   }
+
+let disambiguate_resolutions (candidates : hole_candidate list) =
+  let add_candidate (frontiers : hole_candidate list) (c : hole_candidate) =
+    let rec go (fs : hole_candidate list) = match fs with
+      | [] -> [c]
+      | f::fs' ->
+         if T.sub c.typ f.typ then
+           if T.eq c.typ f.typ then
+             f :: go fs'
+           else
+             fs
+         else if T.sub f.typ c.typ then
+           go fs'
+         else f :: go fs'
+    in
+    go frontiers
+  in
+  match List.fold_left add_candidate [] candidates with
+  | [dom] -> Some dom
+  | _ -> None
 
 (** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
     Returns [Ok(candidate)] when a single resolution is
@@ -1328,8 +1349,7 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          { path;
-            desc = module_name^"."^ lab})
+          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
   in
   let find_candidate_val = function
     (id, (t, _, _, _)) ->
@@ -1341,7 +1361,7 @@ let resolve_hole env at hole_sort typ =
                    at = Source.no_region;
                    note = empty_typ_note }
       in
-      Some { path; desc = id}
+      Some { path; desc = id; typ = t }
     else None
   in
   let eligible_env_vals =
@@ -1382,11 +1402,15 @@ let resolve_hole env at hole_sort typ =
          Seq.filter_map find_candidate |>
          List.of_seq in
      Error (List.map (fun candidate -> candidate.desc) lib_candidates)
-  | ocs ->
+  | ocs -> begin
+     match disambiguate_resolutions ocs with
+     | Some oc -> Ok oc
+     | None ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
      error env at "M0226" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
        display_typ typ
        (String.concat ", " candidates)
+     end
 
 type ctx_dot_candidate =
   { module_name : T.lab;
