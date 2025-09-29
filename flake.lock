@@ -87,11 +87,11 @@
     "ic-wasm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1758138974,
-        "narHash": "sha256-jwS0wH467fg4mlun9AUvxWvMmmjri5rKR/L9Lh6/R5g=",
+        "lastModified": 1758911192,
+        "narHash": "sha256-iY416FZAMR5nF+AykW8Vy8eQXbfeRJNVZlrl2IKEbEU=",
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "cd9aa50bedeb16ad1449931fa4beca15ebf362e4",
+        "rev": "b381a37c0ec976a0012ef8491ec1d91d5e8b9a38",
         "type": "github"
       },
       "original": {
