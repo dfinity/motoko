@@ -68,6 +68,68 @@ let normalize t =
     Variant norm_fields
   | t -> t
 
+module CanonicalABI = struct
+  open Wasm_exts.Types
+
+  let normalize t = normalize t
+
+  let discriminant_prim cases =
+    let n = List.length cases in
+    let open Stdlib.Float in
+    match int_of_float (ceil (log2 (of_int n) /. 8.)) with
+    | 0
+    | 1 -> Nat8
+    | 2 -> Nat16
+    | 3 -> Nat32
+    | _ -> assert false
+
+  let discriminant_type cases = Prim (discriminant_prim cases)
+
+  let rec flatten_type typ =
+    match normalize typ with
+    | Prim (Blob | Text)
+    | Array _ -> [I32Type; I32Type] (* pointer + length *)
+    | Variant cases -> flatten_variant cases
+    | Tup ts -> flatten_tuple ts
+    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
+    | Prim (Nat64 | Int64) -> [I64Type]
+    | Prim Float -> [F64Type]
+    | _ -> failwith (Printf.sprintf "flatten_type: unsupported type %s" (string_of_typ typ))
+
+  and flatten_tuple ts =
+    List.concat_map flatten_type ts
+
+  and flatten_variant cases =
+    let join a b =
+      if a = b then a else
+      match a, b with
+      | I32Type, F32Type
+      | F32Type, I32Type -> I32Type
+      | _ -> I64Type
+    in
+    let flat = ref [] in
+    cases |> List.iter (fun f ->
+      flatten_type f.typ |> List.iteri (fun idx ft ->
+        if idx < List.length !flat then
+          flat := List.mapi (fun i t -> if idx = i then join t ft else t) !flat
+        else
+          flat := !flat @ [ft]));
+    flatten_type (discriminant_type cases) @ !flat
+
+  let needs_out_param = function
+    (* Canonical ABI allows for max 1 return value *)
+    | [_] | [] -> false
+    (* If there are multiple return values, we need to use out-parameters via a pointer *)
+    | _ -> true
+
+  let flatten_return_type typ =
+    let flat = flatten_type typ in
+    if needs_out_param flat then
+      [I32Type], []
+    else
+      [], flat
+end
+
 let is_kind_def con =
   match Cons.kind con with
   | Def _ -> true

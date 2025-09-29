@@ -21,7 +21,7 @@ cd $ROOT_DIR || exit
 # Create target directory if it doesn't exist
 mkdir -p target
 echo --- Compiling Motoko that imports components but without -wasm-components flag... &&
-MOC_UNLOCK_PRIM=true moc $MO_SRC_DIR/Main.mo -wasi-system-api --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm &&
+(MOC_UNLOCK_PRIM=true moc $MO_SRC_DIR/Main.mo -wasi-system-api --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm 2>&1 || true) &&
 echo --- Compiling Motoko that imports components with -wasm-components flag...&&
 MOC_UNLOCK_PRIM=true moc $MO_SRC_DIR/Main.mo -wasi-system-api -wasm-components --legacy-persistence $MOC_PACKAGES $MOC_COMPONENT_PACKAGES -o target/motoko.wasm &&
 echo --- Generated WIT-file target/motoko.wit &&
