@@ -127,11 +127,11 @@ If not, create and merge a separate PR to update the doc (adding any new files) 
 
 Check the recent changes from the last release:
 ```bash
-git log --first-parent $(git describe --tags --abbrev=0)..HEAD
+git log --first-parent $(git describe --abbrev=0)..HEAD
 ```
 Or, on macOS, in a browser:
 ```bash
-open "https://github.com/dfinity/motoko/compare/$(git describe --tags --abbrev=0)...master"
+open "https://github.com/dfinity/motoko/compare/$(git describe --abbrev=0)...master"
 ```
 
 Look at changes and check that everything relevant is mentioned in the changelog section,
@@ -140,7 +140,7 @@ and possibly clean it up a bit, curating the information for the target audience
 You can get the latest released version with:
 
 ```bash
-git describe --tags --abbrev=0
+git describe --abbrev=0
 ```
 
 Make sure that the very top of `Changelog.md` **exactly** matches the following format (otherwise the release extraction script will fail):
@@ -162,7 +162,7 @@ The following command will automatically calculate a patch bump.
 Verify the version is correct. If you need a minor or major version bump, set the variable manually.
 
 ```bash
-export LAST_MOC_VERSION=$(git describe --tags --abbrev=0)
+export LAST_MOC_VERSION=$(git describe --abbrev=0)
 export NEXT_MOC_VERSION=$(echo $LAST_MOC_VERSION | awk -F. -v OFS=. '{$3++; print}')
 echo "Last version: $LAST_MOC_VERSION"
 echo "Next version: $NEXT_MOC_VERSION"
@@ -261,6 +261,18 @@ git push origin moc-$NEXT_MOC_VERSION
 
 ### 5. Update `motoko-base`
 
+From the `master` branch, push a tag for the new `moc` version:
+
+```bash
+git checkout master
+git pull
+git tag moc-$NEXT_MOC_VERSION
+git push origin moc-$NEXT_MOC_VERSION
+```
+
+<details>
+<summary>Click here for legacy `motoko-base` update steps.</summary>
+
 After releasing the compiler, update `motoko-base`'s `master` branch to the `next-moc` branch.
 
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
@@ -309,6 +321,8 @@ git show
 git tag moc-$NEXT_MOC_VERSION
 git push origin moc-$NEXT_MOC_VERSION
 ```
+
+</details>
 
 ### Downstream
 
