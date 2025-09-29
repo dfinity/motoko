@@ -1,6 +1,5 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::persistence::get_dedup_table_ptr;
 use crate::types::Value;
 use crate::visitor::enhanced::is_non_null_pointer_field;
 
@@ -77,6 +76,7 @@ pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M,
     // While the program runs and we dedup blobs, the dedup table will be initialized.
     // In an upgrade, when this code is run again, the dedup table will be initialized and
     // this code will set it to a proper value.
+    use crate::persistence::get_dedup_table_ptr;
     let dedup_table = get_dedup_table_ptr();
     array.initialize(amount - 1, *dedup_table, mem);
 
