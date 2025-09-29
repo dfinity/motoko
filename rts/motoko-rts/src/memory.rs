@@ -7,6 +7,9 @@ use motoko_rts_macros::enhanced_orthogonal_persistence;
 use motoko_rts_macros::ic_mem_fn;
 
 #[enhanced_orthogonal_persistence]
+use crate::persistence::{get_dedup_table_ptr, set_dedup_table_ptr};
+
+#[enhanced_orthogonal_persistence]
 use crate::barriers::init_with_barrier;
 
 #[cfg(feature = "ic")]
@@ -118,12 +121,12 @@ pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
-    *crate::persistence::get_dedup_table()
+    *get_dedup_table_ptr()
 }
 
 /// Set the dedup table.
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 pub unsafe fn set_dedup_table<M: Memory>(_mem: &mut M, dedup_table: Value) {
-    crate::persistence::set_dedup_table(dedup_table);
+    set_dedup_table_ptr(dedup_table);
 }

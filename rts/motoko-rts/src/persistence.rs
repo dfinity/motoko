@@ -351,13 +351,13 @@ unsafe fn is_weak_ref_registry_null() -> bool {
 }
 
 /// Accessor method for the dedup table.
-pub(crate) unsafe fn get_dedup_table() -> &'static mut Value {
+pub(crate) unsafe fn get_dedup_table_ptr() -> &'static mut Value {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).dedup_table
 }
 
 /// Setter method for the dedup table.
-pub(crate) unsafe fn set_dedup_table(dedup_table: Value) {
+pub(crate) unsafe fn set_dedup_table_ptr(dedup_table: Value) {
     let metadata = PersistentMetadata::get();
     (*metadata).dedup_table = dedup_table;
 }
