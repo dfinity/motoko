@@ -3,7 +3,20 @@
 * motoko (`moc`):
   * Support persistent functions, persistent objects, and persistent classes with enhanced orthogonal persistence.
   
+## 0.16.3 (2025-09-29)
+
 * motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
+
+  * Contextual dot notation (#5458):
+
+    Writing `e0.f(<Ts>)(e1,...,en)` is short-hand for `M.f(<Ts>)(e0, e1, ..., en)`, provided:
+
+    * `f` is not already a field or special member of `e0`.
+    * There is a unique module `M` with member `f` in the context that declares:
+      * a public type `Self<T1,..., Tn>` that can be instantiated to the type of `e0`;
+      * a public field `f` that accepts `(e0, e2, ..., en)` as arguments.
 
   * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
     Note that this warning is off by default.
@@ -19,6 +32,8 @@
   * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
 
   * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
 
 ## 0.16.2 (2025-09-12)
 
