@@ -1,2 +1,2 @@
-stable-captures-immutable.mo:10.36-12.10: type error [M0224], persistent function stableMethod closes over non-persistent variable flexibleMethod
-stable-captures-immutable.mo:28.33-30.10: type error [M0224], persistent function inner closes over non-persistent variable innerFlexible
+stable-captures-immutable.mo:10.36-12.10: type error [M0226], persistent function stableMethod closes over non-persistent variable flexibleMethod
+stable-captures-immutable.mo:28.33-30.10: type error [M0226], persistent function inner closes over non-persistent variable innerFlexible

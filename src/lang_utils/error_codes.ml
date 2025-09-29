@@ -226,9 +226,9 @@ let error_codes : (string * string option) list =
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
     "M0222", None; (* Ignored `async*` *)
-    "M0223", None; (* Persistent functions are only supported with enhanced orthogonal persistence *)
-    "M0224", None; (* Persistent function cannot close over a non-persistent variable *)
-    "M0225", None; (* Type argument has to be of a stable type to match the type parameter *)
-    "M0226", None; (* Persistent functions/classes cannot be anonymous *)
+    "M0225", None; (* Persistent functions are only supported with enhanced orthogonal persistence *)
+    "M0226", None; (* Persistent function cannot close over a non-persistent variable *)
+    "M0227", None; (* Type argument has to be of a stable type to match the type parameter *)
+    "M0228", None; (* Persistent functions/classes cannot be anonymous *)
     
   ]

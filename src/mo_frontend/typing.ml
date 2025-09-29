@@ -1733,7 +1733,7 @@ and infer_exp'' env exp : T.typ =
       | Some Type.{ captured_variables; _ } ->
         T.Env.iter (fun id T.{ variable_type; _ } ->
           if not (T.stable variable_type) then
-          (error env exp1.at "M0224"
+          (error env exp1.at "M0226"
                 "persistent function %s closes over non-persistent variable %s"
                 name id)
           ) captured_variables
@@ -2384,7 +2384,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       (if sort = T.Local T.Stable then
         List.iter (fun t -> 
           if (not (T.stable t)) then
-            local_error env at "M0225"
+            local_error env at "6"
               "Type argument%a\nhas to be of a stable type to match the type parameter "
               display_typ_expand t
           ) ts);
@@ -3392,7 +3392,7 @@ and check_stab env sort scope dec_fields =
           display_typ t1
       else
         if not !Mo_config.Flags.enhanced_orthogonal_persistence && not (T.old_stable t1) then
-          local_error env at "M0223"
+          local_error env at "M0225"
             "Persistent functions are only supported with enhanced orthogonal persistence"
   in
   let idss = List.map (fun df ->

@@ -956,7 +956,7 @@ dec_nonvar :
       let xf, tps, p = xf_tps_p in
       let named, x = xf "func" $sloc in
       (if not named && sp.it = Type.Local Type.Stable then
-        syntax_error sp.at "M0226" "a persistent function cannot be anonymous, please provide a name");
+        syntax_error sp.at "M0228" "a persistent function cannot be anonymous, please provide a name");
       let is_sugar, e = desugar_func_body sp x t fb in
       let_or_exp named x (func_exp x.it sp tps p t is_sugar (ref None) e) (at $sloc) }
   | eo=parenthetical_opt mk_d=obj_or_class_dec  { mk_d eo }
@@ -991,7 +991,7 @@ obj_or_class_dec :
       let xf, tps, p = xf_tps_p in
       let (named, id) = xf "class" $sloc in
       (if not named && sp.it = Type.Local Type.Stable then
-        syntax_error sp.at "M0226" "a persistent class cannot be anonymous, please provide a name");
+        syntax_error sp.at "M0228" "a persistent class cannot be anonymous, please provide a name");
       let cid = id.it @= id.at in
       let x, dfs = cb in
       let dfs', tps', t' =
