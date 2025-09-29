@@ -88,3 +88,9 @@ func isEq<T>(x : T, y : T, eq : (implicit : (T, T) -> Bool)) : Bool {
 };
 
 assert isEq<Nat>(3, 3);
+
+func tuple(pair : (Nat, Nat), eq : (implicit : (Nat, Nat) -> Bool)) : Bool {
+  eq(pair.0, pair.1)
+};
+
+assert tuple((3, 3));

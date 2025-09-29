@@ -17,3 +17,7 @@ The available candidates are: M.ambiguous, N.ambiguous
 implicit.mo:88.27-88.29: type error [M0226], ambiguous implicit argument of type
   {x : Nat}.
 The available candidates are: XY.zero, XZ.zero
+implicit.mo:107.14-107.15: type error [M0050], literal of type
+  Nat
+does not have expected type
+  (Nat, Nat)

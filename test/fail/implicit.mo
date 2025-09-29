@@ -100,3 +100,8 @@ func c <T, U>(p1 : (T, U), p2 : (T, U),
 
 ignore c((1,"a"),(0,"b")); // accepted
 
+func tuple(pair : (Nat, Nat), c : (implicit : (Nat, Nat) -> Order)) : Order {
+  c(pair.0, pair.1)
+};
+
+assert tuple(3, 3);
