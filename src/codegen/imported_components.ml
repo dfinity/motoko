@@ -4,17 +4,16 @@ open Ir_def
 open Mo_types
 open Mo_types.Type
 open Wasm_exts.CustomModule
+open Import_components_ir
 
 type imported_function = {
   function_name : string;
-  args : Import_components_ir.arg_data list;
+  args : arg_data list;
   return_type : typ
 }
 
 module StringMap = Map.Make(String)
 module TypeMap = Map.Make(Ord)
-
-type t = imported_function StringMap.t StringMap.t
 
 let map_motoko_name_to_wit motoko_name =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
@@ -189,7 +188,7 @@ let imported_components_to_wit map =
 
     (* Process each function *)
     let fn_lines = StringMap.bindings functions |> List.map (fun (_, { function_name; args; return_type }) ->
-      let args_strings = args |> List.map (fun Import_components_ir.{ arg_name; arg_type } ->
+      let args_strings = args |> List.map (fun { arg_name; arg_type } ->
         let wit_ty = map_motoko_type_to_wit variants_ref arg_type in
         map_motoko_name_to_wit arg_name ^ ": " ^ wit_ty
       ) in
@@ -250,19 +249,19 @@ let add_imported_component ~component_name ~imported_function map =
 let generate_wit_wac on_import prog =
   let imported_components = ref StringMap.empty in
   (* Add imports to the environment *)
-  let add_import component_name function_name arg_types return_type = 
+  let add_import component_name function_name args return_type = 
     add_imported_component
       ~component_name 
-      ~imported_function:{ function_name; args = arg_types; return_type }
+      ~imported_function:{ function_name; args; return_type }
       imported_components;
-    let wasm_args = List.concat_map (fun arg -> flatten_type arg.Import_components_ir.arg_type) arg_types in
+    let wasm_args = List.concat_map (fun arg -> flatten_type arg.arg_type) args in
     let extra_out_param, wasm_results = flatten_return_type return_type in
     let wasm_args = wasm_args @ extra_out_param in
     on_import component_name function_name wasm_args wasm_results
   in
 
   (* Traverse the program to add wasm component imports *)
-  Import_components_ir.prog_fun add_import prog;
+  traverse add_import prog;
   { wit_file_content = imported_components_to_wit !imported_components
   ; wac_file_content = imported_components_to_wac !imported_components
   }
