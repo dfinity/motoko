@@ -1289,6 +1289,10 @@ type hole_candidate =
     typ : T.typ;
   }
 
+(* All candidates are subtypes of the required type. The "greatest" of
+   these types is the "closest" to the required type. If we can
+   uniquely identify a single candidate that is the supertype of all
+   other candidates we pick it. *)
 let disambiguate_resolutions (candidates : hole_candidate list) =
   let add_candidate (frontiers : hole_candidate list) (c : hole_candidate) =
     let rec go (fs : hole_candidate list) = match fs with
@@ -1296,12 +1300,17 @@ let disambiguate_resolutions (candidates : hole_candidate list) =
       | f::fs' ->
          if T.sub c.typ f.typ then
            if T.eq c.typ f.typ then
+             (* c = f, so we keep both *)
              f :: go fs'
            else
+             (* c <: f, so f absorbs c *)
              fs
          else if T.sub f.typ c.typ then
+           (* f <: c, so c absorbs f *)
            go fs'
-         else f :: go fs'
+         else
+           (* no relation at all, so we keep both *)
+           f :: go fs'
     in
     go frontiers
   in
