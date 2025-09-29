@@ -246,7 +246,7 @@ let add_imported_component ~component_name ~imported_function map =
   let updated_set = StringMap.add imported_function.function_name imported_function functions in
   map := StringMap.add component_name updated_set !map
 
-let generate_wit_wac on_import prog =
+let add_imports_and_generate_wit_wac on_import prog =
   let imported_components = ref StringMap.empty in
   (* Add imports to the environment *)
   let add_import component_name function_name args return_type = 

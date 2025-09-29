@@ -202,7 +202,8 @@ and exp' at note = function
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.GetCertificate, [])
   (* Component *)
-  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_); note = callee_note; _}, _, e) when Lib.String.chop_prefix "component:" fn <> None ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE fn;_},_); note = callee_note; _}, _, e)
+    when !Mo_config.Flags.wasm_components && Lib.String.chop_prefix "component:" fn <> None ->
     let parts = String.split_on_char ':' fn in
     (* parts[0] == "component", parts[1] == <component-name>, parts[2] = <function-name> *)
     let component_name = List.nth parts 1 in

@@ -1,10 +1,3 @@
---- Compiling Motoko that imports components but without -wasm-components flag...
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source XXX)
-
-Fatal error: exception Failure("Wasm components support not enabled, use -wasm-components")
 --- Compiling Motoko that imports components with -wasm-components flag...
 --- Generated WIT-file target/motoko.wit
 package motoko:component;

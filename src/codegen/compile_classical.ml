@@ -13994,7 +13994,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   (* Use Wasm components, if enabled *)
   let wit_wac = 
     if !Flags.wasm_components
-    then Some (Imported_components.generate_wit_wac (E.add_func_import env) prog)
+    then Some (Imported_components.add_imports_and_generate_wit_wac (E.add_func_import env) prog)
     else None
   in
   
