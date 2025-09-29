@@ -7,12 +7,11 @@ pkgs: let
     cargoLock = {
       lockFile = "${pkgs.sources.pocket-ic-src}/Cargo.lock";
       outputHashes = {
+        "bitcoin-0.32.5-doge.0" = "sha256-DK+TKcY2c5sNI5q+DDddJ07UUOBBqiMAZ5sMV+fHoYA=";
         "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
         "cloudflare-0.12.0" = "sha256-67kQWJFRXZXHx+qwlyLa9NLF09b/4iRWxTLzCniCHZE=";
         "ic-bn-lib-0.1.0" = "sha256-6ABcruF7vuvTQkhGWdxUcSdO+qgOHKY1MhQRADHtJYw=";
-        "ic-canister-sig-creation-1.1.0" = "sha256-c47Fh4kZbmezWCYVHMci2BMXJfESaOGsyNlWh8YR6oU=";
         "ic-gateway-0.2.0" = "sha256-ksiSqBLmnAIAtqvzuHIsyi2FrXs5rwo00n+xto97ctI=";
-        "ic-vetkeys-0.1.0" = "sha256-h8Jso21fK0QTyuSa14iAYsDvrfMphvI3spJBYOLgq1c=";
         "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
         "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
       };
@@ -46,22 +45,23 @@ pkgs: let
       # Create a patch file for pocket-ic-server to disable canister backtrace.
       echo "Creating patch file..."
       echo 'diff --git a/rs/pocket_ic_server/src/pocket_ic.rs b/rs/pocket_ic_server/src/pocket_ic.rs' > pocket_ic_server.patch
-      echo 'index 9c32fb7d2a..453f44a4d3 100644' >> pocket_ic_server.patch
       echo '--- a/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
       echo '+++ b/rs/pocket_ic_server/src/pocket_ic.rs' >> pocket_ic_server.patch
-      echo '@@ -512,6 +512,12 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
+      echo '@@ -619,6 +619,14 @@ impl PocketIcSubnets {' >> pocket_ic_server.patch
       echo '             .embedders_config' >> pocket_ic_server.patch
       echo '             .feature_flags' >> pocket_ic_server.patch
       echo '             .rate_limiting_of_debug_prints = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+' >> pocket_ic_server.patch
       echo '+        hypervisor_config' >> pocket_ic_server.patch
       echo '+            .embedders_config' >> pocket_ic_server.patch
       echo '+            .feature_flags' >> pocket_ic_server.patch
       echo '+            .canister_backtrace = FlagStatus::Disabled;' >> pocket_ic_server.patch
-      echo '+' >> pocket_ic_server.patch
+      echo '+        hypervisor_config' >> pocket_ic_server.patch
+      echo '+            .embedders_config' >> pocket_ic_server.patch
+      echo '+            .feature_flags' >> pocket_ic_server.patch
+      echo '+            .environment_variables = FlagStatus::Enabled;' >> pocket_ic_server.patch
       echo '         let state_machine_config = StateMachineConfig::new(subnet_config, hypervisor_config);' >> pocket_ic_server.patch
-      echo '         let t = time' >> pocket_ic_server.patch
-      echo '             .duration_since(SystemTime::UNIX_EPOCH)' >> pocket_ic_server.patch
+      echo '         StateMachineBuilder::new()' >> pocket_ic_server.patch
+      echo '             .with_runtime(runtime)' >> pocket_ic_server.patch
 
       echo "Applying patch..."
       patch -p1 < pocket_ic_server.patch
@@ -88,6 +88,7 @@ pkgs: let
   # Pocket-ic server package.
   server = pkgs.rustPlatform-stable.buildRustPackage (commonAttrs // {
     buildAndTestSubdir = "rs/pocket_ic_server";
+    cargoBuildFlags = [ "--bin" "pocket-ic-server" ];
   });
 
 in {

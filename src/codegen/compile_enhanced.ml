@@ -4992,6 +4992,12 @@ module IC = struct
     E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
     E.add_func_import env "ic0" "stable64_size" [] [I64Type];
     E.add_func_import env "ic0" "stable64_grow" [I64Type] [I64Type];
+    E.add_func_import env "ic0" "env_var_count" [] [i];
+    E.add_func_import env "ic0" "env_var_name_size" [i] [i];
+    E.add_func_import env "ic0" "env_var_name_copy" (is 4) [];
+    E.add_func_import env "ic0" "env_var_name_exists" [i; i] [I32Type];
+    E.add_func_import env "ic0" "env_var_value_size" [i; i] [i];
+    E.add_func_import env "ic0" "env_var_value_copy" (is 5) [];
     E.add_func_import env "ic0" "time" [] [I64Type];
     if !Flags.global_timer then
       E.add_func_import env "ic0" "global_timer_set" [I64Type] [I64Type]
@@ -5344,6 +5350,76 @@ module IC = struct
       system_call env "time"
     | _ ->
       E.trap_with env "cannot get system time when running locally"
+
+  let env_var_names env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code0 Func.Never env "env_var_names" [i] (fun env ->
+        let (set_len, get_len) = new_local env "len" in
+        let (set_array, get_array) = new_local env "array" in
+        system_call env "env_var_count" ^^ set_len ^^
+        Arr.alloc env Tagged.I get_len ^^ set_array ^^
+        get_len ^^ from_0_to_n env (fun get_i ->
+          let (set_name_len, get_name_len) = new_local env "name_len" in
+          let (set_name, get_name) = new_local env "name" in
+
+          get_i ^^
+          system_call env "env_var_name_size" ^^ set_name_len ^^
+
+          Blob.alloc env Tagged.T get_name_len ^^ set_name ^^
+
+          get_array ^^ get_i ^^ Arr.unsafe_idx env ^^
+          get_name ^^
+          store_ptr ^^
+
+          get_i ^^
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_name_len ^^
+          system_call env "env_var_name_copy" ^^
+
+          get_name
+        ) ^^
+        get_array ^^
+        Tagged.allocation_barrier env
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable names when running locally"
+
+  let env_var env =
+    match E.mode env with
+    | Flags.(ICMode | RefMode) ->
+      Func.share_code1 Func.Never env "env_var" ("name", i) [i] (fun env get_name ->
+        let (set_name_len, get_name_len) = new_local env "name_len" in
+
+        get_name ^^ Blob.len env ^^ set_name_len ^^
+
+        get_name ^^ Blob.payload_ptr_unskewed env ^^
+        get_name_len ^^
+        system_call env "env_var_name_exists" ^^
+        Bool.from_rts_int32 ^^
+        E.if1 I64Type (
+          let (set_value_len, get_value_len) = new_local env "value_len" in
+          let (set_value, get_value) = new_local env "value" in
+
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          system_call env "env_var_value_size" ^^ set_value_len ^^
+          
+          Blob.alloc env Tagged.T get_value_len ^^ set_value ^^
+          
+          get_name ^^ Blob.payload_ptr_unskewed env ^^
+          get_name_len ^^
+          get_value ^^ Blob.payload_ptr_unskewed env ^^
+          compile_unboxed_zero ^^
+          get_value_len ^^
+          system_call env "env_var_value_copy" ^^
+          
+          Opt.inject_simple env get_value)
+        (Opt.null_lit env)
+      )
+    | _ ->
+      E.trap_with env "cannot get environment variable when running locally"
 
   let caller env =
     match E.mode env with
@@ -12638,6 +12714,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae weak_ref ^^
     E.call_import env "rts" "weak_ref_is_live" ^^
     Bool.from_rts_int32
+
+  | OtherPrim "env_var_names", [] ->
+    SR.Vanilla,
+    IC.env_var_names env
+
+  | OtherPrim "env_var", [name] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae name ^^
+    IC.env_var env
 
   (* Regions *)
 
