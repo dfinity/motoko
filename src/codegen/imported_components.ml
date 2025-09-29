@@ -3,6 +3,7 @@
 open Ir_def
 open Mo_types
 open Mo_types.Type
+open Wasm_exts.CustomModule
 
 type imported_function = {
   function_name : string;
@@ -10,36 +11,10 @@ type imported_function = {
   return_type : typ
 }
 
-(* This module manages the imported components in a map where each key is a component name
-   and the value is a set of function names that are imported from that component. *)
-
-module ImportedFunctionOrd : Set.OrderedType with type t = imported_function = struct
-  type t = imported_function
-  let compare a b =
-    let c = String.compare a.function_name b.function_name in
-    if c <> 0 then c
-    else
-      let c_args = compare a.args b.args in
-      if c_args <> 0 then c_args
-      else compare a.return_type b.return_type
-end
-
-module FunctionSet = Set.Make(ImportedFunctionOrd)
 module StringMap = Map.Make(String)
 module TypeMap = Map.Make(Ord)
 
-type t = FunctionSet.t StringMap.t
-
-let empty = StringMap.empty
-
-let add_imported_component ~component_name ~imported_function map =
-  let existing_set =
-    match StringMap.find_opt component_name map with
-    | Some set -> set
-    | None -> FunctionSet.empty
-  in
-  let updated_set = FunctionSet.add imported_function existing_set in
-  StringMap.add component_name updated_set map
+type t = imported_function StringMap.t StringMap.t
 
 let map_motoko_name_to_wit motoko_name =
   String.map (fun c -> if c = '_' then '-' else c) motoko_name
@@ -130,6 +105,8 @@ module CanonicalABI = struct
       [], flat
 end
 
+open CanonicalABI
+
 let is_kind_def con =
   match Cons.kind con with
   | Def _ -> true
@@ -211,7 +188,7 @@ let imported_components_to_wit map =
     let variants_ref : string TypeMap.t ref = ref TypeMap.empty in
 
     (* Process each function *)
-    let fn_lines = FunctionSet.elements functions |> List.map (fun { function_name; args; return_type } ->
+    let fn_lines = StringMap.bindings functions |> List.map (fun (_, { function_name; args; return_type }) ->
       let args_strings = args |> List.map (fun Import_components_ir.{ arg_name; arg_type } ->
         let wit_ty = map_motoko_type_to_wit variants_ref arg_type in
         map_motoko_name_to_wit arg_name ^ ": " ^ wit_ty
@@ -260,3 +237,32 @@ let imported_components_to_wac map =
   in
   let motoko_component = Printf.sprintf "let motoko = new motoko:component {\n%s\n    ...\n};" components_in_motoko in
   Printf.sprintf "package motoko:composition;\n\n%s\n\n%s\n\nexport motoko.run;\n" imported_components motoko_component
+
+let add_imported_component ~component_name ~imported_function map =
+  let functions =
+    match StringMap.find_opt component_name !map with
+    | Some set -> set
+    | None -> StringMap.empty
+  in
+  let updated_set = StringMap.add imported_function.function_name imported_function functions in
+  map := StringMap.add component_name updated_set !map
+
+let generate_wit_wac on_import prog =
+  let imported_components = ref StringMap.empty in
+  (* Add imports to the environment *)
+  let add_import component_name function_name arg_types return_type = 
+    add_imported_component
+      ~component_name 
+      ~imported_function:{ function_name; args = arg_types; return_type }
+      imported_components;
+    let wasm_args = List.concat_map (fun arg -> flatten_type arg.Import_components_ir.arg_type) arg_types in
+    let extra_out_param, wasm_results = flatten_return_type return_type in
+    let wasm_args = wasm_args @ extra_out_param in
+    on_import component_name function_name wasm_args wasm_results
+  in
+
+  (* Traverse the program to add wasm component imports *)
+  Import_components_ir.prog_fun add_import prog;
+  { wit_file_content = imported_components_to_wit !imported_components
+  ; wac_file_content = imported_components_to_wac !imported_components
+  }

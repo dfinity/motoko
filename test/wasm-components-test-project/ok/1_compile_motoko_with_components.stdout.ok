@@ -6,7 +6,6 @@ Motoko (source XXX)
 
 Fatal error: exception Failure("Wasm components support not enabled, use -wasm-components")
 --- Compiling Motoko that imports components with -wasm-components flag...
-Compiling with Wasm components...
 --- Generated WIT-file target/motoko.wit
 package motoko:component;
 

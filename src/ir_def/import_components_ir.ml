@@ -69,8 +69,7 @@ and prim e es = function
       let function_args = List.map2 (fun arg arg_type -> {arg_name=string_of_arg arg; arg_type}) es arg_types in
 
       (* Add the import to the component *)
-      add_import component_name function_name function_args return_type;
-      ()
+      add_import component_name function_name function_args return_type
   | _ -> ()
 
 and case c = exp c.it.exp

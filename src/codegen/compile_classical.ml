@@ -19,7 +19,6 @@ open Wasm_exts.Ast
 open Source
 
 open Compile_common
-open Imported_components
 
 
 module Wasm = struct
@@ -13879,7 +13878,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content =
+and conclude_module env set_serialization_globals start_fi_o wit_wac =
 
   RTS_Exports.system_exports env;
 
@@ -13971,8 +13970,7 @@ and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_cont
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;
-      wit_file_content = maybe_wit_file_content;
-      wac_file_content = maybe_wac_file_content;
+      wit_wac;
     } in
 
   match E.get_rts env with
@@ -13994,31 +13992,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_serialization_globals = Serialization.register_delayed_globals env in
 
   (* Use Wasm components, if enabled *)
-  let maybe_wit_file_content, maybe_wac_file_content = 
-    if !Flags.wasm_components then 
-      begin
-        Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom ("Compiling with Wasm components..."));
-        let imported_components = ref Imported_components.empty in
-        (* Add imports to the environment *)
-        let add_import component_name function_name arg_types return_type = 
-          imported_components := add_imported_component
-            ~component_name 
-            ~imported_function:{ function_name; args = arg_types; return_type }
-            !imported_components;
-          let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in
-          let extra_out_param, wasm_results = WasmComponent.flatten_return_type return_type in
-          let wasm_args = wasm_args @ extra_out_param in
-          E.add_func_import env component_name function_name wasm_args wasm_results in
-
-        let () = (Import_components_ir.prog_fun add_import prog) in
-        (* Generate the imported components as WIT file *)
-        let wit_file_content = (imported_components_to_wit !imported_components) in
-        (* Generate the WAC file to compose the components*)
-        let wac_file_content = (imported_components_to_wac !imported_components) in
-        Some wit_file_content, Some wac_file_content
-      end
-    else
-      None, None
+  let wit_wac = 
+    if !Flags.wasm_components
+    then Some (Imported_components.generate_wit_wac (E.add_func_import env) prog)
+    else None
   in
   
   (* Register the imports *)
@@ -14037,4 +14014,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content
+  conclude_module env set_serialization_globals start_fi_o wit_wac
