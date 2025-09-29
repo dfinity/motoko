@@ -1283,7 +1283,8 @@ module RTS = struct
     E.add_func_import env "rts" "buffer_in_32_bit_range" [] [I64Type];
     E.add_func_import env "rts" "alloc_weak_ref" [I64Type] [I64Type];
     E.add_func_import env "rts" "weak_ref_is_live" [I64Type] [I32Type];
-    E.add_func_import env "rts" "dedup" [I64Type] [I64Type];
+    E.add_func_import env "rts" "get_dedup_table" [] [I64Type];
+    E.add_func_import env "rts" "set_dedup_table" [I64Type] [];
     ()
 
 end (* RTS *)
@@ -12190,10 +12191,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae name ^^
     IC.env_var env
 
-  | OtherPrim "dedup", [value] ->
+  | OtherPrim "get_dedup_table", [] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae value ^^
-    E.call_import env "rts" "dedup"
+    E.call_import env "rts" "get_dedup_table"
+
+  | OtherPrim "set_dedup_table", [dedup_table] ->
+    SR.unit,
+    compile_exp_vanilla env ae dedup_table ^^
+    E.call_import env "rts" "set_dedup_table"
 
   (* Regions *)
 

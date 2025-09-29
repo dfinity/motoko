@@ -700,21 +700,19 @@ func @cancelTimer(id : Nat) {
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
-// WeakRef type.
-type @WeakRef = {
-  ref : weak Blob;
-};
-// A linked list of WeakRefs.
-type @List = {
-  next : ?@List;
-  value : ?@WeakRef;
-  hashValue : Nat32;
-};
-var @dedup_hash_counter : Nat = 0;
-var @hash_array : [var @List] = [var];
-
 // Function that deduplicates a blob.
 func @dedup2(b : Blob) : Blob {
+  // WeakRef type.
+  type WeakRef = {
+    ref : weak Blob;
+  };
+  // A linked list of WeakRefs.
+  type List = {
+    next : ?List;
+    value : ?WeakRef;
+    hashValue : Nat32;
+    index : Nat;
+  };
   // A hash array of Lists.
   // On colisions, a new List element is added.
   func Array_tabulateVar<T>(len : Nat, gen : Nat -> T) : [var T] {
@@ -733,18 +731,26 @@ func @dedup2(b : Blob) : Blob {
   func weakGet<T>(w : weak T) : ?T {
     (prim "weak_get" : weak T -> ?T)(w);
   };
+  func getDedupTable() : ?[var List] {
+    (prim "get_dedup_table" : () -> ?[var List])();
+  };
+  func setDedupTable(dedupTable : [var List]) {
+    (prim "set_dedup_table" : [var List] -> ())(dedupTable);
+  };
 
   // Helper functions for the hash array.
   //
   //
-  func addToList(list : @List, hashValue : Nat32, weakRef : @WeakRef) : @List {
+  func addToList(list : List, hashValue : Nat32, weakRef : WeakRef) : List {
     let newList = {
       next = ?list;
       value = ?weakRef;
       hashValue = hashValue;
+      index = list.index + 1;
     };
   };
-  func getFromList(list : @List, hashValue : Nat32) : ?@WeakRef {
+
+  func getFromList(list : List, hashValue : Nat32) : ?WeakRef {
     var copy = list;
     loop {
       if (copy.hashValue == hashValue) {
@@ -758,17 +764,33 @@ func @dedup2(b : Blob) : Blob {
       };
     };
   };
-  func addToHashArray(b : Blob) {
-    let hashValue = hashBlob(b);
-    let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
-    let list = @hash_array[index];
-    let weakRef = { ref = allocWeakRef(b) };
-    @hash_array[index] := addToList(list, hashValue, weakRef);
+
+  func getListLen(list : List) : Nat {
+    list.index;
   };
-  func getFromHashArray(b : Blob) : ?@WeakRef {
+
+  func getHashArrayLen(hashArray : [var List]) : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < HASH_ARRAY_SIZE) {
+      len += getListLen(hashArray[i]);
+      i += 1;
+    };
+    len;
+  };
+
+  func addToHashArray(hashArray : [var List], b : Blob) {
     let hashValue = hashBlob(b);
     let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
-    let list = @hash_array[index];
+    let list = hashArray[index];
+    let weakRef = { ref = allocWeakRef(b) };
+    hashArray[index] := addToList(list, hashValue, weakRef);
+  };
+
+  func getFromHashArray(hashArray : [var List], b : Blob) : ?WeakRef {
+    let hashValue = hashBlob(b);
+    let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+    let list = hashArray[index];
     getFromList(list, hashValue);
   };
   //
@@ -785,12 +807,24 @@ func @dedup2(b : Blob) : Blob {
     return b;
   };
 
-  if (@dedup_hash_counter == 0) {
-    @hash_array := Array_tabulateVar<@List>(HASH_ARRAY_SIZE, func(i : Nat) : @List = { next = null; value = null; hashValue = 0 });
+  // Get the dedup table from the RTS.
+  let ptr = getDedupTable();
+  let hashArray = switch ptr {
+    case (?dedupTable) {
+      dedupTable;
+    };
+    case null {
+      //debugPrint("The dedup table is null so we initialize it.");
+      // This means that the dedup table was not yet created.
+      let arr = Array_tabulateVar<List>(HASH_ARRAY_SIZE, func(i : Nat) : List = { next = null; value = null; hashValue = 0; index = 0 });
+      // We need to set it via the RTS so that it is persisted.
+      setDedupTable(arr);
+      arr;
+    };
   };
 
   // Get the WeakRef from the hash table.
-  let dedupedBlobWeakRef = getFromHashArray(b);
+  let dedupedBlobWeakRef = getFromHashArray(hashArray, b);
   let result = switch dedupedBlobWeakRef {
     case (?weakRef) {
       // It was in the hash so we dereference the WeakRef.
@@ -801,7 +835,7 @@ func @dedup2(b : Blob) : Blob {
         case null {
           // This will only happen if the blob was deallocated by the GC.
           // We put it back in the hash table so that it can be deduplicated again.
-          addToHashArray(b);
+          addToHashArray(hashArray, b);
           b;
         };
       };
@@ -810,11 +844,10 @@ func @dedup2(b : Blob) : Blob {
     // and return the original.
     case null {
       //debugPrint("It wasn't in the hash so we put it in and return the original.");
-      addToHashArray(b);
-      @dedup_hash_counter += 1;
+      addToHashArray(hashArray, b);
       b;
     };
   };
-  //debugPrint("Dedup hash counter: " # debug_show (@dedup_hash_counter));
+
   result;
 };

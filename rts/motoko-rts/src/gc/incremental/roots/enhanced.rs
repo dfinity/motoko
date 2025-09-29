@@ -62,11 +62,23 @@ pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M,
     use crate::types::{NULL_POINTER, TAG_ARRAY_M};
     use core::ptr::addr_of_mut;
 
+    // Add another element for the dedup table.
+    let amount = amount + 1;
+
     let variables = alloc_array(mem, TAG_ARRAY_M, amount);
     let array = variables.as_array();
-    for index in 0..amount {
+    for index in 0..amount - 1 {
         array.initialize(index, NULL_POINTER, mem);
     }
+    // We need to link in the dedup table.
+    // Get the dedup table from the persistent metadata.
+    // The first time the program runs, the dedup table will be null.
+    // While the program runs and we dedup blobs, the dedup table will be initialized.
+    // In an upgrade, when this code is run again, the dedup table will be initialized and
+    // this code will set it to a proper value.
+    let dedup_table = crate::persistence::get_dedup_table();
+    array.initialize(amount - 1, *dedup_table, mem);
+
     let location = addr_of_mut!(STATIC_VARIABLES) as *mut Value;
     write_with_barrier(mem, location, variables);
 }

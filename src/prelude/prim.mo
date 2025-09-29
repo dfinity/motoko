@@ -120,6 +120,20 @@ func envVar<system>(name : Text) : ?Text {
   (prim "env_var" : Text -> ?Text)(name);
 };
 
+// For testing, do not use in production code!
+type __WeakRef = {
+  ref : weak Blob;
+};
+type __List = {
+  next : ?__List;
+  value : ?__WeakRef;
+  hashValue : Nat32;
+  index : Nat;
+};
+func __getDedupTable() : ?[var __List] {
+  (prim "get_dedup_table" : () -> ?[var __List])();
+};
+
 // Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;

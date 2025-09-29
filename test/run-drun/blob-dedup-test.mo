@@ -6,11 +6,33 @@ persistent actor {
     Prim.debugPrint(debug_show (b));
   };
 
+  // WeakRef type.
+  type WeakRef = {
+    ref : weak Blob;
+  };
+  // A linked list of WeakRefs.
+  type List = {
+    next : ?List;
+    value : ?WeakRef;
+    hashValue : Nat32;
+    index : Nat;
+  };
+  func getHashArrayLen(hashArray : [var List]) : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < 16_384) {
+      len += hashArray[i].index;
+      i += 1;
+    };
+    len;
+  };
+
   public func test2() : async () {
     let blob0 : Blob = "a";
     let blob1 : Blob = "!caf!hello";
     let blob2 : Blob = "!caf!world";
     let blob3 : Blob = "acaf!hello";
+    let blob4 : Blob = "!caf!letmetestyou";
     await test(blob1);
     await test(blob2);
     await test(blob3);
@@ -23,7 +45,16 @@ persistent actor {
       await test(blob2);
       await test(blob3);
       await test(blob0);
+      await test(blob4);
       counter -= 1;
+    };
+
+    let hash = Prim.__getDedupTable();
+    switch hash {
+      case (?hashArray) {
+        assert (getHashArrayLen(hashArray) == 3);
+      };
+      case null {};
     };
   };
 
