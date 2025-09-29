@@ -19,7 +19,7 @@ func test() {
 
   let t : Nat = 0;
 
-  let _ = map.get(t);
+//  let _ = map.get(t);
 
 //  let _ : Text = map.get(t);
 //  let _ = map.get t;
