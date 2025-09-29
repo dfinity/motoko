@@ -2489,7 +2489,7 @@ and insert_holes at ts es =
   then go 0 ts es
   else es
 
-and infer_call env exp1 inst ref_exp2 at t_expect_opt =
+and infer_call env exp1 inst (_, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in

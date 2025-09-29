@@ -190,7 +190,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp option * exp * inst * (exp ref)     (* function call *)
+  | CallE of exp option * exp * inst * arg_exp     (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -216,7 +216,8 @@ and exp' =
   | IgnoreE of exp                             (* ignore *)
 (*
   | AtomE of string                            (* atom *)
-*)
+ *)
+and arg_exp = (bool * (exp ref))
 
 and assert_kind =
   | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant

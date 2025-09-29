@@ -606,7 +606,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (par, exp1, typs, exp2) ->
+  | CallE (par, exp1, typs, (_, exp2)) ->
     let exp2 = !exp2 in
     interpret_par env par
       (fun v ->
