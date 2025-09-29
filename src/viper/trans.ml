@@ -805,7 +805,7 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   match e with
   | M.({it=TupE [];_}) -> [], []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
-  | M.({it=CallE (_, {it=M.DotE ({it=M.VarE(m);_}, {it="init";_}, _);_}, _inst, args);_})
+  | M.({it=CallE (_, {it=M.DotE ({it=M.VarE(m);_}, {it="init";_}, _);_}, _inst, (_, args));_})
       when Imports.find_opt (m.it) ctxt.imports = Some(IM_base_Array)
       ->
     begin match !args with
@@ -858,7 +858,7 @@ and via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
     let stmt = !!(assign_stmt lval tmp_e) in
     d :: ds, stmts @ [stmt]
 
-and call_args ctxt e =
+and call_args ctxt (_, e) =
   match !e with
   | {it = M.TupE args; _} -> List.map (fun arg -> exp ctxt arg) args
   | arg -> [exp ctxt arg]
@@ -880,7 +880,7 @@ and exp ctxt e =
     end
   | M.AnnotE(a, b) ->
     exp ctxt a
-  | M.CallE (_, {it=M.DotE (e1, {it="size";_}, _);_}, _inst, arg)
+  | M.CallE (_, {it=M.DotE (e1, {it="size";_}, _);_}, _inst, (_, arg))
     when !(arg).it = M.(TupE [])
       -> sizeE (!arg).at (exp ctxt e1)
   | M.LitE r ->
@@ -962,7 +962,7 @@ and exp ctxt e =
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
       !!(CallE (tup_con_name n, List.map (exp ctxt) es))
-  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}, _); _ }, _inst, arg)
+  | M.CallE (_, { it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}, _); _ }, _inst, (_, arg))
      when match !arg with
           | { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ } ->
             Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)

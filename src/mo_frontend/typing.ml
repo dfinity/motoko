@@ -2489,7 +2489,7 @@ and insert_holes at ts es =
   then go 0 ts es
   else es
 
-and infer_call env exp1 inst ref_exp2 at t_expect_opt =
+and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
@@ -2513,21 +2513,24 @@ and infer_call env exp1 inst ref_exp2 at t_expect_opt =
       | t' -> T.unit, [(t, t')]
     end
   in
+  (*  let inserted = ref false in *) (* investigate with implicit-bug.mo *)
   let exp2 =
     let es = match exp2.it with
-      | TupE es -> es
+      | TupE es when not parenthesized -> es
       | _ -> [exp2] in
     (* Must not use T.as_seq here, as T.normalize will clear the
        `implicit` Name in case of a single implicit argument *)
     let ts = match t_arg with
       | T.Tup ts -> ts
       | t -> [t] in
+    (*    inserted := List.length ts <> List.length es; *)
     let e' = match insert_holes exp2.at ts es with
       | [e] -> e.it
       | es -> TupE es in
     { exp2 with it = e'}
   in
-  ref_exp2 := exp2;
+  if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
+  (*  if ! inserted then Wasm.Sexpr.print 80 (Arrange.exp exp2); *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)

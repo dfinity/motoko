@@ -276,6 +276,7 @@ and objblock eo s id ty dec_fields =
 %left POWOP WRAPPOWOP
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
+%type<Mo_def.Syntax.exp * bool> exp_arg
 %type<Mo_def.Syntax.typ_item> typ_item
 %type<Mo_def.Syntax.typ> typ_un typ_nullary typ typ_pre typ_nobin
 %type<Mo_def.Syntax.vis> vis
@@ -638,6 +639,20 @@ exp_nullary [@recover.expr mk_stub_expr loc] (B) :
   | UNDERSCORE
     { VarE ("_" @~ at $sloc) @? at $sloc }
 
+exp_arg:
+  | e=ob { e, false }
+  | l=lit
+    { LitE(ref l) @? at $sloc, false }
+  | LPAR es=seplist(exp(ob), COMMA) RPAR
+    { match es with [e] -> e, true | _ -> TupE(es) @? at $sloc, false }
+  | x=id
+    { VarE (x.it @~ x.at) @? at $sloc, false }
+  | PRIM s=TEXT
+    { PrimE(s) @? at $sloc, false }
+  | UNDERSCORE
+    { VarE ("_" @~ at $sloc) @? at $sloc, false }
+
+
 exp_post(B) :
   | e=exp_nullary(B)
     { e }
@@ -649,8 +664,11 @@ exp_post(B) :
     { ProjE (e, int_of_string s) @? at $sloc }
   | e=exp_post(B) DOT x=id
     { DotE(e, x, ref None) @? at $sloc }
-  | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(None, e1, inst, ref e2) @? at $sloc }
+  | e1=exp_post(B) inst=inst e2=exp_arg
+    {
+      let e2, sugar = e2 in
+      CallE(None, e1, inst, (sugar, ref e2)) @? at $sloc
+    }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR
@@ -661,8 +679,9 @@ exp_post(B) :
 exp_un(B) :
   | e=exp_post(B)
     { e }
-  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(par, e1, inst, ref e2) @? at $sloc }
+  | par=parenthetical e1=exp_post(B) inst=inst e2=exp_arg
+     { let e2, sugar = e2 in
+       CallE(par, e1, inst, (sugar, ref e2)) @? at $sloc }
   | HASH x=id
     { TagE (x, TupE([]) @? at $sloc) @? at $sloc }
   | HASH x=id e=exp_nullary(ob)
