@@ -6,13 +6,15 @@
 
      Function and class parameters can be declared *implicit* using a specially named type of the form:
 
-     * `implicit : <typ>`.
-     * `implicit : (<id> : <typ>)`.
+     * `implicit : <typ>` (implicit named or anonymous parameter).
+     * `implicit : (<id> : <typ>)` (implicit parameter matching name `<id>` and `<typ>`).
+     * `implicit : (_ : <typ>)` (implicit parameter matching `<typ>` under any name).
 
      This is just a special case of a named type in Motoko with special name "implicit".
 
      The arguments corresponding to implicit parameters can be omitted at call sites, provided the compiler can unambiguously resolve using a declaration of the given name and matching type, in either the current scope or the fields of a module in the current scope. By default, the name is determined by the parameter declared `implicit` but can be specified to be another name,
-     `<id>` using the second form of `implicit` type annotation above (see `Pair.toText` below for an example).
+     `<id>`, using the second form of `implicit` type annotation above (see `Pair.toText` below for an example).
+     An unnamed parameter or a named parameter declared with the third form of anonymous declaration matches any name in the context that has a matching type only.
 
      Any candidate from the current scope is preferred over candidates from nested scopes.
 
