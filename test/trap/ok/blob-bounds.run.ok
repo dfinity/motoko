@@ -15,12 +15,10 @@ Last environment:
 @create_actor_helper = <func>
 @cycles = 0
 @dedup2 = <func>
-@dedup_hash_counter = 0
 @digits_dec = <func>
 @digits_hex = <func>
 @equal_array = <func>
 @getSystemRefund = <func>
-@hash_array = []
 @ic00 = ""
 @immut_array_get = <func>
 @immut_array_keys = <func>
