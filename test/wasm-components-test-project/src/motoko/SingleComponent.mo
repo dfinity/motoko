@@ -1,3 +1,3 @@
-import meet_and_greet "component:meet_and_greet";
+import zstd "component:zstd";
 
-ignore meet_and_greet.sayHello("Bob");
+ignore zstd.decodeAll("Bob");
