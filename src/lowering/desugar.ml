@@ -100,13 +100,13 @@ and exp' at note = function
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
   | S.TagE (c, e) -> (tagE c.it (exp e)).it
-  | S.DotE (e, x) when T.is_array e.note.S.note_typ ->
+  | S.DotE (e, x, _) when T.is_array e.note.S.note_typ ->
     (array_dotE e.note.S.note_typ x.it (exp e)).it
-  | S.DotE (e, x) when T.is_prim T.Blob e.note.S.note_typ ->
-    (blob_dotE  x.it (exp e)).it
-  | S.DotE (e, x) when T.is_prim T.Text e.note.S.note_typ ->
-    (text_dotE  x.it (exp e)).it
-  | S.DotE (e, x) ->
+  | S.DotE (e, x, _) when T.is_prim T.Blob e.note.S.note_typ ->
+    (blob_dotE x.it (exp e)).it
+  | S.DotE (e, x, _) when T.is_prim T.Text e.note.S.note_typ ->
+    (text_dotE x.it (exp e)).it
+  | S.DotE (e, x, _) ->
     begin match T.as_obj_sub [x.it] e.note.S.note_typ with
     | T.Actor, _ -> I.PrimE (I.ActorDotPrim x.it, [exp e])
     | _ -> I.PrimE (I.DotPrim x.it, [exp e])
@@ -228,15 +228,20 @@ and exp' at note = function
   | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   (* Optimizing array.size() *)
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.is_array e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "array_len", [exp e1])
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.(is_prim Text) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "text_len", [exp e1])
-  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj, _); _}, _, {it=S.TupE [];_})
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
+  (* Contextual dot call *)
+  | S.CallE (None, {it=S.DotE(e1, id, n);_}, inst, e2) when Option.is_some !n ->
+     let func_exp = Option.get !n in
+     let args = S.contextual_dot_args e1 e2 func_exp in
+     I.(PrimE (CallPrim inst.note, [exp func_exp; exp args]))
   (* Normal call *)
   | S.CallE (None, e1, inst, e2) ->
     I.(PrimE (CallPrim inst.note, [exp e1; exp e2]))
@@ -271,7 +276,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, {it=S.CallE (None, {it=S.DotE (arr, proj); _}, _, e1); _}, e2)
+  | S.ForE (p, {it=S.CallE (None, {it=S.DotE (arr, proj, _); _}, _, e1); _}, e2)
       when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "values" || proj.it = "keys")
     -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it
@@ -337,7 +342,7 @@ and lexp e =
 
 and lexp' = function
   | S.VarE i -> I.VarLE i.it
-  | S.DotE (e, x) -> I.DotLE (exp e, x.it)
+  | S.DotE (e, x, _) -> I.DotLE (exp e, x.it)
   | S.IdxE (e1, e2) -> I.IdxLE (exp e1, exp e2)
   | _ -> raise (Invalid_argument ("Unexpected expression as lvalue"))
 

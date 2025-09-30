@@ -183,7 +183,7 @@ and exp' =
   | ObjBlockE of exp option * obj_sort * (id option * typ option) * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
-  | DotE of exp * id                           (* object projection *)
+  | DotE of exp * id * contextual_dot_note     (* object projection *)
   | AssignE of exp * exp                       (* assignment *)
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
@@ -228,6 +228,9 @@ and exp_field' = {mut : mut; id : id; exp : exp}
 and case = case' Source.phrase
 and case' = {pat : pat; exp : exp}
 
+(* When `Some`, this holds the expression that produces the function to apply to the receiver.
+   eg. when `f.x(args...)` desugars to `M.f(x, args...)` the note will hold `M.f` *)
+and contextual_dot_note = exp option ref
 
 (* Declarations *)
 
@@ -239,7 +242,6 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
-
 
 (* Program (pre unit detection) *)
 
@@ -368,3 +370,17 @@ let is_ignore_asyncE e =
         {it = AsyncT (Type.Fut, _, {it = TupT []; _}); _}); _} ->
     true
   | _ -> false
+
+let contextual_dot_args e1 e2 dot_note =
+  let module T = Mo_types.Type in
+  let arity = match dot_note.note.note_typ with
+    | T.Func(_, _, _, args, _) -> List.length args
+    | _ -> raise (Invalid_argument "non-function type in contextual dot note") in
+  let args = match e2 with
+    | { it = TupE []; at; note = { note_eff;_ } } ->
+       { it = e1.it; at; note = { note_eff; note_typ = e1.note.note_typ } }
+    | { it = TupE exps; at; note = { note_eff; note_typ = T.Tup ts } } when arity <> 2 ->
+       { it = TupE (e1::exps); at; note = { note_eff; note_typ = T.Tup (e1.note.note_typ::ts) } }
+    | { at; note = { note_eff; _ }; _ } ->
+       { it = TupE ([e1; e2]); at; note = { note_eff; note_typ = T.Tup ([e1.note.note_typ; e2.note.note_typ]) } }
+  in args
