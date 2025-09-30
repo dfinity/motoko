@@ -26,36 +26,35 @@ persistent actor {
     };
     len;
   };
+  func showMeAllBlobs(hashArray : [var List]) : () {
+    var i = 0;
+    while (i < 16_384) {
+      // Deref the weak ref.
+      let weakRef = hashArray[i].value;
+      switch weakRef {
+        case (?weakRef) {
+          Prim.debugPrint(debug_show (hashArray[i].originalBlob));
+          Prim.debugPrint(debug_show ("============"));
+          Prim.debugPrint(debug_show (weakRef.ref));
+        };
+        case null {};
+      };
+      i += 1;
+    };
+  };
 
   public func test2() : async () {
-    let blob0 : Blob = "a";
-    let blob1 : Blob = "!caf!hello";
-    let blob2 : Blob = "!caf!world";
-    let blob3 : Blob = "acaf!hello";
-    let blob4 : Blob = "!caf!letmetestyou";
-    await test(blob1);
-    await test(blob2);
-    await test(blob3);
-    await test(blob1);
-    await test(blob2);
-    await test(blob3);
-    var counter = 20;
-    while (counter > 0) {
-      await test(blob1);
-      await test(blob2);
-      await test(blob3);
-      await test(blob0);
-      await test(blob4);
-      counter -= 1;
-    };
 
     let hash = Prim.__getDedupTable();
     switch hash {
       case (?hashArray) {
-        assert (getHashArrayLen(hashArray) == 3);
+        Prim.debugPrint(debug_show (getHashArrayLen(hashArray)));
+        assert (getHashArrayLen(hashArray) == 6);
+        //showMeAllBlobs(hashArray);
       };
       case null {};
     };
+
   };
 
 };
@@ -64,5 +63,3 @@ persistent actor {
 //SKIP run-ir
 //SKIP run-low
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
-
-//CALL ingress test2 "DIDL\x00\x00"

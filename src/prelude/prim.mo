@@ -127,7 +127,7 @@ type __WeakRef = {
 type __List = {
   next : ?__List;
   value : ?__WeakRef;
-  hashValue : Nat32;
+  originalBlob : Blob;
   index : Nat;
 };
 func __getDedupTable() : ?[var __List] {
