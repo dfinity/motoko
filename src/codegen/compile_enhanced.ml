@@ -12606,6 +12606,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "root_key", [] ->
     SR.Vanilla, IC.get_root_key env
 
+  | OtherPrim "canister_self", [] ->
+    SR.Vanilla, IC.get_self_reference env
+
   (* Other prims, binary *)
   | OtherPrim "Array.init", [_;_] ->
     const_sr SR.Vanilla (Arr.init env)
