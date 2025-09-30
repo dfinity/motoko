@@ -80,12 +80,16 @@ let string_of_message msg =
 let is_warning_as_error msg =
   msg.sev = Warning && Flags.get_warning_level msg.code = Flags.Error
 
+let is_treated_as_error msg =
+  msg.sev = Error || is_warning_as_error msg
+
+let normalize_severity msg =
+  if is_warning_as_error msg
+  then { msg with sev = Error }
+  else msg
+
 let print_message msg =
-  let msg =
-    if is_warning_as_error msg
-    then { msg with sev = Error }
-    else msg
-  in
+  let msg = normalize_severity msg in
   if msg.sev <> Error && not !Flags.print_warnings
   then ()
   else Printf.eprintf "%s%!" (string_of_message msg)
