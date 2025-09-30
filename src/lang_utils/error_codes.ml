@@ -195,6 +195,7 @@ let error_codes : (string * string option) list =
     "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
+    "M0224", None; (* Wasm components support not enabled, use -wasm-components flag *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)
