@@ -12,7 +12,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
         #system_unknown
       };
     type __List =
-      {hashValue : Nat32; index : Nat; next : ?__List; value : ?__WeakRef};
+      {index : Nat; next : ?__List; originalBlob : Blob; value : ?__WeakRef};
     type __WeakRef = {ref : weak Blob};
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
