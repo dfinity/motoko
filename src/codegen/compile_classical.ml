@@ -19,7 +19,6 @@ open Wasm_exts.Ast
 open Source
 
 open Compile_common
-open Imported_components
 
 
 module Wasm = struct
@@ -10396,23 +10395,10 @@ end
 *)
 module WasmComponent = struct
   open Mo_types.Type
+  include Imported_components.CanonicalABI
 
   let (let*) f k = f k
   let seq2 (a, b) = a ^^ b
-
-  let normalize typ = Imported_components.normalize typ
-
-  let discriminant_prim cases =
-    let n = List.length cases in
-    let open Stdlib.Float in
-    match int_of_float (ceil (log2 (of_int n) /. 8.)) with
-    | 0
-    | 1 -> Nat8
-    | 2 -> Nat16
-    | 3 -> Nat32
-    | _ -> assert false
-
-  let discriminant_type cases = Prim (discriminant_prim cases)
 
   let set_variant_tag env cases k =
     let (set_tag, get_tag) = new_local env "variant_tag" in
@@ -10421,50 +10407,6 @@ module WasmComponent = struct
     get_tag ^^ compile_unboxed_const (Int32.of_int (List.length cases)) ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
     E.else_trap_with env "canonical-abi: variant index out of bounds" ^^
     k get_tag
-
-  let rec flatten_type typ =
-    match normalize typ with
-    | Prim (Blob | Text)
-    | Array _ -> [I32Type; I32Type] (* pointer + length *)
-    | Variant cases -> flatten_variant cases
-    | Tup ts -> flatten_tuple ts
-    | Prim (Bool | Char | Nat8 | Int8 | Nat16 | Int16 | Nat32 | Int32) -> [I32Type]
-    | Prim (Nat64 | Int64) -> [I64Type]
-    | Prim Float -> [F64Type]
-    | _ -> failwith (Printf.sprintf "flatten_type: unsupported type %s" (string_of_typ typ))
-
-  and flatten_tuple ts =
-    List.concat_map flatten_type ts
-
-  and flatten_variant cases =
-    let join a b =
-      if a = b then a else
-      match a, b with
-      | I32Type, F32Type
-      | F32Type, I32Type -> I32Type
-      | _ -> I64Type
-    in
-    let flat = ref [] in
-    cases |> List.iter (fun f ->
-      flatten_type f.typ |> List.iteri (fun idx ft ->
-        if idx < List.length !flat then
-          flat := List.mapi (fun i t -> if idx = i then join t ft else t) !flat
-        else
-          flat := !flat @ [ft]));
-    flatten_type (discriminant_type cases) @ !flat
-
-  let needs_out_param = function
-    (* Canonical ABI allows for max 1 return value *)
-    | [_] | [] -> false
-    (* If there are multiple return values, we need to use out-parameters via a pointer *)
-    | _ -> true
-
-  let flatten_return_type typ =
-    let flat = flatten_type typ in
-    if needs_out_param flat then
-      [I32Type], []
-    else
-      [], flat
 
   let realloc env elem_align byte_len =
     (* Use RTS cabi_realloc to ensure proper alignment per Canonical ABI *)
@@ -10504,17 +10446,6 @@ module WasmComponent = struct
 
   and max_case_alignment cases =
     List.fold_left (fun m f -> Int32.max m (alignment f.typ)) 1l cases
-
-  let ceil_int32 x =
-    Int32.of_int (Stdlib.Float.to_int (Stdlib.Float.ceil (Stdlib.Float.of_int (Int32.to_int x))))
-
-  let align_to (ptr : G.t) alignment =
-    (* math.ceil(ptr / alignment) * alignment *)
-    if Int32.compare alignment 1l <= 0 then ptr else
-    ptr ^^
-    compile_add_const (Int32.sub alignment 1l) ^^
-    compile_divU_const alignment ^^
-    compile_mul_const alignment
 
   let align_to_i32 (ptr : int32) (alignment : int32) : int32 =
     (* Round up ptr to next multiple of alignment. Alignments are powers of two. *)
@@ -12330,10 +12261,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ComponentPrim (_, component_name, function_name, arg_types, return_type), es ->
     if not !Flags.wasm_components then
-        begin
-          Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom ("Wasm components support not enabled, use -wasm-components"));
-          exit 0
-        end;
+      failwith "Wasm components support not enabled, use -wasm-components";
     StackRep.of_type return_type,
     let open WasmComponent in
     assert (List.length es = List.length arg_types);
@@ -13950,7 +13878,7 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content =
+and conclude_module env set_serialization_globals start_fi_o wit_wac =
 
   RTS_Exports.system_exports env;
 
@@ -14042,8 +13970,7 @@ and conclude_module env set_serialization_globals start_fi_o maybe_wit_file_cont
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;
-      wit_file_content = maybe_wit_file_content;
-      wac_file_content = maybe_wac_file_content;
+      wit_wac;
     } in
 
   match E.get_rts env with
@@ -14065,31 +13992,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   let set_serialization_globals = Serialization.register_delayed_globals env in
 
   (* Use Wasm components, if enabled *)
-  let maybe_wit_file_content, maybe_wac_file_content = 
-    if !Flags.wasm_components then 
-      begin
-        Wasm.Sexpr.print 80 (Wasm.Sexpr.Atom ("Compiling with Wasm components..."));
-        let imported_components = ref Imported_components.empty in
-        (* Add imports to the environment *)
-        let add_import component_name function_name arg_types return_type = 
-          imported_components := add_imported_component
-            ~component_name 
-            ~imported_function:{ function_name; args = arg_types; return_type }
-            !imported_components;
-          let wasm_args = List.concat_map (fun arg -> WasmComponent.flatten_type arg.Import_components_ir.arg_type) arg_types in
-          let extra_out_param, wasm_results = WasmComponent.flatten_return_type return_type in
-          let wasm_args = wasm_args @ extra_out_param in
-          E.add_func_import env component_name function_name wasm_args wasm_results in
-
-        let () = (Import_components_ir.prog_fun add_import prog) in
-        (* Generate the imported components as WIT file *)
-        let wit_file_content = (imported_components_to_wit !imported_components) in
-        (* Generate the WAC file to compose the components*)
-        let wac_file_content = (imported_components_to_wac !imported_components) in
-        Some wit_file_content, Some wac_file_content
-      end
-    else
-      None, None
+  let wit_wac = 
+    if !Flags.wasm_components
+    then Some (Imported_components.add_imports_and_generate_wit_wac (E.add_func_import env) prog)
+    else None
   in
   
   (* Register the imports *)
@@ -14108,4 +14014,4 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o maybe_wit_file_content maybe_wac_file_content
+  conclude_module env set_serialization_globals start_fi_o wit_wac

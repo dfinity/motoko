@@ -13801,8 +13801,7 @@ and conclude_module env set_serialization_globals start_fi_o =
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;
-      wit_file_content = None;
-      wac_file_content = None;
+      wit_wac = None;
     } in
 
   (* For debugging *)

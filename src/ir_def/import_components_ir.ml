@@ -7,17 +7,7 @@ type arg_data = {
   arg_type : Type.typ;
 }
 
-let the_env : int ref  = ref 0
-
-let sent_env new_env =
-  the_env := new_env
-
-let starts_with ~prefix s =
-  let prefix_len = String.length prefix in
-  String.length s >= prefix_len &&
-  String.sub s 0 prefix_len = prefix 
-
-let prog_fun add_import p = 
+let traverse add_import p = 
 let rec exp e = match e.it with
   | VarE (m, i)         -> ()
   | LitE l              -> ()
@@ -69,8 +59,7 @@ and prim e es = function
       let function_args = List.map2 (fun arg arg_type -> {arg_name=string_of_arg arg; arg_type}) es arg_types in
 
       (* Add the import to the component *)
-      add_import component_name function_name function_args return_type;
-      ()
+      add_import component_name function_name function_args return_type
   | _ -> ()
 
 and case c = exp c.it.exp

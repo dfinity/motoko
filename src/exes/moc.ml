@@ -343,21 +343,18 @@ let process_files files : unit =
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
 
-    (match module_.CustomModule.wit_file_content with
-    | Some wit_content ->
-      let wit_file = Filename.remove_extension !out_file ^ ".wit" in
-      let oc_wit = open_out wit_file in
-      output_string oc_wit wit_content; close_out oc_wit
-    | None -> ()
+    let open Wasm_exts.CustomModule in
+    module_.wit_wac |> Option.iter (fun {wit_file_content; wac_file_content} ->
+      let filename = Filename.remove_extension !out_file in
+      let dump content ext =
+        let oc = open_out (filename ^ ext) in
+        output_string oc content;
+        close_out oc
+      in
+      dump wit_file_content ".wit";
+      dump wac_file_content ".wac";
     );
 
-    (match module_.CustomModule.wac_file_content with
-    | Some wac_content ->
-      let wac_file = Filename.remove_extension !out_file ^ ".wac" in
-      let oc_wac = open_out wac_file in
-      output_string oc_wac wac_content; close_out oc_wac
-    | None -> ()
-    );
     if !gen_source_map then begin
       let oc_ = open_out source_map_file in
       output_string oc_ source_map; close_out oc_
