@@ -1,0 +1,110 @@
+--- Running target/motoko-composed.wasm on wasmtime ...
+
+===== Meet-and-greet basic functionality: 
+✅ sayHello:  Hello Bob!
+✅ sayBye, informal:  Bye Alice!
+✅ sayBye, formal:  Goodbye Carol!
+
+===== BLS signature verification: 
+✅ BLS sig: ace9..b2f7 for msg 0d69..6d90 and pk 814c..aaae is valid, as expected
+✅ BLS sig: 89a2..21b1 for msg 0d69..5ea9 and pk 9933..94fe is valid, as expected
+✅ BLS sig: 89a2..21b1 for msg 0d69..6d90 and pk 814c..aaae is invalid, as expected
+✅ BLS sig: ace9..b2f7 for msg 0d69..5ea9 and pk 9933..94fe is invalid, as expected
+✅ BLS sig: ace9..b2f8 for msg 0d69..6d90 and pk 814c..aaae is invalid, as expected
+✅ BLS sig: ace9..b2f7 for msg 0d69..6d90 and pk 814c..aaad is invalid, as expected
+
+===== Canister Signature verification: 
+✅ Canister sig: d9d9..11a2 for msg 1a69..5830 pk 303c..e547 and root pk adf6..ed1f is valid, as expected
+✅ Canister sig: d9d9..abde for msg 1a69..6651 pk 303c..5940 and root pk adf6..ed1f is invalid, as expected
+✅ Canister sig: d9d9..0340 for msg 1a69..6651 pk 303c..2bf0 and root pk adf6..ed1f is valid, as expected
+✅ Canister sig: d9d9..abde for msg 1a69..6651 pk 303c..5940 and root pk 814c..aaae is valid, as expected
+✅ Canister sig: d9d9..66ef for msg 1a69..6651 pk 303c..6ce9 and root pk 814c..aaae is valid, as expected
+
+===== Error reported by a component: 
+✅ verifyCanisterSigMainnet:  #err("failed parsing arguments of verify_canister_sig")
+✅ verifyCanisterSigMainnet:  #err("signature CBOR doesn't have a self-describing tag")
+
+===== Data compression using zstd
+✅ Compression round-trip successful for data of length 98, compressed to length 66.
+✅ Compression round-trip successful for data of length 96, compressed to length 54.
+✅ Compression round-trip successful for data of length 4_500, compressed to length 63.
+
+===== Various primitive types in arguments and the return value: 
+✅ Concat0:  concat0
+✅ Concat2:  concat2: Hello World
+✅ Prim Bool true
+✅ Prim Bool false
+✅ Prim Char 'a'
+✅ Prim U8 123
+✅ Prim U16 12_345
+✅ Prim U32 1_234_567_890
+✅ Prim U64 12_345_678_901_234_567_890
+✅ Prim I8 -125
+✅ Prim I16 -12_349
+✅ Prim I32 -1_234_567_893
+✅ Prim I64 -1_234_567_890_123_456_789
+✅ Prim F64 1234567890.123457
+✅ Prim Text In +36
+✅ Prim Text Out Hello; emoji: ☃❄🌨; FooBär☃!
+✅ Prim Text Hello; emoji: ☃❄🌨; FooBär☃!
+✅ Vec U16 vec_u16: 1, 2, 3
+✅ Vec Text vec_string: Hello, World
+✅ Vec I8 vec_i8: 1, 2, 3, 4
+✅ Vec U8 As Blob vec_u8_as_blob: 1, 2, 3, 4
+✅ Vec U32 vec_u32: 10, 20, 30
+✅ Vec I32 vec_i32: -1, -2, 3
+✅ Vec I64 vec_i64: -1, -2, 3
+✅ Vec Bool vec_bool: true, false, true
+✅ Vec Text Nested vec_string_nested: A|B; C
+✅ Vec Char vec_char: abc
+✅ Vec F64 vec_f64: 1.25, -2.5, 3
+✅ To Vec Bool [true, false, true, false]
+✅ To Vec Char ['@', 'a']
+✅ To Vec I8 [+1, +97]
+✅ To Vec U8 As Blob [1, 97]
+✅ To Vec I16 [+2, 0]
+✅ To Vec U32 [4, 2]
+✅ To Vec I64 [+2, 0]
+✅ To Vec F64 [2.000000, 0.700000]
+✅ To Vec String ["Hello!", "World!"]
+✅ To Vec Vec Simple [[0, 0], [1, 1]]
+✅ To Vec Vec U64 [[1, 1], [2, 2]]
+✅ To Vec Vec [[1, 2, 3], [2, 3, 4]]
+✅ Variant In #def
+✅ Variant In #abc, #gh
+✅ Variant Array In #abc, #def, #gh
+✅ Variant Result Same In ok(1)
+✅ Variant Result Same In err(2)
+✅ Variant String In c(Hello)
+✅ Variant Result In ok(1)
+✅ Variant Result In err(error)
+✅ Variant Array Result Same In ok(1), err(2)
+✅ Variant Array Result In ok(1), err(error)
+✅ Variant 11 #def
+✅ Variant 12 #gh
+✅ Variant Array [#def, #gh, #abc]
+✅ Variant Result Same #ok(2)
+✅ Variant Result #ok(2)
+✅ Variant Result #err("error!")
+✅ Variant String #c("hello!")
+✅ Variant Array Result Same [#ok(2), #err(3)]
+✅ Variant Array Result [#ok(2), #err("error!")]
+✅ Nested Variant 1 1 #ok(#ok(#c("hello!")))
+✅ Nested Variant 1 2 #ok(#err("error!"))
+✅ Nested Variant 1 3 #err(#def)
+✅ Nested Variant 2 1 #ok(#ok(#def))
+✅ Nested Variant 2 2 #ok(#err("error!"))
+✅ Nested Variant 2 3 #err(#c("hello!"))
+✅ Tuple String U64 ("hello!", 2)
+✅ Tuple Variant Array Result (#def, ["hello!", "world!"], #ok(2))
+✅ Tuples Nested1 ((false, 3), (3, 7))
+✅ Tuples Nested ((false, 3), (3, 7))
+✅ Unit ()
+✅ Unit Result #ok
+✅ Unit Result #ok
+✅ Unit Result Er #err("abc!")
+✅ Unit Result Er #ok
+✅ Unit Result Ok #ok("abc!")
+✅ Unit Result Ok #err
+✅ All tests passed!
+--- Run done.
