@@ -117,6 +117,7 @@ pub unsafe fn weak_ref_is_live<M: Memory>(_mem: &mut M, weak_ref: Value) -> bool
 /// Get the dedup table.
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
+#[cfg(feature = "ic")]
 pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
     use crate::persistence::get_dedup_table_ptr;
     *get_dedup_table_ptr()
@@ -125,6 +126,7 @@ pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
 /// Set the dedup table.
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
+#[cfg(feature = "ic")]
 pub unsafe fn set_dedup_table<M: Memory>(_mem: &mut M, dedup_table: Value) {
     use crate::persistence::set_dedup_table_ptr;
     set_dedup_table_ptr(dedup_table);
