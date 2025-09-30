@@ -4,16 +4,15 @@
 
    * Add support for `implicit` argument declarations (#5517).
 
-     Function and class parameters can be declared *implicit* using a specially named type of the form
+     Function and class parameters can be declared *implicit* using a specially named type of the form:
 
      * `implicit : <typ>`.
      * `implicit : (<id> : <typ>)`.
 
      This is just a special case of a named type in Motoko with special name "implicit".
 
-     The arguments corresponding to implicit parameters can be omitted at call sites, provided the compiler can unambiguously
-     resolve using a declaration of the given name and matching type, in either the current scope or the fields of a module in
-     the current scope.
+     The arguments corresponding to implicit parameters can be omitted at call sites, provided the compiler can unambiguously resolve using a declaration of the given name and matching type, in either the current scope or the fields of a module in the current scope. By default, the name is determined by the parameter declared `implicit` but can be specified to be another name,
+     `<id>` using the second form of `implicit` type annotation above (see `Pair.toText` below for an example).
 
      Any candidate from the current scope is preferred over candidates from nested scopes.
 
@@ -49,7 +48,7 @@
      Array.toText([1,2,3]) // implicit arguments
        |> debugPrint _;
      Pair.toText((1,2))
-       |> debugPrint _ ; // implicit arguments
+       |> debugPrint _; // implicit arguments
      ```
 
 ## 0.16.3 (2025-09-29)
