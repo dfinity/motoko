@@ -2,8 +2,12 @@ import Prim "mo:prim";
 
 persistent actor {
 
+  let keepAlive : [var Blob] = Prim.Array_tabulateVar<Blob>(100, func(i : Nat) : Blob = "");
+  var counter = 0;
+
   public func test(b : Blob) : async () {
-    Prim.debugPrint(debug_show (b));
+    // No more appending to the keepAlive array.
+    let a = b;
   };
 
   // WeakRef type.
@@ -26,6 +30,14 @@ persistent actor {
     };
     len;
   };
+
+  let blobArr : [Blob] = [
+    "a",
+    "!caf!hello",
+    "!caf!world",
+    "acaf!hello",
+    "!caf!letmetestyou",
+  ];
 
   public func test2() : async () {
 

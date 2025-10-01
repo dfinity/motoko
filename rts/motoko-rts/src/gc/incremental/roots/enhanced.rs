@@ -29,6 +29,11 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
             visit_field(context, location);
         }
     }
+    // Always visit the dedup table as well.
+    // Otherwise the dedup table will be garbage collected.
+    use crate::persistence::get_dedup_table_ptr;
+    let dedup_table = get_dedup_table_ptr();
+    visit_field(context, dedup_table);
 }
 
 #[cfg(feature = "ic")]
@@ -62,23 +67,11 @@ pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M,
     use crate::types::{NULL_POINTER, TAG_ARRAY_M};
     use core::ptr::addr_of_mut;
 
-    // Add another element for the dedup table.
-    let amount = amount + 1;
-
     let variables = alloc_array(mem, TAG_ARRAY_M, amount);
     let array = variables.as_array();
-    for index in 0..amount - 1 {
+    for index in 0..amount {
         array.initialize(index, NULL_POINTER, mem);
     }
-    // We need to link in the dedup table.
-    // Get the dedup table from the persistent metadata.
-    // The first time the program runs, the dedup table will be null.
-    // While the program runs and we dedup blobs, the dedup table will be initialized.
-    // In an upgrade, when this code is run again, the dedup table will be initialized and
-    // this code will set it to a proper value.
-    use crate::persistence::get_dedup_table_ptr;
-    let dedup_table = get_dedup_table_ptr();
-    array.initialize(amount - 1, *dedup_table, mem);
 
     let location = addr_of_mut!(STATIC_VARIABLES) as *mut Value;
     write_with_barrier(mem, location, variables);

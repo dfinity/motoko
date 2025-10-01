@@ -49,9 +49,19 @@ persistent actor {
       counter -= 1;
     };
 
+    var n = 30;
+    // try to trigger GC.
+    while (n > 0) {
+      // Allocate large array.
+      let _arr = Prim.Array_init<Nat>(1_000 * 1_000, 1);
+      await async {};
+      n -= 1;
+    };
+
     let hash = Prim.__getDedupTable();
     switch hash {
       case (?hashArray) {
+        // The dedup table should still have 3 elements.
         assert (getHashArrayLen(hashArray) == 3);
       };
       case null {};
@@ -64,5 +74,6 @@ persistent actor {
 //SKIP run-ir
 //SKIP run-low
 //ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+//MOC-NO-FORCE-GC
 
 //CALL ingress test2 "DIDL\x00\x00"

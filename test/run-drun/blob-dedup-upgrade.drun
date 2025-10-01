@@ -5,4 +5,6 @@ upgrade $ID blob-dedup-upgrade/v2.mo ""
 ingress $ID test2 "DIDL\x00\x00"
 upgrade $ID blob-dedup-upgrade/v3.mo ""
 ingress $ID test2 "DIDL\x00\x00"
+ingress $ID test3 "DIDL\x00\x00"
+
 

@@ -129,5 +129,10 @@ pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
 #[cfg(feature = "ic")]
 pub unsafe fn set_dedup_table<M: Memory>(_mem: &mut M, dedup_table: Value) {
     use crate::persistence::set_dedup_table_ptr;
+    if !dedup_table.is_array() {
+        crate::rts_trap_with(
+            "set_dedup_table: Invalid dedup table pointer. This is a bug, report to the Motoko team.",
+        );
+    }
     set_dedup_table_ptr(dedup_table);
 }

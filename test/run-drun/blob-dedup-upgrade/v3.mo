@@ -2,8 +2,12 @@ import Prim "mo:prim";
 
 persistent actor {
 
+  let keepAlive : [var Blob] = Prim.Array_tabulateVar<Blob>(100, func(i : Nat) : Blob = "");
+  var counter = 0;
+
   public func test(b : Blob) : async () {
-    Prim.debugPrint(debug_show (b));
+    // No more appending to the keepAlive array.
+    let a = b;
   };
 
   // WeakRef type.
@@ -22,6 +26,33 @@ persistent actor {
     var i = 0;
     while (i < 16_384) {
       len += hashArray[i].index;
+      i += 1;
+    };
+    len;
+  };
+  func getLiveBlobs(hashArray : [var List]) : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < 16_384) {
+      var list = hashArray[i];
+      label countLoop loop {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = Prim.weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) { len += 1 };
+              case null {};
+            };
+          };
+          case null {};
+        };
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          case null { break countLoop };
+        };
+      };
       i += 1;
     };
     len;
@@ -51,6 +82,39 @@ persistent actor {
         Prim.debugPrint(debug_show (getHashArrayLen(hashArray)));
         assert (getHashArrayLen(hashArray) == 6);
         //showMeAllBlobs(hashArray);
+      };
+      case null {};
+    };
+
+  };
+
+  let blobArr : [Blob] = [
+    "a",
+    "!caf!hello",
+    "!caf!world",
+    "acaf!hello",
+    "!caf!letmetestyou",
+  ];
+
+  public func test3() : async () {
+
+    var n = 20;
+    // try to trigger GC.
+    while (n > 0) {
+      // Allocate large array.
+      let _arr = Prim.Array_init<Nat>(1_000 * 1_000, 1);
+      await async {};
+      n -= 1;
+    };
+
+    let hash = Prim.__getDedupTable();
+    switch hash {
+      case (?hashArray) {
+        // The number of live blobs should be 3.
+        // because only blobs from v1 are kept alive.
+        // blobs from v2 are collected by the GC since there is nothing referencing them.
+        Prim.debugPrint(debug_show (getLiveBlobs(hashArray)));
+        assert (getLiveBlobs(hashArray) == 3);
       };
       case null {};
     };

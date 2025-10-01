@@ -713,9 +713,6 @@ func @dedup2(b : Blob) : Blob {
     originalBlob : Blob;
     index : Nat;
   };
-  func Array_init<T>(len : Nat, x : T) : [var T] {
-    (prim "Array.init" : <T>(Nat, T) -> [var T]) <T>(len, x);
-  };
   func Array_tabulate<T>(len : Nat, gen : Nat -> T) : [T] {
     (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T]) <T>(len, gen);
   };
@@ -741,10 +738,7 @@ func @dedup2(b : Blob) : Blob {
   func setDedupTable(dedupTable : [var List]) {
     (prim "set_dedup_table" : [var List] -> ())(dedupTable);
   };
-  func blobToArray(b : Blob) : [Nat8] = (prim "blobToArray" : (Blob) -> [Nat8]) b;
-  func blobToArrayMut(b : Blob) : [var Nat8] = (prim "blobToArrayMut" : (Blob) -> [var Nat8]) b;
   func arrayToBlob(a : [Nat8]) : Blob = (prim "arrayToBlob" : [Nat8] -> Blob) a;
-  func arrayMutToBlob(a : [var Nat8]) : Blob = (prim "arrayMutToBlob" : [var Nat8] -> Blob) a;
   func getOriginalBlob(b : Blob) : Blob {
     // Creates a copy of the blob without the first 5 magic bytes ("!caf!").
     let copiedArr = Array_tabulate(b.size() - 5, func(i : Nat) : Nat8 = b[i + 5]);
@@ -763,6 +757,7 @@ func @dedup2(b : Blob) : Blob {
       originalBlob = originalBlob;
       index = list.index + 1;
     };
+    newList;
   };
 
   func getFromList(list : List, originalBlob : Blob) : ?WeakRef {
@@ -799,6 +794,7 @@ func @dedup2(b : Blob) : Blob {
     let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
     let list = hashArray[index];
     let weakRef = { ref = allocWeakRef(b) };
+    // Use a copy of the original blob (minus the magic bytes).
     hashArray[index] := addToList(list, getOriginalBlob(b), weakRef);
   };
 
@@ -806,6 +802,7 @@ func @dedup2(b : Blob) : Blob {
     let hashValue = hashBlob(b);
     let index = @nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
     let list = hashArray[index];
+    // Use the original blob (minus the magic bytes).
     getFromList(list, getOriginalBlob(b));
   };
   //
@@ -829,7 +826,6 @@ func @dedup2(b : Blob) : Blob {
       dedupTable;
     };
     case null {
-      //debugPrint("The dedup table is null so we initialize it.");
       // This means that the dedup table was not yet created.
       let arr = Array_tabulateVar<List>(HASH_ARRAY_SIZE, func(i : Nat) : List = { next = null; value = null; originalBlob = ""; index = 0 });
       // We need to set it via the RTS so that it is persisted.
@@ -843,7 +839,6 @@ func @dedup2(b : Blob) : Blob {
   let result = switch dedupedBlobWeakRef {
     case (?weakRef) {
       // It was in the hash so we dereference the WeakRef.
-      //debugPrint("It was in the hash so we dereference the WeakRef.");
       let derefed = weakGet(weakRef.ref);
       switch derefed {
         case (?derefed) { derefed };
@@ -858,7 +853,6 @@ func @dedup2(b : Blob) : Blob {
     // It wasn't in the hash so we put it in
     // and return the original.
     case null {
-      //debugPrint("It wasn't in the hash so we put it in and return the original.");
       addToHashArray(hashArray, b);
       b;
     };

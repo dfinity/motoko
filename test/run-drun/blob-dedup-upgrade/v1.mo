@@ -2,8 +2,12 @@ import Prim "mo:prim";
 
 persistent actor {
 
+  let keepAlive : [var Blob] = Prim.Array_tabulateVar<Blob>(100, func(i : Nat) : Blob = "");
+  var counter = 0;
+
   public func test(b : Blob) : async () {
-    Prim.debugPrint(debug_show (b));
+    keepAlive[counter] := b;
+    counter += 1;
   };
 
   // WeakRef type.
@@ -27,31 +31,29 @@ persistent actor {
     len;
   };
 
+  let blobArr : [Blob] = [
+    "a",
+    "!caf!hello",
+    "!caf!world",
+    "acaf!hello",
+    "!caf!letmetestyou",
+  ];
+
   public func test2() : async () {
-    let blob0 : Blob = "a";
-    let blob1 : Blob = "!caf!hello";
-    let blob2 : Blob = "!caf!world";
-    let blob3 : Blob = "acaf!hello";
-    let blob4 : Blob = "!caf!letmetestyou";
-    await test(blob1);
-    await test(blob2);
-    await test(blob3);
-    await test(blob1);
-    await test(blob2);
-    await test(blob3);
     var counter = 20;
     while (counter > 0) {
-      await test(blob1);
-      await test(blob2);
-      await test(blob3);
-      await test(blob0);
-      await test(blob4);
+      await test(blobArr[0]);
+      await test(blobArr[1]);
+      await test(blobArr[2]);
+      await test(blobArr[3]);
+      await test(blobArr[4]);
       counter -= 1;
     };
 
     let hash = Prim.__getDedupTable();
     switch hash {
       case (?hashArray) {
+        Prim.debugPrint(debug_show (getHashArrayLen(hashArray)));
         assert (getHashArrayLen(hashArray) == 3);
       };
       case null {};
