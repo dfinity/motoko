@@ -35,7 +35,9 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
         // Otherwise the dedup table will be garbage collected.
         use crate::persistence::get_dedup_table_ptr;
         let dedup_table = get_dedup_table_ptr();
-        visit_field(context, dedup_table);
+        if dedup_table.is_non_null_ptr() {
+            visit_field(context, dedup_table);
+        }
     }
 }
 
