@@ -12,6 +12,7 @@ type visitor =
 
 let rec over_exp (v : visitor) (exp : exp) : exp =
   v.visit_exp (match exp.it with
+  | HoleE (s, e) -> { exp with it = HoleE (s, ref (over_exp v !e)) }
   | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> exp
   | UnE (x, y, exp1) -> { exp with it = UnE (x, y, over_exp v exp1) }
   | ShowE (x, exp1) -> { exp with it = ShowE (x, over_exp v exp1) }
@@ -36,7 +37,7 @@ let rec over_exp (v : visitor) (exp : exp) : exp =
   | IdxE (exp1, exp2) -> { exp with it = IdxE (over_exp v exp1, over_exp v exp2) }
   | RelE (x, exp1, y, exp2) -> { exp with it = RelE (x, over_exp v exp1, y, over_exp v exp2) }
   | AssignE (exp1, exp2) -> { exp with it = AssignE (over_exp v exp1, over_exp v exp2) }
-  | CallE (exp_opt, exp1, inst, exp2) -> { exp with it = CallE (Option.map (over_exp v) exp_opt, over_exp v exp1, over_inst v inst, over_exp v exp2) }
+  | CallE (exp_opt, exp1, inst, (s, exp2)) -> { exp with it = CallE (Option.map (over_exp v) exp_opt, over_exp v exp1, over_inst v inst, (s, ref (over_exp v (!exp2)))) }
   | AndE (exp1, exp2) -> { exp with it = AndE (over_exp v exp1, over_exp v exp2) }
   | OrE (exp1, exp2) -> { exp with it = OrE (over_exp v exp1, over_exp v exp2) }
   | ImpliesE (exp1, exp2) -> { exp with it = ImpliesE (over_exp v exp1, over_exp v exp2) }

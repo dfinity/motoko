@@ -3,6 +3,7 @@ open Syntax
 open Source
 
 let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
+  | HoleE (s, exp1) -> f { exp with it = HoleE (s, ref (over_exp f (!exp1))) }
   | ImportE _ | PrimE _ | VarE _ | LitE _ | ActorUrlE _ -> f exp
   | UnE (x, y, exp1) -> f { exp with it = UnE (x, y, over_exp f exp1) }
   | ShowE (x, exp1) -> f { exp with it = ShowE (x, over_exp f exp1) }
@@ -31,8 +32,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = RelE (x, over_exp f exp1, y, over_exp f exp2) }
   | AssignE (exp1, exp2) ->
      f { exp with it = AssignE (over_exp f exp1, over_exp f exp2) }
-  | CallE (par_opt, exp1, x, exp2) ->
-     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, over_exp f exp2) }
+  | CallE (par_opt, exp1, x, (s, exp2)) ->
+     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, (s, ref (over_exp f !exp2))) }
   | AndE (exp1, exp2) ->
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->

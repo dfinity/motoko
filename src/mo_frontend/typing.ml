@@ -1043,6 +1043,7 @@ and is_explicit_pat_field pf =
 
 let rec is_explicit_exp e =
   match e.it with
+  | HoleE _ -> false (* tbr *)
   | PrimE _ | ActorUrlE _
   | TagE _
   | BreakE _ | RetE _ | ThrowE _ ->
@@ -1303,6 +1304,145 @@ and combine_pat_srcs env t pat : unit =
   | AnnotP (pat1, _typ) -> combine_pat_srcs env t pat1
   | ParP pat1 -> combine_pat_srcs env t pat1
 
+
+type hole_candidate =
+  { path: exp;
+    desc: string;
+    typ : T.typ;
+  }
+
+(* All candidates are subtypes of the required type. The "greatest" of
+   these types is the "closest" to the required type. If we can
+   uniquely identify a single candidate that is the supertype of all
+   other candidates we pick it. *)
+let disambiguate_resolutions (candidates : hole_candidate list) =
+  let add_candidate (frontiers : hole_candidate list) (c : hole_candidate) =
+    let rec go (fs : hole_candidate list) = match fs with
+      | [] -> [c]
+      | f::fs' ->
+         if T.sub c.typ f.typ then
+           if T.eq c.typ f.typ then
+             (* c = f, so we keep both *)
+             f :: go fs'
+           else
+             (* c <: f, so f absorbs c *)
+             fs
+         else if T.sub f.typ c.typ then
+           (* f <: c, so c absorbs f *)
+           go fs'
+         else
+           (* no relation at all, so we keep both *)
+           f :: go fs'
+    in
+    go frontiers
+  in
+  match List.fold_left add_candidate [] candidates with
+  | [dom] -> Some dom
+  | _ -> None
+
+(** Searches for hole resolutions for [name] on a given [hole_sort] and [typ].
+    Returns [Ok(candidate)] when a single resolution is
+    found, [Error(file_paths)] when no resolution was found, but a
+    matching module could be imported, and reports an ambiguity error
+    when finding multiple resolutions.
+ *)
+let resolve_hole env at hole_sort typ =
+  let is_matching_lab lab =
+    match hole_sort with
+    | Named lab1 -> lab = lab1
+    | Anon _ -> true
+  in
+  let is_module (n, (t, _, _, _)) = match T.normalize t with
+    | T.Obj (T.Module, fs) -> Some (n, fs)
+    | _ -> None
+  in
+  let is_matching_typ typ1 = T.sub typ1 typ
+  in
+  let has_matching_field_typ = function
+    | T.{ lab; typ = Typ c; _ } -> None
+    | T.{ lab; typ = Mut t; _ } -> None
+    | T.{ lab = lab1; typ = typ1; _ } ->
+       if is_matching_lab lab1 &&
+          is_matching_typ typ1
+       then Some (lab1, typ1)
+       else None
+  in
+  let find_candidate (module_name, fs) =
+    List.find_map has_matching_field_typ fs |>
+      Option.map (fun (lab, typ)->
+          let path =
+            { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
+                           at = Source.no_region;
+                           note = empty_typ_note
+                         },
+                         { it = lab; at = no_region; note = () },
+                         ref None);
+              at = Source.no_region;
+              note = empty_typ_note; }
+          in
+          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
+  in
+  let find_candidate_val = function
+    (id, (t, _, _, _)) ->
+    if is_matching_lab id &&
+       is_matching_typ t
+    then
+      let path = { it =
+                   VarE {it = id; at = no_region; note = Const};
+                   at = Source.no_region;
+                   note = empty_typ_note }
+      in
+      Some { path; desc = id; typ = t }
+    else None
+  in
+  let eligible_env_vals =
+    let vals =
+      match hole_sort with
+      | Named id ->
+        (* narrow env to search *)
+        (match T.Env.find_opt id env.vals with
+         | Some info -> T.Env.singleton id info
+         | None -> T.Env.empty)
+      | Anon _ ->
+         env.vals (* search entire env *)
+    in
+    T.Env.to_seq vals |>
+      Seq.filter_map find_candidate_val |>
+      List.of_seq
+  in
+  let eligible_module_vals () =
+    T.Env.to_seq env.vals |>
+      Seq.filter_map is_module |>
+      Seq.filter_map find_candidate |>
+      List.of_seq
+  in
+  let eligible_vals =
+    match eligible_env_vals with
+    | [oc] -> [oc] (* first look in local env, otherwise consider module entries *)
+    | occs -> occs @ eligible_module_vals ()
+  in
+  match eligible_vals with
+  | [oc] -> Ok oc
+  | [] ->
+     let lib_candidates =
+       T.Env.to_seq env.libs |>
+         Seq.filter_map (fun (n, t) ->
+             match t with
+             | T.Obj (T.Module, fs) -> Some (n, fs)
+             | _ -> None) |>
+         Seq.filter_map find_candidate |>
+         List.of_seq in
+     Error (List.map (fun candidate -> candidate.desc) lib_candidates)
+  | ocs -> begin
+     match disambiguate_resolutions ocs with
+     | Some oc -> Ok oc
+     | None ->
+     let candidates = List.map (fun oc -> oc.desc) ocs in
+     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
+       display_typ typ
+       (String.concat ", " candidates)
+     end
+
 type ctx_dot_candidate =
   { module_name : T.lab;
     func_ty : T.typ;
@@ -1324,7 +1464,7 @@ let contextual_dot env name receiver_ty =
       true
     with _ ->
       false in
-  let is_module (n, (t, _, _, _)) = match t with
+  let is_module (n, (t, _, _, _)) = match T.normalize t with
     | T.Obj (T.Module, fs) -> Some (n, (t, fs))
     | _ -> None in
   let has_matching_self tf = match tf with
@@ -1399,6 +1539,9 @@ and infer_exp'' env exp : T.typ =
   let in_actor = env.in_actor in
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
+  | HoleE (_, e) ->
+    (* TODO: this should probably be an assert, not an error *)
+    error env exp.at "M0232" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -2026,6 +2169,27 @@ and check_exp env t exp =
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
+  | HoleE (s, e), t ->
+    let desc = function
+      | Named id -> "'"^id^"'"
+      | Anon idx -> "at position " ^ (Int.to_string idx)
+    in
+    begin match resolve_hole env exp.at s t with
+    | Ok {path; _} ->
+      e := path;
+      check_exp env t path;
+      t
+    | Error suggestions ->
+      let sug =
+         if suggestions = [] then
+         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
+         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)
+      in
+      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s"
+        (desc s)
+        display_typ t
+        sug
+    end
   | PrimE s, T.Func _ ->
     t
   | LitE lit, _ ->
@@ -2321,8 +2485,35 @@ and infer_callee env exp =
   | _ ->
      infer_exp_promote env exp, None
 
+and insert_holes at ts es =
+  let mk_hole pos hole_id =
+    let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
+    {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
+      at;
+      note = empty_typ_note }
+  in
+  let rec go n ts es =
+    match (ts, es) with
+    | (T.Named ("implicit", T.Named (arg_name, t))) :: ts1, es ->
+      (mk_hole n arg_name) :: go (n + 1) ts1 es
+    | (T.Named ("implicit", t)) :: ts1, es ->
+      (mk_hole n "_") :: go (n + 1) ts1 es
+    | (T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t))))) :: ts1, es ->
+      (* override inferred arg_name *)
+      (mk_hole n arg_name) :: go (n + 1) ts1 es
+    | (T.Named (inf_arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
+      (* non-overriden, use inferred arg_name *)
+      (mk_hole n inf_arg_name) :: go (n + 1) ts1 es
+    | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
+    | _, [] ->  []
+    | [], es -> es
+  in
+  if List.length es < List.length ts
+  then go 0 ts es
+  else es
 
-and infer_call env exp1 inst exp2 at t_expect_opt =
+and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
+  let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
   let sort, tbs, t_arg, t_ret =
@@ -2345,6 +2536,21 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       | t' -> T.unit, [(t, t')]
     end
   in
+  let exp2 =
+    let es = match exp2.it with
+      | TupE es when not parenthesized -> es
+      | _ -> [exp2] in
+    (* Must not use T.as_seq here, as T.normalize will clear the
+       `implicit` Name in case of a single implicit argument *)
+    let ts = match t_arg with
+      | T.Tup ts -> ts
+      | t -> [t] in
+    let e' = match insert_holes exp2.at ts es with
+      | [e] -> e.it
+      | es -> TupE es in
+    { exp2 with it = e'}
+  in
+  if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2415,6 +2621,10 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
           | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
           | _ -> normalized_target :: !must_solve);
         target_type
+      | HoleE _, normalized_target ->
+        deferred := (exp, target_type) :: !deferred;
+        must_solve := normalized_target :: !must_solve;
+        target_type
       (* Future work: more cases to defer? *)
       | _ ->
         (* Infer and add a subtype problem for bi_match *)
@@ -2442,7 +2652,7 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   in
 
   (* Incorporate the return type into the subtyping constraints *)
-  let ret_typ_opt, subs = 
+  let ret_typ_opt, subs =
     match t_expect_opt with
     | None -> Some t_ret, subs
     | Some expected_ret -> None, (t_ret, expected_ret) :: subs
@@ -2488,7 +2698,13 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
             (* We just have open [codom], we need to infer the body *)
             let actual_t = infer_exp env' body in
             subs := (actual_t, body_typ) :: !subs;
-          end
+        end
+      | HoleE _, typ ->
+         if not env.pre then begin
+           (* Check that all type variables in the type are fixed, fail otherwise *)
+           Bi_match.fail_when_types_are_not_closed remaining [typ];
+           check_exp env typ exp
+         end
       | _ ->
         (* Future work: Inferring will fail, we could report an explicit error instead *)
         subs := (infer_exp env exp, typ) :: !subs
@@ -2497,11 +2713,14 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
 
     if not env.pre then begin
       (* Fix the manually decomposed terms as if they were inferred *)
-      let fix substitute = List.iter (fun (e, t) -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
+     let fix substitute = List.iter (fun (e, t) ->
+         match e.it with
+         | HoleE _ -> ()
+         | _ -> ignore (infer_exp_wrapper (fun _ _ -> substitute t) T.as_immut env e)) in
       fix (T.open_ ts) to_fix;
       fix (T.open_ ts) deferred;
     end;
-(*   
+(*
     if not env.pre then
       info env at "inferred instantiation <%s>"
         (String.concat ", " (List.map T.string_of_typ ts));

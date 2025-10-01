@@ -80,9 +80,10 @@ let delayed_vars : f -> S.t =
 
 let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
+  | HoleE (s, e) -> exp msgs (!e)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (par_opt, e1, _ts, e2) -> eagerify (Option.to_list par_opt @ [e1; e2] |> exps msgs)
+  | CallE (par_opt, e1, _ts, (_, e2)) -> eagerify (Option.to_list par_opt @ [e1; !e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (_, e)
   | RetE e
