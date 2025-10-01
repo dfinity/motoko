@@ -147,5 +147,7 @@ and infer_effect_dec dec =
   | VarD (_, e) ->
     effect_exp e
   | TypD _
-  | ClassD _ ->
+  | ClassD _
+  | MixinD _
+  | IncludeD _ ->
     T.Triv

@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+  * Experimental support for Mixins (#5459)
+
+## 0.16.3 (2025-09-29)
+
 * motoko (`moc`)
 
   * Added an optional warning for **redundant type instantiations** in generic function calls (#5468).
