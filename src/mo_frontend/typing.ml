@@ -3562,7 +3562,6 @@ and infer_dec env dec : T.typ =
     let env' = adjoin_vals env ve in
     let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
     let t' = infer_obj { env' with check_unused = false } obj_sort None dec_fields dec.at in
-    (* Printf.printf "MIXIN TYPE: %s\n" (T.string_of_typ t'); *)
     T.normalize t'
   | TypD _ ->
     T.unit
