@@ -434,10 +434,7 @@ struct
   let[@tail_mod_cons] rec safe_map f l = match l with
     | [] -> []
     | x :: xs ->
-       let y = f x in
-       y ::
-         (* this call is in TMC position *)
-         safe_map f xs
+      f x :: (safe_map[@tailcall]) f xs
 end
 
 module List32 =
