@@ -201,6 +201,7 @@ let error_codes : (string * string option) list =
     "M0251", None; (* Unknown mixin inclusion *)
     "M0252", None; (* Non-actor include *)
     "M0253", None; (* Only top-level mixins *)
+    "M0254", None; (* Non-var pattern for mixin import *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

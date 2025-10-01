@@ -3665,7 +3665,7 @@ and gather_dec env scope dec : Scope.t =
     | Some (imports, args, t, decs) ->
       match pat.it with
       | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
-      | _ -> (* TODO Error *) assert false
+      | _ -> error env pat.at "M0254" "mixins may only be imported by binding to a name"
   )
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
