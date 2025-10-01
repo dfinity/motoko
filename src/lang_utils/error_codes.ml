@@ -201,8 +201,9 @@ let error_codes : (string * string option) list =
     "M0227", None; (* Non-actor include *)
     "M0228", None; (* Only top-level mixins *)
     "M0229", None; (* Non-var pattern for mixin import *)
-    "M0230", None; (* Cannot infer type of implicit argument *)
+    "M0230", None; (* Cannot determine implicit argument *)
     "M0231", None; (* Ambiguous implicit argument *)
+    "M0232", None; (* Cannot infer type of implicit argument *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

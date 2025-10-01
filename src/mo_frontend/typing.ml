@@ -1438,7 +1438,7 @@ let resolve_hole env at hole_sort typ =
      | Some oc -> Ok oc
      | None ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0226" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
+     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
        display_typ typ
        (String.concat ", " candidates)
      end
@@ -1540,7 +1540,8 @@ and infer_exp'' env exp : T.typ =
   let env = {env with in_actor = false; in_prog = false; context = exp.it::env.context} in
   match exp.it with
   | HoleE (_, e) ->
-    error env exp.at "M0225" "cannot infer type of implicit argument"
+    (* TODO: this should probably be an assert, not an error *)
+    error env exp.at "M0232" "cannot infer type of implicit argument"
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
@@ -2184,7 +2185,7 @@ and check_exp' env0 t exp : T.typ =
          "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
          else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)
       in
-      error env exp.at "M0225" "Cannot determine implicit argument %s of type%a%s"
+      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s"
         (desc s)
         display_typ t
         sug
