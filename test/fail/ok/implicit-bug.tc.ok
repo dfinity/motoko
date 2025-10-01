@@ -1,8 +1,0 @@
-implicit-bug.mo:8.25-8.28: warning [M0194], unused identifier map (delete or rename to wildcard `_` or `_map`)
-implicit-bug.mo:8.41-8.42: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
-implicit-bug.mo:14.6-14.13: warning [M0194], unused identifier compare (delete or rename to wildcard `_` or `_compare`)
-implicit-bug.mo:14.14-14.15: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
-implicit-bug.mo:14.23-14.24: warning [M0194], unused identifier m (delete or rename to wildcard `_` or `_m`)
-implicit-bug.mo:16.5-16.8: warning [M0194], unused identifier map (delete or rename to wildcard `_` or `_map`)
-implicit-bug.mo:18.6-18.10: warning [M0194], unused identifier test (delete or rename to wildcard `_` or `_test`)
-implicit-bug.mo:20.7-20.8: warning [M0194], unused identifier t (delete or rename to wildcard `_` or `_t`)
