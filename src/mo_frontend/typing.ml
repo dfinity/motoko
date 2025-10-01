@@ -2513,7 +2513,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | t' -> T.unit, [(t, t')]
     end
   in
-  (*  let inserted = ref false in *) (* investigate with implicit-bug.mo *)
   let exp2 =
     let es = match exp2.it with
       | TupE es when not parenthesized -> es
@@ -2523,14 +2522,12 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     let ts = match t_arg with
       | T.Tup ts -> ts
       | t -> [t] in
-    (*    inserted := List.length ts <> List.length es; *)
     let e' = match insert_holes exp2.at ts es with
       | [e] -> e.it
       | es -> TupE es in
     { exp2 with it = e'}
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
-  (*  if ! inserted then Wasm.Sexpr.print 80 (Arrange.exp exp2); *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some (_, []))  (* no inference required *)
@@ -2601,12 +2598,9 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
           | T.Func (_, _, _, ts1, _) -> ts1 @ !must_solve
           | _ -> normalized_target :: !must_solve);
         target_type
-      (* Future work: more cases to decompose, e.g. T.Opt, T.Obj, T.Variant... *)
       | HoleE _, normalized_target ->
-        (* Cannot infer unannotated func, defer it *)
         deferred := (exp, target_type) :: !deferred;
-        must_solve := (* Inputs of deferred functions must be solved first *)
-        normalized_target :: !must_solve;
+        must_solve := normalized_target :: !must_solve;
         target_type
       (* Future work: more cases to defer? *)
       | _ ->

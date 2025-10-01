@@ -1,0 +1,6 @@
+implicit-best-candidate.mo:31.15-31.21: type error [M0226], ambiguous implicit argument of type
+  ({a : Int}, {a : Int}) -> Nat.
+The available candidates are: MA.cmp, MB1.cmp, MB2.cmp
+implicit-best-candidate.mo:55.22-55.24: type error [M0226], ambiguous implicit argument of type
+  {a : Int}.
+The available candidates are: MB1.default, MB2.default, MC.default
