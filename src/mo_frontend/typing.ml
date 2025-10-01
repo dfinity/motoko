@@ -3108,15 +3108,17 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    (* TODO: Mixins need a similar, but different check here *)
-    if s = T.Actor then begin
+    if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env ((T.Env.find lab pub_val).id_region) "M0124"
-            "public actor field %s has non-shared function type%a"
-            lab
-            display_typ_expand typ
+          match T.Env.find_opt lab pub_val with
+          | None -> () (* Mixins expose private fields as public in their type *)
+          | Some v ->
+             error env v.id_region "M0124"
+               "public actor field %s has non-shared function type%a"
+               lab
+               display_typ_expand typ
       ) tfs;
       List.iter (fun df ->
         if is_public df.it.vis && not (is_actor_method df.it.dec) && not (is_typ_dec df.it.dec) then
