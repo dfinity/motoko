@@ -2,56 +2,7 @@
 
  * motoko (`moc`)
 
-   * Add support for `implicit` argument declarations (#5517).
-
-     Function and class parameters can be declared *implicit* using a specially named type of the form:
-
-     * `implicit : <typ>` (implicit named or anonymous parameter).
-     * `implicit : (<id> : <typ>)` (implicit parameter matching name `<id>` and `<typ>`).
-     * `implicit : (_ : <typ>)` (implicit parameter matching `<typ>` under any name).
-
-     This is just a special case of a named type in Motoko with special name "implicit".
-
-     The arguments corresponding to implicit parameters can be omitted at call sites, provided the compiler can unambiguously resolve using a declaration of the given name and matching type, in either the current scope or the fields of a module in the current scope. By default, the name is determined by the parameter declared `implicit` but can be specified to be another name,
-     `<id>`, using the second form of `implicit` type annotation above (see `Pair.toText` below for an example).
-     An unnamed parameter or a named parameter declared with the third form of anonymous declaration matches any name in the context that has a matching type only.
-
-     Any candidate from the current scope is preferred over candidates from nested scopes.
-
-     In the rare case that a function has more than one implicit parameter, either all arguments must be specified or all implicit arguments omitted.
-
-     Functions that require two implicits of the same (external) `name` can declare them with different argument names (to distinguish their implementations), and common (external) names, using a nested name.
-
-     Example:
-     ```motoko
-     module Nat {
-       public func toText(n : Nat) : Text { debug_show n };
-     };
-     module Array {
-       public func toText<T>(as : [T], toText: (implicit : T -> Text)) : Text {
-          var t = "";
-          for (a in as.vals()) {
-            t := t # (toText(a));
-          };
-          t
-       }
-     };
-     module Pair {
-       public func toText<T, U>(
-         p : (T, U),
-         toTextT : (implicit : (toText : T -> Text)),
-         toTextU : (implicit : (toText : U -> Text)))
-         : Text {
-           "(" # toTextT(p.0) # "," # toTextU(p.1) # ")"
-         };
-     };
-     Array.toText([1,2,3], Nat.toText) // explicit arguments
-       |> debugPrint _;
-     Array.toText([1,2,3]) // implicit arguments
-       |> debugPrint _;
-     Pair.toText((1,2))
-       |> debugPrint _; // implicit arguments
-     ```
+   * Experimental support for `implicit` argument declarations (#5517).
 
 ## 0.16.3 (2025-09-29)
 
