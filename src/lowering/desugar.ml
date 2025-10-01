@@ -580,7 +580,8 @@ and export_runtime_information self_id =
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
-  | S.TypD _ | S.MixinD _ -> []
+  | S.TypD _ -> []
+  | S.MixinD _ -> assert false
   | S.IncludeD(_, arg, note) ->
     (* TODO: This is ugly. It would be a lot nicer if we didn't have to split
        the desugaring and stability declarations *)
