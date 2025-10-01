@@ -29,11 +29,14 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
             visit_field(context, location);
         }
     }
-    // Always visit the dedup table as well.
-    // Otherwise the dedup table will be garbage collected.
-    use crate::persistence::get_dedup_table_ptr;
-    let dedup_table = get_dedup_table_ptr();
-    visit_field(context, dedup_table);
+    #[cfg(feature = "ic")]
+    {
+        // Always visit the dedup table as well.
+        // Otherwise the dedup table will be garbage collected.
+        use crate::persistence::get_dedup_table_ptr;
+        let dedup_table = get_dedup_table_ptr();
+        visit_field(context, dedup_table);
+    }
 }
 
 #[cfg(feature = "ic")]
