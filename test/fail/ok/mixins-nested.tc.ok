@@ -1,0 +1,1 @@
+(unknown location): warning [M0198], unused field counter in object pattern (delete or rewrite as `counter = _`)
