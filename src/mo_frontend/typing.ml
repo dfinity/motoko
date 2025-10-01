@@ -3108,8 +3108,7 @@ and infer_obj env obj_sort exp_opt dec_fields at : T.typ =
   leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
-    (* TODO: Mixins need a similar, but different check here *)
-    if s = T.Actor then begin
+    if s = T.Actor || s = T.Mixin then begin
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
