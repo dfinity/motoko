@@ -386,7 +386,7 @@ and obj_block at s exp_opt self_id dfs obj_typ =
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
     build_actor at [] exp_opt self_id dfs obj_typ
-  | T.Memory -> assert false
+  | T.Memory | T.Mixin -> assert false
 
 and build_field {T.lab; T.typ;_} =
   { it = I.{ name = lab
@@ -589,12 +589,27 @@ and export_runtime_information self_id =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and build_stabs (df : S.dec_field) : stab option list = match df.it.S.dec.it with
+  | S.TypD _ -> []
+  | S.MixinD _ -> assert false
+  | S.IncludeD(_, arg, note) ->
+    (* TODO: This is ugly. It would be a lot nicer if we didn't have to split
+       the desugaring and stability declarations *)
+    let flex = Some (S.Flexible @@ no_region) in
+    let { imports; decs; _ } = Option.get !note in
+    let import_stabs = List.map (fun _ -> flex) imports in
+    (* Transient stability for binding the mixin parameters *)
+    flex ::
+    (* Transient stability for binding the mixin imports *)
+    import_stabs @
+    List.concat_map build_stabs decs
+  | _ -> [df.it.S.stab]
+
 and build_actor at ts (exp_opt : Ir.exp option) self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
-  let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
+  let stabs = List.concat_map build_stabs es in
   let ds = decs (List.map (fun ef -> ef.it.S.dec) es) in
-  let stabs = List.map (fun ef -> ef.it.S.stab) es in
   let pairs = List.map2 stabilize stabs ds in
   let idss = List.map fst pairs in
   let ids = List.concat idss in
@@ -935,27 +950,39 @@ and block force_unit ds =
   | _, _ ->
     (decs ds, tupE [])
 
-and is_not_typD d = match d.it with | S.TypD _ -> false | _ -> true
+and decs ds = List.concat_map dec ds
 
-and decs ds =
-  List.map dec (List.filter is_not_typD ds)
+and dec d = List.map (fun ir_dec -> { it = ir_dec; at = d.at; note = () }) (dec' d)
 
-and dec d = { (phrase' dec' d) with note = () }
-
-and dec' at n = function
-  | S.ExpD e -> (expD (exp e)).it
+and dec' d =
+  let n = d.note in
+  let at = d.at in
+  match d.it with
+  | S.ExpD e -> [(expD (exp e)).it]
   | S.LetD (p, e, f) ->
     let p' = pat p in
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it, f with
     | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
-    | _, _, None -> I.LetD (p', e')
-    | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
+      [I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})]
+    | _, _, None -> [I.LetD (p', e')]
+    | _, _, Some f -> [I.LetD (p', let_else_switch (pat p) (exp e) (exp f))]
     end
-  | S.VarD (i, e) -> I.VarD (i.it, e.note.S.note_typ, exp e)
-  | S.TypD _ -> assert false
+  | S.VarD (i, e) -> [I.VarD (i.it, e.note.S.note_typ, exp e)]
+  | S.TypD _ -> []
+  | S.MixinD _ -> []
+  | S.IncludeD(_, args, note) ->
+    let { imports = is; pat = p; decs } = Option.get !note in
+    let ir_imports = List.concat_map transform_import is in
+    let renamed_imports, rho = Rename.decs Rename.Renaming.empty ir_imports in
+    let renamed_pat, rho = Rename.pat rho (pat p) in
+
+    (* TODO: Fix the positions on the generated let here *)
+    let ir_decs = List.concat_map dec (List.map (fun df -> df.it.S.dec) decs) in
+    let renamed_decs, _ = Subst_var.decs rho ir_decs in
+    List.map (fun d -> d.it) renamed_imports @ (letP renamed_pat (exp args)).it :: List.map (fun d -> d.it) renamed_decs
+
   | S.ClassD (exp_opt, sp, s, id, tbs, p, _t_opt, self_id, dfs) ->
     let id' = {id with note = ()} in
     let sort, _, _, _, _ = Type.as_func n.S.note_typ in
@@ -998,7 +1025,7 @@ and dec' at n = function
       at = at;
       note = Note.{ def with typ = fun_typ }
     } in
-    I.LetD (varPat, fn)
+    [I.LetD (varPat, fn)]
 
 and cases cs = List.map (case Fun.id) cs
 
@@ -1171,6 +1198,27 @@ and to_args typ po exp_opt p : Ir.arg list * Ir.exp option * (Ir.exp -> Ir.exp) 
   in
   args, eo, wrap_under_async, control, res_tys
 
+and transform_import (i : S.import) : Ir.dec list =
+  let (p, f, ri) = i.it in
+  let t = i.note in
+  assert (t <> T.Pre);
+  match t with
+  | T.Obj(T.Mixin, _) -> []
+  | _ ->
+  let rhs = match !ri with
+    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
+    | S.LibPath {path = fp; _} ->
+      varE (var (id_of_full_path fp) t)
+    | S.PrimPath ->
+      varE (var (id_of_full_path "@prim") t)
+    | S.IDLPath (fp, canister_id) ->
+      primE (I.ActorOfIdBlob t) [blobE canister_id]
+    | S.ImportedValuePath path ->
+       let contents = Lib.FilePath.contents path in
+       assert T.(t = Prim Blob);
+       blobE contents
+  in [ letP (pat p) rhs ]
+
 type import_declaration = Ir.dec list
 
 let actor_class_mod_exp id class_typ default system =
@@ -1258,26 +1306,10 @@ let inject_decs extra_ds u =
 let link_declarations imports (cu, flavor) =
   inject_decs imports cu, flavor
 
-let transform_import (i : S.import) : import_declaration =
-  let (p, f, ri) = i.it in
-  let t = i.note in
-  assert (t <> T.Pre);
-  let rhs = match !ri with
-    | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath {path = fp; _} ->
-      varE (var (id_of_full_path fp) t)
-    | S.PrimPath ->
-      varE (var (id_of_full_path "@prim") t)
-    | S.IDLPath (fp, canister_id) ->
-      primE (I.ActorOfIdBlob t) [blobE canister_id]
-    | S.ImportedValuePath path ->
-       let contents = Lib.FilePath.contents path in
-       assert T.(t = Prim Blob);
-       blobE contents
-  in [ letP (pat p) rhs ]
-
 let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
   match u.it with
+  | S.MixinU _ ->
+    raise (Invalid_argument "Desugar: Cannot transform mixin compilation unit")
   | S.ProgU ds -> I.ProgU (decs ds)
   | S.ModuleU (self_id, fields) -> (* compiling a module as a library *)
     I.LibU ([], {
@@ -1312,10 +1344,11 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     end
   | S.ActorU (persistence, exp_opt, self_id, fields) ->
     let eo = Option.map exp exp_opt in
-    let actor_expression = build_actor u.at [] eo self_id fields u.note.S.note_typ in
+    let ty = u.note.S.note_typ in
+    let actor_expression = build_actor u.at [] eo self_id fields ty in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) ->
-      I.ActorU (None, ds, fs, u, t)
+       I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 
@@ -1334,6 +1367,9 @@ let transform_unit (u : S.comp_unit) : Ir.prog  =
 *)
 let import_unit (u : S.comp_unit) : import_declaration =
   let { body; _ } = u.it in
+  match body.it with
+  | S.MixinU _ -> []
+  | _ ->
   let f = u.note.filename in
   let t = body.note.S.note_typ in
   assert (t <> T.Pre);

@@ -1,8 +1,12 @@
 # Motoko compiler changelog
 
- * motoko (`moc`)
+## Unreleased
 
-   * Experimental support for `implicit` argument declarations (#5517).
+* motoko (`moc`)
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
 
 ## 0.16.3 (2025-09-29)
 
