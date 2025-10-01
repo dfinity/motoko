@@ -3775,7 +3775,10 @@ and infer_dec_typdecs env dec : Scope.t =
     | Some(imports, pat, decs, t) ->
       n := Some({ imports; pat; decs });
       let (_, fields) = T.as_obj t in
-      scope_of_object env fields
+      let scope = scope_of_object env fields in
+      (* Mark all included idents as used to avoid spurious warnings *)
+      T.Env.iter (fun i _ -> use_identifier env i) scope.Scope.val_env;
+      scope
     end
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
