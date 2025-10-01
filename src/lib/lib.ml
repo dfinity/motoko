@@ -435,6 +435,7 @@ struct
     | [] -> []
     | x :: xs ->
       f x :: (safe_map[@tailcall]) f xs
+    [@@coverage off]
 end
 
 module List32 =
