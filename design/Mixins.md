@@ -28,4 +28,6 @@ persistent actor {
 
 When an actor includes a mixin it adds its declarations to its body. `public` definitions of the mixin also become part of the interface of the including actor. The actor has access to the `private` fields, types and methods of the mixin. Access to private fields is required, so that a migration expression on the main actor can migrate the composition of actor and mixin.
 
+The fields of an actor are `stable` by default, even when included in legacy, non-persistent actors.
+
 Mixins can be parameterized over arguments that are bound as transient lets (with renaming so they don't conflict with existing definitions). This means that if you want the mixin to have access to state of the including actor you can't just pass a variable reference, but need to wrap it up in an object. Passing already mutable objects like `core/Map`, `core/List`, `[var A]` works just fine.
