@@ -3475,9 +3475,9 @@ and infer_dec env dec : T.typ =
     if not env.pre then begin
       use_identifier env i.it;
       if not env.in_actor then
-        error env dec.at "M0252" "mixins can only be included in an actor context";
+        error env dec.at "M0227" "mixins can only be included in an actor context";
       match T.Env.find_opt i.it env.mixins with
-      | None -> error env i.at "M0251" "unknown mixin %s" i.it
+      | None -> error env i.at "M0226" "unknown mixin %s" i.it
       | Some (_, pat, _, _) -> check_exp env pat.note arg
     end;
     T.unit
@@ -3559,7 +3559,7 @@ and infer_dec env dec : T.typ =
     T.normalize t
   | MixinD (args, dec_fields) ->
     if not env.in_prog then
-      error env dec.at "M0253" "mixins may only be declared at the top-level";
+      error env dec.at "M0228" "mixins may only be declared at the top-level";
     let t_pat, ve = infer_pat_exhaustive error env args in
     let env' = adjoin_vals env ve in
     let obj_sort : obj_sort = { it = T.Mixin ; at = no_region; note = { it = true; at = no_region; note = () } }  in
@@ -3667,7 +3667,7 @@ and gather_dec env scope dec : Scope.t =
     | Some (imports, args, t, decs) ->
       match pat.it with
       | VarP id -> Scope.adjoin scope (Scope.mixin id.it (imports, args, t, decs))
-      | _ -> error env pat.at "M0254" "mixins may only be imported by binding to a name"
+      | _ -> error env pat.at "M0229" "mixins may only be imported by binding to a name"
   )
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, _, _, id, binds, _, _, _, _) ->
@@ -3707,7 +3707,7 @@ and gather_dec env scope dec : Scope.t =
     }
   | IncludeD(i, _, _) -> begin
     match T.Env.find_opt i.it env.mixins with
-    | None -> error env i.at "M0251" "unknown mixin %s" i.it
+    | None -> error env i.at "M0226" "unknown mixin %s" i.it
     | Some(imports, pat, decs, t) ->
       let open Scope in
       let (_, fields) = T.as_obj t in
@@ -3773,7 +3773,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | MixinD _ -> Scope.empty
   | IncludeD (i, _, n) -> begin
     match T.Env.find_opt i.it env.mixins with
-    | None -> error env i.at "M0251" "unknown mixin %s" i.it
+    | None -> error env i.at "M0226" "unknown mixin %s" i.it
     | Some(imports, pat, decs, t) ->
       n := Some({ imports; pat; decs });
       let (_, fields) = T.as_obj t in

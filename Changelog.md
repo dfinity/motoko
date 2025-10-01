@@ -1,5 +1,10 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+  * Experimental support for Mixins (#5459)
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)

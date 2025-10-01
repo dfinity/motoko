@@ -719,7 +719,7 @@ let desugar_unit imports u name : Ir.prog Diag.result =
   match u.Source.it.Syntax.body.Source.it with
   | Syntax.MixinU _ ->
     let at = u.Source.it.Syntax.body.Source.at in
-    Diag.error at "M0250" "compile" "A mixin cannot be used as an entry point. It needs to be included in an actor (class)"
+    Diag.error at "M0225" "compile" "A mixin cannot be used as an entry point. It needs to be included in an actor (class)"
   | _ ->
   phase "Desugaring" name;
   let open Lowering.Desugar in
