@@ -29,6 +29,7 @@ module Make (Cfg : Config) = struct
     | Object -> Atom "Object"
     | Actor -> Atom "Actor"
     | Module -> Atom "Module"
+    | Mixin -> Atom "Mixin"
     | Memory -> Atom "Memory"
 
   let prim = function

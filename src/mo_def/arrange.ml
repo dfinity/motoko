@@ -86,6 +86,7 @@ module Make (Cfg : Config) = struct
   let obj_sort s = match s.it with
     | Type.Object -> Atom "Object"
     | Type.Actor -> Atom "Actor"
+    | Type.Mixin -> Atom "Mixin"
     | Type.Module -> Atom "Module"
     | Type.Memory -> Atom "Memory"
 
@@ -325,7 +326,9 @@ module Make (Cfg : Config) = struct
         (match rt with None -> Atom "_" | Some t -> typ t);
         obj_sort s;
         id i
-      ] @ List.map dec_field dfs)))
+      ] @ List.map dec_field dfs)
+    | MixinD (_, dfs) -> "MixinD" $$ List.map dec_field dfs
+    | IncludeD (i, e, _) -> "IncludeD" $$ [id i; exp e]))
 
   and prog p = "Prog" $$ List.map dec p.it
 end

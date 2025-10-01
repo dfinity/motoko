@@ -1,8 +1,12 @@
 # Motoko compiler changelog
 
+## Unreleased
+
 * motoko (`moc`):
   * Support persistent functions, persistent objects, and persistent classes with enhanced orthogonal persistence.
   
+  * Experimental support for Mixins (#5459)
+
 ## 0.16.3 (2025-09-29)
 
 * motoko (`moc`)

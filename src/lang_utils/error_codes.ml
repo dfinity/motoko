@@ -195,11 +195,16 @@ let error_codes : (string * string option) list =
     "M0219", None; (* Missing `transient` *)
     "M0220", None; (* Missing `persistent` *)
     "M0221", None; (* Failed to determine type for type pattern field *)
-    "M0225", None; (* Persistent functions are only supported with enhanced orthogonal persistence *)
-    "M0226", None; (* Persistent function cannot close over a non-persistent variable *)
-    "M0227", None; (* Type argument has to be of a stable type to match the type parameter *)
-    "M0228", None; (* Persistent functions/classes cannot be anonymous *)
-    
+    "M0224", None; (* Overlapping dot resolution *)
+    "M0225", None; (* A mixin cannot be used as an entry point *)
+    "M0226", None; (* Unknown mixin inclusion *)
+    "M0227", None; (* Non-actor include *)
+    "M0228", None; (* Only top-level mixins *)
+    "M0229", None; (* Non-var pattern for mixin import *)
+    "M0230", None; (* Persistent functions are only supported with enhanced orthogonal persistence *)
+    "M0231", None; (* Persistent function cannot close over a non-persistent variable *)
+    "M0232", None; (* Type argument has to be of a stable type to match the type parameter *)
+    "M0233", None; (* Persistent functions/classes cannot be anonymous *)
   ]
 
 (** Message codes that can be both used as warnings and errors *)

@@ -5,7 +5,7 @@ type var = string
 type name = string
 
 type control = Returns | Promises | Replies
-type obj_sort = Object | Actor | Module | Memory
+type obj_sort = Object | Actor | Mixin | Module | Memory
 type async_sort = Fut | Cmp
 type stable_sort = Flexible | Stable
 type await_sort = AwaitFut of bool | AwaitCmp

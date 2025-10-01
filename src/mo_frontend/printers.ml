@@ -100,6 +100,8 @@ let repr_of_symbol : xsymbol -> (string * string) =
   | X (T T_MULOP) -> binop "*"
   | X (T T_MULASSIGN) -> binassign "*="
   | X (T T_MODULE) -> simple_token "module"
+  | X (T T_INCLUDE) -> simple_token "include"
+  | X (T T_MIXIN) -> simple_token "mixin"
   | X (T T_MODOP) -> binop "%"
   | X (T T_MODASSIGN) -> binassign "%="
   | X (T T_MINUSASSIGN) -> unassign "-="

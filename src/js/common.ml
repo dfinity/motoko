@@ -65,7 +65,7 @@ let js_result (result : 'a Diag.result) (wrap_code: 'a -> 'b) =
 let js_version = Js.string Source_id.id
 
 let js_check source =
-  Mo_types.Cons.session (fun _ -> 
+  Mo_types.Cons.session (fun _ ->
     js_result
       (Pipeline.check_files ~enable_recovery:true [Js.to_string source])
       (fun _ -> Js.null))
@@ -84,7 +84,7 @@ let js_set_run_step_limit limit =
   Mo_interpreter.Interpret.step_limit := limit
 
 let js_run list source =
-  Mo_types.Cons.session (fun _ -> 
+  Mo_types.Cons.session (fun _ ->
     let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
     match Pipeline.run_stdin_from_file list (Js.to_string source) with
     | Some v ->
@@ -100,7 +100,7 @@ let js_run list source =
       end)
 
 let js_viper filenames =
-  Mo_types.Cons.session (fun _ -> 
+  Mo_types.Cons.session (fun _ ->
     let result = Pipeline.viper_files (Js.to_array filenames |> Array.to_list |> List.map Js.to_string) in
     js_result result (fun (viper, lookup) ->
       let js_viper = Js.string viper in
@@ -120,7 +120,7 @@ let js_viper filenames =
       end)))
 
 let js_candid source =
-  Mo_types.Cons.session (fun _ -> 
+  Mo_types.Cons.session (fun _ ->
     js_result (Pipeline.generate_idl [Js.to_string source])
       (fun prog ->
         let open Idllib in
@@ -283,7 +283,7 @@ let js_parse_motoko_typed_with_scope_cache_impl enable_recovery paths scope_cach
         let open Mo_def in
         let module Arrange = Arrange.Make (struct
           let include_sources = true
-          let include_type_rep = Arrange.With_type_rep (Some sscope.Mo_types.Scope.fld_src_env)
+          let include_type_rep = Arrange.With_type_rep (Some sscope.Mo_frontend.Scope.fld_src_env)
           let include_types = true
           let include_docs = Some prog.note.Syntax.trivia
           let include_parenthetical = false
