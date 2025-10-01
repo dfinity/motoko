@@ -1,6 +1,7 @@
 (* common flags for the moc compiler *)
 
 module M = Map.Make(String)
+module S = Set.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
@@ -12,6 +13,9 @@ type instruction_limits = {
 }
 
 type actors = LegacyActors | RequirePersistentActors | DefaultPersistentActors
+
+type lint_level = Allow | Warn | Error
+
 let ai_errors = ref false
 let trace = ref false
 let verbose = ref false
@@ -75,3 +79,19 @@ let stable_memory_access_limit = ref stable_memory_access_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
 let experimental_stable_memory = ref experimental_stable_memory_default
 let typechecker_combine_srcs = ref false (* useful for the language server *)
+
+let default_warning_levels = M.empty
+  |> M.add "M0223" Allow
+
+let warning_levels = ref default_warning_levels
+
+let set_warning_level code level =
+  warning_levels := M.add code level !warning_levels
+
+let get_warning_level code =
+  match M.find_opt code !warning_levels with
+  | None -> Warn
+  | Some level -> level
+
+let is_warning_disabled code = get_warning_level code = Allow
+let is_warning_enabled code = not (is_warning_disabled code)

@@ -148,6 +148,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
+    getSelfPrincipal : <system>() -> Principal;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
     int16ToInt : (n : Int16) -> Int;

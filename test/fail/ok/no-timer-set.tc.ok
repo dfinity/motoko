@@ -147,6 +147,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
+    getSelfPrincipal : <system>() -> Principal;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
     int16ToInt : (n : Int16) -> Int;
