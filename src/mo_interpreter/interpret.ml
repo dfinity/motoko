@@ -1002,8 +1002,9 @@ and declare_dec dec : val_env =
   | ExpD _
   | TypD _
   | MixinD (_) -> V.Env.empty
-  | IncludeD (_, _, _) -> (* TODO *)
-    V.Env.empty
+  | IncludeD _ ->
+     (* TODO support mixins in the interpreter *)
+    assert false
   | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_eo, _, _, id, _, _, _, _, _) -> declare_id {id with note = ()}
@@ -1044,7 +1045,7 @@ and interpret_dec env dec (k : V.value V.cont) =
         - declare/eval note.decs
         - Do we need to recreate the renaming pass?
       *)
-     k V.unit
+     trap dec.at "Mixins are not yet supported in the interpreter"
   | ClassD (_eo, shared_pat, obj_sort, id, _typbinds, pat, _typ_opt, id', dec_fields) ->
     (* NB: we ignore the migration expression _eo *)
     let f = interpret_func env id.it shared_pat pat (fun env' k' ->
