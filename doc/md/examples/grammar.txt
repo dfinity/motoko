@@ -7,6 +7,9 @@
     X
     X SEP <list(X, SEP)>
 
+<id_wild> ::= 
+    '_'
+
 <typ_obj_sort> ::= 
     'object'
     'actor'
@@ -67,6 +70,7 @@
 
 <typ_item> ::= 
     <id> ':' <typ>
+    <id_wild> ':' <typ>
     <typ>
 
 <typ_args> ::= 
@@ -177,19 +181,26 @@
     <id>
     '_'
 
+<exp_arg> ::= 
+    <ob>
+    <lit>
+    '(' <list(<exp>, ',')> ')'
+    <id>
+    '_'
+
 <exp_post> ::= 
     <exp_nullary>
     '[' 'var'? <list(<exp_nonvar>, ',')> ']'
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> <inst> <exp_nullary>
+    <exp_post> <inst> <exp_arg>
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
 <exp_un> ::= 
     <exp_post>
-    <parenthetical> <exp_post> <inst> <exp_nullary>
+    <parenthetical> <exp_post> <inst> <exp_arg>
     '#' <id>
     '#' <id> <exp_nullary>
     '?' <exp_un>
@@ -321,6 +332,8 @@
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <shared_pat_opt> 'func' <func_pat> (':' <typ>)? <func_body>
     <parenthetical>? <obj_or_class_dec>
+    'mixin' <pat_plain> <obj_body>
+    'include' <id> <exp>
 
 <obj_or_class_dec> ::= 
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
