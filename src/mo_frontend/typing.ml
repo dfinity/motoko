@@ -1309,6 +1309,7 @@ type hole_candidate =
   { path: exp;
     desc: string;
     typ : T.typ;
+    id : T.lab;
   }
 
 (* All candidates are subtypes of the required type. The "greatest" of
@@ -1362,8 +1363,7 @@ let resolve_hole env at hole_sort typ =
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
     | T.{ lab = lab1; typ = typ1; _ } ->
-       if is_matching_lab lab1 &&
-          is_matching_typ typ1
+       if is_matching_typ typ1
        then Some (lab1, typ1)
        else None
   in
@@ -1380,67 +1380,72 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
+          ({ path; desc = module_name^"."^ lab; typ; id=lab } : hole_candidate))
   in
   let find_candidate_val = function
     (id, (t, _, _, _)) ->
-    if is_matching_lab id &&
-       is_matching_typ t
+    if is_matching_typ t
     then
       let path = { it =
                    VarE {it = id; at = no_region; note = Const};
                    at = Source.no_region;
                    note = empty_typ_note }
       in
-      Some { path; desc = id; typ = t }
+      Some { path; desc = id; typ = t; id }
     else None
   in
-  let eligible_env_vals =
+  let (eligible_env_vals, close_env_vals) =
     let vals =
       match hole_sort with
       | Named id ->
-        (* narrow env to search *)
-        (match T.Env.find_opt id env.vals with
-         | Some info -> T.Env.singleton id info
-         | None -> T.Env.empty)
+         env.vals
       | Anon _ ->
          env.vals (* search entire env *)
     in
     T.Env.to_seq vals |>
       Seq.filter_map find_candidate_val |>
-      List.of_seq
+      List.of_seq |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
   let eligible_module_vals () =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
       Seq.filter_map find_candidate |>
-      List.of_seq
+      List.of_seq |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_vals =
+  let eligible_vals, close_candidates  =
     match eligible_env_vals with
-    | [oc] -> [oc] (* first look in local env, otherwise consider module entries *)
-    | occs -> occs @ eligible_module_vals ()
+    | [oc] -> ([oc], []) (* first look in local env, otherwise consider module entries *)
+    | occs ->
+       let (occ_modules, close_module_vals) = eligible_module_vals () in
+       (occs @ occ_modules,
+       close_env_vals @ close_module_vals)
   in
   match eligible_vals with
   | [oc] -> Ok oc
   | [] ->
-     let lib_candidates =
+     let (lib_candidates, _) =
        T.Env.to_seq env.libs |>
          Seq.filter_map (fun (n, t) ->
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
          Seq.filter_map find_candidate |>
-         List.of_seq in
-     Error (List.map (fun candidate -> candidate.desc) lib_candidates)
+         List.of_seq |>
+         List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+     in
+     Error (List.map (fun candidate -> candidate.desc) lib_candidates,
+            List.map (fun candidate -> candidate.desc) close_candidates)
   | ocs -> begin
      match disambiguate_resolutions ocs with
      | Some oc -> Ok oc
      | None ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
+     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available implicit candidates are: %s.\nThe available explicit candidates are: %s"
        display_typ typ
        (String.concat ", " candidates)
+       (String.concat ", " (List.map (fun oc -> oc.desc) close_candidates))
      end
 
 type ctx_dot_candidate =
@@ -2179,16 +2184,22 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error suggestions ->
-      let sug =
-         if suggestions = [] then
+    | Error (import_suggestions, explicit_suggestions) ->
+      let import_sug =
+         if import_suggestions = [] then
          "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
-         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)
+         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
       in
-      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s"
+      let explicit_sug =
+         if explicit_suggestions = [] then
+         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
+         else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
+      in
+      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"
         (desc s)
         display_typ t
-        sug
+        import_sug
+        explicit_sug
     end
   | PrimE s, T.Func _ ->
     t

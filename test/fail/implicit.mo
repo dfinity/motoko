@@ -1,7 +1,12 @@
-
 type Order = {#less;#greater;#equal};
 
+func explicit1(n : Nat, m : Nat) : Order { #less };
+
+
 module M {
+
+  public func aardvark(n : Nat, m : Nat) : Order { #less };
+
   public func c(n : Nat, m: Nat) : Order {
     if (n < m) #less
     else if (n == m) #greater
@@ -104,4 +109,4 @@ func tuple(pair : (Nat, Nat), c : (implicit : (Nat, Nat) -> Order)) : Order {
   c(pair.0, pair.1)
 };
 
-assert tuple(3, 3);
+ignore tuple(3, 3);
