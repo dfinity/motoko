@@ -1367,90 +1367,92 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1)
        else None
   in
-  let find_candidates (module_name, fs) =
+  let find_candidate_fields (module_name, fs) =
     List.filter_map has_matching_field_typ fs |>
       List.map (fun (lab, typ)->
           let path =
-          { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
-                           at = Source.no_region;
-                           note = empty_typ_note
-                         },
-                         { it = lab; at = no_region; note = () },
-                         ref None);
+            { it = DotE(
+                { it = VarE {it = module_name; at = no_region; note = Const};
+                  at = Source.no_region;
+                  note = empty_typ_note
+                },
+                { it = lab; at = no_region; note = () },
+                ref None);
               at = Source.no_region;
               note = empty_typ_note; }
           in
           ({ path; desc = module_name^"."^ lab; typ; id=lab } : hole_candidate))
   in
-  let find_candidate_val = function
+  let find_candidate_id = function
     (id, (t, _, _, _)) ->
     if is_matching_typ t
     then
-      let path = { it =
-                   VarE {it = id; at = no_region; note = Const};
-                   at = Source.no_region;
-                   note = empty_typ_note }
+      let path =
+        { it = VarE {it = id; at = no_region; note = Const};
+          at = Source.no_region;
+          note = empty_typ_note }
       in
       Some { path; desc = id; typ = t; id }
     else None
   in
-  let (eligible_env_vals, close_env_vals) =
+  let (eligible_ids, explicit_ids) =
     let vals =
       match hole_sort with
       | Named id ->
          env.vals
       | Anon _ ->
-         env.vals (* search entire env *)
+         env.vals
     in
     T.Env.to_seq vals |>
-      Seq.filter_map find_candidate_val |>
+      Seq.filter_map find_candidate_id |>
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_module_vals () =
+  let eligible_fields () =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
-      Seq.map find_candidates |>
+      Seq.map find_candidate_fields |>
       List.of_seq |>
       List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_vals, close_candidates  =
-    match eligible_env_vals with
-    | [oc] -> ([oc], []) (* first look in local env, otherwise consider module entries *)
-    | occs ->
-       let (occ_modules, close_module_vals) = eligible_module_vals () in
-       (occs @ occ_modules,
-       close_env_vals @ close_module_vals)
+  let eligible_terms, explicit_terms  =
+    match eligible_ids with
+    | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
+    | _ ->
+       let (eligible_fields, explicit_fields) = eligible_fields () in
+       (eligible_ids @ eligible_fields,
+        explicit_ids @ explicit_fields)
   in
-  match eligible_vals with
-  | [oc] -> Ok oc
+  match eligible_terms with
+  | [term] -> Ok term
   | [] ->
-     let (lib_candidates, _) =
+     let (lib_terms, _) =
        T.Env.to_seq env.libs |>
          Seq.filter_map (fun (n, t) ->
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
-         Seq.map find_candidates |>
+         Seq.map find_candidate_fields |>
          List.of_seq |>
          List.flatten |>
          List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
      in
-     Error (List.map (fun candidate -> candidate.desc) lib_candidates,
-            List.map (fun candidate -> candidate.desc) close_candidates)
-  | ocs -> begin
-     match disambiguate_resolutions ocs with
-     | Some oc -> Ok oc
+     Error (List.map (fun candidate -> candidate.desc) lib_terms,
+            List.map (fun candidate -> candidate.desc) explicit_terms)
+  | terms -> begin
+     match disambiguate_resolutions terms with
+     | Some term -> Ok term
      | None ->
-     let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
-       (match hole_sort with Named n -> "named " ^ n | Anon i -> "at argument position " ^ Int.to_string i)
-       display_typ typ
-       (String.concat ", " candidates)
-      (if close_candidates = [] then "" else
-       ".\nThe other explicit candidates are: "^
-      (String.concat ", " (List.map (fun oc -> oc.desc) close_candidates)))
+       let terms = List.map (fun term -> term.desc) terms in
+       error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
+         (match hole_sort with Named n -> "named " ^ n | Anon i -> "at argument position " ^ Int.to_string i)
+         display_typ typ
+         (String.concat ", " terms)
+         (if explicit_terms = [] then ""
+          else
+            ".\nThe other explicit candidates are: "^
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
      end
 
 type ctx_dot_candidate =
