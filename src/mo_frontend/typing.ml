@@ -1367,11 +1367,11 @@ let resolve_hole env at hole_sort typ =
        then Some (lab1, typ1)
        else None
   in
-  let find_candidate (module_name, fs) =
-    List.find_map has_matching_field_typ fs |>
-      Option.map (fun (lab, typ)->
+  let find_candidates (module_name, fs) =
+    List.filter_map has_matching_field_typ fs |>
+      List.map (fun (lab, typ)->
           let path =
-            { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
+          { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
                            at = Source.no_region;
                            note = empty_typ_note
                          },
@@ -1410,8 +1410,9 @@ let resolve_hole env at hole_sort typ =
   let eligible_module_vals () =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
-      Seq.filter_map find_candidate |>
+      Seq.map find_candidates |>
       List.of_seq |>
+      List.flatten |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
   let eligible_vals, close_candidates  =
@@ -1431,8 +1432,9 @@ let resolve_hole env at hole_sort typ =
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
-         Seq.filter_map find_candidate |>
+         Seq.map find_candidates |>
          List.of_seq |>
+         List.flatten |>
          List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
      in
      Error (List.map (fun candidate -> candidate.desc) lib_candidates,
@@ -1442,10 +1444,13 @@ let resolve_hole env at hole_sort typ =
      | Some oc -> Ok oc
      | None ->
      let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available implicit candidates are: %s.\nThe available explicit candidates are: %s"
+     error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
+       (match hole_sort with Named n -> "named " ^ n | Anon i -> "at argument position " ^ Int.to_string i)
        display_typ typ
        (String.concat ", " candidates)
-       (String.concat ", " (List.map (fun oc -> oc.desc) close_candidates))
+      (if close_candidates = [] then "" else
+       ".\nThe other explicit candidates are: "^
+      (String.concat ", " (List.map (fun oc -> oc.desc) close_candidates)))
      end
 
 type ctx_dot_candidate =
@@ -2187,12 +2192,13 @@ and check_exp' env0 t exp : T.typ =
     | Error (import_suggestions, explicit_suggestions) ->
       let import_sug =
          if import_suggestions = [] then
-         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
+           Format.sprintf
+             "\nHint: If you're trying to use an implicit argument you need to have a matching declaration%s in scope."
+             (match s with Named n -> " named " ^ n | _ -> "")
          else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
       in
       let explicit_sug =
-         if explicit_suggestions = [] then
-         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
+         if explicit_suggestions = [] then ""
          else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
       in
       error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"

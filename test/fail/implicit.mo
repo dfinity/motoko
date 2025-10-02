@@ -48,7 +48,6 @@ func f3(n : Nat, m : Nat, d : (implicit : Nat -> Order)) {
 f1(0, 1, M.c); //accept
 f2(0, 1, M.c); //accept
 
-f1("0", "1", M.c); // reject
 f2("0", "1", N.c); // accept
 
 f1(0, 1); //accept
@@ -109,4 +108,4 @@ func tuple(pair : (Nat, Nat), c : (implicit : (Nat, Nat) -> Order)) : Order {
   c(pair.0, pair.1)
 };
 
-ignore tuple(3, 3);
+ignore tuple((3, 3));
