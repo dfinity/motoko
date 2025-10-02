@@ -283,8 +283,13 @@ let list_files : string -> string list =
     List.filter (fun f -> Filename.extension f = ".mo") all_files
 
 let package_imports base packages =
+  let abs p = Lib.FilePath.normalise (
+    if Filename.is_relative p then Filename.concat (Sys.getcwd ()) p else p)
+  in
+  let base_abs = abs base in
   let imports = M.fold (fun pname url acc ->
-    if base = url then
+    let url_abs = abs url in
+    if base_abs = url_abs || Lib.FilePath.is_subpath url_abs base_abs then
       acc
     else
       let files = list_files url in

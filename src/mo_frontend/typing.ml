@@ -1309,7 +1309,33 @@ type hole_candidate =
   { path: exp;
     desc: string;
     typ : T.typ;
+    module_name_opt: string option;
   }
+
+(** Convert a filesystem path to a mo:<package>/<module> URL if it lies under any configured package path. *)
+let mo_url_of_path (path : string) : string option =
+  let seq = Flags.M.to_seq !Flags.package_urls in
+  Seq.fold_left (fun acc (package, base) ->
+    match acc with
+    | Some _ -> acc
+    | None ->
+      let base_norm = Lib.FilePath.normalise base in
+      let path_norm = Lib.FilePath.normalise path in
+      match Lib.FilePath.relative_to base_norm path_norm with
+      | None -> None
+      | Some rel ->
+        if Filename.basename rel = "lib.mo" then
+          Some (Printf.sprintf "mo:%s" package)
+        else
+          Some (Printf.sprintf "mo:%s/%s" package (Filename.chop_extension rel))
+  ) None seq
+
+let module_name_as_url module_path = match mo_url_of_path module_path with
+  | Some url -> url
+  | None -> module_path
+
+let suggestion_of_candidate candidate =
+  Option.fold ~none:candidate.desc ~some:module_name_as_url candidate.module_name_opt
 
 (* All candidates are subtypes of the required type. The "greatest" of
    these types is the "closest" to the required type. If we can
@@ -1380,7 +1406,7 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
+          ({ path; desc = module_name^"."^ lab; typ; module_name_opt = Some module_name} : hole_candidate))
   in
   let find_candidate_val = function
     (id, (t, _, _, _)) ->
@@ -1392,7 +1418,7 @@ let resolve_hole env at hole_sort typ =
                    at = Source.no_region;
                    note = empty_typ_note }
       in
-      Some { path; desc = id; typ = t }
+      Some { path; desc = id; typ = t; module_name_opt = None }
     else None
   in
   let eligible_env_vals =
@@ -1430,9 +1456,9 @@ let resolve_hole env at hole_sort typ =
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
-         Seq.filter_map find_candidate |>
+         Seq.filter_map (fun (module_path, fs) -> find_candidate (module_path, fs)) |>
          List.of_seq in
-     Error (List.map (fun candidate -> candidate.desc) lib_candidates)
+     Error (List.map suggestion_of_candidate lib_candidates)
   | ocs -> begin
      match disambiguate_resolutions ocs with
      | Some oc -> Ok oc
@@ -1499,7 +1525,7 @@ let contextual_dot env name receiver_ty =
          Seq.filter has_matching_self_type |>
          Seq.filter_map find_candidate |>
          List.of_seq in
-     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
+     Error (List.map (fun candidate -> module_name_as_url candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
@@ -4245,6 +4271,9 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
+              (* let package_name *)
+              (* let package_name = Option.value pkg_opt ~default:lib.note.filename in 
+              Printf.printf "importing library %s\n" package_name; *)
               Scope.lib lib.note.filename typ
             | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
