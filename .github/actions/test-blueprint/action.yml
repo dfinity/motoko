@@ -34,25 +34,31 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Free Disk Space (Ubuntu)
-      if: inputs.os == 'ubuntu-latest' || inputs.os == 'ubuntu-24.04-arm'
-      uses: jlumbroso/free-disk-space@main
+    - uses: nixbuild/nix-quick-install-action@v34
+
+    - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
+      uses: nixbuild/nixbuild-action@v22
       with:
-        swap-storage: false
+        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
 
-    - uses: cachix/install-nix-action@v31
+    - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
+      name: "Run ${{ inputs.test-name }}"
+      run: |
+        nixbuild.sh '.#${{ inputs.test-target }}'
 
-    - uses: cachix/cachix-action@v16
+    - if: startsWith(inputs.os, 'macos-')
+      uses: cachix/cachix-action@v16
       with:
         name: ic-hs-test
         authToken: ${{ inputs.cachix-auth-token }}
 
-    - run: nix profile install .#nix-build-uncached
+    - if: startsWith(inputs.os, 'macos-')
+      run: nix profile install .#nix-build-uncached
       shell: bash
 
-    - name: "Run ${{ inputs.test-name }}"
+    - if: startsWith(inputs.os, 'macos-')
+      name: "Run ${{ inputs.test-name }}"
       run: |
         cachix watch-exec ic-hs-test -- \
         nix-build-uncached --max-jobs auto \
         -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
-      shell: bash
