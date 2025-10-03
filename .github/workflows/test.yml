@@ -94,6 +94,7 @@ jobs:
       - uses: nixbuild/nixbuild-action@v22
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+          generate_summary_for: 'workflow'
       - name: Fetch report
         shell: bash
         run: |
@@ -119,6 +120,7 @@ jobs:
         uses: nixbuild/nixbuild-action@v22
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+          generate_summary_for: 'workflow'
       - if: ${{ startsWith(matrix.os, 'macos-') }}
         uses: cachix/cachix-action@v16
         with:

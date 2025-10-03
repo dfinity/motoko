@@ -43,6 +43,7 @@ runs:
       uses: nixbuild/nixbuild-action@v22
       with:
         nixbuild_token: ${{ inputs.nixbuild-token }}
+        generate_summary_for: 'workflow'
 
     - uses: cachix/cachix-action@v16
       with:
