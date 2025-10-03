@@ -54,7 +54,7 @@ runs:
         from="$(git merge-base origin/${{ inputs.base_ref }} HEAD)"
         to="${{ inputs.head_sha }}"
         echo "Comparing changes from $from to $to"
-        PERF_DELTA="$(nixbuildcopy.sh -f perf-delta.nix \
+        PERF_DELTA="$(${{ github.workspace }}/nixbuildcopy.sh -f perf-delta.nix \
           --argstr ref HEAD \
           --argstr from "$from" \
           --argstr to "$to")"
