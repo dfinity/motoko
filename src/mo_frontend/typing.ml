@@ -2475,9 +2475,14 @@ and detect_lost_fields env t = function
   | _ -> ()
 
 and infer_callee env exp =
+  let is_func_typ typ = T.(
+    match promote typ with
+    | Func _ | Non -> true
+    | _ -> false)
+  in
   match exp.it with
   | DotE(exp1, id, note) -> begin
-    match try_infer_dot_exp env exp.at exp1 id ("a function", (fun dot_typ -> T.is_func (T.normalize dot_typ))) with
+    match try_infer_dot_exp env exp.at exp1 id ("a function", is_func_typ) with
     | Ok t -> infer_exp_wrapper (fun _ _ -> t) T.as_immut env exp, None
     | Error (t1, e) ->
       match contextual_dot env id t1 with
