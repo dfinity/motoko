@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 NIX_ARGS=()
 
 # On Linux we run builds on nixbuild.net:
