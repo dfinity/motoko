@@ -1456,7 +1456,7 @@ let resolve_hole env at hole_sort typ =
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
-         Seq.filter_map (fun (module_path, fs) -> find_candidate (module_path, fs)) |>
+         Seq.filter_map find_candidate |>
          List.of_seq in
      Error (List.map suggestion_of_candidate lib_candidates)
   | ocs -> begin
@@ -4271,9 +4271,6 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
                 in
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
-              (* let package_name *)
-              (* let package_name = Option.value pkg_opt ~default:lib.note.filename in 
-              Printf.printf "importing library %s\n" package_name; *)
               Scope.lib lib.note.filename typ
             | ActorClassU (_persistence, sp, exp_opt, id, tbs, p, _, self_id, dec_fields) ->
               if is_anon_id id then
