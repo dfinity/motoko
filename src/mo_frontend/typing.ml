@@ -1313,30 +1313,8 @@ type hole_candidate =
     module_name_opt: string option;
   }
 
-(** Convert a filesystem path to a mo:<package>/<module> URL if it lies under any configured package path. *)
-let mo_url_of_path (path : string) : string option =
-  let seq = Flags.M.to_seq !Flags.package_urls in
-  Seq.fold_left (fun acc (package, base) ->
-    match acc with
-    | Some _ -> acc
-    | None ->
-      let base_norm = Lib.FilePath.normalise base in
-      let path_norm = Lib.FilePath.normalise path in
-      match Lib.FilePath.relative_to base_norm path_norm with
-      | None -> None
-      | Some rel ->
-        if Filename.basename rel = "lib.mo" then
-          Some (Printf.sprintf "mo:%s" package)
-        else
-          Some (Printf.sprintf "mo:%s/%s" package (Filename.chop_extension rel))
-  ) None seq
-
-let module_name_as_url module_path = match mo_url_of_path module_path with
-  | Some url -> url
-  | None -> module_path
-
 let suggestion_of_candidate candidate =
-  Option.fold ~none:candidate.desc ~some:module_name_as_url candidate.module_name_opt
+  Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
 (* All candidates are subtypes of the required type. The "greatest" of
    these types is the "closest" to the required type. If we can
@@ -1530,7 +1508,7 @@ let contextual_dot env name receiver_ty =
          Seq.filter has_matching_self_type |>
          Seq.filter_map find_candidate |>
          List.of_seq in
-     Error (List.map (fun candidate -> module_name_as_url candidate.module_name) lib_candidates)
+     Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
