@@ -1396,14 +1396,7 @@ let resolve_hole env at hole_sort typ =
     else None
   in
   let (eligible_ids, explicit_ids) =
-    let vals =
-      match hole_sort with
-      | Named id ->
-         env.vals
-      | Anon _ ->
-         env.vals
-    in
-    T.Env.to_seq vals |>
+    T.Env.to_seq env.vals |>
       Seq.filter_map find_candidate_id |>
       List.of_seq |>
       List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
