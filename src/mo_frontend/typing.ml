@@ -2064,7 +2064,7 @@ and try_infer_dot_exp env at exp id (desc, pred) =
         check_deprecation env at "field" id.it (T.lookup_val_deprecation id.it tfs);
       Ok(t)
     | t (* when not (pred t) *) ->
-      Error(t1, type_error id.at "M0072"
+      Error(t1, type_error id.at "M0233"
         (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
            id.it
            display_obj (s, tfs)
