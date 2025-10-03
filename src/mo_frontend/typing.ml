@@ -1458,7 +1458,7 @@ let resolve_hole env at hole_sort typ =
          List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
      in
      Error (List.map suggestion_of_candidate lib_terms,
-            List.map suggestion_of_candidate explicit_terms)
+            List.map (fun candidate -> candidate.desc) explicit_terms)
   | terms -> begin
      match disambiguate_resolutions terms with
      | Some term -> Ok term
