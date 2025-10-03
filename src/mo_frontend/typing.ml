@@ -2047,6 +2047,13 @@ and try_infer_dot_exp env at exp id (desc, pred) =
   match fields with
   | Error e -> Error e
   | Ok((s, tfs)) -> begin
+    let suggest () =
+      Suggest.suggest_id "field" id.it
+        (List.filter_map
+           (function
+              { T.typ=T.Typ _;_} -> None
+            | {T.lab;_} -> Some lab) tfs)
+    in
     match T.lookup_val_field id.it tfs with
     | T.Pre ->
       error env at "M0071"
@@ -2058,20 +2065,16 @@ and try_infer_dot_exp env at exp id (desc, pred) =
       Ok(t)
     | t (* when not (pred t) *) ->
       Error(t1, type_error id.at "M0072"
-          (Format.asprintf "field %s does exist in %a but is not %s"
-             id.it
-             display_obj
-             (s, tfs)
-             desc))
+        (Format.asprintf "field %s does exist in %a\nbut is not %s.\n%s"
+           id.it
+           display_obj (s, tfs)
+           desc
+           (suggest ())))
     | exception Invalid_argument _ ->
       Error(t1, type_error id.at "M0072" (Format.asprintf "field %s does not exist in %a%s"
-          id.it
-          display_obj (s, tfs)
-          (Suggest.suggest_id "field" id.it
-             (List.filter_map
-                (function
-                   { T.typ=T.Typ _;_} -> None
-                 | {T.lab;_} -> Some lab) tfs))))
+        id.it
+        display_obj (s, tfs)
+        (suggest ())))
     end
 
 and infer_exp_field env rf =
