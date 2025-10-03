@@ -30,6 +30,9 @@ inputs:
   cachix-auth-token:
     required: true
     description: "Cachix authentication token"
+  nixbuild-token:
+    required: false
+    description: "Nixbuild.net authentication token"
 
 runs:
   using: "composite"
@@ -39,7 +42,7 @@ runs:
     - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
       uses: nixbuild/nixbuild-action@v22
       with:
-        nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+        nixbuild_token: ${{ inputs.nixbuild-token }}
 
     - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
       name: "Run ${{ inputs.test-name }}"
