@@ -1422,17 +1422,38 @@ let resolve_hole env at hole_sort typ =
   in
   let renaming_hints env =
     List.iter (fun candidate ->
+        if (candidate.region.left.file = at.left.file) then
         match hole_sort with
         | Anon _ -> ()
         | Named id ->
-        if (candidate.region.left.file = at.left.file) then
-          info env candidate.region
-            "Consider renaming `%s` to `%s` so it can serve as an implicit argument `%s` in this call\n%s%s"
-            candidate.id
-            id
-            id
-            (Source.string_of_region at)
-            (match Source.read_region at with Some s -> ": " ^ s | None -> "."))
+        match candidate.path.it with
+        | VarE _ ->
+             let mid =
+               match Lib.String.chop_prefix id candidate.id with
+               | Some suffix when not (T.Env.mem suffix env.vals) ->
+                 suffix
+               | _ -> "<M>"
+             in
+             info env candidate.region
+               "Consider renaming `%s` to `%s.%s` in a new module `%s`. Then it can serve as an implicit argument `%s` in this call\n%s%s"
+               candidate.id
+               mid
+               id
+               mid
+               id
+               (Source.string_of_region at)
+               (match Source.read_region at with Some s -> ": " ^ s | None -> ".")
+        | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+               info env candidate.region
+               "Consider renaming `%s` to `%s` in `%s`. Then it can serve as an implicit argument `%s` in this call\n%s%s"
+               candidate.id
+               id
+               mid
+               id
+               (Source.string_of_region at)
+               (match Source.read_region at with Some s -> ": " ^ s | None -> ".")
+        | _ -> ()
+      )
       explicit_terms
   in
   match eligible_terms with

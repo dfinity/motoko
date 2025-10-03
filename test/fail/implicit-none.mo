@@ -1,12 +1,13 @@
 type Order = {#less;#greater;#equal};
 
 func explicit1(n : Nat, m : Nat) : Order { #less };
+func cM(n : Nat, m : Nat) : Order { #less };
 
-func explicit2(n : Nat, m : Nat) : Order { #less };
+func cOther(n : Nat, m : Nat) : Order { #less };
 
 module M {
 
-  func explicit2(n : Nat, m : Nat) : Order { #less };
+  public func explicit2(n : Nat, m : Nat) : Order { #less };
 
 };
 
