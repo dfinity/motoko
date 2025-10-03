@@ -2216,7 +2216,7 @@ and check_exp' env0 t exp : T.typ =
   match exp.it, t with
   | HoleE (s, e), t ->
     let desc = function
-      | Named id -> "'"^id^"'"
+      | Named id -> "`"^id^"`"
       | Anon idx -> "at position " ^ (Int.to_string idx)
     in
     begin match resolve_hole env exp.at s t with
