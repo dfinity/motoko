@@ -52,7 +52,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | HoleE _ -> T.Triv (* TBR *)
   | CallE (_, exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
     T.Await
-  | CallE (Some par, exp1, _, exp2) ->
+  | CallE (Some par, exp1, _, (_, exp2)) ->
     map_max_effs effect_exp [par; exp1; !exp2]
   | PrimE _
   | VarE _
@@ -91,7 +91,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | LoopE (exp1, Some exp2)
   | ForE (_, exp1, exp2) ->
     map_max_effs effect_exp [exp1; exp2]
-  | CallE (None, exp1, _, exp2) ->
+  | CallE (None, exp1, _, (_, exp2)) ->
     map_max_effs effect_exp [exp1; !exp2]
   | DebugE exp1 ->
     effect_exp exp1
@@ -149,5 +149,7 @@ and infer_effect_dec dec =
   | VarD (_, e) ->
     effect_exp e
   | TypD _
-  | ClassD _ ->
+  | ClassD _
+  | MixinD _
+  | IncludeD _ ->
     T.Triv

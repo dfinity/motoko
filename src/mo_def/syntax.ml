@@ -190,7 +190,7 @@ and exp' =
   | ArrayE of mut * exp list                   (* array *)
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
-  | CallE of exp option * exp * inst * (exp ref)     (* function call *)
+  | CallE of exp option * exp * inst * arg_exp     (* function call *)
   | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
@@ -216,7 +216,8 @@ and exp' =
   | IgnoreE of exp                             (* ignore *)
 (*
   | AtomE of string                            (* atom *)
-*)
+ *)
+and arg_exp = (bool * (exp ref))
 
 and assert_kind =
   | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
@@ -244,6 +245,13 @@ and dec' =
   | TypD of typ_id * typ_bind list * typ       (* type *)
   | ClassD of                                  (* class *)
       exp option * sort_pat * obj_sort * typ_id * typ_bind list * pat * typ option * id * dec_field list
+  | MixinD of pat * dec_field list             (* mixin *)
+  | IncludeD of id * exp * include_note (* mixin include *)
+and include_note' = { imports : import list; pat : pat; decs : dec_field list }
+and include_note = include_note' option ref
+
+and import = (import', Type.typ) Source.annotated_phrase
+and import' = pat * string * resolved_import ref
 
 (* Program (pre unit detection) *)
 
@@ -263,9 +271,6 @@ and req = bool Source.phrase
 
 (* Compilation units *)
 
-type import = (import', Type.typ) Source.annotated_phrase
-and import' = pat * string * resolved_import ref
-
 type comp_unit_body = (comp_unit_body', typ_note) Source.annotated_phrase
 and comp_unit_body' =
  | ProgU of dec list                         (* main programs *)
@@ -273,6 +278,7 @@ and comp_unit_body' =
  | ModuleU of id option * dec_field list     (* module library *)
  | ActorClassU of                            (* IC actor class, main or library *)
      persistence * exp option * sort_pat * typ_id * typ_bind list * pat * typ option * id * dec_field list
+ | MixinU of pat * dec_field list            (* Mixins *)
 
 type comp_unit = (comp_unit', prog_note) Source.annotated_phrase
 and comp_unit' = {

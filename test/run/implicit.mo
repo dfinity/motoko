@@ -24,7 +24,7 @@ func f1(n : Nat, m : Nat, c : implicit (Nat, Nat) -> Order) {
   ignore c(n, m);
 };
 
-func f2<T>(n : T, m : T, c : implicit  (T, T) -> Order) {
+func f2<T>(n : T, m : T, c : implicit (T, T) -> Order) {
   ignore c(n, m);
 };
 
@@ -88,3 +88,9 @@ func isEq<T>(x : T, y : T, eq : implicit (T, T) -> Bool) : Bool {
 };
 
 assert isEq<Nat>(3, 3);
+
+func tuple(pair : (Nat, Nat), eq : implicit (Nat, Nat) -> Bool) : Bool {
+  eq(pair.0, pair.1)
+};
+
+assert tuple((3, 3));

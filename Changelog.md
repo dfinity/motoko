@@ -1,6 +1,18 @@
 # Motoko compiler changelog
 
+## Unreleased
+
 * motoko (`moc`)
+
+  * Experimental support for `implicit` argument declarations (#5517).
+
+  * Experimental support for Mixins (#5459).
+
+## 0.16.3 (2025-09-29)
+
+* motoko (`moc`)
+
+  * Added `Prim.getSelfPrincipal<system>() : Principal` to get the principal of the current actor (#5518).
 
   * Contextual dot notation (#5458):
 
@@ -25,6 +37,8 @@
   * Added `-E` flag to treat specified warnings as errors given their message codes (#5502).
 
   * Added `--warn-help` flag to show available warning codes, current lint level (**A**llowed, **W**arn or **E**rror), and descriptions (#5502).
+
+  * `moc.js` : Added `setExtraFlags` method for passing some of the `moc` flags (#5506).
 
 ## 0.16.2 (2025-09-12)
 

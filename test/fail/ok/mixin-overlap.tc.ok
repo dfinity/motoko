@@ -1,0 +1,4 @@
+mixin-overlap.mo:5.15-5.24: type error [M0051], duplicate definition for increment in block
+mixin-overlap.mo:10.11-10.23: type error [M0051], duplicate definition for increment in block
+mixin-overlap.mo:15.11-15.23: type error [M0051], duplicate definition for type T in block
+mixin-overlap.mo:20.8-20.9: type error [M0051], duplicate definition for type T in block
