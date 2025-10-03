@@ -65,11 +65,11 @@ func f4(n : Nat, m : Nat, bogus : implicit (Nat, Nat) -> Order) {
 f4(1, 1); // reject
 
 // retype f4 with as f4 with different implicit name
-let f5 : (Nat, Nat, (c : implicit (Nat, Nat) -> Order)) -> () = f4;
+let f5 : (Nat, Nat, c : implicit (Nat, Nat) -> Order) -> () = f4;
 
 f5(1, 1); // accept
 
-func f6(n : Nat, m : Nat, ambiguous : implicit  (Nat, Nat) -> Order) {
+func f6(n : Nat, m : Nat, ambiguous : implicit (Nat, Nat) -> Order) {
 };
 
 f6(1, 1); // reject
@@ -93,8 +93,8 @@ ignore mkZero<{ x : Nat }>();
 
 // tricky case: if we have two implicit arguments of the same name we currently need to add a second type annotation
 func c <T, U>(p1 : (T, U), p2 : (T, U),
-   cT : implicit (c : (T, T) -> Order)),
-   cU : implicit (c : (U, U) -> Order)))
+   cT : implicit (c : (T, T) -> Order),
+   cU : implicit (c : (U, U) -> Order))
    : Order {
    switch (cT(p1.0, p2.0)) {
      case (#equal) { cU(p1.1, p2.1) };
