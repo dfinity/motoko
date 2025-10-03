@@ -1,0 +1,4 @@
+implicit-none.mo:18.3-18.9: type error [M0230], Cannot determine implicit argument 'c' of type
+  (Nat, Nat) -> Order
+Hint: If you're trying to use an implicit argument you need to have a matching declaration named c in scope.
+Hint: Did you mean to explicitly use explicit1 or explicit2?
