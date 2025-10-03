@@ -283,20 +283,17 @@ let list_files : string -> string list =
     List.filter (fun f -> Filename.extension f = ".mo") all_files
 
 let package_imports base packages =
-  let abs p = Lib.FilePath.normalise (
-    if Filename.is_relative p then Filename.concat (Sys.getcwd ()) p else p)
-  in
-  let base_abs = abs base in
+  let base_norm = Lib.FilePath.normalise base in
   let imports = M.fold (fun pname url acc ->
-    let url_abs = abs url in
-    if base_abs = url_abs || Lib.FilePath.is_subpath url_abs base_abs then
+    let url_norm = Lib.FilePath.normalise url in
+    if base_norm = url_norm || Lib.FilePath.relative_to url_norm base_norm <> None then
       acc
     else
       let files = list_files url in
       List.map (fun path -> LibPath {package = Some pname; path = path}) files::acc)
     packages []
   in
-    List.concat imports
+  List.concat imports
 
 let resolve_flags : flags -> resolved_flags Diag.result
   = fun { actor_idl_path; package_urls; actor_aliases; _ } ->
