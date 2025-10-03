@@ -1436,7 +1436,7 @@ let resolve_hole env at hole_sort typ =
          Seq.map find_candidate_fields |>
          List.of_seq |>
          List.flatten |>
-         List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
+         List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
      in
      Error (List.map (fun candidate -> candidate.desc) lib_terms,
             List.map (fun candidate -> candidate.desc) explicit_terms)
