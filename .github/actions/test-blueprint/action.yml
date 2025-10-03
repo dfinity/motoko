@@ -46,6 +46,7 @@ runs:
 
     - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
       name: "Run ${{ inputs.test-name }}"
+      shell: bash
       run: |
         nixbuild.sh '.#${{ inputs.test-target }}'
 

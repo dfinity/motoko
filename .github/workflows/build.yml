@@ -24,6 +24,7 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: nix-build
+      shell: bash
       run: |
         cachix watch-exec ic-hs-test -- \
           nixbuild.sh -L \

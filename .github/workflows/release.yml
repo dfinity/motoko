@@ -95,6 +95,7 @@ jobs:
           # NB: No auth token, we don't expect to push new stuff here
 
       - name: Build platform-specific release files
+        shell: bash
         run: |
           release_files="$(nixbuildcopy.sh '.#"release-files-${{ matrix.os }}"')"
           echo "UPLOAD_PATH=$release_files" >> $GITHUB_ENV
@@ -106,6 +107,7 @@ jobs:
           path: ${{ env.UPLOAD_PATH }}/*
 
       - name: Test release files
+        shell: bash
         run: |
           uname -s -m
           moc="$(nixbuildcopy.sh .#release.moc)"
