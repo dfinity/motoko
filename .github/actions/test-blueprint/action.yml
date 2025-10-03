@@ -48,7 +48,7 @@ runs:
       name: "Run ${{ inputs.test-name }}"
       shell: bash
       run: |
-        nixbuild.sh '.#${{ inputs.test-target }}'
+        ${{ github.workspace }}/nixbuild.sh '.#${{ inputs.test-target }}'
 
     - if: startsWith(inputs.os, 'macos-')
       uses: cachix/cachix-action@v16
