@@ -62,8 +62,8 @@ runs:
 
     - if: startsWith(inputs.os, 'macos-')
       name: "Run ${{ inputs.test-name }}"
-      shell: bash
       run: |
         cachix watch-exec ic-hs-test -- \
         nix-build-uncached --max-jobs auto \
         -E '(builtins.getFlake (toString ./.)).packages.${builtins.currentSystem}.${{ inputs.test-target }}'
+      shell: bash
