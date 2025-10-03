@@ -39,7 +39,7 @@ runs:
   steps:
     - uses: nixbuild/nix-quick-install-action@v34
 
-    - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
+    - if: startsWith(inputs.os, 'ubuntu-')
       uses: nixbuild/nixbuild-action@v22
       with:
         nixbuild_token: ${{ inputs.nixbuild-token }}
@@ -49,7 +49,7 @@ runs:
         name: ic-hs-test
         authToken: ${{ inputs.cachix-auth-token }}
 
-    - if: startsWith(inputs.os, 'ubuntu-') || startsWith(inputs.os, 'arm64-linux')
+    - if: startsWith(inputs.os, 'ubuntu-')
       name: "Run ${{ inputs.test-name }}"
       shell: bash
       run: |
