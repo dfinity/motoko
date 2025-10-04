@@ -1482,22 +1482,27 @@ and singleton_field co tf = singleton_typ co tf.typ
 
 and singleton t : bool = singleton_typ (ref S.empty) t
 
-(** A type is isolated if it has no proper supertypes nor proper subtypes (ignoring top [Any] and bottom [Non]). *)
-let rec isolated_typ co = function
+type no_subtypes_or_supertypes =
+  | NoSubtypes
+  | NoSupertypes
+
+let rec has_no_subtypes_or_supertypes m co = function
   | Con (c, ts) as t ->
     (match Cons.kind c with
     | Abs (_, bound) ->
-      (* Type parameters are isolated when unbounded. *)
+      (* Type parameters have no proper subtypes *)
+      m = NoSubtypes ||
+      (* And no proper supertypes when unbounded. *)
       bound = Any
     | Def (tbs, def) ->
-      (* Cyclic definitions are isolated until proven otherwise. *)
-      S.mem t !co || begin
-        co := S.add t !co;
-        isolated_typ co (reduce tbs def ts)
+      let s = fst co in
+      S.mem t !s || begin
+        s := S.add t !s;
+        has_no_subtypes_or_supertypes m co (reduce tbs def ts)
       end
     )
   | Mut _ -> true
-  | Named (_, t) -> isolated_typ co t
+  | Named (_, t) -> has_no_subtypes_or_supertypes m co t
   | Prim
     ( Bool
     | Nat8
@@ -1515,18 +1520,30 @@ let rec isolated_typ co = function
     | Error
     | Principal
     | Region
-    (* All except Nat, Int, Null as they have proper super/subtypes: Nat <: Int, ?T <: Null *)
     ) -> true
+  (* Null <: ?T so Null has no proper subtypes and ?T has no proper supertypes. *)
+  | Opt t -> m = NoSupertypes && has_no_subtypes_or_supertypes m co t
+  (* Nat <: Int so Nat has no proper subtypes and Int has no proper supertypes. *)
+  | Prim Int -> m = NoSupertypes
+  | Prim (Null | Nat) -> m = NoSubtypes
   | Array t
   | Async (_, _, t)
-  | Weak t -> isolated_typ co t
-  | Tup ts -> List.for_all (isolated_typ co) ts
+  | Weak t -> has_no_subtypes_or_supertypes m co t
+  | Tup ts -> List.for_all (has_no_subtypes_or_supertypes m co) ts
   | Func (_, _, _, ts1, ts2) ->
-    List.for_all (isolated_typ co) ts1 &&
-    List.for_all (isolated_typ co) ts2
+    let flip = function
+      | NoSubtypes -> NoSupertypes
+      | NoSupertypes -> NoSubtypes
+    in
+    let swap (s1, s2) = (s2, s1) in
+    (* For func inputs, flip the mode and swap the result sets. *)
+    List.for_all (has_no_subtypes_or_supertypes (flip m) (swap co)) ts1 &&
+    List.for_all (has_no_subtypes_or_supertypes       m        co ) ts2
   | _ -> false
 
-and isolated t = isolated_typ (ref S.empty) t
+and has_no_supertypes t = has_no_subtypes_or_supertypes NoSupertypes (ref S.empty, ref S.empty) t
+
+and has_no_subtypes t = has_no_subtypes_or_supertypes NoSubtypes (ref S.empty, ref S.empty) t
 
 (* Least upper bound and greatest lower bound *)
 
