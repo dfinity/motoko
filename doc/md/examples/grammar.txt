@@ -9,6 +9,7 @@
 
 <implicit> ::= 
     'implicit'
+
 <id_wild> ::= 
     '_'
 
@@ -72,7 +73,6 @@
     <typ> 'or' <typ>
 
 <typ_item> ::= 
-    <implicit> <typ>
     <id> ':' <typ>
     <id_wild> ':' <typ>
     <typ>
