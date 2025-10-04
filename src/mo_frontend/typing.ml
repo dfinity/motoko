@@ -1434,16 +1434,15 @@ let resolve_hole env at hole_sort typ =
         | Named id ->
           let mod_desc, mid =
             match candidate.path.it with
-            | VarE _ ->
+            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+              ("the existing", mid)
+            | VarE _ | _ ->
               let mid = match Lib.String.chop_prefix id candidate.id with
                 | Some suffix when not (T.Env.mem suffix env.vals) ->
                    suffix
                 | _ -> "<M>"
               in
               ("a new", mid)
-            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
-              ("the existing", mid)
-            | _ -> assert false
           in
             info env candidate.region
              "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
