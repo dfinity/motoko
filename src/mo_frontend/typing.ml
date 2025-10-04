@@ -1432,22 +1432,22 @@ let resolve_hole env at hole_sort typ =
         match hole_sort with
         | Anon _ -> ()
         | Named id ->
-          match candidate.path.it with
-          | VarE _ ->
-             let mid =
-               match Lib.String.chop_prefix id candidate.id with
-               | Some suffix when not (T.Env.mem suffix env.vals) ->
-                 suffix
-               | _ -> "<M>"
-             in
-             info env candidate.region
-               "Consider renaming `%s` to `%s.%s` in a new module `%s`. Then it can serve as an implicit argument `%s` in this call\n%s%s"
-               candidate.id mid id mid id call_region call_src
-          | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
-             info env candidate.region
-               "Consider renaming `%s` to `%s` in `%s`. Then it can serve as an implicit argument `%s` in this call\n%s%s"
-               candidate.id id mid id call_region call_src
-          | _ -> ())
+          let mod_desc, mid =
+            match candidate.path.it with
+            | VarE _ ->
+              let mid = match Lib.String.chop_prefix id candidate.id with
+                | Some suffix when not (T.Env.mem suffix env.vals) ->
+                   suffix
+                | _ -> "<M>"
+              in
+              ("a new", mid)
+            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+              ("the existing", mid)
+            | _ -> assert false
+          in
+            info env candidate.region
+             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             candidate.desc mid id mod_desc mid id call_region call_src)
       explicit_terms
   in
   match eligible_terms with
