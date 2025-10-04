@@ -1311,9 +1311,13 @@ type hole_candidate =
   { path: exp;
     desc: string;
     typ : T.typ;
+    module_name_opt: string option;
     id : T.lab;
     region : Source.region;
   }
+
+let suggestion_of_candidate candidate =
+  Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
 (* All candidates are subtypes of the required type. The "greatest" of
    these types is the "closest" to the required type. If we can
@@ -1384,7 +1388,7 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = quote (module_name^"."^ lab); typ; id=lab; region } : hole_candidate))
+          ({ path; desc = quote (module_name^"."^ lab); typ; module_name_opt = Some module_name; id=lab; region } : hole_candidate))
   in
   let find_candidate_id = function
     (id, (t, region, _, _)) ->
@@ -1395,7 +1399,7 @@ let resolve_hole env at hole_sort typ =
           at = Source.no_region;
           note = empty_typ_note }
       in
-      Some { path; desc = quote id; typ = t; id; region }
+      Some { path; desc = quote id; typ = t; module_name_opt = None; id; region }
     else None
   in
   let (eligible_ids, explicit_ids) =
@@ -1534,7 +1538,7 @@ let contextual_dot env name receiver_ty =
          Seq.filter has_matching_self_type |>
          Seq.filter_map find_candidate |>
          List.of_seq in
-     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
+     Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
