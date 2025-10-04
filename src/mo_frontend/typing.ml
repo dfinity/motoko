@@ -1310,7 +1310,11 @@ type hole_candidate =
     desc: string;
     typ : T.typ;
     id : T.lab;
+    module_name_opt: string option;
   }
+
+let suggestion_of_candidate candidate =
+  Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
 (* All candidates are subtypes of the required type. The "greatest" of
    these types is the "closest" to the required type. If we can
@@ -1381,7 +1385,7 @@ let resolve_hole env at hole_sort typ =
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = module_name^"."^ lab; typ; id=lab } : hole_candidate))
+          ({ path; desc = module_name^"."^ lab; typ; id=lab; module_name_opt = Some module_name } : hole_candidate))
   in
   let find_candidate_id = function
     (id, (t, _, _, _)) ->
@@ -1392,7 +1396,7 @@ let resolve_hole env at hole_sort typ =
           at = Source.no_region;
           note = empty_typ_note }
       in
-      Some { path; desc = id; typ = t; id }
+      Some { path; desc = id; typ = t; id; module_name_opt = None }
     else None
   in
   let (eligible_ids, explicit_ids) =
@@ -1431,7 +1435,7 @@ let resolve_hole env at hole_sort typ =
          List.flatten |>
          List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
      in
-     Error (List.map (fun candidate -> candidate.desc) lib_terms,
+     Error (List.map suggestion_of_candidate lib_terms,
             List.map (fun candidate -> candidate.desc) explicit_terms)
   | terms -> begin
      match disambiguate_resolutions terms with
@@ -1504,7 +1508,7 @@ let contextual_dot env name receiver_ty =
          Seq.filter has_matching_self_type |>
          Seq.filter_map find_candidate |>
          List.of_seq in
-     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
+     Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
