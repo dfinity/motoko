@@ -1,0 +1,2 @@
+implicit-single-arg-as-many.mo:9.11-9.30: type error [M0232], cannot infer type of implicit argument
+implicit-single-arg-as-many.mo:13.11-13.29: type error [M0232], cannot infer type of implicit argument
