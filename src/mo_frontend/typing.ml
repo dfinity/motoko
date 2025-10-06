@@ -2578,6 +2578,15 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | None -> t_arg, []
     | Some(e, t) -> begin
       match T.normalize t_arg with
+      (* This solves an edge-case when using a tuple type as the Self/receiver type.
+         Given
+           f : t' -> t_res
+           x : t
+         Then
+           x.f() : t_res
+         When
+           t <: t' *)
+      | t' when exp2.it = TupE [] -> T.unit, [(t, t')]
       | T.Tup([t'; t2]) -> t2, [(t, t')]
       | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
       | t' -> T.unit, [(t, t')]
