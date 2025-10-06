@@ -9,12 +9,7 @@ This document distinguishes use-cases (requirements, goals) from
 implementations, to allow evaluating alternative implementations.
 
 The implementation is currently a careful choreography between Github, Github
-Actions, Hydra, the cachix nix cache, the internal nix cache and mergify.
-
-This file describes both the  pre-open-source setup (**internal**) which will
-gradually be updated or removed as we move away from the internal CI setup
-towards the open setup (**external**).
-
+Actions, and the cachix nix cache.
 
 Knowing if it is broken
 -----------------------
@@ -85,9 +80,10 @@ This can be done before approvals are in and/or CI has turned green, and will
 reliably be acted on once requirements are fulfilled.
 
 **Implementation:**
-Mergify reacts to the `automerge-squash` label. Once approved and CI passes, it
-merges master into the branch (using normal merge, which is important for
-stashed PRs) and then squash-merges the PR.
+Use the "Enable auto-merge (squash)" button of the GitHub PR weeb page.
+Alternatively from the CLI `gh pr merge --auto` will do. Note that you have to update
+the PR with `master` first, so that the tests can run on the most recent codebase.
+From the command line issue `gh pr update-branch` to that effect.
 
 Render and provide various reports
 ----------------------------------
