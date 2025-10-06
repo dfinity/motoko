@@ -2,14 +2,13 @@ implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly in
   <K, V>(map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K) ->
     ?V
 to argument of type
-  ()
+  (compare : (implicit : (K, K) -> Order), key : K)
 to produce result of type
   ()
 because no instantiation of K, V makes
   ?V  <:  ()
 and
-  {var root : Node<Text, Text>; var size_ : Nat}  <: 
-    (map : Map<K, V>, compare : (implicit : (K, K) -> Order), key : K)
+  {var root : Node<Text, Text>; var size_ : Nat}  <:  (map : Map<K, V>)
 implicit-import-hint-dot.mo:17.12-17.26: type error [M0230], Cannot determine implicit argument `compare` of type
   (Text, Text) -> Order
 Hint: Did you mean to import `core-stub/src/Text.mo.compare`?
