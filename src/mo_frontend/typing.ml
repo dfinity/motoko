@@ -2563,7 +2563,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
-  let sort, tbs, t_arg, t_ret =
+  let sort, tbs, t_args, t_ret =
     try T.as_func_sub T.Local n t1
     with Invalid_argument _ ->
       local_error env exp1.at "M0097"
@@ -2574,6 +2574,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
+  let t_arg = T.seq t_args in
   let t_arg, extra_subtype_problems = match ctx_dot with
     | None -> t_arg, []
     | Some(e, t) -> begin
@@ -2616,7 +2617,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       (* Before bimatching, validate the number of arguments *)
-      validate_call_arg env exp2 t_arg;
+      validate_call_arg env ctx_dot exp2 t_args;
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
@@ -2641,15 +2642,21 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and validate_call_arg env arg t_arg =
-  let args = as_seq arg in
-  let ts = T.as_seq t_arg in
-  if List.length args <> List.length ts then
+and validate_call_arg env ctx_dot arg t_args =
+  let ctx_dot_n =
+    match ctx_dot with
+    | None -> 0
+    | Some _ -> 1
+  in
+  let t_args_n = List.length t_args - ctx_dot_n in
+  if t_args_n = 1 then () else
+  let args_n = as_seq arg |> List.length in
+  if args_n <> t_args_n then
     (* Validate that the number of arguments matches the parameters *)
     error env arg.at "M0233"
       "wrong number of arguments: expected %d but got %d"
-      (List.length ts)
-      (List.length args);
+      t_args_n
+      args_n
 
 and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
@@ -3538,7 +3545,8 @@ and check_migration env (stab_tfs : T.field list) exp_opt =
    in
    let dom_tfs, rng_tfs =
      try
-      let sort, tbs, t_dom, t_rng = T.as_func_sub T.Local 0 typ in
+      let sort, tbs, t_args, t_rng = T.as_func_sub T.Local 0 typ in
+      let t_dom = T.seq t_args in
       if sort <> T.Local || tbs <> [] then raise (Invalid_argument "");
       check_fields "consumes" (T.normalize t_dom),
       check_fields "produces" (T.promote t_rng)
