@@ -2617,6 +2617,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
       (* Before bimatching, validate the number of arguments *)
+      (* TODO: try to move it to the decompose so that it is closer to the bimatching *)
       validate_call_arg env ctx_dot exp2 t_args;
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
