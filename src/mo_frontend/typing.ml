@@ -2574,30 +2574,28 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t_arg = T.seq t_args in
-  let t_arg, extra_subtype_problems = match ctx_dot with
-    | None -> t_arg, []
+  let t_args, extra_subtype_problems = match ctx_dot with
+    | None -> t_args, []
     | Some(e, t) -> begin
-      match T.normalize t_arg with
-      | T.Tup([t'; t2]) -> t2, [(t, t')]
-      | T.Tup(t'::ts) -> T.Tup(ts), [(t, t')]
-      | t' -> T.unit, [(t, t')]
+      match t_args with
+      | [t'; t2] -> [t2], [(t, t')]
+      | t'::ts -> ts, [(t, t')]
+      | [] ->
+        (* unreachable? there should as least be one argument for the ctx_dot case *)
+        assert false
+        (* T.unit, [(t, T.unit)] *)
     end
   in
   let exp2 =
     let es = match exp2.it with
       | TupE es when not parenthesized -> es
       | _ -> [exp2] in
-    (* Must not use T.as_seq here, as T.normalize will clear the
-       `implicit` Name in case of a single implicit argument *)
-    let ts = match t_arg with
-      | T.Tup ts -> ts
-      | t -> [t] in
-    let e' = match insert_holes at ts es with
+    let e' = match insert_holes at t_args es with
       | [e] -> e.it
       | es -> TupE es in
     { exp2 with it = e'}
   in
+  let t_arg = T.seq t_args in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
@@ -2618,7 +2616,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     | _::_, None -> (* implicit, infer *)
       (* Before bimatching, validate the number of arguments *)
       (* TODO: try to move it to the decompose so that it is closer to the bimatching *)
-      validate_call_arg env ctx_dot exp2 t_args;
+      validate_call_arg env exp2 t_args;
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
@@ -2643,13 +2641,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
 
-and validate_call_arg env ctx_dot arg t_args =
-  let ctx_dot_n =
-    match ctx_dot with
-    | None -> 0
-    | Some _ -> 1
-  in
-  let t_args_n = List.length t_args - ctx_dot_n in
+and validate_call_arg env arg t_args =
+  let t_args_n = List.length t_args in
   if t_args_n = 1 then () else
   let args_n = as_seq arg |> List.length in
   if args_n <> t_args_n then
