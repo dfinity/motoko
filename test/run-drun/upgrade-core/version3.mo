@@ -1,7 +1,6 @@
 //MOC-FLAG --package core0 upgrade-core/core0
 //MOC-FLAG --package core upgrade-core/core1
-import OldMap "mo:core0/Map";
-import OldNat "mo:core0/Nat";
+import OldMap "mo:core0/Map"; // from core0!
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Debug "mo:core/Debug";
