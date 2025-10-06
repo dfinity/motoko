@@ -16,7 +16,7 @@ persistent actor {
   };
   // A linked list of WeakRefs.
   type List = {
-    next : ?List;
+    var next : ?List;
     value : ?WeakRef;
     originalBlob : Blob;
     index : Nat;
@@ -118,6 +118,20 @@ persistent actor {
       };
       case null {};
     };
+
+    let deadBlobs = Prim.getDeadBlobs();
+    switch deadBlobs {
+      case (?deadBlobs) {
+        assert (deadBlobs.size() == 3);
+      };
+      case null {};
+    };
+
+    assert (Prim.isStorageBlobLive("coffeerules") == false);
+    assert (Prim.isStorageBlobLive("hello") == true);
+    assert (Prim.isStorageBlobLive("world") == true);
+    assert (Prim.isStorageBlobLive("letmetestyou") == true);
+    assert (Prim.isStorageBlobLive("chocolaterules") == false);
 
   };
 

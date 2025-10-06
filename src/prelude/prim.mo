@@ -125,13 +125,169 @@ type __WeakRef = {
   ref : weak Blob;
 };
 type __List = {
-  next : ?__List;
+  var next : ?__List;
   value : ?__WeakRef;
   originalBlob : Blob;
   index : Nat;
 };
 func __getDedupTable() : ?[var __List] {
   (prim "get_dedup_table" : () -> ?[var __List])();
+};
+
+class BlobIterator(hash : [var __List]) {
+  let HASH_ARRAY_SIZE = 16_384;
+  var currentIndex : Nat = 0;
+  var currentList : ?__List = null;
+  let hashArray = hash;
+
+  public func size() : Nat {
+    var len = 0;
+    var i = 0;
+    while (i < HASH_ARRAY_SIZE) {
+      var list = hashArray[i];
+      label countLoop loop {
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) {};
+              case null { len += 1 };
+            };
+          };
+          case null {};
+        };
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          case null { break countLoop };
+        };
+      };
+      i += 1;
+    };
+    len;
+  };
+
+  func getDeadBlobFromListNode(list : ?__List) : ?Blob {
+    switch list {
+      case (?myList) {
+        let weakRef = myList.value;
+        switch weakRef {
+          case (?weakRef) {
+            let deref = weakGet(weakRef.ref);
+            switch deref {
+              case (?deref) { return null };
+              case null { return ?myList.originalBlob };
+            };
+          };
+          case null { return null };
+        };
+      };
+      case null { return null };
+    };
+  };
+
+  func advanceListNode(list : ?__List) : ?__List {
+    switch list {
+      case (?list) { list.next };
+      case null { null };
+    };
+  };
+
+  public func nextDeadBlob() : Blob {
+    // Start at the current index and list.
+    loop {
+      // Get the blob from the current list node.
+      let blob = getDeadBlobFromListNode(currentList);
+      switch blob {
+        // If we found a blob, return it.
+        case (?blob) {
+          // Advance to the next list node.
+          // So that next time we call nextDeadBlob(), we get the next blob.
+          currentList := advanceListNode(currentList);
+          return blob;
+        };
+        case null {
+          // If we didn't find a blob, advance to the next list node.
+          currentList := advanceListNode(currentList);
+
+          switch currentList {
+            case (?_) {};
+            // If we reached the end of the list, advance to the next index.
+            case null {
+              currentIndex += 1;
+              // If we reached the end of the hash array, return null.
+              if (currentIndex >= HASH_ARRAY_SIZE) {
+                return "";
+              };
+              // Get the new list node.
+              currentList := ?hashArray[currentIndex];
+            };
+          };
+
+        };
+      };
+    };
+    "";
+  };
+
+  public func isBlobLive(b : Blob) : Bool {
+    // Append the magic bytes to compute the hash.
+    let magicBytes : [Nat8] = [0x21, 0x63, 0x61, 0x66, 0x21];
+    let originalBlob : [Nat8] = blobToArray(b);
+    let concat = Array_tabulate(magicBytes.size() + originalBlob.size(), func(i : Nat) : Nat8 = if (i < magicBytes.size()) { magicBytes[i] } else { originalBlob[i - magicBytes.size()] });
+    let bWithMagic = arrayToBlob(concat);
+
+    //debugPrint(debug_show (bWithMagic));
+
+    let hashValue = hashBlob(bWithMagic);
+    let index = nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+    var list = hashArray[index];
+    // Walk the list and check if the blob is live.
+    loop {
+      //debugPrint(debug_show (list.originalBlob));
+      if (blobCompare(list.originalBlob, b) == 0) {
+
+        let weakRef = list.value;
+        switch weakRef {
+          case (?weakRef) { return isLive(weakRef.ref) };
+          case null { return false };
+        };
+      } else {
+        let next = list.next;
+        switch next {
+          case (?next) { list := next };
+          case null { return false };
+        };
+      };
+    };
+  };
+
+};
+
+func getDeadBlobs() : ?[Blob] {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      let numDeadBlobs = dedupTableIter.size();
+      let deadBlobs = Array_tabulate<Blob>(numDeadBlobs, func(i : Nat) : Blob { dedupTableIter.nextDeadBlob() });
+      return ?deadBlobs;
+    };
+    case null { return null };
+  };
+
+};
+
+func isStorageBlobLive(b : Blob) : Bool {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let iter = BlobIterator(dedupTable);
+      iter.isBlobLive(b);
+    };
+    case null { false };
+  };
 };
 
 // Total conversions (fixed to big)

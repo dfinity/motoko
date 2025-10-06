@@ -12,7 +12,7 @@ persistent actor {
   };
   // A linked list of WeakRefs.
   type List = {
-    next : ?List;
+    var next : ?List;
     value : ?WeakRef;
     originalBlob : Blob;
     index : Nat;
@@ -66,6 +66,17 @@ persistent actor {
       };
       case null {};
     };
+
+    let x = Prim.getDeadBlobs();
+    switch x {
+      case (?deadBlobs) {
+        assert (deadBlobs.size() == 3);
+      };
+      case null {};
+    };
+
+    assert (Prim.isStorageBlobLive(blob1) == false);
+
   };
 
 };

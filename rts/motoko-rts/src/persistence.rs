@@ -357,7 +357,8 @@ pub(crate) unsafe fn get_dedup_table_ptr() -> &'static mut Value {
 }
 
 /// Setter method for the dedup table.
-pub(crate) unsafe fn set_dedup_table_ptr(dedup_table: Value) {
+pub(crate) unsafe fn set_dedup_table_ptr<M: Memory>(mem: &mut M, dedup_table: Value) {
     let metadata = PersistentMetadata::get();
-    (*metadata).dedup_table = dedup_table;
+    // Use barrier in case the dedup table is set during a GC phase.
+    write_with_barrier(mem, &mut (*metadata).dedup_table, dedup_table);
 }

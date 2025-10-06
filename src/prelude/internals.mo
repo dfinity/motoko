@@ -708,7 +708,7 @@ func @dedup2(b : Blob) : Blob {
   };
   // A linked list of WeakRefs.
   type List = {
-    next : ?List;
+    var next : ?List;
     value : ?WeakRef;
     originalBlob : Blob;
     index : Nat;
@@ -752,7 +752,7 @@ func @dedup2(b : Blob) : Blob {
   //
   func addToList(list : List, originalBlob : Blob, weakRef : WeakRef) : List {
     let newList = {
-      next = ?list;
+      var next = ?list;
       value = ?weakRef;
       originalBlob = originalBlob;
       index = list.index + 1;
@@ -827,7 +827,7 @@ func @dedup2(b : Blob) : Blob {
     };
     case null {
       // This means that the dedup table was not yet created.
-      let arr = Array_tabulateVar<List>(HASH_ARRAY_SIZE, func(i : Nat) : List = { next = null; value = null; originalBlob = ""; index = 0 });
+      let arr = Array_tabulateVar<List>(HASH_ARRAY_SIZE, func(i : Nat) : List = { var next = null; value = null; originalBlob = ""; index = 0 });
       // We need to set it via the RTS so that it is persisted.
       setDedupTable(arr);
       arr;

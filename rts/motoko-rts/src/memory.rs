@@ -127,12 +127,12 @@ pub unsafe fn get_dedup_table<M: Memory>(_mem: &mut M) -> Value {
 #[enhanced_orthogonal_persistence]
 #[ic_mem_fn]
 #[cfg(feature = "ic")]
-pub unsafe fn set_dedup_table<M: Memory>(_mem: &mut M, dedup_table: Value) {
+pub unsafe fn set_dedup_table<M: Memory>(mem: &mut M, dedup_table: Value) {
     use crate::persistence::set_dedup_table_ptr;
     if !dedup_table.is_array() {
         crate::rts_trap_with(
             "set_dedup_table: Invalid dedup table pointer. This is a bug, report to the Motoko team.",
         );
     }
-    set_dedup_table_ptr(dedup_table);
+    set_dedup_table_ptr(mem, dedup_table);
 }

@@ -16,7 +16,7 @@ persistent actor {
   };
   // A linked list of WeakRefs.
   type List = {
-    next : ?List;
+    var next : ?List;
     value : ?WeakRef;
     originalBlob : Blob;
     index : Nat;
