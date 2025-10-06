@@ -132,6 +132,8 @@ let recover_with (x : 'a) (f : 'b -> 'a) (y : 'b) = try f y with Recover -> x
 let recover_opt f y = recover_with None (fun y -> Some (f y)) y
 let recover f y = recover_with () f y
 
+let quote s = "`"^s^"`"
+
 let display_lab = Lib.Format.display T.pp_lab
 
 let display_typ = Lib.Format.display T.pp_typ
@@ -1309,7 +1311,13 @@ type hole_candidate =
   { path: exp;
     desc: string;
     typ : T.typ;
+    module_name_opt: string option;
+    id : T.lab;
+    region : Source.region;
   }
+
+let suggestion_of_candidate candidate =
+  Option.fold ~none:candidate.desc ~some:Suggest.module_name_as_url candidate.module_name_opt
 
 (* All candidates are subtypes of the required type. The "greatest" of
    these types is the "closest" to the required type. If we can
@@ -1361,86 +1369,116 @@ let resolve_hole env at hole_sort typ =
   let has_matching_field_typ = function
     | T.{ lab; typ = Typ c; _ } -> None
     | T.{ lab; typ = Mut t; _ } -> None
-    | T.{ lab = lab1; typ = typ1; _ } ->
-       if is_matching_lab lab1 &&
-          is_matching_typ typ1
-       then Some (lab1, typ1)
+    | T.{ lab = lab1; typ = typ1; src } ->
+       if is_matching_typ typ1
+       then Some (lab1, typ1, src.T.region)
        else None
   in
-  let find_candidate (module_name, fs) =
-    List.find_map has_matching_field_typ fs |>
-      Option.map (fun (lab, typ)->
+  let find_candidate_fields (module_name, fs) =
+    List.filter_map has_matching_field_typ fs |>
+      List.map (fun (lab, typ, region)->
           let path =
-            { it = DotE( { it = VarE {it = module_name; at = no_region; note = Const};
-                           at = Source.no_region;
-                           note = empty_typ_note
-                         },
-                         { it = lab; at = no_region; note = () },
-                         ref None);
+            { it = DotE(
+                { it = VarE {it = module_name; at = no_region; note = Const};
+                  at = Source.no_region;
+                  note = empty_typ_note
+                },
+                { it = lab; at = no_region; note = () },
+                ref None);
               at = Source.no_region;
               note = empty_typ_note; }
           in
-          ({ path; desc = module_name^"."^ lab; typ } : hole_candidate))
+          ({ path; desc = quote (module_name^"."^ lab); typ; module_name_opt = Some module_name; id=lab; region } : hole_candidate))
   in
-  let find_candidate_val = function
-    (id, (t, _, _, _)) ->
-    if is_matching_lab id &&
-       is_matching_typ t
+  let find_candidate_id = function
+    (id, (t, region, _, _)) ->
+    if is_matching_typ t
     then
-      let path = { it =
-                   VarE {it = id; at = no_region; note = Const};
-                   at = Source.no_region;
-                   note = empty_typ_note }
+      let path =
+        { it = VarE {it = id; at = no_region; note = Const};
+          at = Source.no_region;
+          note = empty_typ_note }
       in
-      Some { path; desc = id; typ = t }
+      Some { path; desc = quote id; typ = t; module_name_opt = None; id; region }
     else None
   in
-  let eligible_env_vals =
-    let vals =
-      match hole_sort with
-      | Named id ->
-        (* narrow env to search *)
-        (match T.Env.find_opt id env.vals with
-         | Some info -> T.Env.singleton id info
-         | None -> T.Env.empty)
-      | Anon _ ->
-         env.vals (* search entire env *)
-    in
-    T.Env.to_seq vals |>
-      Seq.filter_map find_candidate_val |>
-      List.of_seq
+  let (eligible_ids, explicit_ids) =
+    T.Env.to_seq env.vals |>
+      Seq.filter_map find_candidate_id |>
+      List.of_seq |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_module_vals () =
+  let eligible_fields () =
     T.Env.to_seq env.vals |>
       Seq.filter_map is_module |>
-      Seq.filter_map find_candidate |>
-      List.of_seq
+      Seq.map find_candidate_fields |>
+      List.of_seq |>
+      List.flatten |>
+      List.partition (fun (desc : hole_candidate) -> is_matching_lab desc.id)
   in
-  let eligible_vals =
-    match eligible_env_vals with
-    | [oc] -> [oc] (* first look in local env, otherwise consider module entries *)
-    | occs -> occs @ eligible_module_vals ()
+  let eligible_terms, explicit_terms  =
+    match eligible_ids with
+    | [id] -> ([id], []) (* first look in local env, otherwise consider module entries *)
+    | _ ->
+       let (eligible_fields, explicit_fields) = eligible_fields () in
+       (eligible_ids @ eligible_fields,
+        explicit_ids @ explicit_fields)
   in
-  match eligible_vals with
-  | [oc] -> Ok oc
+  let renaming_hints env =
+    List.iter (fun candidate ->
+      if (candidate.region.left.file = at.left.file) then
+        let call_region = Source.string_of_region at in
+        let call_src = match Source.read_region at with Some s -> ": " ^ s | None -> "." in
+        match hole_sort with
+        | Anon _ -> ()
+        | Named id ->
+          let mod_desc, mid =
+            match candidate.path.it with
+            | DotE({ it = VarE {it = mid;_ }; _ }, _, _) ->
+              ("the existing", mid)
+            | VarE _ | _ ->
+              let mid = match Lib.String.chop_prefix id candidate.id with
+                | Some suffix when not (T.Env.mem suffix env.vals) ->
+                   suffix
+                | _ -> "<M>"
+              in
+              ("a new", mid)
+          in
+            info env candidate.region
+             "Consider renaming `%s` to `%s.%s` in %s module `%s`. Then it can serve as an implicit argument `%s` in this call:\n%s%s"
+             candidate.desc mid id mod_desc mid id call_region call_src)
+      explicit_terms
+  in
+  match eligible_terms with
+  | [term] -> Ok term
   | [] ->
-     let lib_candidates =
+     let (lib_terms, _) =
        T.Env.to_seq env.libs |>
          Seq.filter_map (fun (n, t) ->
              match t with
              | T.Obj (T.Module, fs) -> Some (n, fs)
              | _ -> None) |>
-         Seq.filter_map find_candidate |>
-         List.of_seq in
-     Error (List.map (fun candidate -> candidate.desc) lib_candidates)
-  | ocs -> begin
-     match disambiguate_resolutions ocs with
-     | Some oc -> Ok oc
+         Seq.map find_candidate_fields |>
+         List.of_seq |>
+         List.flatten |>
+         List.partition (fun (candidate : hole_candidate) -> is_matching_lab candidate.id)
+     in
+     Error (List.map (fun candidate -> candidate.desc) lib_terms,
+            List.map (fun candidate -> candidate.desc) explicit_terms,
+            renaming_hints)
+  | terms -> begin
+     match disambiguate_resolutions terms with
+     | Some term -> Ok term
      | None ->
-     let candidates = List.map (fun oc -> oc.desc) ocs in
-     error env at "M0231" "ambiguous implicit argument of type%a.\nThe available candidates are: %s"
-       display_typ typ
-       (String.concat ", " candidates)
+       let terms = List.map (fun term -> term.desc) terms in
+       error env at "M0231" "ambiguous implicit argument %s of type%a.\nThe ambiguous implicit candidates are: %s%s."
+         (match hole_sort with Named n -> "named " ^ quote n | Anon i -> "at argument position " ^ Int.to_string i)
+         display_typ typ
+         (String.concat ", " terms)
+         (if explicit_terms = [] then ""
+          else
+            ".\nThe other explicit candidates are: "^
+              (String.concat ", " (List.map (fun oc -> oc.desc) explicit_terms)))
      end
 
 type ctx_dot_candidate =
@@ -1499,7 +1537,7 @@ let contextual_dot env name receiver_ty =
          Seq.filter has_matching_self_type |>
          Seq.filter_map find_candidate |>
          List.of_seq in
-     Error (List.map (fun candidate -> candidate.module_name) lib_candidates)
+     Error (List.map (fun candidate -> Suggest.module_name_as_url candidate.module_name) lib_candidates)
   | ocs ->
      let candidates = List.map (fun oc -> oc.module_name) ocs in
      error env name.at "M0224" "overlapping resolution for `%s` in scope from these modules: %s" name.it (String.concat ", " candidates)
@@ -2171,7 +2209,7 @@ and check_exp' env0 t exp : T.typ =
   match exp.it, t with
   | HoleE (s, e), t ->
     let desc = function
-      | Named id -> "'"^id^"'"
+      | Named id -> "`"^id^"`"
       | Anon idx -> "at position " ^ (Int.to_string idx)
     in
     begin match resolve_hole env exp.at s t with
@@ -2179,16 +2217,25 @@ and check_exp' env0 t exp : T.typ =
       e := path;
       check_exp env t path;
       t
-    | Error suggestions ->
-      let sug =
-         if suggestions = [] then
-         "\nHint: If you're trying to use an implicit argument you need to have a matching declaration in scope."
-         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " suggestions)
+    | Error (import_suggestions, explicit_suggestions, renaming_hints) ->
+      let import_sug =
+        if import_suggestions = [] then
+           let desc = match s with Named id -> " named " ^ quote id | _ -> "" in
+           Format.sprintf
+             "\nHint: If you're trying to omit an implicit argument%s you need to have a matching declaration%s in scope."
+             desc desc
+         else Format.sprintf "\nHint: Did you mean to import %s?" (String.concat " or " import_suggestions)
       in
-      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s"
+      let explicit_sug =
+         if explicit_suggestions = [] then ""
+         else Format.sprintf "\nHint: Did you mean to explicitly use %s?" (String.concat " or " explicit_suggestions)
+      in
+      renaming_hints env;
+      error env exp.at "M0230" "Cannot determine implicit argument %s of type%a%s%s"
         (desc s)
         display_typ t
-        sug
+        import_sug
+        explicit_sug
     end
   | PrimE s, T.Func _ ->
     t
@@ -2545,7 +2592,7 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
     let ts = match t_arg with
       | T.Tup ts -> ts
       | t -> [t] in
-    let e' = match insert_holes exp2.at ts es with
+    let e' = match insert_holes at ts es with
       | [e] -> e.it
       | es -> TupE es in
     { exp2 with it = e'}
