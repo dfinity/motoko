@@ -2580,6 +2580,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
+      (* Before bimatching, validate the number of arguments *)
+      validate_call_arg env exp2 t_arg;
       infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
@@ -2603,6 +2605,16 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
+
+and validate_call_arg env arg t_arg =
+  let args = as_seq arg in
+  let ts = T.as_seq t_arg in
+  if List.length args <> List.length ts then
+    (* Validate that the number of arguments matches the parameters *)
+    error env arg.at "M0233"
+      "wrong number of arguments: expected %d but got %d"
+      (List.length ts)
+      (List.length args);
 
 and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
