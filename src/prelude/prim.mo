@@ -120,7 +120,8 @@ func envVar<system>(name : Text) : ?Text {
   (prim "env_var" : Text -> ?Text)(name);
 };
 
-// For testing, do not use in production code!
+/// EXPERIMENTAL SECTION AND API. DO NOT USE IN PRODUCTION CODE!
+///
 type __WeakRef = {
   ref : weak Blob;
 };
@@ -247,12 +248,15 @@ class BlobIterator(hash : [var __List]) {
         let weakRef = list.value;
         switch weakRef {
           case (?weakRef) { return isLive(weakRef.ref) };
+          // The weak ref should not be null, but just in case.
           case null { return false };
         };
       } else {
+        // Advance to the next list node.
         let next = list.next;
         switch next {
           case (?next) { list := next };
+          // If we reached the end of the list, return false.
           case null { return false };
         };
       };
@@ -285,6 +289,8 @@ func isStorageBlobLive(b : Blob) : Bool {
     case null { false };
   };
 };
+///
+/// END EXPERIMENTAL SECTION.
 
 // Total conversions (fixed to big)
 
