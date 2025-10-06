@@ -238,16 +238,12 @@ class BlobIterator(hash : [var __List]) {
     let concat = Array_tabulate(magicBytes.size() + originalBlob.size(), func(i : Nat) : Nat8 = if (i < magicBytes.size()) { magicBytes[i] } else { originalBlob[i - magicBytes.size()] });
     let bWithMagic = arrayToBlob(concat);
 
-    //debugPrint(debug_show (bWithMagic));
-
     let hashValue = hashBlob(bWithMagic);
     let index = nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
     var list = hashArray[index];
     // Walk the list and check if the blob is live.
     loop {
-      //debugPrint(debug_show (list.originalBlob));
       if (blobCompare(list.originalBlob, b) == 0) {
-
         let weakRef = list.value;
         switch weakRef {
           case (?weakRef) { return isLive(weakRef.ref) };

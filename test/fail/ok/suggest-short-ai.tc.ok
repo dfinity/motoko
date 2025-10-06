@@ -1,5 +1,11 @@
 suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
   module {
+    type BlobIterator =
+      {
+        isBlobLive : (b : Blob) -> Bool;
+        nextDeadBlob : () -> Blob;
+        size : () -> Nat
+      };
     type ErrorCode =
       {
         #call_error : {err_code : Nat32};
@@ -12,11 +18,17 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
         #system_unknown
       };
     type __List =
-      {index : Nat; next : ?__List; originalBlob : Blob; value : ?__WeakRef};
+      {
+        index : Nat;
+        var next : ?__List;
+        originalBlob : Blob;
+        value : ?__WeakRef
+      };
     type __WeakRef = {ref : weak Blob};
     Array_init : <T>(len : Nat, x : T) -> [var T];
     Array_tabulate : <T>(len : Nat, gen : Nat -> T) -> [T];
     Array_tabulateVar : <T>(len : Nat, gen : Nat -> T) -> [var T];
+    BlobIterator : (hash : [var __List]) -> BlobIterator;
     Ret : <T>() -> T;
     Types :
       module {
@@ -148,6 +160,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     getCandidLimits :
       <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
+    getDeadBlobs : () -> ?[Blob];
     getSelfPrincipal : <system>() -> Principal;
     hashBlob : (b : Blob) -> Nat32;
     idlHash : (x : Text) -> Nat32;
@@ -182,6 +195,7 @@ suggest-short-ai.mo:4.6-4.7: type error [M0072], field s does not exist in type:
     isController : (p : Principal) -> Bool;
     isLive : (weak_ref : weak Any) -> Bool;
     isReplicatedExecution : () -> Bool;
+    isStorageBlobLive : (b : Blob) -> Bool;
     log : (f : Float) -> Float;
     nat16ToInt16 : (n : Nat16) -> Int16;
     nat16ToNat : (n : Nat16) -> Nat;
