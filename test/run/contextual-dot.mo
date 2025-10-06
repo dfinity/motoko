@@ -36,6 +36,11 @@ module NatExt {
   public func twice(self : Nat) : Nat { self * 2 };
 };
 
+module M {
+  public type Self = (Nat, Nat);
+  public func f(_s : Self) {};
+};
+
 module Main {
   public func vec() {
     let x = { x = 10; y = 20 };
@@ -76,6 +81,11 @@ module Main {
     let xs : [var (Nat, Text)] = [var];
     assert xs.append((3, "hello")).size() == 0
   };
+
+  public func tupleIssue2() {
+    let s : M.Self = (0, 0);
+    s.f()
+  };
 };
 
 Main.vec();
@@ -83,3 +93,4 @@ Main.immutableArray();
 Main.mutableArray();
 Main.nat();
 Main.overlappingSelf();
+Main.tupleIssue2();
