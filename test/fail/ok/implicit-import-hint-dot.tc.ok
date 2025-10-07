@@ -1,4 +1,4 @@
-implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly instantiate dotted function `_.get`  of type
+implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly instantiate dotted function `_.get` of type
   <K, V>(compare : (implicit : (K, K) -> Order), key : K) -> ?V
 with parameters
   (compare : (implicit : (Text, Text) -> Order), key : Text)

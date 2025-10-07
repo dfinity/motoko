@@ -2774,7 +2774,7 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
       fix (T.open_ ts) to_fix;
       fix (T.open_ ts) deferred;
     end;
-(*
+  (*
     if not env.pre then
       info env at "inferred instantiation <%s>"
         (String.concat ", " (List.map T.string_of_typ ts));
@@ -2782,15 +2782,15 @@ and infer_call_instantiation env t1 ctx_dot tbs t_arg t_ret exp2 at t_expect_opt
     ts, T.open_ ts t_arg, T.open_ ts t_ret
   with Bi_match.Bimatch msg ->
     let strip_receiver ty = match ty with
-     | T.Func(s, c, tbs, t1::ts1, ts2) ->
-       T.Func(s, c, tbs, ts1, ts2)
-     |  _ -> ty
+      | T.Func(s, c, tbs, t1::ts1, ts2) -> T.Func(s, c, tbs, ts1, ts2)
+      |  _ -> ty
     in
     let desc, t1' = match ctx_dot with
       | None -> "function", t1
       | Some (_, _, id, _) ->
-         Printf.sprintf "dotted function `_.%s` " id,
-         strip_receiver t1 in
+        Printf.sprintf "dotted function `_.%s`" id,
+        strip_receiver t1
+    in
     error env at "M0098"
       "cannot implicitly instantiate %s of type%a\nwith parameters%a\nto argument of type%a%s\nbecause %s"
       desc
