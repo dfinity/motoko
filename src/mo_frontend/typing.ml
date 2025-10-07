@@ -1512,7 +1512,7 @@ let contextual_dot env name receiver_ty =
        | _ -> false)
     | _ -> false in
   let has_matching_self_type (_, (_, fs)) = List.exists has_matching_self fs in
-  let is_matching_func = function
+  let is_matching_func = function (* TODO: normalize first *)
     | T.{ lab; typ = T.Func (_, _, tbs, first_arg::_, _) as typ; _ } when lab = name.it ->
       if permissive_sub receiver_ty (tbs, first_arg) then Some typ else None
     | _ -> None in
@@ -2574,18 +2574,23 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
-  let t1, t_arg, extra_subtype_problems = match ctx_dot with
-    | None -> t1, t_arg, []
+  let strip_receiver ty = match ty with
+    | T.Func(s, c, tbs, t1::ts1, ts2) ->
+      T.Func(s, c, tbs, ts1, ts2)
+    |  _ -> ty
+  in
+  let t1', (t_arg, extra_subtype_problems) = match ctx_dot with
+    | None ->
+      t1,
+      (t_arg, [])
     | Some(e, t) -> begin
+      strip_receiver t1,
       match T.normalize t_arg with
       | T.Tup([t'; t2]) ->
-         T.Func(sort, T.Returns, tbs, [t2], [t_ret]),
          t2, [(t, t')]
       | T.Tup(t'::ts) ->
-         T.Func(sort, T.Returns, tbs, ts, [t_ret]),
          T.Tup(ts), [(t, t')]
       | t' ->
-         T.Func(sort, T.Returns, tbs, [], [t_ret]),
          T.unit, [(t, t')]
     end
   in
@@ -2617,11 +2622,11 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       if not env.pre then check_exp_strong env t_arg' exp2
       else if typs <> [] && Flags.is_warning_enabled "M0223" &&
         is_redundant_instantiation ts env (fun env' ->
-          infer_call_instantiation env' t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
+          infer_call_instantiation env' t1' tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems) then
             warn env inst.at "M0223" "redundant type instantiation";
       ts, t_arg', t_ret'
     | _::_, None -> (* implicit, infer *)
-      infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
+      infer_call_instantiation env t1' tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems
   in
   inst.note <- ts;
   if not env.pre then begin
@@ -2700,9 +2705,13 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
     let ts = match !err_ts with
       | None ->
         if extra_subtype_problems <> [] then
-          let (s, c) = Bi_match.bi_match_subs None tbs None extra_subtype_problems [] in
-          ignore (Bi_match.finalize s c []);
-          s
+          try
+            (* specialize to receiver type *)
+            let (ts, c) = Bi_match.bi_match_subs None tbs None extra_subtype_problems [] in
+            ignore (Bi_match.finalize ts c []);
+            ts
+          with _ ->
+            T.open_binds tbs
         else T.open_binds tbs
       | Some ts -> ts
     in
