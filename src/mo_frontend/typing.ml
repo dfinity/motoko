@@ -2533,6 +2533,26 @@ and infer_callee env exp =
      infer_exp_promote env exp, None
 
 and insert_holes at ts es =
+  let as_implicit = function
+    | T.Named ("implicit", T.Named (arg_name, t)) ->
+      Some arg_name
+    | T.Named ("implicit", t) ->
+      Some "_"
+    | T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t)))) ->
+      (* override inferred arg_name *)
+      Some arg_name
+    | T.Named (inf_arg_name, (T.Named ("implicit", t))) ->
+      (* non-overriden, use inferred arg_name *)
+      Some inf_arg_name
+    | _ -> None
+  in
+
+  let implicits_n = List.to_seq ts |> Seq.filter_map as_implicit |> Seq.length in
+  if List.length ts <> List.length es + implicits_n then
+    let () = Printf.printf "+arity mismatch: %d <> %d + %d\n" (List.length ts) (List.length es) implicits_n in
+    es
+  else
+
   let mk_hole pos hole_id =
     let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
@@ -2540,26 +2560,43 @@ and insert_holes at ts es =
       note = empty_typ_note }
   in
   let rec go n ts es =
-    match (ts, es) with
-    | (T.Named ("implicit", T.Named (arg_name, t))) :: ts1, es ->
-      (mk_hole n arg_name) :: go (n + 1) ts1 es
-    | (T.Named ("implicit", t)) :: ts1, es ->
-      (mk_hole n "_") :: go (n + 1) ts1 es
-    | (T.Named (_inf_arg_name, (T.Named ("implicit", T.Named (arg_name, t))))) :: ts1, es ->
-      (* override inferred arg_name *)
-      (mk_hole n arg_name) :: go (n + 1) ts1 es
-    | (T.Named (inf_arg_name, (T.Named ("implicit", t)))) :: ts1, es ->
-      (* non-overriden, use inferred arg_name *)
-      (mk_hole n inf_arg_name) :: go (n + 1) ts1 es
-    | (t :: ts1, e::es1) -> e :: go (n+1) ts1 es1
-    | _, [] ->  []
-    | [], es -> es
+    match ts with
+    | [] ->
+      if es <> [] then
+        Printf.printf "+extra arguments: %s\n" (String.concat ", " (List.map (fun e -> Source.read_region_with_markers e.at |> Option.value ~default:"") es));
+      (* Error here? extra arguments? *)
+      es
+    | t :: ts1 ->
+      match as_implicit t with
+      | Some arg_name ->
+        mk_hole n arg_name :: go (n + 1) ts1 es
+      | None ->
+        match es with
+        | e :: es1 -> e :: go (n + 1) ts1 es1
+        | [] ->
+          (* Error here? missing arguments? *)
+          if ts <> [] then
+            Printf.printf "+missing arguments for types: %s\n" (String.concat ", " (List.map T.string_of_typ ts));
+          []
   in
-  if List.length es < List.length ts
-  then go 0 ts es
-  else es
+  go 0 ts es
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
+  (* Syntax situations (exp1 = f)
+    1. f()
+    2. f(e)  same as  f e
+    3. f(e1 .. en)
+
+    With ctx_dot: (exp1 = o.f)
+    1. o.f()  ~>  f(o)
+    2. o.f(e)  ~>  f(o, e)
+    3. o.f(e1 .. en)  ~>  f(o, e1 .. en)
+
+    With implicits: (exp1 = f)
+    1. f()  ~>  f(i1 .. ik)
+    2. f(e)  ~>  f(.. i .. e .. i ..)  (implicits inserted where implicit parameters)
+    3. f(e1 .. en)  ~>  f(.. i .. e1 .. i .. .. i .. en .. i ..)  (implicits inserted where implicit parameters)
+   *)
   let exp2 = !ref_exp2 in
   let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let (t1, ctx_dot) = infer_callee env exp1 in
