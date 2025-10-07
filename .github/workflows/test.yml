@@ -148,7 +148,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: 'master'
-      - name: Automatically closing successful trials XXXX
+      - name: Automatically closing successful trials
         env:
           GH_TOKEN: ${{ github.token }}
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository # && contains(github.event.pull_request.labels.*.name, 'autoclose')
@@ -157,4 +157,4 @@ jobs:
           sleep 3
           gh pr view ${{ github.event.pull_request.number }}
           gh pr checks ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | cat
-          $(gh pr checks -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') || echo NICE
+          $(gh pr checks  ${{ github.event.pull_request.number }} -q '.[] | select(.state=="SUCCESS" and (.name=="verify-common-gc" or .name=="verify-main-tests"))' --json='name,state' | jq -n '[inputs] | length==2') || echo NICE
