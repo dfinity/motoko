@@ -1,9 +1,9 @@
 implicit-import-hint-dot.mo:13.3-13.12: type error [M0098], cannot implicitly instantiate function of type
   <K, V>(compare : (implicit : (K, K) -> Order), key : K) -> ?V
 with parameters
-  (compare : (implicit : (K, K) -> Order), key : K)
+  (compare : (implicit : (Text, Text) -> Order), key : Text)
 to argument of type
-  (compare : (implicit : (K, K) -> Order), key : K)
+  (compare : (implicit : (Text, Text) -> Order), key : Text)
 to produce result of type
   ()
 because no instantiation of K, V makes

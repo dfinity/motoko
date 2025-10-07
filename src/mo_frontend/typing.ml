@@ -2698,7 +2698,12 @@ and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_s
   let err_ts = ref None in
   let err_subst t =
     let ts = match !err_ts with
-      | None -> T.open_binds tbs
+      | None ->
+        if extra_subtype_problems <> [] then
+          let (s, c) = Bi_match.bi_match_subs None tbs None extra_subtype_problems [] in
+          ignore (Bi_match.finalize s c []);
+          s
+        else T.open_binds tbs
       | Some ts -> ts
     in
     T.open_ ts t
