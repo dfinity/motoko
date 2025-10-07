@@ -4,6 +4,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
       {
         isBlobLive : (b : Blob) -> Bool;
         nextDeadBlob : () -> Blob;
+        pruneDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
         size : () -> Nat
       };
     type ErrorCode =
@@ -227,6 +228,7 @@ suggest-long-ai.mo:4.6-4.13: type error [M0072], field stableM does not exist in
     popcntNat8 : (w : Nat8) -> Nat8;
     principalOfActor : (act : actor {}) -> Principal;
     principalOfBlob : (act : Blob) -> Principal;
+    pruneConfirmedDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
     regionGrow : (r : Region, pages : Nat64) -> Nat64;
     regionId : (r : Region) -> Nat;
     regionLoadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;

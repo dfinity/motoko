@@ -133,6 +133,16 @@ persistent actor {
     assert (Prim.isStorageBlobLive("letmetestyou") == true);
     assert (Prim.isStorageBlobLive("chocolaterules") == false);
 
+    Prim.pruneConfirmedDeadBlobs(["coffeerules"]);
+
+    let deadBlobs2 = Prim.getDeadBlobs();
+    switch deadBlobs2 {
+      case (?deadBlobs) {
+        assert (deadBlobs.size() == 2);
+      };
+      case null {};
+    };
+
   };
 
 };

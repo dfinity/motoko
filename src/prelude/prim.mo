@@ -141,6 +141,7 @@ class BlobIterator(hash : [var __List]) {
   var currentList : ?__List = null;
   let hashArray = hash;
 
+  // Counts the number of dead blobs.
   public func size() : Nat {
     var len = 0;
     var i = 0;
@@ -232,15 +233,19 @@ class BlobIterator(hash : [var __List]) {
     "";
   };
 
-  public func isBlobLive(b : Blob) : Bool {
+  func computeIndex(b : Blob) : Nat {
     // Append the magic bytes to compute the hash.
     let magicBytes : [Nat8] = [0x21, 0x63, 0x61, 0x66, 0x21];
     let originalBlob : [Nat8] = blobToArray(b);
     let concat = Array_tabulate(magicBytes.size() + originalBlob.size(), func(i : Nat) : Nat8 = if (i < magicBytes.size()) { magicBytes[i] } else { originalBlob[i - magicBytes.size()] });
     let bWithMagic = arrayToBlob(concat);
-
+    // Get hash bucket.
     let hashValue = hashBlob(bWithMagic);
-    let index = nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+    nat32ToNat(hashValue) % HASH_ARRAY_SIZE;
+  };
+
+  public func isBlobLive(b : Blob) : Bool {
+    let index = computeIndex(b);
     var list = hashArray[index];
     // Walk the list and check if the blob is live.
     loop {
@@ -263,6 +268,82 @@ class BlobIterator(hash : [var __List]) {
     };
   };
 
+  func pruneFirstElement(list : __List, b : Blob, index : Nat) : Bool {
+    let deadBlob = getDeadBlobFromListNode(?list);
+    switch deadBlob {
+      case (?deadBlob) {
+        if (blobCompare(deadBlob, b) == 0) {
+          let nextElem = list.next;
+          switch nextElem {
+            case (?next) { hashArray[index] := next; return true };
+            case null {
+              // Do nothing. This case should not happen as the array is initialized
+              // with a sentinel (empty) value that is non-null.};
+            };
+          };
+        };
+      };
+      // No dead blob in this list node.
+      case null {};
+    };
+    false;
+  };
+
+  public func pruneDeadBlobs(confirmedDeadBlobs : [Blob]) {
+    // For each element in the confirmedDeadBlobs array, we check if it is in the hash array.
+    // If it is, and if the corresponding WeakRef is null, we remove the whole list node
+    // from the hash array.
+    var i = 0;
+    while (i < confirmedDeadBlobs.size()) {
+      let b = confirmedDeadBlobs[i];
+      // Get hash bucket.
+      let index = computeIndex(b);
+      // Get the list of the hash bucket and walk it until we find the blob b.
+      let list = hashArray[index];
+      // Special case for the first list node.
+      let pruned = pruneFirstElement(list, b, index);
+      if (pruned == false) {
+        // If we're here, we know that the blob is not the first list node.
+        // So we can advance to the next list node.
+        var prev = ?list;
+        var crntNode = advanceListNode(?list);
+        label findLoop loop {
+          let crntBlob = getDeadBlobFromListNode(crntNode);
+          switch crntBlob {
+            case (?crntBlob) {
+              if (blobCompare(crntBlob, b) == 0) {
+                // We found the blob and we know for sure it's dead.
+                // We just need to prune the current list node.
+                switch (prev, crntNode) {
+                  case (?prev, ?crntNode) {
+                    prev.next := crntNode.next;
+                    // Break the loop, we found the blob and pruned.
+                    break findLoop;
+                  };
+                  case _ {};
+                };
+              };
+            };
+            case null {
+              // No dead blob in this list node.
+              // We can advance pointers.
+              prev := crntNode;
+              crntNode := advanceListNode(crntNode);
+            };
+          };
+          switch crntNode {
+            case (?crntNode) {};
+            // We reached the end, break.
+            case null { break findLoop };
+          };
+        };
+      };
+      // Continue loop.
+      i += 1;
+    };
+
+  };
+
 };
 
 func getDeadBlobs() : ?[Blob] {
@@ -277,6 +358,16 @@ func getDeadBlobs() : ?[Blob] {
     case null { return null };
   };
 
+};
+
+func pruneConfirmedDeadBlobs(confirmedDeadBlobs : [Blob]) {
+  let dedupTableOption = __getDedupTable();
+  switch dedupTableOption {
+    case (?dedupTable) {
+      let dedupTableIter = BlobIterator(dedupTable);
+      dedupTableIter.pruneDeadBlobs(confirmedDeadBlobs);
+    };
+  };
 };
 
 func isStorageBlobLive(b : Blob) : Bool {

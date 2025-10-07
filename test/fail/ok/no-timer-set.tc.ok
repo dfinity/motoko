@@ -4,6 +4,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
       {
         isBlobLive : (b : Blob) -> Bool;
         nextDeadBlob : () -> Blob;
+        pruneDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
         size : () -> Nat
       };
     type ErrorCode =
@@ -226,6 +227,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     popcntNat8 : (w : Nat8) -> Nat8;
     principalOfActor : (act : actor {}) -> Principal;
     principalOfBlob : (act : Blob) -> Principal;
+    pruneConfirmedDeadBlobs : (confirmedDeadBlobs : [Blob]) -> ();
     regionGrow : (r : Region, pages : Nat64) -> Nat64;
     regionId : (r : Region) -> Nat;
     regionLoadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
