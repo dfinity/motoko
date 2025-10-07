@@ -75,3 +75,52 @@ because implicit instantiation of type parameter K is over-constrained with
 where
   Any  </:  Text
 so that no valid instantiation exists
+wrong-call-args.mo:97.8-97.9: type error [M0050], literal of type
+  Nat
+does not have expected type
+  ()
+wrong-call-args.mo:98.7-98.13: type error [M0233], wrong number of arguments: expected 0 but got 2
+Expected no arguments
+But got arguments of type:
+  Nat
+  Nat
+wrong-call-args.mo:100.8-100.10: type error [M0233], wrong number of arguments: expected 1 but got 0
+Expected arguments of type:
+  (A, B)
+But got no arguments
+wrong-call-args.mo:101.5-101.11: type error [M0098], cannot implicitly instantiate function of type
+  <A, B>((A, B)) -> ()
+to argument of type
+  Nat
+to produce result of type
+  ()
+because no instantiation of A, B makes
+  Nat  <:  (A, B)
+wrong-call-args.mo:102.8-102.17: type error [M0233], wrong number of arguments: expected 1 but got 3
+Expected arguments of type:
+  (A, B)
+But got arguments of type:
+  Nat
+  Nat
+  Nat
+wrong-call-args.mo:104.7-104.9: type error [M0233], wrong number of arguments: expected 2 but got 0
+Expected arguments of type:
+  A
+  B
+But got no arguments
+wrong-call-args.mo:105.5-105.10: type error [M0098], cannot implicitly instantiate function of type
+  <A, B>(A, B) -> ()
+to argument of type
+  Nat
+to produce result of type
+  ()
+because no instantiation of A, B makes
+  Nat  <:  (A, B)
+wrong-call-args.mo:106.7-106.16: type error [M0233], wrong number of arguments: expected 2 but got 3
+Expected arguments of type:
+  A
+  B
+But got arguments of type:
+  Nat
+  Nat
+  Nat

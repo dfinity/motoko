@@ -145,7 +145,7 @@ let display_many display p xs =
 
 let display_expected_arg_types fmt types =
   if types = [] then
-    Format.fprintf fmt "Expected no arguments\n"
+    Format.fprintf fmt "Expected no arguments"
   else
     Format.fprintf fmt "Expected arguments of type:%a" (display_many display_typ_expand) types
 

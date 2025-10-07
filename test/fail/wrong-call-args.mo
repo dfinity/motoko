@@ -63,3 +63,46 @@ module FuncWithSingleArgTuple {
     foo(arg);
   };
 };
+
+module SimpleNoDotNoImplicit {
+  func f0() {};
+  func f1<A>(_ : A) {};
+  func f12<A, B>(_ : (A, B)) {};
+  func f2<A, B>(_ : A, _ : B) {};
+  let u = ();
+  let n2 = (1, u);
+  func correct() {
+    f0();
+    f0(u);
+    f0 u;
+
+    f1(1);
+    f1 1;
+    f1(());
+    f1();
+    f1(u);
+    f1 u;
+    f1(1, 2); // this should also be fine
+    f1(1, 2, 3); // any arg is fine
+
+    f12(1, 2);
+    f12(n2);
+    f12 n2;
+
+    f2(1, 2);
+    f2(n2);
+    f2 n2;
+  };
+  func errors() {
+    f0(1);
+    f0(1, 2);
+
+    f12();
+    f12(1);
+    f12(1, 2, 3);
+
+    f2();
+    f2(1);
+    f2(1, 2, 3);
+  };
+};
