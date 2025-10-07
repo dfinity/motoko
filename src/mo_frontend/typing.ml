@@ -143,13 +143,13 @@ let display_typ_expand = Lib.Format.display T.pp_typ_expand
 let display_many display p xs =
   List.iter (display p) xs
 
-let display_expected fmt types =
+let display_expected_arg_types fmt types =
   if types = [] then
     Format.fprintf fmt "Expected no arguments\n"
   else
     Format.fprintf fmt "Expected arguments of type:%a" (display_many display_typ_expand) types
 
-let display_given fmt types =
+let display_given_arg_types fmt types =
   if types = [] then
     Format.fprintf fmt "But got no arguments"
   else
@@ -2562,11 +2562,6 @@ and as_implicit = function
 
 and insert_holes at ts es =
   let implicits_n = List.to_seq ts |> Seq.filter_map as_implicit |> Seq.length in
-  if List.length ts <> List.length es + implicits_n then
-    (* let () = Printf.printf "+arity mismatch: %d <> %d + %d\n" (List.length ts) (List.length es) implicits_n in *)
-    None, implicits_n
-  else
-
   let mk_hole pos hole_id =
     let hole_sort = if hole_id = "" then Anon pos else Named hole_id in
     {it = HoleE (hole_sort, ref {it = PrimE "hole"; at; note=empty_typ_note });
@@ -2575,11 +2570,7 @@ and insert_holes at ts es =
   in
   let rec go n ts es =
     match ts with
-    | [] ->
-      (* if es <> [] then
-        Printf.printf "+extra arguments: %s\n" (String.concat ", " (List.map (fun e -> Source.read_region_with_markers e.at |> Option.value ~default:"") es)); *)
-      (* Error here? extra arguments? *)
-      es
+    | [] -> es
     | t :: ts1 ->
       match as_implicit t with
       | Some arg_name ->
@@ -2587,13 +2578,11 @@ and insert_holes at ts es =
       | None ->
         match es with
         | e :: es1 -> e :: go (n + 1) ts1 es1
-        | [] ->
-          (* Error here? missing arguments? *)
-          (* if ts <> [] then
-            Printf.printf "+missing arguments for types: %s\n" (String.concat ", " (List.map T.string_of_typ ts)); *)
-          []
+        | [] -> []
   in
-  Some (go 0 ts es), implicits_n
+  if List.length ts <> List.length es + implicits_n
+  then None, implicits_n
+  else Some (go 0 ts es), implicits_n
 
 and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   let exp2 = !ref_exp2 in
@@ -2630,31 +2619,15 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       | [t'; t2] -> [t2], [(t, t')]
       | t'::ts -> ts, [(t, t')]
       | [] ->
-        (* unreachable? there should as least be one argument for the ctx_dot case *)
-        assert false
-        (* T.unit, [(t, T.unit)] *)
+        (* Should be unreachable *)
+        [T.unit], [(t, T.unit)]
     end
   in
   let ctx_holes, implicit_t_args_n = insert_holes at t_args syntax_args in
   let exp2, args =
-    (* When there is only one argument syntactically, e.g. `f(x)`
-      And when function has more arguments, e.g. f : (T1, (implicit : T2)) -> R
-      We need to decide whether:
-      1. `x` is the 1st argument, the rest needs to be inserted as implicit arguments
-      2. `x` is a tuple with all arguments, no implicit needs to be inserted
-
-      But it is hard to distinguish. Maybe impossible:
-        f<A,B>(_ : A, _ : (implicit : B)): (A, B)
-        x : (Int, String)
-      with this f(x) would fit both situations to produce:
-        ((Int, String), B)
-        (Int, String)
-      I think we should disallow the 2nd case (where x is treated as a list of all arguments) when there are implicits involved.
-    *)
     match ctx_holes with
     | None -> exp2, syntax_args
     | Some args ->
-      (* TODO: Is this correct? Should we detect a single argument? *)
       let e' = match args with
         | [e] -> e.it
         | es -> TupE es
@@ -2678,8 +2651,8 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
       "wrong number of arguments: expected %d but got %d\n%a\n%a"
       (List.length t_args - implicit_t_args_n)
       (List.length syntax_args)
-      display_expected expected_types
-      display_given given_types
+      display_expected_arg_types expected_types
+      display_given_arg_types given_types
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
@@ -2722,17 +2695,6 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
-
-and validate_call_arg env arg t_args =
-  let t_args_n = List.length t_args in
-  if t_args_n = 1 then () else
-  let args_n = as_seq arg |> List.length in
-  if args_n <> t_args_n then
-    (* Validate that the number of arguments matches the parameters *)
-    error env arg.at "M0233"
-      "wrong number of arguments: expected %d but got %d"
-      t_args_n
-      args_n
 
 and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*

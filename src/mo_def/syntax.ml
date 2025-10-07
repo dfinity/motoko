@@ -379,11 +379,6 @@ let is_ignore_asyncE e =
     true
   | _ -> false
 
-let as_seq e =
-  match e.it with
-  | TupE es -> es
-  | _ -> [e]
-
 let contextual_dot_args e1 e2 dot_note =
   let module T = Mo_types.Type in
   let arity = match dot_note.note.note_typ with
