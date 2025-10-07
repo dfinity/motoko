@@ -2638,21 +2638,9 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
 
   (* Match the arguments against the parameter types *)
   let t_arg =
-    if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args then T.seq t_args else
-      let tvars = T.open_binds tbs in
-      let subst t = if tvars = [] then t else T.open_ tvars t in
-      let given_types = List.map (infer_exp env) syntax_args in
-      let expected_types =
-        t_args
-        |> List.filter (fun t -> as_implicit t = None)
-        |> List.map subst
-      in
-      error env exp2.at "M0233"
-      "wrong number of arguments: expected %d but got %d\n%a\n%a"
-      (List.length t_args - implicit_t_args_n)
-      (List.length syntax_args)
-      display_expected_arg_types expected_types
-      display_given_arg_types given_types
+    if (ctx_dot = None && ctx_holes = None) || List.length t_args = List.length args
+    then T.seq t_args
+    else wrong_call_args env tbs exp2.at t_args implicit_t_args_n syntax_args
   in
   if not env.pre then ref_exp2 := exp2; (* TODO: is this good enough *)
   let ts, t_arg', t_ret' =
@@ -2695,6 +2683,22 @@ and infer_call env exp1 inst (parenthesized, ref_exp2) at t_expect_opt =
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
+
+and wrong_call_args env tbs at t_args implicit_t_args_n syntax_args =
+  let tvars = T.open_binds tbs in
+  let subst t = if tvars = [] then t else T.open_ tvars t in
+  let given_types = List.map (infer_exp env) syntax_args in
+  let expected_types =
+    t_args
+    |> List.filter (fun t -> as_implicit t = None)
+    |> List.map subst
+  in
+  error env at "M0233"
+    "wrong number of arguments: expected %d but got %d\n%a\n%a"
+    (List.length t_args - implicit_t_args_n)
+    (List.length syntax_args)
+    display_expected_arg_types expected_types
+    display_given_arg_types given_types
 
 and infer_call_instantiation env t1 tbs t_arg t_ret exp2 at t_expect_opt extra_subtype_problems =
   (*
