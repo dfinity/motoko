@@ -147,7 +147,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: update_flake_lock_action_daily
+          ref: 'master'
       - name: Automatically closing successful trials XXXX
         env:
           GH_TOKEN: ${{ github.token }}
